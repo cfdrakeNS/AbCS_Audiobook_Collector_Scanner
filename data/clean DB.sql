@@ -1,0 +1,5 @@
+PRAGMA wal_checkpoint(FULL);
+VACUUM;
+ANALYZE;
+REINDEX;
+

@@ -1,0 +1,456 @@
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+WARNING: Plugins directory does not exist: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\Qt\plugins\accessible
+
+================================================================================
+
+Creating test window...
+
+Skipping accessible interface query (safe mode).
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: 1
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: 1
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+WARNING: Plugins directory does not exist: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\Qt\plugins\accessible
+
+================================================================================
+
+Creating test window...
+
+Skipping accessible interface query (safe mode).
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+WARNING: Plugins directory does not exist: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\Qt\plugins\accessible
+
+================================================================================
+
+Creating test window...
+
+Skipping accessible interface query (safe mode).
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+Plugins root: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\plugins
+INFO: Accessible plugins directory not present in this install.
+
+================================================================================
+
+Creating test window...
+
+Scheduling accessible interface query after 2000 ms...
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+
+Querying accessible interface for window...
+Window accessible interface found!
+  Role: Role.Window
+  Name: Test Window
+  Description: This is a test window for JAWS accessibility diagnostics
+  State: <PySide6.QtGui.QAccessible.State object at 0x000001C6758F3100>
+  Child count: 1
+
+  Children:
+    [0] Role: Role.Client, Name: 
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+Plugins root: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\plugins
+INFO: Accessible plugins directory not present in this install.
+
+================================================================================
+
+Creating test window...
+
+Scheduling accessible interface query after 2000 ms...
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+
+Querying accessible interface for window...
+Window accessible interface found!
+  Role: Role.Window
+  Name: Test Window
+  Description: This is a test window for JAWS accessibility diagnostics
+  State: <PySide6.QtGui.QAccessible.State object at 0x0000018201803240>
+  Child count: 1
+
+  Children:
+    [0] Role: Role.Client, Name: 
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+Plugins root: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\plugins
+INFO: Accessible plugins directory not present in this install.
+
+================================================================================
+
+Creating test window...
+
+Scheduling accessible interface query after 2000 ms...
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+
+Querying accessible interface for window...
+Window accessible interface found!
+  Role: Role.Window
+  Name: Test Window
+  Description: This is a test window for JAWS accessibility diagnostics
+  State: <PySide6.QtGui.QAccessible.State object at 0x00000156F6143100>
+  Child count: 1
+
+  Children:
+    [0] Role: Role.Client, Name: 
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+Plugins root: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\plugins
+INFO: Accessible plugins directory not present in this install.
+
+================================================================================
+
+Creating test window...
+
+Querying accessible interface for window...
+Window accessible interface found!
+  Role: Role.Window
+  Name: Test Window
+  Description: This is a test window for JAWS accessibility diagnostics
+  State: <PySide6.QtGui.QAccessible.State object at 0x000001C2DEF83800>
+  Child count: 1
+
+  Children:
+    [0] Role: Role.Client, Name: 
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+
+AbCS JAWS/NVDA Accessibility Diagnostics
+
+================================================================================
+
+PySide6 Version: 6.10.2
+Qt Version: 6.10.2
+
+================================================================================
+
+Creating QApplication...
+Calling QAccessible.setActive(True)...
+Calling QAccessible.setRootObject(app)...
+
+================================================================================
+
+QAccessible.isActive(): True
+
+Checking for accessibility bridge plugins...
+Plugins root: C:\Users\cfran\ABcS\abcs\.venv\Lib\site-packages\PySide6\plugins
+INFO: Accessible plugins directory not present in this install.
+
+================================================================================
+
+Creating test window...
+
+Querying accessible interface for window...
+Window accessible interface found!
+  Role: Role.Window
+  Name: Test Window
+  Description: This is a test window for JAWS accessibility diagnostics
+  State: <PySide6.QtGui.QAccessible.State object at 0x000001BED88E3800>
+  Child count: 1
+
+  Children:
+    [0] Role: Role.Client, Name: 
+
+================================================================================
+
+Checking environment variables...
+  QT_QPA_PLATFORM: (not set)
+  QT_ACCESSIBILITY: (not set)
+  QT_LOGGING_RULES: (not set)
+  QT_DEBUG_PLUGINS: (not set)
+
+================================================================================
+
+TESTING INSTRUCTIONS:
+1. The test window should now be visible
+2. Try these JAWS commands:
+   - Insert+T: Read window title
+   - Insert+Ctrl+F1: Read window technical info
+   - Numpad Plus: JAWS cursor to read window
+   - Tab: Navigate to button, then Space to click
+3. Look at the window class in technical info
+   - Expected: Something like 'Qt6QWidget' or 'QWidget'
+   - Problem: 'Qt6101QWindowIcon' (means accessibility broken)
+4. Press Ctrl+C in this console to exit
+
+================================================================================
+

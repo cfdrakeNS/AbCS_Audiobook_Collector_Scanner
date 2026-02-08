@@ -1,0 +1,10 @@
+Test plan for tomorrow:
+
+- Confirm baseline: run harness with JAWS/NVDA, record current announcements for each section.
+- Label/buddy verification: tab through each control, verify label readout and control name; note any remaining “GroupName Combo box”.
+- Accessible name/description sweep: verify each control reads its accessible name, and status bar reads updates.
+- Combo width checks: confirm each width method visually and via screen reader focus.
+- Status bar behavior: test showMessage, setStatusTip, focus-to-status; note which announces reliably.
+- Keyboard handling: test backspace/delete in all three line edits; log which method is consistent with JAWS.
+- Virtualization isolation: disable groups one-by-one to see if the group title is causing announcements.
+- Decide next edits: list specific controls that need changes and why.

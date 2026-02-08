@@ -1,0 +1,42 @@
+Here's the commit summary for today's work:
+
+---
+
+**Commit: Main Window Accessibility Improvements (mw#10-27)**
+
+**Selection System Overhaul:**
+- Implemented Shift+Space to enter keyboard selection mode (selects current row, sets anchor)
+- Shift+Arrow extends selection from anchor when in selection mode
+- Plain arrows move without selecting (no accidental selection)
+- ESC exits selection mode (window-level shortcut for reliability)
+- Mouse Shift+Click range selection working
+- SelectItems mode for cell-level focus highlight during navigation
+
+**Column & Layout:**
+- mw#22: Author, Title, Series, Genre columns stretch proportionally
+- Fixed-width columns (Year, Plot, Time, Tracks, Read, Added) resize to content
+- Horizontal scrollbar enabled when needed
+- Removed table border/outline styling
+
+**Keyboard Shortcuts:**
+- mw#23: Alt+1 through Alt+0 jump to table columns
+- mw#24: Alt+/ reads status bar aloud
+- F1 shows keyboard shortcuts help dialog
+- ESC clears selection first, then search
+- Ctrl+Enter opens book details
+
+**Status Bar:**
+- mw#12/13: Shows selection count when items selected
+- Default shows book count and current order
+- Announces selection changes for screen readers
+
+**Focus Management:**
+- mw#25: Cancel button returns focus to table
+- Double-click opens book details (single-click just moves)
+
+**Known Issue (deferred):**
+- After ESC clears search, arrow keys may not work until clicking table (focus issue to investigate)
+
+---
+
+Good progress today on most items. The focus return after ESC clearing search needs more investigation another day.

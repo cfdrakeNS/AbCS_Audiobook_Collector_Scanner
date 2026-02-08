@@ -1,0 +1,16 @@
+# AbCS - Audio Book Collector Scanner
+# Requirements for Python 3.9+
+
+# GUI Framework
+PySide6>=6.6.0
+
+# Audio metadata reading
+mutagen>=1.47.0
+
+# Utilities
+python-dateutil>=2.8.2
+Send2Trash>=1.8.2
+
+# Development/Testing (optional)
+pytest>=7.4.0
+pytest-qt>=4.2.0

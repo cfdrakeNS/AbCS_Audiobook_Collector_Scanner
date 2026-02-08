@@ -1,0 +1,20 @@
+-- Table: books
+    book_id *
+    title   *
+    author_id * 
+    year      *
+    series_id *
+    genre_id  *
+    collection_id * 
+    reader        *
+    time_hours    
+    time_minutes  
+    tracks        *
+    size_mb       *
+    bitrate       *
+    file_format   *
+    path          *
+    comments      *
+    read_date     
+    date_added    
+    source   

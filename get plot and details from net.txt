@@ -1,0 +1,181 @@
+
+new feature 
+* App takes **author + title (+ year)**
+* Goes out to the web
+* Finds a **book description / plot / summary**
+* Shows it in a **popup dialog**
+* Optionally lets you **copy/save it into your database**
+
+
+## High-level architecture (clean & sane)
+
+```
+[User clicks "Find Description"]
+        |
+        v
+[Background web lookup]
+        |
+        v
+[Show results in popup]
+        |
+        +--> (Optional) Save to DB
+```
+
+Key idea: **non-blocking** (thread or async), so the UI doesn’t freeze.
+
+
+Where the data can come from (realistic options)
+Public Book APIs (best choice)
+
+Google Books API (very popular)
+
+* Free tier
+* Search by:
+
+  * title
+  * author
+  * ISBN (if you ever add it later)
+* Returns:
+
+  * Description / synopsis
+  * Publisher
+  * Categories
+  * Published year
+
+**Pros**
+
+* Reliable
+* Good coverage
+* Clean JSON
+
+**Cons**
+
+* Descriptions vary in quality
+* Requires an API key (easy)
+
+👉 This is what I’d recommend first for ABcS.
+
+---
+
+#### 2️⃣ Open Library (Internet Archive)
+
+* Free, no key required
+* Community-maintained
+
+**Pros**
+
+* Open, no signup
+* Decent coverage of older books
+
+**Cons**
+
+* Metadata can be messy or missing
+* Descriptions aren’t guaranteed
+
+---
+
+#### 3️⃣ Goodreads
+
+* **Not recommended**
+* API access is restricted/legacy
+* Scraping violates ToS
+
+---
+
+### ⚠️ Option 2: Web scraping (last resort)
+
+Technically possible, **legally risky**.
+
+* Sites change layouts
+* Terms of Service issues
+* Breaks silently
+
+I would **not** build ABcS around scraping.
+
+---
+
+### 🧠 Option 3: AI-assisted summaries (advanced)
+
+If no description is found:
+
+* Ask an AI to **generate a short synopsis**
+* Based on:
+
+  * title
+  * author
+  * genre (if you store it)
+
+**BUT**
+
+* This is *not factual retrieval*
+* You must label it clearly as **AI-generated**
+* Might be unacceptable for archival accuracy
+
+This works best as a **fallback**, not primary source.
+
+---
+
+## How it would look in the UI (PySide6)
+
+Example flow:
+
+* Button: **“Find Description Online”**
+* Modal dialog:
+
+  * Shows:
+
+    * Source (Google Books / Open Library)
+    * Text area with description
+  * Buttons:
+
+    * **Save to record**
+    * **Copy**
+    * **Cancel**
+
+This mirrors how you *used to paste manually* — just automated.
+
+---
+
+## Technical reality check (important)
+
+Yes, it’s possible **without making ABcS complicated**:
+
+* One API call
+* JSON parsing
+* QTextEdit popup
+* Optional DB update
+
+No heavy dependencies required.
+
+---
+
+## Design decision I’d strongly suggest
+
+💡 **Do NOT auto-save silently**
+
+Instead:
+
+* Fetch → show → let the user confirm
+  This keeps ABcS predictable and accessible (especially important given screen reader use).
+
+---
+
+## If you want, next steps I can help with
+
+We can go step-by-step, very concretely:
+
+1. Pick **Google Books vs Open Library**
+2. Define a **Python function**:
+
+   ```python
+   lookup_book_description(author, title, year=None)
+   ```
+3. Wire it to a **PySide6 dialog**
+4. Decide **where/how to store it in SQLite**
+
+If you want, tell me:
+
+* ✔️ Which source you prefer
+* ✔️ Whether this should be **books only** (not audiobooks metadata, etc.)
+
+This fits ABcS *perfectly*, by the way — it’s exactly the kind of upgrade that makes it feel modern without overengineering.
