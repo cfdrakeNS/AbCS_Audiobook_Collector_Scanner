@@ -39,6 +39,12 @@
 
 ## mw#27 Esc key clears selection (same behavior as Cancel button)
 
+## mw#28 After pressing Enter on search, cursor moves to correct column based on Order By and cell is highlighted (focus was staying in search box - fixed focus order)
+
+## mw#29 ESC to clear search: Fixed to use book_id (not row position) to restore focus. Tracks `_last_table_book_id` via `on_current_cell_changed`. Fixed in `on_escape_pressed` (the actual handler via QShortcut), not just `table_key_press`
+
+## mw#30 Fixed proportional column widths: Title (4x), Author (2x), Series (1.5x), Genre (1.5x). Changed from `Stretch` mode (equal widths) to `Interactive` mode with custom `resizeEvent` and `update_stretch_columns()` to distribute space proportionally
+
 ---
 ## Clarifications / Not Needed:
 - No checkboxes in table (select checkbox hidden per mw#11)

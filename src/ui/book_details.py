@@ -6,10 +6,12 @@ Form for viewing and editing individual book information.
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QTextEdit, QPushButton,
-    QLabel, QDateEdit, QSpinBox, QMessageBox, QWidget
+    QLabel, QDateEdit, QSpinBox, QMessageBox, QWidget,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QApplication
 )
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QAccessible
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer
+from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
 from database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
@@ -22,7 +24,9 @@ class BookDetailsWindow(QDialog):
     Book details dialog for viewing/editing book information.
     """
 
-    def __init__(self, db: DatabaseManager, scaler: UIScaler, book: Book = None, parent=None):
+    def __init__(self, db: DatabaseManager, scaler: UIScaler, book: Book = None,
+                 sort_order: str = "Title", books_list: list = None,
+                 current_index: int = 0, parent=None):
         """
         Initialize book details window.
 
@@ -30,6 +34,9 @@ class BookDetailsWindow(QDialog):
             db: Database manager
             scaler: UI scaler
             book: Book to edit (None for new book)
+            sort_order: Current sort order from main window (for header display)
+            books_list: List of Book objects for Prev/Next navigation
+            current_index: Index of current book in books_list
             parent: Parent widget
         """
         super().__init__(parent)
@@ -38,6 +45,18 @@ class BookDetailsWindow(QDialog):
         self.scaler = scaler
         self.book = book or Book()
         self.is_new = (book is None)
+        self.sort_order = sort_order  # bd#8: Store for header display
+        self._dirty = False  # bd#6: Track if form has unsaved changes
+        self._first_dirty_widget = None  # Track first field that changed
+
+        # Track original combo values for focusOut change detection
+        self._original_author = ""
+        self._original_series = ""
+        self._original_genre = ""
+
+        # bd#4: Store book list for Prev/Next navigation
+        self.books_list = books_list or []
+        self.current_index = current_index
 
         # Query objects
         self.book_queries = BookQueries(db)
@@ -48,11 +67,17 @@ class BookDetailsWindow(QDialog):
 
         # Setup UI
         self.setup_ui()
+        self.apply_control_styles()  # bd#1: Uniform control heights
         self.disable_hover_highlight()
+        self.install_focus_filters()  # bd#2: Prevent text auto-select on focus
         self.load_combos()
 
         if not self.is_new:
             self.load_book_data()
+
+        # bd#6: Setup dirty tracking and initial save button visibility
+        self._setup_dirty_tracking()
+        self._update_save_button_visibility()
 
         # Window settings
         title = "New Book" if self.is_new else f"Book Details - {self.book.title}"
@@ -60,7 +85,87 @@ class BookDetailsWindow(QDialog):
         self.setAccessibleName(title)
         self.setAccessibleDescription(
             "Form for viewing and editing book information")
-        self.resize(700, 500)
+        self.resize(850, 500)
+
+    def install_focus_filters(self):
+        """
+        bd#2: Install event filters on editable fields to prevent auto-select on focus.
+
+        When a QLineEdit or editable QComboBox gains focus via Tab or Alt+key,
+        Qt automatically selects all text. This is dangerous for blind/low-vision
+        users because any keystroke would replace the content.
+
+        We intercept FocusIn events and deselect text after Qt finishes its
+        default focus handling.
+        """
+        # Find ALL QLineEdit widgets in the dialog (including those inside combos/spinboxes)
+        for widget in self.findChildren(QLineEdit):
+            widget.installEventFilter(self)
+
+        # Also filter QTextEdit widgets
+        for widget in self.findChildren(QTextEdit):
+            widget.installEventFilter(self)
+
+        # Filter QComboBox and QSpinBox - they select text AFTER their internal lineEdit gets focus
+        for widget in self.findChildren(QComboBox):
+            widget.installEventFilter(self)
+        for widget in self.findChildren(QSpinBox):
+            widget.installEventFilter(self)
+
+    def eventFilter(self, source, event):
+        """
+        Event filter to handle focus events on form fields.
+
+        bd#2: When a field gains focus, we deselect text so the user doesn't
+        accidentally overwrite existing content by pressing a key.
+        """
+        if event.type() == QEvent.FocusIn:
+            # Schedule deselection AFTER Qt finishes its default focus handling
+            # QTimer.singleShot(0, ...) runs on the next event loop iteration
+            # Use default argument (w=source) to capture the widget value NOW,
+            # not when the lambda executes later
+            if isinstance(source, QLineEdit):
+                QTimer.singleShot(0, lambda w=source: w.deselect())
+            elif isinstance(source, QTextEdit):
+                # QTextEdit uses QTextCursor.End to move cursor and clear selection
+                QTimer.singleShot(
+                    0, lambda w=source: w.moveCursor(QTextCursor.End))
+            elif isinstance(source, QComboBox):
+                # QComboBox selects text in its internal lineEdit - deselect it
+                if source.lineEdit():
+                    QTimer.singleShot(0, lambda w=source: w.lineEdit(
+                    ).deselect() if w.lineEdit() else None)
+            elif isinstance(source, QSpinBox):
+                # QSpinBox also has an internal lineEdit
+                QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
+
+        # Check for FocusOut on author/series/genre combos to detect new values
+        if event.type() == QEvent.FocusOut:
+            if source == self.author_combo:
+                self._check_combo_change("Author", self.author_combo,
+                                         self._original_author, self.author_queries)
+            elif source == self.series_combo:
+                self._check_combo_change("Series", self.series_combo,
+                                         self._original_series, self.series_queries)
+            elif source == self.genre_combo:
+                self._check_combo_change("Genre", self.genre_combo,
+                                         self._original_genre, self.genre_queries)
+
+        # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
+        # This prevents silent value changes that JAWS doesn't announce
+        if event.type() == QEvent.KeyPress:
+            if isinstance(source, QComboBox):
+                key = event.key()
+                modifiers = event.modifiers()
+                if key in (Qt.Key_Up, Qt.Key_Down):
+                    # Only allow with Alt modifier (opens dropdown, JAWS announces)
+                    if not (modifiers & Qt.AltModifier):
+                        # Block plain arrow keys - beep to indicate blocked
+                        QApplication.beep()
+                        return True  # Consume the event
+
+        # Return False to let the event continue to the widget
+        return super().eventFilter(source, event)
 
     def disable_hover_highlight(self):
         """Disable hover highlighting for low-vision comfort."""
@@ -70,139 +175,545 @@ class BookDetailsWindow(QDialog):
             child.setMouseTracking(False)
             child.setAttribute(Qt.WA_Hover, False)
 
+    def apply_control_styles(self):
+        """
+        bd#1: Apply uniform control heights to all form widgets.
+
+        Uses stylesheets to set consistent min/max heights based on the
+        current zoom scale. This matches the approach used in MainWindow.
+        """
+        # Get base height and scale it
+        base_height = 20
+        scale_pct = self.scaler.current_scale
+        scaled_height = int(base_height * (scale_pct / 100.0))
+
+        # Stylesheet for QLineEdit controls
+        lineedit_style = f"""
+            QLineEdit {{
+                min-height: {scaled_height}px;
+                max-height: {scaled_height}px;
+                padding: 2px 4px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }}
+            QLineEdit:focus {{
+                border: 2px solid palette(highlight);
+                background-color: palette(light);
+            }}
+            QLineEdit:read-only {{
+                background-color: palette(window);
+            }}
+        """
+
+        # Stylesheet for QComboBox controls
+        combo_style = f"""
+            QComboBox {{
+                min-height: {scaled_height}px;
+                max-height: {scaled_height}px;
+                padding: 2px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }}
+            QComboBox:focus {{
+                border: 2px solid palette(highlight);
+                background-color: palette(light);
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+            }}
+        """
+
+        # Stylesheet for QSpinBox controls
+        spinbox_style = f"""
+            QSpinBox {{
+                min-height: {scaled_height}px;
+                max-height: {scaled_height}px;
+                padding: 2px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }}
+            QSpinBox:focus {{
+                border: 2px solid palette(highlight);
+                background-color: palette(light);
+            }}
+        """
+
+        # Stylesheet for QDateEdit controls
+        dateedit_style = f"""
+            QDateEdit {{
+                min-height: {scaled_height}px;
+                max-height: {scaled_height}px;
+                padding: 2px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }}
+            QDateEdit:focus {{
+                border: 2px solid palette(highlight);
+                background-color: palette(light);
+            }}
+        """
+
+        # Stylesheet for QPushButton - compact height, visible border, inverted focus
+        button_style = f"""
+            QPushButton {{
+                padding: 4px 12px;
+                min-height: {scaled_height - 4}px;
+                max-height: {scaled_height - 4}px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                background-color: palette(button);
+            }}
+            QPushButton:focus {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+                border: 2px solid palette(dark);
+            }}
+        """
+
+        # Stylesheet for QLabel - bold text for form labels
+        label_style = """
+            QLabel {
+                font-weight: bold;
+            }
+        """
+
+        # Apply styles to all matching widgets
+        for widget in self.findChildren(QLineEdit):
+            widget.setStyleSheet(lineedit_style)
+        for widget in self.findChildren(QComboBox):
+            widget.setStyleSheet(combo_style)
+        for widget in self.findChildren(QSpinBox):
+            widget.setStyleSheet(spinbox_style)
+        for widget in self.findChildren(QDateEdit):
+            widget.setStyleSheet(dateedit_style)
+        for widget in self.findChildren(QPushButton):
+            widget.setStyleSheet(button_style)
+        for widget in self.findChildren(QLabel):
+            widget.setStyleSheet(label_style)
+
     def setup_ui(self):
         """Setup user interface."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
+        # bd#8: Header section showing sort order
+        header_layout = QHBoxLayout()
+        self.sort_order_label = QLabel(f"Sorted by: {self.sort_order}")
+        self.sort_order_label.setAccessibleName(
+            f"Books sorted by {self.sort_order}")
+        header_layout.addWidget(self.sort_order_label)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+
         # Form layout
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         form.setSpacing(10)
 
-        # Title
+        # bd#3 Row 1: Title + Author (side by side)
+        row1_layout = QHBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Book title")
-        form.addRow("&Title:", self.title_edit)
+        row1_layout.addWidget(self.title_edit, 2)  # stretch=2 (wider)
 
-        # Author
+        author_label = QLabel("&Author:")
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
-        form.addRow("&Author:", self.author_combo)
+        author_label.setBuddy(self.author_combo)
+        row1_layout.addWidget(author_label)
+        row1_layout.addWidget(self.author_combo, 1)  # stretch=1
 
-        # Year and Files (side by side)
-        year_files_layout = QHBoxLayout()
+        title_label = QLabel("&Title:")
+        title_label.setBuddy(self.title_edit)
+        form.addRow(title_label, row1_layout)
+
+        # bd#3 Row 2: Comments (expand to fit, hide when empty)
+        self.comments_label = QLabel("C&omments:")
+        self.comments_edit = QTextEdit()
+        self.comments_edit.setAccessibleName("Comments")
+        # Tab navigates instead of inserting tabs
+        self.comments_edit.setTabChangesFocus(True)
+        # Dynamic height: start small, grow with content
+        self.comments_edit.setMinimumHeight(40)
+        self.comments_edit.textChanged.connect(self._adjust_comments_height)
+        self.comments_label.setBuddy(self.comments_edit)
+        form.addRow(self.comments_label, self.comments_edit)
+
+        # bd#3 Row 3: Year + Time + Reader + Read date
+        row3_layout = QHBoxLayout()
+
         self.year_spin = QSpinBox()
         self.year_spin.setRange(1900, 2100)
         self.year_spin.setValue(datetime.now().year)
         self.year_spin.setAccessibleName("Publication year")
-        year_files_layout.addWidget(self.year_spin)
+        row3_layout.addWidget(self.year_spin)
 
-        year_files_layout.addWidget(QLabel("Files:"))
-        self.files_edit = QLineEdit()
-        self.files_edit.setReadOnly(True)
-        self.files_edit.setAccessibleName("Number of files")
-        year_files_layout.addWidget(self.files_edit)
-        form.addRow("&Year:", year_files_layout)
-
-        # Series and Genre (side by side)
-        series_genre_layout = QHBoxLayout()
-        self.series_combo = QComboBox()
-        self.series_combo.setEditable(True)
-        self.series_combo.setAccessibleName("Book series")
-        series_genre_layout.addWidget(self.series_combo, 1)
-
-        series_genre_layout.addWidget(QLabel("Genre:"))
-        self.genre_combo = QComboBox()
-        self.genre_combo.setEditable(True)
-        self.genre_combo.setAccessibleName("Genre")
-        series_genre_layout.addWidget(self.genre_combo, 1)
-        form.addRow("Ser&ies:", series_genre_layout)
-
-        # Reader
-        self.reader_edit = QLineEdit()
-        self.reader_edit.setAccessibleName("Reader/Narrator")
-        form.addRow("&Reader:", self.reader_edit)
-
-        # Collection
-        self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Collection")
-        form.addRow("Co&llection:", self.collection_combo)
-
-        # Time and Size (side by side)
-        time_size_layout = QHBoxLayout()
+        time_label = QLabel("Ti&me:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setAccessibleName("Duration")
-        time_size_layout.addWidget(self.time_edit)
+        time_label.setBuddy(self.time_edit)
+        row3_layout.addWidget(time_label)
+        row3_layout.addWidget(self.time_edit)
 
-        time_size_layout.addWidget(QLabel("Size (MB):"))
-        self.size_edit = QLineEdit()
-        self.size_edit.setReadOnly(True)
-        self.size_edit.setAccessibleName("File size in megabytes")
-        time_size_layout.addWidget(self.size_edit)
-        form.addRow("Ti&me:", time_size_layout)
+        reader_label = QLabel("&Reader:")
+        self.reader_edit = QLineEdit()
+        self.reader_edit.setAccessibleName("Reader/Narrator")
+        reader_label.setBuddy(self.reader_edit)
+        row3_layout.addWidget(reader_label)
+        row3_layout.addWidget(self.reader_edit)
 
-        # Bitrate and Format (side by side)
-        bitrate_format_layout = QHBoxLayout()
-        self.bitrate_edit = QLineEdit()
-        self.bitrate_edit.setReadOnly(True)
-        self.bitrate_edit.setAccessibleName("Bitrate in kbps")
-        bitrate_format_layout.addWidget(self.bitrate_edit)
-
-        bitrate_format_layout.addWidget(QLabel("Format:"))
-        self.format_edit = QLineEdit()
-        self.format_edit.setReadOnly(True)
-        self.format_edit.setAccessibleName("File format")
-        bitrate_format_layout.addWidget(self.format_edit)
-        form.addRow("&Bitrate:", bitrate_format_layout)
-
-        # Path
-        self.path_edit = QLineEdit()
-        self.path_edit.setReadOnly(True)
-        self.path_edit.setAccessibleName("File path")
-        form.addRow("Pat&h:", self.path_edit)
-
-        # Comments
-        self.comments_edit = QTextEdit()
-        self.comments_edit.setAccessibleName("Comments")
-        self.comments_edit.setMaximumHeight(100)
-        form.addRow("C&omments:", self.comments_edit)
-
-        # Read date
+        read_label = QLabel("R&ead:")
         self.read_date = QDateEdit()
         self.read_date.setCalendarPopup(True)
         self.read_date.setDisplayFormat("yyyy-MM-dd")
         self.read_date.setAccessibleName("Date read")
         self.read_date.setSpecialValueText("Not read")
-        form.addRow("Read Date:", self.read_date)
+        read_label.setBuddy(self.read_date)
+        row3_layout.addWidget(read_label)
+        row3_layout.addWidget(self.read_date)
+
+        year_label = QLabel("&Year:")
+        year_label.setBuddy(self.year_spin)
+        form.addRow(year_label, row3_layout)
+
+        # bd#3 Row 4: Series + Genre + Collection
+        row4_layout = QHBoxLayout()
+
+        self.series_combo = QComboBox()
+        self.series_combo.setEditable(True)
+        self.series_combo.setAccessibleName("Book series")
+        row4_layout.addWidget(self.series_combo, 1)
+
+        genre_label = QLabel("&Genre:")
+        self.genre_combo = QComboBox()
+        self.genre_combo.setEditable(True)
+        self.genre_combo.setAccessibleName("Genre")
+        genre_label.setBuddy(self.genre_combo)
+        row4_layout.addWidget(genre_label)
+        row4_layout.addWidget(self.genre_combo, 1)
+
+        collection_label = QLabel("Co&llection:")
+        self.collection_combo = QComboBox()
+        self.collection_combo.setAccessibleName("Collection")
+        collection_label.setBuddy(self.collection_combo)
+        row4_layout.addWidget(collection_label)
+        row4_layout.addWidget(self.collection_combo, 1)
+
+        series_label = QLabel("Ser&ies:")
+        series_label.setBuddy(self.series_combo)
+        form.addRow(series_label, row4_layout)
+
+        # bd#3 Row 5: Bitrate + Size + Format + Source
+        row5_layout = QHBoxLayout()
+
+        self.bitrate_edit = QLineEdit()
+        self.bitrate_edit.setReadOnly(True)
+        self.bitrate_edit.setAccessibleName("Bitrate in kbps")
+        row5_layout.addWidget(self.bitrate_edit)
+
+        size_label = QLabel("Si&ze:")
+        self.size_edit = QLineEdit()
+        self.size_edit.setReadOnly(True)
+        self.size_edit.setAccessibleName("File size in megabytes")
+        size_label.setBuddy(self.size_edit)
+        row5_layout.addWidget(size_label)
+        row5_layout.addWidget(self.size_edit)
+
+        format_label = QLabel("Format:")
+        self.format_edit = QLineEdit()
+        self.format_edit.setReadOnly(True)
+        self.format_edit.setAccessibleName("File format")
+        row5_layout.addWidget(format_label)
+        row5_layout.addWidget(self.format_edit)
+
+        source_label = QLabel("Source:")
+        self.source_edit = QLineEdit()
+        self.source_edit.setReadOnly(True)
+        self.source_edit.setAccessibleName("Import source")
+        row5_layout.addWidget(source_label)
+        row5_layout.addWidget(self.source_edit)
+
+        bitrate_label = QLabel("&Bitrate:")
+        bitrate_label.setBuddy(self.bitrate_edit)
+        form.addRow(bitrate_label, row5_layout)
+
+        # bd#3 Row 6: Path + Added date
+        row6_layout = QHBoxLayout()
+
+        self.path_edit = QLineEdit()
+        self.path_edit.setReadOnly(True)
+        self.path_edit.setAccessibleName("File path")
+        row6_layout.addWidget(self.path_edit, 3)  # stretch=3 (wider)
+
+        added_label = QLabel("Added:")
+        self.added_edit = QLineEdit()
+        self.added_edit.setReadOnly(True)
+        self.added_edit.setAccessibleName("Date added to collection")
+        row6_layout.addWidget(added_label)
+        row6_layout.addWidget(self.added_edit, 1)
+
+        path_label = QLabel("Pat&h:")
+        path_label.setBuddy(self.path_edit)
+        form.addRow(path_label, row6_layout)
 
         layout.addLayout(form)
 
-        # Buttons
+        # bd#4: Four buttons - New, Save, Delete, Close (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
 
+        # New button (Alt+W) - clears form for new entry
+        self.new_button = QPushButton("Ne&w")
+        self.new_button.setAccessibleName("New book")
+        self.new_button.setAccessibleDescription(
+            "Clear form for new book entry - Alt+W or Ctrl+Enter")
+        self.new_button.setFocusPolicy(Qt.StrongFocus)
+        self.new_button.clicked.connect(self.on_new)
+        button_layout.addWidget(self.new_button)
+
+        # Save button (Alt+S)
         self.save_button = QPushButton("&Save")
         self.save_button.setAccessibleName("Save book")
+        self.save_button.setAccessibleDescription("Save changes - Alt+S")
+        self.save_button.setFocusPolicy(Qt.StrongFocus)
         self.save_button.clicked.connect(self.on_save)
         button_layout.addWidget(self.save_button)
 
-        if not self.is_new:
-            self.delete_button = QPushButton("&Delete")
-            self.delete_button.setAccessibleName("Delete book")
-            self.delete_button.clicked.connect(self.on_delete)
-            button_layout.addWidget(self.delete_button)
+        # Delete button (Alt+D)
+        self.delete_button = QPushButton("&Delete")
+        self.delete_button.setAccessibleName("Delete book")
+        self.delete_button.setAccessibleDescription(
+            "Delete this book - Alt+D or Delete key")
+        self.delete_button.setFocusPolicy(Qt.StrongFocus)
+        self.delete_button.clicked.connect(self.on_delete)
+        # Hide delete for new books (nothing to delete yet)
+        self.delete_button.setVisible(not self.is_new)
+        button_layout.addWidget(self.delete_button)
 
         button_layout.addStretch()
 
+        # Close button (Alt+C)
         self.close_button = QPushButton("&Close")
         self.close_button.setAccessibleName("Close window")
+        self.close_button.setAccessibleDescription(
+            "Close window - Alt+C or Escape")
+        self.close_button.setFocusPolicy(Qt.StrongFocus)
         self.close_button.clicked.connect(self.reject)
         button_layout.addWidget(self.close_button)
 
         layout.addLayout(button_layout)
+
+        # bd#4: Setup keyboard shortcuts
+        self.setup_shortcuts()
+
+    def reject(self):
+        """
+        Override reject to check for unsaved changes before closing.
+        Yes = Save and stay on book, No = Focus first dirty field, Cancel = Revert all fields.
+        """
+        if self._dirty:
+            reply = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                "You have unsaved changes.\n\nYes = Save and stay\nNo = Focus changed field\nCancel = Revert changes",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+            )
+
+            if reply == QMessageBox.Yes:
+                self.on_save()  # Save and stay (on_save doesn't close anymore)
+            elif reply == QMessageBox.No:
+                # Focus the first field that had changes
+                if self._first_dirty_widget:
+                    self._first_dirty_widget.setFocus()
+            else:  # Cancel - revert all fields
+                self._revert_changes()
+        else:
+            super().reject()  # No changes, just close
+
+    def _revert_changes(self):
+        """
+        Revert all fields to their original values by reloading the book data.
+        For new books, clear the form.
+        """
+        if self.is_new:
+            # For new book, just clear the form
+            self.on_new()
+        else:
+            # Reload original data
+            self.load_book_data()
+        self._clear_dirty()
+
+    def setup_shortcuts(self):
+        """bd#4: Setup keyboard shortcuts for buttons."""
+        # Ctrl+Enter for New (consistent with other windows)
+        self.new_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
+        self.new_shortcut.activated.connect(self.on_new)
+
+        # Delete key for Delete
+        self.delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self)
+        self.delete_shortcut.activated.connect(self.on_delete)
+
+        # Page Up for Prev
+        self.pageup_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
+        self.pageup_shortcut.activated.connect(self.on_prev)
+
+        # Page Down for Next
+        self.pagedown_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
+        self.pagedown_shortcut.activated.connect(self.on_next)
+
+        # Escape for Close
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.activated.connect(self.reject)
+
+        # F1 for Help
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+    def _setup_dirty_tracking(self):
+        """
+        bd#6: Connect all editable field signals to track changes.
+        Save button is hidden until user makes changes (for existing books).
+        """
+        # Text fields - use lambda to track which field changed
+        self.title_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.title_edit))
+        self.reader_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.reader_edit))
+        self.time_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.time_edit))
+        self.comments_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.comments_edit))
+
+        # Combos
+        self.author_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.author_combo))
+        self.author_combo.editTextChanged.connect(
+            lambda: self._mark_dirty(self.author_combo))
+        self.series_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.series_combo))
+        self.series_combo.editTextChanged.connect(
+            lambda: self._mark_dirty(self.series_combo))
+        self.genre_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.genre_combo))
+        self.genre_combo.editTextChanged.connect(
+            lambda: self._mark_dirty(self.genre_combo))
+        self.collection_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.collection_combo))
+
+        # Spinbox and date
+        self.year_spin.valueChanged.connect(
+            lambda: self._mark_dirty(self.year_spin))
+        self.read_date.dateChanged.connect(
+            lambda: self._mark_dirty(self.read_date))
+
+    def _mark_dirty(self, widget=None):
+        """bd#6: Mark form as having unsaved changes."""
+        if not self._dirty:
+            self._dirty = True
+            self._first_dirty_widget = widget
+            self._update_save_button_visibility()
+
+    def _clear_dirty(self):
+        """bd#6: Clear dirty flag after save or load."""
+        self._dirty = False
+        self._first_dirty_widget = None
+        self._update_save_button_visibility()
+
+    def _update_save_button_visibility(self):
+        """
+        bd#6: Show save button only when there are unsaved changes.
+        For new books, always show save button.
+        """
+        should_show = self.is_new or self._dirty
+        self.save_button.setVisible(should_show)
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(450, 500)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Shortcuts list
+        shortcuts = [
+            ("Ctrl+Enter", "New book"),
+            ("Alt+S", "Save"),
+            ("Alt+D", "Delete"),
+            ("Page Up", "Previous book"),
+            ("Page Down", "Next book"),
+            ("Escape", "Close window"),
+            ("Alt+T", "Title"),
+            ("Alt+A", "Author"),
+            ("Alt+O", "Comments"),
+            ("Alt+Y", "Year"),
+            ("Alt+M", "Time"),
+            ("Alt+R", "Reader"),
+            ("Alt+E", "Read date"),
+            ("Alt+I", "Series"),
+            ("Alt+G", "Genre"),
+            ("Alt+L", "Collection"),
+            ("Alt+B", "Bitrate"),
+            ("Alt+Z", "Size"),
+            ("Alt+H", "Path"),
+            ("Alt+W", "New book"),
+            ("F1", "Show this help"),
+        ]
+
+        # Create table
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setRowCount(len(shortcuts))
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }")
+
+        # Populate table
+        for row, (key, description) in enumerate(shortcuts):
+            if key:
+                combined_text = f"{key} - {description}"
+            else:
+                combined_text = ""
+            item = QTableWidgetItem(combined_text)
+            item.setData(Qt.AccessibleTextRole,
+                         f"{key}: {description}" if key else "")
+            table.setItem(row, 0, item)
+
+        # Resize column to stretch
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        # Set font size
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+
+        layout.addWidget(table)
+
+        close_btn = QPushButton("Close")
+        close_btn.setAccessibleName("Close")
+        close_btn.clicked.connect(dlg.accept)
+        btn_font = close_btn.font()
+        btn_font.setPointSize(self.scaler.get_scaled_size(11))
+        close_btn.setFont(btn_font)
+        layout.addWidget(close_btn)
+
+        dlg.exec()
 
     def load_combos(self):
         """Load combo box data."""
@@ -245,9 +756,6 @@ class BookDetailsWindow(QDialog):
         if self.book.year:
             self.year_spin.setValue(self.book.year)
 
-        # Files
-        self.files_edit.setText(str(self.book.tracks))
-
         # Series
         if self.book.series_id:
             idx = self.series_combo.findData(self.book.series_id)
@@ -282,10 +790,25 @@ class BookDetailsWindow(QDialog):
         self.format_edit.setText(self.book.file_format)
 
         # Path
-        self.path_edit.setText(self.book.path)
+        self.path_edit.setText(self.book.path or "")
 
-        # Comments
-        self.comments_edit.setPlainText(self.book.comments)
+        # Source
+        self.source_edit.setText(self.book.source or "")
+
+        # Date Added
+        if self.book.date_added:
+            if isinstance(self.book.date_added, str):
+                self.added_edit.setText(self.book.date_added[:10])
+            else:
+                self.added_edit.setText(
+                    self.book.date_added.strftime("%Y-%m-%d"))
+        else:
+            self.added_edit.setText("")
+
+        # Comments - hide row if empty
+        self.comments_edit.setPlainText(self.book.comments or "")
+        # Delay height adjustment until widget is laid out
+        QTimer.singleShot(0, self._adjust_comments_height)
 
         # Read date
         if self.book.read_date:
@@ -304,6 +827,40 @@ class BookDetailsWindow(QDialog):
                               read_date_value.day)
                 self.read_date.setDate(qdate)
 
+        # Store original combo values for focusOut change detection
+        self._original_author = self.author_combo.currentText()
+        self._original_series = self.series_combo.currentText()
+        self._original_genre = self.genre_combo.currentText()
+
+    def _check_combo_change(self, field_name: str, combo: QComboBox,
+                            original_value: str, query_obj):
+        """
+        Check if a combo box value changed to a new (non-existing) value.
+        Called on focusOut for author, series, genre combos.
+        Shows Yes/No dialog - if No, reverts to original value.
+        """
+        current_text = combo.currentText().strip()
+
+        # Skip if empty or unchanged
+        if not current_text or current_text == original_value:
+            return
+
+        # Check if this value exists in the database
+        existing = query_obj.get_by_name(current_text)
+        if existing:
+            return  # Value exists, no warning needed
+
+        # Value is new - ask Yes/No
+        msg = f"'{current_text}' is a new {field_name}.\n\nCreate this new {field_name}?"
+        reply = QMessageBox.question(
+            self, f"New {field_name}", msg,
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            # Revert to original value
+            combo.setEditText(original_value)
+
     def on_save(self):
         """Save book data."""
         # Validate
@@ -312,7 +869,7 @@ class BookDetailsWindow(QDialog):
             self.title_edit.setFocus()
             return
 
-        # Get author ID (create if new)
+        # Get author - confirm if creating new
         author_text = self.author_combo.currentText().strip()
         if not author_text:
             QMessageBox.warning(self, "Validation Error",
@@ -320,15 +877,16 @@ class BookDetailsWindow(QDialog):
             self.author_combo.setFocus()
             return
 
+        # Get or create author (confirmation already done on focusOut)
         author_id = self.author_queries.get_or_create(author_text)
 
-        # Get or create series
+        # Get or create series (confirmation already done on focusOut)
         series_text = self.series_combo.currentText().strip()
         series_id = None
         if series_text:
             series_id = self.series_queries.get_or_create(series_text)
 
-        # Get or create genre
+        # Get or create genre (confirmation already done on focusOut)
         genre_text = self.genre_combo.currentText().strip()
         genre_id = None
         if genre_text:
@@ -382,16 +940,28 @@ class BookDetailsWindow(QDialog):
                     self, "Success", "Book added successfully!")
             else:
                 self.book_queries.update(self.book)
+                # Update the book in books_list
+                if self.books_list and 0 <= self.current_index < len(self.books_list):
+                    self.books_list[self.current_index] = self.book
                 QMessageBox.information(
                     self, "Success", "Book updated successfully!")
 
-            self.accept()
+            # Clear dirty and update original values (don't close window)
+            self._clear_dirty()
+            self._original_author = self.author_combo.currentText()
+            self._original_series = self.series_combo.currentText()
+            self._original_genre = self.genre_combo.currentText()
+            self.setWindowTitle(f"Book Details - {self.book.title}")
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error saving book: {str(e)}")
 
     def on_delete(self):
         """Delete book."""
+        # Don't allow delete for new books
+        if self.is_new:
+            return
+
         reply = QMessageBox.question(
             self, "Confirm Delete",
             f"Are you sure you want to delete '{self.book.title}'?",
@@ -400,10 +970,148 @@ class BookDetailsWindow(QDialog):
 
         if reply == QMessageBox.Yes:
             try:
+                deleted_index = self.current_index
                 self.book_queries.delete(self.book.book_id)
-                QMessageBox.information(
-                    self, "Success", "Book deleted successfully!")
-                self.accept()
+
+                # Remove from books_list and navigate
+                if self.books_list:
+                    self.books_list.pop(deleted_index)
+
+                    if len(self.books_list) == 0:
+                        # No more books - close the window
+                        QMessageBox.information(
+                            self, "Success", "Book deleted. No more books.")
+                        super().reject()
+                        return
+                    elif deleted_index >= len(self.books_list):
+                        # Was last book, move back one
+                        self.current_index = len(self.books_list) - 1
+                    # else: stay at same index (now points to next book)
+
+                    self.book = self.books_list[self.current_index]
+                    self.is_new = False
+                    self.load_book_data()
+                    self._clear_dirty()
+                    self.update_navigation_state()
+                    self.setWindowTitle(f"Book Details - {self.book.title}")
+                    QMessageBox.information(
+                        self, "Success", "Book deleted successfully!")
+                else:
+                    QMessageBox.information(
+                        self, "Success", "Book deleted successfully!")
+                    super().reject()
             except Exception as e:
                 QMessageBox.critical(
                     self, "Error", f"Error deleting book: {str(e)}")
+
+    def on_new(self):
+        """
+        bd#4: Clear form for new book entry.
+        Resets all fields and switches to 'new book' mode.
+        """
+        # Reset book object
+        self.book = Book()
+        self.is_new = True
+
+        # Clear form fields
+        self.title_edit.clear()
+        self.author_combo.setCurrentIndex(-1)
+        self.author_combo.clearEditText()
+        self.year_spin.setValue(datetime.now().year)
+        self.series_combo.setCurrentIndex(0)  # Empty option
+        self.genre_combo.setCurrentIndex(0)   # Empty option
+        # Keep current collection as default
+        self.reader_edit.clear()
+        self.time_edit.clear()
+        self.size_edit.clear()
+        self.bitrate_edit.clear()
+        self.format_edit.clear()
+        self.path_edit.clear()
+        self.source_edit.clear()
+        self.added_edit.setText(datetime.now().strftime("%Y-%m-%d"))
+        self.comments_edit.clear()
+        self.read_date.setDate(self.read_date.minimumDate())
+
+        # Update window title
+        self.setWindowTitle("New Book")
+        self.setAccessibleName("New Book")
+
+        # Update button states
+        self.delete_button.setVisible(False)
+        self._update_save_button_visibility()  # bd#6: Show save for new book
+
+        # Focus title field
+        self.title_edit.setFocus()
+
+    def on_prev(self):
+        """
+        bd#4: Navigate to previous book in the list.
+        Blocked with beep if there are unsaved changes.
+        """
+        # Block navigation if dirty
+        if self._dirty:
+            QApplication.beep()
+            return
+
+        if not self.books_list or self.current_index <= 0:
+            return
+
+        self.current_index -= 1
+        self.book = self.books_list[self.current_index]
+        self.is_new = False
+        self.load_book_data()
+        self._clear_dirty()  # bd#6: Reset dirty after loading new book
+        self.update_navigation_state()
+
+        # Update window title
+        self.setWindowTitle(f"Book Details - {self.book.title}")
+        self.setAccessibleName(f"Book Details - {self.book.title}")
+
+    def on_next(self):
+        """
+        bd#4: Navigate to next book in the list.
+        Blocked with beep if there are unsaved changes.
+        """
+        # Block navigation if dirty
+        if self._dirty:
+            QApplication.beep()
+            return
+
+        if not self.books_list or self.current_index >= len(self.books_list) - 1:
+            return
+
+        self.current_index += 1
+        self.book = self.books_list[self.current_index]
+        self.is_new = False
+        self.load_book_data()
+        self._clear_dirty()  # bd#6: Reset dirty after loading new book
+        self.update_navigation_state()
+
+        # Update window title
+        self.setWindowTitle(f"Book Details - {self.book.title}")
+        self.setAccessibleName(f"Book Details - {self.book.title}")
+
+    def _adjust_comments_height(self):
+        """Adjust comments QTextEdit height to fit content."""
+        text = self.comments_edit.toPlainText().strip()
+        if not text:
+            # Empty: collapse to single line height
+            self.comments_edit.setFixedHeight(25)
+            return
+
+        doc = self.comments_edit.document()
+        # Set document width to viewport width so it calculates wrapped height
+        doc.setTextWidth(self.comments_edit.viewport().width())
+        # Calculate height needed for content plus margins
+        doc_height = doc.size().height()
+        margins = self.comments_edit.contentsMargins()
+        frame_width = self.comments_edit.frameWidth() * 2
+        needed_height = int(doc_height + margins.top() +
+                            margins.bottom() + frame_width + 5)
+        # Clamp between min 40 and max 200
+        new_height = max(40, min(200, needed_height))
+        self.comments_edit.setFixedHeight(new_height)
+
+    def update_navigation_state(self):
+        """Update button states based on current position."""
+        self.delete_button.setVisible(not self.is_new)

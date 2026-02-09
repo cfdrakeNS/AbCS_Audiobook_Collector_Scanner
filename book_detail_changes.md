@@ -38,7 +38,7 @@ rearrange the fields as below - stop after eeach change so I can learn
 
 ## bd#6 warn on exit if any edits were made 
 
-## bd#7 same as mw#21 when exiting from book details to the main window move in the book table to the last book views in the book details window
+## bd#7 when exiting from book details to the main window move in the book table to the last book views in the book details window
 
 ## bd#8 Book Details Window Header 
   A text box displays the current sort order selection e.g., Title, author which was set in the        Main_Window.

@@ -98,6 +98,10 @@ class MainWindow(QMainWindow):
         # Current books list
         self.books = []
 
+        # Track last focused book in table (for ESC from search to restore focus)
+        self._last_table_book_id = None
+        self._last_table_column = 1
+
         # Search timer for debounced search
         self.search_timer = QTimer()
         self.search_timer.setSingleShot(True)
@@ -122,6 +126,8 @@ class MainWindow(QMainWindow):
 
         # Connect to scaler changes to update header control heights
         self.scaler.scale_changed.connect(self.on_scale_changed)
+        # Apply initial button styling
+        self.on_scale_changed(self.scaler.current_scale)
 
         # Load initial data
         self.refresh_collections()
@@ -431,6 +437,26 @@ class MainWindow(QMainWindow):
             f"QLabel {{ min-width: {int(70 * (scale_percentage / 100.0))}px; text-align: right; }}")
         self.search_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
+        # Button sizing - compact height
+        button_stylesheet = f"""
+            QPushButton {{
+                padding: 4px 12px;
+                min-height: {scaled_height}px;
+                max-height: {scaled_height}px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                background-color: palette(button);
+            }}
+            QPushButton:focus {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+                border: 2px solid palette(dark);
+            }}
+        """
+        self.update_button.setStyleSheet(button_stylesheet)
+        self.delete_button.setStyleSheet(button_stylesheet)
+        self.cancel_button.setStyleSheet(button_stylesheet)
+
     def create_table(self):
         """Create books table."""
         self.table = QTableWidget()
@@ -483,17 +509,14 @@ class MainWindow(QMainWindow):
         header.setStretchLastSection(False)
         header.setMinimumSectionSize(60)  # Prevent columns from disappearing
 
-        # Set initial widths - these determine stretch proportions
-        self.table.setColumnWidth(0, 200)  # Author
-        self.table.setColumnWidth(1, 400)  # Title (larger to fill space)
-        self.table.setColumnWidth(4, 150)  # Series
-        self.table.setColumnWidth(5, 150)  # Genre
-
-        # All 4 text columns stretch proportionally based on initial widths
-        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Author
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Title
-        header.setSectionResizeMode(4, QHeaderView.Stretch)  # Series
-        header.setSectionResizeMode(5, QHeaderView.Stretch)  # Genre
+        # mw#22: Store stretch column proportions (relative weights)
+        # Title gets 3.5x weight, Author 2.5x, Series and Genre 1.5x each
+        self._stretch_columns = {
+            0: 2.5,   # Author
+            1: 3.5,   # Title (widest)
+            4: 1.5,   # Series
+            5: 1.5,   # Genre
+        }
 
         # Fixed content columns - use ResizeToContents so they're always visible
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Year
@@ -502,6 +525,12 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Tracks
         header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # Read
         header.setSectionResizeMode(9, QHeaderView.ResizeToContents)  # Added
+
+        # Stretch columns use Interactive mode - we control sizing in resizeEvent
+        header.setSectionResizeMode(0, QHeaderView.Interactive)  # Author
+        header.setSectionResizeMode(1, QHeaderView.Interactive)  # Title
+        header.setSectionResizeMode(4, QHeaderView.Interactive)  # Series
+        header.setSectionResizeMode(5, QHeaderView.Interactive)  # Genre
 
         # Double-click to open details
         self.table.cellDoubleClicked.connect(self.on_book_double_click)
@@ -621,7 +650,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         # mw#16: Zoom actions with shortcut keys displayed
-        zoom_in_action = QAction("Zoom &In\tCtrl+=", self)
+        zoom_in_action = QAction("Zoom &In\tCtrl++", self)
         zoom_in_action.triggered.connect(self.on_zoom_in)
         view_menu.addAction(zoom_in_action)
 
@@ -681,8 +710,8 @@ class MainWindow(QMainWindow):
         # Zoom shortcuts - register as proper QShortcut objects
         # Store references to prevent garbage collection
         # Register both keyboard and numpad versions
-        # Zoom In: Ctrl+= (keyboard) and Ctrl+Plus (numpad)
-        self.zoom_in_shortcut = QShortcut(QKeySequence("Ctrl+="), self)
+        # Zoom In: Ctrl++ (keyboard) and Ctrl+Plus (numpad)
+        self.zoom_in_shortcut = QShortcut(QKeySequence("Ctrl++"), self)
         self.zoom_in_shortcut.activated.connect(self.on_zoom_in)
 
         self.zoom_in_numpad_shortcut = QShortcut(
@@ -1107,17 +1136,16 @@ class MainWindow(QMainWindow):
         # Move focus to first search result using timer to ensure it happens after all events
         if len(self.books) > 0:
             def move_focus():
-                # First, explicitly remove focus from search box
-                self.search_box.clearFocus()
                 # Focus the appropriate column based on order-by setting
                 self.focus_search_result_cell(0)
-                # Now move focus to table
-                self.table.setFocus()
+                # Explicitly set focus to table AFTER setting cell (critical for keyboard nav)
+                self.table.setFocus(Qt.TabFocusReason)
                 # Announce search results
                 self.set_status(self.get_default_status(),
                                 timeout_ms=0, announce=False)
 
-            QTimer.singleShot(100, move_focus)
+            # Use slightly longer delay to ensure refresh is complete
+            QTimer.singleShot(150, move_focus)
         else:
             # No results - just show status
             self.set_status(self.get_default_status(),
@@ -1135,9 +1163,44 @@ class MainWindow(QMainWindow):
         if 0 <= row < self.table.rowCount():
             # Clear any existing selection
             self.table.clearSelection()
-            # Set current cell directly - this works with SelectItems mode
+            # First scroll to ensure visibility
+            index = self.table.model().index(row, column)
+            self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
+            # Set current cell - this highlights and focuses
             self.table.setCurrentCell(row, column)
-            self.table.scrollTo(self.table.model().index(row, column), QAbstractItemView.PositionAtCenter)
+            # Also select the cell to ensure visible highlight
+            self.table.setCurrentIndex(index)
+
+    def focus_book_by_id(self, book_id: int, column: int = 1):
+        """Find a book by ID and focus its cell in the table."""
+        found = False
+        target_row = 0
+
+        for row, book in enumerate(self.books):
+            if book.book_id == book_id:
+                target_row = row
+                found = True
+                break
+
+        # Ensure valid column
+        if column < 0 or column >= self.table.columnCount():
+            column = 1  # Default to Title column
+
+        # If not found, just focus row 0
+        if not found and len(self.books) > 0:
+            target_row = 0
+
+        # Focus the cell (even if book not found, focus something)
+        if self.table.rowCount() > 0:
+            self.table.clearSelection()
+            index = self.table.model().index(target_row, column)
+            self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
+            self.table.setCurrentCell(target_row, column)
+            self.table.setCurrentIndex(index)
+
+        # Always ensure table has focus for keyboard navigation
+        self.table.setFocus(Qt.TabFocusReason)
+        return found
 
     def on_search_timeout(self):
         """Handle search timer timeout for live filtering."""
@@ -1184,6 +1247,10 @@ class MainWindow(QMainWindow):
         """Filter events to implement Explorer-like selection and handle search ESC and Enter."""
         if source is self.search_box and event.type() == QEvent.KeyPress:
             if event.key() == Qt.Key_Escape:
+                # Use last table position (tracked by on_current_cell_changed)
+                restore_book_id = self._last_table_book_id
+                restore_column = self._last_table_column if self._last_table_column >= 0 else 1
+
                 # Clear search box and filter efficiently
                 # Disconnect signal temporarily to avoid double refresh
                 self.search_box.textChanged.disconnect(self.on_search_changed)
@@ -1194,6 +1261,18 @@ class MainWindow(QMainWindow):
                 self.current_filter.search_text = ""
                 self.search_timer.stop()
                 self.refresh_books()
+
+                # Always restore focus to table after clearing search
+                def restore_focus():
+                    if restore_book_id is not None:
+                        self.focus_book_by_id(restore_book_id, restore_column)
+                    else:
+                        # No book to restore - just focus first row
+                        if self.table.rowCount() > 0:
+                            self.table.setCurrentCell(0, 1)
+                        self.table.setFocus(Qt.TabFocusReason)
+                QTimer.singleShot(150, restore_focus)
+
                 self.set_status("Search cleared",
                                 timeout_ms=2000, announce=False)
                 return True
@@ -1385,17 +1464,31 @@ class MainWindow(QMainWindow):
                 return
             # ESC: Clear search if active (keep focus on table)
             if self.current_filter.has_search:
-                # Remember current position
-                current_row = self.table.currentRow()
-                current_col = self.table.currentColumn()
+                # Use tracked book ID (set by on_current_cell_changed)
+                restore_book_id = self._last_table_book_id
+                restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
+                # Disconnect to avoid double refresh
+                self.search_box.textChanged.disconnect(self.on_search_changed)
                 self.search_box.clear()
-                self.set_status("Search cleared", timeout_ms=2000)
+                self.search_box.textChanged.connect(self.on_search_changed)
 
-                # Restore focus to table and cell
-                self.table.setFocus()
-                if current_row >= 0 and current_col >= 0:
-                    self.table.setCurrentCell(current_row, current_col)
+                # Clear search filter and refresh
+                self.current_filter.search_text = ""
+                self.search_timer.stop()
+                self.refresh_books()
+
+                # Restore focus to the actual book that was selected
+                def restore_focus():
+                    if restore_book_id is not None:
+                        self.focus_book_by_id(restore_book_id, restore_column)
+                    else:
+                        if self.table.rowCount() > 0:
+                            self.table.setCurrentCell(0, 1)
+                        self.table.setFocus(Qt.TabFocusReason)
+                QTimer.singleShot(150, restore_focus)
+
+                self.set_status("Search cleared", timeout_ms=2000)
                 event.accept()
                 return
         else:
@@ -1579,9 +1672,11 @@ class MainWindow(QMainWindow):
             self.table.scrollTo(index)
 
     def on_current_cell_changed(self, current_row: int, current_col: int, previous_row: int, previous_col: int):
-        """Handle current cell changes for screen readers."""
-        # No longer announce plot status - table column shows this visually
-        pass
+        """Handle current cell changes - track last focused book for search ESC restore."""
+        # Track the last focused book in the table for ESC from search restore
+        if 0 <= current_row < len(self.books):
+            self._last_table_book_id = self.books[current_row].book_id
+            self._last_table_column = current_col if current_col >= 0 else 1
 
     def on_focus_move_timeout(self):
         """Move focus to first search result after delay."""
@@ -1805,10 +1900,11 @@ class MainWindow(QMainWindow):
         if self.selected_book_ids or self.selection_anchor_row is not None:
             self.on_cancel_clicked()
             return
-        # Second priority: clear search - preserve current cell position
+        # Second priority: clear search - use book_id to restore position (mw#29)
         if self.current_filter.has_search:
-            current_row = self.table.currentRow()
-            current_col = self.table.currentColumn()
+            # Use tracked book ID (set by on_current_cell_changed)
+            restore_book_id = self._last_table_book_id
+            restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
             # Disconnect signal to prevent refresh during clear
             self.search_box.textChanged.disconnect(self.on_search_changed)
@@ -1820,14 +1916,16 @@ class MainWindow(QMainWindow):
             self.search_timer.stop()
             self.refresh_books()
 
-            # Restore cell position and focus using timer to ensure it happens after refresh
+            # Restore focus to the actual book that was selected
             def restore_focus():
-                row = current_row if 0 <= current_row < self.table.rowCount() else 0
-                col = current_col if current_col >= 0 else 1
-                self.table.setCurrentCell(row, col)
-                self.table.setFocus()
+                if restore_book_id is not None:
+                    self.focus_book_by_id(restore_book_id, restore_column)
+                else:
+                    if self.table.rowCount() > 0:
+                        self.table.setCurrentCell(0, 1)
+                    self.table.setFocus(Qt.TabFocusReason)
 
-            QTimer.singleShot(100, restore_focus)
+            QTimer.singleShot(150, restore_focus)
             self.set_status("Search cleared", timeout_ms=2000)
 
     def clear_status_message(self):
@@ -1845,7 +1943,7 @@ class MainWindow(QMainWindow):
         pass
 
     def on_zoom_in(self):
-        """Handle Ctrl+= zoom in."""
+        """Handle Ctrl++ zoom in."""
         new_scale = self.scaler.current_scale + self.scaler.SCALE_STEP
         if new_scale <= self.scaler.MAX_SCALE:
             self.scaler.increase_scale()
@@ -1862,9 +1960,20 @@ class MainWindow(QMainWindow):
 
     def on_new_book(self):
         """Open book details for new book."""
-        details = BookDetailsWindow(self.db, self.scaler, parent=self)
+        # bd#8: Pass current sort order to show in header
+        sort_order = self.order_combo.currentText()
+        details = BookDetailsWindow(
+            self.db, self.scaler, sort_order=sort_order, parent=self)
         details.exec()
+
+        # bd#7: If a new book was saved, get its book_id to focus on it
+        new_book_id = details.book.book_id if details.book else None
+
         self.refresh_books()
+
+        # bd#7: Focus the table on the newly created book (if saved)
+        if new_book_id:
+            self.focus_book_by_id(new_book_id)
 
     def on_import(self):
         """Open import window."""
@@ -1874,10 +1983,31 @@ class MainWindow(QMainWindow):
 
     def open_book_details(self, book: Book):
         """Open book details window."""
+        # bd#8: Pass current sort order to show in header
+        sort_order = self.order_combo.currentText()
+
+        # bd#4: Find current book's index in the list for Prev/Next navigation
+        current_index = 0
+        for i, b in enumerate(self.books):
+            if b.book_id == book.book_id:
+                current_index = i
+                break
+
         details = BookDetailsWindow(
-            self.db, self.scaler, book=book, parent=self)
+            self.db, self.scaler, book=book, sort_order=sort_order,
+            books_list=self.books, current_index=current_index, parent=self)
         details.exec()
+
+        # bd#7: After dialog closes, get the last viewed book_id
+        # The dialog object still exists after exec() returns (just hidden),
+        # so we can read its current book state before it's garbage collected
+        last_book_id = details.book.book_id if details.book else None
+
         self.refresh_books()
+
+        # bd#7: Focus the table on the book that was viewed in details window
+        if last_book_id:
+            self.focus_book_by_id(last_book_id)
 
     def on_preferences(self):
         """Open preferences dialog."""
@@ -2126,3 +2256,40 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         layout.addWidget(close_btn)
 
         dlg.exec()
+
+    def resizeEvent(self, event):
+        """Handle window resize - recalculate proportional column widths."""
+        super().resizeEvent(event)
+        self.update_stretch_columns()
+
+    def showEvent(self, event):
+        """Handle window show - set initial column widths."""
+        super().showEvent(event)
+        # Delay column sizing to ensure table is fully laid out
+        QTimer.singleShot(0, self.update_stretch_columns)
+
+    def update_stretch_columns(self):
+        """mw#22: Update stretch column widths proportionally."""
+        if not hasattr(self, '_stretch_columns') or not hasattr(self, 'table'):
+            return
+
+        header = self.table.horizontalHeader()
+
+        # Calculate total width used by fixed columns
+        fixed_width = 0
+        for col in range(self.table.columnCount()):
+            if col not in self._stretch_columns:
+                fixed_width += header.sectionSize(col)
+
+        # Calculate available width for stretch columns
+        available = self.table.viewport().width() - fixed_width
+        if available < 100:
+            return  # Not enough space
+
+        # Calculate total weight
+        total_weight = sum(self._stretch_columns.values())
+
+        # Distribute available space proportionally
+        for col, weight in self._stretch_columns.items():
+            width = int(available * weight / total_weight)
+            self.table.setColumnWidth(col, max(width, 60))

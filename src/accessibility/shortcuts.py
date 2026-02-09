@@ -33,7 +33,6 @@ class ShortcutManager(QObject):
         'O': ('Order by', 'order_combo'),
         'S': ('Search', 'search_box'),
         'B': ('Book list', 'book_list'),
-        'E': ('Selected count', 'selected_label'),
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
         'L': ('Cancel selection', 'cancel_button'),
@@ -90,7 +89,6 @@ class ShortcutManager(QObject):
     # Zoom shortcuts (Ctrl/Cmd)
     ZOOM_SHORTCUTS = {
         'Ctrl+Plus': 'Zoom in',
-        'Ctrl+Equal': 'Zoom in (alternative)',
         'Ctrl+Minus': 'Zoom out',
         'Ctrl+0': 'Reset zoom',
     }
@@ -143,7 +141,7 @@ class ShortcutManager(QObject):
             scaler: UIScaler instance
         """
         # Zoom in - use = key (same as + without shift)
-        zoom_in = QShortcut(QKeySequence("Ctrl+="), widget)
+        zoom_in = QShortcut(QKeySequence("Ctrl++"), widget)
         zoom_in.activated.connect(scaler.increase_scale)
         self._shortcuts['zoom_in'] = zoom_in
 

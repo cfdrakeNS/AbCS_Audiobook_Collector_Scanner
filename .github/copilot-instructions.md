@@ -137,7 +137,6 @@ See `src/accessibility/shortcuts.py` for all defined shortcuts and contexts.
 - Alt+O: Order by
 - Alt+S: Search
 - Alt+M: Menu
-- Alt+E: Selected count
 - Alt+U: Update (bulk)
 - Alt+D: Delete (bulk)
 - Alt+C: Cancel
