@@ -24,6 +24,7 @@ from accessibility.scaling import UIScaler
 from accessibility.theme_manager import ThemeManager
 from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from ui.book_details import BookDetailsWindow
+from ui.update_window import UpdateWindow
 
 # Import version from main module
 
@@ -1843,8 +1844,35 @@ class MainWindow(QMainWindow):
     def on_update_clicked(self):
         """Handle Update button click."""
         if self.selected_book_ids:
-            QMessageBox.information(self, "Coming Soon",
-                                    "Bulk update feature will be available soon!")
+            # Track the first selected row to return focus after update
+            first_selected_row = None
+            for row in range(self.table.rowCount()):
+                if row < len(self.books) and self.books[row].book_id in self.selected_book_ids:
+                    first_selected_row = row
+                    break
+
+            dialog = UpdateWindow(
+                db=self.db,
+                scaler=self.scaler,
+                selected_book_ids=self.selected_book_ids,
+                parent=self
+            )
+            result = dialog.exec()
+
+            # If changes were applied, refresh the book list and clear selection
+            if dialog.changes_applied:
+                updated_count = len(dialog.selected_book_ids)
+                self.selected_book_ids.clear()
+                self.update_selection_ui()
+                self.refresh_books()
+                self.statusBar().showMessage(f"Updated {updated_count} books")
+
+            # Return focus to the first selected row (or same position)
+            if first_selected_row is not None:
+                target_row = min(first_selected_row, self.table.rowCount() - 1)
+                if target_row >= 0:
+                    self.table.setCurrentCell(target_row, 1)  # Title column
+                    self.table.setFocus()
 
     def on_delete_clicked(self):
         """Handle Delete button click."""
@@ -2209,8 +2237,7 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
 
         shortcut_mgr = get_shortcut_manager()
         shortcuts = shortcut_mgr.get_shortcut_help(ShortcutContext.MAIN_WINDOW)
-        shortcuts = [("F1", "Keyboard shortcuts help"),
-                     ("Alt+/", "Read status bar")] + shortcuts
+        shortcuts = [("Alt+/", "Read status bar")] + shortcuts
 
         # Create table with 1 column
         table = QTableWidget()
@@ -2231,9 +2258,9 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
 
         # Populate table
         for row, (key, description) in enumerate(shortcuts):
-            combined_text = f"{key} - {description}"
+            combined_text = f"{description} - {key}"
             item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole, f"{key}: {description}")
+            item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
             table.setItem(row, 0, item)
 
         # Resize column to stretch

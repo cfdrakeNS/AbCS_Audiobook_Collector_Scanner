@@ -663,7 +663,6 @@ class BookDetailsWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
-            ("Alt+W", "New book"),
             ("F1", "Show this help"),
         ]
 
@@ -686,12 +685,12 @@ class BookDetailsWindow(QDialog):
         # Populate table
         for row, (key, description) in enumerate(shortcuts):
             if key:
-                combined_text = f"{key} - {description}"
+                combined_text = f"{description} - {key}"
             else:
                 combined_text = ""
             item = QTableWidgetItem(combined_text)
             item.setData(Qt.AccessibleTextRole,
-                         f"{key}: {description}" if key else "")
+                         f"{description}: {key}" if key else "")
             table.setItem(row, 0, item)
 
         # Resize column to stretch
