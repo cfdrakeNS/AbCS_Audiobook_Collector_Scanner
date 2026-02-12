@@ -309,24 +309,42 @@ class BookScanner:
         """Initialize book scanner."""
         self.tag_reader = TagReader()
 
-    def scan_folder(self, folder_path: str) -> List[Dict[str, Any]]:
+    def scan_folder(self, folder_path: str, include_subfolders: bool = True,
+                    allowed_extensions: Optional[set] = None) -> List[Dict[str, Any]]:
         """
         Scan folder recursively for audiobooks.
         Groups files by album (book title).
 
         Args:
             folder_path: Root folder to scan
+            include_subfolders: True to scan subfolders
+            allowed_extensions: Optional set of lowercase extensions (with dot)
 
         Returns:
             List of book dictionaries
         """
         # Find all audio files
         audio_files = []
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if self.tag_reader.is_supported_file(file_path):
-                    audio_files.append(file_path)
+        if not folder_path or not os.path.isdir(folder_path):
+            return []
+
+        def is_allowed(file_path: str) -> bool:
+            ext = Path(file_path).suffix.lower()
+            if allowed_extensions is not None:
+                return ext in allowed_extensions
+            return self.tag_reader.is_supported_file(file_path)
+
+        if include_subfolders:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if is_allowed(file_path):
+                        audio_files.append(file_path)
+        else:
+            for entry in os.scandir(folder_path):
+                if entry.is_file():
+                    if is_allowed(entry.path):
+                        audio_files.append(entry.path)
 
         # Group by album (book)
         books = {}

@@ -25,6 +25,8 @@ from accessibility.theme_manager import ThemeManager
 from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from ui.book_details import BookDetailsWindow
 from ui.update_window import UpdateWindow
+from ui.preferences_window import PreferencesWindow
+from ui.import_window import ImportWindow
 
 # Import version from main module
 
@@ -611,6 +613,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(new_action)
 
         new_action = QAction("&Import", self)
+        new_action.setShortcut("Ctrl+I")
+        new_action.setShortcutContext(Qt.ApplicationShortcut)
         new_action.triggered.connect(self.on_import)
         file_menu.addAction(new_action)
 
@@ -2056,9 +2060,9 @@ class MainWindow(QMainWindow):
 
     def on_import(self):
         """Open import window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "Import feature will be available soon!\n\n"
-                                "This will scan folders for audiobook files and import metadata.")
+        dialog = ImportWindow(self.db, self.scaler,
+                              self.theme_manager, parent=self)
+        dialog.exec()
 
     def open_book_details(self, book: Book):
         """Open book details window."""
@@ -2090,8 +2094,9 @@ class MainWindow(QMainWindow):
 
     def on_preferences(self):
         """Open preferences dialog."""
-        QMessageBox.information(self, "Coming Soon",
-                                "Preferences dialog will be available soon!")
+        dialog = PreferencesWindow(
+            self.scaler, self.theme_manager, parent=self)
+        dialog.exec()
 
     def on_show_splash(self):
         """Show library statistics."""
@@ -2189,9 +2194,9 @@ Use F9 to import or Alt+M for menu options."""
 
     def on_import(self):
         """Open import window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "Import feature will be available soon!")
-# cfd
+        dialog = ImportWindow(self.db, self.scaler,
+                              self.theme_manager, parent=self)
+        dialog.exec()
 
     def on_show_authors(self):
         """Open Author window."""
@@ -2288,7 +2293,26 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
 
         shortcut_mgr = get_shortcut_manager()
         shortcuts = shortcut_mgr.get_shortcut_help(ShortcutContext.MAIN_WINDOW)
-        shortcuts = [("Alt+/", "Read status bar")] + shortcuts
+
+        # Insert Ctrl+I just before zoom shortcuts.
+        zoom_index = next(
+            (i for i, (key, _) in enumerate(shortcuts) if key == "Ctrl+Plus"),
+            len(shortcuts)
+        )
+        shortcuts.insert(zoom_index, ("Ctrl+I", "Import"))
+
+        # Insert column jump notes after Alt+B (Book list).
+        book_list_index = next(
+            (i for i, (key, _) in enumerate(shortcuts) if key == "Alt+B"),
+            -1
+        )
+        insert_at = book_list_index + 1 if book_list_index >= 0 else 0
+        shortcuts[insert_at:insert_at] = [
+            ("Alt+/", "Read status bar"),
+            ("Alt+1", "Jump to Title column"),
+            ("Alt+2", "Jump to Author column"),
+            ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
+        ]
 
         # Create table with 1 column
         table = QTableWidget()

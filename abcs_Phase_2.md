@@ -50,7 +50,7 @@ Main import interface (mirrors MS Access version):
 **Footer:**
 - Import Selected (Alt+I) - Add selected books to database
 - Import All Valid (Alt+V) - Import all non-error items
-- Cancel (Alt+C / F4)
+- Cancel (Alt+C)
 
 **Status Bar:**
 - Summary: "Scanned: 150 | Valid: 142 | Errors: 5 | Duplicates: 3"
