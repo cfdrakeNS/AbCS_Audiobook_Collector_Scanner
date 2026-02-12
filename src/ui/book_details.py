@@ -724,14 +724,14 @@ class BookDetailsWindow(QDialog):
 
         # Series
         self.series_combo.clear()
-        self.series_combo.addItem("", None)  # Empty option
+        self.series_combo.addItem("None", None)  # Clear option
         series_list = self.series_queries.get_all()
         for series in series_list:
             self.series_combo.addItem(series.name, series.series_id)
 
         # Genres
         self.genre_combo.clear()
-        self.genre_combo.addItem("", None)  # Empty option
+        self.genre_combo.addItem("None", None)  # Clear option
         genres = self.genre_queries.get_all()
         for genre in genres:
             self.genre_combo.addItem(genre.name, genre.genre_id)
@@ -840,8 +840,8 @@ class BookDetailsWindow(QDialog):
         """
         current_text = combo.currentText().strip()
 
-        # Skip if empty or unchanged
-        if not current_text or current_text == original_value:
+        # Skip if empty, unchanged, or "None" (clear option)
+        if not current_text or current_text == original_value or current_text == "None":
             return
 
         # Check if this value exists in the database
@@ -882,13 +882,13 @@ class BookDetailsWindow(QDialog):
         # Get or create series (confirmation already done on focusOut)
         series_text = self.series_combo.currentText().strip()
         series_id = None
-        if series_text:
+        if series_text and series_text != "None":
             series_id = self.series_queries.get_or_create(series_text)
 
         # Get or create genre (confirmation already done on focusOut)
         genre_text = self.genre_combo.currentText().strip()
         genre_id = None
-        if genre_text:
+        if genre_text and genre_text != "None":
             genre_id = self.genre_queries.get_or_create(genre_text)
 
         # Get collection

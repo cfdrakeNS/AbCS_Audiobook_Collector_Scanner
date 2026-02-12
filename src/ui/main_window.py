@@ -908,6 +908,40 @@ class MainWindow(QMainWindow):
         for coll in collections:
             self.collection_combo.addItem(coll.name, coll.collection_id)
 
+    def clear_all_filters(self):
+        """Clear all filters and search, reset to show all books."""
+        # Block signals to prevent multiple refreshes
+        self.search_box.blockSignals(True)
+        self.collection_combo.blockSignals(True)
+        self.read_combo.blockSignals(True)
+
+        try:
+            # Clear search box
+            self.search_box.clear()
+
+            # Reset combos to "All"
+            self.collection_combo.setCurrentIndex(0)  # "All Collections"
+            self.read_combo.setCurrentIndex(0)  # "All"
+
+            # Reset filter object
+            self.current_filter.search_text = ""
+            self.current_filter.is_keyword_search = False
+            self.current_filter.collection_id = None
+            self.current_filter.read_filter = "All"
+            # Keep order_by unchanged
+        finally:
+            self.search_box.blockSignals(False)
+            self.collection_combo.blockSignals(False)
+            self.read_combo.blockSignals(False)
+
+    def has_active_filters(self) -> bool:
+        """Check if any filters or search are active."""
+        return bool(
+            self.current_filter.search_text or
+            self.current_filter.collection_id is not None or
+            self.current_filter.read_filter != "All"
+        )
+
     def refresh_books(self):
         """Refresh books table based on current filter."""
         # BLOCK ALL EVENTS - This is critical!
@@ -1865,7 +1899,16 @@ class MainWindow(QMainWindow):
                 self.selected_book_ids.clear()
                 self.update_selection_ui()
                 self.refresh_books()
-                self.statusBar().showMessage(f"Updated {updated_count} books")
+
+                # Check if filters resulted in 0 books - clear filters to prevent freeze
+                if self.table.rowCount() == 0 and self.has_active_filters():
+                    self.clear_all_filters()
+                    self.refresh_books()
+                    self.set_status(
+                        f"Updated {updated_count} books - filters cleared (no matching records)", announce=True)
+                else:
+                    self.statusBar().showMessage(
+                        f"Updated {updated_count} books")
 
             # Return focus to the first selected row (or same position)
             if first_selected_row is not None:
@@ -1898,6 +1941,14 @@ class MainWindow(QMainWindow):
                 self.selected_book_ids.clear()
                 self.update_selection_ui()
                 self.refresh_books()
+
+                # Check if filters resulted in 0 books - clear filters to prevent freeze
+                if self.table.rowCount() == 0 and self.has_active_filters():
+                    self.clear_all_filters()
+                    self.refresh_books()
+                    self.set_status(
+                        f"{deleted_count} book(s) deleted - filters cleared (no matching records)", announce=True)
+                    return  # Skip focus logic since table was refreshed
 
                 # mw#25: Focus the row before the deleted selection
                 if first_selected_row is not None:

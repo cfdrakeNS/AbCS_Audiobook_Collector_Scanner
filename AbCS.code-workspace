@@ -24,6 +24,19 @@
 			"VIRTUAL_ENV": "${workspaceFolder}\\.venv",
 			"PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}"
 		},
+		"terminal.integrated.environmentChangesRelaunch": "always",
+		"terminal.integrated.environmentChangesIndicator": "off",
+		"terminal.integrated.profiles.windows": {
+			"PowerShell (venv)": {
+				"source": "PowerShell",
+				"args": [
+					"-NoExit",
+					"-Command",
+					"& { . .\\.venv\\Scripts\\Activate.ps1 }"
+				]
+			}
+		},
+		"terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
 		"git.enableStatusBarSync": false,
 		"git.showProgress": false,
 		"github.copilot.enable": {
@@ -31,7 +44,8 @@
 			"plaintext": false,
 			"markdown": false
 		},
-		"accessibility.verbosity.notification": false
+		"accessibility.verbosity.notification": false,
+		"extensions.ignoreRecommendations": true
 	},
 	"extensions": {
 		"recommendations": [

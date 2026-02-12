@@ -17,12 +17,12 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from pathlib import Path
 import os
 import sys
-from database import get_db, close_db, StatisticsQueries
+from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries
 from accessibility.scaling import get_scaler
 from accessibility.theme_manager import get_theme_manager
 from ui.main_window import MainWindow
-APP_VERSION = "1.2.3"
-APP_BUILD_DATE = "2026-02-03"
+APP_VERSION = "1.3.5"
+APP_BUILD_DATE = "2026-02-10"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -204,6 +204,23 @@ Use F9 to import or Alt+M for menu options."""
                 self.db, self.scaler, self.theme_manager)
             self.main_window.show()
 
+            # Check if screen reader is detected and notify user
+            from PySide6.QtGui import QAccessible
+            from PySide6.QtWidgets import QMessageBox
+            msg = QMessageBox(self.main_window)
+            msg.setWindowTitle("Screen Reader Status")
+            font = msg.font()
+            font.setPointSize(self.scaler.get_scaled_size(14))
+            msg.setFont(font)
+            if QAccessible.isActive():
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Screen reader is detected.")
+            else:
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText(
+                    "No screen reader detected.\n\nFor best accessibility, start JAWS or NVDA before launching AbCS.")
+            msg.exec()
+
             # Diagnostic: Check accessibility setup (commented out for production)
             # from accessibility.accessible_events import check_accessibility_support
             # a11y_status = check_accessibility_support()
@@ -233,6 +250,12 @@ Use F9 to import or Alt+M for menu options."""
             traceback.print_exc(file=sys.stderr)
             raise
         finally:
+            # Cleanup orphaned series and genres (no associated books)
+            try:
+                SeriesQueries(self.db).cleanup_unused()
+                GenreQueries(self.db).cleanup_unused()
+            except Exception:
+                pass  # Don't fail on cleanup errors
             # Cleanup database connection
             close_db()
 
