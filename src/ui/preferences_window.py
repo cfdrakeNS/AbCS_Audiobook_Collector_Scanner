@@ -5,7 +5,7 @@ Basic preferences for display and import settings.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QLabel, QComboBox, QSpinBox, QLineEdit,
+    QLabel, QComboBox, QSpinBox, QLineEdit, QTextEdit,
     QPushButton, QCheckBox, QFileDialog, QStatusBar
 )
 from PySide6.QtCore import QSettings
@@ -22,6 +22,33 @@ class PreferencesWindow(QDialog):
     """
     Preferences dialog for display and import settings.
     """
+
+    IMPORT_SCENARIOS = [
+        ("mass_standard", "Mass Standard Import"),
+        ("series_from_directory", "Mass Import - Series From Directory"),
+        ("series_from_filename", "Mass Import - Series From File Name"),
+        ("single_item", "Single Author / Book Import"),
+    ]
+
+    SCENARIO_DESCRIPTIONS = {
+        "mass_standard": (
+            "Root contains author folders. Books may be in title folders, "
+            "single files under author, or nested in series folders. "
+            "Series extraction from path is conservative."
+        ),
+        "series_from_directory": (
+            "Root contains author folders. Author subfolders are series names. "
+            "Books are single files in series folders."
+        ),
+        "series_from_filename": (
+            "Root contains author folders with single-file books. "
+            "Series is parsed from file name text in parentheses."
+        ),
+        "single_item": (
+            "Import one author folder, one series/book folder, or one file. "
+            "File chooser filters by enabled audio formats."
+        ),
+    }
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -152,6 +179,62 @@ class PreferencesWindow(QDialog):
             "Include subfolders when scanning - Alt+U")
         import_layout.addWidget(self.subfolders_check)
 
+        scenario_layout = QHBoxLayout()
+        scenario_label = QLabel("&Scenario:")
+        self.import_scenario_combo = QComboBox()
+        self.import_scenario_combo.setAccessibleName("Import scenario")
+        self.import_scenario_combo.setAccessibleDescription(
+            "Select import scenario mode - Alt+S")
+        scenario_label.setBuddy(self.import_scenario_combo)
+        scenario_layout.addWidget(scenario_label)
+        scenario_layout.addWidget(self.import_scenario_combo, 1)
+        import_layout.addLayout(scenario_layout)
+
+        scenario_desc_label = QLabel("Scenario &Description:")
+        self.scenario_description_edit = QTextEdit()
+        self.scenario_description_edit.setReadOnly(True)
+        self.scenario_description_edit.setAccessibleName(
+            "Scenario description")
+        self.scenario_description_edit.setAccessibleDescription(
+            "Description of selected import scenario")
+        self.scenario_description_edit.setMinimumHeight(80)
+        scenario_desc_label.setBuddy(self.scenario_description_edit)
+        import_layout.addWidget(scenario_desc_label)
+        import_layout.addWidget(self.scenario_description_edit)
+
+        author_fallback_layout = QHBoxLayout()
+        author_fallback_label = QLabel("&Author Fallback:")
+        self.author_fallback_combo = QComboBox()
+        self.author_fallback_combo.setAccessibleName("Author fallback")
+        self.author_fallback_combo.setAccessibleDescription(
+            "Choose fallback for missing author tags")
+        author_fallback_label.setBuddy(self.author_fallback_combo)
+        author_fallback_layout.addWidget(author_fallback_label)
+        author_fallback_layout.addWidget(self.author_fallback_combo, 1)
+        import_layout.addLayout(author_fallback_layout)
+
+        title_fallback_layout = QHBoxLayout()
+        title_fallback_label = QLabel("T&itle Fallback:")
+        self.title_fallback_combo = QComboBox()
+        self.title_fallback_combo.setAccessibleName("Title fallback")
+        self.title_fallback_combo.setAccessibleDescription(
+            "Choose fallback for missing title tags")
+        title_fallback_label.setBuddy(self.title_fallback_combo)
+        title_fallback_layout.addWidget(title_fallback_label)
+        title_fallback_layout.addWidget(self.title_fallback_combo, 1)
+        import_layout.addLayout(title_fallback_layout)
+
+        reader_keywords_layout = QHBoxLayout()
+        reader_keywords_label = QLabel("&Reader Keywords:")
+        self.reader_keywords_edit = QLineEdit()
+        self.reader_keywords_edit.setAccessibleName("Reader keywords")
+        self.reader_keywords_edit.setAccessibleDescription(
+            "Comma-separated keywords for narrator parsing")
+        reader_keywords_label.setBuddy(self.reader_keywords_edit)
+        reader_keywords_layout.addWidget(reader_keywords_label)
+        reader_keywords_layout.addWidget(self.reader_keywords_edit, 1)
+        import_layout.addLayout(reader_keywords_layout)
+
         layout.addWidget(import_group)
 
         # Footer section: Status bar and action buttons
@@ -216,7 +299,11 @@ class PreferencesWindow(QDialog):
         self.theme_combo.setStyleSheet(combo_style)
         self.preset_combo.setStyleSheet(combo_style)
         self.zoom_spin.setStyleSheet(combo_style)
+        self.import_scenario_combo.setStyleSheet(combo_style)
+        self.author_fallback_combo.setStyleSheet(combo_style)
+        self.title_fallback_combo.setStyleSheet(combo_style)
         self.import_dir_edit.setStyleSheet(lineedit_style)
+        self.reader_keywords_edit.setStyleSheet(lineedit_style)
 
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
@@ -264,6 +351,43 @@ class PreferencesWindow(QDialog):
                 f"import/formats/{key}", default_value, type=bool)
             self.format_checks[key].setChecked(value)
 
+        self.import_scenario_combo.clear()
+        for value, label in self.IMPORT_SCENARIOS:
+            self.import_scenario_combo.addItem(label, value)
+
+        scenario_mode = self.settings.value(
+            "import/scenario/mode", "mass_standard", type=str)
+        scenario_index = self.import_scenario_combo.findData(scenario_mode)
+        if scenario_index < 0:
+            scenario_index = 0
+        self.import_scenario_combo.setCurrentIndex(scenario_index)
+        self.update_scenario_description()
+
+        self.author_fallback_combo.clear()
+        self.author_fallback_combo.addItem("None", "none")
+        self.author_fallback_combo.addItem("Folder", "folder")
+        author_fallback = self.settings.value(
+            "import/fallback/author", "folder", type=str)
+        author_index = self.author_fallback_combo.findData(author_fallback)
+        self.author_fallback_combo.setCurrentIndex(
+            author_index if author_index >= 0 else 0)
+
+        self.title_fallback_combo.clear()
+        self.title_fallback_combo.addItem("None", "none")
+        self.title_fallback_combo.addItem("Folder", "folder")
+        self.title_fallback_combo.addItem("File", "file")
+        title_fallback = self.settings.value(
+            "import/fallback/title", "file", type=str)
+        title_index = self.title_fallback_combo.findData(title_fallback)
+        self.title_fallback_combo.setCurrentIndex(
+            title_index if title_index >= 0 else 0)
+
+        reader_keywords = self.settings.value(
+            "import/reader_keywords",
+            "reader, read by, narrator, narrated by",
+            type=str)
+        self.reader_keywords_edit.setText(reader_keywords)
+
         self._loading = False
 
     def connect_signals(self):
@@ -271,6 +395,8 @@ class PreferencesWindow(QDialog):
         self.theme_combo.currentIndexChanged.connect(self.on_theme_changed)
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
         self.zoom_spin.valueChanged.connect(self.on_zoom_changed)
+        self.import_scenario_combo.currentIndexChanged.connect(
+            self.on_import_scenario_changed)
         self.browse_button.clicked.connect(self.on_browse)
 
         self.save_button.clicked.connect(self.on_save)
@@ -320,6 +446,21 @@ class PreferencesWindow(QDialog):
             self.preset_combo.setCurrentText(preset_name)
             self._loading = False
 
+    def update_scenario_description(self):
+        """Update scenario description text for the selected scenario."""
+        scenario_value = self.import_scenario_combo.currentData()
+        description = self.SCENARIO_DESCRIPTIONS.get(scenario_value, "")
+        self.scenario_description_edit.setPlainText(description)
+
+    def on_import_scenario_changed(self):
+        """Handle import scenario selection changes."""
+        self.update_scenario_description()
+        if self._loading:
+            return
+        announce_status_message(
+            self.status_bar,
+            f"Scenario selected: {self.import_scenario_combo.currentText()}")
+
     def on_browse(self):
         """Open folder browser for default import directory."""
         current_dir = self.import_dir_edit.text().strip() or ""
@@ -340,6 +481,15 @@ class PreferencesWindow(QDialog):
         for key, checkbox in self.format_checks.items():
             self.settings.setValue(
                 f"import/formats/{key}", checkbox.isChecked())
+
+        self.settings.setValue(
+            "import/scenario/mode", self.import_scenario_combo.currentData())
+        self.settings.setValue(
+            "import/fallback/author", self.author_fallback_combo.currentData())
+        self.settings.setValue(
+            "import/fallback/title", self.title_fallback_combo.currentData())
+        self.settings.setValue(
+            "import/reader_keywords", self.reader_keywords_edit.text().strip())
 
         announce_status_message(self.status_bar, "Preferences saved")
         self.accept()
