@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QMessageBox, QApplication
 )
-from PySide6.QtCore import Qt, QSettings, QTimer
+from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
 
@@ -49,9 +49,18 @@ class ImportWindow(QDialog):
 
         self._loading = False
         self.scanned_items = []
+        self.selected_rows = set()
+        self.selection_anchor_row = None
+        self._updating_selection_ui = False
         self.allowed_extensions = None
         self.include_subfolders = True
         self.default_collection_id = None
+        self._summary_counts = {
+            "scanned": 0,
+            "valid": 0,
+            "errors": 0,
+            "duplicates": 0,
+        }
         self._default_status_message = "Ready"
 
         self.setup_ui()
@@ -192,7 +201,7 @@ class ImportWindow(QDialog):
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
 
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -353,6 +362,8 @@ class ImportWindow(QDialog):
         self.table.cellDoubleClicked.connect(self.on_open_detail)
         self.table.itemSelectionChanged.connect(
             self.on_table_selection_changed)
+        self.table.mousePressEvent = self.table_mouse_press
+        self.table.keyPressEvent = self.table_key_press
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
@@ -400,17 +411,50 @@ class ImportWindow(QDialog):
 
     def on_table_selection_changed(self):
         """Announce row selection count in status bar."""
-        selected_rows = len(self.table.selectionModel().selectedRows())
-        if selected_rows > 0:
-            self.set_status(f"{selected_rows} selected")
+        if self._updating_selection_ui:
+            return
+
+        model = self.table.selectionModel()
+        selected_indexes = model.selectedIndexes()
+        self.selected_rows.clear()
+
+        row_cell_counts = {}
+        for idx in selected_indexes:
+            row = idx.row()
+            row_cell_counts[row] = row_cell_counts.get(row, 0) + 1
+
+        col_count = self.table.columnCount()
+        for row, count in row_cell_counts.items():
+            if count == col_count:
+                self.selected_rows.add(row)
+
+        if self.selected_rows:
+            self.set_status(f"{len(self.selected_rows)} selected")
+        else:
+            self.restore_summary_status()
 
     def update_summary(self, scanned: int = 0, valid: int = 0,
                        errors: int = 0, duplicates: int = 0):
         """Update status bar summary."""
+        self._summary_counts = {
+            "scanned": scanned,
+            "valid": valid,
+            "errors": errors,
+            "duplicates": duplicates,
+        }
         message = (
             f"Scanned: {scanned} | Valid: {valid} | "
             f"Errors: {errors} | Duplicates: {duplicates}")
         self.set_status(message)
+
+    def restore_summary_status(self):
+        """Restore scan summary message after transient selection messages."""
+        self.update_summary(
+            scanned=self._summary_counts["scanned"],
+            valid=self._summary_counts["valid"],
+            errors=self._summary_counts["errors"],
+            duplicates=self._summary_counts["duplicates"],
+        )
 
     def on_browse(self):
         """Open folder browser for scan root."""
@@ -427,6 +471,9 @@ class ImportWindow(QDialog):
         if not folder_path:
             self.set_status("Select a folder before scanning")
             return
+
+        self.selected_rows.clear()
+        self.selection_anchor_row = None
 
         books = self.scanner.scan_folder(
             folder_path,
@@ -506,6 +553,9 @@ class ImportWindow(QDialog):
             self.set_status("No audio files found")
             self.update_summary(0, 0, 0, 0)
             return
+
+        self.table.setCurrentCell(0, 1)
+        self.table.setFocus(Qt.TabFocusReason)
 
         self.update_summary(
             scanned=len(books),
@@ -601,6 +651,16 @@ class ImportWindow(QDialog):
         self.table.setItem(row, 2, QTableWidgetItem(
             str(detail_window.book_data.get("year") or "")))
 
+    def _focus_import_row(self, row: int):
+        """Restore focus to a row in the import list after closing detail."""
+        if self.table.rowCount() == 0:
+            return
+
+        target_row = max(0, min(row, self.table.rowCount() - 1))
+        self.table.setCurrentCell(target_row, 1)
+        self.table.scrollTo(self.table.model().index(target_row, 1))
+        self.table.setFocus(Qt.TabFocusReason)
+
     def on_open_detail(self, row: int = 0, col: int = 0):
         """Open import detail window to view/edit scanned metadata."""
         if self.table.rowCount() == 0:
@@ -627,6 +687,7 @@ class ImportWindow(QDialog):
             if result == QDialog.Accepted:
                 self._apply_detail_edits(row, detail_window)
                 self.set_status("Changes applied to import item")
+                self._focus_import_row(row)
                 return
 
             if result == ImportDetailWindow.RESULT_PREV:
@@ -635,6 +696,7 @@ class ImportWindow(QDialog):
                     row -= 1
                 else:
                     self.set_status("Already at first item")
+                    self._focus_import_row(row)
                     return
                 continue
 
@@ -644,16 +706,17 @@ class ImportWindow(QDialog):
                     row += 1
                 else:
                     self.set_status("Already at last item")
+                    self._focus_import_row(row)
                     return
                 continue
 
+            self._focus_import_row(row)
             return
 
     def _get_selected_or_current_row(self) -> int:
         """Return selected row, current row, or -1 if unavailable."""
-        selected_rows = self.table.selectionModel().selectedRows()
-        if selected_rows:
-            return selected_rows[0].row()
+        if self.selected_rows:
+            return min(self.selected_rows)
 
         current_row = self.table.currentRow()
         if current_row >= 0:
@@ -675,6 +738,186 @@ class ImportWindow(QDialog):
     def on_cancel(self):
         """Close dialog."""
         self.reject()
+
+    def table_mouse_press(self, event):
+        """Handle mouse press with main-window style row selection."""
+        if event.button() == Qt.LeftButton:
+            index = self.table.indexAt(event.position().toPoint())
+            if not index.isValid():
+                QTableWidget.mousePressEvent(self.table, event)
+                return
+
+            modifiers = event.modifiers()
+            row = index.row()
+
+            if modifiers & Qt.ShiftModifier:
+                if self.selection_anchor_row is None:
+                    self.selection_anchor_row = row
+                self._select_row_range(
+                    self.selection_anchor_row, row, index.column())
+                event.accept()
+                return
+
+            self._updating_selection_ui = True
+            self.table.clearSelection()
+            self.table.selectionModel().clearSelection()
+            self._updating_selection_ui = False
+            self.selected_rows.clear()
+            self.selection_anchor_row = None
+            self.restore_summary_status()
+            self.table.setCurrentCell(index.row(), index.column())
+            event.accept()
+            return
+
+        QTableWidget.mousePressEvent(self.table, event)
+
+    def table_key_press(self, event):
+        """Handle table key presses with main-window style selection behavior."""
+        if event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown, Qt.Key_Home, Qt.Key_End):
+            modifiers = event.modifiers()
+
+            if modifiers & Qt.ShiftModifier:
+                if self.selection_anchor_row is not None:
+                    self.extend_selection_with_arrow(event.key())
+                    event.accept()
+                    return
+                self.move_current_without_selection(event.key())
+                event.accept()
+                return
+
+            if modifiers & Qt.ControlModifier:
+                QTableWidget.keyPressEvent(self.table, event)
+                return
+
+            self.move_current_without_selection(event.key())
+            event.accept()
+            return
+
+        if event.key() in (Qt.Key_Left, Qt.Key_Right):
+            self.move_column_without_selection(event.key())
+            event.accept()
+            return
+
+        if event.key() == Qt.Key_Space and (event.modifiers() & Qt.ShiftModifier):
+            row = self.table.currentRow()
+            col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+            if row >= 0:
+                self.selection_anchor_row = row
+                self._select_row_range(row, row, col)
+            event.accept()
+            return
+
+        QTableWidget.keyPressEvent(self.table, event)
+
+    def move_current_without_selection(self, key: int):
+        """Move current cell and clear selection when navigating rows."""
+        row_count = self.table.rowCount()
+        col_count = self.table.columnCount()
+        if row_count == 0 or col_count == 0:
+            return
+
+        row = self.table.currentRow() if self.table.currentRow() >= 0 else 0
+        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+        page_step = max(self.table.verticalScrollBar().pageStep() - 1, 1)
+
+        changing_rows = False
+        if key == Qt.Key_Up:
+            row = max(row - 1, 0)
+            changing_rows = True
+        elif key == Qt.Key_Down:
+            row = min(row + 1, row_count - 1)
+            changing_rows = True
+        elif key == Qt.Key_PageUp:
+            row = max(row - page_step, 0)
+            changing_rows = True
+        elif key == Qt.Key_PageDown:
+            row = min(row + page_step, row_count - 1)
+            changing_rows = True
+        elif key == Qt.Key_Home:
+            row = 0
+            changing_rows = True
+        elif key == Qt.Key_End:
+            row = row_count - 1
+            changing_rows = True
+
+        if changing_rows:
+            self._updating_selection_ui = True
+            self.table.clearSelection()
+            self.table.selectionModel().clearSelection()
+            self._updating_selection_ui = False
+            self.selected_rows.clear()
+            self.selection_anchor_row = None
+            self.restore_summary_status()
+
+        self.table.setCurrentCell(row, col)
+        self.table.scrollTo(self.table.model().index(row, col))
+
+    def move_column_without_selection(self, key: int):
+        """Move between columns without changing row selection state."""
+        col_count = self.table.columnCount()
+        if col_count == 0:
+            return
+
+        row = self.table.currentRow() if self.table.currentRow() >= 0 else 0
+        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+
+        if key == Qt.Key_Left:
+            col = max(col - 1, 0)
+        elif key == Qt.Key_Right:
+            col = min(col + 1, col_count - 1)
+
+        self.table.setCurrentCell(row, col)
+        self.table.scrollTo(self.table.model().index(row, col))
+
+    def extend_selection_with_arrow(self, key: int):
+        """Extend row selection from anchor using Shift+navigation keys."""
+        if self.selection_anchor_row is None:
+            return
+
+        row_count = self.table.rowCount()
+        if row_count == 0:
+            return
+
+        row = self.table.currentRow() if self.table.currentRow() >= 0 else 0
+        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+        page_step = max(self.table.verticalScrollBar().pageStep() - 1, 1)
+
+        target_row = row
+        if key == Qt.Key_Up:
+            target_row = max(row - 1, 0)
+        elif key == Qt.Key_Down:
+            target_row = min(row + 1, row_count - 1)
+        elif key == Qt.Key_PageUp:
+            target_row = max(row - page_step, 0)
+        elif key == Qt.Key_PageDown:
+            target_row = min(row + page_step, row_count - 1)
+        elif key == Qt.Key_Home:
+            target_row = 0
+        elif key == Qt.Key_End:
+            target_row = row_count - 1
+
+        self._select_row_range(self.selection_anchor_row, target_row, col)
+
+    def _select_row_range(self, anchor_row: int, target_row: int, current_col: int = 0):
+        """Select full rows between anchor and target using item selection mode."""
+        start_row = min(anchor_row, target_row)
+        end_row = max(anchor_row, target_row)
+
+        self._updating_selection_ui = True
+        self.table.selectionModel().clearSelection()
+
+        col_count = self.table.columnCount()
+        for row in range(start_row, end_row + 1):
+            for col in range(col_count):
+                index = self.table.model().index(row, col)
+                self.table.selectionModel().select(index, QItemSelectionModel.Select)
+
+        self.table.setCurrentCell(target_row, current_col)
+        self.table.scrollTo(self.table.model().index(target_row, current_col))
+        self._updating_selection_ui = False
+
+        self.selected_rows = set(range(start_row, end_row + 1))
+        self.set_status(f"{len(self.selected_rows)} selected")
 
     def keyPressEvent(self, event):
         """Override to prevent Enter from closing the dialog."""

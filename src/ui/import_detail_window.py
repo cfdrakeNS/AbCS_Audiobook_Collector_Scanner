@@ -56,6 +56,7 @@ class ImportDetailWindow(QDialog):
         self.total_count = total_count
         self._dirty = False
         self._first_dirty_widget = None
+        self._default_status_message = "Ready"
 
         # Query objects
         self.author_queries = AuthorQueries(db)
@@ -84,6 +85,7 @@ class ImportDetailWindow(QDialog):
 
     def set_status(self, message: str, announce: bool = False):
         """Set status message using parent import window status bar when available."""
+        self._default_status_message = message
         parent = self.parent()
         if parent and hasattr(parent, "set_status"):
             parent.set_status(message, announce=announce)
@@ -93,11 +95,19 @@ class ImportDetailWindow(QDialog):
 
     def get_status_summary(self) -> str:
         """Return a concise current-status summary for Alt+/ reading."""
+        parent = self.parent()
+        if parent and hasattr(parent, "status_bar"):
+            parent_status = parent.status_bar.currentMessage().strip()
+            if parent_status:
+                return parent_status
+
         title = self.title_edit.text().strip() or "Untitled"
         author = self.author_combo.currentText().strip() or "Unknown author"
         errors_count = len(self.errors)
         if errors_count:
             return f"Import detail: {title} by {author}. {errors_count} errors."
+        if self._default_status_message:
+            return self._default_status_message
         return f"Import detail: {title} by {author}. No errors."
 
     def on_read_status_bar(self):
@@ -562,17 +572,21 @@ class ImportDetailWindow(QDialog):
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
-        close_shortcut = QShortcut(QKeySequence("Escape"), self)
-        close_shortcut.activated.connect(self.reject)
+        self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.close_shortcut.activated.connect(self.reject)
 
-        prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
-        prev_shortcut.activated.connect(self.on_prev)
+        self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
+        self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.prev_shortcut.activated.connect(self.on_prev)
 
-        next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
-        next_shortcut.activated.connect(self.on_next)
+        self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
+        self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.next_shortcut.activated.connect(self.on_next)
 
-        read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        read_status_shortcut.activated.connect(self.on_read_status_bar)
+        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
 
     def _collect_form_data(self):
         """Collect edited values back into book_data."""

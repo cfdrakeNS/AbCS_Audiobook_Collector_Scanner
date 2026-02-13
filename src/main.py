@@ -21,8 +21,8 @@ from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQu
 from accessibility.scaling import get_scaler
 from accessibility.theme_manager import get_theme_manager
 from ui.main_window import MainWindow
-APP_VERSION = "1.3.5"
-APP_BUILD_DATE = "2026-02-10"
+APP_VERSION = "1.4.5"
+APP_BUILD_DATE = "2026-02-14"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
