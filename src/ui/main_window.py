@@ -23,6 +23,7 @@ from database import (
 from accessibility.scaling import UIScaler
 from accessibility.theme_manager import ThemeManager
 from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from accessibility.key_filters import is_unmapped_alt_letter
 from ui.book_details import BookDetailsWindow
 from ui.update_window import UpdateWindow
 from ui.preferences_window import PreferencesWindow
@@ -63,6 +64,10 @@ class MainWindow(QMainWindow):
     Main application window - Audio Book Window.
     Displays list of books with filtering and search.
     """
+
+    ALLOWED_ALT_LETTERS = {
+        'B', 'C', 'D', 'F', 'H', 'L', 'M', 'O', 'R', 'S', 'U', 'V'
+    }
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler, theme_manager: ThemeManager):
         """
@@ -129,6 +134,8 @@ class MainWindow(QMainWindow):
 
         # Connect to scaler changes to update header control heights
         self.scaler.scale_changed.connect(self.on_scale_changed)
+        # Refresh control/table styling when theme changes
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         # Apply initial button styling
         self.on_scale_changed(self.scaler.current_scale)
 
@@ -459,6 +466,46 @@ class MainWindow(QMainWindow):
         self.update_button.setStyleSheet(button_stylesheet)
         self.delete_button.setStyleSheet(button_stylesheet)
         self.cancel_button.setStyleSheet(button_stylesheet)
+
+    def apply_control_styles(self):
+        """Re-apply dynamic styles for controls and table after theme/scale changes."""
+        self.on_scale_changed(self.scaler.current_scale)
+        table_header = self.table.horizontalHeader()
+        table_vertical_header = self.table.verticalHeader()
+
+        widgets_to_repolish = [
+            self.collection_combo,
+            self.read_combo,
+            self.order_combo,
+            self.search_box,
+            self.coll_label,
+            self.read_label,
+            self.order_label,
+            self.search_label,
+            self.update_button,
+            self.delete_button,
+            self.cancel_button,
+            self.table,
+            self.table.viewport(),
+            table_header,
+            table_header.viewport(),
+            table_vertical_header,
+            table_vertical_header.viewport(),
+        ]
+
+        for widget in widgets_to_repolish:
+            style = widget.style()
+            style.unpolish(widget)
+            style.polish(widget)
+            widget.update()
+
+        table_header.updateGeometry()
+        table_header.viewport().update()
+        table_header.repaint()
+
+    def on_theme_changed(self, _theme_name: str):
+        """Refresh main window controls/table when application theme changes."""
+        self.apply_control_styles()
 
     def create_table(self):
         """Create books table."""
@@ -1285,6 +1332,9 @@ class MainWindow(QMainWindow):
     def eventFilter(self, source, event):
         """Filter events to implement Explorer-like selection and handle search ESC and Enter."""
         if source is self.search_box and event.type() == QEvent.KeyPress:
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                event.accept()
+                return True
             if event.key() == Qt.Key_Escape:
                 # Use last table position (tracked by on_current_cell_changed)
                 restore_book_id = self._last_table_book_id
@@ -1434,12 +1484,6 @@ class MainWindow(QMainWindow):
                     if 0 <= row < len(self.books):
                         book = self.books[row]
                         self.open_book_details(book)
-            event.accept()
-            return
-        elif event.key() == Qt.Key_Delete:
-            # Delete key triggers delete function if items selected
-            if self.selected_book_ids:
-                self.on_delete_clicked()
             event.accept()
             return
         elif event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown, Qt.Key_Home, Qt.Key_End):
@@ -2242,7 +2286,14 @@ Use F9 to import or Alt+M for menu options."""
         text_edit.setAccessibleDescription(
             "Information about AbCS application")
 
-        about_text = """AbCS - Audio Book Collector Scanner
+        screen_reader_text = "Screen reader is detected."
+        if not QAccessible.isActive():
+            screen_reader_text = (
+                "No screen reader detected. "
+                "For best accessibility, start JAWS or NVDA before launching AbCS."
+            )
+
+        about_text = f"""AbCS - Audio Book Collector Scanner
 
 Version 1.0 (Python Edition)
 
@@ -2259,6 +2310,9 @@ FEATURES:
 
 ACCESSIBILITY:
 This application is designed to be fully accessible to users with low vision or who use screen readers. All features have keyboard shortcuts.
+
+Screen Reader Status:
+{screen_reader_text}
 
 Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
 
@@ -2321,9 +2375,11 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
         table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
@@ -2356,6 +2412,8 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         btn_font.setPointSize(self.scaler.get_scaled_size(11))
         close_btn.setFont(btn_font)
         layout.addWidget(close_btn)
+
+        dlg.setTabOrder(table, close_btn)
 
         dlg.exec()
 

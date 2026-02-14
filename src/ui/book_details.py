@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox, QTextEdit, QPushButton,
     QLabel, QDateEdit, QSpinBox, QMessageBox, QWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QApplication
+    QApplication, QStatusBar
 )
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
@@ -48,6 +48,8 @@ class BookDetailsWindow(QDialog):
         self.sort_order = sort_order  # bd#8: Store for header display
         self._dirty = False  # bd#6: Track if form has unsaved changes
         self._first_dirty_widget = None  # Track first field that changed
+        self._pending_dirty_widgets = set()
+        self._default_status_message = "Ready"
 
         # Track original combo values for focusOut change detection
         self._original_author = ""
@@ -86,6 +88,8 @@ class BookDetailsWindow(QDialog):
         self.setAccessibleDescription(
             "Form for viewing and editing book information")
         self.resize(850, 500)
+        self.set_status("Ready")
+        QTimer.singleShot(0, self.title_edit.setFocus)
 
     def install_focus_filters(self):
         """
@@ -150,6 +154,24 @@ class BookDetailsWindow(QDialog):
             elif source == self.genre_combo:
                 self._check_combo_change("Genre", self.genre_combo,
                                          self._original_genre, self.genre_queries)
+
+            dirty_widget = self._resolve_dirty_source(source)
+            if dirty_widget is not None:
+                field_name = self._get_dirty_field_name(dirty_widget)
+                self.set_status(
+                    f"{field_name} changed. Press Alt+S Save or Alt+L Cancel",
+                    announce=True
+                )
+                self._pending_dirty_widgets.discard(dirty_widget)
+
+            dirty_widget = self._resolve_dirty_source(source)
+            if dirty_widget is not None:
+                field_name = self._get_dirty_field_name(dirty_widget)
+                self.set_status(
+                    f"{field_name} changed. Press Alt+S Save or Alt+L Cancel",
+                    announce=True
+                )
+                self._pending_dirty_widgets.discard(dirty_widget)
 
         # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
         # This prevents silent value changes that JAWS doesn't announce
@@ -397,7 +419,7 @@ class BookDetailsWindow(QDialog):
         row4_layout.addWidget(genre_label)
         row4_layout.addWidget(self.genre_combo, 1)
 
-        collection_label = QLabel("Co&llection:")
+        collection_label = QLabel("Collection (&K):")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         collection_label.setBuddy(self.collection_combo)
@@ -408,12 +430,22 @@ class BookDetailsWindow(QDialog):
         series_label.setBuddy(self.series_combo)
         form.addRow(series_label, row4_layout)
 
-        # bd#3 Row 5: Bitrate + Size + Format + Source
+        # bd#3 Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
 
+        files_label = QLabel("&Files:")
+        self.files_edit = QLineEdit()
+        self.files_edit.setReadOnly(True)
+        self.files_edit.setAccessibleName("Number of files")
+        files_label.setBuddy(self.files_edit)
+        row5_layout.addWidget(self.files_edit)
+
+        bitrate_label = QLabel("&Bitrate:")
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
+        bitrate_label.setBuddy(self.bitrate_edit)
+        row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
 
         size_label = QLabel("Si&ze:")
@@ -438,9 +470,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(source_label)
         row5_layout.addWidget(self.source_edit)
 
-        bitrate_label = QLabel("&Bitrate:")
-        bitrate_label.setBuddy(self.bitrate_edit)
-        form.addRow(bitrate_label, row5_layout)
+        form.addRow(files_label, row5_layout)
 
         # bd#3 Row 6: Path + Added date
         row6_layout = QHBoxLayout()
@@ -466,11 +496,11 @@ class BookDetailsWindow(QDialog):
         # bd#4: Four buttons - New, Save, Delete, Close (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
 
-        # New button (Alt+W) - clears form for new entry
-        self.new_button = QPushButton("Ne&w")
+        # New button (Alt+N) - clears form for new entry
+        self.new_button = QPushButton("&New")
         self.new_button.setAccessibleName("New book")
         self.new_button.setAccessibleDescription(
-            "Clear form for new book entry - Alt+W or Ctrl+Enter")
+            "Clear form for new book entry - Alt+N or Ctrl+Enter")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
         self.new_button.clicked.connect(self.on_new)
         button_layout.addWidget(self.new_button)
@@ -494,6 +524,15 @@ class BookDetailsWindow(QDialog):
         self.delete_button.setVisible(not self.is_new)
         button_layout.addWidget(self.delete_button)
 
+        # Cancel button (Alt+L) - visible only when save/new is active
+        self.cancel_button = QPushButton("Cance&l")
+        self.cancel_button.setAccessibleName("Cancel")
+        self.cancel_button.setAccessibleDescription("Cancel editing - Alt+L")
+        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
+        self.cancel_button.clicked.connect(self.on_cancel_edit)
+        self.cancel_button.setVisible(False)
+        button_layout.addWidget(self.cancel_button)
+
         button_layout.addStretch()
 
         # Close button (Alt+C)
@@ -507,30 +546,43 @@ class BookDetailsWindow(QDialog):
 
         layout.addLayout(button_layout)
 
+        self.status_bar = QStatusBar()
+        self.status_bar.setSizeGripEnabled(False)
+        layout.addWidget(self.status_bar)
+
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
 
     def reject(self):
         """
         Override reject to check for unsaved changes before closing.
-        Yes = Save and stay on book, No = Focus first dirty field, Cancel = Revert all fields.
+        Yes = Save and stay on book, No = Continue editing, Cancel = Revert and close.
         """
         if self._dirty:
-            reply = QMessageBox.question(
-                self,
-                "Unsaved Changes",
-                "You have unsaved changes.\n\nYes = Save and stay\nNo = Focus changed field\nCancel = Revert changes",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Unsaved Changes")
+            msg.setStyleSheet("QLabel { border: none; }")
+            msg.setText(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and stay\n"
+                "No = Continue editing\n"
+                "Cancel = Revert and close"
             )
+            msg.setStandardButtons(
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            msg.button(QMessageBox.Yes).setText("&Yes - Save")
+            msg.button(QMessageBox.No).setText("&No - Continue editing")
+            msg.button(QMessageBox.Cancel).setText(
+                "Cance&l - Revert and close")
+            reply = msg.exec()
 
             if reply == QMessageBox.Yes:
                 self.on_save()  # Save and stay (on_save doesn't close anymore)
             elif reply == QMessageBox.No:
-                # Focus the first field that had changes
-                if self._first_dirty_widget:
-                    self._first_dirty_widget.setFocus()
-            else:  # Cancel - revert all fields
+                return  # Continue editing, keep dialog open
+            else:  # Cancel - revert all fields and close
                 self._revert_changes()
+                super().reject()
         else:
             super().reject()  # No changes, just close
 
@@ -573,6 +625,89 @@ class BookDetailsWindow(QDialog):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
+        # Alt+/ reads status bar
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+        # Alt+L cancel when cancel button is active
+        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.cancel_shortcut.activated.connect(self.on_cancel_shortcut)
+
+    def on_cancel_shortcut(self):
+        """Handle Alt+L when Cancel is available."""
+        if self.cancel_button.isVisible():
+            self.on_cancel_edit()
+
+    def on_cancel_edit(self):
+        """Cancel edits and revert to standard browsing mode without closing."""
+        if self.is_new:
+            if self.books_list and 0 <= self.current_index < len(self.books_list):
+                self.book = self.books_list[self.current_index]
+                self.is_new = False
+                self.load_book_data()
+                self.update_navigation_state()
+                self.setWindowTitle(f"Book Details - {self.book.title}")
+                self.setAccessibleName(f"Book Details - {self.book.title}")
+            else:
+                super().reject()
+                return
+        else:
+            self.load_book_data()
+
+        self._clear_dirty()
+        self.set_status("Changes canceled")
+
+    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
+        """Set status bar message with optional screen reader announcement."""
+        self._default_status_message = message
+        self.status_bar.showMessage(message)
+
+        if announce and QAccessible.isActive():
+            previous_focus = QApplication.instance().focusWidget()
+            self.status_bar.setFocusPolicy(Qt.StrongFocus)
+            self.status_bar.setFocus()
+
+            def restore_focus():
+                if previous_focus:
+                    previous_focus.setFocus()
+                self.status_bar.setFocusPolicy(Qt.NoFocus)
+
+            QTimer.singleShot(100, restore_focus)
+
+        if timeout_ms > 0:
+            QTimer.singleShot(
+                timeout_ms,
+                lambda: self.status_bar.showMessage(
+                    self._default_status_message)
+            )
+
+    def on_read_status_bar(self):
+        """Read current status bar message (Alt+/)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
+        if QAccessible.isActive():
+            self.set_status(status_text, announce=True)
+        else:
+            QMessageBox.information(
+                self,
+                "Status Bar",
+                f"No screen reader active.\n\nStatus: {status_text}")
+
+    def _get_dirty_field_name(self, widget) -> str:
+        """Return a user-friendly field name for a dirty widget."""
+        mapping = {
+            self.title_edit: "Title",
+            self.author_combo: "Author",
+            self.year_spin: "Year",
+            self.series_combo: "Series",
+            self.genre_combo: "Genre",
+            self.collection_combo: "Collection",
+            self.reader_edit: "Reader",
+            self.time_edit: "Time",
+            self.comments_edit: "Comments",
+            self.read_date: "Read date",
+        }
+        return mapping.get(widget, "Book details")
+
     def _setup_dirty_tracking(self):
         """
         bd#6: Connect all editable field signals to track changes.
@@ -612,15 +747,34 @@ class BookDetailsWindow(QDialog):
 
     def _mark_dirty(self, widget=None):
         """bd#6: Mark form as having unsaved changes."""
+        if widget is not None:
+            self._pending_dirty_widgets.add(widget)
+
         if not self._dirty:
             self._dirty = True
             self._first_dirty_widget = widget
             self._update_save_button_visibility()
 
+    def _resolve_dirty_source(self, source):
+        """Resolve focus-out source widget to tracked dirty control."""
+        if source in self._pending_dirty_widgets:
+            return source
+
+        for combo in [self.author_combo, self.series_combo, self.genre_combo, self.collection_combo]:
+            if combo in self._pending_dirty_widgets and source == combo.lineEdit():
+                return combo
+
+        parent = source.parentWidget() if hasattr(source, "parentWidget") else None
+        if parent in self._pending_dirty_widgets:
+            return parent
+
+        return None
+
     def _clear_dirty(self):
         """bd#6: Clear dirty flag after save or load."""
         self._dirty = False
         self._first_dirty_widget = None
+        self._pending_dirty_widgets.clear()
         self._update_save_button_visibility()
 
     def _update_save_button_visibility(self):
@@ -628,8 +782,14 @@ class BookDetailsWindow(QDialog):
         bd#6: Show save button only when there are unsaved changes.
         For new books, always show save button.
         """
-        should_show = self.is_new or self._dirty
-        self.save_button.setVisible(should_show)
+        save_active = self.is_new or self._dirty
+        self.save_button.setVisible(save_active)
+
+        # bd#16: Hide New and Delete when Save is active
+        self.new_button.setVisible(not save_active)
+        self.delete_button.setVisible((not self.is_new) and (not save_active))
+        self.cancel_button.setVisible(save_active)
+        self.close_button.setVisible(not save_active)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -644,9 +804,12 @@ class BookDetailsWindow(QDialog):
 
         # Shortcuts list
         shortcuts = [
-            ("Ctrl+Enter", "New book"),
+            ("Alt+/", "Read status bar"),
+            ("Alt+N", "New book"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
+            ("Alt+L", "Cancel"),
+            ("Alt+C", "Close window"),
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
             ("Escape", "Close window"),
@@ -659,7 +822,8 @@ class BookDetailsWindow(QDialog):
             ("Alt+E", "Read date"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+L", "Collection"),
+            ("Alt+K", "Collection"),
+            ("Alt+F", "Files"),
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
@@ -672,9 +836,11 @@ class BookDetailsWindow(QDialog):
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
         table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
@@ -711,6 +877,8 @@ class BookDetailsWindow(QDialog):
         btn_font.setPointSize(self.scaler.get_scaled_size(11))
         close_btn.setFont(btn_font)
         layout.addWidget(close_btn)
+
+        dlg.setTabOrder(table, close_btn)
 
         dlg.exec()
 
@@ -778,6 +946,10 @@ class BookDetailsWindow(QDialog):
 
         # Time
         self.time_edit.setText(self.book.time_display)
+
+        # Files
+        self.files_edit.setText(str(self.book.tracks)
+                                if self.book.tracks else "")
 
         # Size
         self.size_edit.setText(self.book.size_display)
@@ -866,6 +1038,7 @@ class BookDetailsWindow(QDialog):
         if not self.title_edit.text().strip():
             QMessageBox.warning(self, "Validation Error", "Title is required.")
             self.title_edit.setFocus()
+            self.set_status("Title is required")
             return
 
         # Get author - confirm if creating new
@@ -874,6 +1047,7 @@ class BookDetailsWindow(QDialog):
             QMessageBox.warning(self, "Validation Error",
                                 "Author is required.")
             self.author_combo.setFocus()
+            self.set_status("Author is required")
             return
 
         # Get or create author (confirmation already done on focusOut)
@@ -935,15 +1109,14 @@ class BookDetailsWindow(QDialog):
                 self.book.source = "Manual Entry"
                 book_id = self.book_queries.insert(self.book)
                 self.book.book_id = book_id
-                QMessageBox.information(
-                    self, "Success", "Book added successfully!")
+                self.is_new = False
+                self.set_status("Book added successfully")
             else:
                 self.book_queries.update(self.book)
                 # Update the book in books_list
                 if self.books_list and 0 <= self.current_index < len(self.books_list):
                     self.books_list[self.current_index] = self.book
-                QMessageBox.information(
-                    self, "Success", "Book updated successfully!")
+                self.set_status("Book updated successfully")
 
             # Clear dirty and update original values (don't close window)
             self._clear_dirty()
@@ -953,6 +1126,7 @@ class BookDetailsWindow(QDialog):
             self.setWindowTitle(f"Book Details - {self.book.title}")
 
         except Exception as e:
+            self.set_status("Error saving book")
             QMessageBox.critical(self, "Error", f"Error saving book: {str(e)}")
 
     def on_delete(self):
@@ -980,6 +1154,7 @@ class BookDetailsWindow(QDialog):
                         # No more books - close the window
                         QMessageBox.information(
                             self, "Success", "Book deleted. No more books.")
+                        self.set_status("Book deleted. No more books")
                         super().reject()
                         return
                     elif deleted_index >= len(self.books_list):
@@ -995,11 +1170,14 @@ class BookDetailsWindow(QDialog):
                     self.setWindowTitle(f"Book Details - {self.book.title}")
                     QMessageBox.information(
                         self, "Success", "Book deleted successfully!")
+                    self.set_status("Book deleted successfully")
                 else:
                     QMessageBox.information(
                         self, "Success", "Book deleted successfully!")
+                    self.set_status("Book deleted successfully")
                     super().reject()
             except Exception as e:
+                self.set_status("Error deleting book")
                 QMessageBox.critical(
                     self, "Error", f"Error deleting book: {str(e)}")
 
@@ -1022,6 +1200,7 @@ class BookDetailsWindow(QDialog):
         # Keep current collection as default
         self.reader_edit.clear()
         self.time_edit.clear()
+        self.files_edit.clear()
         self.size_edit.clear()
         self.bitrate_edit.clear()
         self.format_edit.clear()
@@ -1041,6 +1220,7 @@ class BookDetailsWindow(QDialog):
 
         # Focus title field
         self.title_edit.setFocus()
+        self.set_status("New book entry. Press Alt+S Save or Alt+L Cancel")
 
     def on_prev(self):
         """
@@ -1050,6 +1230,8 @@ class BookDetailsWindow(QDialog):
         # Block navigation if dirty
         if self._dirty:
             QApplication.beep()
+            self.set_status(
+                "Unsaved changes. Press Alt+S Save or Alt+L Cancel")
             return
 
         if not self.books_list or self.current_index <= 0:
@@ -1074,6 +1256,8 @@ class BookDetailsWindow(QDialog):
         # Block navigation if dirty
         if self._dirty:
             QApplication.beep()
+            self.set_status(
+                "Unsaved changes. Press Alt+S Save or Alt+L Cancel")
             return
 
         if not self.books_list or self.current_index >= len(self.books_list) - 1:

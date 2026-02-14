@@ -5,7 +5,7 @@ Extracts metadata from audio files using mutagen library.
 
 import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from mutagen import File as MutagenFile
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
@@ -310,7 +310,8 @@ class BookScanner:
         self.tag_reader = TagReader()
 
     def scan_folder(self, folder_path: str, include_subfolders: bool = True,
-                    allowed_extensions: Optional[set] = None) -> List[Dict[str, Any]]:
+                    allowed_extensions: Optional[set] = None,
+                    progress_callback: Optional[Callable[[int, int, str], None]] = None) -> List[Dict[str, Any]]:
         """
         Scan folder recursively for audiobooks.
         Groups files by album (book title).
@@ -319,6 +320,7 @@ class BookScanner:
             folder_path: Root folder to scan
             include_subfolders: True to scan subfolders
             allowed_extensions: Optional set of lowercase extensions (with dot)
+            progress_callback: Optional callback(processed, total, file_path)
 
         Returns:
             List of book dictionaries
@@ -349,7 +351,12 @@ class BookScanner:
         # Group by album (book)
         books = {}
 
-        for file_path in audio_files:
+        total_files = len(audio_files)
+
+        for index, file_path in enumerate(audio_files, start=1):
+            if progress_callback is not None:
+                progress_callback(index, total_files, file_path)
+
             info = self.tag_reader.read_file(file_path)
 
             # Use album as book identifier

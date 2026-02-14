@@ -5,13 +5,15 @@ Main interface for scanning folders and importing audiobooks.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QStatusBar,
+    QLabel, QLineEdit, QPushButton, QStatusBar, QProgressBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QMessageBox, QApplication
 )
-from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel
+from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
+import os
+import re
 
 from database import (
     DatabaseManager, BookQueries, AuthorQueries,
@@ -20,16 +22,25 @@ from database import (
 from core import BookScanner, ImportValidator
 from accessibility.scaling import UIScaler
 from accessibility.theme_manager import ThemeManager
+from accessibility.key_filters import is_unmapped_alt_letter
 from accessibility.accessible_events import (
     announce_status_message, announce_dialog_opened, announce_dialog_closed
 )
 from ui.import_detail_window import ImportDetailWindow
 
 
+class _ScanCanceledError(Exception):
+    """Raised when a running scan is canceled by the user."""
+
+
 class ImportWindow(QDialog):
     """
     Import dialog for scanning folders and importing metadata.
     """
+
+    ALLOWED_ALT_LETTERS = {
+        'A', 'B', 'C', 'F', 'I', 'O', 'S', 'W'
+    }
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
                  theme_manager: ThemeManager, parent=None):
@@ -55,6 +66,10 @@ class ImportWindow(QDialog):
         self.allowed_extensions = None
         self.include_subfolders = True
         self.default_collection_id = None
+        self.import_scenario_mode = "mass_standard"
+        self.author_fallback_mode = "folder"
+        self.title_fallback_mode = "file"
+        self.reader_keywords = ["reader", "read by", "narrator", "narrated by"]
         self._summary_counts = {
             "scanned": 0,
             "valid": 0,
@@ -62,8 +77,14 @@ class ImportWindow(QDialog):
             "duplicates": 0,
         }
         self._default_status_message = "Ready"
+        self._is_adding = False
+        self._cancel_add_requested = False
+        self._is_scanning = False
+        self._cancel_scan_requested = False
+        self._scan_prompt_open = False
 
         self.setup_ui()
+        self.install_alt_key_filters()
         self.apply_control_styles()
         self.load_preferences()
         self.connect_signals()
@@ -206,13 +227,26 @@ class ImportWindow(QDialog):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(60)
+
+        # Keep compact metadata column fixed to content, size remaining columns proportionally.
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.Interactive)
+        header.setSectionResizeMode(3, QHeaderView.Interactive)
+        header.setSectionResizeMode(4, QHeaderView.Interactive)
+
+        # Proportional widths: Author, Title, Error Type, File/Folder
+        self._stretch_columns = {
+            0: 2.2,
+            1: 3.0,
+            3: 2.3,
+            4: 3.0,
+        }
 
         layout.addWidget(self.table, 1)
 
@@ -223,18 +257,29 @@ class ImportWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.import_selected_button = QPushButton("&Import Selected")
-        self.import_selected_button.setAccessibleName("Import Selected")
+        self.scan_progress = QProgressBar()
+        self.scan_progress.setAccessibleName("Scan progress")
+        self.scan_progress.setAccessibleDescription(
+            "Shows progress while scanning audio files")
+        self.scan_progress.setMinimum(0)
+        self.scan_progress.setMaximum(100)
+        self.scan_progress.setValue(0)
+        self.scan_progress.setVisible(False)
+        self.scan_progress.setFixedWidth(220)
+        footer_layout.addWidget(self.scan_progress)
+
+        self.import_selected_button = QPushButton("&Add Selected")
+        self.import_selected_button.setAccessibleName("Add Selected")
         self.import_selected_button.setAccessibleDescription(
-            "Import selected valid items - Alt+I")
+            "Add selected valid items - Alt+I")
         self.import_selected_button.setDefault(False)
         self.import_selected_button.setAutoDefault(False)
         footer_layout.addWidget(self.import_selected_button)
 
-        self.import_all_button = QPushButton("Import &All Valid")
-        self.import_all_button.setAccessibleName("Import All Valid")
+        self.import_all_button = QPushButton("Add &All Valid")
+        self.import_all_button.setAccessibleName("Add All Valid")
         self.import_all_button.setAccessibleDescription(
-            "Import all valid items - Alt+A")
+            "Add all valid items - Alt+A")
         self.import_all_button.setDefault(False)
         self.import_all_button.setAutoDefault(False)
         footer_layout.addWidget(self.import_all_button)
@@ -242,10 +287,11 @@ class ImportWindow(QDialog):
         self.cancel_button = QPushButton("&Cancel")
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription(
-            "Close import window - Alt+C or F4")
+            "Close import window - Alt+C")
         self.cancel_button.setDefault(False)
         self.cancel_button.setAutoDefault(False)
         footer_layout.addWidget(self.cancel_button)
+        self._update_cancel_button_state()
 
         layout.addLayout(footer_layout)
 
@@ -295,6 +341,21 @@ class ImportWindow(QDialog):
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
 
+        progress_style = f"""
+            QProgressBar {{
+                min-height: {scaled_height - 2}px;
+                max-height: {scaled_height - 2}px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                text-align: center;
+                background-color: palette(base);
+            }}
+            QProgressBar::chunk {{
+                background-color: palette(highlight);
+            }}
+        """
+        self.scan_progress.setStyleSheet(progress_style)
+
         table_style = """
             QTableView::item:selected {
                 background-color: palette(highlight);
@@ -317,6 +378,7 @@ class ImportWindow(QDialog):
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
         self.apply_control_styles()
+        self.update_stretch_columns()
 
     def load_preferences(self):
         """Load import preferences into header fields."""
@@ -326,8 +388,8 @@ class ImportWindow(QDialog):
             "import/default_directory", "", type=str)
         self.folder_edit.setText(default_dir)
 
-        self.include_subfolders = self.settings.value(
-            "import/include_subfolders", True, type=bool)
+        self.include_subfolders = True
+        self.settings.setValue("import/include_subfolders", True)
 
         formats = []
         allowed_extensions = set()
@@ -350,7 +412,101 @@ class ImportWindow(QDialog):
 
         self.formats_edit.setText(", ".join(formats) if formats else "None")
 
+        self.import_scenario_mode = self.settings.value(
+            "import/scenario/mode", "mass_standard", type=str)
+        self.author_fallback_mode = self.settings.value(
+            "import/fallback/author", "folder", type=str)
+        self.title_fallback_mode = self.settings.value(
+            "import/fallback/title", "file", type=str)
+
+        keywords = self.settings.value(
+            "import/reader_keywords",
+            "reader, read by, narrator, narrated by",
+            type=str,
+        )
+        parsed_keywords = [
+            key.strip().lower() for key in keywords.split(",") if key.strip()
+        ]
+        if parsed_keywords:
+            self.reader_keywords = parsed_keywords
+
         self._loading = False
+
+    def _extract_reader_from_comment(self, comment: str) -> str:
+        """Extract reader/narrator from comment using configured keywords."""
+        if not comment:
+            return ""
+
+        lines = [line.strip() for line in comment.splitlines() if line.strip()]
+        for line in lines:
+            lowered = line.lower()
+            for keyword in self.reader_keywords:
+                match = re.search(
+                    rf"\b{re.escape(keyword)}\b\s*[:\-]?\s*(.+)$",
+                    lowered,
+                )
+                if match:
+                    start_idx = match.start(1)
+                    value = line[start_idx:].strip(" .:-")
+                    if value:
+                        return value
+        return ""
+
+    @staticmethod
+    def _series_from_filename(file_path: str) -> str:
+        """Extract series text from first (...) group in filename."""
+        if not file_path:
+            return ""
+        stem = os.path.splitext(os.path.basename(file_path))[0]
+        match = re.search(r"\(([^()]+)\)", stem)
+        return match.group(1).strip() if match else ""
+
+    def _apply_import_preferences(self, book: dict):
+        """Apply scenario + fallback preferences to scanned book metadata."""
+        book.setdefault("series", "")
+        folder = (book.get("folder") or "").strip()
+        files = book.get("files") or []
+
+        # Reader extraction using user-configured keywords
+        narrator = (book.get("narrator") or "").strip()
+        if not narrator:
+            narrator = self._extract_reader_from_comment(
+                book.get("comment", ""))
+            if narrator:
+                book["narrator"] = narrator
+
+        # Author fallback
+        author = (book.get("author") or "").strip()
+        if not author and self.author_fallback_mode == "folder" and folder:
+            fallback_author = os.path.basename(folder.rstrip("\\/"))
+            if fallback_author:
+                book["author"] = fallback_author
+
+        # Title fallback
+        title = (book.get("title") or "").strip()
+        if not title:
+            if self.title_fallback_mode == "folder" and folder:
+                fallback_title = os.path.basename(folder.rstrip("\\/"))
+                if fallback_title:
+                    book["title"] = fallback_title
+            elif self.title_fallback_mode == "file" and files:
+                fallback_title = os.path.splitext(
+                    os.path.basename(files[0]))[0]
+                if fallback_title:
+                    book["title"] = fallback_title
+
+        # Scenario-driven series detection
+        if self.import_scenario_mode == "series_from_directory" and files:
+            series_name = os.path.basename(
+                os.path.dirname(files[0]).rstrip("\\/"))
+            book_folder_name = os.path.basename(
+                folder.rstrip("\\/")) if folder else ""
+            if series_name and series_name.lower() != book_folder_name.lower():
+                book["series"] = series_name
+        elif self.import_scenario_mode == "series_from_filename" and files:
+            series_name = self._series_from_filename(files[0])
+            if series_name:
+                book["series"] = series_name
 
     def connect_signals(self):
         """Connect signals to handlers."""
@@ -365,10 +521,61 @@ class ImportWindow(QDialog):
         self.table.mousePressEvent = self.table_mouse_press
         self.table.keyPressEvent = self.table_key_press
 
+    def _update_cancel_button_state(self):
+        """Show Close when idle; show Cancel while scanning."""
+        if self._is_scanning:
+            self.cancel_button.setText("&Cancel")
+            self.cancel_button.setAccessibleName("Cancel")
+            self.cancel_button.setAccessibleDescription(
+                "Cancel running scan - Alt+C")
+        else:
+            self.cancel_button.setText("C&lose")
+            self.cancel_button.setAccessibleName("Close")
+            self.cancel_button.setAccessibleDescription(
+                "Close import window - Alt+C")
+
+    def _confirm_cancel_scan(self) -> bool:
+        """Ask whether to cancel an active scan."""
+        if self._scan_prompt_open:
+            return False
+
+        self._scan_prompt_open = True
+        try:
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Cancel Scan")
+            msg.setIcon(QMessageBox.Question)
+            msg.setText(
+                "Cancel the current scan?\n\n"
+                "Yes: stop scanning and discard partial scan results.\n"
+                "No: continue scanning."
+            )
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            msg.setDefaultButton(QMessageBox.No)
+            result = msg.exec()
+            return result == QMessageBox.Yes
+        finally:
+            self._scan_prompt_open = False
+
+    def install_alt_key_filters(self):
+        """Install key filters to block unmapped Alt+letter input."""
+        widgets = []
+        widgets.extend(self.findChildren(QLineEdit))
+        widgets.extend(self.findChildren(QTableWidget))
+        for widget in widgets:
+            widget.installEventFilter(self)
+
+    def eventFilter(self, source, event):
+        """Block Alt+letter input for letters that are not mapped shortcuts."""
+        if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+            event.accept()
+            return True
+
+        return super().eventFilter(source, event)
+
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
-        close_shortcut = QShortcut(QKeySequence("F4"), self)
-        close_shortcut.activated.connect(self.on_cancel)
+        help_shortcut = QShortcut(QKeySequence("F1"), self)
+        help_shortcut.activated.connect(self.on_show_shortcuts)
 
         focus_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
         focus_list_shortcut.activated.connect(self.on_focus_list)
@@ -380,11 +587,78 @@ class ImportWindow(QDialog):
         open_detail_shortcut_num.activated.connect(
             self.on_open_detail_selected)
 
-        open_detail_f8_shortcut = QShortcut(QKeySequence("F8"), self)
-        open_detail_f8_shortcut.activated.connect(self.on_open_detail_selected)
-
         read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         read_status_shortcut.activated.connect(self.on_read_status_bar)
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Import Window")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(560, 420)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+
+        shortcuts = [
+            ("Alt+/", "Read status bar"),
+            ("Alt+F", "Folder field"),
+            ("Alt+W", "Browse"),
+            ("Alt+O", "Formats"),
+            ("Alt+S", "Scan"),
+            ("Alt+B", "Focus import list"),
+            ("Ctrl+Enter", "Open selected import detail"),
+            ("Alt+I", "Add selected"),
+            ("Alt+A", "Add all valid"),
+            ("Alt+C", "Close window"),
+            ("F1", "Show keyboard shortcuts"),
+        ]
+
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected { border: none; outline: none; }"
+        )
+
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+            table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+
+        layout.addWidget(table)
+
+        close_button = QPushButton("Close")
+        close_button.setAccessibleName("Close")
+        close_button.clicked.connect(dlg.accept)
+        btn_font = close_button.font()
+        btn_font.setPointSize(self.scaler.get_scaled_size(11))
+        close_button.setFont(btn_font)
+        layout.addWidget(close_button)
+
+        dlg.setTabOrder(table, close_button)
+
+        dlg.exec()
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -434,7 +708,8 @@ class ImportWindow(QDialog):
             self.restore_summary_status()
 
     def update_summary(self, scanned: int = 0, valid: int = 0,
-                       errors: int = 0, duplicates: int = 0):
+                       errors: int = 0, duplicates: int = 0,
+                       announce: bool = False):
         """Update status bar summary."""
         self._summary_counts = {
             "scanned": scanned,
@@ -445,7 +720,7 @@ class ImportWindow(QDialog):
         message = (
             f"Scanned: {scanned} | Valid: {valid} | "
             f"Errors: {errors} | Duplicates: {duplicates}")
-        self.set_status(message)
+        self.set_status(message, announce=announce)
 
     def restore_summary_status(self):
         """Restore scan summary message after transient selection messages."""
@@ -472,13 +747,58 @@ class ImportWindow(QDialog):
             self.set_status("Select a folder before scanning")
             return
 
+        if self.table.rowCount() > 0:
+            self.table.setRowCount(0)
+            self.scanned_items = []
+            self.update_summary(0, 0, 0, 0)
+
         self.selected_rows.clear()
         self.selection_anchor_row = None
+        self._is_scanning = True
+        self._cancel_scan_requested = False
+        self._update_cancel_button_state()
 
-        books = self.scanner.scan_folder(
-            folder_path,
-            include_subfolders=self.include_subfolders,
-            allowed_extensions=self.allowed_extensions)
+        self.scan_button.setEnabled(False)
+        self.browse_button.setEnabled(False)
+        self.scan_progress.setVisible(True)
+        self.scan_progress.setRange(0, 100)
+        self.scan_progress.setValue(0)
+        self.scan_progress.setFormat("Scanning... %p%")
+
+        def on_progress(processed: int, total: int, file_path: str):
+            if total <= 0:
+                return
+            if self._cancel_scan_requested:
+                raise _ScanCanceledError()
+            percent = int((processed / total) * 100)
+            self.scan_progress.setValue(percent)
+            self.scan_progress.setFormat(f"Scanning {processed}/{total}")
+            self.status_bar.showMessage(
+                f"Scanning {processed}/{total}: {os.path.basename(file_path)}"
+            )
+            QApplication.processEvents()
+
+        try:
+            books = self.scanner.scan_folder(
+                folder_path,
+                include_subfolders=self.include_subfolders,
+                allowed_extensions=self.allowed_extensions,
+                progress_callback=on_progress,
+            )
+        except _ScanCanceledError:
+            self.scan_progress.setValue(0)
+            self.scan_progress.setFormat("Scan canceled")
+            self.set_status("Scan canceled. Partial scan results discarded.")
+            return
+        finally:
+            self._is_scanning = False
+            self._cancel_scan_requested = False
+            self._update_cancel_button_state()
+            self.scan_button.setEnabled(True)
+            self.browse_button.setEnabled(True)
+            if self.scan_progress.format() != "Scan canceled":
+                self.scan_progress.setValue(100)
+                self.scan_progress.setFormat("Scan complete")
 
         existing_books = self.book_queries.get_all()
         existing_list = [
@@ -498,6 +818,8 @@ class ImportWindow(QDialog):
         duplicate_count = 0
 
         for row, book in enumerate(books):
+            self._apply_import_preferences(book)
+
             errors = list(book.get("errors", []))
             errors.extend(self.validator.validate_book(book))
 
@@ -554,32 +876,40 @@ class ImportWindow(QDialog):
             self.update_summary(0, 0, 0, 0)
             return
 
-        self.table.setCurrentCell(0, 1)
-        self.table.setFocus(Qt.TabFocusReason)
-
         self.update_summary(
             scanned=len(books),
             valid=valid_count,
             errors=error_count,
-            duplicates=duplicate_count)
+            duplicates=duplicate_count,
+            announce=True)
+
+        # Move focus to first title after summary announcement has started
+        def focus_first_title():
+            self.table.setCurrentCell(0, 1)
+            self.table.setFocus(Qt.TabFocusReason)
+
+        QTimer.singleShot(250, focus_first_title)
+
+        # Re-apply proportional widths after data population.
+        self.update_stretch_columns()
 
     def on_import_selected(self):
-        """Import selected valid items."""
+        """Add selected valid items."""
         if not self.scanned_items:
-            self.set_status("No scanned items to import")
+            self.set_status("No scanned items to add")
             return
 
         selected_rows = {index.row() for index in self.table.selectedIndexes()}
         if not selected_rows:
-            self.set_status("Select one or more rows to import")
+            self.set_status("Select one or more rows to add")
             return
 
         self._import_rows(sorted(selected_rows))
 
     def on_import_all(self):
-        """Import all valid items."""
+        """Add all valid items."""
         if not self.scanned_items:
-            self.set_status("No scanned items to import")
+            self.set_status("No scanned items to add")
             return
 
         eligible_rows = []
@@ -588,51 +918,110 @@ class ImportWindow(QDialog):
                 eligible_rows.append(idx)
 
         if not eligible_rows:
-            self.set_status("No valid items to import")
+            self.set_status("No valid items to add")
             return
 
         self._import_rows(eligible_rows)
 
+    def _refresh_summary_from_items(self):
+        """Recalculate summary counters from current scanned items."""
+        scanned = len(self.scanned_items)
+        valid = 0
+        errors = 0
+        duplicates = 0
+
+        for item in self.scanned_items:
+            status = item.get("status")
+            if item.get("is_duplicate") or status == "Duplicate":
+                duplicates += 1
+            elif status in ("Error", "Failed"):
+                errors += 1
+            elif status in ("OK", "Warning"):
+                valid += 1
+
+        self.update_summary(scanned=scanned, valid=valid,
+                            errors=errors, duplicates=duplicates)
+
     def _import_rows(self, row_indices):
-        """Import rows by index from scanned_items."""
+        """Add rows by index from scanned_items."""
+        self._is_adding = True
+        self._cancel_add_requested = False
+
         imported = 0
         skipped = 0
         failed = 0
+        rows_to_remove = []
+        inserted_book_ids = []
 
-        for row in row_indices:
-            if row < 0 or row >= len(self.scanned_items):
-                continue
+        try:
+            for row in row_indices:
+                QApplication.processEvents()
+                if self._cancel_add_requested:
+                    break
 
-            item = self.scanned_items[row]
-            status = item.get("status")
-            if status not in ("OK", "Warning") or item.get("is_duplicate"):
-                skipped += 1
-                continue
+                if row < 0 or row >= len(self.scanned_items):
+                    continue
 
-            book_data = item.get("book", {})
-            title = (book_data.get("title") or "").strip()
-            author_text = (book_data.get("author") or "").strip()
-            if not title or not author_text:
-                skipped += 1
-                continue
+                item = self.scanned_items[row]
+                status = item.get("status")
+                if status not in ("OK", "Warning") or item.get("is_duplicate"):
+                    skipped += 1
+                    continue
 
-            try:
-                book = self._build_book_from_scan(book_data)
-                self.book_queries.insert(book)
-                imported += 1
-                item["status"] = "Imported"
-                self.table.setItem(row, 3, QTableWidgetItem("Imported"))
-            except Exception as exc:
-                failed += 1
-                item["status"] = "Failed"
-                error_item = self.table.item(row, 3)
-                error_text = error_item.text() if error_item else ""
-                combined_error = (
-                    error_text + "; " if error_text else "") + str(exc)
-                self.table.setItem(row, 3, QTableWidgetItem(combined_error))
+                book_data = item.get("book", {})
+                title = (book_data.get("title") or "").strip()
+                author_text = (book_data.get("author") or "").strip()
+                if not title or not author_text:
+                    skipped += 1
+                    continue
 
-        self.set_status(
-            f"Imported: {imported} | Skipped: {skipped} | Failed: {failed}")
+                try:
+                    book = self._build_book_from_scan(book_data)
+                    book_id = self.book_queries.insert(book)
+                    inserted_book_ids.append(book_id)
+                    imported += 1
+                    rows_to_remove.append(row)
+                except Exception as exc:
+                    failed += 1
+                    item["status"] = "Failed"
+                    error_item = self.table.item(row, 3)
+                    error_text = error_item.text() if error_item else ""
+                    combined_error = (
+                        error_text + "; " if error_text else "") + str(exc)
+                    self.table.setItem(
+                        row, 3, QTableWidgetItem(combined_error))
+
+            if self._cancel_add_requested:
+                if inserted_book_ids:
+                    self.book_queries.delete_many(inserted_book_ids)
+                self.set_status(
+                    f"Add canceled. No books were added | Skipped: {skipped} | Failed: {failed}")
+                return
+
+            if rows_to_remove:
+                sorted_rows_to_remove = sorted(set(rows_to_remove))
+                next_focus_row = sorted_rows_to_remove[0]
+
+                for row in reversed(sorted_rows_to_remove):
+                    if 0 <= row < len(self.scanned_items):
+                        del self.scanned_items[row]
+                        self.table.removeRow(row)
+
+                self.selected_rows.clear()
+                self.selection_anchor_row = None
+
+                if self.table.rowCount() > 0:
+                    target_row = min(next_focus_row, self.table.rowCount() - 1)
+                    self.table.setCurrentCell(target_row, 1)
+                    self.table.setFocus(Qt.TabFocusReason)
+
+                self._refresh_summary_from_items()
+
+            self.set_status(
+                f"Added: {imported} | Skipped: {skipped} | Failed: {failed}")
+        finally:
+            self._is_adding = False
+            self._cancel_add_requested = False
 
     def _apply_detail_edits(self, row: int, detail_window: ImportDetailWindow):
         """Apply edits returned from ImportDetailWindow to scanned item + table."""
@@ -674,7 +1063,14 @@ class ImportWindow(QDialog):
         while 0 <= row < len(self.scanned_items):
             item = self.scanned_items[row]
             book_data = item.get("book", {})
-            errors = item.get("errors", [])
+            errors = list(item.get("errors", []))
+            if item.get("is_duplicate"):
+                has_duplicate_error = any(
+                    str(err).strip().lower() == "duplicate"
+                    for err in errors
+                )
+                if not has_duplicate_error:
+                    errors.append("Duplicate")
 
             detail_window = ImportDetailWindow(
                 self.db, self.scaler, self.theme_manager,
@@ -736,7 +1132,34 @@ class ImportWindow(QDialog):
         self.on_open_detail(row, self.table.currentColumn())
 
     def on_cancel(self):
-        """Close dialog."""
+        """Handle cancel request for add-in-progress or close dialog."""
+        if self._is_scanning:
+            if self._confirm_cancel_scan():
+                self._cancel_scan_requested = True
+                self.set_status("Canceling scan...")
+            else:
+                self.set_status("Continuing scan")
+            return
+
+        if self._is_adding:
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Stop Add")
+            msg.setIcon(QMessageBox.Question)
+            msg.setText(
+                "Stop adding books now?\n\n"
+                "Any books added in this run will be removed so no partial adds remain."
+            )
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            msg.setDefaultButton(QMessageBox.No)
+            result = msg.exec()
+
+            if result == QMessageBox.Yes:
+                self._cancel_add_requested = True
+                self.set_status("Stopping add operation...")
+            else:
+                self.set_status("Continuing add operation")
+            return
+
         self.reject()
 
     def table_mouse_press(self, event):
@@ -926,6 +1349,36 @@ class ImportWindow(QDialog):
             return
         super().keyPressEvent(event)
 
+    def resizeEvent(self, event):
+        """Keep import table stretch columns proportional on window resize."""
+        super().resizeEvent(event)
+        self.update_stretch_columns()
+
+    def showEvent(self, event):
+        """Apply initial proportional import column widths after layout."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self.update_stretch_columns)
+
+    def update_stretch_columns(self):
+        """Update Import table stretch column widths proportionally."""
+        if not hasattr(self, '_stretch_columns') or not hasattr(self, 'table'):
+            return
+
+        header = self.table.horizontalHeader()
+        fixed_width = 0
+        for col in range(self.table.columnCount()):
+            if col not in self._stretch_columns:
+                fixed_width += header.sectionSize(col)
+
+        available = self.table.viewport().width() - fixed_width
+        if available < 100:
+            return
+
+        total_weight = sum(self._stretch_columns.values())
+        for col, weight in self._stretch_columns.items():
+            width = int(available * weight / total_weight)
+            self.table.setColumnWidth(col, max(width, 90))
+
     def accept(self):
         """Handle dialog accept."""
         announce_dialog_closed(self)
@@ -935,3 +1388,16 @@ class ImportWindow(QDialog):
         """Handle dialog reject."""
         announce_dialog_closed(self)
         super().reject()
+
+    def closeEvent(self, event):
+        """Intercept close while scanning to confirm cancel/continue."""
+        if self._is_scanning:
+            if self._confirm_cancel_scan():
+                self._cancel_scan_requested = True
+                self.set_status("Canceling scan...")
+            else:
+                self.set_status("Continuing scan")
+            event.ignore()
+            return
+
+        super().closeEvent(event)

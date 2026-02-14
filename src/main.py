@@ -13,7 +13,7 @@ This file is responsible for:
 # Version information - update this with each release
 from PySide6.QtGui import QPixmap, QFont
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
+from PySide6.QtWidgets import QApplication, QSplashScreen
 from pathlib import Path
 import os
 import sys
@@ -203,23 +203,6 @@ Use F9 to import or Alt+M for menu options."""
             self.main_window = MainWindow(
                 self.db, self.scaler, self.theme_manager)
             self.main_window.show()
-
-            # Check if screen reader is detected and notify user
-            from PySide6.QtGui import QAccessible
-            from PySide6.QtWidgets import QMessageBox
-            msg = QMessageBox(self.main_window)
-            msg.setWindowTitle("Screen Reader Status")
-            font = msg.font()
-            font.setPointSize(self.scaler.get_scaled_size(14))
-            msg.setFont(font)
-            if QAccessible.isActive():
-                msg.setIcon(QMessageBox.Information)
-                msg.setText("Screen reader is detected.")
-            else:
-                msg.setIcon(QMessageBox.Warning)
-                msg.setText(
-                    "No screen reader detected.\n\nFor best accessibility, start JAWS or NVDA before launching AbCS.")
-            msg.exec()
 
             # Diagnostic: Check accessibility setup (commented out for production)
             # from accessibility.accessible_events import check_accessibility_support

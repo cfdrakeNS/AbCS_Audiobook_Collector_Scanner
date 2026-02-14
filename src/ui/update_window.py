@@ -682,9 +682,11 @@ class UpdateWindow(QDialog):
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
         table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
@@ -719,5 +721,7 @@ class UpdateWindow(QDialog):
         btn_font.setPointSize(base_font_size)
         close_btn.setFont(btn_font)
         layout.addWidget(close_btn)
+
+        dlg.setTabOrder(table, close_btn)
 
         dlg.exec()

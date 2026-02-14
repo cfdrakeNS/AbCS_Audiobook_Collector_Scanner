@@ -6,17 +6,19 @@ Form for viewing and editing scanned audiobook details before import.
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QPushButton, QLabel,
-    QSpinBox, QMessageBox, QApplication, QTextEdit, QDateEdit
+    QSpinBox, QMessageBox, QApplication, QTextEdit,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QStatusBar
 )
-from PySide6.QtCore import Qt, QEvent, QTimer, QDate
+from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
-from datetime import datetime
 
 from database import (
     DatabaseManager, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 )
 from accessibility.scaling import UIScaler
 from accessibility.theme_manager import ThemeManager
+from accessibility.key_filters import is_unmapped_alt_letter
 from accessibility.accessible_events import (
     announce_status_message, announce_dialog_opened, announce_dialog_closed
 )
@@ -29,6 +31,9 @@ class ImportDetailWindow(QDialog):
 
     RESULT_PREV = 2
     RESULT_NEXT = 3
+    ALLOWED_ALT_LETTERS = {
+        'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'L', 'M', 'O', 'R', 'T', 'Y', 'Z'
+    }
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
                  theme_manager: ThemeManager, book_data: dict = None,
@@ -56,7 +61,9 @@ class ImportDetailWindow(QDialog):
         self.total_count = total_count
         self._dirty = False
         self._first_dirty_widget = None
+        self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
+        self._closing_via_handler = False
 
         # Query objects
         self.author_queries = AuthorQueries(db)
@@ -84,14 +91,19 @@ class ImportDetailWindow(QDialog):
         self.set_status("Ready")
 
     def set_status(self, message: str, announce: bool = False):
-        """Set status message using parent import window status bar when available."""
+        """Set status message on this dialog and mirror to parent import window."""
         self._default_status_message = message
+
+        if hasattr(self, "status_bar") and self.status_bar is not None:
+            announce_status_message(
+                self.status_bar, message, move_focus=announce)
+
         parent = self.parent()
         if parent and hasattr(parent, "set_status"):
-            parent.set_status(message, announce=announce)
+            parent.set_status(message, announce=False)
         elif parent and hasattr(parent, "status_bar"):
             announce_status_message(
-                parent.status_bar, message, move_focus=announce)
+                parent.status_bar, message, move_focus=False)
 
     def get_status_summary(self) -> str:
         """Return a concise current-status summary for Alt+/ reading."""
@@ -138,6 +150,10 @@ class ImportDetailWindow(QDialog):
         """
         Event filter to handle focus events on form fields.
         """
+        if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+            event.accept()
+            return True
+
         if event.type() == QEvent.FocusIn:
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(0, lambda w=source: w.deselect())
@@ -148,20 +164,64 @@ class ImportDetailWindow(QDialog):
             elif isinstance(source, QSpinBox):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
+        if event.type() == QEvent.FocusOut:
+            dirty_widget = self._resolve_dirty_source(source)
+            if dirty_widget is not None:
+                field_name = self._get_dirty_field_name(dirty_widget)
+                self.set_status(
+                    f"{field_name} changed. Press Alt+I Save or Alt+C Cancel",
+                    announce=True
+                )
+                self._pending_dirty_widgets.discard(dirty_widget)
+
         return super().eventFilter(source, event)
 
     def _mark_dirty(self, widget=None):
         """Mark form as having unsaved changes."""
+        if widget is not None:
+            self._pending_dirty_widgets.add(widget)
+
         if not self._dirty:
             self._dirty = True
             if widget and not self._first_dirty_widget:
                 self._first_dirty_widget = widget
             self.import_button.setEnabled(True)
 
+    def _get_dirty_field_name(self, widget) -> str:
+        """Return a user-friendly field name for a dirty widget."""
+        mapping = {
+            self.title_edit: "Title",
+            self.author_combo: "Author",
+            self.year_spin: "Year",
+            self.series_combo: "Series",
+            self.genre_combo: "Genre",
+            self.collection_combo: "Collection",
+            self.reader_edit: "Reader",
+            self.time_edit: "Time",
+            self.comments_edit: "Comments",
+        }
+        return mapping.get(widget, "Import details")
+
+    def _resolve_dirty_source(self, source):
+        """Resolve focus-out source widget to tracked dirty control."""
+        if source in self._pending_dirty_widgets:
+            return source
+
+        for combo in [self.author_combo, self.series_combo, self.genre_combo, self.collection_combo]:
+            if combo in self._pending_dirty_widgets and source == combo.lineEdit():
+                return combo
+
+        parent = source.parentWidget() if hasattr(source, "parentWidget") else None
+        if parent in self._pending_dirty_widgets:
+            return parent
+
+        return None
+
     def _clear_dirty(self):
         """Clear dirty flag."""
         self._dirty = False
         self._first_dirty_widget = None
+        self._pending_dirty_widgets.clear()
 
     def _setup_dirty_tracking(self):
         """Setup signals to track changes."""
@@ -177,8 +237,6 @@ class ImportDetailWindow(QDialog):
             lambda: self._mark_dirty(self.time_edit))
         self.reader_edit.textChanged.connect(
             lambda: self._mark_dirty(self.reader_edit))
-        self.read_date.dateChanged.connect(
-            lambda: self._mark_dirty(self.read_date))
         self.series_combo.currentTextChanged.connect(
             lambda: self._mark_dirty(self.series_combo))
         self.genre_combo.currentTextChanged.connect(
@@ -217,19 +275,6 @@ class ImportDetailWindow(QDialog):
             return ""
         return f"{hours:02d}:{minutes:02d}"
 
-    def _get_read_date(self) -> QDate:
-        """Get read date from data if present, otherwise special-date value."""
-        read_value = self.book_data.get("read_date")
-        if isinstance(read_value, QDate):
-            return read_value
-        if isinstance(read_value, datetime):
-            return QDate(read_value.year, read_value.month, read_value.day)
-        if isinstance(read_value, str) and read_value.strip():
-            parsed = QDate.fromString(read_value.strip(), "yyyy-MM-dd")
-            if parsed.isValid():
-                return parsed
-        return self.read_date.minimumDate()
-
     def load_book_data(self):
         """Load scanned book data into form fields."""
         self.title_edit.setText(self.book_data.get("title", ""))
@@ -245,7 +290,6 @@ class ImportDetailWindow(QDialog):
 
         self.time_edit.setText(self._format_duration())
         self.reader_edit.setText(self.book_data.get("narrator", ""))
-        self.read_date.setDate(self._get_read_date())
         self.series_combo.setCurrentText(self.book_data.get("series", ""))
         self.genre_combo.setCurrentText(self.book_data.get("genre", ""))
 
@@ -254,6 +298,13 @@ class ImportDetailWindow(QDialog):
             self.collection_combo.setCurrentText(collection_name)
         elif self.collection_combo.count() > 0:
             self.collection_combo.setCurrentIndex(0)
+
+        tracks = self.book_data.get("tracks")
+        if not tracks:
+            files = self.book_data.get("files")
+            if isinstance(files, list):
+                tracks = len(files)
+        self.files_edit.setText(str(tracks) if tracks else "")
 
         bitrate = self.book_data.get("bitrate")
         self.bitrate_edit.setText(f"{bitrate} kbps" if bitrate else "")
@@ -275,7 +326,9 @@ class ImportDetailWindow(QDialog):
 
     def apply_control_styles(self):
         """Apply consistent control styling with scaling."""
-        scaled_height = self.scaler.get_scaled_size(28)
+        base_height = 20
+        scale_pct = self.scaler.current_scale
+        scaled_height = int(base_height * (scale_pct / 100.0))
 
         lineedit_style = f"""
             QLineEdit {{
@@ -327,20 +380,6 @@ class ImportDetailWindow(QDialog):
             }}
         """
 
-        dateedit_style = f"""
-            QDateEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QDateEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-        """
-
         button_style = f"""
             QPushButton {{
                 padding: 4px 12px;
@@ -369,8 +408,6 @@ class ImportDetailWindow(QDialog):
             widget.setStyleSheet(combo_style)
         for widget in self.findChildren(QSpinBox):
             widget.setStyleSheet(spinbox_style)
-        for widget in self.findChildren(QDateEdit):
-            widget.setStyleSheet(dateedit_style)
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
@@ -414,7 +451,7 @@ class ImportDetailWindow(QDialog):
         self.comments_label.setBuddy(self.comments_edit)
         form.addRow(self.comments_label, self.comments_edit)
 
-        # Row 3: Year + Time + Reader + Read date
+        # Row 3: Year + Time + Reader
         row3_layout = QHBoxLayout()
 
         self.year_spin = QSpinBox()
@@ -438,18 +475,6 @@ class ImportDetailWindow(QDialog):
         reader_label.setBuddy(self.reader_edit)
         row3_layout.addWidget(reader_label)
         row3_layout.addWidget(self.reader_edit)
-
-        read_label = QLabel("Rea&d:")
-        self.read_date = QDateEdit()
-        self.read_date.setCalendarPopup(True)
-        self.read_date.setDisplayFormat("yyyy-MM-dd")
-        self.read_date.setAccessibleName("Date read")
-        self.read_date.setSpecialValueText("Not read")
-        self.read_date.setMinimumDate(QDate(1900, 1, 1))
-        self.read_date.setDate(self.read_date.minimumDate())
-        read_label.setBuddy(self.read_date)
-        row3_layout.addWidget(read_label)
-        row3_layout.addWidget(self.read_date)
 
         year_label = QLabel("&Year:")
         year_label.setBuddy(self.year_spin)
@@ -478,16 +503,26 @@ class ImportDetailWindow(QDialog):
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
 
-        series_label = QLabel("Ser&ies:")
+        series_label = QLabel("&Series:")
         series_label.setBuddy(self.series_combo)
         form.addRow(series_label, row4_layout)
 
-        # Row 5: Bitrate + Size + Format + Source
+        # Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
 
+        files_label = QLabel("&Files:")
+        self.files_edit = QLineEdit()
+        self.files_edit.setReadOnly(True)
+        self.files_edit.setAccessibleName("Number of files")
+        files_label.setBuddy(self.files_edit)
+        row5_layout.addWidget(self.files_edit)
+
+        bitrate_label = QLabel("&Bitrate:")
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
+        bitrate_label.setBuddy(self.bitrate_edit)
+        row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
 
         size_label = QLabel("Si&ze:")
@@ -512,9 +547,7 @@ class ImportDetailWindow(QDialog):
         row5_layout.addWidget(source_label)
         row5_layout.addWidget(self.source_edit)
 
-        bitrate_label = QLabel("&Bitrate:")
-        bitrate_label.setBuddy(self.bitrate_edit)
-        form.addRow(bitrate_label, row5_layout)
+        form.addRow(files_label, row5_layout)
 
         # Row 6: Errors
         row6_layout = QHBoxLayout()
@@ -545,7 +578,12 @@ class ImportDetailWindow(QDialog):
 
         layout.addLayout(form)
 
-        # Footer: buttons
+        # Footer: status bar + buttons
+        self.status_bar = QStatusBar()
+        self.status_bar.setSizeGripEnabled(False)
+        layout.addWidget(self.status_bar)
+
+        # Buttons
         button_layout = QHBoxLayout()
 
         self.import_button = QPushButton("&Import")
@@ -572,6 +610,10 @@ class ImportDetailWindow(QDialog):
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.close_shortcut.activated.connect(self.reject)
@@ -587,6 +629,82 @@ class ImportDetailWindow(QDialog):
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Import Detail")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(580, 440)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected { border: none; outline: none; }"
+        )
+
+        shortcuts = [
+            ("Alt+/", "Read status bar"),
+            ("Alt+T", "Title"),
+            ("Alt+A", "Author"),
+            ("Alt+O", "Comments"),
+            ("Alt+Y", "Year"),
+            ("Alt+M", "Time"),
+            ("Alt+R", "Reader"),
+            ("Alt+I", "Series"),
+            ("Alt+G", "Genre"),
+            ("Alt+L", "Collection"),
+            ("Alt+F", "Files"),
+            ("Alt+B", "Bitrate"),
+            ("Alt+Z", "Size"),
+            ("Alt+H", "Path"),
+            ("Alt+I", "Import"),
+            ("Alt+C or Escape", "Cancel"),
+            ("Page Up", "Previous item"),
+            ("Page Down", "Next item"),
+            ("F1", "Show keyboard shortcuts"),
+        ]
+
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+            table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+        layout.addWidget(table)
+
+        close_button = QPushButton("Close")
+        close_button.setAccessibleName("Close")
+        close_button.clicked.connect(dlg.accept)
+        btn_font = close_button.font()
+        btn_font.setPointSize(self.scaler.get_scaled_size(11))
+        close_button.setFont(btn_font)
+        layout.addWidget(close_button)
+
+        dlg.setTabOrder(table, close_button)
+
+        dlg.exec()
 
     def _collect_form_data(self):
         """Collect edited values back into book_data."""
@@ -624,6 +742,34 @@ class ImportDetailWindow(QDialog):
         super().accept()
 
     def reject(self):
-        """Handle cancel."""
-        announce_dialog_closed(self)
-        super().reject()
+        """Handle cancel with dirty-check prompt before closing."""
+        if self._closing_via_handler:
+            announce_dialog_closed(self)
+            super().reject()
+            return
+
+        if self._dirty:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Question)
+            msg.setWindowTitle("Save Changes")
+            msg.setText(
+                "Import details changed.\n\n"
+                "Save = apply edits and close\n"
+                "Cancel = continue editing"
+            )
+            save_button = msg.addButton("&Save", QMessageBox.AcceptRole)
+            msg.addButton("&Cancel", QMessageBox.RejectRole)
+            msg.exec()
+
+            if msg.clickedButton() == save_button:
+                self.accept()
+            else:
+                self.set_status("Close canceled")
+            return
+
+        self._closing_via_handler = True
+        try:
+            announce_dialog_closed(self)
+            super().reject()
+        finally:
+            self._closing_via_handler = False

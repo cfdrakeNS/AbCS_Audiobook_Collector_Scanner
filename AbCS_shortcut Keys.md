@@ -1,0 +1,178 @@
+# AbCS Shortcut Keys (by Window)
+
+This list reflects shortcuts currently implemented in code as of 2026-02-14.
+
+## Mnemonic rules
+
+- Use unique **Alt+letter** mnemonics within each window/dialog (no duplicates in the same form).
+- Prefer first letter of the control/action when available; otherwise use a memorable consonant.
+- Keep action buttons consistent across windows where possible:
+	- **Alt+S** Save / Scan / Scenario (context-specific)
+	- **Alt+C** Close / Cancel
+	- **Alt+I** Import
+- Avoid assigning Alt mnemonics to read-only fields unless users need direct focus there.
+- Menu bar mnemonics may repeat across different menus (normal Qt behavior).
+- After changing any `&` mnemonic in code, update this document in the same change.
+
+## Main Window (`src/ui/main_window.py`)
+
+### Alt shortcuts
+- **Alt+C**: Collection filter
+- **Alt+R**: Read filter
+- **Alt+O**: Order by
+- **Alt+S**: Search
+- **Alt+B**: Book list focus
+- **Alt+U**: Update selected
+- **Alt+D**: Delete selected
+- **Alt+L**: Cancel selection
+- **Alt+/**: Read status bar aloud
+- **Alt+1..Alt+0**: Jump to table columns
+
+### Function / navigation shortcuts
+- **F1**: Show keyboard shortcuts
+- **Escape**: Clear selection/search (window handler)
+
+### Ctrl shortcuts
+- **Ctrl+N**: New Book
+- **Ctrl+I**: Import
+- **Ctrl+Q**: Quit
+- **Ctrl+Return**: Open Book Details
+- **Ctrl++** and **Ctrl+Num++**: Zoom in
+- **Ctrl+-** and **Ctrl+Num+-**: Zoom out
+- **Ctrl+0**: Reset zoom
+
+---
+
+## Book Details Window (`src/ui/book_details.py`)
+
+### Alt shortcuts (field focus / buttons)
+- **Alt+T**: Title
+- **Alt+A**: Author
+- **Alt+O**: Comments
+- **Alt+Y**: Year
+- **Alt+M**: Time
+- **Alt+R**: Reader
+- **Alt+E**: Read date
+- **Alt+I**: Series
+- **Alt+G**: Genre
+- **Alt+K**: Collection
+- **Alt+F**: Files
+- **Alt+B**: Bitrate
+- **Alt+Z**: Size
+- **Alt+H**: Path
+- **Alt+N**: New
+- **Alt+S**: Save
+- **Alt+D**: Delete
+- **Alt+L**: Cancel
+- **Alt+C**: Close
+- **Alt+/**: Read status bar aloud
+
+### Function / navigation shortcuts
+- **F1**: Show keyboard shortcuts
+- **Page Up**: Previous book
+- **Page Down**: Next book
+- **Escape**: Close window
+
+### Other shortcuts
+- **Delete**: Delete current book
+
+---
+
+## Import Window (`src/ui/import_window.py`)
+
+### Alt shortcuts
+- **Alt+F**: Folder field
+- **Alt+O**: Formats field
+- **Alt+W**: Browse
+- **Alt+S**: Scan
+- **Alt+I**: Import Selected
+- **Alt+A**: Import All Valid
+- **Alt+C**: Cancel
+- **Alt+B**: Focus import list table
+- **Alt+/**: Read status bar aloud
+
+### Function / navigation shortcuts
+- **F4**: Close/Cancel
+- **F8**: Open selected item in Import Detail
+
+### Other shortcuts
+- **Ctrl+Return** and **Ctrl+Enter**: Open selected item in Import Detail
+
+---
+
+## Import Detail Window (`src/ui/import_detail_window.py`)
+
+### Alt shortcuts (field focus / buttons)
+- **Alt+T**: Title
+- **Alt+A**: Author
+- **Alt+O**: Comments
+- **Alt+Y**: Year
+- **Alt+M**: Time
+- **Alt+R**: Reader
+- **Alt+S**: Series
+- **Alt+G**: Genre
+- **Alt+L**: Collection
+- **Alt+F**: Files
+- **Alt+B**: Bitrate
+- **Alt+Z**: Size
+- **Alt+E**: Errors
+- **Alt+H**: Path
+- **Alt+I**: Import button
+- **Alt+C**: Cancel
+
+### Function / navigation shortcuts
+- **Page Up**: Previous import item
+- **Page Down**: Next import item
+- **Escape**: Close/Cancel
+
+### Other shortcuts
+- **Alt+/**: Read status bar aloud
+
+---
+
+## Update Window (`src/ui/update_window.py`)
+
+### Alt shortcuts
+- **Alt+S**: Series
+- **Alt+G**: Genre
+- **Alt+L**: Collection
+- **Alt+C**: Close
+- **Alt+B**: Focus book list
+- **Alt+Down**: Open combo dropdown
+
+### Function / navigation shortcuts
+- **F1**: Show keyboard shortcuts
+- **Escape**: Close window
+
+---
+
+## Preferences Window (`src/ui/preferences_window.py`)
+
+### Alt shortcuts
+- **Alt+T**: Theme
+- **Alt+P**: Preset
+- **Alt+Z**: Zoom (%)
+- **Alt+D**: Directory
+- **Alt+B**: Browse
+- **Alt+O**: Formats
+- **Alt+S**: Scenario
+- **Alt+R**: Scenario Description
+- **Alt+A**: Author Fallback
+- **Alt+I**: Title Fallback
+- **Alt+K**: Reader Keywords
+- **Alt+V**: Save
+- **Alt+C**: Cancel
+
+### Function / navigation shortcuts
+- **F4**: Close/Cancel
+
+---
+
+## Shortcut QA Checklist (Before Commit)
+
+- Run `python test/check_shortcut_mnemonics.py` (or `.venv/Scripts/python.exe test/check_shortcut_mnemonics.py`).
+- Verify no duplicate **Alt+letter** mnemonics exist within any single window/dialog.
+- Verify **F1** opens shortcut/help content where implemented.
+- Verify **Escape** and/or **F4** close the intended dialog/window.
+- Verify **Alt+/** reads status bar text in windows that support it.
+- Verify this file is updated for any changed `&` labels or added shortcuts.
