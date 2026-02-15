@@ -30,8 +30,11 @@ Thumbs.db
 # Logs
 *.log
 
-# Database files (keep the schema but ignore working database)
-# data/abcs.db
+# Database files (keep schema SQL tracked, ignore runtime DBs)
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite3
 
 # Backup folder
 backups/

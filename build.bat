@@ -48,7 +48,6 @@ python -m PyInstaller ^
     --onefile ^
     --windowed ^
     --add-data="data/abcdDB_def.sql;data" ^
-    --add-data="data/abcs.db;data" ^
     --hidden-import="PySide6.QtCore" ^
     --hidden-import="PySide6.QtGui" ^
     --hidden-import="PySide6.QtWidgets" ^
@@ -69,22 +68,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Copy database files alongside the exe for easy distribution
-if not exist dist\data mkdir dist\data
-copy /y data\abcs.db dist\data\abcs.db >nul
-copy /y data\abcdDB_def.sql dist\data\abcdDB_def.sql >nul
-
 echo.
 echo ========================================
 echo Build Complete!
 echo ========================================
 echo.
 echo Executable location: dist\AbCS.exe
-echo Database files copied to: dist\data\
+echo Database schema bundled: data\abcdDB_def.sql
 echo.
 echo You can now distribute dist\AbCS.exe to your friend.
 echo.
-echo Note: The first run will create a new database if one doesn't exist.
+echo Note: No database file is bundled; first run creates a new database automatically.
 echo.
 
 pause
