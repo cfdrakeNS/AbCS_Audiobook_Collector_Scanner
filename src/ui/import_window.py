@@ -29,10 +29,6 @@ from accessibility.accessible_events import (
 from ui.import_detail_window import ImportDetailWindow
 
 
-class _ScanCanceledError(Exception):
-    """Raised when a running scan is canceled by the user."""
-
-
 class ImportWindow(QDialog):
     """
     Import dialog for scanning folders and importing metadata.
@@ -268,7 +264,7 @@ class ImportWindow(QDialog):
         self.scan_progress.setFixedWidth(220)
         footer_layout.addWidget(self.scan_progress)
 
-        self.import_selected_button = QPushButton("&Add Selected")
+        self.import_selected_button = QPushButton("Add Selected")
         self.import_selected_button.setAccessibleName("Add Selected")
         self.import_selected_button.setAccessibleDescription(
             "Add selected valid items - Alt+I")
@@ -590,6 +586,12 @@ class ImportWindow(QDialog):
         read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         read_status_shortcut.activated.connect(self.on_read_status_bar)
 
+        add_selected_shortcut = QShortcut(QKeySequence("Alt+I"), self)
+        add_selected_shortcut.activated.connect(self.on_import_selected)
+
+        add_all_shortcut = QShortcut(QKeySequence("Alt+A"), self)
+        add_all_shortcut.activated.connect(self.on_import_all)
+
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
         dlg = QDialog(self)
@@ -731,6 +733,10 @@ class ImportWindow(QDialog):
             duplicates=self._summary_counts["duplicates"],
         )
 
+    def _show_info_popup(self, title: str, message: str):
+        """Show an informational popup."""
+        QMessageBox.information(self, title, message)
+
     def on_browse(self):
         """Open folder browser for scan root."""
         current_dir = self.folder_edit.text().strip() or ""
@@ -749,14 +755,15 @@ class ImportWindow(QDialog):
 
         if self.table.rowCount() > 0:
             self.table.setRowCount(0)
-            self.scanned_items = []
-            self.update_summary(0, 0, 0, 0)
-
+        self.scanned_items = []
         self.selected_rows.clear()
         self.selection_anchor_row = None
+        self.update_summary(0, 0, 0, 0)
+
         self._is_scanning = True
         self._cancel_scan_requested = False
         self._update_cancel_button_state()
+        scan_was_canceled = False
 
         self.scan_button.setEnabled(False)
         self.browse_button.setEnabled(False)
@@ -768,8 +775,6 @@ class ImportWindow(QDialog):
         def on_progress(processed: int, total: int, file_path: str):
             if total <= 0:
                 return
-            if self._cancel_scan_requested:
-                raise _ScanCanceledError()
             percent = int((processed / total) * 100)
             self.scan_progress.setValue(percent)
             self.scan_progress.setFormat(f"Scanning {processed}/{total}")
@@ -784,19 +789,18 @@ class ImportWindow(QDialog):
                 include_subfolders=self.include_subfolders,
                 allowed_extensions=self.allowed_extensions,
                 progress_callback=on_progress,
+                cancel_check=lambda: self._cancel_scan_requested,
             )
-        except _ScanCanceledError:
-            self.scan_progress.setValue(0)
-            self.scan_progress.setFormat("Scan canceled")
-            self.set_status("Scan canceled. Partial scan results discarded.")
-            return
+            scan_was_canceled = self._cancel_scan_requested
         finally:
             self._is_scanning = False
             self._cancel_scan_requested = False
             self._update_cancel_button_state()
             self.scan_button.setEnabled(True)
             self.browse_button.setEnabled(True)
-            if self.scan_progress.format() != "Scan canceled":
+            if scan_was_canceled:
+                self.scan_progress.setFormat("Scan canceled")
+            else:
                 self.scan_progress.setValue(100)
                 self.scan_progress.setFormat("Scan complete")
 
@@ -810,7 +814,6 @@ class ImportWindow(QDialog):
             for b in existing_books
         ]
 
-        self.scanned_items = []
         self.table.setRowCount(len(books))
 
         valid_count = 0
@@ -872,7 +875,10 @@ class ImportWindow(QDialog):
             })
 
         if not books:
-            self.set_status("No audio files found")
+            if scan_was_canceled:
+                self.set_status("Scan canceled. No partial results found.")
+            else:
+                self.set_status("No audio files found")
             self.update_summary(0, 0, 0, 0)
             return
 
@@ -882,6 +888,19 @@ class ImportWindow(QDialog):
             errors=error_count,
             duplicates=duplicate_count,
             announce=True)
+
+        summary_message = (
+            f"Scanned: {len(books)} | Valid: {valid_count} | "
+            f"Errors: {error_count} | Duplicates: {duplicate_count}"
+        )
+        if scan_was_canceled:
+            self.set_status(
+                f"Scan canceled. Partial results kept. {summary_message}")
+            self._show_info_popup(
+                "Scan Canceled (Partial Results)",
+                f"Partial results kept.\n\n{summary_message}")
+        else:
+            self._show_info_popup("Scan Complete", summary_message)
 
         # Move focus to first title after summary announcement has started
         def focus_first_title():
@@ -1019,6 +1038,11 @@ class ImportWindow(QDialog):
 
             self.set_status(
                 f"Added: {imported} | Skipped: {skipped} | Failed: {failed}")
+
+            remaining = len(self.scanned_items)
+            self._show_info_popup(
+                "Add Complete",
+                f"Books added: {imported}\nLeft in import list: {remaining}")
         finally:
             self._is_adding = False
             self._cancel_add_requested = False

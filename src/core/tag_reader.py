@@ -311,7 +311,9 @@ class BookScanner:
 
     def scan_folder(self, folder_path: str, include_subfolders: bool = True,
                     allowed_extensions: Optional[set] = None,
-                    progress_callback: Optional[Callable[[int, int, str], None]] = None) -> List[Dict[str, Any]]:
+                    progress_callback: Optional[Callable[[
+                        int, int, str], None]] = None,
+                    cancel_check: Optional[Callable[[], bool]] = None) -> List[Dict[str, Any]]:
         """
         Scan folder recursively for audiobooks.
         Groups files by album (book title).
@@ -321,6 +323,7 @@ class BookScanner:
             include_subfolders: True to scan subfolders
             allowed_extensions: Optional set of lowercase extensions (with dot)
             progress_callback: Optional callback(processed, total, file_path)
+            cancel_check: Optional callback that returns True to stop early
 
         Returns:
             List of book dictionaries
@@ -354,6 +357,9 @@ class BookScanner:
         total_files = len(audio_files)
 
         for index, file_path in enumerate(audio_files, start=1):
+            if cancel_check is not None and cancel_check():
+                break
+
             if progress_callback is not None:
                 progress_callback(index, total_files, file_path)
 
