@@ -198,6 +198,21 @@ class DatabaseManager:
         # Check if main tables exist
         if not self.table_exists('books'):
             self._create_schema()
+        self._ensure_minimum_seed_data()
+
+    def _ensure_minimum_seed_data(self):
+        """Ensure required seed data exists for first-run and repaired databases."""
+        if not self.table_exists('collections'):
+            return
+
+        row = self.fetch_one("SELECT COUNT(*) FROM collections")
+        collection_count = row[0] if row else 0
+        if collection_count == 0:
+            self.execute(
+                "INSERT INTO collections (name, active) VALUES (?, ?)",
+                ("General", 1),
+            )
+            self.connect().commit()
 
     def _create_schema(self):
         """

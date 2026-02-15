@@ -18,85 +18,91 @@ class ThemeName(Enum):
     DARK = "dark"
     SOLARIZED_LIGHT = "solarized_light"
     SOLARIZED_DARK = "solarized_dark"
+    COMFORT_LIGHT = "comfort_light"
+    MUTED_DARK = "muted_dark"
 
 
 class Theme:
     """Represents a color theme."""
-    
+
     def __init__(self, name: str, colors: Dict[str, str]):
         """
         Initialize theme.
-        
+
         Args:
             name: Theme display name
             colors: Dictionary of color roles to hex colors
         """
         self.name = name
         self.colors = colors
-    
+
     def apply_to_palette(self, palette: QPalette) -> QPalette:
         """
         Apply theme colors to a QPalette.
-        
+
         Args:
             palette: Palette to modify
-            
+
         Returns:
             Modified palette
         """
         # Window (background)
         if 'window' in self.colors:
             palette.setColor(QPalette.Window, QColor(self.colors['window']))
-        
+
         # Window text
         if 'window_text' in self.colors:
-            palette.setColor(QPalette.WindowText, QColor(self.colors['window_text']))
-        
+            palette.setColor(QPalette.WindowText, QColor(
+                self.colors['window_text']))
+
         # Base (input background)
         if 'base' in self.colors:
             palette.setColor(QPalette.Base, QColor(self.colors['base']))
-        
+
         # Text (input text)
         if 'text' in self.colors:
             palette.setColor(QPalette.Text, QColor(self.colors['text']))
-        
+
         # Button background
         if 'button' in self.colors:
             palette.setColor(QPalette.Button, QColor(self.colors['button']))
-        
+
         # Button text
         if 'button_text' in self.colors:
-            palette.setColor(QPalette.ButtonText, QColor(self.colors['button_text']))
-        
+            palette.setColor(QPalette.ButtonText, QColor(
+                self.colors['button_text']))
+
         # Highlight (selection)
         if 'highlight' in self.colors:
-            palette.setColor(QPalette.Highlight, QColor(self.colors['highlight']))
-        
+            palette.setColor(QPalette.Highlight,
+                             QColor(self.colors['highlight']))
+
         # Highlighted text
         if 'highlight_text' in self.colors:
-            palette.setColor(QPalette.HighlightedText, QColor(self.colors['highlight_text']))
-        
+            palette.setColor(QPalette.HighlightedText,
+                             QColor(self.colors['highlight_text']))
+
         # Link
         if 'link' in self.colors:
             palette.setColor(QPalette.Link, QColor(self.colors['link']))
-        
+
         return palette
 
 
 class ThemeManager(QObject):
     """
     Manages application themes and color schemes.
-    
+
     Signals:
         theme_changed: Emitted when theme changes (theme_name: str)
     """
-    
+
     theme_changed = Signal(str)
-    
+
     # Built-in themes
     THEMES = {
         ThemeName.DEFAULT: Theme("Default (System)", {}),  # Use system colors
-        
+
         ThemeName.HIGH_CONTRAST_DARK: Theme("High Contrast Dark", {
             'window': '#000000',
             'window_text': '#FFFFFF',
@@ -108,7 +114,7 @@ class ThemeManager(QObject):
             'highlight_text': '#000000',
             'link': '#00FFFF',
         }),
-        
+
         ThemeName.HIGH_CONTRAST_LIGHT: Theme("High Contrast Light", {
             'window': '#FFFFFF',
             'window_text': '#000000',
@@ -120,7 +126,7 @@ class ThemeManager(QObject):
             'highlight_text': '#FFFFFF',
             'link': '#0000FF',
         }),
-        
+
         ThemeName.DARK: Theme("Dark", {
             'window': '#2B2B2B',
             'window_text': '#E0E0E0',
@@ -132,7 +138,7 @@ class ThemeManager(QObject):
             'highlight_text': '#FFFFFF',
             'link': '#569CD6',
         }),
-        
+
         ThemeName.SOLARIZED_LIGHT: Theme("Solarized Light", {
             'window': '#FDF6E3',
             'window_text': '#657B83',
@@ -144,7 +150,7 @@ class ThemeManager(QObject):
             'highlight_text': '#FDF6E3',
             'link': '#268BD2',
         }),
-        
+
         ThemeName.SOLARIZED_DARK: Theme("Solarized Dark", {
             'window': '#002B36',
             'window_text': '#839496',
@@ -156,79 +162,103 @@ class ThemeManager(QObject):
             'highlight_text': '#FDF6E3',
             'link': '#2AA198',
         }),
+
+        ThemeName.COMFORT_LIGHT: Theme("Comfort Light", {
+            'window': '#F6F5F1',
+            'window_text': '#2E3138',
+            'base': '#FBFAF7',
+            'text': '#30343C',
+            'button': '#EDE9E0',
+            'button_text': '#2E3138',
+            'highlight': '#7A8FA8',
+            'highlight_text': '#FFFFFF',
+            'link': '#3E5F8A',
+        }),
+
+        ThemeName.MUTED_DARK: Theme("Muted Dark", {
+            'window': '#23262B',
+            'window_text': '#D0D6DD',
+            'base': '#1C1F24',
+            'text': '#D4DAE2',
+            'button': '#2D3138',
+            'button_text': '#D0D6DD',
+            'highlight': '#5D7FA3',
+            'highlight_text': '#FFFFFF',
+            'link': '#7AA2CF',
+        }),
     }
-    
+
     def __init__(self, app: QApplication):
         """
         Initialize theme manager.
-        
+
         Args:
             app: QApplication instance
         """
         super().__init__()
         self.app = app
         self.settings = QSettings('AbCS', 'AudioBookCollector')
-        
+
         # Store original palette for reset
         self.original_palette = QPalette(app.palette())
-        
+
         # Load saved theme or use default
         saved_theme = self.settings.value('theme', ThemeName.DEFAULT.value)
         self._current_theme_name = self._validate_theme_name(saved_theme)
         self._apply_theme()
-    
+
     @property
     def current_theme_name(self) -> str:
         """Get current theme name."""
         return self._current_theme_name
-    
+
     def set_theme(self, theme_name: str):
         """
         Set current theme.
-        
+
         Args:
             theme_name: Name from ThemeName enum
         """
         theme_name = self._validate_theme_name(theme_name)
-        
+
         if theme_name != self._current_theme_name:
             self._current_theme_name = theme_name
             self._apply_theme()
             self.theme_changed.emit(theme_name)
-            
+
             # Save to settings
             self.settings.setValue('theme', theme_name)
-    
+
     def get_theme_names(self) -> list:
         """
         Get list of available theme names.
-        
+
         Returns:
             List of (display_name, theme_id) tuples
         """
-        return [(theme.name, theme_enum.value) 
+        return [(theme.name, theme_enum.value)
                 for theme_enum, theme in self.THEMES.items()]
-    
+
     def get_current_theme_display_name(self) -> str:
         """Get display name of current theme."""
         for theme_enum, theme in self.THEMES.items():
             if theme_enum.value == self._current_theme_name:
                 return theme.name
         return "Unknown"
-    
+
     def _validate_theme_name(self, theme_name: str) -> str:
         """Validate theme name, return default if invalid."""
         valid_names = [t.value for t in ThemeName]
         if theme_name in valid_names:
             return theme_name
         return ThemeName.DEFAULT.value
-    
+
     def _apply_theme(self):
         """Apply current theme to application."""
         # Get theme
         theme_enum = ThemeName(self._current_theme_name)
         theme = self.THEMES[theme_enum]
-        
+
         # Create new palette
         if theme_enum == ThemeName.DEFAULT:
             # Use system default
@@ -237,13 +267,13 @@ class ThemeManager(QObject):
             # Start with current palette and modify
             palette = QPalette(self.app.palette())
             palette = theme.apply_to_palette(palette)
-        
+
         # Apply to application
         self.app.setPalette(palette)
-        
+
         # Additional stylesheet tweaks for specific themes
         extra_style = ""
-        
+
         if theme_enum in [ThemeName.HIGH_CONTRAST_DARK, ThemeName.HIGH_CONTRAST_LIGHT]:
             # Ensure very clear focus indicators for high contrast
             extra_style = """
@@ -256,7 +286,7 @@ class ThemeManager(QObject):
                     border: 3px solid palette(highlight);
                 }
             """
-        
+
         if extra_style:
             current_style = self.app.styleSheet()
             self.app.setStyleSheet(current_style + "\n" + extra_style)
@@ -269,16 +299,17 @@ _theme_manager_instance: Optional[ThemeManager] = None
 def get_theme_manager(app: Optional[QApplication] = None) -> ThemeManager:
     """
     Get global theme manager instance.
-    
+
     Args:
         app: QApplication (required on first call)
-        
+
     Returns:
         ThemeManager instance
     """
     global _theme_manager_instance
     if _theme_manager_instance is None:
         if app is None:
-            raise ValueError("QApplication required for first call to get_theme_manager()")
+            raise ValueError(
+                "QApplication required for first call to get_theme_manager()")
         _theme_manager_instance = ThemeManager(app)
     return _theme_manager_instance

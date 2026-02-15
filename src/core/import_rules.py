@@ -1,5 +1,6 @@
 """Rule engine for import validation."""
 
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 from PySide6.QtCore import QSettings
@@ -92,27 +93,12 @@ class ImportRulesEngine:
                 default_enabled=False,
                 default_severity="warning",
             ),
-            ValidationRule(
-                "genre_missing",
-                self._rule_genre_missing,
-                settings_key="genre_missing",
-                default_enabled=False,
-                default_severity="warning",
-            ),
-            ValidationRule(
-                "bitrate_below_minimum",
-                self._rule_bitrate_below_minimum,
-                settings_key="bitrate_below_minimum",
-                default_enabled=False,
-                default_severity="warning",
-            ),
         ]
         self._rule_settings: Dict[str, RuleSetting] = {}
         self.min_title_length = 3
         self.file_structure_pattern = "author_title"
-        self.min_year = 1900
-        self.max_year = 2100
-        self.min_bitrate = 0
+        self.min_year = 1801
+        self.max_year = datetime.now().year
         self.reload_settings()
 
     def reload_settings(self):
@@ -147,26 +133,9 @@ class ImportRulesEngine:
             "author_title",
             type=str,
         )
-        self.min_year = self.settings.value(
-            "import/rules/year_out_of_range/min_year",
-            1900,
-            type=int,
-        )
-        self.max_year = self.settings.value(
-            "import/rules/year_out_of_range/max_year",
-            2100,
-            type=int,
-        )
-        if self.max_year < self.min_year:
-            self.min_year, self.max_year = self.max_year, self.min_year
-        self.min_bitrate = max(
-            0,
-            self.settings.value(
-                "import/rules/bitrate_below_minimum/min_kbps",
-                0,
-                type=int,
-            ),
-        )
+        # Fixed year consistency rule: >1800 and <= current year.
+        self.min_year = 1801
+        self.max_year = datetime.now().year
 
     def validate(self, book: Dict[str, Any]) -> List[str]:
         errors: List[str] = []
@@ -291,28 +260,4 @@ class ImportRulesEngine:
             return [
                 f"Year outside allowed range ({self.min_year}-{self.max_year})"
             ]
-        return []
-
-    @staticmethod
-    def _rule_genre_missing(book: Dict[str, Any]) -> List[str]:
-        genre = (book.get("genre") or "").strip()
-        if not genre:
-            return ["Genre is missing"]
-        return []
-
-    def _rule_bitrate_below_minimum(self, book: Dict[str, Any]) -> List[str]:
-        if self.min_bitrate <= 0:
-            return []
-
-        bitrate = book.get("bitrate")
-        if bitrate in (None, ""):
-            return []
-
-        try:
-            bitrate_value = int(bitrate)
-        except (TypeError, ValueError):
-            return ["Bitrate is not a valid number"]
-
-        if bitrate_value < self.min_bitrate:
-            return [f"Bitrate below minimum ({self.min_bitrate} kbps)"]
         return []

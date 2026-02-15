@@ -167,10 +167,52 @@ class UIScaler(QObject):
             QTableView::item:selected {{
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
+                border: none;
+                outline: none;
+            }}
+
+            QTableView::item:selected:focus {{
+                border: none;
+                outline: none;
+            }}
+
+            QTableWidget::item:selected {{
+                border: none;
+                outline: none;
+            }}
+
+            QTableWidget::item:selected:focus {{
+                border: none;
+                outline: none;
+            }}
+
+            QListView::item:selected {{
+                border: none;
+                outline: none;
+            }}
+
+            QListWidget::item:selected {{
+                border: none;
+                outline: none;
             }}
 
             QTableView::item {{
                 padding: {int(8 * self._current_scale / 100)}px;
+            }}
+
+            /* Global default: hide vertical row header sections (row numbers) */
+            QHeaderView::section:vertical {{
+                min-width: 0px;
+                max-width: 0px;
+                width: 0px;
+                padding: 0px;
+                margin: 0px;
+                border: none;
+            }}
+
+            QTableCornerButton::section {{
+                border: none;
+                background: transparent;
             }}
 
             /* Combo box dropdown */

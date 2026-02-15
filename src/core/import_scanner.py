@@ -17,7 +17,7 @@ class ImportScanner:
         self.strip_leading_punctuation = False
         self.remove_non_alphanumeric = False
         self.proper_case_fields = False
-        self.move_leading_the_author = False
+        self.move_leading_the_title = False
 
     def configure(
         self,
@@ -29,7 +29,7 @@ class ImportScanner:
         strip_leading_punctuation: bool = False,
         remove_non_alphanumeric: bool = False,
         proper_case_fields: bool = False,
-        move_leading_the_author: bool = False,
+        move_leading_the_title: bool = False,
     ):
         self.scenario_mode = scenario_mode or "mass_standard"
         self.author_fallback_mode = author_fallback_mode or "folder"
@@ -38,7 +38,7 @@ class ImportScanner:
         self.strip_leading_punctuation = bool(strip_leading_punctuation)
         self.remove_non_alphanumeric = bool(remove_non_alphanumeric)
         self.proper_case_fields = bool(proper_case_fields)
-        self.move_leading_the_author = bool(move_leading_the_author)
+        self.move_leading_the_title = bool(move_leading_the_title)
 
         cleaned = [keyword.strip().lower()
                    for keyword in reader_keywords if keyword and keyword.strip()]
@@ -183,9 +183,9 @@ class ImportScanner:
 
             book[field] = updated.strip()
 
-        if self.move_leading_the_author:
-            author = (book.get("author") or "").strip()
-            if author.lower().startswith("the ") and len(author) > 4:
-                author_core = author[4:].strip()
-                if author_core and not author_core.lower().endswith(", the"):
-                    book["author"] = f"{author_core}, The"
+        if self.move_leading_the_title:
+            title = (book.get("title") or "").strip()
+            if title.lower().startswith("the ") and len(title) > 4:
+                title_core = title[4:].strip()
+                if title_core and not title_core.lower().endswith(", the"):
+                    book["title"] = f"{title_core}, The"

@@ -5,8 +5,8 @@ Centralizes all keyboard shortcuts for consistency and accessibility.
 
 from PySide6.QtCore import Qt, QObject
 from PySide6.QtGui import QKeySequence, QShortcut, QAction
-from PySide6.QtWidgets import QWidget
-from typing import Dict, Callable, Optional
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QCheckBox, QGroupBox
+from typing import Dict, Callable, Optional, List, Tuple
 from enum import Enum
 
 
@@ -233,3 +233,63 @@ def get_shortcut_manager() -> ShortcutManager:
     if _shortcut_manager is None:
         _shortcut_manager = ShortcutManager()
     return _shortcut_manager
+
+
+def _extract_mnemonic(text: str) -> Optional[str]:
+    """Extract Qt mnemonic letter from text with ampersand notation."""
+    if not text:
+        return None
+
+    idx = 0
+    while idx < len(text) - 1:
+        if text[idx] == '&':
+            nxt = text[idx + 1]
+            if nxt == '&':
+                idx += 2
+                continue
+            if nxt.isalpha():
+                return nxt.upper()
+        idx += 1
+    return None
+
+
+def find_shortcut_conflicts(widget: QWidget) -> List[str]:
+    """Find duplicate keyboard shortcut declarations in a widget tree."""
+    conflicts: List[str] = []
+
+    shortcut_map: Dict[str, List[str]] = {}
+    for shortcut in widget.findChildren(QShortcut):
+        key_text = shortcut.key().toString(QKeySequence.NativeText)
+        if not key_text:
+            continue
+        key = key_text.upper()
+        owner_name = shortcut.parent().objectName() if shortcut.parent() else ""
+        owner = owner_name or shortcut.parent(
+        ).__class__.__name__ if shortcut.parent() else "Unknown"
+        shortcut_map.setdefault(key, []).append(owner)
+
+    for key, owners in shortcut_map.items():
+        if len(owners) > 1:
+            conflicts.append(
+                f"Duplicate QShortcut {key} ({', '.join(sorted(set(owners)))})")
+
+    mnemonic_map: Dict[str, List[str]] = {}
+    controls: List[Tuple[QWidget, str]] = []
+    controls.extend((w, w.text()) for w in widget.findChildren(QLabel))
+    controls.extend((w, w.text()) for w in widget.findChildren(QPushButton))
+    controls.extend((w, w.text()) for w in widget.findChildren(QCheckBox))
+    controls.extend((w, w.title()) for w in widget.findChildren(QGroupBox))
+
+    for control, text in controls:
+        mnemonic = _extract_mnemonic(text)
+        if not mnemonic:
+            continue
+        control_name = control.objectName() or control.__class__.__name__
+        mnemonic_map.setdefault(mnemonic, []).append(control_name)
+
+    for mnemonic, owners in mnemonic_map.items():
+        if len(owners) > 1:
+            conflicts.append(
+                f"Duplicate mnemonic Alt+{mnemonic} ({', '.join(sorted(set(owners)))})")
+
+    return conflicts

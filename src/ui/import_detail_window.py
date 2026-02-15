@@ -33,7 +33,7 @@ class ImportDetailWindow(QDialog):
     RESULT_NEXT = 3
     RESULT_SKIP = 4
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'Y', 'Z'
+        'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
     }
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
@@ -666,22 +666,6 @@ class ImportDetailWindow(QDialog):
 
         button_layout.addStretch()
 
-        self.prev_button = QPushButton("&Previous")
-        self.prev_button.setAccessibleName("Previous")
-        self.prev_button.setAccessibleDescription(
-            "Go to previous import item - Alt+P")
-        self.prev_button.setFocusPolicy(Qt.StrongFocus)
-        self.prev_button.clicked.connect(self.on_prev)
-        button_layout.addWidget(self.prev_button)
-
-        self.next_button = QPushButton("&Next")
-        self.next_button.setAccessibleName("Next")
-        self.next_button.setAccessibleDescription(
-            "Go to next import item - Alt+N")
-        self.next_button.setFocusPolicy(Qt.StrongFocus)
-        self.next_button.clicked.connect(self.on_next)
-        button_layout.addWidget(self.next_button)
-
         layout.addLayout(button_layout)
 
         self.setup_shortcuts()
@@ -703,14 +687,6 @@ class ImportDetailWindow(QDialog):
         self.skip_shortcut = QShortcut(QKeySequence("Alt+K"), self)
         self.skip_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.skip_shortcut.activated.connect(self.on_skip_discard)
-
-        self.prev_alt_shortcut = QShortcut(QKeySequence("Alt+P"), self)
-        self.prev_alt_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.prev_alt_shortcut.activated.connect(self.on_prev)
-
-        self.next_alt_shortcut = QShortcut(QKeySequence("Alt+N"), self)
-        self.next_alt_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.next_alt_shortcut.activated.connect(self.on_next)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -769,8 +745,6 @@ class ImportDetailWindow(QDialog):
             ("Alt+H", "Path"),
             ("Alt+S", "Save and return"),
             ("Alt+K", "Skip or discard"),
-            ("Alt+P", "Previous item"),
-            ("Alt+N", "Next item"),
             ("Escape", "Close detail"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),

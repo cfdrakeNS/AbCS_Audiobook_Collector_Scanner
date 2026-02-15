@@ -237,6 +237,8 @@ class ImportWindow(QDialog):
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
             "Browse for a folder to scan - Alt+W")
+        self.browse_button.setDefault(False)
+        self.browse_button.setAutoDefault(True)
         header_layout.addWidget(self.browse_button)
 
         error_filter_label = QLabel("Err&or Filter:")
@@ -257,6 +259,8 @@ class ImportWindow(QDialog):
         self.scan_button.setAccessibleName("Scan")
         self.scan_button.setAccessibleDescription(
             "Scan the selected folder for audio files - Alt+S")
+        self.scan_button.setDefault(False)
+        self.scan_button.setAutoDefault(True)
         self.scan_button.setEnabled(False)
         header_layout.addWidget(self.scan_button)
 
@@ -283,6 +287,8 @@ class ImportWindow(QDialog):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setSectionsClickable(False)
+        self.table.verticalHeader().setHighlightSections(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         header = self.table.horizontalHeader()
@@ -330,7 +336,7 @@ class ImportWindow(QDialog):
         self.import_selected_button.setAccessibleDescription(
             "Add selected valid items - Alt+I")
         self.import_selected_button.setDefault(False)
-        self.import_selected_button.setAutoDefault(False)
+        self.import_selected_button.setAutoDefault(True)
         footer_layout.addWidget(self.import_selected_button)
 
         self.import_all_button = QPushButton("Add All &Valid")
@@ -338,7 +344,7 @@ class ImportWindow(QDialog):
         self.import_all_button.setAccessibleDescription(
             "Add all valid items - Alt+V")
         self.import_all_button.setDefault(False)
-        self.import_all_button.setAutoDefault(False)
+        self.import_all_button.setAutoDefault(True)
         footer_layout.addWidget(self.import_all_button)
 
         self.cancel_button = QPushButton("&Cancel")
@@ -346,7 +352,7 @@ class ImportWindow(QDialog):
         self.cancel_button.setAccessibleDescription(
             "Close import window - Alt+C")
         self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(False)
+        self.cancel_button.setAutoDefault(True)
         footer_layout.addWidget(self.cancel_button)
         self._update_cancel_button_state()
 
@@ -512,7 +518,10 @@ class ImportWindow(QDialog):
         self.autocorrect_proper_case = self.settings.value(
             "import/autocorrect/proper_case", False, type=bool)
         self.autocorrect_move_leading_the = self.settings.value(
-            "import/autocorrect/move_leading_the_author", False, type=bool)
+            "import/autocorrect/move_leading_the_title",
+            False,
+            type=bool,
+        )
 
         keywords = self.settings.value(
             "import/reader_keywords",
@@ -534,7 +543,7 @@ class ImportWindow(QDialog):
             strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
             remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
             proper_case_fields=self.autocorrect_proper_case,
-            move_leading_the_author=self.autocorrect_move_leading_the,
+            move_leading_the_title=self.autocorrect_move_leading_the,
         )
         self.validator.reload_settings()
         self._update_header_info_line()
@@ -636,6 +645,7 @@ class ImportWindow(QDialog):
             )
             msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             msg.setDefaultButton(QMessageBox.No)
+            self._style_message_box(msg)
             result = msg.exec()
             return result == QMessageBox.Yes
         finally:
@@ -759,7 +769,7 @@ class ImportWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
+        status_text = self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
@@ -793,6 +803,13 @@ class ImportWindow(QDialog):
             if not self.table.isRowHidden(row):
                 return row
         return -1
+
+    def _style_message_box(self, msg: QMessageBox):
+        """Apply consistent no-border focus style to message-box buttons."""
+        msg.setStyleSheet(
+            "QPushButton:focus { border: none; outline: none; }"
+            "QPushButton::focus { border: none; outline: none; }"
+        )
 
     def _matches_error_filter(self, item: dict) -> bool:
         """Check whether a scanned item matches current error filter."""
@@ -897,9 +914,37 @@ class ImportWindow(QDialog):
                 self.selected_rows.add(row)
 
         if self.selected_rows:
-            self.set_status(f"{len(self.selected_rows)} selected")
+            self.announce_selection()
         else:
             self.restore_summary_status()
+
+    def _row_title(self, row: int) -> str:
+        """Return title text for a table row."""
+        if row < 0:
+            return "Unknown"
+        item = self.table.item(row, self.COL_TITLE)
+        if item and item.text().strip():
+            return item.text().strip()
+        if 0 <= row < len(self.scanned_items):
+            return (self.scanned_items[row].get("book", {}).get("title") or "Unknown").strip() or "Unknown"
+        return "Unknown"
+
+    def announce_selection(self):
+        """Announce selection with focused title, aligned with Main Window behavior."""
+        if not self.selected_rows:
+            return
+
+        count = len(self.selected_rows)
+        current_row = self.table.currentRow()
+        title = self._row_title(current_row)
+        shortcuts_text = "Alt+I Add selected, Alt+V Add all valid, Alt+C Close"
+
+        if count == 1:
+            message = f"{title} - selected. {shortcuts_text}"
+        else:
+            message = f"{title} - {count} selected. {shortcuts_text}"
+
+        self.set_status(message, announce=True)
 
     def update_summary(self, scanned: int = 0, valid: int = 0,
                        errors: int = 0, duplicates: int = 0,
@@ -948,7 +993,13 @@ class ImportWindow(QDialog):
 
     def _show_info_popup(self, title: str, message: str):
         """Show an informational popup."""
-        QMessageBox.information(self, title, message)
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(message)
+        msg.setStandardButtons(QMessageBox.Ok)
+        self._style_message_box(msg)
+        msg.exec()
 
     def on_browse(self):
         """Open folder browser for scan root."""
@@ -1446,6 +1497,7 @@ class ImportWindow(QDialog):
             )
             msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             msg.setDefaultButton(QMessageBox.No)
+            self._style_message_box(msg)
             result = msg.exec()
 
             if result == QMessageBox.Yes:
@@ -1679,7 +1731,7 @@ class ImportWindow(QDialog):
             row for row in range(start_row, end_row + 1)
             if not self.table.isRowHidden(row)
         }
-        self.set_status(f"{len(self.selected_rows)} selected")
+        self.announce_selection()
 
     def keyPressEvent(self, event):
         """Override to prevent Enter from closing the dialog."""

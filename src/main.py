@@ -20,7 +20,9 @@ import sys
 from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries
 from accessibility.scaling import get_scaler
 from accessibility.theme_manager import get_theme_manager
+from accessibility.shortcuts import find_shortcut_conflicts
 from ui.main_window import MainWindow
+from ui.display_setup_wizard import DisplaySetupWizard
 APP_VERSION = "1.5.0"
 APP_BUILD_DATE = "2026-02-15"
 
@@ -79,6 +81,7 @@ class AbCSApplication:
         # get_db() creates a DatabaseManager object that handles all database operations
         db_path = get_database_path()
         self.db = get_db(db_path)  # Uses bundled DB for exe, default for dev
+        self.db.initialize_database()
 
         # Initialize accessibility systems for user preferences
         # Handles font/UI scaling (50-200%+)
@@ -203,6 +206,17 @@ Use Ctrl+I to import or Alt+M for menu options."""
             self.main_window = MainWindow(
                 self.db, self.scaler, self.theme_manager)
             self.main_window.show()
+
+            if DisplaySetupWizard.should_show():
+                wizard = DisplaySetupWizard(
+                    self.scaler, self.theme_manager, parent=self.main_window)
+                wizard.exec()
+
+            shortcut_conflicts = find_shortcut_conflicts(self.main_window)
+            if shortcut_conflicts:
+                first_issue = shortcut_conflicts[0]
+                self.main_window.status_bar.showMessage(
+                    f"Shortcut conflict detected: {first_issue}")
 
             # Diagnostic: Check accessibility setup (commented out for production)
             # from accessibility.accessible_events import check_accessibility_support

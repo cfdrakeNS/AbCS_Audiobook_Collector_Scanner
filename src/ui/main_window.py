@@ -2107,6 +2107,7 @@ class MainWindow(QMainWindow):
         dialog = ImportWindow(self.db, self.scaler,
                               self.theme_manager, parent=self)
         dialog.exec()
+        self.refresh_books()
 
     def open_book_details(self, book: Book):
         """Open book details window."""
@@ -2241,6 +2242,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
         dialog = ImportWindow(self.db, self.scaler,
                               self.theme_manager, parent=self)
         dialog.exec()
+        self.refresh_books()
 
     def on_show_authors(self):
         """Open Author window."""

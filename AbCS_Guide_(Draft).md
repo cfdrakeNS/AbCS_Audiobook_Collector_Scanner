@@ -13,10 +13,10 @@ The app is accessibility-first:
 
 ## Global keyboard shortcuts
 
-- Ctrl++: Zoom in
-- Ctrl+-: Zoom out
-- Ctrl+0: Reset zoom
-- F1: Show keyboard shortcuts for the current window
+- Zoom in - Ctrl++
+- Zoom out - Ctrl+-
+- Reset zoom - Ctrl+0
+- Show keyboard shortcuts for the current window - F1
 
 ## Startup behavior
 
@@ -57,24 +57,24 @@ When rows are selected, action buttons appear in the footer.
 
 ### Footer actions
 
-- Update (Alt+U): Open bulk Update Window for selected books.
-- Delete (Alt+D): Delete selected books (with confirmation).
-- Cancel (Alt+L): Clear current selection.
+- Update selected books - Alt+U
+- Delete selected books (with confirmation) - Alt+D
+- Cancel current selection - Alt+L
 - Status bar: Announces counts, search results, and selection state.
 
 Screen reader tip: press Alt+/ to read the current status message.
 
 ### Main Window shortcuts
 
-- Alt+B: Focus book list
-- Alt+U: Update selected
-- Alt+D: Delete selected
-- Alt+L: Cancel selection
-- Alt+/: Read status bar
-- Alt+1 through Alt+0: Jump to table columns
-- Ctrl+N: New Book
-- Ctrl+I: Import
-- Ctrl+Enter: Open Book Details
+- Focus book list - Alt+B
+- Update selected - Alt+U
+- Delete selected - Alt+D
+- Cancel selection - Alt+L
+- Read status bar - Alt+/
+- Jump to table columns - Alt+1 through Alt+0
+- New Book - Ctrl+N
+- Import - Ctrl+I
+- Open Book Details - Ctrl+Enter
 
 ## Book Details Window
 
@@ -88,13 +88,11 @@ Combo boxes are configured to reduce accidental changes: use Alt+Down to open a 
 
 ### Buttons
 
-- New (Alt+N)
-- Save (Alt+S)
-- Delete (Alt+D)
-- Cancel (Alt+L, shown while editing)
-- Close (Alt+C or Escape)
-
-There are no Prev/Next buttons.
+- New - Alt+N
+- Save - Alt+S
+- Delete - Alt+D
+- Cancel (shown while editing) - Alt+L
+- Close - Alt+C or Escape
 
 ### Book-to-book navigation
 
@@ -105,27 +103,27 @@ Use keyboard navigation:
 
 ### Book Details shortcuts
 
-- Alt+/: Read status bar
-- Alt+N: New book
-- Alt+S: Save
-- Alt+D: Delete
-- Alt+L: Cancel (when active)
-- Alt+C: Close window
-- Page Up / Page Down: Previous / Next book
-- Alt+T: Title
-- Alt+A: Author
-- Alt+O: Comments
-- Alt+Y: Year
-- Alt+M: Time
-- Alt+R: Reader
-- Alt+E: Read date
-- Alt+I: Series
-- Alt+G: Genre
-- Alt+K: Collection
-- Alt+F: Files
-- Alt+B: Bitrate
-- Alt+Z: Size
-- Alt+H: Path
+- Read status bar - Alt+/
+- New book - Alt+N
+- Save - Alt+S
+- Delete - Alt+D
+- Cancel (when active) - Alt+L
+- Close window - Alt+C
+- Previous / Next book - Page Up / Page Down
+- Title - Alt+T
+- Author - Alt+A
+- Comments - Alt+O
+- Year - Alt+Y
+- Time - Alt+M
+- Reader - Alt+R
+- Read date - Alt+E
+- Series - Alt+I
+- Genre - Alt+G
+- Collection - Alt+K
+- Files - Alt+F
+- Bitrate - Alt+B
+- Size - Alt+Z
+- Path - Alt+H
 
 ## Update Window
 
@@ -133,9 +131,9 @@ The Update Window applies bulk changes to selected books.
 
 ### Header controls
 
-- Series (Alt+S)
-- Genre (Alt+G)
-- Collection (Alt+L, visible when multiple collections exist)
+- Series - Alt+S
+- Genre - Alt+G
+- Collection (visible when multiple collections exist) - Alt+L
 
 Select an existing value, type a new value, or choose None (for fields that support clearing).
 
@@ -147,17 +145,17 @@ Shows selected books with columns such as Title, Year, Series, Genre, and Collec
 
 ### Footer
 
-- Close (Alt+C or Escape)
+- Close - Alt+C or Escape
 - Status bar announcements for update actions
 
 ### Update Window shortcuts
 
-- Alt+S: Series
-- Alt+G: Genre
-- Alt+L: Collection
-- Alt+B: Focus book list
-- Alt+C or Escape: Close
-- Alt+Down: Open combo drop-down
+- Series - Alt+S
+- Genre - Alt+G
+- Collection - Alt+L
+- Focus book list - Alt+B
+- Close - Alt+C or Escape
+- Open combo drop-down - Alt+Down
 
 ## Import Window
 
@@ -181,24 +179,24 @@ Open selected import detail with Ctrl+Enter.
 
 ### Footer actions
 
-- Add Selected (Alt+I)
-- Add All Valid (Alt+V)
-- Close/Cancel (Alt+C)
+- Add Selected - Alt+I
+- Add All Valid - Alt+V
+- Close/Cancel - Alt+C
 - Status bar and scan progress indicator
 
 ### Import shortcuts
 
-- Alt+/: Read status bar
-- Alt+F: Folder field
-- Alt+W: Browse
-- Alt+O: Error filter
-- Alt+L: Import collection
-- Alt+S: Scan
-- Alt+B: Focus import list
-- Ctrl+Enter: Open selected import detail
-- Alt+I: Add selected
-- Alt+V: Add all valid
-- Alt+C: Close window
+- Read status bar - Alt+/
+- Folder field - Alt+F
+- Browse - Alt+W
+- Error filter - Alt+O
+- Import collection - Alt+L
+- Scan - Alt+S
+- Focus import list - Alt+B
+- Open selected import detail - Ctrl+Enter
+- Add selected - Alt+I
+- Add all valid - Alt+V
+- Close window - Alt+C
 
 ## Accessibility notes
 

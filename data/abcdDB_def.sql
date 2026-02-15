@@ -9,14 +9,14 @@ BEGIN TRANSACTION;
 -- Table: authors
 CREATE TABLE authors (
     author_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    author_name TEXT    NOT NULL
+    name TEXT    NOT NULL
                         UNIQUE
 );
 
 -- Table: collections
 CREATE TABLE collections (
     collection_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    collection_name TEXT    NOT NULL
+    name TEXT    NOT NULL
                             UNIQUE,
     active          INTEGER DEFAULT 1
 );
@@ -25,7 +25,7 @@ CREATE TABLE collections (
 -- Table: genres
 CREATE TABLE genres (
     genre_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    genere_name TEXT    NOT NULL
+    name TEXT    NOT NULL
                         UNIQUE
 );
 
@@ -33,7 +33,7 @@ CREATE TABLE genres (
 -- Table: series
 CREATE TABLE series (
     series_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    series_name TEXT    NOT NULL
+    name TEXT    NOT NULL
                         UNIQUE
 );
 
@@ -83,9 +83,12 @@ CREATE INDEX idx_books_series ON books(series_id);
 CREATE INDEX idx_books_genre ON books(genre_id);
 CREATE INDEX idx_books_collection ON books(collection_id);
 CREATE INDEX idx_books_title ON books(title);
-CREATE INDEX idx_Author_name ON authors (name ASC);
-CREATE INDEX idx_Genre_genre_name ON genres (name ASC);
-CREATE INDEX idx_Series_series_name ON series (name ASC);
+CREATE INDEX idx_authors_name ON authors (name ASC);
+CREATE INDEX idx_genres_name ON genres (name ASC);
+CREATE INDEX idx_series_name ON series (name ASC);
+
+-- Seed a default active collection so first-run workflows always have one
+INSERT INTO collections (name, active) VALUES ('General', 1);
 
 COMMIT TRANSACTION;
 PRAGMA foreign_keys = on;
