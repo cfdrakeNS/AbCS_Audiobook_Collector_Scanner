@@ -21,8 +21,8 @@ from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQu
 from accessibility.scaling import get_scaler
 from accessibility.theme_manager import get_theme_manager
 from ui.main_window import MainWindow
-APP_VERSION = "1.4.5"
-APP_BUILD_DATE = "2026-02-14"
+APP_VERSION = "1.5.0"
+APP_BUILD_DATE = "2026-02-15"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -123,7 +123,7 @@ You can:
 • Import audiobooks from your computer (scan folders)
 • Manually add a new book
 
-Use F9 to import or Alt+M for menu options."""
+Use Ctrl+I to import or Alt+M for menu options."""
             text_edit.setPlainText(splash_text)
             font = text_edit.font()
             font.setPointSize(self.scaler.get_scaled_size(12))

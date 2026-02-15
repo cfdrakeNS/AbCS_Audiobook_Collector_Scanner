@@ -82,18 +82,17 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 
 ### Alt shortcuts
 - **Alt+F**: Folder field
-- **Alt+O**: Formats field
+- **Alt+O**: Error filter
 - **Alt+W**: Browse
 - **Alt+S**: Scan
 - **Alt+I**: Import Selected
-- **Alt+A**: Import All Valid
+- **Alt+V**: Import All Valid
 - **Alt+C**: Cancel
 - **Alt+B**: Focus import list table
 - **Alt+/**: Read status bar aloud
 
 ### Function / navigation shortcuts
-- **F4**: Close/Cancel
-- **F8**: Open selected item in Import Detail
+- **F1**: Show keyboard shortcuts
 
 ### Other shortcuts
 - **Ctrl+Return** and **Ctrl+Enter**: Open selected item in Import Detail
@@ -149,6 +148,7 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 ## Preferences Window (`src/ui/preferences_window.py`)
 
 ### Alt shortcuts
+- **Alt+/**: Read status bar aloud
 - **Alt+T**: Theme
 - **Alt+P**: Preset
 - **Alt+Z**: Zoom (%)
@@ -164,7 +164,23 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 - **Alt+C**: Cancel
 
 ### Function / navigation shortcuts
-- **F4**: Close/Cancel
+- **F1**: Show keyboard shortcuts
+
+### Import duplicate matching (Preferences setting)
+- Duplicate matching mode options:
+	- **Exact**: Title + Author + Year + Collection
+	- **Ignore Collection**: Title + Author + Year
+	- **Ignore Year**: Title + Author + Collection
+	- **Title + Author only**
+- Fuzzy threshold option:
+	- **Fuzzy Duplicate (%)**: `0` disables fuzzy matching; `1-100` enables similarity-based duplicate detection for title and author
+
+### File structure rule (Preferences setting)
+- **File Structure pattern** options:
+	- **Author/Title**
+	- **Year/Author/Title**
+	- **Either**
+- **Severity** options: `None`, `Error`, `Warning`
 
 ---
 
@@ -173,6 +189,6 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 - Run `python test/check_shortcut_mnemonics.py` (or `.venv/Scripts/python.exe test/check_shortcut_mnemonics.py`).
 - Verify no duplicate **Alt+letter** mnemonics exist within any single window/dialog.
 - Verify **F1** opens shortcut/help content where implemented.
-- Verify **Escape** and/or **F4** close the intended dialog/window.
+- Verify **Escape** closes the intended dialog/window.
 - Verify **Alt+/** reads status bar text in windows that support it.
 - Verify this file is updated for any changed `&` labels or added shortcuts.

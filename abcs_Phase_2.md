@@ -9,6 +9,8 @@
 
 Phase 2 implements the import process and preferences system. The preferences window will be built with basic settings first, then expanded as import validation rules are developed.
 
+**Reviewed:** February 15, 2026 (codebase status sync)
+
 ---
 
 ## Build Order
@@ -24,7 +26,6 @@ Initial settings to establish the framework:
 **Import Settings (Initial):**
 - Default import directory (folder browser)
 - File formats to scan (checkboxes: MP3, M4A, FLAC, OGG, WAV)
-- Include subfolders (checkbox)
 - Import scenario mode (dropdown with 4 modes)
 - Scenario description panel (read-only text updated by mode selection)
 - Author fallback combo (None, Folder)
@@ -38,20 +39,20 @@ Initial settings to establish the framework:
 Main import interface (mirrors MS Access version):
 
 **Header:**
+- Import collection selector (Alt+L) - first header control
 - Folder path display with Browse button (Alt+B)
 - File format filter display
 - Import scenario mode display (from preferences)
-- Scan button (Alt+S)
+- Scan button (Alt+S) - disabled until a collection is selected
 
 **Detail:**
 - Table showing scanned files with columns:
-  - Status (OK, Error, Warning, Duplicate)
   - File/Folder
   - Author (from tags)
   - Title (from tags)
   - Error Type (if any)
 - Multi-select support for bulk actions
-- Double-click or F8 to open Import Detail Window
+  - Double-click or Ctrl+Enter to open Import Detail Window
 
 **Footer:**
 - Import Selected (Alt+I) - Add selected books to database
@@ -142,36 +143,39 @@ Import validation rules will be added to Preferences as they're implemented:
 ### Planned Rule Categories:
 
 **Author/Title Rules:**
-- [ ] Flag if author name appears in title
-- [ ] Flag if title appears in author
-- [ ] Flag if author contains "Various" or "Unknown"
-- [ ] Minimum author name length
-- [ ] Minimum title length
+- [x] Flag if author name appears in title (enabled + severity in Preferences)
+- [x] Flag if title appears in author (enabled + severity in Preferences)
+- [x] Flag if author contains "Various" or "Unknown" (enabled + severity in Preferences)
+- [x] Minimum title length (enabled + configurable threshold + severity)
 
 **Duplicate Detection:**
-- [ ] Match criteria: Title + Author + Year
-- [ ] Match criteria: Title + Author only
-- [ ] Fuzzy matching threshold (optional)
+- [x] Match criteria: Title + Author + Year + Collection
+- [x] Match criteria: Title + Author + Year (ignore Collection)
+- [x] Match criteria: Title + Author + Collection (ignore Year)
+- [x] Match criteria: Title + Author only
+- [x] Fuzzy matching threshold (optional)
 
 **File Structure Rules:**
-- [ ] Expected folder structure (Author/Title, Year/Author/Title, etc.)
-- [ ] Extract metadata from folder names if tags missing
+- [x] Expected folder structure (Author/Title, Year/Author/Title, etc.)
+- [x] Extract metadata from folder names if tags missing
 
 **Tag Quality Rules:**
-- [ ] Require year
-- [ ] Require genre
-- [ ] Flag specific genres to ignore
+- [x] Year out-of-range rule (configurable min/max + severity)
+- [x] Missing genre rule (enabled + severity)
+- [x] Minimum bitrate rule (threshold + severity)
 
 **Tag Enrichment Rules:**
 - [x] Reader extraction: first from Composer tag
-- [~] If Composer missing, parse Comments using configurable reader keywords (comment parser exists; keyword settings UI exists, scanner integration pending)
+- [x] If Composer missing, parse Comments using configurable reader keywords
 - [x] Reader keywords configurable in preferences as comma-separated values
 - [x] Comments aggregation for multi-file books keeps only unique comment values
 
 **Auto-Correction:**
-- [ ] Trim whitespace
-- [ ] Title case conversion
-- [ ] Remove "The" from author start
+- [x] Trim whitespace
+- [x] Remove non-alphanumeric characters
+- [x] Remove leading punctuation characters
+- [x] Field case conversion to Proper Case
+- [x] Move leading "The" in author to trailing ", The"
 
 Each rule can be:
 - Enabled/Disabled
@@ -188,19 +192,24 @@ Each rule can be:
 - `src/accessibility/` - Scaling, themes, shortcuts (already built)
 - `src/database/queries.py` - Duplicate checking queries
 
-### New Files to Create:
-- `src/ui/preferences_window.py` - Preferences dialog
-- `src/ui/import_window.py` - Main import interface
-- `src/ui/import_detail_window.py` - Edit individual imports
-- `src/ui/import_progress_window.py` - Scan progress display
-- `src/core/import_scanner.py` - Scenario-aware path parser and fallback resolver
-- `src/core/import_rules.py` - Rule engine for validation (later)
+### Compatibility Notes:
+- Legacy duplicate mode values are still supported and mapped on load:
+  - `with_collection` -> `title_author_year_collection`
+  - `ignore_collection` -> `title_author_year_ignore_collection`
+  - `title_author_ignore_collection` -> `title_author_year`
+
+### Phase 2 Files (Created / Planned):
+- [x] `src/ui/preferences_window.py` - Preferences dialog
+- [x] `src/ui/import_window.py` - Main import interface
+- [x] `src/ui/import_detail_window.py` - Edit individual imports
+- [ ] `src/ui/import_progress_window.py` - Separate scan progress window (deferred; inline progress used in Import Window for accessibility)
+- [x] `src/core/import_scanner.py` - Scenario-aware path parser and fallback resolver
+- [x] `src/core/import_rules.py` - Rule engine for validation with QSettings-driven rule enable/severity/value
 
 ### Settings Storage:
 ```python
 # QSettings keys for import preferences
 "import/default_directory"
-"import/include_subfolders"
 "import/formats/mp3"
 "import/formats/m4a"
 "import/formats/flac"
@@ -229,19 +238,19 @@ Each rule can be:
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Basic Preferences Window | In Progress | Theme, scaling presets, zoom, default directory, formats, include subfolders implemented |
-| Import Window | In Progress | Scan folder, validate, show table summary, import selected/all valid, open detail on double-click |
-| Import Detail Window | In Progress | Core edit fields (Title, Author, Year, Narrator, Genre) and error display implemented |
-| Import Progress Window | Not Started | Real-time scan feedback |
-| Scenario Modes (4) | In Progress | Preferences mode selector + description implemented; scanner behavior mapping pending |
-| Fallback Controls | In Progress | Preferences fallback combos + persistence implemented; scanner fallback application pending |
-| Reader Extraction | In Progress | Composer-first and comment parsing implemented; preferences keyword integration pending |
+| Basic Preferences Window | Complete (Phase 2 Baseline) | Theme/preset/zoom, default directory, formats, scenario, fallbacks, reader keywords, QSettings persistence implemented; subfolder scanning is always on |
+| Import Window | In Progress | Folder browse, scan, validation, summary/status announcements, scenario mode display, collection selector (first header item), scan gated until collection selection (shows None when multiple collections), row selection, detail open on double-click/Ctrl+Enter, add selected/all valid implemented; duplicates are treated as errors |
+| Import Detail Window | In Progress | Editable metadata fields + errors implemented; footer now supports Save & Return, Skip/Discard, and Previous/Next navigation (Alt+P/Alt+N + PageUp/PageDown) |
+| Import Progress Window | Partially Implemented (Inline) | Scan progress, elapsed time, and cancel are provided in Import Window status bar/footer; separate dedicated progress window removed for accessibility |
+| Scenario Modes (4) | In Progress | Scenario setting persisted and applied for series/fallback behavior via core import scanner; scenario mode displayed in Import Window header |
+| Fallback Controls | Completed (Phase 2 Baseline) | Preferences fallback combos persisted and applied during scan result processing |
+| Reader Extraction | Completed (Current Baseline) | Composer-first extraction in scanner plus configurable comment-keyword parsing applied in Import Window |
 | Unique Multi-file Comments | Completed | Scanner keeps distinct comment values per grouped book |
-| Author/Title Rules | Not Started | Add to preferences later |
-| Duplicate Rules | Not Started | Add to preferences later |
-| File Structure Rules | Not Started | Add to preferences later |
-| Tag Quality Rules | Not Started | Add to preferences later |
-| Auto-Correction Rules | Not Started | Add to preferences later |
+| Author/Title Rules | Completed (Current Baseline) | Preferences controls implemented for enable/severity/value and applied by rules engine at scan time |
+| Duplicate Rules | Completed (Current Baseline) | Preference-driven duplicate modes and fuzzy threshold are wired through validator and import scan flow |
+| File Structure Rules | Completed (Current Baseline) | Pattern validation plus folder metadata extraction for missing tags implemented |
+| Tag Quality Rules | Completed (Current Baseline) | Year range, missing genre, and minimum bitrate rules implemented with preferences |
+| Auto-Correction Rules | Completed (Current Baseline) | Trim/cleanup/proper-case and leading "The" author normalization implemented via import scanner settings |
 
 ---
 

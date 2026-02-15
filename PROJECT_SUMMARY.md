@@ -62,7 +62,7 @@ A **complete, working starter application** for your Audio Book Collector Scanne
 - **Keyboard Shortcuts**
   - Centralized management
   - All Alt+letter shortcuts
-  - All function keys (F1-F10)
+  - Function-key help via F1
   - Zoom shortcuts
   - Context-aware
 

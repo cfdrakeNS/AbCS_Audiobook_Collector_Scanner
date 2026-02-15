@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
 JAWS Accessibility Test Script
+MANUAL DIAGNOSTIC SCRIPT (not an automated pytest test)
 This script creates a minimal Qt application to test JAWS accessibility.
 Run this with JAWS active to verify accessibility is working.
 """
+
+__test__ = False
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAccessible
@@ -62,7 +65,7 @@ def print_accessibility_info():
     print("="*70 + "\n")
 
 
-class TestWindow(QMainWindow):
+class JawsAccessibilityWindow(QMainWindow):
     """Minimal test window for JAWS accessibility."""
 
     def __init__(self):
@@ -126,7 +129,7 @@ def main():
     print_accessibility_info()
 
     # Create and show window
-    window = TestWindow()
+    window = JawsAccessibilityWindow()
     window.show()
 
     # Print window info

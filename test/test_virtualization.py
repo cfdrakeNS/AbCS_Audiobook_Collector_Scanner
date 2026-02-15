@@ -1,5 +1,6 @@
 """
 Test app to determine what breaks JAWS window virtualization (Insert+Alt+W).
+MANUAL DIAGNOSTIC SCRIPT (not an automated pytest test)
 
 This creates 3 test windows to compare:
 1. Basic Qt window (no accessibility changes)
@@ -12,6 +13,8 @@ Instructions:
 3. Test each window with Insert+Alt+W to see which ones virtualize
 """
 
+__test__ = False
+
 import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
@@ -21,7 +24,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAccessible
 
 
-class TestWindow(QMainWindow):
+class VirtualizationWindowBase(QMainWindow):
     """Base test window with common UI elements."""
 
     def __init__(self, title, description):
@@ -63,7 +66,7 @@ class TestWindow(QMainWindow):
         self.setStatusBar(status)
 
 
-class BasicWindow(TestWindow):
+class BasicWindow(VirtualizationWindowBase):
     """Window 1: Basic Qt with NO accessibility changes."""
 
     def __init__(self):
@@ -74,7 +77,7 @@ class BasicWindow(TestWindow):
         )
 
 
-class AccessibleActiveWindow(TestWindow):
+class AccessibleActiveWindow(VirtualizationWindowBase):
     """Window 2: With QAccessible.setActive(True)."""
 
     def __init__(self):
@@ -85,7 +88,7 @@ class AccessibleActiveWindow(TestWindow):
         )
 
 
-class AccessibleRootWindow(TestWindow):
+class AccessibleRootWindow(VirtualizationWindowBase):
     """Window 3: With setActive + setRootObject."""
 
     def __init__(self):

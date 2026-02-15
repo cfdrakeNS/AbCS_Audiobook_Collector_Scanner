@@ -38,25 +38,25 @@ Every main window follows a consistent **header/detail/footer** layout:
 **Header:** Combo boxes and controls for filtering, sorting, searching, navigation
 - Examples: Collection filter, Read status filter, Order By, Search box, Menu
 - Always include Alt+letter shortcuts for all header controls
-- Use F3 for search focus/clear, F8 for opening related windows
+- Use Alt+letter shortcuts for search and navigation actions
 
 **Detail:** Table or continuous list showing records with columns
 - Main window: book table with Author, Title, Year, Series, Genre, Time, Tracks, Read, Date-Added columns
 - Multi-select: **Shift+Click** for range, **Ctrl+Click** for individual, standard Qt behavior
 - Double-click or Enter on Title to open BookDetailsWindow
-- F8 or double-click on Author/Series/Genre fields opens management windows
+- Double-click on Author/Series/Genre fields opens management windows
 
 **Footer:** Action buttons (visible based on context)
 - Main window: Update, Delete, Cancel buttons (only when items selected)
 - BookDetails: New, Save, Delete, Prev, Next, Close buttons
-- Always include Alt+letter shortcuts; Alt+C or F4 for Close/Cancel
+- Always include Alt+letter shortcuts; Alt+C for Close/Cancel
 
 ### Accessibility Requirements (CRITICAL - for JAWS/NVDA users)
 - **Fonts:** Use 14pt default, scaling via `self.scaler.scale(14)` - never hardcode pixels
 - **Themes:** High contrast required; apply via `self.theme_manager.apply_theme()` - 6 built-in themes
 - **Keyboard Navigation:** 
   - ALL controls must have Alt+letter shortcuts (see reference table below)
-  - F-keys: F2 (toggle text), F3 (search/clear), F4 (close), F5 (refresh), F6 (cycle focus), F8 (open related), F9 (import), F10 (menu)
+  - Function keys: F1 for keyboard shortcut help
   - Status bar echoes messages and selection feedback for screen readers
 - **Messages:** Use custom message boxes (14pt font), route all messages to status bar
 - **Example Flow:** Alt+S (search) → type query → status bar announces "Book found: Title by Author" → Shift+Click to select range
@@ -114,7 +114,7 @@ from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 
 mgr = get_shortcut_manager()
 mgr.register(ShortcutContext.MAIN_WINDOW, "Alt+S", self.on_search_activated)
-mgr.register(ShortcutContext.MAIN_WINDOW, "F3", self.on_search_focus)
+mgr.register(ShortcutContext.MAIN_WINDOW, "Alt+L", self.on_collection_focus)
 ```
 
 See `src/accessibility/shortcuts.py` for all defined shortcuts and contexts.
@@ -122,14 +122,7 @@ See `src/accessibility/shortcuts.py` for all defined shortcuts and contexts.
 ## Keyboard Shortcuts Reference
 
 **F-Keys (Global):**
-- F2: Toggle selected/unselected text within field
-- F3: Focus search box / Clear search
-- F4: Close window / Cancel edit
-- F5: Refresh view
-- F6: Cycle focus (Shift+F6 reverse) - Header → Detail → Footer → Menu
-- F8: Open related window (Author/Series/Genre fields) or View import error details
-- F9: Open Import window
-- F10: Focus menu
+- F1: Show keyboard shortcuts/help
 
 **Alt+Letter Shortcuts (Sample from MainWindow header):**
 - Alt+L: Collection filter
@@ -196,5 +189,5 @@ Follow the same header/detail/footer pattern as existing windows when building t
 - **Themes:** Change via Menu → View Preferences; test with high contrast themes
 - **Keyboard:** Use `ShortcutManager.list_shortcuts()` to verify all shortcuts registered for a context
 - **Audio import:** `tag_reader.py` includes debug output for ID3 extraction; use `validator.py` to check error detection
-- **Screen readers (JAWS/NVDA):** Test status bar messages, focus order (F6), and screen reader announcements
+- **Screen readers (JAWS/NVDA):** Test status bar messages, focus order, and screen reader announcements
 - **Multi-select:** Test Shift+Click (range), Ctrl+Click (individual) on book table

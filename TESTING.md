@@ -18,6 +18,17 @@ This is an audiobook collection manager designed for blind/low-vision users with
 
 ## What to Test
 
+## Test Types
+
+### Automated (pytest)
+- Run with: `python -m pytest test -q`
+- Current automated assertions are in files like `test/test_import_window_collection_rules.py`.
+
+### Manual Diagnostic Scripts (not pytest tests)
+- `test/test_jaws_accessibility.py` - interactive JAWS accessibility diagnostics.
+- `test/test_virtualization.py` - interactive JAWS virtualization comparison harness.
+- These scripts are intentionally manual and should be launched directly with Python when doing screen-reader diagnostics.
+
 ### Keyboard Navigation
 - **Alt+L** - Collection filter
 - **Alt+R** - Read filter  

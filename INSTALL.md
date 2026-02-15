@@ -137,10 +137,7 @@ On first launch, you'll see:
 ### Essential Keyboard Shortcuts
 
 **Navigation:**
-- `F3` - Focus search box / Clear search
-- `F4` - Close window
-- `F5` - Refresh view
-- `F9` - Import window (coming soon)
+- `F1` - Show keyboard shortcuts/help
 
 **Filtering (Alt + letter):**
 - `Alt+L` - Collection filter

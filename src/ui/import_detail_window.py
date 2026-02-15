@@ -31,8 +31,9 @@ class ImportDetailWindow(QDialog):
 
     RESULT_PREV = 2
     RESULT_NEXT = 3
+    RESULT_SKIP = 4
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'L', 'M', 'O', 'R', 'T', 'Y', 'Z'
+        'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'Y', 'Z'
     }
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
@@ -80,7 +81,7 @@ class ImportDetailWindow(QDialog):
         self._setup_dirty_tracking()
 
         # Window settings
-        title = "Import Detail - " + self.book_data.get("title", "Untitled")
+        title = self._detail_window_title(self.book_data)
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription(
@@ -169,7 +170,7 @@ class ImportDetailWindow(QDialog):
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
                 self.set_status(
-                    f"{field_name} changed. Press Alt+I Save or Alt+C Cancel",
+                    f"{field_name} changed. Press Alt+S Save or Alt+K Skip",
                     announce=True
                 )
                 self._pending_dirty_widgets.discard(dirty_widget)
@@ -185,7 +186,7 @@ class ImportDetailWindow(QDialog):
             self._dirty = True
             if widget and not self._first_dirty_widget:
                 self._first_dirty_widget = widget
-            self.import_button.setEnabled(True)
+            self.save_return_button.setEnabled(True)
 
     def _get_dirty_field_name(self, widget) -> str:
         """Return a user-friendly field name for a dirty widget."""
@@ -324,6 +325,55 @@ class ImportDetailWindow(QDialog):
 
         self._clear_dirty()
 
+    @staticmethod
+    def _detail_window_title(book_data: dict) -> str:
+        """Build window title from current book data."""
+        return "Import Detail - " + (book_data.get("title") or "Untitled")
+
+    def _build_errors_for_row(self, row: int) -> list:
+        """Build current error list for a row from parent scanned items."""
+        parent = self.parent()
+        if not parent or not hasattr(parent, "scanned_items"):
+            return []
+        if row < 0 or row >= len(parent.scanned_items):
+            return []
+
+        item = parent.scanned_items[row]
+        errors = list(item.get("errors", []))
+        if item.get("is_duplicate"):
+            has_duplicate_error = any(
+                str(err).strip().lower() == "duplicate"
+                for err in errors
+            )
+            if not has_duplicate_error:
+                errors.append("Duplicate")
+        return errors
+
+    def _navigate_without_close(self, target_index: int) -> bool:
+        """Navigate to another scanned item in the same dialog instance."""
+        parent = self.parent()
+        if not parent or not hasattr(parent, "scanned_items"):
+            return False
+        if target_index < 0 or target_index >= len(parent.scanned_items):
+            return False
+
+        self._collect_form_data()
+        if hasattr(parent, "_apply_detail_edits"):
+            parent._apply_detail_edits(self.current_index, self)
+
+        next_item = parent.scanned_items[target_index]
+        self.book_data = next_item.get("book", {}).copy()
+        self.errors = self._build_errors_for_row(target_index)
+        self.current_index = target_index
+        self.total_count = len(parent.scanned_items)
+
+        self.setWindowTitle(self._detail_window_title(self.book_data))
+        self.setAccessibleName(self.windowTitle())
+        self.load_book_data()
+        self.set_status(
+            f"Viewing item {self.current_index + 1} of {self.total_count}")
+        return True
+
     def apply_control_styles(self):
         """Apply consistent control styling with scaling."""
         base_height = 20
@@ -434,6 +484,7 @@ class ImportDetailWindow(QDialog):
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
+        self.author_combo.setMaximumWidth(280)
         author_label.setBuddy(self.author_combo)
         row1_layout.addWidget(author_label)
         row1_layout.addWidget(self.author_combo, 1)
@@ -459,12 +510,14 @@ class ImportDetailWindow(QDialog):
         self.year_spin.setValue(0)
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setSpecialValueText("Unknown")
+        self.year_spin.setMaximumWidth(95)
         row3_layout.addWidget(self.year_spin)
 
         time_label = QLabel("Ti&me:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setAccessibleName("Duration")
+        self.time_edit.setMaximumWidth(100)
         time_label.setBuddy(self.time_edit)
         row3_layout.addWidget(time_label)
         row3_layout.addWidget(self.time_edit)
@@ -472,6 +525,7 @@ class ImportDetailWindow(QDialog):
         reader_label = QLabel("&Reader:")
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
+        self.reader_edit.setMaximumWidth(220)
         reader_label.setBuddy(self.reader_edit)
         row3_layout.addWidget(reader_label)
         row3_layout.addWidget(self.reader_edit)
@@ -486,12 +540,14 @@ class ImportDetailWindow(QDialog):
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
         self.series_combo.setAccessibleName("Book series")
+        self.series_combo.setMaximumWidth(260)
         row4_layout.addWidget(self.series_combo, 1)
 
         genre_label = QLabel("&Genre:")
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
+        self.genre_combo.setMaximumWidth(220)
         genre_label.setBuddy(self.genre_combo)
         row4_layout.addWidget(genre_label)
         row4_layout.addWidget(self.genre_combo, 1)
@@ -499,11 +555,12 @@ class ImportDetailWindow(QDialog):
         collection_label = QLabel("Co&llection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
+        self.collection_combo.setMaximumWidth(220)
         collection_label.setBuddy(self.collection_combo)
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
 
-        series_label = QLabel("&Series:")
+        series_label = QLabel("Ser&ies:")
         series_label.setBuddy(self.series_combo)
         form.addRow(series_label, row4_layout)
 
@@ -514,6 +571,7 @@ class ImportDetailWindow(QDialog):
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
+        self.files_edit.setMaximumWidth(70)
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
@@ -521,6 +579,7 @@ class ImportDetailWindow(QDialog):
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
+        self.bitrate_edit.setMaximumWidth(95)
         bitrate_label.setBuddy(self.bitrate_edit)
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
@@ -529,6 +588,7 @@ class ImportDetailWindow(QDialog):
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(True)
         self.size_edit.setAccessibleName("File size in megabytes")
+        self.size_edit.setMaximumWidth(100)
         size_label.setBuddy(self.size_edit)
         row5_layout.addWidget(size_label)
         row5_layout.addWidget(self.size_edit)
@@ -537,6 +597,7 @@ class ImportDetailWindow(QDialog):
         self.format_edit = QLineEdit()
         self.format_edit.setReadOnly(True)
         self.format_edit.setAccessibleName("File format")
+        self.format_edit.setMaximumWidth(90)
         row5_layout.addWidget(format_label)
         row5_layout.addWidget(self.format_edit)
 
@@ -544,6 +605,7 @@ class ImportDetailWindow(QDialog):
         self.source_edit = QLineEdit()
         self.source_edit.setReadOnly(True)
         self.source_edit.setAccessibleName("Import source")
+        self.source_edit.setMaximumWidth(110)
         row5_layout.addWidget(source_label)
         row5_layout.addWidget(self.source_edit)
 
@@ -586,23 +648,39 @@ class ImportDetailWindow(QDialog):
         # Buttons
         button_layout = QHBoxLayout()
 
-        self.import_button = QPushButton("&Import")
-        self.import_button.setAccessibleName("Import book")
-        self.import_button.setAccessibleDescription(
-            "Import this book with entered details - Alt+I")
-        self.import_button.setFocusPolicy(Qt.StrongFocus)
-        self.import_button.clicked.connect(self.accept)
-        button_layout.addWidget(self.import_button)
+        self.save_return_button = QPushButton("&Save && Return")
+        self.save_return_button.setAccessibleName("Save and return")
+        self.save_return_button.setAccessibleDescription(
+            "Save edits and return to import list - Alt+S")
+        self.save_return_button.setFocusPolicy(Qt.StrongFocus)
+        self.save_return_button.clicked.connect(self.accept)
+        button_layout.addWidget(self.save_return_button)
+
+        self.skip_button = QPushButton("S&kip/Discard")
+        self.skip_button.setAccessibleName("Skip or discard")
+        self.skip_button.setAccessibleDescription(
+            "Discard this import item and return to import list - Alt+K")
+        self.skip_button.setFocusPolicy(Qt.StrongFocus)
+        self.skip_button.clicked.connect(self.on_skip_discard)
+        button_layout.addWidget(self.skip_button)
 
         button_layout.addStretch()
 
-        self.cancel_button = QPushButton("&Cancel")
-        self.cancel_button.setAccessibleName("Cancel import")
-        self.cancel_button.setAccessibleDescription(
-            "Cancel import for this book - Alt+C or Escape")
-        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
-        self.cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(self.cancel_button)
+        self.prev_button = QPushButton("&Previous")
+        self.prev_button.setAccessibleName("Previous")
+        self.prev_button.setAccessibleDescription(
+            "Go to previous import item - Alt+P")
+        self.prev_button.setFocusPolicy(Qt.StrongFocus)
+        self.prev_button.clicked.connect(self.on_prev)
+        button_layout.addWidget(self.prev_button)
+
+        self.next_button = QPushButton("&Next")
+        self.next_button.setAccessibleName("Next")
+        self.next_button.setAccessibleDescription(
+            "Go to next import item - Alt+N")
+        self.next_button.setFocusPolicy(Qt.StrongFocus)
+        self.next_button.clicked.connect(self.on_next)
+        button_layout.addWidget(self.next_button)
 
         layout.addLayout(button_layout)
 
@@ -617,6 +695,22 @@ class ImportDetailWindow(QDialog):
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.close_shortcut.activated.connect(self.reject)
+
+        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.save_shortcut.activated.connect(self.accept)
+
+        self.skip_shortcut = QShortcut(QKeySequence("Alt+K"), self)
+        self.skip_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.skip_shortcut.activated.connect(self.on_skip_discard)
+
+        self.prev_alt_shortcut = QShortcut(QKeySequence("Alt+P"), self)
+        self.prev_alt_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.prev_alt_shortcut.activated.connect(self.on_prev)
+
+        self.next_alt_shortcut = QShortcut(QKeySequence("Alt+N"), self)
+        self.next_alt_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.next_alt_shortcut.activated.connect(self.on_next)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -673,8 +767,11 @@ class ImportDetailWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
-            ("Alt+I", "Import"),
-            ("Alt+C or Escape", "Cancel"),
+            ("Alt+S", "Save and return"),
+            ("Alt+K", "Skip or discard"),
+            ("Alt+P", "Previous item"),
+            ("Alt+N", "Next item"),
+            ("Escape", "Close detail"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),
             ("F1", "Show keyboard shortcuts"),
@@ -723,6 +820,8 @@ class ImportDetailWindow(QDialog):
         if self.current_index <= 0:
             QApplication.beep()
             return
+        if self._navigate_without_close(self.current_index - 1):
+            return
         self._collect_form_data()
         self.done(self.RESULT_PREV)
 
@@ -731,8 +830,19 @@ class ImportDetailWindow(QDialog):
         if self.total_count and self.current_index >= self.total_count - 1:
             QApplication.beep()
             return
+        if self._navigate_without_close(self.current_index + 1):
+            return
         self._collect_form_data()
         self.done(self.RESULT_NEXT)
+
+    def on_skip_discard(self):
+        """Discard this import item and return skip result to parent."""
+        self._closing_via_handler = True
+        try:
+            announce_dialog_closed(self)
+            self.done(self.RESULT_SKIP)
+        finally:
+            self._closing_via_handler = False
 
     def accept(self):
         """Return edited data when accepting."""

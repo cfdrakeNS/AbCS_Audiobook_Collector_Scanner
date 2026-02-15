@@ -37,19 +37,14 @@ A cross-platform audiobook collection manager with full accessibility support.
 ## Quick Start
 
 1. **First Launch**: The application will create a new database
-2. **Import Books**: Press F9 or use Menu → Import to scan your audiobook folders
+2. **Import Books**: Press Ctrl+I or use Menu → Import to scan your audiobook folders
 3. **Browse & Search**: Use the main window to explore your collection
 4. **Customize**: View → Preferences to adjust font size, theme, and accessibility settings
 
 ## Keyboard Shortcuts
 
 ### Global
-- **F3**: Focus search box / Clear search
-- **F4**: Close window / Cancel edit
-- **F5**: Refresh view
-- **F6**: Cycle focus (Shift+F6 reverse)
-- **F8**: Open related window (when in Author/Series/Genre fields)
-- **F9**: Open Import window
+- **F1**: Show keyboard shortcuts/help
 - **Ctrl/Cmd +**: Zoom In
 - **Ctrl/Cmd -**: Zoom Out
 - **Ctrl/Cmd 0**: Reset Zoom

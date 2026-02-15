@@ -6,7 +6,8 @@ Basic preferences for display and import settings.
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
     QLabel, QComboBox, QSpinBox, QLineEdit, QTextEdit,
-    QPushButton, QCheckBox, QFileDialog, QStatusBar, QMessageBox
+    QPushButton, QCheckBox, QFileDialog, QStatusBar, QMessageBox, QSizePolicy,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -25,7 +26,7 @@ class PreferencesWindow(QDialog):
     """
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'D', 'I', 'K', 'O', 'P', 'R', 'S', 'T', 'V', 'Z'
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'Y', 'Z'
     }
 
     IMPORT_SCENARIOS = [
@@ -67,6 +68,7 @@ class PreferencesWindow(QDialog):
         self._initial_scale = self.scaler.current_scale
         self._initial_state = {}
         self._closing_via_handler = False
+        self._default_status_message = "Ready"
 
         self.setup_ui()
         self.install_alt_key_filters()
@@ -86,7 +88,7 @@ class PreferencesWindow(QDialog):
         QTimer.singleShot(0, self.update_scenario_description_height)
 
         announce_dialog_opened(self, title)
-        announce_status_message(self.status_bar, "Ready")
+        self.set_status("Ready")
 
     def setup_ui(self):
         """Setup user interface."""
@@ -159,63 +161,57 @@ class PreferencesWindow(QDialog):
         dir_layout.addWidget(self.browse_button)
         import_layout.addLayout(dir_layout)
 
-        format_and_scenario_layout = QHBoxLayout()
-        format_and_scenario_layout.setSpacing(20)
-
-        formats_container = QVBoxLayout()
-        formats_container.setContentsMargins(0, 0, 0, 0)
-        formats_container.setSpacing(0)
+        formats_layout = QHBoxLayout()
+        formats_layout.setContentsMargins(0, 0, 0, 0)
+        formats_layout.setSpacing(8)
         formats_label = QLabel("F&ormats:")
-
-        formats_grid = QGridLayout()
-        formats_grid.setContentsMargins(0, 0, 0, 0)
-        formats_grid.setHorizontalSpacing(12)
-        formats_grid.setVerticalSpacing(0)
-        formats_grid.addWidget(formats_label, 0, 0)
-        formats_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        formats_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        formats_label.setMinimumWidth(180)
+        formats_layout.addWidget(formats_label)
 
         self.format_checks = {}
         format_items = [
             ("MP3", "mp3"),
             ("M4A", "m4a"),
             ("M4B", "m4b"),
+            ("FLAC", "flac"),
             ("OGG", "ogg"),
             ("WAV", "wav"),
             ("WMA", "wma"),
         ]
-        for index, (label, key) in enumerate(format_items):
+        for label, key in format_items:
             checkbox = QCheckBox(label)
             checkbox.setAccessibleName(f"{key.upper()} format")
             checkbox.setAccessibleDescription(
                 f"Include {key.upper()} files in scan")
             self.format_checks[key] = checkbox
-            formats_grid.addWidget(checkbox, index // 2, (index % 2) + 1)
+            formats_layout.addWidget(checkbox)
 
         formats_label.setBuddy(self.format_checks["mp3"])
-        formats_container.addLayout(formats_grid)
-        format_and_scenario_layout.addLayout(formats_container, 1)
+        formats_layout.addStretch(1)
+        import_layout.addLayout(formats_layout)
 
-        scenario_container = QVBoxLayout()
-        scenario_container.setContentsMargins(0, 0, 0, 0)
-        scenario_container.setSpacing(6)
-
-        scenario_grid = QGridLayout()
-        scenario_grid.setContentsMargins(0, 0, 0, 0)
-        scenario_grid.setHorizontalSpacing(8)
-        scenario_grid.setVerticalSpacing(6)
-        scenario_grid.setColumnMinimumWidth(0, 180)
-
+        scenario_layout = QHBoxLayout()
+        scenario_layout.setContentsMargins(0, 0, 0, 0)
+        scenario_layout.setSpacing(8)
         scenario_label = QLabel("&Scenario:")
+        scenario_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        scenario_label.setMinimumWidth(180)
         self.import_scenario_combo = QComboBox()
         self.import_scenario_combo.setAccessibleName("Import scenario")
         self.import_scenario_combo.setAccessibleDescription(
             "Select import scenario mode - Alt+S")
         scenario_label.setBuddy(self.import_scenario_combo)
-        scenario_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        scenario_grid.addWidget(scenario_label, 0, 0)
-        scenario_grid.addWidget(self.import_scenario_combo, 0, 1)
+        scenario_layout.addWidget(scenario_label)
+        scenario_layout.addWidget(self.import_scenario_combo, 1)
+        import_layout.addLayout(scenario_layout)
 
+        scenario_desc_layout = QHBoxLayout()
+        scenario_desc_layout.setContentsMargins(0, 0, 0, 0)
+        scenario_desc_layout.setSpacing(8)
         scenario_desc_label = QLabel("Scenario Desc&ription:")
+        scenario_desc_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        scenario_desc_label.setMinimumWidth(180)
         self.scenario_description_edit = QTextEdit()
         self.scenario_description_edit.setReadOnly(True)
         self.scenario_description_edit.setAccessibleName(
@@ -224,16 +220,9 @@ class PreferencesWindow(QDialog):
             "Description of selected import scenario")
         self.scenario_description_edit.setMinimumHeight(60)
         scenario_desc_label.setBuddy(self.scenario_description_edit)
-        scenario_desc_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
-        scenario_grid.addWidget(scenario_desc_label, 1, 0)
-        scenario_grid.addWidget(
-            self.scenario_description_edit, 1, 1, 1, 1, Qt.AlignTop)
-        scenario_grid.setColumnStretch(1, 1)
-
-        scenario_container.addLayout(scenario_grid)
-        format_and_scenario_layout.addLayout(scenario_container, 1)
-
-        import_layout.addLayout(format_and_scenario_layout)
+        scenario_desc_layout.addWidget(scenario_desc_label)
+        scenario_desc_layout.addWidget(self.scenario_description_edit, 1)
+        import_layout.addLayout(scenario_desc_layout)
 
         author_fallback_layout = QHBoxLayout()
         author_fallback_layout.setContentsMargins(0, 0, 0, 0)
@@ -265,8 +254,27 @@ class PreferencesWindow(QDialog):
         title_fallback_layout.addWidget(self.title_fallback_combo, 1)
         import_layout.addLayout(title_fallback_layout)
 
+        flip_author_layout = QHBoxLayout()
+        flip_author_layout.setContentsMargins(0, 0, 0, 0)
+        flip_author_layout.setSpacing(8)
+        flip_author_label = QLabel("&Flip Author:")
+        flip_author_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        flip_author_label.setMinimumWidth(180)
+        self.flip_author_check = QCheckBox("Last, First")
+        self.flip_author_check.setAccessibleName("Flip author name")
+        self.flip_author_check.setAccessibleDescription(
+            "Flip author names to Last, First during import - Alt+F")
+        flip_author_label.setBuddy(self.flip_author_check)
+        flip_author_layout.addWidget(flip_author_label)
+        flip_author_layout.addWidget(self.flip_author_check, 1)
+        import_layout.addLayout(flip_author_layout)
+
         reader_keywords_layout = QHBoxLayout()
+        reader_keywords_layout.setContentsMargins(0, 0, 0, 0)
+        reader_keywords_layout.setSpacing(8)
         reader_keywords_label = QLabel("Reader &Keywords:")
+        reader_keywords_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        reader_keywords_label.setMinimumWidth(180)
         self.reader_keywords_edit = QLineEdit()
         self.reader_keywords_edit.setAccessibleName("Reader keywords")
         self.reader_keywords_edit.setAccessibleDescription(
@@ -275,6 +283,231 @@ class PreferencesWindow(QDialog):
         reader_keywords_layout.addWidget(reader_keywords_label)
         reader_keywords_layout.addWidget(self.reader_keywords_edit, 1)
         import_layout.addLayout(reader_keywords_layout)
+
+        rules_group = QGroupBox("Author/Title Rules")
+        rules_layout = QGridLayout(rules_group)
+        rules_layout.setContentsMargins(6, 4, 6, 4)
+        rules_layout.setHorizontalSpacing(8)
+        rules_layout.setVerticalSpacing(2)
+        rules_layout.setColumnMinimumWidth(0, 180)
+        rules_layout.setColumnStretch(2, 1)
+
+        severity_header = QLabel("Severity")
+        severity_header.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        rules_layout.addWidget(severity_header, 0, 1)
+
+        author_in_title_label = QLabel("Author in Title:")
+        author_in_title_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rule_author_in_title_severity = QComboBox()
+        self.rule_author_in_title_severity.setAccessibleName(
+            "Author in Title severity")
+        self.rule_author_in_title_severity.setAccessibleDescription(
+            "Set severity or None for Author in Title rule")
+        author_in_title_label.setBuddy(self.rule_author_in_title_severity)
+        rules_layout.addWidget(author_in_title_label, 1, 0)
+        rules_layout.addWidget(
+            self.rule_author_in_title_severity, 1, 1, alignment=Qt.AlignLeft)
+
+        title_in_author_label = QLabel("Title in Author:")
+        title_in_author_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rule_title_in_author_severity = QComboBox()
+        self.rule_title_in_author_severity.setAccessibleName(
+            "Title in Author severity")
+        self.rule_title_in_author_severity.setAccessibleDescription(
+            "Set severity or None for Title in Author rule")
+        title_in_author_label.setBuddy(self.rule_title_in_author_severity)
+        rules_layout.addWidget(title_in_author_label, 2, 0)
+        rules_layout.addWidget(
+            self.rule_title_in_author_severity, 2, 1, alignment=Qt.AlignLeft)
+
+        unknown_author_label = QLabel("Unknown/Various:")
+        unknown_author_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rule_unknown_author_severity = QComboBox()
+        self.rule_unknown_author_severity.setAccessibleName(
+            "Unknown or various author severity")
+        self.rule_unknown_author_severity.setAccessibleDescription(
+            "Set severity or None for unknown or various author rule")
+        unknown_author_label.setBuddy(self.rule_unknown_author_severity)
+        rules_layout.addWidget(unknown_author_label, 3, 0)
+        rules_layout.addWidget(
+            self.rule_unknown_author_severity, 3, 1, alignment=Qt.AlignLeft)
+
+        min_title_label = QLabel("Min Title Length:")
+        min_title_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        min_title_config_layout = QHBoxLayout()
+        min_title_config_layout.setContentsMargins(0, 0, 0, 0)
+        min_title_config_layout.setSpacing(6)
+        self.rule_min_title_value = QSpinBox()
+        self.rule_min_title_value.setRange(1, 100)
+        self.rule_min_title_value.setAccessibleName(
+            "Minimum title length value")
+        self.rule_min_title_severity = QComboBox()
+        self.rule_min_title_severity.setAccessibleName(
+            "Minimum title length severity")
+        self.rule_min_title_severity.setAccessibleDescription(
+            "Set severity or None for minimum title length rule")
+        min_title_config_layout.addWidget(self.rule_min_title_value)
+        min_title_config_layout.addWidget(self.rule_min_title_severity)
+        min_title_label.setBuddy(self.rule_min_title_value)
+        rules_layout.addWidget(min_title_label, 4, 0)
+        rules_layout.addLayout(min_title_config_layout, 4, 1)
+
+        duplicate_match_label = QLabel("Duplicate Match:")
+        duplicate_match_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.duplicate_match_combo = QComboBox()
+        self.duplicate_match_combo.setAccessibleName("Duplicate matching mode")
+        self.duplicate_match_combo.setAccessibleDescription(
+            "Choose whether duplicate checks include collection")
+        self.duplicate_match_combo.setSizeAdjustPolicy(
+            QComboBox.AdjustToContents)
+        self.duplicate_match_combo.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        duplicate_match_label.setBuddy(self.duplicate_match_combo)
+        rules_layout.addWidget(duplicate_match_label, 5, 0)
+        rules_layout.addWidget(self.duplicate_match_combo,
+                               5, 1, alignment=Qt.AlignLeft)
+
+        duplicate_fuzzy_label = QLabel("Fuzzy Duplicate (%):")
+        duplicate_fuzzy_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.duplicate_fuzzy_spin = QSpinBox()
+        self.duplicate_fuzzy_spin.setRange(0, 100)
+        self.duplicate_fuzzy_spin.setSuffix("%")
+        self.duplicate_fuzzy_spin.setSingleStep(5)
+        self.duplicate_fuzzy_spin.setAccessibleName(
+            "Duplicate fuzzy threshold")
+        self.duplicate_fuzzy_spin.setAccessibleDescription(
+            "Optional fuzzy duplicate threshold percentage. 0 disables fuzzy duplicate matching")
+        duplicate_fuzzy_label.setBuddy(self.duplicate_fuzzy_spin)
+        rules_layout.addWidget(duplicate_fuzzy_label, 6, 0)
+        rules_layout.addWidget(self.duplicate_fuzzy_spin,
+                               6, 1, alignment=Qt.AlignLeft)
+
+        file_structure_label = QLabel("File Structure:")
+        file_structure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        file_structure_config_layout = QHBoxLayout()
+        file_structure_config_layout.setContentsMargins(0, 0, 0, 0)
+        file_structure_config_layout.setSpacing(6)
+        self.rule_file_structure_pattern = QComboBox()
+        self.rule_file_structure_pattern.setAccessibleName(
+            "Expected file structure pattern")
+        self.rule_file_structure_pattern.setAccessibleDescription(
+            "Select expected folder structure pattern for imports")
+        self.rule_file_structure_severity = QComboBox()
+        self.rule_file_structure_severity.setAccessibleName(
+            "File structure severity")
+        self.rule_file_structure_severity.setAccessibleDescription(
+            "Set severity or None for file structure rule")
+        file_structure_config_layout.addWidget(
+            self.rule_file_structure_pattern)
+        file_structure_config_layout.addWidget(
+            self.rule_file_structure_severity)
+        file_structure_label.setBuddy(self.rule_file_structure_pattern)
+        rules_layout.addWidget(file_structure_label, 7, 0)
+        rules_layout.addLayout(file_structure_config_layout, 7, 1)
+
+        year_quality_label = QLabel("Year Range:")
+        year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        year_quality_layout = QHBoxLayout()
+        year_quality_layout.setContentsMargins(0, 0, 0, 0)
+        year_quality_layout.setSpacing(6)
+        self.rule_year_min_value = QSpinBox()
+        self.rule_year_min_value.setRange(1000, 3000)
+        self.rule_year_min_value.setValue(1900)
+        self.rule_year_min_value.setAccessibleName("Minimum import year")
+        self.rule_year_max_value = QSpinBox()
+        self.rule_year_max_value.setRange(1000, 3000)
+        self.rule_year_max_value.setValue(2100)
+        self.rule_year_max_value.setAccessibleName("Maximum import year")
+        self.rule_year_quality_severity = QComboBox()
+        self.rule_year_quality_severity.setAccessibleName(
+            "Year range severity")
+        self.rule_year_quality_severity.setAccessibleDescription(
+            "Set severity or None for year range rule")
+        year_quality_layout.addWidget(self.rule_year_min_value)
+        year_quality_layout.addWidget(self.rule_year_max_value)
+        year_quality_layout.addWidget(self.rule_year_quality_severity)
+        year_quality_label.setBuddy(self.rule_year_min_value)
+        rules_layout.addWidget(year_quality_label, 8, 0)
+        rules_layout.addLayout(year_quality_layout, 8, 1)
+
+        genre_quality_label = QLabel("Missing Genre:")
+        genre_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rule_genre_missing_severity = QComboBox()
+        self.rule_genre_missing_severity.setAccessibleName(
+            "Missing genre severity")
+        self.rule_genre_missing_severity.setAccessibleDescription(
+            "Set severity or None for missing genre rule")
+        genre_quality_label.setBuddy(self.rule_genre_missing_severity)
+        rules_layout.addWidget(genre_quality_label, 9, 0)
+        rules_layout.addWidget(
+            self.rule_genre_missing_severity, 9, 1, alignment=Qt.AlignLeft)
+
+        bitrate_quality_label = QLabel("Min Bitrate:")
+        bitrate_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        bitrate_quality_layout = QHBoxLayout()
+        bitrate_quality_layout.setContentsMargins(0, 0, 0, 0)
+        bitrate_quality_layout.setSpacing(6)
+        self.rule_bitrate_min_value = QSpinBox()
+        self.rule_bitrate_min_value.setRange(0, 1000)
+        self.rule_bitrate_min_value.setSuffix(" kbps")
+        self.rule_bitrate_min_value.setSingleStep(8)
+        self.rule_bitrate_min_value.setAccessibleName("Minimum bitrate")
+        self.rule_bitrate_severity = QComboBox()
+        self.rule_bitrate_severity.setAccessibleName("Bitrate severity")
+        self.rule_bitrate_severity.setAccessibleDescription(
+            "Set severity or None for bitrate quality rule")
+        bitrate_quality_layout.addWidget(self.rule_bitrate_min_value)
+        bitrate_quality_layout.addWidget(self.rule_bitrate_severity)
+        bitrate_quality_label.setBuddy(self.rule_bitrate_min_value)
+        rules_layout.addWidget(bitrate_quality_label, 10, 0)
+        rules_layout.addLayout(bitrate_quality_layout, 10, 1)
+
+        rule_severity_combos = (
+            self.rule_author_in_title_severity,
+            self.rule_title_in_author_severity,
+            self.rule_unknown_author_severity,
+            self.rule_min_title_severity,
+            self.rule_file_structure_severity,
+            self.rule_year_quality_severity,
+            self.rule_genre_missing_severity,
+            self.rule_bitrate_severity,
+        )
+        for combo in rule_severity_combos:
+            combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+            combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        import_layout.addWidget(rules_group)
+
+        autocorrect_group = QGroupBox("Auto-Correction")
+        autocorrect_layout = QVBoxLayout(autocorrect_group)
+        autocorrect_layout.setContentsMargins(6, 6, 6, 6)
+        autocorrect_layout.setSpacing(4)
+
+        self.autocorrect_trim_check = QCheckBox("&Trim whitespace")
+        self.autocorrect_trim_check.setAccessibleName("Trim whitespace")
+        self.autocorrect_strip_punct_check = QCheckBox(
+            "Strip leading &punctuation")
+        self.autocorrect_strip_punct_check.setAccessibleName(
+            "Strip leading punctuation")
+        self.autocorrect_non_alnum_check = QCheckBox(
+            "Remove sp&ecial characters")
+        self.autocorrect_non_alnum_check.setAccessibleName(
+            "Remove special characters")
+        self.autocorrect_proper_case_check = QCheckBox("Pro&per case fields")
+        self.autocorrect_proper_case_check.setAccessibleName(
+            "Proper case fields")
+        self.autocorrect_move_the_check = QCheckBox(
+            "Move leading 'T&he' in author")
+        self.autocorrect_move_the_check.setAccessibleName(
+            "Move leading The in author")
+
+        autocorrect_layout.addWidget(self.autocorrect_trim_check)
+        autocorrect_layout.addWidget(self.autocorrect_strip_punct_check)
+        autocorrect_layout.addWidget(self.autocorrect_non_alnum_check)
+        autocorrect_layout.addWidget(self.autocorrect_proper_case_check)
+        autocorrect_layout.addWidget(self.autocorrect_move_the_check)
+
+        import_layout.addWidget(autocorrect_group)
 
         layout.addWidget(import_group)
 
@@ -296,7 +529,7 @@ class PreferencesWindow(QDialog):
         self.cancel_button = QPushButton("&Cancel")
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription(
-            "Discard changes and close - Alt+C or F4")
+            "Discard changes and close - Alt+C")
         self.cancel_button.setDefault(False)
         self.cancel_button.setAutoDefault(False)
         footer_layout.addWidget(self.cancel_button)
@@ -337,14 +570,48 @@ class PreferencesWindow(QDialog):
             }}
         """
 
+        button_style = f"""
+            QPushButton {{
+                padding: 4px 12px;
+                min-height: {max(scaled_height - 4, 14)}px;
+                max-height: {max(scaled_height - 4, 14)}px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                background-color: palette(button);
+            }}
+            QPushButton:focus {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+                border: 2px solid palette(dark);
+            }}
+        """
+
         self.theme_combo.setStyleSheet(combo_style)
         self.preset_combo.setStyleSheet(combo_style)
         self.zoom_spin.setStyleSheet(combo_style)
         self.import_scenario_combo.setStyleSheet(combo_style)
         self.author_fallback_combo.setStyleSheet(combo_style)
         self.title_fallback_combo.setStyleSheet(combo_style)
+        self.rule_author_in_title_severity.setStyleSheet(combo_style)
+        self.rule_title_in_author_severity.setStyleSheet(combo_style)
+        self.rule_unknown_author_severity.setStyleSheet(combo_style)
+        self.rule_min_title_severity.setStyleSheet(combo_style)
+        self.duplicate_match_combo.setStyleSheet(combo_style)
+        self.duplicate_fuzzy_spin.setStyleSheet(combo_style)
+        self.rule_file_structure_pattern.setStyleSheet(combo_style)
+        self.rule_file_structure_severity.setStyleSheet(combo_style)
+        self.rule_year_min_value.setStyleSheet(combo_style)
+        self.rule_year_max_value.setStyleSheet(combo_style)
+        self.rule_year_quality_severity.setStyleSheet(combo_style)
+        self.rule_genre_missing_severity.setStyleSheet(combo_style)
+        self.rule_bitrate_min_value.setStyleSheet(combo_style)
+        self.rule_bitrate_severity.setStyleSheet(combo_style)
         self.import_dir_edit.setStyleSheet(lineedit_style)
         self.reader_keywords_edit.setStyleSheet(lineedit_style)
+        self.rule_min_title_value.setStyleSheet(combo_style)
+        self.browse_button.setStyleSheet(button_style)
+        self.save_button.setStyleSheet(button_style)
+        self.cancel_button.setStyleSheet(button_style)
 
         format_checkbox_style = f"""
             QCheckBox {{
@@ -357,6 +624,12 @@ class PreferencesWindow(QDialog):
         """
         for checkbox in self.format_checks.values():
             checkbox.setStyleSheet(format_checkbox_style)
+        self.flip_author_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_trim_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_strip_punct_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_non_alnum_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_proper_case_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_move_the_check.setStyleSheet(format_checkbox_style)
 
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
@@ -399,14 +672,11 @@ class PreferencesWindow(QDialog):
         self.scenario_description_edit.setMaximumHeight(target_height)
 
         target_width = max(
-            self.scenario_description_edit.width(),
-            self.import_scenario_combo.width(),
+            self.import_scenario_combo.minimumSizeHint().width(),
             260,
         )
         self.author_fallback_combo.setMinimumWidth(target_width)
-        self.author_fallback_combo.setMaximumWidth(target_width)
         self.title_fallback_combo.setMinimumWidth(target_width)
-        self.title_fallback_combo.setMaximumWidth(target_width)
 
     def _capture_state(self) -> dict:
         """Capture current UI state for unsaved-change detection."""
@@ -421,7 +691,44 @@ class PreferencesWindow(QDialog):
             "scenario_mode": self.import_scenario_combo.currentData(),
             "author_fallback": self.author_fallback_combo.currentData(),
             "title_fallback": self.title_fallback_combo.currentData(),
+            "flip_author_name": self.flip_author_check.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
+            "rule_author_in_title": (
+                self.rule_author_in_title_severity.currentData(),
+            ),
+            "rule_title_in_author": (
+                self.rule_title_in_author_severity.currentData(),
+            ),
+            "rule_unknown_author": (
+                self.rule_unknown_author_severity.currentData(),
+            ),
+            "rule_min_title": (
+                self.rule_min_title_value.value(),
+                self.rule_min_title_severity.currentData(),
+            ),
+            "rule_file_structure": (
+                self.rule_file_structure_pattern.currentData(),
+                self.rule_file_structure_severity.currentData(),
+            ),
+            "rule_year_quality": (
+                self.rule_year_min_value.value(),
+                self.rule_year_max_value.value(),
+                self.rule_year_quality_severity.currentData(),
+            ),
+            "rule_genre_missing": self.rule_genre_missing_severity.currentData(),
+            "rule_bitrate": (
+                self.rule_bitrate_min_value.value(),
+                self.rule_bitrate_severity.currentData(),
+            ),
+            "duplicate_match_mode": self.duplicate_match_combo.currentData(),
+            "duplicate_fuzzy_threshold": self.duplicate_fuzzy_spin.value(),
+            "autocorrect": (
+                self.autocorrect_trim_check.isChecked(),
+                self.autocorrect_strip_punct_check.isChecked(),
+                self.autocorrect_non_alnum_check.isChecked(),
+                self.autocorrect_proper_case_check.isChecked(),
+                self.autocorrect_move_the_check.isChecked(),
+            ),
         }
 
     def _has_unsaved_changes(self) -> bool:
@@ -450,7 +757,7 @@ class PreferencesWindow(QDialog):
         if self.scaler.current_scale != self._initial_scale:
             self.scaler.set_scale(self._initial_scale)
 
-        announce_status_message(self.status_bar, "Changes discarded")
+        self.set_status("Changes discarded")
         self._closing_via_handler = True
         try:
             announce_dialog_closed(self)
@@ -496,6 +803,7 @@ class PreferencesWindow(QDialog):
             value = self.settings.value(
                 f"import/formats/{key}", default_value, type=bool)
             self.format_checks[key].setChecked(value)
+        self.settings.setValue("import/include_subfolders", True)
 
         self.import_scenario_combo.clear()
         for value, label in self.IMPORT_SCENARIOS:
@@ -528,11 +836,276 @@ class PreferencesWindow(QDialog):
         self.title_fallback_combo.setCurrentIndex(
             title_index if title_index >= 0 else 0)
 
+        flip_author = self.settings.value(
+            "import/flip_author_name", False, type=bool)
+        self.flip_author_check.setChecked(flip_author)
+
         reader_keywords = self.settings.value(
             "import/reader_keywords",
             "reader, read by, narrator, narrated by",
             type=str)
         self.reader_keywords_edit.setText(reader_keywords)
+
+        for combo in (
+            self.rule_author_in_title_severity,
+            self.rule_title_in_author_severity,
+            self.rule_unknown_author_severity,
+            self.rule_min_title_severity,
+            self.rule_file_structure_severity,
+            self.rule_year_quality_severity,
+            self.rule_genre_missing_severity,
+            self.rule_bitrate_severity,
+        ):
+            combo.clear()
+            combo.addItem("None", "none")
+            combo.addItem("Error", "error")
+            combo.addItem("Warning", "warning")
+
+        self.rule_file_structure_pattern.clear()
+        self.rule_file_structure_pattern.addItem(
+            "Author/Title", "author_title")
+        self.rule_file_structure_pattern.addItem(
+            "Year/Author/Title", "year_author_title")
+        self.rule_file_structure_pattern.addItem(
+            "Either", "either")
+
+        self.duplicate_match_combo.clear()
+        self.duplicate_match_combo.addItem(
+            "Title + Author + Collection", "title_author")
+        self.duplicate_match_combo.addItem(
+            "Title + Author + Year", "title_author_year")
+        self.duplicate_match_combo.addItem(
+            "Title + Author + Year + Collection", "title_author_year_collection")
+        self.duplicate_match_combo.addItem(
+            "Title + Author + Year (Ignore Collection)", "title_author_year_ignore_collection")
+        duplicate_mode = self.settings.value(
+            "import/rules/duplicate/match_mode",
+            "title_author_year_collection",
+            type=str,
+        )
+        if duplicate_mode == "with_collection":
+            duplicate_mode = "title_author_year_collection"
+        elif duplicate_mode == "ignore_collection":
+            duplicate_mode = "title_author_year_ignore_collection"
+        duplicate_index = self.duplicate_match_combo.findData(duplicate_mode)
+        self.duplicate_match_combo.setCurrentIndex(
+            0 if duplicate_index < 0 else duplicate_index)
+
+        self.duplicate_fuzzy_spin.setValue(
+            self.settings.value(
+                "import/rules/duplicate/fuzzy_threshold",
+                0,
+                type=int,
+            )
+        )
+
+        author_in_title_enabled = self.settings.value(
+            "import/rules/author_name_in_title/enabled",
+            True,
+            type=bool,
+        )
+        author_in_title_severity = self.settings.value(
+            "import/rules/author_name_in_title/severity",
+            "warning",
+            type=str,
+        )
+        if not author_in_title_enabled:
+            author_in_title_severity = "none"
+        index = self.rule_author_in_title_severity.findData(
+            author_in_title_severity)
+        self.rule_author_in_title_severity.setCurrentIndex(
+            0 if index < 0 else index)
+
+        title_in_author_enabled = self.settings.value(
+            "import/rules/title_in_author_name/enabled",
+            True,
+            type=bool,
+        )
+        title_in_author_severity = self.settings.value(
+            "import/rules/title_in_author_name/severity",
+            "warning",
+            type=str,
+        )
+        if not title_in_author_enabled:
+            title_in_author_severity = "none"
+        index = self.rule_title_in_author_severity.findData(
+            title_in_author_severity)
+        self.rule_title_in_author_severity.setCurrentIndex(
+            0 if index < 0 else index)
+
+        unknown_author_enabled = self.settings.value(
+            "import/rules/unknown_or_various_author/enabled",
+            True,
+            type=bool,
+        )
+        unknown_author_severity = self.settings.value(
+            "import/rules/unknown_or_various_author/severity",
+            "warning",
+            type=str,
+        )
+        if not unknown_author_enabled:
+            unknown_author_severity = "none"
+        index = self.rule_unknown_author_severity.findData(
+            unknown_author_severity)
+        self.rule_unknown_author_severity.setCurrentIndex(
+            0 if index < 0 else index)
+
+        min_title_enabled = self.settings.value(
+            "import/rules/minimum_title_length/enabled",
+            False,
+            type=bool,
+        )
+        self.rule_min_title_value.setValue(
+            self.settings.value(
+                "import/rules/minimum_title_length/value",
+                3,
+                type=int,
+            )
+        )
+        min_title_severity = self.settings.value(
+            "import/rules/minimum_title_length/severity",
+            "warning",
+            type=str,
+        )
+        if not min_title_enabled:
+            min_title_severity = "none"
+        index = self.rule_min_title_severity.findData(min_title_severity)
+        self.rule_min_title_severity.setCurrentIndex(0 if index < 0 else index)
+
+        file_structure_enabled = self.settings.value(
+            "import/rules/file_structure/enabled",
+            False,
+            type=bool,
+        )
+        file_structure_severity = self.settings.value(
+            "import/rules/file_structure/severity",
+            "warning",
+            type=str,
+        )
+        if not file_structure_enabled:
+            file_structure_severity = "none"
+        file_structure_index = self.rule_file_structure_severity.findData(
+            file_structure_severity)
+        self.rule_file_structure_severity.setCurrentIndex(
+            0 if file_structure_index < 0 else file_structure_index)
+
+        file_structure_pattern = self.settings.value(
+            "import/rules/file_structure/pattern",
+            "author_title",
+            type=str,
+        )
+        file_structure_pattern_index = self.rule_file_structure_pattern.findData(
+            file_structure_pattern)
+        self.rule_file_structure_pattern.setCurrentIndex(
+            0 if file_structure_pattern_index < 0 else file_structure_pattern_index)
+
+        year_quality_enabled = self.settings.value(
+            "import/rules/year_out_of_range/enabled",
+            False,
+            type=bool,
+        )
+        self.rule_year_min_value.setValue(
+            self.settings.value(
+                "import/rules/year_out_of_range/min_year",
+                1900,
+                type=int,
+            )
+        )
+        self.rule_year_max_value.setValue(
+            self.settings.value(
+                "import/rules/year_out_of_range/max_year",
+                2100,
+                type=int,
+            )
+        )
+        year_quality_severity = self.settings.value(
+            "import/rules/year_out_of_range/severity",
+            "warning",
+            type=str,
+        )
+        if not year_quality_enabled:
+            year_quality_severity = "none"
+        year_quality_index = self.rule_year_quality_severity.findData(
+            year_quality_severity)
+        self.rule_year_quality_severity.setCurrentIndex(
+            0 if year_quality_index < 0 else year_quality_index)
+
+        genre_missing_enabled = self.settings.value(
+            "import/rules/genre_missing/enabled",
+            False,
+            type=bool,
+        )
+        genre_missing_severity = self.settings.value(
+            "import/rules/genre_missing/severity",
+            "warning",
+            type=str,
+        )
+        if not genre_missing_enabled:
+            genre_missing_severity = "none"
+        genre_missing_index = self.rule_genre_missing_severity.findData(
+            genre_missing_severity)
+        self.rule_genre_missing_severity.setCurrentIndex(
+            0 if genre_missing_index < 0 else genre_missing_index)
+
+        bitrate_quality_enabled = self.settings.value(
+            "import/rules/bitrate_below_minimum/enabled",
+            False,
+            type=bool,
+        )
+        self.rule_bitrate_min_value.setValue(
+            self.settings.value(
+                "import/rules/bitrate_below_minimum/min_kbps",
+                0,
+                type=int,
+            )
+        )
+        bitrate_quality_severity = self.settings.value(
+            "import/rules/bitrate_below_minimum/severity",
+            "warning",
+            type=str,
+        )
+        if not bitrate_quality_enabled:
+            bitrate_quality_severity = "none"
+        bitrate_quality_index = self.rule_bitrate_severity.findData(
+            bitrate_quality_severity)
+        self.rule_bitrate_severity.setCurrentIndex(
+            0 if bitrate_quality_index < 0 else bitrate_quality_index)
+
+        self.autocorrect_trim_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/trim_whitespace",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_strip_punct_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/strip_leading_punctuation",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_non_alnum_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/remove_non_alphanumeric",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_proper_case_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/proper_case",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_move_the_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/move_leading_the_author",
+                False,
+                type=bool,
+            )
+        )
 
         self._loading = False
 
@@ -550,7 +1123,94 @@ class PreferencesWindow(QDialog):
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts for the dialog."""
-        pass
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+    def set_status(self, message: str, announce: bool = False):
+        """Set status bar message with optional screen reader announcement."""
+        self._default_status_message = message
+        announce_status_message(self.status_bar, message, move_focus=announce)
+
+    def on_read_status_bar(self):
+        """Read current status bar message (Alt+/)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
+        self.set_status(status_text, announce=True)
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Preferences")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(520, 480)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        shortcuts = [
+            ("Alt+/", "Read status bar"),
+            ("Alt+T", "Theme"),
+            ("Alt+P", "Preset"),
+            ("Alt+Z", "Zoom"),
+            ("Alt+D", "Directory"),
+            ("Alt+B", "Browse"),
+            ("Alt+O", "Formats"),
+            ("Alt+S", "Scenario"),
+            ("Alt+R", "Scenario Description"),
+            ("Alt+A", "Author Fallback"),
+            ("Alt+I", "Title Fallback"),
+            ("Alt+F", "Flip Author"),
+            ("Alt+K", "Reader Keywords"),
+            ("Alt+T", "Trim whitespace"),
+            ("Alt+P", "Proper case fields"),
+            ("Alt+V", "Save"),
+            ("Alt+C", "Cancel"),
+            ("F1", "Show this help"),
+        ]
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+        )
+
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+            table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+        layout.addWidget(table)
+
+        close_button = QPushButton("Close")
+        close_button.setAccessibleName("Close")
+        close_button.clicked.connect(dlg.accept)
+        btn_font = close_button.font()
+        btn_font.setPointSize(self.scaler.get_scaled_size(11))
+        close_button.setFont(btn_font)
+        layout.addWidget(close_button)
+
+        dlg.setTabOrder(table, close_button)
+        dlg.exec()
 
     def install_alt_key_filters(self):
         """Install key filters to block unmapped Alt+letter input."""
@@ -605,8 +1265,7 @@ class PreferencesWindow(QDialog):
             return
         if value != self.scaler.current_scale:
             self.scaler.set_scale(value)
-            announce_status_message(
-                self.status_bar, f"Zoom set to {value}%")
+            self.set_status(f"Zoom set to {value}%")
 
         preset_name = "Custom"
         for name, preset_value in UIScaler.SCALE_PRESETS.items():
@@ -630,8 +1289,7 @@ class PreferencesWindow(QDialog):
         self.update_scenario_description()
         if self._loading:
             return
-        announce_status_message(
-            self.status_bar,
+        self.set_status(
             f"Scenario selected: {self.import_scenario_combo.currentText()}")
 
     def on_browse(self):
@@ -641,8 +1299,7 @@ class PreferencesWindow(QDialog):
             self, "Select Import Directory", current_dir)
         if selected:
             self.import_dir_edit.setText(selected)
-            announce_status_message(
-                self.status_bar, "Import directory selected")
+            self.set_status("Import directory selected")
 
     def on_save(self):
         """Save settings and close dialog."""
@@ -661,10 +1318,142 @@ class PreferencesWindow(QDialog):
         self.settings.setValue(
             "import/fallback/title", self.title_fallback_combo.currentData())
         self.settings.setValue(
+            "import/flip_author_name", self.flip_author_check.isChecked())
+        self.settings.setValue(
             "import/reader_keywords", self.reader_keywords_edit.text().strip())
 
+        author_in_title_choice = self.rule_author_in_title_severity.currentData()
+        self.settings.setValue(
+            "import/rules/author_name_in_title/enabled",
+            author_in_title_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/author_name_in_title/severity",
+            "warning" if author_in_title_choice == "none" else author_in_title_choice,
+        )
+
+        title_in_author_choice = self.rule_title_in_author_severity.currentData()
+        self.settings.setValue(
+            "import/rules/title_in_author_name/enabled",
+            title_in_author_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/title_in_author_name/severity",
+            "warning" if title_in_author_choice == "none" else title_in_author_choice,
+        )
+
+        unknown_author_choice = self.rule_unknown_author_severity.currentData()
+        self.settings.setValue(
+            "import/rules/unknown_or_various_author/enabled",
+            unknown_author_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/unknown_or_various_author/severity",
+            "warning" if unknown_author_choice == "none" else unknown_author_choice,
+        )
+
+        min_title_choice = self.rule_min_title_severity.currentData()
+        self.settings.setValue(
+            "import/rules/minimum_title_length/enabled",
+            min_title_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/minimum_title_length/severity",
+            "warning" if min_title_choice == "none" else min_title_choice,
+        )
+        self.settings.setValue(
+            "import/rules/minimum_title_length/value",
+            self.rule_min_title_value.value(),
+        )
+
+        file_structure_choice = self.rule_file_structure_severity.currentData()
+        self.settings.setValue(
+            "import/rules/file_structure/enabled",
+            file_structure_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/file_structure/severity",
+            "warning" if file_structure_choice == "none" else file_structure_choice,
+        )
+        self.settings.setValue(
+            "import/rules/file_structure/pattern",
+            self.rule_file_structure_pattern.currentData(),
+        )
+
+        year_quality_choice = self.rule_year_quality_severity.currentData()
+        self.settings.setValue(
+            "import/rules/year_out_of_range/enabled",
+            year_quality_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/year_out_of_range/severity",
+            "warning" if year_quality_choice == "none" else year_quality_choice,
+        )
+        self.settings.setValue(
+            "import/rules/year_out_of_range/min_year",
+            self.rule_year_min_value.value(),
+        )
+        self.settings.setValue(
+            "import/rules/year_out_of_range/max_year",
+            self.rule_year_max_value.value(),
+        )
+
+        genre_missing_choice = self.rule_genre_missing_severity.currentData()
+        self.settings.setValue(
+            "import/rules/genre_missing/enabled",
+            genre_missing_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/genre_missing/severity",
+            "warning" if genre_missing_choice == "none" else genre_missing_choice,
+        )
+
+        bitrate_choice = self.rule_bitrate_severity.currentData()
+        self.settings.setValue(
+            "import/rules/bitrate_below_minimum/enabled",
+            bitrate_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/bitrate_below_minimum/severity",
+            "warning" if bitrate_choice == "none" else bitrate_choice,
+        )
+        self.settings.setValue(
+            "import/rules/bitrate_below_minimum/min_kbps",
+            self.rule_bitrate_min_value.value(),
+        )
+
+        self.settings.setValue(
+            "import/rules/duplicate/match_mode",
+            self.duplicate_match_combo.currentData(),
+        )
+        self.settings.setValue(
+            "import/rules/duplicate/fuzzy_threshold",
+            self.duplicate_fuzzy_spin.value(),
+        )
+
+        self.settings.setValue(
+            "import/autocorrect/trim_whitespace",
+            self.autocorrect_trim_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/strip_leading_punctuation",
+            self.autocorrect_strip_punct_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/remove_non_alphanumeric",
+            self.autocorrect_non_alnum_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/proper_case",
+            self.autocorrect_proper_case_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/move_leading_the_author",
+            self.autocorrect_move_the_check.isChecked(),
+        )
+
         self._initial_state = self._capture_state()
-        announce_status_message(self.status_bar, "Preferences saved")
+        self.set_status("Preferences saved")
         self.accept()
 
     def on_cancel(self):
