@@ -17,14 +17,13 @@ from PySide6.QtWidgets import QApplication, QSplashScreen
 from pathlib import Path
 import os
 import sys
-from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries
+from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries, AuthorQueries
 from accessibility.scaling import get_scaler
 from accessibility.theme_manager import get_theme_manager
 from accessibility.shortcuts import find_shortcut_conflicts
 from ui.main_window import MainWindow
-from ui.display_setup_wizard import DisplaySetupWizard
-APP_VERSION = "1.5.0"
-APP_BUILD_DATE = "2026-02-15"
+APP_VERSION = "1.5.1"
+APP_BUILD_DATE = "2026-02-16"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -207,10 +206,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
                 self.db, self.scaler, self.theme_manager)
             self.main_window.show()
 
-            if DisplaySetupWizard.should_show():
-                wizard = DisplaySetupWizard(
-                    self.scaler, self.theme_manager, parent=self.main_window)
-                wizard.exec()
+            self._show_empty_library_dialog_if_needed()
 
             shortcut_conflicts = find_shortcut_conflicts(self.main_window)
             if shortcut_conflicts:
@@ -247,14 +243,81 @@ Use Ctrl+I to import or Alt+M for menu options."""
             traceback.print_exc(file=sys.stderr)
             raise
         finally:
-            # Cleanup orphaned series and genres (no associated books)
+            # Cleanup orphaned lookup records (no associated books)
             try:
+                AuthorQueries(self.db).cleanup_unused()
                 SeriesQueries(self.db).cleanup_unused()
                 GenreQueries(self.db).cleanup_unused()
             except Exception:
                 pass  # Don't fail on cleanup errors
+
+            try:
+                self.db.vacuum()
+            except Exception:
+                pass
+
             # Cleanup database connection
             close_db()
+
+    def _show_empty_library_dialog_if_needed(self):
+        """Show action dialog whenever the database has no books."""
+        stats = StatisticsQueries(self.db).get_statistics()
+        if stats.total_books != 0:
+            return
+
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QHBoxLayout
+
+        dlg = QDialog(self.main_window)
+        dlg.setWindowTitle(self.main_window.windowTitle())
+        dlg.setAccessibleName("First run options")
+        dlg.setAccessibleDescription(
+            "Database is empty. Choose Import, Preferences, or Continue")
+        dlg.resize(760, 360)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        text = QTextEdit()
+        text.setReadOnly(True)
+        text.setAccessibleName("First run guidance")
+        text.setPlainText(
+            "The database is empty.\n\n"
+            "To get started, import audiobooks from your folders.\n"
+            "You can also open Preferences to adjust colors and font size.\n\n"
+            "Click OK or press Enter to continue."
+        )
+        font = text.font()
+        font.setPointSize(self.scaler.get_scaled_size(12))
+        text.setFont(font)
+        layout.addWidget(text)
+
+        button_row = QHBoxLayout()
+        import_btn = QPushButton("&Import")
+        prefs_btn = QPushButton("&Preferences")
+        continue_btn = QPushButton("&Continue")
+        continue_btn.setDefault(True)
+        continue_btn.setAutoDefault(True)
+
+        button_row.addWidget(import_btn)
+        button_row.addWidget(prefs_btn)
+        button_row.addStretch(1)
+        button_row.addWidget(continue_btn)
+        layout.addLayout(button_row)
+
+        def on_import():
+            dlg.accept()
+            self.main_window.on_import()
+
+        def on_preferences():
+            dlg.accept()
+            self.main_window.on_preferences()
+
+        import_btn.clicked.connect(on_import)
+        prefs_btn.clicked.connect(on_preferences)
+        continue_btn.clicked.connect(dlg.accept)
+
+        dlg.exec()
 
 
 def main():

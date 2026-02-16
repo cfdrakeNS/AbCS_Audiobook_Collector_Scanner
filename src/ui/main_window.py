@@ -1985,6 +1985,15 @@ class MainWindow(QMainWindow):
 
             if reply == QMessageBox.Yes:
                 self.book_queries.delete_many(list(self.selected_book_ids))
+
+                try:
+                    self.author_queries.cleanup_unused()
+                    self.series_queries.cleanup_unused()
+                    self.genre_queries.cleanup_unused()
+                    self.db.vacuum()
+                except Exception:
+                    pass
+
                 deleted_count = len(self.selected_book_ids)
                 self.selected_book_ids.clear()
                 self.update_selection_ui()

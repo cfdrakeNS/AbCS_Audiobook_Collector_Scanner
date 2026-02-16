@@ -15,6 +15,7 @@ Instead, you keep one connection open and reuse it, which is faster.
 
 import sqlite3
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -37,14 +38,17 @@ class DatabaseManager:
                      If None, uses default location (data/abcs.db in project root)
         """
         if db_path is None:
-            # If no path specified, use the default: data/abcs.db in the project root
-            # Go up 3 folders to find project root
-            project_root = Path(__file__).parent.parent.parent
-            data_dir = project_root / 'data'  # Look for 'data' subfolder
-            # Create 'data' folder if it doesn't exist
-            data_dir.mkdir(exist_ok=True)
-            # Create full path: data/abcs.db
-            db_path = str(data_dir / 'abcs.db')
+            if getattr(sys, 'frozen', False):
+                local_app_data = os.environ.get(
+                    "LOCALAPPDATA", str(Path.home()))
+                data_dir = Path(local_app_data) / "AbCS"
+                data_dir.mkdir(parents=True, exist_ok=True)
+                db_path = str(data_dir / 'abcs.db')
+            else:
+                project_root = Path(__file__).parent.parent.parent
+                data_dir = project_root / 'data'
+                data_dir.mkdir(exist_ok=True)
+                db_path = str(data_dir / 'abcs.db')
 
         self.db_path = db_path  # Store the database file path
         # Connection object (initialized as None)
@@ -219,17 +223,56 @@ class DatabaseManager:
         Create database schema.
         Uses the bundled SQL schema file in data/abcdDB_def.sql.
         """
-        project_root = Path(__file__).parent.parent.parent
-        schema_path = project_root / 'data' / 'abcdDB_def.sql'
+        schema_path = self._resolve_schema_path()
 
-        if not schema_path.exists():
+        if schema_path is None:
+            searched_paths = self._candidate_schema_paths()
+            searched_text = "\n".join(str(path) for path in searched_paths)
             raise FileNotFoundError(
-                f"Schema file not found: {schema_path}")
+                "Schema file not found. Searched:\n"
+                f"{searched_text}"
+            )
 
         schema = schema_path.read_text(encoding='utf-8')
         conn = self.connect()
         conn.executescript(schema)
         conn.commit()
+
+    def _resolve_schema_path(self) -> Optional[Path]:
+        """Return the first existing schema file path, if any."""
+        for path in self._candidate_schema_paths():
+            if path.exists():
+                return path
+        return None
+
+    def _candidate_schema_paths(self) -> list[Path]:
+        """Build schema path candidates for dev, one-folder, and one-file builds."""
+        candidates: list[Path] = []
+        schema_name = "abcdDB_def.sql"
+
+        module_path = Path(__file__).resolve()
+        candidates.append(module_path.parent.parent.parent /
+                          "data" / schema_name)
+
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "data" / schema_name)
+
+        executable_dir = Path(sys.executable).resolve().parent
+        candidates.append(executable_dir / "data" / schema_name)
+
+        cwd = Path.cwd()
+        candidates.append(cwd / "data" / schema_name)
+
+        unique_paths: list[Path] = []
+        seen: set[str] = set()
+        for path in candidates:
+            key = str(path)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_paths.append(path)
+        return unique_paths
 
     def vacuum(self):
         """Optimize database (VACUUM command)."""

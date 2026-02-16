@@ -13,6 +13,18 @@
         "VIRTUAL_ENV": "${workspaceFolder}\\.venv",
         "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}"
     },
+    "terminal.integrated.enablePersistentSessions": false,
+    "terminal.integrated.profiles.windows": {
+        "PowerShell (venv)": {
+            "source": "PowerShell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "& { $p='${workspaceFolder}\\.venv\\Scripts\\Activate.ps1'; if (Test-Path $p) { . $p } }"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
     "git.enableStatusBarSync": false,
     "git.showProgress": false,
     "github.copilot.enable": {

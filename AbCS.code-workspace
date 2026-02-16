@@ -26,13 +26,14 @@
 		},
 		"terminal.integrated.environmentChangesRelaunch": "always",
 		"terminal.integrated.environmentChangesIndicator": "off",
+		"terminal.integrated.enablePersistentSessions": false,
 		"terminal.integrated.profiles.windows": {
 			"PowerShell (venv)": {
 				"source": "PowerShell",
 				"args": [
 					"-NoExit",
 					"-Command",
-					"& { . .\\.venv\\Scripts\\Activate.ps1 }"
+					"& { $p='${workspaceFolder}\\.venv\\Scripts\\Activate.ps1'; if (Test-Path $p) { . $p } }"
 				]
 			}
 		},

@@ -8,6 +8,31 @@ from typing import Dict, List
 class ImportScanner:
     """Applies scenario, fallback, and reader parsing rules to scanned books."""
 
+    AUTHOR_PLACEHOLDERS = {
+        "",
+        "unknown",
+        "unknown author",
+        "no author",
+        "various",
+        "various artists",
+        "n/a",
+        "na",
+        "none",
+        "null",
+    }
+
+    TITLE_PLACEHOLDERS = {
+        "",
+        "unknown",
+        "unknown album",
+        "no album",
+        "untitled",
+        "n/a",
+        "na",
+        "none",
+        "null",
+    }
+
     def __init__(self):
         self.scenario_mode = "mass_standard"
         self.author_fallback_mode = "folder"
@@ -58,7 +83,7 @@ class ImportScanner:
                 book["narrator"] = narrator
 
         title = (book.get("title") or "").strip()
-        if not title:
+        if self._is_placeholder_title(title):
             if self.title_fallback_mode == "folder" and folder:
                 fallback_title = os.path.basename(folder.rstrip("\\/"))
                 if fallback_title:
@@ -70,7 +95,7 @@ class ImportScanner:
                     book["title"] = fallback_title
 
         author = (book.get("author") or "").strip()
-        if not author and self.author_fallback_mode == "folder" and folder:
+        if self._is_placeholder_author(author) and self.author_fallback_mode == "folder" and folder:
             fallback_author = self._fallback_author_from_path(
                 folder=folder,
                 files=files,
@@ -137,6 +162,9 @@ class ImportScanner:
         parent_name = self._folder_parent_name(folder)
         title_lower = title_hint.lower() if title_hint else ""
 
+        if self._is_placeholder_author(folder_name) and parent_name:
+            return parent_name
+
         if self.scenario_mode == "series_from_directory":
             if parent_name:
                 return parent_name
@@ -154,12 +182,29 @@ class ImportScanner:
                 file_dir.rstrip("\\/")) if file_dir else ""
             file_parent_name = self._folder_parent_name(file_dir)
 
+            if self._is_placeholder_author(file_dir_name) and file_parent_name:
+                return file_parent_name
+
             if title_lower and file_dir_name and file_dir_name.lower() == title_lower and file_parent_name:
                 return file_parent_name
             if file_dir_name:
                 return file_dir_name
 
         return ""
+
+    @classmethod
+    def _normalize_placeholder_text(cls, value: str) -> str:
+        return " ".join(str(value or "").strip().lower().replace("_", " ").split())
+
+    @classmethod
+    def _is_placeholder_author(cls, value: str) -> bool:
+        normalized = cls._normalize_placeholder_text(value)
+        return normalized in cls.AUTHOR_PLACEHOLDERS
+
+    @classmethod
+    def _is_placeholder_title(cls, value: str) -> bool:
+        normalized = cls._normalize_placeholder_text(value)
+        return normalized in cls.TITLE_PLACEHOLDERS
 
     def _apply_auto_corrections(self, book: Dict):
         fields = ["author", "title", "series", "genre", "narrator"]

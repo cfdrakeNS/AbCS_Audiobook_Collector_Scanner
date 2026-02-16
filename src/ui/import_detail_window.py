@@ -32,6 +32,8 @@ class ImportDetailWindow(QDialog):
     RESULT_PREV = 2
     RESULT_NEXT = 3
     RESULT_SKIP = 4
+    MIN_VALID_YEAR = 1900
+    MAX_VALID_YEAR = 2100
     ALLOWED_ALT_LETTERS = {
         'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
     }
@@ -276,18 +278,26 @@ class ImportDetailWindow(QDialog):
             return ""
         return f"{hours:02d}:{minutes:02d}"
 
+    @classmethod
+    def _normalize_year_value(cls, year_value) -> int:
+        """Return valid year for spinner, otherwise 0 (blank)."""
+        try:
+            parsed_year = int(str(year_value).strip())
+        except (TypeError, ValueError):
+            return 0
+
+        if cls.MIN_VALID_YEAR <= parsed_year <= cls.MAX_VALID_YEAR:
+            return parsed_year
+        return 0
+
     def load_book_data(self):
         """Load scanned book data into form fields."""
         self.title_edit.setText(self.book_data.get("title", ""))
         self.author_combo.setCurrentText(self.book_data.get("author", ""))
         self.comments_edit.setPlainText(self.book_data.get("comment", ""))
 
-        year = self.book_data.get("year")
-        if year:
-            try:
-                self.year_spin.setValue(int(year))
-            except (ValueError, TypeError):
-                self.year_spin.setValue(0)
+        self.year_spin.setValue(self._normalize_year_value(
+            self.book_data.get("year")))
 
         self.time_edit.setText(self._format_duration())
         self.reader_edit.setText(self.book_data.get("narrator", ""))
@@ -506,10 +516,10 @@ class ImportDetailWindow(QDialog):
         row3_layout = QHBoxLayout()
 
         self.year_spin = QSpinBox()
-        self.year_spin.setRange(1900, 2100)
+        self.year_spin.setRange(0, self.MAX_VALID_YEAR)
         self.year_spin.setValue(0)
         self.year_spin.setAccessibleName("Publication year")
-        self.year_spin.setSpecialValueText("Unknown")
+        self.year_spin.setSpecialValueText("")
         self.year_spin.setMaximumWidth(95)
         row3_layout.addWidget(self.year_spin)
 
@@ -781,8 +791,8 @@ class ImportDetailWindow(QDialog):
         """Collect edited values back into book_data."""
         self.book_data["title"] = self.title_edit.text().strip()
         self.book_data["author"] = self.author_combo.currentText().strip()
-        self.book_data["year"] = self.year_spin.value(
-        ) if self.year_spin.value() > 0 else None
+        normalized_year = self._normalize_year_value(self.year_spin.value())
+        self.book_data["year"] = normalized_year if normalized_year > 0 else None
         self.book_data["comment"] = self.comments_edit.toPlainText().strip()
         self.book_data["narrator"] = self.reader_edit.text().strip()
         self.book_data["series"] = self.series_combo.currentText().strip()

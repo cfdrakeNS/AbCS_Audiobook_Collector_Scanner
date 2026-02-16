@@ -613,6 +613,7 @@ class ImportWindow(QDialog):
         self.table.itemSelectionChanged.connect(
             self.on_table_selection_changed)
         self.table.mousePressEvent = self.table_mouse_press
+        self.table.mouseDoubleClickEvent = self.table_mouse_double_click
         self.table.keyPressEvent = self.table_key_press
 
     def _update_cancel_button_state(self):
@@ -1540,6 +1541,20 @@ class ImportWindow(QDialog):
             return
 
         QTableWidget.mousePressEvent(self.table, event)
+
+    def table_mouse_double_click(self, event):
+        """Open Import Detail on double-click of a valid row."""
+        if event.button() == Qt.LeftButton:
+            index = self.table.indexAt(event.position().toPoint())
+            if index.isValid():
+                row = index.row()
+                col = index.column()
+                self.table.setCurrentCell(row, col)
+                self.on_open_detail(row, col)
+                event.accept()
+                return
+
+        QTableWidget.mouseDoubleClickEvent(self.table, event)
 
     def table_key_press(self, event):
         """Handle table key presses with main-window style selection behavior."""

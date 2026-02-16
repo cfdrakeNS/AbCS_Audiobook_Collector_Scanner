@@ -20,7 +20,8 @@ The app is accessibility-first:
 
 ## Startup behavior
 
-On first run, if no books are present, AbCS prompts for next steps such as importing or creating a new book.
+The very first time you start the AbCS application the book list will be e empty. To start adding books to the go to the file menu alt+f and select Import or ctrl+I will also open the import window. If books are already in the database, the Main Window display a list of books. 
+
 
 If books are already in the database, the Main Window opens directly.
 

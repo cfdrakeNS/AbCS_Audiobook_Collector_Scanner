@@ -7,7 +7,8 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
     QLabel, QComboBox, QSpinBox, QLineEdit, QTextEdit,
     QPushButton, QCheckBox, QFileDialog, QStatusBar, QMessageBox, QSizePolicy,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QApplication
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QApplication,
+    QScrollArea, QWidget, QFrame
 )
 from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -85,7 +86,7 @@ class PreferencesWindow(QDialog):
         self.setAccessibleName(title)
         self.setAccessibleDescription(
             "Application preferences for display and import settings")
-        self.resize(920, 560)
+        self.resize(994, 560)
         QTimer.singleShot(0, self.update_scenario_description_height)
 
         announce_dialog_opened(self, title)
@@ -95,37 +96,59 @@ class PreferencesWindow(QDialog):
         """Setup user interface."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setSpacing(18)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        content_widget = QWidget()
+        self.content_layout = QVBoxLayout(content_widget)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(20)
+        self.scroll_area.setWidget(content_widget)
+        layout.addWidget(self.scroll_area, 1)
 
         # Header section: Display settings
         display_group = QGroupBox("Display Settings")
         display_layout = QVBoxLayout(display_group)
         display_layout.setSpacing(10)
+        display_label_width = 95
 
         theme_layout = QHBoxLayout()
         theme_label = QLabel("&Theme:")
+        theme_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        theme_label.setMinimumWidth(display_label_width)
         self.theme_combo = QComboBox()
         self.theme_combo.setAccessibleName("Theme")
         self.theme_combo.setAccessibleDescription(
             "Select application theme - Alt+T")
         theme_label.setBuddy(self.theme_combo)
         theme_layout.addWidget(theme_label)
-        theme_layout.addWidget(self.theme_combo, 1)
+        theme_layout.addWidget(self.theme_combo)
+        theme_layout.addStretch(1)
         display_layout.addLayout(theme_layout)
 
         preset_layout = QHBoxLayout()
         preset_label = QLabel("&Preset:")
+        preset_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        preset_label.setMinimumWidth(display_label_width)
         self.preset_combo = QComboBox()
         self.preset_combo.setAccessibleName("Font scaling preset")
         self.preset_combo.setAccessibleDescription(
             "Select font scaling preset - Alt+P")
         preset_label.setBuddy(self.preset_combo)
         preset_layout.addWidget(preset_label)
-        preset_layout.addWidget(self.preset_combo, 1)
+        preset_layout.addWidget(self.preset_combo)
+        preset_layout.addStretch(1)
         display_layout.addLayout(preset_layout)
 
         zoom_layout = QHBoxLayout()
         zoom_label = QLabel("&Zoom (%):")
+        zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        zoom_label.setMinimumWidth(display_label_width)
         self.zoom_spin = QSpinBox()
         self.zoom_spin.setRange(
             UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
@@ -136,17 +159,21 @@ class PreferencesWindow(QDialog):
         zoom_label.setBuddy(self.zoom_spin)
         zoom_layout.addWidget(zoom_label)
         zoom_layout.addWidget(self.zoom_spin)
+        zoom_layout.addStretch(1)
         display_layout.addLayout(zoom_layout)
 
-        layout.addWidget(display_group)
+        self.content_layout.addWidget(display_group)
 
         # Detail section: Import settings
         import_group = QGroupBox("Import Settings")
         import_layout = QVBoxLayout(import_group)
-        import_layout.setSpacing(10)
+        import_layout.setSpacing(11)
+        import_label_width = 180
 
         dir_layout = QHBoxLayout()
         dir_label = QLabel("&Directory:")
+        dir_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        dir_label.setMinimumWidth(import_label_width)
         self.import_dir_edit = QLineEdit()
         self.import_dir_edit.setAccessibleName("Default import directory")
         self.import_dir_edit.setAccessibleDescription(
@@ -160,7 +187,7 @@ class PreferencesWindow(QDialog):
         self.browse_button.setAccessibleDescription(
             "Browse for a default import directory - Alt+B")
         self.browse_button.setDefault(False)
-        self.browse_button.setAutoDefault(True)
+        self.browse_button.setAutoDefault(False)
         dir_layout.addWidget(self.browse_button)
         import_layout.addLayout(dir_layout)
 
@@ -169,7 +196,7 @@ class PreferencesWindow(QDialog):
         formats_layout.setSpacing(8)
         formats_label = QLabel("F&ormats:")
         formats_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        formats_label.setMinimumWidth(180)
+        formats_label.setMinimumWidth(import_label_width)
         formats_layout.addWidget(formats_label)
 
         self.format_checks = {}
@@ -199,14 +226,15 @@ class PreferencesWindow(QDialog):
         scenario_layout.setSpacing(8)
         scenario_label = QLabel("&Scenario:")
         scenario_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        scenario_label.setMinimumWidth(180)
+        scenario_label.setMinimumWidth(import_label_width)
         self.import_scenario_combo = QComboBox()
         self.import_scenario_combo.setAccessibleName("Import scenario")
         self.import_scenario_combo.setAccessibleDescription(
             "Select import scenario mode - Alt+S")
         scenario_label.setBuddy(self.import_scenario_combo)
         scenario_layout.addWidget(scenario_label)
-        scenario_layout.addWidget(self.import_scenario_combo, 1)
+        scenario_layout.addWidget(self.import_scenario_combo)
+        scenario_layout.addStretch(1)
         import_layout.addLayout(scenario_layout)
 
         scenario_desc_layout = QHBoxLayout()
@@ -214,7 +242,7 @@ class PreferencesWindow(QDialog):
         scenario_desc_layout.setSpacing(8)
         scenario_desc_label = QLabel("Scenario Desc&ription:")
         scenario_desc_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
-        scenario_desc_label.setMinimumWidth(180)
+        scenario_desc_label.setMinimumWidth(import_label_width)
         self.scenario_description_edit = QTextEdit()
         self.scenario_description_edit.setReadOnly(True)
         self.scenario_description_edit.setAccessibleName(
@@ -237,9 +265,10 @@ class PreferencesWindow(QDialog):
             "Choose fallback for missing author tags")
         author_fallback_label.setBuddy(self.author_fallback_combo)
         author_fallback_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        author_fallback_label.setMinimumWidth(180)
+        author_fallback_label.setMinimumWidth(import_label_width)
         author_fallback_layout.addWidget(author_fallback_label)
-        author_fallback_layout.addWidget(self.author_fallback_combo, 1)
+        author_fallback_layout.addWidget(self.author_fallback_combo)
+        author_fallback_layout.addStretch(1)
         import_layout.addLayout(author_fallback_layout)
 
         title_fallback_layout = QHBoxLayout()
@@ -252,9 +281,10 @@ class PreferencesWindow(QDialog):
             "Choose fallback for missing title tags")
         title_fallback_label.setBuddy(self.title_fallback_combo)
         title_fallback_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        title_fallback_label.setMinimumWidth(180)
+        title_fallback_label.setMinimumWidth(import_label_width)
         title_fallback_layout.addWidget(title_fallback_label)
-        title_fallback_layout.addWidget(self.title_fallback_combo, 1)
+        title_fallback_layout.addWidget(self.title_fallback_combo)
+        title_fallback_layout.addStretch(1)
         import_layout.addLayout(title_fallback_layout)
 
         flip_author_layout = QHBoxLayout()
@@ -262,14 +292,15 @@ class PreferencesWindow(QDialog):
         flip_author_layout.setSpacing(8)
         flip_author_label = QLabel("&Flip Author:")
         flip_author_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        flip_author_label.setMinimumWidth(180)
+        flip_author_label.setMinimumWidth(import_label_width)
         self.flip_author_check = QCheckBox("Last, First")
         self.flip_author_check.setAccessibleName("Flip author name")
         self.flip_author_check.setAccessibleDescription(
             "Flip author names to Last, First during import - Alt+F")
         flip_author_label.setBuddy(self.flip_author_check)
         flip_author_layout.addWidget(flip_author_label)
-        flip_author_layout.addWidget(self.flip_author_check, 1)
+        flip_author_layout.addWidget(self.flip_author_check)
+        flip_author_layout.addStretch(1)
         import_layout.addLayout(flip_author_layout)
 
         reader_keywords_layout = QHBoxLayout()
@@ -277,15 +308,18 @@ class PreferencesWindow(QDialog):
         reader_keywords_layout.setSpacing(8)
         reader_keywords_label = QLabel("Reader &Keywords:")
         reader_keywords_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        reader_keywords_label.setMinimumWidth(180)
+        reader_keywords_label.setMinimumWidth(import_label_width)
         self.reader_keywords_edit = QLineEdit()
         self.reader_keywords_edit.setAccessibleName("Reader keywords")
         self.reader_keywords_edit.setAccessibleDescription(
             "Comma-separated keywords for narrator parsing")
         reader_keywords_label.setBuddy(self.reader_keywords_edit)
         reader_keywords_layout.addWidget(reader_keywords_label)
-        reader_keywords_layout.addWidget(self.reader_keywords_edit, 1)
+        reader_keywords_layout.addWidget(self.reader_keywords_edit)
+        reader_keywords_layout.addStretch(1)
         import_layout.addLayout(reader_keywords_layout)
+
+        import_layout.addSpacing(self.scaler.get_scaled_size(14))
 
         self.rules_section_text = QTextEdit()
         self.rules_section_text.setReadOnly(True)
@@ -300,14 +334,16 @@ class PreferencesWindow(QDialog):
         import_layout.addWidget(self.rules_section_text)
 
         rules_group = QGroupBox("")
+        rules_group.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         rules_layout = QGridLayout(rules_group)
-        rules_layout.setContentsMargins(6, 4, 6, 4)
-        rules_layout.setHorizontalSpacing(12)
+        rules_layout.setContentsMargins(2, 4, 2, 4)
+        rules_layout.setHorizontalSpacing(6)
         rules_layout.setVerticalSpacing(6)
-        rules_layout.setColumnMinimumWidth(0, 170)
-        rules_layout.setColumnMinimumWidth(2, 170)
-        rules_layout.setColumnStretch(1, 1)
-        rules_layout.setColumnStretch(3, 1)
+        rules_layout.setColumnMinimumWidth(0, 140)
+        rules_layout.setColumnMinimumWidth(2, 140)
+        rules_layout.setColumnStretch(1, 0)
+        rules_layout.setColumnStretch(3, 0)
+        rules_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
         severity_header_left = QLabel("Severity")
         severity_header_left.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -446,9 +482,10 @@ class PreferencesWindow(QDialog):
         )
         for combo in rule_severity_combos:
             combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-            combo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        import_layout.addWidget(rules_group)
+        import_layout.addWidget(rules_group, 0, Qt.AlignLeft)
+        import_layout.addSpacing(self.scaler.get_scaled_size(22))
 
         self.autocorrect_section_text = QTextEdit()
         self.autocorrect_section_text.setReadOnly(True)
@@ -460,13 +497,17 @@ class PreferencesWindow(QDialog):
         self.autocorrect_section_text.setPlainText(
             "Auto-Correction: applies to Title, Author, Series, Genre, and Narrator. Leading The option applies to Title.")
         self._fit_readonly_section_text_height(self.autocorrect_section_text)
+        self._sync_section_label_heights()
         import_layout.addWidget(self.autocorrect_section_text)
 
-        autocorrect_group = QGroupBox("")
-        autocorrect_layout = QGridLayout(autocorrect_group)
-        autocorrect_layout.setContentsMargins(4, 2, 4, 2)
-        autocorrect_layout.setHorizontalSpacing(14)
-        autocorrect_layout.setVerticalSpacing(2)
+        self.autocorrect_group = QGroupBox("")
+        self.autocorrect_group.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.autocorrect_layout = QGridLayout(self.autocorrect_group)
+        self.autocorrect_layout.setContentsMargins(4, 2, 4, 2)
+        self.autocorrect_layout.setHorizontalSpacing(2)
+        self.autocorrect_layout.setVerticalSpacing(2)
+        self.autocorrect_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
         self.autocorrect_trim_check = QCheckBox("&Trim whitespace")
         self.autocorrect_trim_check.setAccessibleName("Trim whitespace")
@@ -486,15 +527,33 @@ class PreferencesWindow(QDialog):
         self.autocorrect_move_the_check.setAccessibleName(
             "Move leading The in title")
 
-        autocorrect_layout.addWidget(self.autocorrect_trim_check, 0, 0)
-        autocorrect_layout.addWidget(self.autocorrect_strip_punct_check, 1, 0)
-        autocorrect_layout.addWidget(self.autocorrect_non_alnum_check, 2, 0)
-        autocorrect_layout.addWidget(self.autocorrect_proper_case_check, 0, 1)
-        autocorrect_layout.addWidget(self.autocorrect_move_the_check, 1, 1)
+        self.autocorrect_trim_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.autocorrect_strip_punct_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.autocorrect_non_alnum_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.autocorrect_proper_case_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.autocorrect_move_the_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        import_layout.addWidget(autocorrect_group)
+        self.autocorrect_layout.addWidget(self.autocorrect_trim_check, 0, 0)
+        self.autocorrect_layout.addWidget(
+            self.autocorrect_strip_punct_check, 1, 0)
+        self.autocorrect_layout.addWidget(
+            self.autocorrect_non_alnum_check, 2, 0)
+        self.autocorrect_layout.addWidget(
+            self.autocorrect_proper_case_check, 0, 1)
+        self.autocorrect_layout.addWidget(
+            self.autocorrect_move_the_check, 1, 1)
+        self.autocorrect_layout.setColumnStretch(0, 0)
+        self.autocorrect_layout.setColumnStretch(1, 0)
 
-        layout.addWidget(import_group)
+        import_layout.addWidget(self.autocorrect_group, 0, Qt.AlignLeft)
+        self._sync_autocorrect_group_width()
+
+        self.content_layout.addWidget(import_group)
 
         # Footer section: Status bar and action buttons
         footer_layout = QHBoxLayout()
@@ -508,7 +567,7 @@ class PreferencesWindow(QDialog):
         self.audit_button.setAccessibleDescription(
             "Open display audit report - Alt+U")
         self.audit_button.setDefault(False)
-        self.audit_button.setAutoDefault(True)
+        self.audit_button.setAutoDefault(False)
         footer_layout.addWidget(self.audit_button)
 
         self.save_button = QPushButton("Sa&ve")
@@ -516,7 +575,7 @@ class PreferencesWindow(QDialog):
         self.save_button.setAccessibleDescription(
             "Save preferences and close - Alt+V")
         self.save_button.setDefault(False)
-        self.save_button.setAutoDefault(True)
+        self.save_button.setAutoDefault(False)
         footer_layout.addWidget(self.save_button)
 
         self.cancel_button = QPushButton("&Cancel")
@@ -524,10 +583,70 @@ class PreferencesWindow(QDialog):
         self.cancel_button.setAccessibleDescription(
             "Discard changes and close - Alt+C")
         self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(True)
+        self.cancel_button.setAutoDefault(False)
         footer_layout.addWidget(self.cancel_button)
 
         layout.addLayout(footer_layout)
+
+    def _fit_combo_to_text(self, combo: QComboBox, min_chars: int = 6):
+        """Size a combo box to the widest item text plus compact padding."""
+        if combo is None:
+            return
+
+        metrics = combo.fontMetrics()
+        widest_text = 0
+        for index in range(combo.count()):
+            widest_text = max(
+                widest_text,
+                metrics.horizontalAdvance(combo.itemText(index)),
+            )
+
+        min_text_width = metrics.horizontalAdvance("W" * max(min_chars, 1))
+        base_width = max(widest_text, min_text_width)
+        extra_padding = self.scaler.get_scaled_size(24)
+        target_width = base_width + extra_padding
+        max_width = self.scaler.get_scaled_size(420)
+        target_width = max(self.scaler.get_scaled_size(90),
+                           min(target_width, max_width))
+
+        combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        combo.setMinimumWidth(target_width)
+        combo.setMaximumWidth(target_width)
+
+    def _apply_compact_combo_widths(self):
+        """Apply content-fit width to all combo boxes in Preferences."""
+        self._fit_combo_to_text(self.theme_combo, min_chars=8)
+        self._fit_combo_to_text(self.preset_combo, min_chars=8)
+        self._fit_combo_to_text(self.import_scenario_combo, min_chars=16)
+        self._fit_combo_to_text(self.author_fallback_combo, min_chars=6)
+        self._fit_combo_to_text(self.title_fallback_combo, min_chars=6)
+        self._fit_combo_to_text(
+            self.rule_author_in_title_severity, min_chars=6)
+        self._fit_combo_to_text(
+            self.rule_title_in_author_severity, min_chars=6)
+        self._fit_combo_to_text(self.rule_unknown_author_severity, min_chars=6)
+        self._fit_combo_to_text(self.rule_min_title_severity, min_chars=6)
+        self._fit_combo_to_text(self.rule_file_structure_severity, min_chars=6)
+        self._fit_combo_to_text(self.rule_year_quality_severity, min_chars=6)
+        self._fit_combo_to_text(self.rule_file_structure_pattern, min_chars=12)
+        self._fit_combo_to_text(self.duplicate_match_combo, min_chars=20)
+        self._sync_reader_keywords_width()
+
+    def _sync_reader_keywords_width(self):
+        """Match Reader Keywords field width to Duplicate Match combo width."""
+        if not hasattr(self, "reader_keywords_edit") or not hasattr(self, "duplicate_match_combo"):
+            return
+
+        target_width = max(
+            self.duplicate_match_combo.minimumWidth(),
+            self.duplicate_match_combo.sizeHint().width(),
+            120,
+        )
+        self.reader_keywords_edit.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.reader_keywords_edit.setMinimumWidth(target_width)
+        self.reader_keywords_edit.setMaximumWidth(target_width)
 
     def apply_control_styles(self):
         """Apply uniform control heights to inputs."""
@@ -637,9 +756,34 @@ class PreferencesWindow(QDialog):
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
         self.apply_control_styles()
+        self._apply_compact_combo_widths()
         self._fit_readonly_section_text_height(self.rules_section_text)
         self._fit_readonly_section_text_height(self.autocorrect_section_text)
+        self._sync_section_label_heights()
+        self._sync_autocorrect_group_width()
         self.update_scenario_description_height()
+
+    def _sync_autocorrect_group_width(self):
+        """Set Auto-Correction frame width so column spacing is visible."""
+        if not hasattr(self, "autocorrect_group") or not hasattr(self, "autocorrect_layout"):
+            return
+
+        content_width = self.autocorrect_layout.sizeHint().width()
+        target_width = content_width + self.scaler.get_scaled_size(24)
+        min_width = self.scaler.get_scaled_size(420)
+        target_width = max(min_width, target_width)
+
+        self.autocorrect_group.setMinimumWidth(target_width)
+        self.autocorrect_group.setMaximumWidth(target_width)
+
+    def _sync_section_label_heights(self):
+        """Keep section label boxes the same height for visual consistency."""
+        if not hasattr(self, "rules_section_text") or not hasattr(self, "autocorrect_section_text"):
+            return
+
+        target_height = self.rules_section_text.height()
+        self.autocorrect_section_text.setMinimumHeight(target_height)
+        self.autocorrect_section_text.setMaximumHeight(target_height)
 
     def _fit_readonly_section_text_height(self, widget: QTextEdit):
         """Size a read-only section textbox to just fit its content."""
@@ -670,7 +814,7 @@ class PreferencesWindow(QDialog):
         self.update_scenario_description_height()
 
     def update_scenario_description_height(self):
-        """Set description height and align fallback combo widths to scenario box."""
+        """Set description height based on current width."""
         if not hasattr(self, "scenario_description_edit"):
             return
 
@@ -698,13 +842,6 @@ class PreferencesWindow(QDialog):
 
         self.scenario_description_edit.setMinimumHeight(target_height)
         self.scenario_description_edit.setMaximumHeight(target_height)
-
-        target_width = max(
-            self.import_scenario_combo.minimumSizeHint().width(),
-            260,
-        )
-        self.author_fallback_combo.setMinimumWidth(target_width)
-        self.title_fallback_combo.setMinimumWidth(target_width)
 
     def _capture_state(self) -> dict:
         """Capture current UI state for unsaved-change detection."""
@@ -1068,6 +1205,8 @@ class PreferencesWindow(QDialog):
                 type=bool,
             )
         )
+
+        self._apply_compact_combo_widths()
 
         self._loading = False
 
