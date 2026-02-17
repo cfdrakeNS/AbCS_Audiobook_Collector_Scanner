@@ -22,8 +22,8 @@ from accessibility.scaling import get_scaler
 from accessibility.theme_manager import get_theme_manager
 from accessibility.shortcuts import find_shortcut_conflicts
 from ui.main_window import MainWindow
-APP_VERSION = "1.5.1"
-APP_BUILD_DATE = "2026-02-16"
+APP_VERSION = "1.5.4"
+APP_BUILD_DATE = "2026-02-17"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'

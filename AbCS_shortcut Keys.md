@@ -1,6 +1,6 @@
 # AbCS Shortcut Keys (by Window)
 
-This list reflects shortcuts currently implemented in code as of 2026-02-14.
+This list reflects shortcuts currently implemented in code as of 2026-02-17.
 
 ## Mnemonic rules
 
@@ -74,6 +74,7 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 - **Escape**: Close window
 
 ### Other shortcuts
+- **Ctrl+Return**: New book
 - **Delete**: Delete current book
 
 ---
@@ -81,14 +82,17 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 ## Import Window (`src/ui/import_window.py`)
 
 ### Alt shortcuts
+- **Alt+C**: Collection field
 - **Alt+F**: Folder field
-- **Alt+O**: Error filter
+- **Alt+E**: Error filter
 - **Alt+W**: Browse
 - **Alt+S**: Scan
 - **Alt+I**: Import Selected
 - **Alt+V**: Import All Valid
-- **Alt+C**: Cancel
+- **Alt+L**: Close window (idle)
+- **Alt+C**: Cancel scan (while scanning)
 - **Alt+B**: Focus import list table
+- **Alt+1..Alt+5**: Jump to import table columns
 - **Alt+/**: Read status bar aloud
 
 ### Function / navigation shortcuts
@@ -108,18 +112,19 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 - **Alt+Y**: Year
 - **Alt+M**: Time
 - **Alt+R**: Reader
-- **Alt+S**: Series
+- **Alt+I**: Series
 - **Alt+G**: Genre
-- **Alt+L**: Collection
+- **Alt+C**: Collection
 - **Alt+F**: Files
 - **Alt+B**: Bitrate
 - **Alt+Z**: Size
 - **Alt+E**: Errors
 - **Alt+H**: Path
-- **Alt+I**: Import button
-- **Alt+C**: Cancel
+- **Alt+S**: Save
+- **Alt+D**: Discard
 
 ### Function / navigation shortcuts
+- **F1**: Show keyboard shortcuts/help
 - **Page Up**: Previous import item
 - **Page Down**: Next import item
 - **Escape**: Close/Cancel
@@ -159,7 +164,11 @@ This list reflects shortcuts currently implemented in code as of 2026-02-14.
 - **Alt+R**: Scenario Description
 - **Alt+A**: Author Fallback
 - **Alt+I**: Title Fallback
+- **Alt+F**: Flip Author
 - **Alt+K**: Reader Keywords
+- **Alt+W**: Trim whitespace
+- **Alt+L**: Proper case fields
+- **Alt+U**: Audit display
 - **Alt+V**: Save
 - **Alt+C**: Cancel
 

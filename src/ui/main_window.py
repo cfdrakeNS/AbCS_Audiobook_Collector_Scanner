@@ -2116,7 +2116,31 @@ class MainWindow(QMainWindow):
         dialog = ImportWindow(self.db, self.scaler,
                               self.theme_manager, parent=self)
         dialog.exec()
+        imported_count = getattr(dialog, "total_imported", 0)
         self.refresh_books()
+
+        db_total_row = self.db.fetch_one("SELECT COUNT(*) FROM books")
+        db_total_books = int(db_total_row[0]) if db_total_row else 0
+
+        if imported_count > 0 and len(self.books) == 0:
+            self.current_filter = SearchFilter(order_by="Title")
+            self.clear_all_filters()
+            self.order_combo.setCurrentText("Title")
+            self.refresh_collections()
+            self.collection_combo.setCurrentIndex(0)
+            self.read_combo.setCurrentIndex(0)
+            self.refresh_books()
+
+            if len(self.books) > 0:
+                self.set_status(
+                    f"Imported {imported_count} books. View reset to show all books.",
+                    timeout_ms=4000,
+                )
+            elif db_total_books > 0:
+                self.set_status(
+                    f"Imported {imported_count}. Database now has {db_total_books} books, but the table view is not rendering rows.",
+                    timeout_ms=6000,
+                )
 
     def open_book_details(self, book: Book):
         """Open book details window."""
@@ -2251,7 +2275,31 @@ Use Ctrl+I to import or Alt+M for menu options."""
         dialog = ImportWindow(self.db, self.scaler,
                               self.theme_manager, parent=self)
         dialog.exec()
+        imported_count = getattr(dialog, "total_imported", 0)
         self.refresh_books()
+
+        db_total_row = self.db.fetch_one("SELECT COUNT(*) FROM books")
+        db_total_books = int(db_total_row[0]) if db_total_row else 0
+
+        if imported_count > 0 and len(self.books) == 0:
+            self.current_filter = SearchFilter(order_by="Title")
+            self.clear_all_filters()
+            self.order_combo.setCurrentText("Title")
+            self.refresh_collections()
+            self.collection_combo.setCurrentIndex(0)
+            self.read_combo.setCurrentIndex(0)
+            self.refresh_books()
+
+            if len(self.books) > 0:
+                self.set_status(
+                    f"Imported {imported_count} books. View reset to show all books.",
+                    timeout_ms=4000,
+                )
+            elif db_total_books > 0:
+                self.set_status(
+                    f"Imported {imported_count}. Database now has {db_total_books} books, but the table view is not rendering rows.",
+                    timeout_ms=6000,
+                )
 
     def on_show_authors(self):
         """Open Author window."""

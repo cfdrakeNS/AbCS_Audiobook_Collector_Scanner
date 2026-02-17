@@ -108,6 +108,7 @@ class ImportWindow(QDialog):
             "errors": 0,
             "duplicates": 0,
         }
+        self.total_imported = 0
         self._default_status_message = "Ready"
         self._base_window_title = "Import Audiobooks"
         self._is_adding = False
@@ -1504,6 +1505,9 @@ class ImportWindow(QDialog):
 
             self.set_status(
                 f"Added: {imported} | Skipped: {skipped} | Failed: {failed}")
+
+            if imported > 0:
+                self.total_imported += imported
 
             remaining = len(self.scanned_items)
             self._show_info_popup(

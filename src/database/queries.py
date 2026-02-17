@@ -73,12 +73,6 @@ class BookQueries:
         elif filter_criteria.read_filter == "Unread":
             query += " AND b.read_date IS NULL"
 
-        # Filter by order-by field (exclude books without genre/series when ordering by those)
-        if filter_criteria.order_by == "Genre":
-            query += " AND g.name IS NOT NULL"
-        elif filter_criteria.order_by == "Series":
-            query += " AND s.name IS NOT NULL"
-
         # Search/keyword filter
         if filter_criteria.has_search:
             is_keyword = filter_criteria.search_text.startswith(
@@ -108,9 +102,9 @@ class BookQueries:
         if filter_criteria.order_by == "Author":
             query += " ORDER BY a.name, b.year, b.title"
         elif filter_criteria.order_by == "Genre":
-            query += " ORDER BY g.name, b.title"
+            query += " ORDER BY g.name IS NULL, g.name, b.title"
         elif filter_criteria.order_by == "Series":
-            query += " ORDER BY s.name, b.year, b.title"
+            query += " ORDER BY s.name IS NULL, s.name, b.year, b.title"
         else:  # Title
             query += " ORDER BY b.title"
 

@@ -33,6 +33,22 @@ echo.
 
 REM Clean previous builds
 echo Cleaning previous builds...
+echo Stopping running AbCS processes if any...
+taskkill /F /IM AbCS.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
+
+if exist dist\AbCS.exe (
+    echo Removing existing dist\AbCS.exe...
+    attrib -r dist\AbCS.exe >nul 2>&1
+    del /f /q dist\AbCS.exe >nul 2>&1
+    if exist dist\AbCS.exe (
+        echo ERROR: dist\AbCS.exe is locked and cannot be replaced.
+        echo Close any running AbCS window, File Explorer preview, or antivirus lock, then retry.
+        pause
+        exit /b 1
+    )
+)
+
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 if exist AbCS.spec del AbCS.spec
@@ -47,6 +63,8 @@ python -m PyInstaller ^
     --name="AbCS" ^
     --onefile ^
     --windowed ^
+    --clean ^
+    --noconfirm ^
     --add-data="data/abcdDB_def.sql;data" ^
     --hidden-import="PySide6.QtCore" ^
     --hidden-import="PySide6.QtGui" ^
