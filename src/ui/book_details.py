@@ -40,6 +40,9 @@ class BookDetailsWindow(QDialog):
             parent: Parent widget
         """
         super().__init__(parent)
+        self.setAttribute(Qt.WA_NativeWindow, True)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.winId()
 
         self.db = db
         self.scaler = scaler
@@ -88,8 +91,22 @@ class BookDetailsWindow(QDialog):
         self.setAccessibleDescription(
             "Form for viewing and editing book information")
         self.resize(850, 500)
+        announce_dialog_opened(self, title)
         self.set_status("Ready")
         QTimer.singleShot(0, self.title_edit.setFocus)
+
+    def showEvent(self, event):
+        """Ensure this dialog remains the active foreground window."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self._ensure_foreground_window)
+
+    def _ensure_foreground_window(self):
+        """Raise and activate the dialog for reliable screen-reader title reading."""
+        self.raise_()
+        self.activateWindow()
+        current_focus = self.focusWidget()
+        if current_focus is None:
+            self.title_edit.setFocus(Qt.TabFocusReason)
 
     def install_focus_filters(self):
         """
@@ -596,8 +613,10 @@ class BookDetailsWindow(QDialog):
                 return  # Continue editing, keep dialog open
             else:  # Cancel - revert all fields and close
                 self._revert_changes()
+                announce_dialog_closed(self)
                 super().reject()
         else:
+            announce_dialog_closed(self)
             super().reject()  # No changes, just close
 
     def _revert_changes(self):
@@ -819,14 +838,6 @@ class BookDetailsWindow(QDialog):
         # Shortcuts list
         shortcuts = [
             ("Alt+/", "Read status bar"),
-            ("Alt+N", "New book"),
-            ("Alt+S", "Save"),
-            ("Alt+D", "Delete"),
-            ("Alt+L", "Cancel"),
-            ("Alt+C", "Close window"),
-            ("Page Up", "Previous book"),
-            ("Page Down", "Next book"),
-            ("Escape", "Close window"),
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
             ("Alt+O", "Comments"),
@@ -841,6 +852,14 @@ class BookDetailsWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
+            ("Alt+N", "New book"),
+            ("Alt+S", "Save"),
+            ("Alt+D", "Delete"),
+            ("Alt+L", "Cancel"),
+            ("Alt+C", "Close window"),
+            ("Page Up", "Previous book"),
+            ("Page Down", "Next book"),
+            ("Escape", "Close window"),
             ("F1", "Show this help"),
         ]
 

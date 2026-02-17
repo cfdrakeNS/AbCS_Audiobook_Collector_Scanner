@@ -35,13 +35,14 @@ class ImportDetailWindow(QDialog):
     MIN_VALID_YEAR = 1900
     MAX_VALID_YEAR = 2100
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
     }
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
                  theme_manager: ThemeManager, book_data: dict = None,
                  errors: list = None, current_index: int = 0,
-                 total_count: int = 0, parent=None):
+                 total_count: int = 0, is_duplicate: bool = False,
+                 parent=None):
         """
         Initialize import detail window.
 
@@ -54,6 +55,9 @@ class ImportDetailWindow(QDialog):
             parent: Parent widget
         """
         super().__init__(parent)
+        self.setAttribute(Qt.WA_NativeWindow, True)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.winId()
 
         self.db = db
         self.scaler = scaler
@@ -62,6 +66,7 @@ class ImportDetailWindow(QDialog):
         self.errors = errors or []
         self.current_index = current_index
         self.total_count = total_count
+        self.is_duplicate_item = bool(is_duplicate)
         self._dirty = False
         self._first_dirty_widget = None
         self._pending_dirty_widgets = set()
@@ -81,17 +86,31 @@ class ImportDetailWindow(QDialog):
         self.load_combos()
         self.load_book_data()
         self._setup_dirty_tracking()
+        self._apply_duplicate_read_only_state()
 
         # Window settings
-        title = self._detail_window_title(self.book_data)
+        title = self._detail_window_title(self.book_data, self.errors)
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription(
             "Form for viewing and editing scanned audiobook details")
-        self.resize(850, 500)
+        self.resize(880, 500)
 
         announce_dialog_opened(self, title)
         self.set_status("Ready")
+
+    def showEvent(self, event):
+        """Ensure this dialog remains the active foreground window."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self._ensure_foreground_window)
+
+    def _ensure_foreground_window(self):
+        """Raise and activate the dialog for reliable screen-reader title reading."""
+        self.raise_()
+        self.activateWindow()
+        current_focus = self.focusWidget()
+        if current_focus is None:
+            self.title_edit.setFocus(Qt.TabFocusReason)
 
     def set_status(self, message: str, announce: bool = False):
         """Set status message on this dialog and mirror to parent import window."""
@@ -172,7 +191,7 @@ class ImportDetailWindow(QDialog):
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
                 self.set_status(
-                    f"{field_name} changed. Press Alt+S Save or Alt+K Skip",
+                    f"{field_name} changed.",
                     announce=True
                 )
                 self._pending_dirty_widgets.discard(dirty_widget)
@@ -189,6 +208,7 @@ class ImportDetailWindow(QDialog):
             if widget and not self._first_dirty_widget:
                 self._first_dirty_widget = widget
             self.save_return_button.setEnabled(True)
+            self.save_return_button.setVisible(True)
 
     def _get_dirty_field_name(self, widget) -> str:
         """Return a user-friendly field name for a dirty widget."""
@@ -225,6 +245,9 @@ class ImportDetailWindow(QDialog):
         self._dirty = False
         self._first_dirty_widget = None
         self._pending_dirty_widgets.clear()
+        if hasattr(self, "save_return_button"):
+            self.save_return_button.setEnabled(False)
+            self.save_return_button.setVisible(False)
 
     def _setup_dirty_tracking(self):
         """Setup signals to track changes."""
@@ -246,6 +269,13 @@ class ImportDetailWindow(QDialog):
             lambda: self._mark_dirty(self.genre_combo))
         self.collection_combo.currentIndexChanged.connect(
             lambda: self._mark_dirty(self.collection_combo))
+
+    def _apply_duplicate_read_only_state(self):
+        """Keep duplicate entries editable (treated like other errors)."""
+        if not self.is_duplicate_item:
+            return
+        self.set_status(
+            "Duplicate item loaded. Edit fields to resolve and save.")
 
     def load_combos(self):
         """Load author, series, genre, and collection combo boxes."""
@@ -336,9 +366,29 @@ class ImportDetailWindow(QDialog):
         self._clear_dirty()
 
     @staticmethod
-    def _detail_window_title(book_data: dict) -> str:
-        """Build window title from current book data."""
-        return "Import Detail - " + (book_data.get("title") or "Untitled")
+    def _detail_window_title(book_data: dict, errors: list | None = None) -> str:
+        """Build window title from current book data and active errors."""
+        base_title = "Import Detail - " + \
+            (book_data.get("title") or "Untitled")
+        if not errors:
+            return base_title
+
+        clean_errors = []
+        seen = set()
+        for error in errors:
+            text = str(error).strip()
+            if not text:
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            clean_errors.append(text)
+
+        if not clean_errors:
+            return base_title
+
+        return f"{base_title} - {', '.join(clean_errors)}"
 
     def _build_errors_for_row(self, row: int) -> list:
         """Build current error list for a row from parent scanned items."""
@@ -364,25 +414,62 @@ class ImportDetailWindow(QDialog):
         parent = self.parent()
         if not parent or not hasattr(parent, "scanned_items"):
             return False
-        if target_index < 0 or target_index >= len(parent.scanned_items):
+
+        resolved_index = self._resolve_target_index_from_filter(target_index)
+        if resolved_index is None:
             return False
 
         self._collect_form_data()
         if hasattr(parent, "_apply_detail_edits"):
             parent._apply_detail_edits(self.current_index, self)
 
-        next_item = parent.scanned_items[target_index]
+        next_item = parent.scanned_items[resolved_index]
         self.book_data = next_item.get("book", {}).copy()
-        self.errors = self._build_errors_for_row(target_index)
-        self.current_index = target_index
+        self.errors = self._build_errors_for_row(resolved_index)
+        self.current_index = resolved_index
         self.total_count = len(parent.scanned_items)
 
-        self.setWindowTitle(self._detail_window_title(self.book_data))
+        self.setWindowTitle(self._detail_window_title(
+            self.book_data, self.errors))
         self.setAccessibleName(self.windowTitle())
         self.load_book_data()
         self.set_status(
             f"Viewing item {self.current_index + 1} of {self.total_count}")
         return True
+
+    def _resolve_target_index_from_filter(self, requested_index: int) -> int | None:
+        """Resolve navigation target to previous/next visible row when filter is active."""
+        parent = self.parent()
+        if not parent or not hasattr(parent, "scanned_items"):
+            return None
+
+        row_count = len(parent.scanned_items)
+        if row_count == 0:
+            return None
+
+        if not hasattr(parent, "table") or parent.table is None:
+            if 0 <= requested_index < row_count:
+                return requested_index
+            return None
+
+        visible_rows = [
+            row for row in range(row_count)
+            if row < parent.table.rowCount() and not parent.table.isRowHidden(row)
+        ]
+        if not visible_rows:
+            return None
+
+        if requested_index == self.current_index:
+            return self.current_index if self.current_index in visible_rows else visible_rows[0]
+
+        direction = 1 if requested_index > self.current_index else -1
+        if direction > 0:
+            candidates = [
+                row for row in visible_rows if row > self.current_index]
+            return candidates[0] if candidates else None
+
+        candidates = [row for row in visible_rows if row < self.current_index]
+        return candidates[-1] if candidates else None
 
     def apply_control_styles(self):
         """Apply consistent control styling with scaling."""
@@ -562,7 +649,7 @@ class ImportDetailWindow(QDialog):
         row4_layout.addWidget(genre_label)
         row4_layout.addWidget(self.genre_combo, 1)
 
-        collection_label = QLabel("Co&llection:")
+        collection_label = QLabel("&Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
@@ -658,18 +745,22 @@ class ImportDetailWindow(QDialog):
         # Buttons
         button_layout = QHBoxLayout()
 
-        self.save_return_button = QPushButton("&Save && Return")
-        self.save_return_button.setAccessibleName("Save and return")
+        self.save_return_button = QPushButton("&Save")
+        self.save_return_button.setAccessibleName("Save")
         self.save_return_button.setAccessibleDescription(
-            "Save edits and return to import list - Alt+S")
+            "Save edits and continue editing - Alt+S")
+        self.save_return_button.setShortcut(QKeySequence("Alt+S"))
         self.save_return_button.setFocusPolicy(Qt.StrongFocus)
-        self.save_return_button.clicked.connect(self.accept)
+        self.save_return_button.clicked.connect(self.on_save)
+        self.save_return_button.setEnabled(False)
+        self.save_return_button.setVisible(False)
         button_layout.addWidget(self.save_return_button)
 
-        self.skip_button = QPushButton("S&kip/Discard")
-        self.skip_button.setAccessibleName("Skip or discard")
+        self.skip_button = QPushButton("&Discard")
+        self.skip_button.setAccessibleName("Discard")
         self.skip_button.setAccessibleDescription(
-            "Discard this import item and return to import list - Alt+K")
+            "Discard this import item and advance to next available item - Alt+D")
+        self.skip_button.setShortcut(QKeySequence("Alt+D"))
         self.skip_button.setFocusPolicy(Qt.StrongFocus)
         self.skip_button.clicked.connect(self.on_skip_discard)
         button_layout.addWidget(self.skip_button)
@@ -689,14 +780,6 @@ class ImportDetailWindow(QDialog):
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.close_shortcut.activated.connect(self.reject)
-
-        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.save_shortcut.activated.connect(self.accept)
-
-        self.skip_shortcut = QShortcut(QKeySequence("Alt+K"), self)
-        self.skip_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.skip_shortcut.activated.connect(self.on_skip_discard)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -748,16 +831,17 @@ class ImportDetailWindow(QDialog):
             ("Alt+R", "Reader"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+L", "Collection"),
+            ("Alt+C", "Collection"),
             ("Alt+F", "Files"),
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
+            ("Alt+E", "Errors"),
             ("Alt+H", "Path"),
-            ("Alt+S", "Save and return"),
-            ("Alt+K", "Skip or discard"),
-            ("Escape", "Close detail"),
+            ("Alt+S", "Save"),
+            ("Alt+D", "Discard"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),
+            ("Escape", "Close detail"),
             ("F1", "Show keyboard shortcuts"),
         ]
 
@@ -801,26 +885,54 @@ class ImportDetailWindow(QDialog):
 
     def on_prev(self):
         """Save edits and request previous import item."""
-        if self.current_index <= 0:
-            QApplication.beep()
-            return
         if self._navigate_without_close(self.current_index - 1):
             return
+        QApplication.beep()
         self._collect_form_data()
         self.done(self.RESULT_PREV)
 
     def on_next(self):
         """Save edits and request next import item."""
-        if self.total_count and self.current_index >= self.total_count - 1:
-            QApplication.beep()
-            return
         if self._navigate_without_close(self.current_index + 1):
             return
+        QApplication.beep()
         self._collect_form_data()
         self.done(self.RESULT_NEXT)
 
     def on_skip_discard(self):
         """Discard this import item and return skip result to parent."""
+        parent = self.parent()
+        if parent and hasattr(parent, "_discard_scanned_item") and hasattr(parent, "scanned_items"):
+            next_row = parent._discard_scanned_item(self.current_index)
+            if next_row is not None and 0 <= next_row < len(parent.scanned_items):
+                next_item = parent.scanned_items[next_row]
+                self.book_data = next_item.get("book", {}).copy()
+                self.errors = self._build_errors_for_row(next_row)
+                self.current_index = next_row
+                self.total_count = len(parent.scanned_items)
+                title = self._detail_window_title(self.book_data, self.errors)
+                self.setWindowTitle(title)
+                self.setAccessibleName(title)
+                self.load_book_data()
+                self.set_status("Import item discarded")
+                return
+
+            if hasattr(parent, "table") and parent.table.rowCount() == 0:
+                if hasattr(parent, "set_status"):
+                    parent.set_status("Import item discarded. No items remain")
+            elif hasattr(parent, "set_status"):
+                parent.set_status(
+                    "Import item discarded. No items remain in current filter"
+                )
+
+            self._closing_via_handler = True
+            try:
+                announce_dialog_closed(self)
+                super().reject()
+            finally:
+                self._closing_via_handler = False
+            return
+
         self._closing_via_handler = True
         try:
             announce_dialog_closed(self)
@@ -828,9 +940,43 @@ class ImportDetailWindow(QDialog):
         finally:
             self._closing_via_handler = False
 
+    def _save_to_parent(self, resolve_errors: bool):
+        """Push current edits to parent import list and refresh local state."""
+        self._collect_form_data()
+
+        parent = self.parent()
+        if parent and hasattr(parent, "_apply_detail_edits"):
+            parent._apply_detail_edits(
+                self.current_index,
+                self,
+                resolve_errors=resolve_errors,
+                refresh_view=False
+            )
+
+        if resolve_errors:
+            self.errors = []
+            self.errors_edit.setText("")
+
+        title = self._detail_window_title(self.book_data, self.errors)
+        self.setWindowTitle(title)
+        self.setAccessibleName(title)
+        self._clear_dirty()
+
+    def on_save(self):
+        """Save edits in-place and keep dialog open."""
+        if not self._dirty:
+            self.set_status("No changes to save")
+            QApplication.beep()
+            return
+
+        resolve_errors = bool(self.errors)
+        self._save_to_parent(resolve_errors=resolve_errors)
+        self.set_status("Changes saved")
+
     def accept(self):
         """Return edited data when accepting."""
-        self._collect_form_data()
+        resolve_errors = bool(self._dirty and self.errors)
+        self._save_to_parent(resolve_errors=resolve_errors)
 
         announce_dialog_closed(self)
         super().accept()
@@ -848,17 +994,37 @@ class ImportDetailWindow(QDialog):
             msg.setWindowTitle("Save Changes")
             msg.setText(
                 "Import details changed.\n\n"
-                "Save = apply edits and close\n"
-                "Cancel = continue editing"
+                "Yes = Save and close\n"
+                "No = Continue editing\n"
+                "Cancel = Discard and close"
             )
-            save_button = msg.addButton("&Save", QMessageBox.AcceptRole)
-            msg.addButton("&Cancel", QMessageBox.RejectRole)
-            msg.exec()
+            msg.setStandardButtons(
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            msg.button(QMessageBox.Yes).setText("&Yes - Save")
+            msg.button(QMessageBox.No).setText("&No - Continue editing")
+            msg.button(QMessageBox.Cancel).setText(
+                "Cance&l - Discard and close")
+            reply = msg.exec()
 
-            if msg.clickedButton() == save_button:
+            if reply == QMessageBox.Yes:
                 self.accept()
-            else:
+                return
+
+            if reply == QMessageBox.No:
                 self.set_status("Close canceled")
+                return
+
+            if reply == QMessageBox.Cancel:
+                self._clear_dirty()
+                self._closing_via_handler = True
+                try:
+                    announce_dialog_closed(self)
+                    super().reject()
+                finally:
+                    self._closing_via_handler = False
+                return
+
+            self.set_status("Close canceled")
             return
 
         self._closing_via_handler = True

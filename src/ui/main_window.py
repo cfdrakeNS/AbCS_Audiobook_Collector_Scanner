@@ -2356,27 +2356,26 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        shortcut_mgr = get_shortcut_manager()
-        shortcuts = shortcut_mgr.get_shortcut_help(ShortcutContext.MAIN_WINDOW)
-
-        # Insert Ctrl+I just before zoom shortcuts.
-        zoom_index = next(
-            (i for i, (key, _) in enumerate(shortcuts) if key == "Ctrl+Plus"),
-            len(shortcuts)
-        )
-        shortcuts.insert(zoom_index, ("Ctrl+I", "Import"))
-
-        # Insert column jump notes after Alt+B (Book list).
-        book_list_index = next(
-            (i for i, (key, _) in enumerate(shortcuts) if key == "Alt+B"),
-            -1
-        )
-        insert_at = book_list_index + 1 if book_list_index >= 0 else 0
-        shortcuts[insert_at:insert_at] = [
+        shortcuts = [
             ("Alt+/", "Read status bar"),
+            ("Alt+C", "Collection filter"),
+            ("Alt+R", "Read filter"),
+            ("Alt+O", "Order by"),
+            ("Alt+S", "Search"),
+            ("Alt+B", "Book list"),
             ("Alt+1", "Jump to Title column"),
             ("Alt+2", "Jump to Author column"),
             ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
+            ("Alt+U", "Update selected"),
+            ("Alt+D", "Delete selected"),
+            ("Alt+L", "Cancel selection"),
+            ("Ctrl+I", "Import"),
+            ("Ctrl+N", "New book"),
+            ("Escape", "Clear selection/search"),
+            ("Ctrl+Plus", "Zoom in"),
+            ("Ctrl+Minus", "Zoom out"),
+            ("Ctrl+0", "Reset zoom"),
+            ("F1", "Show keyboard shortcuts"),
         ]
 
         # Create table with 1 column

@@ -509,7 +509,7 @@ class PreferencesWindow(QDialog):
         self.autocorrect_layout.setVerticalSpacing(2)
         self.autocorrect_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-        self.autocorrect_trim_check = QCheckBox("&Trim whitespace")
+        self.autocorrect_trim_check = QCheckBox("Trim &whitespace")
         self.autocorrect_trim_check.setAccessibleName("Trim whitespace")
         self.autocorrect_strip_punct_check = QCheckBox(
             "Strip leading &punctuation")
@@ -519,7 +519,7 @@ class PreferencesWindow(QDialog):
             "Remove sp&ecial characters")
         self.autocorrect_non_alnum_check.setAccessibleName(
             "Remove special characters")
-        self.autocorrect_proper_case_check = QCheckBox("Pro&per case fields")
+        self.autocorrect_proper_case_check = QCheckBox("Proper case fie&lds")
         self.autocorrect_proper_case_check.setAccessibleName(
             "Proper case fields")
         self.autocorrect_move_the_check = QCheckBox(
@@ -891,20 +891,23 @@ class PreferencesWindow(QDialog):
         """Return True when preferences differ from initial dialog state."""
         return self._capture_state() != self._initial_state
 
-    def _confirm_exit_with_changes(self) -> bool:
-        """Ask whether to save changes before exit. Returns True to save."""
+    def _confirm_exit_with_changes(self) -> int:
+        """Ask whether to save changes before exit. Returns QMessageBox reply."""
         msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Question)
-        msg.setWindowTitle("Save Changes")
+        msg.setWindowTitle("Unsaved Changes")
+        msg.setStyleSheet("QLabel { border: none; }")
         msg.setText(
-            "Preferences changed.\n\n"
-            "Save = save and close\n"
-            "Cancel = discard changes and close"
+            "You have unsaved changes.\n\n"
+            "Yes = Save and close\n"
+            "No = Continue editing\n"
+            "Cancel = Revert and close"
         )
-        save_button = msg.addButton("&Save", QMessageBox.AcceptRole)
-        msg.addButton("&Cancel (Discard)", QMessageBox.DestructiveRole)
-        msg.exec()
-        return msg.clickedButton() == save_button
+        msg.setStandardButtons(
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+        msg.button(QMessageBox.Yes).setText("&Yes - Save")
+        msg.button(QMessageBox.No).setText("&No - Continue editing")
+        msg.button(QMessageBox.Cancel).setText("Cance&l - Revert and close")
+        return msg.exec()
 
     def _discard_and_close(self):
         """Discard transient changes and close dialog."""
@@ -1269,8 +1272,8 @@ class PreferencesWindow(QDialog):
             ("Alt+I", "Title Fallback"),
             ("Alt+F", "Flip Author"),
             ("Alt+K", "Reader Keywords"),
-            ("Alt+T", "Trim whitespace"),
-            ("Alt+P", "Proper case fields"),
+            ("Alt+W", "Trim whitespace"),
+            ("Alt+L", "Proper case fields"),
             ("Alt+U", "Audit display"),
             ("Alt+V", "Save"),
             ("Alt+C", "Cancel"),
@@ -1630,8 +1633,15 @@ class PreferencesWindow(QDialog):
     def on_cancel(self):
         """Close dialog, prompting to save when changes exist."""
         if self._has_unsaved_changes():
-            if self._confirm_exit_with_changes():
+            reply = self._confirm_exit_with_changes()
+            if reply == QMessageBox.Yes:
                 self.on_save()
+                return
+            elif reply == QMessageBox.No:
+                self.set_status("Continue editing")
+                return
+            else:
+                self._discard_and_close()
                 return
         self._discard_and_close()
 

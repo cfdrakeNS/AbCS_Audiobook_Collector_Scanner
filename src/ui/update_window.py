@@ -671,9 +671,11 @@ class UpdateWindow(QDialog):
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+L", "Collection"),
+            ("Alt+Down", "Open combo dropdown"),
             ("Alt+B", "Book list"),
-            ("Alt+C or Escape", "Close window "),
-            ("Alt+Down", "Open Combo dropdown"),
+            ("Alt+C", "Close window"),
+            ("Escape", "Close window"),
+            ("F1", "Show keyboard shortcuts"),
         ]
 
         # Create table
