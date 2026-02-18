@@ -35,14 +35,13 @@ def test_author_in_title_rule_respects_severity_and_enabled(isolated_qsettings):
     validator = ImportValidator()
     book = {"author": "Frank Herbert", "title": "Frank Herbert - Dune"}
     errors = validator.validate_book(book)
-    assert "Warning: Author name in Title" in errors
+    assert "Author name in Title" in errors
 
     isolated_qsettings.setValue(
         "import/rules/author_name_in_title/severity", "error")
     validator.reload_settings()
     errors = validator.validate_book(book)
     assert "Author name in Title" in errors
-    assert "Warning: Author name in Title" not in errors
 
     isolated_qsettings.setValue(
         "import/rules/author_name_in_title/enabled", False)
@@ -60,7 +59,7 @@ def test_unknown_or_various_author_rule(isolated_qsettings):
     validator = ImportValidator()
     errors = validator.validate_book(
         {"author": "Various Artists", "title": "Collection"})
-    assert "Warning: Author contains Unknown or Various" in errors
+    assert "Author contains Unknown or Various" in errors
 
 
 def test_minimum_title_length_rule_uses_configured_value(isolated_qsettings):
@@ -72,7 +71,7 @@ def test_minimum_title_length_rule_uses_configured_value(isolated_qsettings):
 
     validator = ImportValidator()
     errors = validator.validate_book({"author": "Author", "title": "ABC"})
-    assert "Warning: Title below minimum length (5)" in errors
+    assert "Title below minimum length (5)" in errors
 
     errors = validator.validate_book({"author": "Author", "title": "ABCDE"})
     assert not any("Title below minimum length" in err for err in errors)
@@ -176,7 +175,7 @@ def test_file_structure_rule_author_title_warning(isolated_qsettings):
         }
     )
     assert any(
-        "Warning: Folder path does not match expected structure (Author/Title)" == err
+        "Folder path does not match expected structure (Author/Title)" == err
         for err in errors
     )
 

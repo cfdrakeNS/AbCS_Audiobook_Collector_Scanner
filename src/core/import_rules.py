@@ -95,6 +95,19 @@ class ImportRulesEngine:
             ),
         ]
         self._rule_settings: Dict[str, RuleSetting] = {}
+        self._message_rule_map = (
+            ("Title Blank", "title_blank"),
+            ("Author Blank", "author_blank"),
+            ("Author Name Starts with non-alphabetic character",
+             "author_non_alpha_start"),
+            ("Author name in Title", "author_name_in_title"),
+            ("Title in Author name", "title_in_author_name"),
+            ("Author contains Unknown or Various", "unknown_or_various_author"),
+            ("Title below minimum length", "minimum_title_length"),
+            ("Folder path does not match expected structure", "file_structure"),
+            ("Year is not a valid number", "year_out_of_range"),
+            ("Year outside allowed range", "year_out_of_range"),
+        )
         self.min_title_length = 3
         self.file_structure_pattern = "author_title"
         self.min_year = 1801
@@ -150,12 +163,25 @@ class ImportRulesEngine:
             if not rule_setting.enabled:
                 continue
             rule_errors = rule.evaluator(book)
-            if rule_setting.severity == "warning":
-                rule_errors = [
-                    f"Warning: {message}" for message in rule_errors
-                ]
             errors.extend(rule_errors)
         return errors
+
+    def message_severity(self, message: str) -> str | None:
+        """Return configured severity for a known validation message."""
+        clean_message = str(message or "").strip()
+        if not clean_message:
+            return None
+
+        for fragment, rule_name in self._message_rule_map:
+            if fragment in clean_message:
+                setting = self._rule_settings.get(rule_name)
+                if setting is not None:
+                    return setting.severity
+
+                for rule in self.rules:
+                    if rule.name == rule_name:
+                        return rule.default_severity
+        return None
 
     @staticmethod
     def _rule_title_blank(book: Dict[str, Any]) -> List[str]:

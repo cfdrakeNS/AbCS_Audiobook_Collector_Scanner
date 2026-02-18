@@ -83,9 +83,13 @@ CREATE INDEX idx_books_series ON books(series_id);
 CREATE INDEX idx_books_genre ON books(genre_id);
 CREATE INDEX idx_books_collection ON books(collection_id);
 CREATE INDEX idx_books_title ON books(title);
+CREATE INDEX idx_books_collection_title ON books(collection_id, title);
+CREATE INDEX idx_books_duplicate_key ON books(title, author_id, year, collection_id);
+CREATE INDEX idx_books_read_date ON books(read_date);
 CREATE INDEX idx_authors_name ON authors (name ASC);
 CREATE INDEX idx_genres_name ON genres (name ASC);
 CREATE INDEX idx_series_name ON series (name ASC);
+CREATE INDEX idx_collections_active_name ON collections(active, name ASC);
 
 -- Seed a default active collection so first-run workflows always have one
 INSERT INTO collections (name, active) VALUES ('General', 1);

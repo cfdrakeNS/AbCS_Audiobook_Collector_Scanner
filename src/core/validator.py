@@ -185,13 +185,78 @@ class ImportValidator:
         Returns:
             Error category: 'parse', 'read', or 'warning'
         """
-        read_errors = ['Error reading file', 'File not found', 'corrupted']
+        normalized_error = self.normalize_error_message(error)
+        normalized_lower = normalized_error.lower()
 
-        if any(re_err in error for re_err in read_errors):
+        if normalized_lower == 'duplicate':
+            return 'duplicate'
+
+        read_errors = ['error reading file', 'file not found', 'corrupted']
+        if any(re_err in normalized_lower for re_err in read_errors):
             return 'read'
 
-        warning_errors = ['Author name in Title', 'Title in Author']
-        if any(warn in error for warn in warning_errors):
+        error_text = str(error or '').strip()
+        if error_text.upper().startswith('W:'):
+            return 'warning'
+        if error_text.upper().startswith('E:'):
+            return 'parse'
+
+        configured_severity = self.rules_engine.message_severity(
+            normalized_error)
+        if configured_severity == 'warning':
+            return 'warning'
+
+        warning_errors = [
+            'author name in title',
+            'title in author name',
+            'author contains unknown or various',
+            'title below minimum length',
+            'folder path does not match expected structure',
+            'year outside allowed range',
+            'year is not a valid number',
+        ]
+        if any(warn in normalized_lower for warn in warning_errors):
             return 'warning'
 
         return 'parse'
+
+    @staticmethod
+    def normalize_error_message(error: str) -> str:
+        """Normalize a raw error string for display and severity checks."""
+        text = str(error or '').strip()
+        if not text:
+            return ''
+
+        upper_text = text.upper()
+        if upper_text.startswith('E:') or upper_text.startswith('W:'):
+            text = text[2:].strip()
+            upper_text = text.upper()
+
+        if upper_text.startswith('WARNING:'):
+            text = text[8:].strip()
+
+        return text
+
+    def format_error_message(self, error: str) -> str:
+        """Format a single error for display with compact prefixes."""
+        normalized = self.normalize_error_message(error)
+        if not normalized:
+            return ''
+
+        if normalized.lower() == 'duplicate':
+            return 'Duplicate'
+
+        severity = self.categorize_error(error)
+        prefix = 'W: ' if severity == 'warning' else 'E: '
+        return f"{prefix}{normalized}"
+
+    def format_error_summary(self, errors: List[str]) -> str:
+        """Format a list of errors as compact display text."""
+        formatted_errors: List[str] = []
+        for err in errors:
+            formatted = self.format_error_message(str(err))
+            if not formatted:
+                continue
+            formatted_errors.append(formatted)
+
+        return '; '.join(formatted_errors)

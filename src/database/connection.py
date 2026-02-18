@@ -203,6 +203,59 @@ class DatabaseManager:
         if not self.table_exists('books'):
             self._create_schema()
         self._ensure_minimum_seed_data()
+        self._ensure_indexes()
+
+    def _ensure_indexes(self):
+        """Ensure critical indexes exist for query performance."""
+        conn = self.connect()
+
+        if self.table_exists('books'):
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_author ON books(author_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_series ON books(series_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_genre ON books(genre_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_collection ON books(collection_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_collection_title ON books(collection_id, title)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_duplicate_key ON books(title, author_id, year, collection_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_read_date ON books(read_date)"
+            )
+
+        if self.table_exists('authors'):
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_authors_name ON authors(name ASC)"
+            )
+
+        if self.table_exists('genres'):
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_genres_name ON genres(name ASC)"
+            )
+
+        if self.table_exists('series'):
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_series_name ON series(name ASC)"
+            )
+
+        if self.table_exists('collections'):
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_collections_active_name ON collections(active, name ASC)"
+            )
+
+        conn.commit()
 
     def _ensure_minimum_seed_data(self):
         """Ensure required seed data exists for first-run and repaired databases."""

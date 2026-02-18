@@ -216,7 +216,7 @@ class ImportWindow(QDialog):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
 
-        collection_label = QLabel("&Collection:")
+        collection_label = QLabel("Co&llection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Import collection")
         self.collection_combo.setAccessibleDescription(
@@ -1060,19 +1060,8 @@ class ImportWindow(QDialog):
         self.set_status(message, announce=announce)
 
     def _format_error_summary(self, errors: list[str]) -> str:
-        """Format error list with compact E:/W: prefixes for readability."""
-        formatted_errors: list[str] = []
-        for err in errors:
-            err_text = str(err).strip()
-            if not err_text:
-                continue
-            if err_text.startswith(("E:", "W:")):
-                formatted_errors.append(err_text)
-                continue
-            prefix = "W:" if self.validator.categorize_error(
-                err_text) == "warning" else "E:"
-            formatted_errors.append(f"{prefix} {err_text}")
-        return "; ".join(formatted_errors)
+        """Format error list using validator message-format rules."""
+        return self.validator.format_error_summary(errors)
 
     def _build_existing_book_list(self) -> list[dict]:
         """Build an existing-library snapshot for duplicate checks."""
