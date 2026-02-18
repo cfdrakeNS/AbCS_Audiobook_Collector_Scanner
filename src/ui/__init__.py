@@ -6,6 +6,7 @@ from .update_window import UpdateWindow
 from .preferences_window import PreferencesWindow
 from .import_window import ImportWindow
 from .display_setup_wizard import DisplaySetupWizard
+from .collection_window import CollectionWindow
 
 __all__ = ['MainWindow', 'BookDetailsWindow',
-           'UpdateWindow', 'PreferencesWindow', 'ImportWindow', 'DisplaySetupWizard']
+           'UpdateWindow', 'PreferencesWindow', 'ImportWindow', 'DisplaySetupWizard', 'CollectionWindow']

@@ -341,7 +341,7 @@ class ImportWindow(QDialog):
         self.import_selected_button.setAutoDefault(True)
         footer_layout.addWidget(self.import_selected_button)
 
-        self.import_all_button = QPushButton("Add All &Valid")
+        self.import_all_button = QPushButton("Add All Valid")
         self.import_all_button.setAccessibleName("Add All Valid")
         self.import_all_button.setAccessibleDescription(
             "Add all valid items - Alt+V")
@@ -709,10 +709,13 @@ class ImportWindow(QDialog):
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
 
         self.add_selected_shortcut = QShortcut(QKeySequence("Alt+I"), self)
-        self.add_selected_shortcut.activated.connect(self.on_import_selected)
+        self.add_selected_shortcut.setContext(Qt.ApplicationShortcut)
+        self.add_selected_shortcut.activated.connect(
+            self.import_selected_button.click)
 
         self.add_all_shortcut = QShortcut(QKeySequence("Alt+V"), self)
-        self.add_all_shortcut.activated.connect(self.on_import_all)
+        self.add_all_shortcut.setContext(Qt.ApplicationShortcut)
+        self.add_all_shortcut.activated.connect(self.import_all_button.click)
 
         self.close_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.close_shortcut.activated.connect(self.on_cancel)

@@ -28,6 +28,7 @@ from ui.book_details import BookDetailsWindow
 from ui.update_window import UpdateWindow
 from ui.preferences_window import PreferencesWindow
 from ui.import_window import ImportWindow
+from ui.collection_window import CollectionWindow
 
 # Import version from main module
 
@@ -2308,8 +2309,27 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_show_collection(self):
         """Open collection window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "show collection will be available soon!")
+        previous_collection_id = self.current_filter.collection_id
+
+        dialog = CollectionWindow(
+            self.db,
+            self.scaler,
+            self.theme_manager,
+            parent=self,
+        )
+        dialog.exec()
+
+        self.refresh_collections()
+
+        restored_index = self.collection_combo.findData(previous_collection_id)
+        if previous_collection_id is not None and restored_index >= 0:
+            self.collection_combo.setCurrentIndex(restored_index)
+            self.current_filter.collection_id = previous_collection_id
+        else:
+            self.collection_combo.setCurrentIndex(0)
+            self.current_filter.collection_id = None
+
+        self.refresh_books()
 
     def on_show_Genre(self):
         """Open Genre( window."""
