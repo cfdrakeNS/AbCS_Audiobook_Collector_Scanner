@@ -28,7 +28,7 @@ from ui.book_details import BookDetailsWindow
 from ui.update_window import UpdateWindow
 from ui.preferences_window import PreferencesWindow
 from ui.import_window import ImportWindow
-from ui.collection_window import CollectionWindow
+from ui.name_list_window import NameListWindow
 
 # Import version from main module
 
@@ -676,13 +676,31 @@ class MainWindow(QMainWindow):
         # View menu
         view_menu = menubar.addMenu("&View")
 
-        # mw#17: Book Details at top of View menu
-        book_details_action = QAction("&Book Details", self)
-        book_details_action.setShortcut("Ctrl+Return")
+        # mw#17: Context-sensitive open at top of View menu
+        book_details_action = QAction("&Open Focused Item\tCtrl+Enter", self)
+        book_details_action.setShortcuts(
+            [QKeySequence("Ctrl+Enter"), QKeySequence("Ctrl+Return")]
+        )
         book_details_action.triggered.connect(self.on_open_book_details)
         view_menu.addAction(book_details_action)
 
         view_menu.addSeparator()
+
+        # mw#16: Zoom actions with shortcut keys displayed
+        zoom_in_action = QAction("Zoom &In\tCtrl++", self)
+        zoom_in_action.triggered.connect(self.on_zoom_in)
+        view_menu.addAction(zoom_in_action)
+
+        zoom_out_action = QAction("Zoom &Out\tCtrl+-", self)
+        zoom_out_action.triggered.connect(self.on_zoom_out)
+        view_menu.addAction(zoom_out_action)
+
+        zoom_reset_action = QAction("&Reset Zoom\tCtrl+0", self)
+        zoom_reset_action.triggered.connect(self.on_zoom_reset)
+        view_menu.addAction(zoom_reset_action)
+
+        # manage menu
+        view_menu = menubar.addMenu("&Manage")
 
         prefs_action = QAction("&Authors", self)
         prefs_action.triggered.connect(self.on_show_authors)
@@ -700,23 +718,7 @@ class MainWindow(QMainWindow):
         prefs_action.triggered.connect(self.on_show_Series)
         view_menu.addAction(prefs_action)
 
-        file_menu.addSeparator()
-
-        # mw#16: Zoom actions with shortcut keys displayed
-        zoom_in_action = QAction("Zoom &In\tCtrl++", self)
-        zoom_in_action.triggered.connect(self.on_zoom_in)
-        view_menu.addAction(zoom_in_action)
-
-        zoom_out_action = QAction("Zoom &Out\tCtrl+-", self)
-        zoom_out_action.triggered.connect(self.on_zoom_out)
-        view_menu.addAction(zoom_out_action)
-
-        zoom_reset_action = QAction("&Reset Zoom\tCtrl+0", self)
-        zoom_reset_action.triggered.connect(self.on_zoom_reset)
-        view_menu.addAction(zoom_reset_action)
-
-        # manage menu
-        view_menu = menubar.addMenu("&Manage")
+        view_menu.addSeparator()
 
         prefs_action = QAction("&Preferences...", self)
         prefs_action.triggered.connect(self.on_preferences)
@@ -946,8 +948,10 @@ class MainWindow(QMainWindow):
             row = 0  # Default to first row if none selected
 
         if 0 <= row < len(self.books):
-            book = self.books[row]
-            self.open_book_details(book)
+            column = self.table.currentColumn()
+            if column < 0:
+                column = 1
+            self._handle_book_table_double_click(row, column)
 
     # ========== End Status Bar Helpers ==========
 
@@ -1298,8 +1302,7 @@ class MainWindow(QMainWindow):
     def on_book_double_click(self, row: int, column: int):
         """Handle double-click on book."""
         if 0 <= row < len(self.books):
-            book = self.books[row]
-            self.open_book_details(book)
+            self._handle_book_table_double_click(row, column)
 
     def on_table_selection_changed(self):
         """Handle table selection change and announce selection."""
@@ -1463,28 +1466,77 @@ class MainWindow(QMainWindow):
         QTableWidget.mousePressEvent(self.table, event)
 
     def table_mouse_double_click(self, event):
-        """Handle mouse double-click - opens book details."""
+        """Handle mouse double-click from table viewport."""
         if event.button() == Qt.LeftButton:
             index = self.table.indexAt(event.position().toPoint())
             if index.isValid():
                 row = index.row()
+                column = index.column()
                 if 0 <= row < len(self.books):
-                    book = self.books[row]
-                    self.open_book_details(book)
+                    self._handle_book_table_double_click(row, column)
                     event.accept()
                     return
         QTableWidget.mouseDoubleClickEvent(self.table, event)
 
+    def _handle_book_table_double_click(self, row: int, column: int):
+        """Route double-click based on focused column."""
+        book = self.books[row]
+
+        # Author, Series, Genre columns open their manager focused on clicked value
+        if column == 0 and (book.author_name or "").strip():
+            dialog = NameListWindow(
+                self.db,
+                self.scaler,
+                self.theme_manager,
+                "author",
+                initial_name=book.author_name,
+                parent=self,
+            )
+            dialog.exec()
+            self.refresh_books()
+            return
+
+        if column == 4:
+            dialog = NameListWindow(
+                self.db,
+                self.scaler,
+                self.theme_manager,
+                "series",
+                initial_name=(book.series_name or "").strip() or None,
+                parent=self,
+            )
+            dialog.exec()
+            self.refresh_books()
+            return
+
+        if column == 5:
+            dialog = NameListWindow(
+                self.db,
+                self.scaler,
+                self.theme_manager,
+                "genre",
+                initial_name=(book.genre_name or "").strip() or None,
+                parent=self,
+            )
+            dialog.exec()
+            self.refresh_books()
+            return
+
+        # Default behavior for all other columns
+        self.open_book_details(book)
+
     def table_key_press(self, event: QKeyEvent):
         """Handle key press in table."""
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            # mw#19: Only Ctrl+Enter opens book details
+            # Ctrl+Enter follows double-click routing by focused column
             if event.modifiers() & Qt.ControlModifier:
                 if not self.selected_book_ids:
                     row = self.table.currentRow()
                     if 0 <= row < len(self.books):
-                        book = self.books[row]
-                        self.open_book_details(book)
+                        column = self.table.currentColumn()
+                        if column < 0:
+                            column = 1
+                        self._handle_book_table_double_click(row, column)
             event.accept()
             return
         elif event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown, Qt.Key_Home, Qt.Key_End):
@@ -2304,17 +2356,25 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_show_authors(self):
         """Open Author window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "show Author will be available soon!")
+        dialog = NameListWindow(
+            self.db,
+            self.scaler,
+            self.theme_manager,
+            "author",
+            parent=self,
+        )
+        dialog.exec()
+        self.refresh_books()
 
     def on_show_collection(self):
         """Open collection window."""
         previous_collection_id = self.current_filter.collection_id
 
-        dialog = CollectionWindow(
+        dialog = NameListWindow(
             self.db,
             self.scaler,
             self.theme_manager,
+            "collection",
             parent=self,
         )
         dialog.exec()
@@ -2333,13 +2393,27 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_show_Genre(self):
         """Open Genre( window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "show Genre( will be available soon!")
+        dialog = NameListWindow(
+            self.db,
+            self.scaler,
+            self.theme_manager,
+            "genre",
+            parent=self,
+        )
+        dialog.exec()
+        self.refresh_books()
 
     def on_show_Series(self):
         """Open Series window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "show Series will be available soon!")
+        dialog = NameListWindow(
+            self.db,
+            self.scaler,
+            self.theme_manager,
+            "series",
+            parent=self,
+        )
+        dialog.exec()
+        self.refresh_books()
 
     def on_backup_restore(self):
         """Open backup_restore window."""
@@ -2439,6 +2513,7 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
             ("Alt+L", "Cancel selection"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
+            ("Ctrl+Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),
             ("Escape", "Clear selection/search"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),

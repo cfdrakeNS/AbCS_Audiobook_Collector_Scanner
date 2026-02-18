@@ -36,7 +36,7 @@ This list reflects shortcuts currently implemented in code as of 2026-02-17.
 - **Ctrl+N**: New Book
 - **Ctrl+I**: Import
 - **Ctrl+Q**: Quit
-- **Ctrl+Return**: Open Book Details
+- **Ctrl+Return / Ctrl+Enter**: Open focused item (Title/other columns → Book Details, Author/Series/Genre columns → manager window)
 - **Ctrl++** and **Ctrl+Num++**: Zoom in
 - **Ctrl+-** and **Ctrl+Num+-**: Zoom out
 - **Ctrl+0**: Reset zoom
@@ -147,6 +147,26 @@ This list reflects shortcuts currently implemented in code as of 2026-02-17.
 ### Function / navigation shortcuts
 - **F1**: Show keyboard shortcuts
 - **Escape**: Close window
+
+---
+
+## Name List Window (`src/ui/name_list_window.py`)
+
+### Alt shortcuts
+- **Alt+F**: Find
+- **Alt+E**: Name edit
+- **Alt+B**: Focus name list
+- **Alt+A**: Active checkbox (Collections only)
+- **Alt+V**: Save
+- **Alt+D**: Delete (not shown for Authors)
+- **Alt+C**: Close
+- **Alt+/**: Read status bar aloud
+
+### Function / navigation shortcuts
+- **F1**: Show keyboard shortcuts
+- **F3**: Find next match
+- **Shift+F3**: Find previous match
+- **Enter** in Find: focus matched list item
 
 ---
 

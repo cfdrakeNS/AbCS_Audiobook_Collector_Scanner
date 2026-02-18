@@ -108,10 +108,11 @@ These are mentioned as "Coming Soon" in the UI and will be your next development
 
 1. **Import Window** - UI to use the scanner
 2. **Update Window** - Bulk update UI
-3. **Collection/Author/Genre/Series Windows** - Management UIs
-4. **Backup/Restore Window** - Database backup UI
-5. **Preferences Dialog** - Settings UI
-6. **Duplicate View** - Show duplicates
+3. **Backup/Restore Window** - Database backup UI
+4. **Preferences Dialog** - Settings UI
+5. **Duplicate View** - Show duplicates
+
+**Implemented update:** Collection/Author/Genre/Series management is now available via a shared manager window (`src/ui/name_list_window.py`).
 
 **Good news:** All the *backend code* exists for these features. You just need to create the UI windows, which follow the same pattern as the existing windows.
 

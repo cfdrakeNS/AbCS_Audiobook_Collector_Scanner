@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -53,6 +53,8 @@ class CollectionWindow(QDialog):
             "Manage collections: add, edit active status, and delete when unused."
         )
         self.resize(760, 480)
+
+        self.table.installEventFilter(self)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -151,7 +153,28 @@ class CollectionWindow(QDialog):
             "Close collection window - Alt+C")
         footer_layout.addWidget(self.close_button)
 
+        self.setTabOrder(self.name_edit, self.active_check)
+        self.setTabOrder(self.active_check, self.table)
+        self.setTabOrder(self.table, self.new_button)
+        self.setTabOrder(self.new_button, self.save_button)
+        self.setTabOrder(self.save_button, self.delete_button)
+        self.setTabOrder(self.delete_button, self.close_button)
+        self.setTabOrder(self.close_button, self.name_edit)
+
         layout.addLayout(footer_layout)
+
+    def eventFilter(self, source, event):
+        """Allow Tab/Shift+Tab to move focus out of table to footer controls."""
+        if source == self.table and event.type() == QEvent.KeyPress:
+            key = event.key()
+            if key == Qt.Key_Tab and not (event.modifiers() & Qt.ShiftModifier):
+                self.new_button.setFocus(Qt.TabFocusReason)
+                return True
+            if key in (Qt.Key_Backtab, Qt.Key_Tab) and (event.modifiers() & Qt.ShiftModifier):
+                self.active_check.setFocus(Qt.BacktabFocusReason)
+                return True
+
+        return super().eventFilter(source, event)
 
     def setup_shortcuts(self):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)

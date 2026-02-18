@@ -30,8 +30,8 @@ When AbCS starts for the first time, the book list may be empty.
 ### Menu
 
 - File (Alt+F): New Book, Import, Quit
-- View (Alt+V): Book Details, Authors, Collections, Genre, Series, zoom controls
-- Manage (Alt+M): Preferences, Backup/Restore, Statistics
+- View (Alt+V): Open Focused Item (Ctrl+Enter), zoom controls
+- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
 
 ### Header controls
@@ -51,6 +51,11 @@ Press Alt+B to move focus to the book list table.
 Columns are: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Added.
 
 - Open Book Details with Ctrl+Enter or double-click.
+- Open focused item with Ctrl+Enter or double-click:
+	- Title/other columns: opens Book Details
+	- Author column: opens Authors manager (when author is present)
+	- Series column: always opens Series manager
+	- Genre column: always opens Genre manager
 - Selection with keyboard: Shift+Space starts selection, Shift+Up/Down/Page keys extends selection.
 - Selection with mouse: Shift+Click range, Ctrl+Click individual.
 - Arrow navigation without Shift clears selection.
@@ -74,11 +79,11 @@ Columns are: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Added
 - Jump table columns: Alt+1 through Alt+0
 - New Book: Ctrl+N
 - Import: Ctrl+I
-- Open Book Details: Ctrl+Enter
+- Open focused item (context-sensitive): Ctrl+Enter
 
 ## Book Details Window
 
-Open from Main Window with Ctrl+Enter or double-click on a book.
+Open from Main Window by focusing the Title (or another non-manager column) and using Ctrl+Enter or double-click.
 
 ### Field focus shortcuts
 
@@ -106,6 +111,27 @@ Open from Main Window with Ctrl+Enter or double-click on a book.
 - Close: Alt+C or Escape
 - Previous book: Page Up
 - Next book: Page Down
+- Read status bar: Alt+/
+
+## Name List Window (Authors / Genre / Series / Collections)
+
+Main Window opens these from the Manage menu, and from table context actions on Author/Series/Genre.
+
+### Header and list
+
+- Find: Alt+F
+- Name Edit: Alt+E
+- Active checkbox (Collections only): Alt+A
+- Jump to list: Alt+B
+- Enter in Find moves focus to the matched list item.
+
+### Actions
+
+- Save: Alt+V
+- Delete: Alt+D (not shown in Authors)
+- Close: Alt+C
+- Find next: F3
+- Find previous: Shift+F3
 - Read status bar: Alt+/
 
 ## Update Window

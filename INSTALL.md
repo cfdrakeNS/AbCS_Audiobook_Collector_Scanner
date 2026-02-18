@@ -140,7 +140,7 @@ On first launch, you'll see:
 - `F1` - Show keyboard shortcuts/help
 
 **Filtering (Alt + letter):**
-- `Alt+L` - Collection filter
+- `Alt+C` - Collection filter
 - `Alt+R` - Read filter
 - `Alt+O` - Order by
 - `Alt+S` - Search box
@@ -152,7 +152,7 @@ On first launch, you'll see:
 - `Ctrl 0` - Reset zoom
 
 **Working with Books:**
-- `Double-click` or `Enter` - Open book details
+- `Double-click` or `Ctrl+Enter` - Open focused item (Title/other columns: Book Details; Author/Series/Genre columns: manager window)
 - `Space` - Select/deselect book
 - `Insert` - New book
 - `Delete` - Delete selected books
@@ -221,7 +221,6 @@ Tested with NVDA on Windows.
 ### 🚧 Coming Soon (in starter code):
 - Import window (scan folders for audiobooks)
 - Bulk update window
-- Collection/Author/Genre/Series management windows
 - Backup/Restore
 - Theme preferences dialog
 - Duplicate detection view
