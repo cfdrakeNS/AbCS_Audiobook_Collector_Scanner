@@ -21,6 +21,7 @@ from database import (
     GenreQueries, CollectionQueries, SearchFilter, Book, StatisticsQueries
 )
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import exec_styled_message_box
 from accessibility.theme_manager import ThemeManager
 from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from accessibility.key_filters import is_unmapped_alt_letter
@@ -933,8 +934,13 @@ class MainWindow(QMainWindow):
                             timeout_ms=0, announce=True)
         else:
             # No screen reader detected - show message box for testing
-            QMessageBox.information(self, "Status Bar",
-                                    f"No screen reader active.\n\nStatus: {self.get_default_status()}")
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {self.get_default_status()}",
+            )
 
     def on_open_book_details(self):
         """mw#17,19: Open book details for current book (Ctrl+Enter)."""
@@ -1293,6 +1299,50 @@ class MainWindow(QMainWindow):
         self.table.setFocus(Qt.TabFocusReason)
         return found
 
+    def _capture_table_focus_context(self, row: int | None = None, column: int | None = None) -> dict:
+        """Capture current table row/column and book ID so focus can be restored."""
+        if row is None:
+            row = self.table.currentRow()
+        if column is None:
+            column = self.table.currentColumn()
+
+        if column is None or column < 0:
+            column = 1
+
+        book_id = None
+        if row is not None and 0 <= row < len(self.books):
+            book_id = self.books[row].book_id
+
+        return {
+            "row": row,
+            "column": column,
+            "book_id": book_id,
+        }
+
+    def _restore_table_focus_context(self, focus_ctx: dict | None):
+        """Restore focus to the same book/cell when possible after refresh."""
+        if not focus_ctx or self.table.rowCount() <= 0:
+            return
+
+        column = focus_ctx.get("column", 1)
+        if column < 0 or column >= self.table.columnCount():
+            column = 1
+
+        book_id = focus_ctx.get("book_id")
+        if book_id is not None and self.focus_book_by_id(book_id, column):
+            return
+
+        row = focus_ctx.get("row", 0)
+        if row is None or row < 0:
+            row = 0
+        row = min(row, self.table.rowCount() - 1)
+
+        index = self.table.model().index(row, column)
+        self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
+        self.table.setCurrentCell(row, column)
+        self.table.setCurrentIndex(index)
+        self.table.setFocus(Qt.TabFocusReason)
+
     def on_search_timeout(self):
         """Handle search timer timeout for live filtering."""
         # This is called after user stops typing (300ms debounce)
@@ -1484,6 +1534,7 @@ class MainWindow(QMainWindow):
 
         # Author, Series, Genre columns open their manager focused on clicked value
         if column == 0 and (book.author_name or "").strip():
+            focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
                 self.db,
                 self.scaler,
@@ -1494,9 +1545,11 @@ class MainWindow(QMainWindow):
             )
             dialog.exec()
             self.refresh_books()
+            self._restore_table_focus_context(focus_ctx)
             return
 
         if column == 4:
+            focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
                 self.db,
                 self.scaler,
@@ -1507,9 +1560,11 @@ class MainWindow(QMainWindow):
             )
             dialog.exec()
             self.refresh_books()
+            self._restore_table_focus_context(focus_ctx)
             return
 
         if column == 5:
+            focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
                 self.db,
                 self.scaler,
@@ -1520,6 +1575,7 @@ class MainWindow(QMainWindow):
             )
             dialog.exec()
             self.refresh_books()
+            self._restore_table_focus_context(focus_ctx)
             return
 
         # Default behavior for all other columns
@@ -2030,10 +2086,14 @@ class MainWindow(QMainWindow):
                     first_selected_row = row
                     break
 
-            reply = QMessageBox.question(
-                self, "Confirm Delete",
-                f"Are you sure you want to delete {count} selected book(s)?",
-                QMessageBox.Yes | QMessageBox.No
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Delete",
+                text=f"Are you sure you want to delete {count} selected book(s)?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
             )
 
             if reply == QMessageBox.Yes:
@@ -2356,6 +2416,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_show_authors(self):
         """Open Author window."""
+        focus_ctx = self._capture_table_focus_context()
         dialog = NameListWindow(
             self.db,
             self.scaler,
@@ -2365,10 +2426,12 @@ Use Ctrl+I to import or Alt+M for menu options."""
         )
         dialog.exec()
         self.refresh_books()
+        self._restore_table_focus_context(focus_ctx)
 
     def on_show_collection(self):
         """Open collection window."""
         previous_collection_id = self.current_filter.collection_id
+        focus_ctx = self._capture_table_focus_context()
 
         dialog = NameListWindow(
             self.db,
@@ -2390,9 +2453,11 @@ Use Ctrl+I to import or Alt+M for menu options."""
             self.current_filter.collection_id = None
 
         self.refresh_books()
+        self._restore_table_focus_context(focus_ctx)
 
     def on_show_Genre(self):
         """Open Genre( window."""
+        focus_ctx = self._capture_table_focus_context()
         dialog = NameListWindow(
             self.db,
             self.scaler,
@@ -2402,9 +2467,11 @@ Use Ctrl+I to import or Alt+M for menu options."""
         )
         dialog.exec()
         self.refresh_books()
+        self._restore_table_focus_context(focus_ctx)
 
     def on_show_Series(self):
         """Open Series window."""
+        focus_ctx = self._capture_table_focus_context()
         dialog = NameListWindow(
             self.db,
             self.scaler,
@@ -2414,11 +2481,17 @@ Use Ctrl+I to import or Alt+M for menu options."""
         )
         dialog.exec()
         self.refresh_books()
+        self._restore_table_focus_context(focus_ctx)
 
     def on_backup_restore(self):
         """Open backup_restore window."""
-        QMessageBox.information(self, "Coming Soon",
-                                "Backup & restore will be available soon!")
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Coming Soon",
+            text="Backup & restore will be available soon!",
+        )
 
     def on_about(self):
         """Show about dialog."""

@@ -284,6 +284,7 @@ class ThemeManager(QObject):
                 
                 QPushButton:focus {
                     border: 3px solid palette(highlight);
+                    outline: none;
                 }
             """
 

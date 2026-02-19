@@ -22,6 +22,7 @@ from database import (
 )
 from core import BookScanner, ImportValidator, ImportScanner
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from accessibility.theme_manager import ThemeManager
 from accessibility.key_filters import is_unmapped_alt_letter
 from accessibility.accessible_events import (
@@ -637,13 +638,17 @@ class ImportWindow(QDialog):
         if self.table.rowCount() == 0:
             return True
 
-        reply = QMessageBox.question(
+        reply = exec_styled_message_box(
             self,
-            "Close Import Window",
-            "Close import window now?\n\n"
-            "Current scan results in this window will be discarded.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Close Import Window",
+            text=(
+                "Close import window now?\n\n"
+                "Current scan results in this window will be discarded."
+            ),
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
         )
         return reply == QMessageBox.Yes
 
@@ -654,14 +659,18 @@ class ImportWindow(QDialog):
 
         self._scan_prompt_open = True
         try:
-            reply = QMessageBox.question(
+            reply = exec_styled_message_box(
                 self,
-                "Cancel Scan",
-                "Cancel the current scan?\n\n"
-                "Yes: stop scanning and discard partial scan results.\n"
-                "No: continue scanning.",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Cancel Scan",
+                text=(
+                    "Cancel the current scan?\n\n"
+                    "Yes: stop scanning and discard partial scan results.\n"
+                    "No: continue scanning."
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
             )
             return reply == QMessageBox.Yes
         finally:
@@ -829,10 +838,13 @@ class ImportWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Status Bar",
-                f"No screen reader active.\n\nStatus: {status_text}")
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {status_text}",
+            )
 
     def on_focus_list(self):
         """Move focus to import list table (Alt+B)."""
@@ -901,10 +913,9 @@ class ImportWindow(QDialog):
         return -1
 
     def _style_message_box(self, msg: QMessageBox):
-        """Apply consistent no-border focus style to message-box buttons."""
+        """Apply consistent button styling to message-box buttons."""
         msg.setStyleSheet(
-            "QPushButton:focus { border: none; outline: none; }"
-            "QPushButton::focus { border: none; outline: none; }"
+            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
         )
 
     def _matches_error_filter(self, item: dict) -> bool:
@@ -1742,13 +1753,17 @@ class ImportWindow(QDialog):
             return
 
         if self._is_adding:
-            reply = QMessageBox.question(
+            reply = exec_styled_message_box(
                 self,
-                "Stop Add",
-                "Stop adding books now?\n\n"
-                "Any books added in this run will be removed so no partial adds remain.",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Stop Add",
+                text=(
+                    "Stop adding books now?\n\n"
+                    "Any books added in this run will be removed so no partial adds remain."
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
             )
 
             if reply == QMessageBox.Yes:

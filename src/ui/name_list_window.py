@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from accessibility.accessible_events import announce_status_message
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
 from accessibility.theme_manager import ThemeManager
 from database import (
     DatabaseManager,
@@ -257,6 +258,17 @@ class NameListWindow(QDialog):
         )
         footer_layout.addWidget(self.close_button)
 
+        button_style = build_accessible_button_style(
+            self.scaler.get_scaled_size(20)
+        )
+        for button in (
+            self.new_button,
+            self.save_button,
+            self.delete_button,
+            self.close_button,
+        ):
+            button.setStyleSheet(button_style)
+
         layout.addLayout(footer_layout)
 
         self.setTabOrder(self.find_edit, self.name_edit)
@@ -265,10 +277,14 @@ class NameListWindow(QDialog):
             self.setTabOrder(self.active_check, self.table)
         else:
             self.setTabOrder(self.name_edit, self.table)
-        self.setTabOrder(self.table, self.new_button)
-        self.setTabOrder(self.new_button, self.save_button)
-        self.setTabOrder(self.save_button, self.delete_button)
-        self.setTabOrder(self.delete_button, self.close_button)
+        if self.is_author_mode:
+            self.setTabOrder(self.table, self.save_button)
+            self.setTabOrder(self.save_button, self.close_button)
+        else:
+            self.setTabOrder(self.table, self.new_button)
+            self.setTabOrder(self.new_button, self.save_button)
+            self.setTabOrder(self.save_button, self.delete_button)
+            self.setTabOrder(self.delete_button, self.close_button)
         self.setTabOrder(self.close_button, self.find_edit)
 
     def eventFilter(self, source, event):
@@ -285,7 +301,17 @@ class NameListWindow(QDialog):
         if source == self.table and event.type() == QEvent.KeyPress:
             key = event.key()
             if key == Qt.Key_Tab and not (event.modifiers() & Qt.ShiftModifier):
-                self.new_button.setFocus(Qt.TabFocusReason)
+                next_footer_button = self.new_button
+                for button in (
+                    self.new_button,
+                    self.save_button,
+                    self.delete_button,
+                    self.close_button,
+                ):
+                    if button.isVisible() and button.isEnabled():
+                        next_footer_button = button
+                        break
+                next_footer_button.setFocus(Qt.TabFocusReason)
                 return True
             if key in (Qt.Key_Backtab, Qt.Key_Tab) and (event.modifiers() & Qt.ShiftModifier):
                 if self.is_collection_mode:
@@ -424,10 +450,12 @@ class NameListWindow(QDialog):
         if not name:
             self.set_status(
                 f"{self.entity_singular} name is required.", announce=True)
-            QMessageBox.warning(
+            exec_styled_message_box(
                 self,
-                self.entity_singular,
-                f"{self.entity_singular} name cannot be blank.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title=self.entity_singular,
+                text=f"{self.entity_singular} name cannot be blank.",
             )
             return
 
@@ -444,10 +472,12 @@ class NameListWindow(QDialog):
                 else:
                     new_id = self.query.insert(name)
             except sqlite3.IntegrityError:
-                QMessageBox.warning(
+                exec_styled_message_box(
                     self,
-                    self.entity_singular,
-                    f"A {self.entity_singular.lower()} with this name already exists.",
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Warning,
+                    title=self.entity_singular,
+                    text=f"A {self.entity_singular.lower()} with this name already exists.",
                 )
                 self.set_status(
                     f"Duplicate {self.entity_singular.lower()} name.", announce=True)
@@ -468,10 +498,12 @@ class NameListWindow(QDialog):
                 return
 
             if existing.active and not active and self._active_collection_count() <= 1:
-                QMessageBox.warning(
+                exec_styled_message_box(
                     self,
-                    "Collection",
-                    "At least one collection must remain active.",
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Warning,
+                    title="Collection",
+                    text="At least one collection must remain active.",
                 )
                 self.set_status(
                     "Cannot deactivate the last active collection.", announce=True)
@@ -489,10 +521,12 @@ class NameListWindow(QDialog):
             else:
                 self.query.update(self.current_item_id, name)
         except sqlite3.IntegrityError:
-            QMessageBox.warning(
+            exec_styled_message_box(
                 self,
-                self.entity_singular,
-                f"A {self.entity_singular.lower()} with this name already exists.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title=self.entity_singular,
+                text=f"A {self.entity_singular.lower()} with this name already exists.",
             )
             self.set_status(
                 f"Duplicate {self.entity_singular.lower()} name.", announce=True)
@@ -521,10 +555,12 @@ class NameListWindow(QDialog):
             return
 
         if self.is_collection_mode and item.active and self._active_collection_count() <= 1:
-            QMessageBox.warning(
+            exec_styled_message_box(
                 self,
-                "Collection",
-                "At least one collection must remain active.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Collection",
+                text="At least one collection must remain active.",
             )
             self.set_status(
                 "Cannot delete the last active collection.", announce=True)
@@ -532,22 +568,26 @@ class NameListWindow(QDialog):
 
         usage_count = self._book_count_for_item(self.current_item_id)
         if usage_count > 0:
-            QMessageBox.warning(
+            exec_styled_message_box(
                 self,
-                self.entity_singular,
-                f"Cannot delete '{item.name}' because {usage_count} book{'s' if usage_count != 1 else ''} use it.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title=self.entity_singular,
+                text=f"Cannot delete '{item.name}' because {usage_count} book{'s' if usage_count != 1 else ''} use it.",
             )
             self.set_status(
                 f"Delete blocked: {self.entity_singular.lower()} is in use.", announce=True
             )
             return
 
-        answer = QMessageBox.question(
+        answer = exec_styled_message_box(
             self,
-            f"Delete {self.entity_singular}",
-            f"Delete {self.entity_singular.lower()} '{item.name}'?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title=f"Delete {self.entity_singular}",
+            text=f"Delete {self.entity_singular.lower()} '{item.name}'?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
         )
         if answer != QMessageBox.Yes:
             self.set_status("Delete canceled.")
@@ -565,10 +605,12 @@ class NameListWindow(QDialog):
             self.set_status(message, announce=True)
             return
 
-        QMessageBox.information(
+        exec_styled_message_box(
             self,
-            "Status",
-            f"No screen reader active.\n\nStatus: {message}",
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Status",
+            text=f"No screen reader active.\n\nStatus: {message}",
         )
 
     def on_show_shortcuts(self):
@@ -634,6 +676,9 @@ class NameListWindow(QDialog):
         btn_font = close_btn.font()
         btn_font.setPointSize(self.scaler.get_scaled_size(11))
         close_btn.setFont(btn_font)
+        close_btn.setStyleSheet(
+            build_accessible_button_style(self.scaler.get_scaled_size(20))
+        )
         layout.addWidget(close_btn)
 
         dlg.exec()

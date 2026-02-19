@@ -7,6 +7,8 @@ from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtWidgets import QApplication
 from typing import Optional
 
+from .style_helpers import build_accessible_button_style
+
 
 class UIScaler(QObject):
     """
@@ -128,6 +130,7 @@ class UIScaler(QObject):
         # Normal = 9pt, scale proportionally
         base_size = 9  # Qt's default
         scaled_size = int(base_size * (self._current_scale / 100.0))
+        control_height = int(20 * (self._current_scale / 100.0))
 
         # Update application font
         font = self.app.font()
@@ -225,6 +228,11 @@ class UIScaler(QObject):
                 font-size: {int(scaled_size * 0.9)}pt;
             }}
         """
+
+        stylesheet += "\n" + build_accessible_button_style(
+            control_height,
+            selector="QMessageBox QPushButton",
+        )
 
         self.app.setStyleSheet(stylesheet)
 

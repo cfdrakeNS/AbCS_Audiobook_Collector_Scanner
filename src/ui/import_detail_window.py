@@ -17,6 +17,7 @@ from database import (
     DatabaseManager, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 )
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from accessibility.theme_manager import ThemeManager
 from accessibility.key_filters import is_unmapped_alt_letter
 from accessibility.accessible_events import (
@@ -150,10 +151,13 @@ class ImportDetailWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Status",
-                f"No screen reader active.\n\nStatus: {status_text}")
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status",
+                text=f"No screen reader active.\n\nStatus: {status_text}",
+            )
 
     def install_focus_filters(self):
         """
@@ -992,6 +996,10 @@ class ImportDetailWindow(QDialog):
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Question)
             msg.setWindowTitle("Save Changes")
+            msg.setStyleSheet(
+                build_accessible_message_box_style(
+                    self.scaler.get_scaled_size(20))
+            )
             msg.setText(
                 "Import details changed.\n\n"
                 "Yes = Save and close\n"

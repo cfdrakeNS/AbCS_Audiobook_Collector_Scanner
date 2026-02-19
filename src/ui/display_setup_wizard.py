@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import build_accessible_button_style
 from accessibility.theme_manager import ThemeManager
 
 
@@ -93,6 +94,12 @@ class DisplaySetupWizard(QDialog):
         buttons.addWidget(self.continue_button)
         buttons.addWidget(self.skip_button)
         layout.addLayout(buttons)
+
+        button_style = build_accessible_button_style(
+            self.scaler.get_scaled_size(20)
+        )
+        self.continue_button.setStyleSheet(button_style)
+        self.skip_button.setStyleSheet(button_style)
 
     def _load_values(self):
         self._loading = True

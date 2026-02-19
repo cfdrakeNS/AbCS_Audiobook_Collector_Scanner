@@ -16,6 +16,7 @@ from datetime import datetime
 
 from database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
 
 
@@ -592,7 +593,10 @@ class BookDetailsWindow(QDialog):
         if self._dirty:
             msg = QMessageBox(self)
             msg.setWindowTitle("Unsaved Changes")
-            msg.setStyleSheet("QLabel { border: none; }")
+            msg.setStyleSheet(
+                build_accessible_message_box_style(
+                    self.scaler.get_scaled_size(20))
+            )
             msg.setText(
                 "You have unsaved changes.\n\n"
                 "Yes = Save and stay\n"
@@ -720,10 +724,13 @@ class BookDetailsWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Status Bar",
-                f"No screen reader active.\n\nStatus: {status_text}")
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {status_text}",
+            )
 
     def _get_dirty_field_name(self, widget) -> str:
         """Return a user-friendly field name for a dirty widget."""
@@ -1056,9 +1063,14 @@ class BookDetailsWindow(QDialog):
 
         # Value is new - ask Yes/No
         msg = f"'{current_text}' is a new {field_name}.\n\nCreate this new {field_name}?"
-        reply = QMessageBox.question(
-            self, f"New {field_name}", msg,
-            QMessageBox.Yes | QMessageBox.No
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title=f"New {field_name}",
+            text=msg,
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
         )
 
         if reply != QMessageBox.Yes:
@@ -1069,7 +1081,13 @@ class BookDetailsWindow(QDialog):
         """Save book data."""
         # Validate
         if not self.title_edit.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Title is required.")
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Validation Error",
+                text="Title is required.",
+            )
             self.title_edit.setFocus()
             self.set_status("Title is required")
             return
@@ -1077,8 +1095,13 @@ class BookDetailsWindow(QDialog):
         # Get author - confirm if creating new
         author_text = self.author_combo.currentText().strip()
         if not author_text:
-            QMessageBox.warning(self, "Validation Error",
-                                "Author is required.")
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Validation Error",
+                text="Author is required.",
+            )
             self.author_combo.setFocus()
             self.set_status("Author is required")
             return
@@ -1160,7 +1183,13 @@ class BookDetailsWindow(QDialog):
 
         except Exception as e:
             self.set_status("Error saving book")
-            QMessageBox.critical(self, "Error", f"Error saving book: {str(e)}")
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Critical,
+                title="Error",
+                text=f"Error saving book: {str(e)}",
+            )
 
     def on_delete(self):
         """Delete book."""
@@ -1168,10 +1197,14 @@ class BookDetailsWindow(QDialog):
         if self.is_new:
             return
 
-        reply = QMessageBox.question(
-            self, "Confirm Delete",
-            f"Are you sure you want to delete '{self.book.title}'?",
-            QMessageBox.Yes | QMessageBox.No
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Confirm Delete",
+            text=f"Are you sure you want to delete '{self.book.title}'?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
@@ -1185,8 +1218,13 @@ class BookDetailsWindow(QDialog):
 
                     if len(self.books_list) == 0:
                         # No more books - close the window
-                        QMessageBox.information(
-                            self, "Success", "Book deleted. No more books.")
+                        exec_styled_message_box(
+                            self,
+                            self.scaler.get_scaled_size(20),
+                            icon=QMessageBox.Information,
+                            title="Success",
+                            text="Book deleted. No more books.",
+                        )
                         self.set_status("Book deleted. No more books")
                         super().reject()
                         return
@@ -1201,18 +1239,33 @@ class BookDetailsWindow(QDialog):
                     self._clear_dirty()
                     self.update_navigation_state()
                     self.setWindowTitle(f"Book Details - {self.book.title}")
-                    QMessageBox.information(
-                        self, "Success", "Book deleted successfully!")
+                    exec_styled_message_box(
+                        self,
+                        self.scaler.get_scaled_size(20),
+                        icon=QMessageBox.Information,
+                        title="Success",
+                        text="Book deleted successfully!",
+                    )
                     self.set_status("Book deleted successfully")
                 else:
-                    QMessageBox.information(
-                        self, "Success", "Book deleted successfully!")
+                    exec_styled_message_box(
+                        self,
+                        self.scaler.get_scaled_size(20),
+                        icon=QMessageBox.Information,
+                        title="Success",
+                        text="Book deleted successfully!",
+                    )
                     self.set_status("Book deleted successfully")
                     super().reject()
             except Exception as e:
                 self.set_status("Error deleting book")
-                QMessageBox.critical(
-                    self, "Error", f"Error deleting book: {str(e)}")
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Critical,
+                    title="Error",
+                    text=f"Error deleting book: {str(e)}",
+                )
 
     def on_new(self):
         """

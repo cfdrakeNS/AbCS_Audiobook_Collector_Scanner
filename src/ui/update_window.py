@@ -19,6 +19,7 @@ from database import (
     GenreQueries, CollectionQueries
 )
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import exec_styled_message_box
 
 
 # Special marker for "None" option to clear a field
@@ -722,10 +723,13 @@ class UpdateWindow(QDialog):
         if QAccessible.isActive():
             self.show_status(status_text, announce=True)
         else:
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Status Bar",
-                f"No screen reader active.\n\nStatus: {status_text}")
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {status_text}",
+            )
 
     def keyPressEvent(self, event):
         """Override to prevent Enter from closing the dialog."""
@@ -741,9 +745,14 @@ class UpdateWindow(QDialog):
         Returns True if confirmed, False if cancelled.
         """
         msg = f"'{value}' is a new {field_name}.\n\nCreate this new {field_name}?"
-        reply = QMessageBox.question(
-            self, f"New {field_name}", msg,
-            QMessageBox.Yes | QMessageBox.No
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title=f"New {field_name}",
+            text=msg,
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
         )
         return reply == QMessageBox.Yes
 

@@ -15,6 +15,7 @@ from PySide6.QtGui import QShortcut, QKeySequence
 from datetime import datetime
 
 from accessibility.scaling import UIScaler
+from accessibility.style_helpers import build_accessible_message_box_style
 from accessibility.theme_manager import ThemeManager
 from accessibility.key_filters import is_unmapped_alt_letter
 from accessibility.accessible_events import (
@@ -895,7 +896,9 @@ class PreferencesWindow(QDialog):
         """Ask whether to save changes before exit. Returns QMessageBox reply."""
         msg = QMessageBox(self)
         msg.setWindowTitle("Unsaved Changes")
-        msg.setStyleSheet("QLabel { border: none; }")
+        msg.setStyleSheet(
+            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
+        )
         msg.setText(
             "You have unsaved changes.\n\n"
             "Yes = Save and close\n"
