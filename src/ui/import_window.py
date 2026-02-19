@@ -106,6 +106,7 @@ class ImportWindow(QDialog):
             "scanned": 0,
             "valid": 0,
             "errors": 0,
+            "warnings": 0,
             "duplicates": 0,
         }
         self.total_imported = 0
@@ -910,17 +911,28 @@ class ImportWindow(QDialog):
         """Check whether a scanned item matches current error filter."""
         selected_filter = self.error_filter_combo.currentData()
         status = item.get("status", "")
+        errors = item.get("errors", [])
+
+        has_hard_error = any(
+            self.validator.categorize_error(err) in ("read", "parse")
+            for err in errors
+        )
+        has_warning = any(
+            self.validator.categorize_error(err) == "warning"
+            for err in errors
+        )
+        is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
 
         if selected_filter == "all":
             return True
         if selected_filter == "valid":
-            return status == "OK"
+            return status == "OK" and not has_hard_error and not has_warning and not is_duplicate
         if selected_filter == "warning":
-            return status == "Warning"
+            return has_warning
         if selected_filter == "error":
-            return status in ("Error", "Failed")
+            return has_hard_error or status in ("Error", "Failed")
         if selected_filter == "duplicate":
-            return bool(item.get("is_duplicate")) or status == "Duplicate"
+            return is_duplicate
 
         return True
 
@@ -1043,19 +1055,22 @@ class ImportWindow(QDialog):
 
     def update_summary(self, scanned: int = 0, valid: int = 0,
                        errors: int = 0, duplicates: int = 0,
+                       warnings: int = 0,
                        announce: bool = False):
         """Update status bar summary."""
+        issues = errors + warnings
         self._summary_counts = {
             "scanned": scanned,
             "valid": valid,
             "errors": errors,
+            "warnings": warnings,
             "duplicates": duplicates,
         }
         filtered = self._get_filtered_count()
         filter_value = self.error_filter_combo.currentData()
         message = (
             f"Scanned: {scanned} | Valid: {valid} | "
-            f"Errors: {errors} | Duplicates: {duplicates} | "
+            f"Issues: {issues} | Duplicates: {duplicates} | "
             f"Filtered: {filtered}"
         )
         if filter_value and filter_value != "all":
@@ -1091,12 +1106,11 @@ class ImportWindow(QDialog):
             target_collection_id=self._get_target_collection_id(),
         )
         if is_duplicate:
-            has_duplicate_error = any(
-                str(err).strip().lower() == "duplicate"
-                for err in errors
-            )
-            if not has_duplicate_error:
-                errors.append("Duplicate")
+            errors = [
+                err for err in errors
+                if str(err).strip().lower() != "duplicate"
+            ]
+            errors.insert(0, "Duplicate")
 
         has_hard_error = any(
             self.validator.categorize_error(err) in ("read", "parse")
@@ -1125,6 +1139,7 @@ class ImportWindow(QDialog):
             scanned=self._summary_counts["scanned"],
             valid=self._summary_counts["valid"],
             errors=self._summary_counts["errors"],
+            warnings=self._summary_counts.get("warnings", 0),
             duplicates=self._summary_counts["duplicates"],
         )
 
@@ -1253,6 +1268,7 @@ class ImportWindow(QDialog):
 
         valid_count = 0
         error_count = 0
+        warning_count = 0
         duplicate_count = 0
 
         for row, book in enumerate(books):
@@ -1273,12 +1289,11 @@ class ImportWindow(QDialog):
                 target_collection_id=target_collection_id,
             )
             if is_duplicate:
-                has_duplicate_error = any(
-                    str(err).strip().lower() == "duplicate"
-                    for err in errors
-                )
-                if not has_duplicate_error:
-                    errors.append("Duplicate")
+                errors = [
+                    err for err in errors
+                    if str(err).strip().lower() != "duplicate"
+                ]
+                errors.insert(0, "Duplicate")
                 duplicate_count += 1
 
             has_hard_error = any(
@@ -1298,6 +1313,7 @@ class ImportWindow(QDialog):
                 error_count += 1
             elif has_warning:
                 status = "Warning"
+                warning_count += 1
                 valid_count += 1
             else:
                 valid_count += 1
@@ -1337,26 +1353,32 @@ class ImportWindow(QDialog):
             scanned=len(books),
             valid=valid_count,
             errors=error_count,
+            warnings=warning_count,
             duplicates=duplicate_count,
             announce=True)
         self._apply_error_filter()
 
         self._restore_focus_after_scan()
 
-        summary_message = (
-            f"Scanned: {len(books)} | Valid: {valid_count} | "
-            f"Errors: {error_count} | Duplicates: {duplicate_count} | "
+        issues_count = warning_count + error_count
+        popup_message = (
+            f"Scanned: {len(books)}\n"
+            f"Valid: {valid_count}\n"
+            f"Warnings: {warning_count}\n"
+            f"Errors: {error_count}\n"
+            f"Duplicates: {duplicate_count}\n"
             f"Elapsed: {elapsed_text}"
         )
         if scan_was_canceled:
             self.set_status(
-                f"Scan canceled. Partial results kept. {summary_message}")
+                f"Scanned: {len(books)} | Issues: {issues_count} | Duplicates: {duplicate_count} | Elapsed: {elapsed_text} | Scan canceled (partial results kept)")
             self._show_info_popup(
                 "Scan Canceled (Partial Results)",
-                f"Partial results kept.\n\n{summary_message}")
+                f"Partial results kept.\n\n{popup_message}")
         else:
-            self.set_status(summary_message)
-            self._show_info_popup("Scan Complete", summary_message)
+            self.set_status(
+                f"Scanned: {len(books)} | Issues: {issues_count} | Duplicates: {duplicate_count} | Elapsed: {elapsed_text}")
+            self._show_info_popup("Scan Complete", popup_message)
 
         # Move focus to first title after summary announcement has started
         def focus_first_title():
@@ -1405,6 +1427,7 @@ class ImportWindow(QDialog):
         scanned = len(self.scanned_items)
         valid = 0
         errors = 0
+        warnings = 0
         duplicates = 0
 
         for item in self.scanned_items:
@@ -1413,11 +1436,14 @@ class ImportWindow(QDialog):
                 duplicates += 1
             if status in ("Error", "Failed") and not item.get("is_duplicate"):
                 errors += 1
+            elif status == "Warning":
+                warnings += 1
+                valid += 1
             elif status in ("OK", "Warning"):
                 valid += 1
 
         self.update_summary(scanned=scanned, valid=valid,
-                            errors=errors, duplicates=duplicates)
+                            errors=errors, warnings=warnings, duplicates=duplicates)
         self._apply_error_filter()
 
     def _import_rows(self, row_indices):
@@ -1544,6 +1570,7 @@ class ImportWindow(QDialog):
                 scanned=self._summary_counts["scanned"],
                 valid=self._summary_counts["valid"],
                 errors=self._summary_counts["errors"],
+                warnings=self._summary_counts.get("warnings", 0),
                 duplicates=self._summary_counts["duplicates"],
             )
 

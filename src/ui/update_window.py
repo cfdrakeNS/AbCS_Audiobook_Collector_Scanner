@@ -8,11 +8,11 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QComboBox, QPushButton, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QStatusBar, QMessageBox, QApplication,
-    QLineEdit, QWidget
 )
 from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from typing import Set, List
+import time
 
 from database import (
     DatabaseManager, Book, BookQueries, SeriesQueries,
@@ -50,6 +50,15 @@ class UpdateWindow(QDialog):
         self.selected_book_ids = set(
             selected_book_ids)  # Copy to avoid mutation
         self.changes_applied = False
+        self._default_status_message = "Ready"
+        self._last_series_action_at = 0.0
+        self._last_genre_action_at = 0.0
+        self._last_series_action_text = ""
+        self._last_genre_action_text = ""
+        self._processing_series_input = False
+        self._processing_genre_input = False
+        self._skip_series_focus_out_once = False
+        self._skip_genre_focus_out_once = False
 
         # Query objects
         self.book_queries = BookQueries(db)
@@ -202,6 +211,15 @@ class UpdateWindow(QDialog):
 
         layout.addLayout(footer_layout)
 
+        # Explicit tab order to keep header navigation predictable
+        self.setTabOrder(self.series_combo, self.genre_combo)
+        if self.has_multiple_collections:
+            self.setTabOrder(self.genre_combo, self.collection_combo)
+            self.setTabOrder(self.collection_combo, self.table)
+        else:
+            self.setTabOrder(self.genre_combo, self.table)
+        self.setTabOrder(self.table, self.close_button)
+
     def install_event_filters(self):
         """Install event filters on combo boxes to block plain arrow keys and handle FocusOut."""
         self.series_combo.installEventFilter(self)
@@ -212,7 +230,7 @@ class UpdateWindow(QDialog):
         self._series_line_edit = self.series_combo.lineEdit()
         self._genre_line_edit = self.genre_combo.lineEdit()
 
-        # For editable combos, also filter the internal lineEdit for FocusOut and Enter detection
+        # For editable combos, also filter the internal lineEdit for key and focus handling
         if self._series_line_edit:
             self._series_line_edit.installEventFilter(self)
         if self._genre_line_edit:
@@ -222,14 +240,51 @@ class UpdateWindow(QDialog):
         """
         Event filter to:
         1. Block plain Up/Down arrow keys on combo boxes (require Alt+Down to open dropdown)
-        2. Handle FocusOut to detect and apply new entries
+        2. Handle Enter on header combos to apply updates and move focus forward
+        3. Handle FocusOut to detect and apply typed Series/Genre entries
         """
-        # Handle Enter key on collection combo (not editable, no returnPressed signal)
         if event.type() == QEvent.KeyPress:
             key = event.key()
+
+            # Prevent unused Alt+letter combinations from being echoed into editable combos
+            if source in (self.series_combo, self._series_line_edit, self.genre_combo, self._genre_line_edit):
+                modifiers = event.modifiers()
+                if modifiers & Qt.AltModifier:
+                    allowed_alt_keys = {
+                        Qt.Key_S, Qt.Key_G, Qt.Key_L, Qt.Key_B, Qt.Key_C,
+                        Qt.Key_Slash, Qt.Key_Question, Qt.Key_Up, Qt.Key_Down
+                    }
+                    if Qt.Key_A <= key <= Qt.Key_Z and key not in allowed_alt_keys:
+                        return True
+
             if key in (Qt.Key_Return, Qt.Key_Enter):
+                if source == self.series_combo or source == self._series_line_edit:
+                    self._skip_series_focus_out_once = True
+                    should_move = self.on_series_entered()
+                    if should_move:
+                        QTimer.singleShot(
+                            0, lambda s=source: self._focus_next_header_control(s))
+                    else:
+                        QTimer.singleShot(
+                            0, lambda: self.series_combo.setFocus())
+                    return True
+
+                if source == self.genre_combo or source == self._genre_line_edit:
+                    self._skip_genre_focus_out_once = True
+                    should_move = self.on_genre_entered()
+                    if should_move:
+                        QTimer.singleShot(
+                            0, lambda s=source: self._focus_next_header_control(s))
+                    else:
+                        QTimer.singleShot(
+                            0, lambda: self.genre_combo.setFocus())
+                    return True
+
                 if source == self.collection_combo:
-                    # Collection is the last combo, just stay put
+                    self.on_collection_changed(
+                        self.collection_combo.currentIndex())
+                    QTimer.singleShot(
+                        0, lambda s=source: self._focus_next_header_control(s))
                     return True  # Consume the event to prevent dialog close
 
             # Block plain Up/Down arrow keys on combo boxes
@@ -242,79 +297,237 @@ class UpdateWindow(QDialog):
                         QApplication.beep()
                         return True  # Consume the event
 
-        # Handle FocusOut to detect new entries typed into combos
-        # Check both the combo and its internal lineEdit
+        # Handle FocusOut to detect/apply values typed into editable combos
         if event.type() == QEvent.FocusOut:
-            # Series combo or its lineEdit
+            # Handle both combo and lineEdit; processing code dedupes safely
             if source == self.series_combo or source == self._series_line_edit:
+                if self._skip_series_focus_out_once:
+                    self._skip_series_focus_out_once = False
+                    return super().eventFilter(source, event)
                 self._handle_series_focus_out()
-            # Genre combo or its lineEdit
             elif source == self.genre_combo or source == self._genre_line_edit:
+                if self._skip_genre_focus_out_once:
+                    self._skip_genre_focus_out_once = False
+                    return super().eventFilter(source, event)
                 self._handle_genre_focus_out()
 
         return super().eventFilter(source, event)
 
+    def _focus_next_header_control(self, source):
+        """Move focus to next logical control from header fields."""
+        if source == self.series_combo or source == self._series_line_edit:
+            self.genre_combo.setFocus()
+            return
+
+        if source == self.genre_combo or source == self._genre_line_edit:
+            if self.has_multiple_collections and self.collection_combo.isVisible():
+                self.collection_combo.setFocus()
+            else:
+                self.table.setFocus()
+            return
+
+        if source == self.collection_combo:
+            self.table.setFocus()
+
+    def _find_existing_combo_data(self, combo: QComboBox, text: str):
+        """Find existing item data by case-insensitive text match (excluding blank/None)."""
+        lookup = text.strip().casefold()
+        if not lookup:
+            return None
+
+        for index in range(combo.count()):
+            item_text = combo.itemText(index).strip().casefold()
+            if item_text != lookup:
+                continue
+
+            data = combo.itemData(index)
+            if data is None or data == NONE_MARKER:
+                return None
+            return data
+
+        return None
+
     def _handle_series_focus_out(self):
         """Handle focus leaving Series combo - check for new entry."""
-        text = self.series_combo.currentText().strip()
-        if not text or text == "None":
-            return
+        self._process_series_input(keep_focus=False)
 
-        # Check if it matches an existing item in the combo
-        index = self.series_combo.findText(text, Qt.MatchFixedString)
-        if index >= 0:
-            # It's an existing item - apply it if not blank
-            if index > 0:  # Not the blank item
-                # Set the combo to this index so currentData() works correctly
-                self.series_combo.setCurrentIndex(index)
-                self.on_series_changed(index)
-            return
+    def _handle_genre_focus_out(self):
+        """Handle focus leaving Genre combo - check for new entry."""
+        self._process_genre_input(keep_focus=False)
 
-        # It's a new value - confirm and apply
-        if self._confirm_new_entry("Series", text):
+    def _is_recent_series_action(self, text: str) -> bool:
+        return (
+            self._last_series_action_text == text.casefold()
+            and (time.monotonic() - self._last_series_action_at) < 0.5
+        )
+
+    def _is_recent_genre_action(self, text: str) -> bool:
+        return (
+            self._last_genre_action_text == text.casefold()
+            and (time.monotonic() - self._last_genre_action_at) < 0.5
+        )
+
+    def _mark_series_action(self, text: str):
+        self._last_series_action_text = text.casefold()
+        self._last_series_action_at = time.monotonic()
+
+    def _mark_genre_action(self, text: str):
+        self._last_genre_action_text = text.casefold()
+        self._last_genre_action_at = time.monotonic()
+
+    def _process_series_input(self, keep_focus: bool) -> bool:
+        if self._processing_series_input:
+            return False
+
+        self._processing_series_input = True
+        try:
+            text = self.series_combo.currentText().strip()
+            normalized_text = text.casefold()
+            if not text:
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+                return True
+
+            if normalized_text == "none":
+                book_ids = list(self.selected_book_ids)
+                count = len(book_ids)
+                self.book_queries.bulk_update_series(book_ids, None)
+                self._mark_series_action(text)
+                self.changes_applied = True
+                self.show_status(
+                    f"Series cleared from {count} book{'s' if count != 1 else ''}")
+                self.series_combo.setCurrentIndex(0)
+                self.refresh_books_table()
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+                return True
+
+            if self._is_recent_series_action(text):
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+                return True
+
+            existing_data = self._find_existing_combo_data(
+                self.series_combo, text)
+            existing = self.series_queries.get_by_name(
+                text) if existing_data is None else None
+            existing_series_id = existing_data if existing_data is not None else (
+                existing.series_id if existing else None
+            )
+
+            if existing_series_id is not None:
+                book_ids = list(self.selected_book_ids)
+                count = len(book_ids)
+                self.book_queries.bulk_update_series(
+                    book_ids, existing_series_id)
+                self._mark_series_action(text)
+                self.changes_applied = True
+                self.show_status(
+                    f"Series: {text} added to {count} book{'s' if count != 1 else ''}")
+                self.series_combo.setCurrentIndex(0)
+                self.load_combos()
+                self.refresh_books_table()
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+                return True
+
+            if not self._confirm_new_entry("Series", text):
+                self._mark_series_action(text)
+                QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+                return False
+
             new_id = self.series_queries.get_or_create(text)
             book_ids = list(self.selected_book_ids)
             count = len(book_ids)
             self.book_queries.bulk_update_series(book_ids, new_id)
+            self._mark_series_action(text)
             self.changes_applied = True
             self.show_status(
                 f"Series: {text} added to {count} book{'s' if count != 1 else ''}")
             self.load_combos()
             self.refresh_books_table()
-        else:
-            # User said No - keep text but restore focus to this combo
-            QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+            if keep_focus:
+                QTimer.singleShot(0, lambda: self.series_combo.setFocus())
+            return True
+        finally:
+            self._processing_series_input = False
 
-    def _handle_genre_focus_out(self):
-        """Handle focus leaving Genre combo - check for new entry."""
-        text = self.genre_combo.currentText().strip()
-        if not text or text == "None":
-            return
+    def _process_genre_input(self, keep_focus: bool) -> bool:
+        if self._processing_genre_input:
+            return False
 
-        # Check if it matches an existing item in the combo
-        index = self.genre_combo.findText(text, Qt.MatchFixedString)
-        if index >= 0:
-            # It's an existing item - apply it if not blank
-            if index > 0:  # Not the blank item
-                # Set the combo to this index so currentData() works correctly
-                self.genre_combo.setCurrentIndex(index)
-                self.on_genre_changed(index)
-            return
+        self._processing_genre_input = True
+        try:
+            text = self.genre_combo.currentText().strip()
+            normalized_text = text.casefold()
+            if not text:
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+                return True
 
-        # It's a new value - confirm and apply
-        if self._confirm_new_entry("Genre", text):
+            if normalized_text == "none":
+                book_ids = list(self.selected_book_ids)
+                count = len(book_ids)
+                self.book_queries.bulk_update_genre(book_ids, None)
+                self._mark_genre_action(text)
+                self.changes_applied = True
+                self.show_status(
+                    f"Genre cleared from {count} book{'s' if count != 1 else ''}")
+                self.genre_combo.setCurrentIndex(0)
+                self.refresh_books_table()
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+                return True
+
+            if self._is_recent_genre_action(text):
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+                return True
+
+            existing_data = self._find_existing_combo_data(
+                self.genre_combo, text)
+            existing = self.genre_queries.get_by_name(
+                text) if existing_data is None else None
+            existing_genre_id = existing_data if existing_data is not None else (
+                existing.genre_id if existing else None
+            )
+
+            if existing_genre_id is not None:
+                book_ids = list(self.selected_book_ids)
+                count = len(book_ids)
+                self.book_queries.bulk_update_genre(
+                    book_ids, existing_genre_id)
+                self._mark_genre_action(text)
+                self.changes_applied = True
+                self.show_status(
+                    f"Genre: {text} added to {count} book{'s' if count != 1 else ''}")
+                self.genre_combo.setCurrentIndex(0)
+                self.load_combos()
+                self.refresh_books_table()
+                if keep_focus:
+                    QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+                return True
+
+            if not self._confirm_new_entry("Genre", text):
+                self._mark_genre_action(text)
+                QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+                return False
+
             new_id = self.genre_queries.get_or_create(text)
             book_ids = list(self.selected_book_ids)
             count = len(book_ids)
             self.book_queries.bulk_update_genre(book_ids, new_id)
+            self._mark_genre_action(text)
             self.changes_applied = True
             self.show_status(
                 f"Genre: {text} added to {count} book{'s' if count != 1 else ''}")
             self.load_combos()
             self.refresh_books_table()
-        else:
-            # User said No - keep text but restore focus to this combo
-            QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+            if keep_focus:
+                QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
+            return True
+        finally:
+            self._processing_genre_input = False
 
     def apply_control_styles(self):
         """Apply consistent styling to all controls."""
@@ -373,6 +586,17 @@ class UpdateWindow(QDialog):
             }
         """
 
+        table_style = """
+            QTableWidget:focus {
+                border: none;
+                outline: none;
+            }
+            QTableWidget::item:focus {
+                border: none;
+                outline: none;
+            }
+        """
+
         # Apply styles
         for widget in self.findChildren(QComboBox):
             widget.setStyleSheet(combo_style)
@@ -380,6 +604,7 @@ class UpdateWindow(QDialog):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
+        self.table.setStyleSheet(table_style)
 
     def load_combos(self):
         """Load combo box items from database."""
@@ -449,6 +674,10 @@ class UpdateWindow(QDialog):
         help_shortcut = QShortcut(QKeySequence("F1"), self)
         help_shortcut.activated.connect(self.on_show_shortcuts)
 
+        # Alt+/ reads status bar message
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+
     def focus_book_list(self):
         """Move focus to the book list table."""
         self.table.setFocus()
@@ -462,12 +691,16 @@ class UpdateWindow(QDialog):
         self.genre_combo.activated.connect(self.on_genre_changed)
         self.collection_combo.activated.connect(self.on_collection_changed)
 
-        # Handle Enter key in editable combos for new entries
-        self._series_line_edit.returnPressed.connect(self.on_series_entered)
-        self._genre_line_edit.returnPressed.connect(self.on_genre_entered)
+        # Handle Enter key in editable combos for typed entries
+        if self._series_line_edit:
+            self._series_line_edit.returnPressed.connect(
+                self.on_series_entered)
+        if self._genre_line_edit:
+            self._genre_line_edit.returnPressed.connect(self.on_genre_entered)
 
     def show_status(self, message: str, announce: bool = True):
         """Show message in status bar and announce to screen readers."""
+        self._default_status_message = message
         self.status_bar.showMessage(message)
         # Announce to screen readers (JAWS/NVDA) using focus trick
         if announce and QAccessible.isActive():
@@ -476,10 +709,23 @@ class UpdateWindow(QDialog):
             self.status_bar.setFocus()
 
             def restore_focus():
-                if previous_focus:
+                # Only restore if status bar still owns focus.
+                # This avoids stealing focus back after Enter/Tab navigation.
+                if QApplication.instance().focusWidget() == self.status_bar and previous_focus:
                     previous_focus.setFocus()
                 self.status_bar.setFocusPolicy(Qt.NoFocus)
             QTimer.singleShot(100, restore_focus)
+
+    def on_read_status_bar(self):
+        """Read current status bar message (Alt+/)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
+        if QAccessible.isActive():
+            self.show_status(status_text, announce=True)
+        else:
+            QMessageBox.information(
+                self,
+                "Status Bar",
+                f"No screen reader active.\n\nStatus: {status_text}")
 
     def keyPressEvent(self, event):
         """Override to prevent Enter from closing the dialog."""
@@ -527,45 +773,11 @@ class UpdateWindow(QDialog):
         # Reset combo to blank and refresh table
         self.series_combo.setCurrentIndex(0)
         self.refresh_books_table()
+        QTimer.singleShot(0, lambda: self.series_combo.setFocus())
 
-    def on_series_entered(self):
+    def on_series_entered(self) -> bool:
         """Handle Enter key in series combo for new series."""
-        text = self.series_combo.currentText().strip()
-        if not text or text == "None":  # Blank or None item
-            return
-
-        # Check if it's an existing series
-        existing = self.series_queries.get_by_name(text)
-        if existing:
-            # Existing series - just apply it
-            book_ids = list(self.selected_book_ids)
-            count = len(book_ids)
-            self.book_queries.bulk_update_series(book_ids, existing.series_id)
-            self.changes_applied = True
-            self.show_status(
-                f"Series: {text} added to {count} book{'s' if count != 1 else ''}")
-            self.series_combo.setCurrentIndex(0)
-            self.load_combos()
-            self.refresh_books_table()
-            return
-
-        # New series - confirm with user
-        if not self._confirm_new_entry("Series", text):
-            self.series_combo.setCurrentIndex(0)
-            return
-
-        # Create new series and apply
-        new_id = self.series_queries.get_or_create(text)
-        book_ids = list(self.selected_book_ids)
-        count = len(book_ids)
-        self.book_queries.bulk_update_series(book_ids, new_id)
-        self.changes_applied = True
-        self.show_status(
-            f"Series: {text} added to {count} book{'s' if count != 1 else ''}")
-
-        # Reload combos to include new series, reset, and refresh table
-        self.load_combos()
-        self.refresh_books_table()
+        return self._process_series_input(keep_focus=False)
 
     def on_genre_changed(self, index: int):
         """Handle genre combo selection change - update immediately."""
@@ -593,45 +805,11 @@ class UpdateWindow(QDialog):
         # Reset combo to blank and refresh table
         self.genre_combo.setCurrentIndex(0)
         self.refresh_books_table()
+        QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
 
-    def on_genre_entered(self):
+    def on_genre_entered(self) -> bool:
         """Handle Enter key in genre combo for new genre."""
-        text = self.genre_combo.currentText().strip()
-        if not text or text == "None":  # Blank or None item
-            return
-
-        # Check if it's an existing genre
-        existing = self.genre_queries.get_by_name(text)
-        if existing:
-            # Existing genre - just apply it
-            book_ids = list(self.selected_book_ids)
-            count = len(book_ids)
-            self.book_queries.bulk_update_genre(book_ids, existing.genre_id)
-            self.changes_applied = True
-            self.show_status(
-                f"Genre: {text} added to {count} book{'s' if count != 1 else ''}")
-            self.genre_combo.setCurrentIndex(0)
-            self.load_combos()
-            self.refresh_books_table()
-            return
-
-        # New genre - confirm with user
-        if not self._confirm_new_entry("Genre", text):
-            self.genre_combo.setCurrentIndex(0)
-            return
-
-        # Create new genre and apply
-        new_id = self.genre_queries.get_or_create(text)
-        book_ids = list(self.selected_book_ids)
-        count = len(book_ids)
-        self.book_queries.bulk_update_genre(book_ids, new_id)
-        self.changes_applied = True
-        self.show_status(
-            f"Genre: {text} added to {count} book{'s' if count != 1 else ''}")
-
-        # Reload combos to include new genre, reset, and refresh table
-        self.load_combos()
-        self.refresh_books_table()
+        return self._process_genre_input(keep_focus=False)
 
     def on_collection_changed(self, index: int):
         """Handle collection combo selection change - update immediately."""
@@ -654,6 +832,7 @@ class UpdateWindow(QDialog):
         # Reset combo to blank and refresh table
         self.collection_combo.setCurrentIndex(0)
         self.refresh_books_table()
+        QTimer.singleShot(0, lambda: self.collection_combo.setFocus())
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -671,6 +850,7 @@ class UpdateWindow(QDialog):
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+L", "Collection"),
+            ("Alt+/", "Read status bar"),
             ("Alt+Down", "Open combo dropdown"),
             ("Alt+B", "Book list"),
             ("Alt+C", "Close window"),

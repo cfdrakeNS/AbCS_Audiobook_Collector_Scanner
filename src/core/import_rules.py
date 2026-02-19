@@ -274,8 +274,11 @@ class ImportRulesEngine:
 
     def _rule_year_out_of_range(self, book: Dict[str, Any]) -> List[str]:
         year = book.get("year")
-        if year in (None, ""):
-            return []
+        if year is None:
+            return ["Year is not a valid number"]
+
+        if isinstance(year, str) and not year.strip():
+            return ["Year is not a valid number"]
 
         try:
             year_value = int(year)

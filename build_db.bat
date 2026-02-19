@@ -1,12 +1,11 @@
 @echo off
-REM Build AbCS executable using PyInstaller
-REM This script creates a standalone .exe for distribution
+REM Build AbCS executable with bundled database for distribution
 
 echo ========================================
-echo Building AbCS Executable
+echo Building AbCS Executable (with DB)
 echo ========================================
 echo.
-echo ACCESSIBILITY: AbCS build script has started.
+echo ACCESSIBILITY: AbCS build_db script has started.
 echo ACCESSIBILITY: Python add-on checks and installs may begin next.
 echo.
 
@@ -15,7 +14,6 @@ call .venv\Scripts\activate.bat
 if errorlevel 1 (
     echo ERROR: Could not activate virtual environment
     echo Please run setup.bat first
-    pause
     exit /b 1
 )
 
@@ -28,38 +26,37 @@ if errorlevel 1 (
     python -m pip install pyinstaller
     if errorlevel 1 (
         echo ERROR: Failed to install PyInstaller
-        pause
         exit /b 1
     )
     echo PyInstaller installed successfully
 )
 echo.
 
-REM Clean previous builds
-echo Cleaning previous builds...
+REM Determine DB file to bundle
+set "DB_SOURCE="
+if exist "data\abcs.db" set "DB_SOURCE=data/abcs.db"
+if "%DB_SOURCE%"=="" if exist "data\AbCS.db" set "DB_SOURCE=data/AbCS.db"
+
+if "%DB_SOURCE%"=="" (
+    echo ERROR: Could not find database file to bundle.
+    echo Expected one of:
+    echo   data\abcs.db
+    echo   data\AbCS.db
+    exit /b 1
+)
+
+REM Clean previous build_db artifacts
+echo Cleaning previous build_db artifacts...
 echo Stopping running AbCS processes if any...
 taskkill /F /IM AbCS.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
-if exist dist\AbCS.exe (
-    echo Removing existing dist\AbCS.exe...
-    attrib -r dist\AbCS.exe >nul 2>&1
-    del /f /q dist\AbCS.exe >nul 2>&1
-    if exist dist\AbCS.exe (
-        echo ERROR: dist\AbCS.exe is locked and cannot be replaced.
-        echo Close any running AbCS window, File Explorer preview, or antivirus lock, then retry.
-        pause
-        exit /b 1
-    )
-)
+if exist build\build_db rmdir /s /q build\build_db
+if exist dist\build_db rmdir /s /q dist\build_db
 
-if exist build rmdir /s /q build
-if exist dist rmdir /s /q dist
-if exist AbCS.spec del AbCS.spec
-
-REM Build executable
+REM Build executable into dist\build_db
 echo.
-echo Building executable...
+echo Building executable with bundled database...
 echo This may take several minutes...
 echo.
 
@@ -69,7 +66,10 @@ python -m PyInstaller ^
     --windowed ^
     --clean ^
     --noconfirm ^
+    --distpath="dist/build_db" ^
+    --workpath="build/build_db" ^
     --add-data="data/abcdDB_def.sql;data" ^
+    --add-data="%DB_SOURCE%;data" ^
     --hidden-import="PySide6.QtCore" ^
     --hidden-import="PySide6.QtGui" ^
     --hidden-import="PySide6.QtWidgets" ^
@@ -85,22 +85,20 @@ python -m PyInstaller ^
 
 if errorlevel 1 (
     echo.
-    echo ERROR: Build failed!
-    pause
+    echo ERROR: build_db failed!
     exit /b 1
 )
 
 echo.
 echo ========================================
-echo Build Complete!
+echo build_db Complete!
 echo ========================================
 echo.
-echo Executable location: dist\AbCS.exe
-echo Database schema bundled: data\abcdDB_def.sql
+echo Executable location: dist\build_db\AbCS.exe
+echo Bundled files:
+echo   - data\abcdDB_def.sql
+echo   - %DB_SOURCE%
 echo.
-echo You can now distribute dist\AbCS.exe to your friend.
+echo First run will copy bundled DB to:
+echo   %%LOCALAPPDATA%%\AbCS\abcs.db
 echo.
-echo Note: No database file is bundled; first run creates a new database automatically.
-echo.
-
-pause

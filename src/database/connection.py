@@ -16,6 +16,8 @@ Instead, you keep one connection open and reuse it, which is faster.
 import sqlite3
 import os
 import sys
+from datetime import datetime
+import shutil
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -53,6 +55,8 @@ class DatabaseManager:
         self.db_path = db_path  # Store the database file path
         # Connection object (initialized as None)
         self._connection: Optional[sqlite3.Connection] = None
+        self.schema_repair_performed = False
+        self.schema_repair_message = ""
 
     def connect(self) -> sqlite3.Connection:
         """
@@ -202,8 +206,225 @@ class DatabaseManager:
         # Check if main tables exist
         if not self.table_exists('books'):
             self._create_schema()
+
+        self.schema_repair_performed = False
+        self.schema_repair_message = ""
+        self._ensure_legacy_schema_compatibility()
         self._ensure_minimum_seed_data()
         self._ensure_indexes()
+
+    def _ensure_legacy_schema_compatibility(self):
+        """
+        Repair older tester databases so current import and query flows work.
+
+        Strategy:
+        1) Ensure required tables exist
+        2) Ensure required columns exist (add missing where possible)
+        3) If critical ID/name columns are still incompatible, backup and rebuild
+        """
+        conn = self.connect()
+
+        table_create_sql: dict[str, str] = {
+            "authors": """
+                CREATE TABLE IF NOT EXISTS authors (
+                    author_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE
+                )
+            """,
+            "genres": """
+                CREATE TABLE IF NOT EXISTS genres (
+                    genre_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE
+                )
+            """,
+            "series": """
+                CREATE TABLE IF NOT EXISTS series (
+                    series_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE
+                )
+            """,
+            "collections": """
+                CREATE TABLE IF NOT EXISTS collections (
+                    collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    active INTEGER DEFAULT 1
+                )
+            """,
+            "books": """
+                CREATE TABLE IF NOT EXISTS books (
+                    book_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    author_id INTEGER,
+                    year INTEGER,
+                    series_id INTEGER,
+                    genre_id INTEGER,
+                    collection_id INTEGER,
+                    reader TEXT,
+                    time_hours INTEGER DEFAULT 0,
+                    time_minutes INTEGER DEFAULT 0,
+                    tracks INTEGER DEFAULT 0,
+                    size_mb REAL DEFAULT 0.0,
+                    bitrate INTEGER DEFAULT 0,
+                    file_format TEXT,
+                    path TEXT,
+                    comments TEXT,
+                    read_date DATE,
+                    date_added DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    source TEXT,
+                    FOREIGN KEY (author_id) REFERENCES authors(author_id),
+                    FOREIGN KEY (series_id) REFERENCES series(series_id),
+                    FOREIGN KEY (genre_id) REFERENCES genres(genre_id),
+                    FOREIGN KEY (collection_id) REFERENCES collections(collection_id)
+                )
+            """,
+        }
+
+        column_specs: dict[str, dict[str, str]] = {
+            "authors": {
+                "author_id": "INTEGER",
+                "name": "TEXT",
+            },
+            "genres": {
+                "genre_id": "INTEGER",
+                "name": "TEXT",
+            },
+            "series": {
+                "series_id": "INTEGER",
+                "name": "TEXT",
+            },
+            "collections": {
+                "collection_id": "INTEGER",
+                "name": "TEXT",
+                "active": "INTEGER DEFAULT 1",
+            },
+            "books": {
+                "book_id": "INTEGER",
+                "title": "TEXT",
+                "author_id": "INTEGER",
+                "year": "INTEGER",
+                "series_id": "INTEGER",
+                "genre_id": "INTEGER",
+                "collection_id": "INTEGER",
+                "reader": "TEXT",
+                "time_hours": "INTEGER DEFAULT 0",
+                "time_minutes": "INTEGER DEFAULT 0",
+                "tracks": "INTEGER DEFAULT 0",
+                "size_mb": "REAL DEFAULT 0.0",
+                "bitrate": "INTEGER DEFAULT 0",
+                "file_format": "TEXT",
+                "path": "TEXT",
+                "comments": "TEXT",
+                "read_date": "DATE",
+                "date_added": "DATETIME",
+                "source": "TEXT",
+            },
+        }
+
+        critical_columns: dict[str, set[str]] = {
+            "authors": {"author_id", "name"},
+            "genres": {"genre_id", "name"},
+            "series": {"series_id", "name"},
+            "collections": {"collection_id", "name"},
+            "books": {"book_id", "title", "author_id", "collection_id"},
+        }
+
+        existing_tables = {
+            row[0] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            ).fetchall()
+        }
+        created_tables: list[str] = []
+        added_columns: list[str] = []
+        backup_path: Optional[Path] = None
+
+        planned_changes = False
+        for table_name in table_create_sql:
+            if table_name not in existing_tables:
+                planned_changes = True
+                continue
+            existing_columns = self._get_existing_columns(table_name)
+            for column_name in column_specs.get(table_name, {}):
+                if column_name not in existing_columns:
+                    planned_changes = True
+                    break
+
+        if planned_changes and existing_tables:
+            backup_path = self._backup_database_file("schema_repair")
+
+        for table_name, create_sql in table_create_sql.items():
+            if table_name not in existing_tables:
+                created_tables.append(table_name)
+            conn.execute(create_sql)
+
+        for table_name, columns in column_specs.items():
+            if not self.table_exists(table_name):
+                continue
+            existing_columns = self._get_existing_columns(table_name)
+            for column_name, column_def in columns.items():
+                if column_name in existing_columns:
+                    continue
+                conn.execute(
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}"
+                )
+                added_columns.append(f"{table_name}.{column_name}")
+
+        conn.commit()
+
+        for table_name, required in critical_columns.items():
+            if not self.table_exists(table_name):
+                self._rebuild_database_from_schema("missing_critical_table")
+                return
+            existing_columns = self._get_existing_columns(table_name)
+            if not required.issubset(existing_columns):
+                self._rebuild_database_from_schema("missing_critical_columns")
+                return
+
+        if created_tables or added_columns:
+            self.schema_repair_performed = True
+            backup_note = ""
+            if backup_path is not None:
+                backup_note = f" Backup: {backup_path.name}."
+            self.schema_repair_message = (
+                "Database upgraded from legacy format for compatibility."
+                f"{backup_note}"
+            )
+
+    def _get_existing_columns(self, table_name: str) -> set[str]:
+        """Return existing column names for a table."""
+        conn = self.connect()
+        rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        return {row[1] for row in rows}
+
+    def _backup_database_file(self, reason: str) -> Optional[Path]:
+        """Create a timestamped backup of the current database file."""
+        db_file = Path(self.db_path)
+        if not db_file.exists():
+            return None
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"{db_file.stem}.backup_{reason}_{timestamp}{db_file.suffix}"
+        backup_path = db_file.parent / backup_name
+        shutil.copy2(db_file, backup_path)
+        return backup_path
+
+    def _rebuild_database_from_schema(self, reason: str):
+        """Backup incompatible DB and rebuild a fresh compatible schema."""
+        backup_path = self._backup_database_file(reason)
+
+        self.close()
+        db_file = Path(self.db_path)
+        if db_file.exists():
+            db_file.unlink()
+
+        self._create_schema()
+        self.schema_repair_performed = True
+        if backup_path is not None:
+            self.schema_repair_message = (
+                "Database rebuilt from schema for compatibility. "
+                f"Backup: {backup_path.name}."
+            )
+        else:
+            self.schema_repair_message = "Database rebuilt from schema for compatibility."
 
     def _ensure_indexes(self):
         """Ensure critical indexes exist for query performance."""

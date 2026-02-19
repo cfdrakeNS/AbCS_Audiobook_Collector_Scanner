@@ -117,6 +117,19 @@ def test_duplicate_match_mode_title_author_year_ignore_collection(isolated_qsett
         book, existing_books, target_collection_id=1)
 
 
+def test_year_consistency_flags_null_blank_whitespace_year(isolated_qsettings):
+    isolated_qsettings.setValue("import/rules/year_out_of_range/enabled", True)
+    isolated_qsettings.setValue(
+        "import/rules/year_out_of_range/severity", "warning")
+
+    validator = ImportValidator()
+
+    for year_value in (None, "", "   "):
+        errors = validator.validate_book(
+            {"author": "Author", "title": "Title", "year": year_value})
+        assert "Year is not a valid number" in errors
+
+
 def test_duplicate_fuzzy_threshold_disabled_requires_exact_match(isolated_qsettings):
     isolated_qsettings.setValue(
         "import/rules/duplicate/match_mode", "title_author_year_ignore_collection")

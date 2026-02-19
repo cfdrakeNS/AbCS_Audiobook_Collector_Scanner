@@ -10,20 +10,61 @@ This file is responsible for:
 5. Creating and showing the main application window
 """
 
-# Version information - update this with each release
-from PySide6.QtGui import QPixmap, QFont
-from PySide6.QtCore import Qt, QTimer
+from ui.main_window import MainWindow
+from accessibility.shortcuts import find_shortcut_conflicts
+from accessibility.theme_manager import get_theme_manager
+from accessibility.scaling import get_scaler
+from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries, AuthorQueries
 from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPixmap, QFont
+import sys
+import ctypes
+import threading
 from pathlib import Path
 import os
-import sys
-from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries, AuthorQueries
-from accessibility.scaling import get_scaler
-from accessibility.theme_manager import get_theme_manager
-from accessibility.shortcuts import find_shortcut_conflicts
-from ui.main_window import MainWindow
-APP_VERSION = "1.5.4"
-APP_BUILD_DATE = "2026-02-17"
+
+
+def _show_native_message(title: str, message: str, auto_close_seconds: float = 3.0):
+    """Show a Windows-native message box that auto-closes after a delay."""
+    user32 = ctypes.windll.user32
+    MB_ICONINFORMATION = 0x40
+    MB_TOPMOST = 0x00040000
+    MB_SETFOREGROUND = 0x00010000
+    WM_CLOSE = 0x0010
+
+    def _auto_close_message_box():
+        hwnd = user32.FindWindowW("#32770", title)
+        if hwnd:
+            user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)
+
+    timer = threading.Timer(auto_close_seconds, _auto_close_message_box)
+    timer.daemon = True
+    timer.start()
+
+    user32.MessageBoxW(
+        0,
+        message,
+        title,
+        MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND,
+    )
+    timer.cancel()
+
+
+def show_launch_message_if_executable():
+    """Show an immediate Windows message when launched from bundled EXE."""
+    if not getattr(sys, 'frozen', False):
+        return
+    _show_native_message(
+        "AbCS", "AbCS is starting. Please wait while it loads.", auto_close_seconds=4.0)
+
+
+# Show launch message before importing heavier UI modules.
+show_launch_message_if_executable()
+
+# Version information - update this with each release
+APP_VERSION = "1.5.6"
+APP_BUILD_DATE = "2026-02-19"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -81,6 +122,15 @@ class AbCSApplication:
         db_path = get_database_path()
         self.db = get_db(db_path)  # Uses bundled DB for exe, default for dev
         self.db.initialize_database()
+
+        if getattr(sys, 'frozen', False) and getattr(self.db, "schema_repair_performed", False):
+            repair_message = getattr(
+                self.db,
+                "schema_repair_message",
+                "Database upgraded from legacy format for compatibility.",
+            )
+            _show_native_message("AbCS", repair_message,
+                                 auto_close_seconds=5.0)
 
         # Initialize accessibility systems for user preferences
         # Handles font/UI scaling (50-200%+)
@@ -205,6 +255,12 @@ Use Ctrl+I to import or Alt+M for menu options."""
             self.main_window = MainWindow(
                 self.db, self.scaler, self.theme_manager)
             self.main_window.show()
+
+            if getattr(self.db, "schema_repair_performed", False):
+                repair_message = getattr(self.db, "schema_repair_message", "")
+                if repair_message:
+                    self.main_window.set_status(
+                        repair_message, timeout_ms=20000, announce=True)
 
             self._show_empty_library_dialog_if_needed()
 
