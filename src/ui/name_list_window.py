@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from typing import Literal
 
-from PySide6.QtCore import Qt, QEvent, QTimer
+from PySide6.QtCore import Qt, QEvent, QSignalBlocker, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -40,11 +41,22 @@ NameListType = Literal["author", "genre", "series", "collection"]
 
 
 class NameListWindow(QDialog):
-    """Window for adding, editing, and deleting names in reference tables."""
+    """Window for adding and editing names in reference tables."""
 
     COL_NAME = 0
     COL_ACTIVE = 1
     COL_USAGE = 2
+
+    @staticmethod
+    def _to_proper_case(text: str) -> str:
+        value = text.strip().lower()
+        if not value:
+            return ""
+        return re.sub(
+            r"(^|[\s\-'])([a-z])",
+            lambda match: f"{match.group(1)}{match.group(2).upper()}",
+            value,
+        )
 
     def __init__(
         self,
@@ -63,13 +75,15 @@ class NameListWindow(QDialog):
         self.list_type = list_type
         self.initial_name = (initial_name or "").strip()
         self.current_item_id: int | None = None
+        self._collection_editor_locked = False
         self._last_find_row = -1
 
         self._configure_type_metadata()
 
         self.setup_ui()
         self.setup_shortcuts()
-        self.load_items()
+        self.load_items(populate_editor=False)
+        self._finalize_initial_collection_ui_state()
 
         focused_initial_match = False
         if self.initial_name:
@@ -82,16 +96,20 @@ class NameListWindow(QDialog):
         self.setWindowTitle(f"{self.entity_plural} Manager")
         self.setAccessibleName(f"{self.entity_plural} Manager")
         self.setAccessibleDescription(
-            f"Manage {self.entity_plural.lower()}: add, edit, and delete when unused."
+            f"Manage {self.entity_plural.lower()}: add and edit entries."
         )
         self.resize(720, 480)
 
         self.table.installEventFilter(self)
-        self.find_edit.installEventFilter(self)
+        if not self.is_collection_mode:
+            self.find_edit.installEventFilter(self)
         self.name_edit.installEventFilter(self)
         if not focused_initial_match:
-            QTimer.singleShot(
-                0, lambda: self.find_edit.setFocus(Qt.TabFocusReason))
+            if self.is_collection_mode:
+                QTimer.singleShot(0, lambda: self.focus_list())
+            else:
+                QTimer.singleShot(
+                    0, lambda: self.find_edit.setFocus(Qt.TabFocusReason))
 
     def _configure_type_metadata(self):
         self.is_collection_mode = False
@@ -146,11 +164,16 @@ class NameListWindow(QDialog):
         header_layout.addWidget(find_label)
         header_layout.addWidget(self.find_edit, 1)
 
-        name_label = QLabel("Name &Edit:")
+        self.find_label = find_label
+        if self.is_collection_mode:
+            self.find_label.setVisible(False)
+            self.find_edit.setVisible(False)
+
+        name_label = QLabel("Na&me:")
         self.name_edit = QLineEdit()
         self.name_edit.setAccessibleName(f"{self.entity_singular} name")
         self.name_edit.setAccessibleDescription(
-            f"Edit {self.entity_singular.lower()} name - Alt+E"
+            f"Edit {self.entity_singular.lower()} name - Alt+M"
         )
         name_label.setBuddy(self.name_edit)
         header_layout.addWidget(name_label)
@@ -224,32 +247,26 @@ class NameListWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.new_button = QPushButton("&New")
-        self.new_button.clicked.connect(self.on_new)
-        self.new_button.setAccessibleDescription(
-            f"Create a new {self.entity_singular.lower()} entry - Alt+N"
+        self.edit_button = QPushButton("&Edit")
+        self.edit_button.clicked.connect(self.on_edit)
+        self.edit_button.setAccessibleDescription(
+            f"Edit highlighted {self.entity_singular.lower()} row - Alt+E"
         )
-        footer_layout.addWidget(self.new_button)
+        footer_layout.addWidget(self.edit_button)
 
-        self.save_button = QPushButton("Sa&ve")
+        self.save_button = QPushButton("Save")
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setAccessibleDescription(
-            f"Save current {self.entity_singular.lower()} - Alt+V"
+            f"Save current {self.entity_singular.lower()} - Alt+S"
         )
         footer_layout.addWidget(self.save_button)
 
-        self.delete_button = QPushButton("&Delete")
-        self.delete_button.clicked.connect(self.on_delete)
-        self.delete_button.setAccessibleDescription(
-            f"Delete selected {self.entity_singular.lower()} if unused - Alt+D"
+        self.cancel_button = QPushButton("Cance&l")
+        self.cancel_button.clicked.connect(self.on_cancel_edit)
+        self.cancel_button.setAccessibleDescription(
+            f"Cancel current {self.entity_singular.lower()} edit - Alt+L"
         )
-        footer_layout.addWidget(self.delete_button)
-
-        if self.is_author_mode:
-            self.new_button.setVisible(False)
-            self.delete_button.setVisible(False)
-            self.new_button.setEnabled(False)
-            self.delete_button.setEnabled(False)
+        footer_layout.addWidget(self.cancel_button)
 
         self.close_button = QPushButton("&Close")
         self.close_button.clicked.connect(self.accept)
@@ -261,34 +278,71 @@ class NameListWindow(QDialog):
         button_style = build_accessible_button_style(
             self.scaler.get_scaled_size(20)
         )
+
         for button in (
-            self.new_button,
+            self.edit_button,
             self.save_button,
-            self.delete_button,
+            self.cancel_button,
             self.close_button,
         ):
             button.setStyleSheet(button_style)
 
         layout.addLayout(footer_layout)
 
-        self.setTabOrder(self.find_edit, self.name_edit)
+        QTimer.singleShot(0, self._apply_tab_order)
+
+    def _apply_tab_order(self):
+        """Apply tab order safely for current mode and visible controls."""
+        chain = []
+
         if self.is_collection_mode:
-            self.setTabOrder(self.name_edit, self.active_check)
-            self.setTabOrder(self.active_check, self.table)
+            chain.append(self.table)
+            if self.name_edit.isVisible() and self.name_edit.isEnabled():
+                chain.append(self.name_edit)
+            if self.active_check.isVisible() and self.active_check.isEnabled():
+                chain.append(self.active_check)
         else:
-            self.setTabOrder(self.name_edit, self.table)
-        if self.is_author_mode:
-            self.setTabOrder(self.table, self.save_button)
-            self.setTabOrder(self.save_button, self.close_button)
-        else:
-            self.setTabOrder(self.table, self.new_button)
-            self.setTabOrder(self.new_button, self.save_button)
-            self.setTabOrder(self.save_button, self.delete_button)
-            self.setTabOrder(self.delete_button, self.close_button)
-        self.setTabOrder(self.close_button, self.find_edit)
+            if self.find_edit.isVisible() and self.find_edit.isEnabled():
+                chain.append(self.find_edit)
+            if self.name_edit.isVisible() and self.name_edit.isEnabled():
+                chain.append(self.name_edit)
+            chain.append(self.table)
+
+        footer_buttons = [
+            self.edit_button,
+            self.save_button,
+            self.cancel_button,
+            self.close_button,
+        ]
+
+        chain.extend([
+            button for button in footer_buttons
+            if button is not None and button.isVisible() and button.isEnabled()
+        ])
+
+        if self.is_collection_mode:
+            chain.append(self.table)
+        elif self.find_edit.isVisible() and self.find_edit.isEnabled():
+            chain.append(self.find_edit)
+
+        for first, second in zip(chain, chain[1:]):
+            if first.window() is self and second.window() is self:
+                self.setTabOrder(first, second)
 
     def eventFilter(self, source, event):
         """Allow Tab/Shift+Tab to move focus out of table to footer controls."""
+        if event.type() == QEvent.KeyPress and source in (self.name_edit, self.find_edit):
+            if event.modifiers() & Qt.AltModifier:
+                key = event.key()
+                if Qt.Key_A <= key <= Qt.Key_Z and key not in self._allowed_alt_letter_keys():
+                    event.accept()
+                    return True
+
+        if not self.is_collection_mode and source == self.find_edit and event.type() == QEvent.KeyPress:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                self.on_find_enter_pressed()
+                return True
+
         if event.type() == QEvent.FocusIn and isinstance(source, QLineEdit):
             QTimer.singleShot(
                 0,
@@ -301,26 +355,44 @@ class NameListWindow(QDialog):
         if source == self.table and event.type() == QEvent.KeyPress:
             key = event.key()
             if key == Qt.Key_Tab and not (event.modifiers() & Qt.ShiftModifier):
-                next_footer_button = self.new_button
+                next_footer_button = self.edit_button
                 for button in (
-                    self.new_button,
+                    self.edit_button,
                     self.save_button,
-                    self.delete_button,
+                    self.cancel_button,
                     self.close_button,
                 ):
-                    if button.isVisible() and button.isEnabled():
+                    if button is not None and button.isVisible() and button.isEnabled():
                         next_footer_button = button
                         break
                 next_footer_button.setFocus(Qt.TabFocusReason)
                 return True
             if key in (Qt.Key_Backtab, Qt.Key_Tab) and (event.modifiers() & Qt.ShiftModifier):
                 if self.is_collection_mode:
-                    self.active_check.setFocus(Qt.BacktabFocusReason)
+                    if self._collection_editor_locked:
+                        self.close_button.setFocus(Qt.BacktabFocusReason)
+                    else:
+                        self.active_check.setFocus(Qt.BacktabFocusReason)
                 else:
                     self.name_edit.setFocus(Qt.BacktabFocusReason)
                 return True
 
         return super().eventFilter(source, event)
+
+    def _allowed_alt_letter_keys(self) -> set[int]:
+        keys = {
+            Qt.Key_B,
+            Qt.Key_C,
+            Qt.Key_E,
+            Qt.Key_L,
+            Qt.Key_M,
+            Qt.Key_S,
+        }
+        if not self.is_collection_mode:
+            keys.add(Qt.Key_F)
+        if self.is_collection_mode:
+            keys.add(Qt.Key_A)
+        return keys
 
     def setup_shortcuts(self):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -329,17 +401,16 @@ class NameListWindow(QDialog):
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
 
-        self.find_next_shortcut = QShortcut(QKeySequence("F3"), self)
-        self.find_next_shortcut.activated.connect(self.find_next_match)
-
-        self.find_prev_shortcut = QShortcut(QKeySequence("Shift+F3"), self)
-        self.find_prev_shortcut.activated.connect(self.find_previous_match)
-
         self.list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
         self.list_shortcut.activated.connect(self.focus_list)
 
-        self.find_edit.textChanged.connect(self.on_find_text_changed)
-        self.find_edit.returnPressed.connect(self.on_find_enter_pressed)
+        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.save_shortcut.activated.connect(self.on_save)
+
+        if not self.is_collection_mode:
+            self.find_edit.textChanged.connect(self.on_find_text_changed)
+            self.find_edit.returnPressed.connect(self.on_find_enter_pressed)
+        self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
     def set_status(self, message: str, announce: bool = False):
         announce_status_message(self.status_bar, message, move_focus=announce)
@@ -358,55 +429,118 @@ class NameListWindow(QDialog):
             return 0
         return len(self.query.get_all(active_only=True))
 
-    def load_items(self, preserve_id: int | None = None):
+    def load_items(self, preserve_id: int | None = None, populate_editor: bool = True):
         if self.is_collection_mode:
             items = self.query.get_all(active_only=False)
         else:
             items = self.query.get_all()
 
-        self.table.setRowCount(len(items))
         selected_row = -1
+        target_row = -1
+        selection_model = self.table.selectionModel()
+        table_model = self.table.model()
+        table_blocker = QSignalBlocker(self.table)
+        selection_blocker = QSignalBlocker(
+            selection_model) if selection_model else None
+        model_blocker = QSignalBlocker(table_model) if table_model else None
+        self.table.setUpdatesEnabled(False)
+        try:
+            self.table.setRowCount(len(items))
 
-        for row, item in enumerate(items):
-            item_id = getattr(item, self.id_column)
-            name_item = QTableWidgetItem(item.name)
-            name_item.setData(Qt.UserRole, item_id)
-            name_item.setData(Qt.AccessibleTextRole, item.name)
+            for row, item in enumerate(items):
+                item_id = getattr(item, self.id_column)
+                name_item = QTableWidgetItem(item.name)
+                name_item.setData(Qt.UserRole, item_id)
+                name_item.setData(Qt.AccessibleTextRole, item.name)
 
-            usage_count = self._book_count_for_item(item_id)
-            usage_item = QTableWidgetItem(str(usage_count))
-            usage_item.setTextAlignment(Qt.AlignCenter)
+                usage_count = self._book_count_for_item(item_id)
+                usage_item = QTableWidgetItem(str(usage_count))
+                usage_item.setTextAlignment(Qt.AlignCenter)
 
-            self.table.setItem(row, self.COL_NAME, name_item)
-            if self.is_collection_mode:
-                active_item = QTableWidgetItem("Yes" if item.active else "No")
-                active_item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(row, self.COL_ACTIVE, active_item)
-            self.table.setItem(row, self.COL_USAGE, usage_item)
+                self.table.setItem(row, self.COL_NAME, name_item)
+                if self.is_collection_mode:
+                    active_item = QTableWidgetItem(
+                        "Yes" if item.active else "No")
+                    active_item.setTextAlignment(Qt.AlignCenter)
+                    self.table.setItem(row, self.COL_ACTIVE, active_item)
+                self.table.setItem(row, self.COL_USAGE, usage_item)
 
-            if preserve_id is not None and item_id == preserve_id:
-                selected_row = row
+                if preserve_id is not None and item_id == preserve_id:
+                    selected_row = row
 
-        if selected_row >= 0:
-            self.table.selectRow(selected_row)
-            self.table.setCurrentCell(selected_row, self.COL_NAME)
-            return
+            if selected_row >= 0 and 0 <= selected_row < self.table.rowCount():
+                target_row = selected_row
+            elif self.table.rowCount() > 0:
+                target_row = 0
 
-        if self.table.rowCount() > 0:
-            self.table.selectRow(0)
-            self.table.setCurrentCell(0, self.COL_NAME)
-        else:
-            if self.is_author_mode:
+            if target_row >= 0:
+                self.table.selectRow(target_row)
+                self.table.setCurrentCell(target_row, self.COL_NAME)
+                if not populate_editor:
+                    self.name_edit.clear()
+            else:
                 self.current_item_id = None
                 self.name_edit.clear()
-                self.set_status("No authors available.", announce=True)
-            else:
-                self.on_new()
+                self.set_status(
+                    f"No {self.entity_plural.lower()} available.", announce=True)
+        finally:
+            self.table.setUpdatesEnabled(True)
+            del table_blocker
+            if selection_blocker is not None:
+                del selection_blocker
+            if model_blocker is not None:
+                del model_blocker
+
+        if target_row >= 0 and populate_editor:
+            self.on_selection_changed()
+
+    def _set_collection_editor_locked(self, locked: bool, clear_name: bool = False):
+        """Lock/unlock name editor controls until Edit is chosen."""
+
+        self._collection_editor_locked = locked
+        self.name_edit.setEnabled(not locked)
+        if self.is_collection_mode:
+            self.active_check.setEnabled(not locked)
+
+        if clear_name:
+            self.name_edit.clear()
+
+        if locked:
+            self.name_edit.setPlaceholderText("Press Alt+E for Edit")
+        else:
+            self.name_edit.setPlaceholderText("")
+
+        self._update_collection_action_buttons()
+
+    def _update_collection_action_buttons(self):
+        """Show proper actions by mode: locked list vs editing/new."""
+
+        editing_mode = not self._collection_editor_locked
+        self.edit_button.setVisible(not editing_mode)
+        self.save_button.setVisible(editing_mode)
+        self.cancel_button.setVisible(editing_mode)
+        self.close_button.setVisible(not editing_mode)
+        self._apply_tab_order()
+
+    def _force_locked_button_state(self):
+        """Force locked-mode button visibility after queued UI events."""
+        self._collection_editor_locked = True
+        self.edit_button.setVisible(True)
+        self.close_button.setVisible(True)
+        self.save_button.setVisible(False)
+        self.cancel_button.setVisible(False)
+        self._apply_tab_order()
 
     def _selected_item_id(self) -> int | None:
-        row = self.table.currentRow()
-        if row < 0:
+        model = self.table.selectionModel()
+        if not model:
             return None
+
+        selected_rows = model.selectedRows(self.COL_NAME)
+        if not selected_rows:
+            return None
+
+        row = selected_rows[0].row()
 
         name_item = self.table.item(row, self.COL_NAME)
         if name_item is None:
@@ -425,27 +559,61 @@ class NameListWindow(QDialog):
             return
 
         self.current_item_id = item_id
+
+        if self._collection_editor_locked:
+            if self.is_collection_mode:
+                self.active_check.setChecked(bool(item.active))
+            self._set_edit_hint_status(item.name)
+            return
+
         self.name_edit.setText(item.name)
         if self.is_collection_mode:
             self.active_check.setChecked(bool(item.active))
         self._set_edit_hint_status(item.name)
 
-    def on_new(self):
-        if self.is_author_mode:
-            self.set_status("New author entries are disabled.", announce=True)
+    def on_edit(self):
+        """Enable editing for the highlighted row in non-author lists."""
+        item_id = self._selected_item_id()
+        if item_id is None:
+            self.set_status(
+                f"Select a {self.entity_singular.lower()} row to edit.",
+                announce=True,
+            )
             return
 
-        self.current_item_id = None
-        self.table.clearSelection()
-        self.name_edit.clear()
-        if self.is_collection_mode:
-            self.active_check.setChecked(True)
-        self.name_edit.setFocus(Qt.TabFocusReason)
-        self.set_status(f"New {self.entity_singular.lower()} entry.")
+        item = self.query.get_by_id(item_id)
+        if item is None:
+            self.set_status(
+                f"Selected {self.entity_singular.lower()} no longer exists.",
+                announce=True,
+            )
+            self.load_items()
+            return
 
-    def on_save(self):
-        name = self.name_edit.text().strip()
+        self.current_item_id = item_id
+        self._set_collection_editor_locked(False)
+        self.name_edit.setText(item.name)
+        if self.is_collection_mode:
+            self.active_check.setChecked(bool(item.active))
+        self.name_edit.setFocus(Qt.TabFocusReason)
+        self.name_edit.selectAll()
+        self._set_edit_hint_status(item.name)
+
+    def on_save(self) -> bool:
+        name = self._to_proper_case(self.name_edit.text())
+        self.name_edit.setText(name)
         active = self.active_check.isChecked() if self.is_collection_mode else True
+
+        if self._collection_editor_locked:
+            self.set_status("Press Alt+E for Edit.", announce=True)
+            return False
+
+        model = self.table.selectionModel()
+        has_selected_row = bool(model and model.selectedRows())
+        if has_selected_row:
+            selected_id = self._selected_item_id()
+            if selected_id is not None:
+                self.current_item_id = selected_id
 
         if not name:
             self.set_status(
@@ -457,37 +625,14 @@ class NameListWindow(QDialog):
                 title=self.entity_singular,
                 text=f"{self.entity_singular} name cannot be blank.",
             )
-            return
+            return False
 
         if self.current_item_id is None:
-            if self.is_author_mode:
-                self.set_status(
-                    "Authors can only be corrected, not created here.", announce=True)
-                return
-
-            try:
-                if self.is_collection_mode:
-                    new_id = self.query.insert(
-                        Collection(name=name, active=active))
-                else:
-                    new_id = self.query.insert(name)
-            except sqlite3.IntegrityError:
-                exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Warning,
-                    title=self.entity_singular,
-                    text=f"A {self.entity_singular.lower()} with this name already exists.",
-                )
-                self.set_status(
-                    f"Duplicate {self.entity_singular.lower()} name.", announce=True)
-                return
-
-            self.current_item_id = new_id
-            self.load_items(preserve_id=new_id)
             self.set_status(
-                f"{self.entity_singular} created: {name}.", announce=True)
-            return
+                f"Select a {self.entity_singular.lower()} row and press Alt+E.",
+                announce=True,
+            )
+            return False
 
         if self.is_collection_mode:
             existing = self.query.get_by_id(self.current_item_id)
@@ -495,7 +640,7 @@ class NameListWindow(QDialog):
                 self.set_status(
                     "Selected collection no longer exists.", announce=True)
                 self.load_items()
-                return
+                return False
 
             if existing.active and not active and self._active_collection_count() <= 1:
                 exec_styled_message_box(
@@ -507,7 +652,7 @@ class NameListWindow(QDialog):
                 )
                 self.set_status(
                     "Cannot deactivate the last active collection.", announce=True)
-                return
+                return False
 
         try:
             if self.is_collection_mode:
@@ -530,74 +675,33 @@ class NameListWindow(QDialog):
             )
             self.set_status(
                 f"Duplicate {self.entity_singular.lower()} name.", announce=True)
-            return
+            return False
 
         self.load_items(preserve_id=self.current_item_id)
+        self._set_collection_editor_locked(True)
+        QTimer.singleShot(0, self._force_locked_button_state)
         self.set_status(
             f"{self.entity_singular} saved: {name}.", announce=True)
+        return True
 
-    def on_delete(self):
-        if self.is_author_mode:
-            self.set_status("Author deletion is disabled.", announce=True)
+    def on_name_edit_enter_pressed(self):
+        """Enter in Name Edit should behave exactly like pressing Save."""
+        if not (self.save_button.isVisible() and self.save_button.isEnabled()):
             return
 
-        if self.current_item_id is None:
-            self.set_status(
-                f"Select a {self.entity_singular.lower()} to delete.", announce=True)
+        save_succeeded = self.on_save()
+        if not save_succeeded:
             return
 
-        item = self.query.get_by_id(self.current_item_id)
-        if item is None:
-            self.set_status(
-                f"Selected {self.entity_singular.lower()} no longer exists.", announce=True
-            )
-            self.load_items()
-            return
+        self._set_collection_editor_locked(True)
+        self._force_locked_button_state()
+        QTimer.singleShot(0, self._force_locked_button_state)
 
-        if self.is_collection_mode and item.active and self._active_collection_count() <= 1:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Warning,
-                title="Collection",
-                text="At least one collection must remain active.",
-            )
-            self.set_status(
-                "Cannot delete the last active collection.", announce=True)
-            return
+        QTimer.singleShot(0, self.focus_list)
 
-        usage_count = self._book_count_for_item(self.current_item_id)
-        if usage_count > 0:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Warning,
-                title=self.entity_singular,
-                text=f"Cannot delete '{item.name}' because {usage_count} book{'s' if usage_count != 1 else ''} use it.",
-            )
-            self.set_status(
-                f"Delete blocked: {self.entity_singular.lower()} is in use.", announce=True
-            )
-            return
-
-        answer = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title=f"Delete {self.entity_singular}",
-            text=f"Delete {self.entity_singular.lower()} '{item.name}'?",
-            buttons=QMessageBox.Yes | QMessageBox.No,
-            default_button=QMessageBox.No,
-        )
-        if answer != QMessageBox.Yes:
-            self.set_status("Delete canceled.")
-            return
-
-        self.query.delete(self.current_item_id)
-        self.current_item_id = None
-        self.load_items()
-        self.set_status(
-            f"{self.entity_singular} deleted: {item.name}.", announce=True)
+    def _finalize_initial_collection_ui_state(self):
+        """Set initial collection mode state: list focused, editor locked."""
+        self._set_collection_editor_locked(True)
 
     def on_read_status(self):
         message = self.status_bar.currentMessage().strip() or "Ready"
@@ -626,13 +730,12 @@ class NameListWindow(QDialog):
         shortcuts = [
             ("Alt+/", "Read status bar"),
             ("Alt+F", "Find"),
-            ("F3", "Find next"),
-            ("Shift+F3", "Find previous"),
-            ("Alt+E", "Name edit"),
+            ("Alt+M", "Name edit"),
+            ("Alt+E", "Edit selected row"),
             ("Alt+B", "Jump to list"),
             ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
-            ("Alt+V", "Save"),
-            ("Alt+D", "Delete") if not self.is_author_mode else None,
+            ("Alt+S", "Save"),
+            ("Alt+L", "Cancel edit/new"),
             ("Alt+C", "Close window"),
             ("F1", "Show this help"),
         ]
@@ -696,7 +799,19 @@ class NameListWindow(QDialog):
             return
 
         if self.find_first_match(text):
+            self.find_edit.clear()
             self.focus_list()
+
+    def on_cancel_edit(self):
+        """Cancel current New/Edit mode and return to locked list mode."""
+        preserve_id = self._selected_item_id()
+        if preserve_id is None:
+            preserve_id = self.current_item_id
+
+        self.load_items(preserve_id=preserve_id, populate_editor=False)
+        self._set_collection_editor_locked(True)
+        self.focus_list()
+        self.set_status("Edit canceled.")
 
     def find_first_match(self, text: str) -> bool:
         text_lower = text.strip().lower()
@@ -753,14 +868,19 @@ class NameListWindow(QDialog):
         )
 
     def _focus_row(self, row: int):
+        if row < 0 or row >= self.table.rowCount():
+            return
         self.table.selectRow(row)
         self.table.setCurrentCell(row, self.COL_NAME)
-        self.table.scrollToItem(self.table.item(row, self.COL_NAME))
+        item = self.table.item(row, self.COL_NAME)
+        if item is not None:
+            self.table.scrollToItem(item)
 
     def focus_list(self):
-        if self.table.rowCount() > 0:
+        row_count = self.table.rowCount()
+        if row_count > 0:
             row = self.table.currentRow()
-            if row < 0:
+            if row < 0 or row >= row_count:
                 row = 0
             self.table.setCurrentCell(row, self.COL_NAME)
             name_item = self.table.item(row, self.COL_NAME)
@@ -770,4 +890,7 @@ class NameListWindow(QDialog):
 
     def _set_edit_hint_status(self, item_name: str):
         name_text = (item_name or "").strip() or self.entity_singular.lower()
-        self.set_status(f"To edit {name_text} name press alt+e")
+        if self.is_collection_mode:
+            self.set_status(f"To edit {name_text} press Alt+E")
+        else:
+            self.set_status(f"To edit {name_text} name press Alt+E")

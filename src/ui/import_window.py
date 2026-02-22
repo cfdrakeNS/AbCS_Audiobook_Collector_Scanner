@@ -1801,6 +1801,30 @@ class ImportWindow(QDialog):
                 event.accept()
                 return
 
+            if modifiers & Qt.ControlModifier:
+                col_count = self.table.columnCount()
+                model = self.table.selectionModel()
+                row_indexes = [
+                    self.table.model().index(row, col) for col in range(col_count)
+                ]
+
+                is_row_selected = all(model.isSelected(idx)
+                                      for idx in row_indexes)
+
+                self._updating_selection_ui = True
+                flag = QItemSelectionModel.Deselect if is_row_selected else QItemSelectionModel.Select
+                for idx in row_indexes:
+                    model.select(idx, flag)
+                self.table.setCurrentCell(row, index.column())
+                self._updating_selection_ui = False
+
+                if self.selection_anchor_row is None and not is_row_selected:
+                    self.selection_anchor_row = row
+
+                self.on_table_selection_changed()
+                event.accept()
+                return
+
             self._updating_selection_ui = True
             self.table.clearSelection()
             self.table.selectionModel().clearSelection()

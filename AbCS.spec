@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('data/abcdDB_def.sql', 'data')]
+datas = [('data/abcdDB_def.sql', 'data'), ('data/abcs.db', 'data')]
 binaries = []
 hiddenimports = ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'mutagen', 'mutagen.mp3', 'mutagen.mp4', 'mutagen.flac', 'mutagen.oggvorbis', 'mutagen.wave']
 tmp_ret = collect_all('PySide6')

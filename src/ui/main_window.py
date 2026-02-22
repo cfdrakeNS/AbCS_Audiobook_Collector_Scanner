@@ -29,6 +29,7 @@ from ui.book_details import BookDetailsWindow
 from ui.update_window import UpdateWindow
 from ui.preferences_window import PreferencesWindow
 from ui.import_window import ImportWindow
+from ui.collection_window import CollectionWindow
 from ui.name_list_window import NameListWindow
 
 # Import version from main module
@@ -2433,11 +2434,10 @@ Use Ctrl+I to import or Alt+M for menu options."""
         previous_collection_id = self.current_filter.collection_id
         focus_ctx = self._capture_table_focus_context()
 
-        dialog = NameListWindow(
+        dialog = CollectionWindow(
             self.db,
             self.scaler,
             self.theme_manager,
-            "collection",
             parent=self,
         )
         dialog.exec()

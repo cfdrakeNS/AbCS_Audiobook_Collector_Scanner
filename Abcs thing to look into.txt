@@ -1,0 +1,5 @@
+Thing to look into 
+1. when entering a field select text, move cursor to beginning or move it to the end 
+2. all edits text boxes before saving make the data entered follow Proper Case 
+4. Because I use jaws I didn't notice that you can't see the cursor when your in a combo or text box. 
+
