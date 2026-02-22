@@ -53,8 +53,13 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 
 def show_launch_message_if_executable():
     """Show an immediate Windows message when launched from bundled EXE."""
+    if __name__ != '__main__':
+        return
     if not getattr(sys, 'frozen', False):
         return
+    if os.environ.get("ABCS_LAUNCH_MSG_SHOWN") == "1":
+        return
+    os.environ["ABCS_LAUNCH_MSG_SHOWN"] = "1"
     _show_native_message(
         "AbCS", "AbCS is starting. Please wait while it loads.", auto_close_seconds=4.0)
 
