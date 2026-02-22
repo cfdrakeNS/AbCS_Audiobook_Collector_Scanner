@@ -1,68 +1,71 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	],
-	"settings": {
-		"editor.formatOnSave": true,
-		"files.autoSave": "afterDelay",
-		"files.exclude": {
-			"**/*.db-shm": true,
-			"**/*.db-wal": true,
-			"**/__pycache__": true,
-			"**/*.pyc": true,
-			"**/build": true,
-			"**/dist": true
-		},
-		"editor.formatOnPaste": true,
-		"editor.accessibilitySupport": "on",
-		"python.analysis.typeCheckingMode": "off",
-		"python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
-		"python.terminal.activateEnvironment": true,
-		"terminal.integrated.env.windows": {
-			"VIRTUAL_ENV": "${workspaceFolder}\\.venv",
-			"PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}"
-		},
-		"terminal.integrated.environmentChangesRelaunch": "always",
-		"terminal.integrated.environmentChangesIndicator": "off",
-		"terminal.integrated.enablePersistentSessions": false,
-		"terminal.integrated.profiles.windows": {
-			"PowerShell (venv)": {
-				"source": "PowerShell",
-				"args": [
-					"-NoExit",
-					"-Command",
-					"& { $p='${workspaceFolder}\\.venv\\Scripts\\Activate.ps1'; if (Test-Path $p) { . $p } }"
-				]
-			}
-		},
-		"terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
-		"git.enableStatusBarSync": false,
-		"git.showProgress": false,
-		"github.copilot.enable": {
-			"*": true,
-			"plaintext": false,
-			"markdown": false
-		},
-		"accessibility.verbosity.notification": false,
-		"extensions.ignoreRecommendations": true,
-		"chat.tools.terminal.autoApprove": {
-			"/^\\$in = 'AbCS_Guide_\\(Draft\\)\\.md'; \\$out = 'AbCS_Guide_\\(Draft\\)\\.odt'; \\$pandocPath = 'C:\\\\Users\\\\cfran\\\\AppData\\\\Local\\\\Pandoc\\\\pandoc\\.exe'; if \\(-not \\(Test-Path \\$pandocPath\\)\\) \\{ Write-Error \"pandoc not found at \\$pandocPath\"; exit 2 \\}; & \\$pandocPath \\$in -o \\$out; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; Get-Item \\$out \\| Select-Object Name, Length, LastWriteTime \\| Format-Table -AutoSize$/": {
-				"approve": true,
-				"matchCommandLine": true
-			},
-			"/^C:/Users/cfran/ABcS/abcs/\\.venv/Scripts/python\\.exe -m pytest test/test_import_rules_preferences\\.py -q$/": {
-				"approve": true,
-				"matchCommandLine": true
-			}
-		}
-	},
-	"extensions": {
-		"recommendations": [
-			"ms-python.python",
-			"ms-python.vscode-pylance",
-			"github.copilot"
-		]
-	}
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "files.autoSave": "afterDelay",
+    "files.exclude": {
+      "**/*.db-shm": true,
+      "**/*.db-wal": true,
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/build": true,
+      "**/dist": true
+    },
+
+    "editor.accessibilitySupport": "on",
+
+    "python.analysis.typeCheckingMode": "off",
+    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    "python.terminal.activateEnvironment": true,
+
+    "terminal.integrated.environmentChangesRelaunch": "always",
+    "terminal.integrated.environmentChangesIndicator": "off",
+    "terminal.integrated.enablePersistentSessions": false,
+    "terminal.integrated.profiles.windows": {
+      "PowerShell (venv)": {
+        "source": "PowerShell",
+        "args": [
+          "-NoExit",
+          "-Command",
+          "& { $p='${workspaceFolder}\\.venv\\Scripts\\Activate.ps1'; if (Test-Path $p) { . $p } }"
+        ]
+      }
+    },
+    "terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
+
+    "git.enableStatusBarSync": false,
+    "git.showProgress": false,
+
+    "github.copilot.enable": {
+      "*": true,
+      "plaintext": false,
+      "markdown": false
+    },
+
+    "accessibility.verbosity.notification": false,
+    "extensions.ignoreRecommendations": true,
+
+    "chat.tools.terminal.autoApprove": {
+      "/^\\$in = 'AbCS_Guide_\\(Draft\\)\\.md'; \\$out = 'AbCS_Guide_\\(Draft\\)\\.odt'; \\$pandocPath = 'C:\\\\Users\\\\cfran\\\\AppData\\\\Local\\\\Pandoc\\\\pandoc\\.exe'; if \\(-not \\(Test-Path \\$pandocPath\\)\\) \\{ Write-Error \"pandoc not found at \\$pandocPath\"; exit 2 \\}; & \\$pandocPath \\$in -o \\$out; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; Get-Item \\$out \\| Select-Object Name, Length, LastWriteTime \\| Format-Table -AutoSize$/": {
+        "approve": true,
+        "matchCommandLine": true
+      },
+      "/^C:\\/Users\\/cfran\\/ABcS\\/abcs\\/\\.venv\\/Scripts\\/python\\.exe -m pytest test\\/test_import_rules_preferences\\.py -q$/": {
+        "approve": true,
+        "matchCommandLine": true
+      }
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "github.copilot"
+    ]
+  }
 }

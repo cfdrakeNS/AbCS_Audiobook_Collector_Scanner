@@ -3,6 +3,8 @@ Book Details Window
 Form for viewing and editing individual book information.
 """
 
+import re
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QTextEdit, QPushButton,
@@ -10,7 +12,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QApplication, QStatusBar
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
@@ -24,6 +26,31 @@ class BookDetailsWindow(QDialog):
     """
     Book details dialog for viewing/editing book information.
     """
+
+    @staticmethod
+    def _to_proper_case(text: str) -> str:
+        value = text.strip().lower()
+        if not value:
+            return ""
+        return re.sub(
+            r"(^|[\s\-'])([a-z])",
+            lambda match: f"{match.group(1)}{match.group(2).upper()}",
+            value,
+        )
+
+    @staticmethod
+    def _is_proper_case_enabled() -> bool:
+        settings = QSettings("AbCS", "AbCS")
+        return settings.value("import/autocorrect/proper_case", False, type=bool)
+
+    @classmethod
+    def _normalize_name_field(cls, text: str) -> str:
+        value = text.strip()
+        if not value:
+            return ""
+        if cls._is_proper_case_enabled():
+            return cls._to_proper_case(value)
+        return value
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler, book: Book = None,
                  sort_order: str = "Title", books_list: list = None,
@@ -1079,8 +1106,10 @@ class BookDetailsWindow(QDialog):
 
     def on_save(self):
         """Save book data."""
+        title_text = self._normalize_name_field(self.title_edit.text())
+
         # Validate
-        if not self.title_edit.text().strip():
+        if not title_text:
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -1093,7 +1122,8 @@ class BookDetailsWindow(QDialog):
             return
 
         # Get author - confirm if creating new
-        author_text = self.author_combo.currentText().strip()
+        author_text = self._normalize_name_field(
+            self.author_combo.currentText())
         if not author_text:
             exec_styled_message_box(
                 self,
@@ -1110,16 +1140,19 @@ class BookDetailsWindow(QDialog):
         author_id = self.author_queries.get_or_create(author_text)
 
         # Get or create series (confirmation already done on focusOut)
-        series_text = self.series_combo.currentText().strip()
+        series_text = self._normalize_name_field(
+            self.series_combo.currentText())
         series_id = None
         if series_text and series_text != "None":
             series_id = self.series_queries.get_or_create(series_text)
 
         # Get or create genre (confirmation already done on focusOut)
-        genre_text = self.genre_combo.currentText().strip()
+        genre_text = self._normalize_name_field(self.genre_combo.currentText())
         genre_id = None
         if genre_text and genre_text != "None":
             genre_id = self.genre_queries.get_or_create(genre_text)
+
+        reader_text = self._normalize_name_field(self.reader_edit.text())
 
         # Get collection
         collection_id = self.collection_combo.currentData()
@@ -1146,13 +1179,13 @@ class BookDetailsWindow(QDialog):
                 qdate.year(), qdate.month(), qdate.day()).date()
 
         # Update book object
-        self.book.title = self.title_edit.text().strip()
+        self.book.title = title_text
         self.book.author_id = author_id
         self.book.year = self.year_spin.value()
         self.book.series_id = series_id
         self.book.genre_id = genre_id
         self.book.collection_id = collection_id
-        self.book.reader = self.reader_edit.text().strip()
+        self.book.reader = reader_text
         self.book.time_hours = time_hours
         self.book.time_minutes = time_minutes
         self.book.comments = self.comments_edit.toPlainText()

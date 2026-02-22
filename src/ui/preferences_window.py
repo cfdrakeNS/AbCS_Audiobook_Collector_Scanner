@@ -1036,8 +1036,6 @@ class PreferencesWindow(QDialog):
             "Title + Author + Year", "title_author_year")
         self.duplicate_match_combo.addItem(
             "Title + Author + Year + Collection", "title_author_year_collection")
-        self.duplicate_match_combo.addItem(
-            "Title + Author + Year (Ignore Collection)", "title_author_year_ignore_collection")
         duplicate_mode = self.settings.value(
             "import/rules/duplicate/match_mode",
             "title_author_year_collection",
@@ -1046,7 +1044,11 @@ class PreferencesWindow(QDialog):
         if duplicate_mode == "with_collection":
             duplicate_mode = "title_author_year_collection"
         elif duplicate_mode == "ignore_collection":
-            duplicate_mode = "title_author_year_ignore_collection"
+            duplicate_mode = "title_author_year"
+        elif duplicate_mode == "title_author_year_ignore_collection":
+            duplicate_mode = "title_author_year"
+        elif duplicate_mode == "title_author_ignore_collection":
+            duplicate_mode = "title_author_year"
         duplicate_index = self.duplicate_match_combo.findData(duplicate_mode)
         self.duplicate_match_combo.setCurrentIndex(
             0 if duplicate_index < 0 else duplicate_index)

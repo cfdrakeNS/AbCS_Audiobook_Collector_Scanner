@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QMenu, QDialog, QTextEdit, QSizePolicy
 )
 from PySide6.QtCore import (
-    Qt, Signal, QTimer, QItemSelection, QItemSelectionModel, QEvent, QPoint
+    Qt, Signal, QTimer, QItemSelection, QItemSelectionModel, QEvent, QPoint, QSettings
 )
 from PySide6.QtGui import QKeyEvent, QAction, QShortcut, QKeySequence, QColor, QPalette, QMouseEvent, QAccessible
 from PySide6.QtWidgets import QApplication
@@ -72,6 +72,12 @@ class MainWindow(QMainWindow):
         'B', 'C', 'D', 'F', 'H', 'L', 'M', 'O', 'R', 'S', 'U', 'V'
     }
 
+    DUPLICATE_MATCH_OPTIONS = [
+        ("Title + Author + Collection", "title_author"),
+        ("Title + Author + Year", "title_author_year"),
+        ("Title + Author + Year + Collection", "title_author_year_collection"),
+    ]
+
     def __init__(self, db: DatabaseManager, scaler: UIScaler, theme_manager: ThemeManager):
         """
         Initialize main window.
@@ -99,6 +105,12 @@ class MainWindow(QMainWindow):
 
         # Selected books (for bulk operations)
         self.selected_book_ids = set()
+
+        # Duplicate check mode state
+        self.duplicate_mode_active = False
+        self.duplicate_mode_match_mode = ""
+        self.duplicate_mode_book_ids = set()
+        self._duplicate_saved_filter = None
 
         # Anchor row for shift selection
         self.selection_anchor_row = None
@@ -722,6 +734,10 @@ class MainWindow(QMainWindow):
 
         view_menu.addSeparator()
 
+        duplicate_action = QAction("&Duplicate Check...", self)
+        duplicate_action.triggered.connect(self.on_duplicate_check)
+        view_menu.addAction(duplicate_action)
+
         prefs_action = QAction("&Preferences...", self)
         prefs_action.triggered.connect(self.on_preferences)
         view_menu.addAction(prefs_action)
@@ -839,7 +855,7 @@ class MainWindow(QMainWindow):
         # Priority 1: Show selection count if items are selected
         if self.selected_book_ids:
             count = len(self.selected_book_ids)
-            shortcuts = "Alt+U Update, Alt+D Delete, Alt+L Cancel"
+            shortcuts = self._selection_shortcuts_text()
 
             # Include title of currently focused book (same as announce_selection)
             current_row = self.table.currentRow()
@@ -851,7 +867,14 @@ class MainWindow(QMainWindow):
                     return f"{title} - {count} selected. {shortcuts}"
             return f"{count} selected. {shortcuts}"
 
-        # Priority 2: Show search results if search is active
+        # Priority 2: Duplicate mode active
+        if self.duplicate_mode_active:
+            return (
+                f"Duplicate mode: {len(self.books)} books shown. "
+                "Use normal selection. Alt+D Delete, Alt+L Cancel Dup Mode"
+            )
+
+        # Priority 3: Show search results if search is active
         if self.current_filter.search_text:
             search_text = self.current_filter.search_text
             if search_text.startswith('?'):
@@ -865,7 +888,7 @@ class MainWindow(QMainWindow):
             else:
                 return f"Found {count} {order_by.lower()}s matching '{search_text}'. Esc to exit search"
 
-        # Priority 3: Show filtered book count with all active filters
+        # Priority 4: Show filtered book count with all active filters
         parts = [f"Showing {len(self.books)} books"]
 
         # mw#12: Show current sort order (especially Series/Genre)
@@ -884,6 +907,274 @@ class MainWindow(QMainWindow):
             parts.append(self.collection_combo.currentText())
 
         return " • ".join(parts)
+
+    def _selection_shortcuts_text(self) -> str:
+        """Return shortcut hint text based on current action mode."""
+        if self.duplicate_mode_active:
+            return "Alt+D Delete, Alt+L Cancel Dup Mode"
+        return "Alt+U Update, Alt+D Delete, Alt+L Cancel"
+
+    def _normalize_duplicate_mode(self, mode: str) -> str:
+        """Normalize duplicate mode values (supports legacy aliases)."""
+        normalized = (mode or "").strip()
+        if normalized == "with_collection":
+            return "title_author_year_collection"
+        if normalized == "ignore_collection":
+            return "title_author_year"
+        if normalized == "title_author_year_ignore_collection":
+            return "title_author_year"
+        if normalized == "title_author_ignore_collection":
+            return "title_author_year"
+        valid_modes = {option[1] for option in self.DUPLICATE_MATCH_OPTIONS}
+        if normalized in valid_modes:
+            return normalized
+        return "title_author_year_collection"
+
+    def _duplicate_mode_label(self, mode: str) -> str:
+        """Get display label for duplicate mode key."""
+        normalized = self._normalize_duplicate_mode(mode)
+        for label, data in self.DUPLICATE_MATCH_OPTIONS:
+            if data == normalized:
+                return label
+        return "Title + Author + Year + Collection"
+
+    def _apply_current_filter_to_controls(self):
+        """Apply current filter state into header controls without triggering refresh."""
+        self.search_box.blockSignals(True)
+        self.collection_combo.blockSignals(True)
+        self.read_combo.blockSignals(True)
+        self.order_combo.blockSignals(True)
+        try:
+            self.search_box.setText(self.current_filter.search_text or "")
+
+            collection_index = self.collection_combo.findData(
+                self.current_filter.collection_id)
+            if collection_index < 0:
+                collection_index = 0
+                self.current_filter.collection_id = None
+            self.collection_combo.setCurrentIndex(collection_index)
+
+            read_index = self.read_combo.findText(
+                self.current_filter.read_filter)
+            self.read_combo.setCurrentIndex(
+                0 if read_index < 0 else read_index)
+
+            order_index = self.order_combo.findText(
+                self.current_filter.order_by)
+            self.order_combo.setCurrentIndex(
+                0 if order_index < 0 else order_index)
+            self.sort_label.setText(
+                f"Sorted by: {self.order_combo.currentText()}")
+        finally:
+            self.search_box.blockSignals(False)
+            self.collection_combo.blockSignals(False)
+            self.read_combo.blockSignals(False)
+            self.order_combo.blockSignals(False)
+
+    def _duplicate_key_for_book(self, book: Book, mode: str):
+        """Build duplicate comparison key for a book based on mode."""
+        normalized_mode = self._normalize_duplicate_mode(mode)
+        title_key = (book.title or "").strip().casefold()
+        author_key = book.author_id or 0
+        year_key = book.year or 0
+        collection_key = book.collection_id or 0
+
+        if normalized_mode == "title_author":
+            return (title_key, author_key, collection_key)
+        if normalized_mode == "title_author_year":
+            return (title_key, author_key, year_key)
+        return (title_key, author_key, year_key, collection_key)
+
+    def _collect_duplicate_book_ids(self, books: list[Book], mode: str) -> set[int]:
+        """Return IDs of books that belong to duplicate groups for selected mode."""
+        grouped: dict[tuple, list[int]] = {}
+        for book in books:
+            key = self._duplicate_key_for_book(book, mode)
+            grouped.setdefault(key, []).append(book.book_id)
+
+        duplicate_ids: set[int] = set()
+        for ids in grouped.values():
+            if len(ids) > 1:
+                duplicate_ids.update(ids)
+        return duplicate_ids
+
+    def _apply_row_selection_by_book_ids(self, book_ids: set[int]):
+        """Programmatically select full rows that match book IDs."""
+        self._updating_selection_ui = True
+        try:
+            model = self.table.selectionModel()
+            if model is None:
+                return
+            model.clearSelection()
+
+            col_count = self.table.columnCount()
+            for row, book in enumerate(self.books):
+                if book.book_id not in book_ids:
+                    continue
+                for col in range(col_count):
+                    idx = self.table.model().index(row, col)
+                    model.select(idx, QItemSelectionModel.Select)
+        finally:
+            self._updating_selection_ui = False
+
+    def _refresh_duplicate_mode_after_data_change(self):
+        """Recompute duplicate-mode rows after database changes (e.g., delete)."""
+        if not self.duplicate_mode_active:
+            return
+
+        all_books = self.book_queries.get_all(
+            SearchFilter(order_by=self.current_filter.order_by))
+        self.duplicate_mode_book_ids = self._collect_duplicate_book_ids(
+            all_books,
+            self.duplicate_mode_match_mode,
+        )
+
+        if not self.duplicate_mode_book_ids:
+            self.exit_duplicate_mode(
+                message="Duplicate mode complete. No remaining duplicates found.",
+                announce=True,
+            )
+            return
+
+        self.refresh_books()
+        self.selected_book_ids = {
+            book.book_id for book in self.books if book.book_id in self.duplicate_mode_book_ids
+        }
+        self._apply_row_selection_by_book_ids(self.selected_book_ids)
+        self.update_selection_ui()
+        self.set_status(
+            f"Duplicate mode: {len(self.duplicate_mode_book_ids)} duplicate books available",
+            timeout_ms=0,
+        )
+
+    def exit_duplicate_mode(self, message: str = "Duplicate mode canceled", announce: bool = False):
+        """Exit duplicate mode and restore previous filter/view."""
+        if not self.duplicate_mode_active:
+            return
+
+        saved_filter = self._duplicate_saved_filter
+        self.duplicate_mode_active = False
+        self.duplicate_mode_match_mode = ""
+        self.duplicate_mode_book_ids.clear()
+        self._duplicate_saved_filter = None
+
+        self.selected_book_ids.clear()
+        self.selection_anchor_row = None
+
+        if saved_filter is not None:
+            self.current_filter = SearchFilter(
+                collection_id=saved_filter.collection_id,
+                read_filter=saved_filter.read_filter,
+                order_by=saved_filter.order_by,
+                search_text=saved_filter.search_text,
+                is_keyword_search=saved_filter.is_keyword_search,
+            )
+
+        self._apply_current_filter_to_controls()
+        self.refresh_books()
+        self.update_selection_ui()
+        self.set_status(message, timeout_ms=3000, announce=announce)
+
+    def on_duplicate_check(self):
+        """Start duplicate mode by prompting for duplicate match type."""
+        settings = QSettings("AbCS", "AbCS")
+        preferred_mode = self._normalize_duplicate_mode(
+            settings.value(
+                "import/rules/duplicate/match_mode",
+                "title_author_year_collection",
+                type=str,
+            )
+        )
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Duplicate Check")
+        dialog.setAccessibleName("Duplicate Check")
+        dialog.setAccessibleDescription(
+            "Select duplicate match mode and start duplicate checking"
+        )
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        prompt = QLabel("Select duplicate match type:")
+        layout.addWidget(prompt)
+
+        mode_combo = QComboBox()
+        mode_combo.setAccessibleName("Duplicate match type")
+        mode_combo.setAccessibleDescription(
+            "Same duplicate matching options as Preferences"
+        )
+        for label, data in self.DUPLICATE_MATCH_OPTIONS:
+            mode_combo.addItem(label, data)
+        preferred_index = mode_combo.findData(preferred_mode)
+        mode_combo.setCurrentIndex(
+            0 if preferred_index < 0 else preferred_index)
+        layout.addWidget(mode_combo)
+
+        buttons_layout = QHBoxLayout()
+        start_button = QPushButton("Start")
+        cancel_button = QPushButton("Cancel")
+        start_button.clicked.connect(dialog.accept)
+        cancel_button.clicked.connect(dialog.reject)
+        buttons_layout.addStretch()
+        buttons_layout.addWidget(start_button)
+        buttons_layout.addWidget(cancel_button)
+        layout.addLayout(buttons_layout)
+
+        if dialog.exec() != QDialog.Accepted:
+            self.set_status("Duplicate check canceled",
+                            timeout_ms=2000, announce=False)
+            return
+
+        selected_mode = self._normalize_duplicate_mode(
+            mode_combo.currentData())
+
+        all_books = self.book_queries.get_all(
+            SearchFilter(order_by=self.current_filter.order_by))
+        duplicate_ids = self._collect_duplicate_book_ids(
+            all_books, selected_mode)
+        if not duplicate_ids:
+            self.set_status(
+                f"No duplicates found for mode: {self._duplicate_mode_label(selected_mode)}",
+                timeout_ms=3000,
+            )
+            return
+
+        if not self.duplicate_mode_active:
+            self._duplicate_saved_filter = SearchFilter(
+                collection_id=self.current_filter.collection_id,
+                read_filter=self.current_filter.read_filter,
+                order_by=self.current_filter.order_by,
+                search_text=self.current_filter.search_text,
+                is_keyword_search=self.current_filter.is_keyword_search,
+            )
+
+        self.duplicate_mode_active = True
+        self.duplicate_mode_match_mode = selected_mode
+        self.duplicate_mode_book_ids = set(duplicate_ids)
+
+        self.current_filter.collection_id = None
+        self.current_filter.read_filter = "All"
+        self.current_filter.search_text = ""
+        self.current_filter.is_keyword_search = False
+        self._apply_current_filter_to_controls()
+
+        self.refresh_books()
+
+        self.selected_book_ids = {
+            book.book_id for book in self.books if book.book_id in self.duplicate_mode_book_ids
+        }
+        self._apply_row_selection_by_book_ids(self.selected_book_ids)
+        self.selection_anchor_row = self.table.currentRow(
+        ) if self.table.currentRow() >= 0 else None
+        self.update_selection_ui()
+
+        self.set_status(
+            f"Duplicate mode started ({self._duplicate_mode_label(selected_mode)}): "
+            f"{len(self.selected_book_ids)} duplicate books selected",
+            timeout_ms=0,
+        )
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
         """
@@ -1013,6 +1304,13 @@ class MainWindow(QMainWindow):
         try:
             # Get books from database
             self.books = self.book_queries.get_all(self.current_filter)
+
+            # Duplicate mode only shows duplicate candidates for selected matching rule
+            if self.duplicate_mode_active:
+                self.books = [
+                    book for book in self.books
+                    if book.book_id in self.duplicate_mode_book_ids
+                ]
 
             # DISABLE UPDATES WHILE POPULATING TABLE
             self.table.setUpdatesEnabled(False)
@@ -1948,7 +2246,7 @@ class MainWindow(QMainWindow):
         else:
             announcement = f"{count} selected"
 
-        shortcuts_text = "Alt+U Update, Alt+D Delete, Alt+L Cancel"
+        shortcuts_text = self._selection_shortcuts_text()
         announcement = f"{announcement}. {shortcuts_text}"
 
         # Keep until selection changes
@@ -1998,12 +2296,18 @@ class MainWindow(QMainWindow):
         # Only show buttons if we have an actual selection
         # (not just the current row from navigation)
         has_selection = count > 0
-        self.update_button.setVisible(has_selection)
-        self.delete_button.setVisible(has_selection)
-        self.cancel_button.setVisible(has_selection)
-        self.status_hint_label.setVisible(has_selection)
+        in_duplicate_mode = self.duplicate_mode_active
+        show_action_buttons = has_selection or in_duplicate_mode
 
-        self.sort_label.setVisible(not has_selection)
+        self.update_button.setVisible(has_selection and not in_duplicate_mode)
+        self.delete_button.setVisible(show_action_buttons)
+        self.cancel_button.setVisible(show_action_buttons)
+        self.cancel_button.setText(
+            "Cancel Dup Mode" if in_duplicate_mode else "Cancel")
+        self.status_hint_label.setVisible(show_action_buttons)
+        self.status_hint_label.setText(self._selection_shortcuts_text())
+
+        self.sort_label.setVisible(not show_action_buttons)
 
         self.sync_selection_indicators()
 
@@ -2035,6 +2339,13 @@ class MainWindow(QMainWindow):
 
     def on_update_clicked(self):
         """Handle Update button click."""
+        if self.duplicate_mode_active:
+            self.set_status(
+                "Update is disabled in duplicate mode. Use Delete or Cancel Dup Mode.",
+                timeout_ms=3000,
+            )
+            return
+
         if self.selected_book_ids:
             # Track the first selected row to return focus after update
             first_selected_row = None
@@ -2077,6 +2388,14 @@ class MainWindow(QMainWindow):
 
     def on_delete_clicked(self):
         """Handle Delete button click."""
+        if not self.selected_book_ids:
+            if self.duplicate_mode_active:
+                self.set_status(
+                    "Duplicate mode active. Select books to delete, or Cancel Dup Mode.",
+                    timeout_ms=3000,
+                )
+            return
+
         if self.selected_book_ids:
             count = len(self.selected_book_ids)
 
@@ -2113,6 +2432,10 @@ class MainWindow(QMainWindow):
                 self.update_selection_ui()
                 self.refresh_books()
 
+                if self.duplicate_mode_active:
+                    self._refresh_duplicate_mode_after_data_change()
+                    return
+
                 # Check if filters resulted in 0 books - clear filters to prevent freeze
                 if self.table.rowCount() == 0 and self.has_active_filters():
                     self.clear_all_filters()
@@ -2135,6 +2458,12 @@ class MainWindow(QMainWindow):
 
     def on_cancel_clicked(self):
         """Handle Cancel button click. mw#25: Focus returns to table. mw#26: Leaves focus on current cell."""
+        if self.duplicate_mode_active:
+            self.exit_duplicate_mode(
+                message="Duplicate mode canceled", announce=False)
+            QTimer.singleShot(0, self.table.setFocus)
+            return
+
         self.table.clearSelection()
         self.selected_book_ids.clear()
         self.selection_anchor_row = None  # Reset anchor for keyboard selection

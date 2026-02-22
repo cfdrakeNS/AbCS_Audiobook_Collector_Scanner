@@ -3,6 +3,8 @@ Import Detail Window
 Form for viewing and editing scanned audiobook details before import.
 """
 
+import re
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QPushButton, QLabel,
@@ -10,7 +12,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QStatusBar
 )
-from PySide6.QtCore import Qt, QEvent, QTimer
+from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from database import (
@@ -38,6 +40,31 @@ class ImportDetailWindow(QDialog):
     ALLOWED_ALT_LETTERS = {
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
     }
+
+    @staticmethod
+    def _to_proper_case(text: str) -> str:
+        value = text.strip().lower()
+        if not value:
+            return ""
+        return re.sub(
+            r"(^|[\s\-'])([a-z])",
+            lambda match: f"{match.group(1)}{match.group(2).upper()}",
+            value,
+        )
+
+    @staticmethod
+    def _is_proper_case_enabled() -> bool:
+        settings = QSettings("AbCS", "AbCS")
+        return settings.value("import/autocorrect/proper_case", False, type=bool)
+
+    @classmethod
+    def _normalize_name_field(cls, text: str) -> str:
+        value = text.strip()
+        if not value:
+            return ""
+        if cls._is_proper_case_enabled():
+            return cls._to_proper_case(value)
+        return value
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
                  theme_manager: ThemeManager, book_data: dict = None,
@@ -877,15 +904,21 @@ class ImportDetailWindow(QDialog):
 
     def _collect_form_data(self):
         """Collect edited values back into book_data."""
-        self.book_data["title"] = self.title_edit.text().strip()
-        self.book_data["author"] = self.author_combo.currentText().strip()
+        self.book_data["title"] = self._normalize_name_field(
+            self.title_edit.text())
+        self.book_data["author"] = self._normalize_name_field(
+            self.author_combo.currentText())
         normalized_year = self._normalize_year_value(self.year_spin.value())
         self.book_data["year"] = normalized_year if normalized_year > 0 else None
         self.book_data["comment"] = self.comments_edit.toPlainText().strip()
-        self.book_data["narrator"] = self.reader_edit.text().strip()
-        self.book_data["series"] = self.series_combo.currentText().strip()
-        self.book_data["genre"] = self.genre_combo.currentText().strip()
-        self.book_data["collection"] = self.collection_combo.currentText().strip()
+        self.book_data["narrator"] = self._normalize_name_field(
+            self.reader_edit.text())
+        self.book_data["series"] = self._normalize_name_field(
+            self.series_combo.currentText())
+        self.book_data["genre"] = self._normalize_name_field(
+            self.genre_combo.currentText())
+        self.book_data["collection"] = self._normalize_name_field(
+            self.collection_combo.currentText())
 
     def on_prev(self):
         """Save edits and request previous import item."""

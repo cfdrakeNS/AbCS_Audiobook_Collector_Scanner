@@ -35,7 +35,9 @@ class ImportValidator:
         if duplicate_mode == "with_collection":
             duplicate_mode = "title_author_year_collection"
         elif duplicate_mode == "ignore_collection":
-            duplicate_mode = "title_author_year_ignore_collection"
+            duplicate_mode = "title_author_year"
+        elif duplicate_mode == "title_author_year_ignore_collection":
+            duplicate_mode = "title_author_year"
         elif duplicate_mode == "title_author_ignore_collection":
             duplicate_mode = "title_author_year"
         self.duplicate_match_mode = duplicate_mode
@@ -91,7 +93,6 @@ class ImportValidator:
         include_year = mode in (
             "title_author_year",
             "title_author_year_collection",
-            "title_author_year_ignore_collection",
         )
         include_collection = mode in (
             "title_author",

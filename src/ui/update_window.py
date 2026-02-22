@@ -4,12 +4,14 @@ Allows mass updating or removing of Series, Genre, and Collection for selected b
 Updates occur immediately when a selection is made.
 """
 
+import re
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QComboBox, QPushButton, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QStatusBar, QMessageBox, QApplication,
 )
-from PySide6.QtCore import Qt, QEvent, QTimer
+from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from typing import Set, List
 import time
@@ -32,6 +34,31 @@ class UpdateWindow(QDialog):
     Updates occur immediately when a combo selection is made.
     Select "None" to clear/remove a field value from selected books.
     """
+
+    @staticmethod
+    def _to_proper_case(text: str) -> str:
+        value = text.strip().lower()
+        if not value:
+            return ""
+        return re.sub(
+            r"(^|[\s\-'])([a-z])",
+            lambda match: f"{match.group(1)}{match.group(2).upper()}",
+            value,
+        )
+
+    @staticmethod
+    def _is_proper_case_enabled() -> bool:
+        settings = QSettings("AbCS", "AbCS")
+        return settings.value("import/autocorrect/proper_case", False, type=bool)
+
+    @classmethod
+    def _normalize_name_field(cls, text: str) -> str:
+        value = text.strip()
+        if not value:
+            return ""
+        if cls._is_proper_case_enabled():
+            return cls._to_proper_case(value)
+        return value
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler,
                  selected_book_ids: Set[int], parent=None):
@@ -382,7 +409,7 @@ class UpdateWindow(QDialog):
 
         self._processing_series_input = True
         try:
-            text = self.series_combo.currentText().strip()
+            text = self._normalize_name_field(self.series_combo.currentText())
             normalized_text = text.casefold()
             if not text:
                 if keep_focus:
@@ -459,7 +486,7 @@ class UpdateWindow(QDialog):
 
         self._processing_genre_input = True
         try:
-            text = self.genre_combo.currentText().strip()
+            text = self._normalize_name_field(self.genre_combo.currentText())
             normalized_text = text.casefold()
             if not text:
                 if keep_focus:
