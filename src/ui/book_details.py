@@ -4,6 +4,7 @@ Form for viewing and editing individual book information.
 """
 
 import re
+import getpass
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -40,8 +41,11 @@ class BookDetailsWindow(QDialog):
 
     @staticmethod
     def _is_proper_case_enabled() -> bool:
-        settings = QSettings("AbCS", "AbCS")
-        return settings.value("import/autocorrect/proper_case", False, type=bool)
+        settings = QSettings("AbCS", "AudioBookCollector")
+        if settings.contains("import/autocorrect/proper_case"):
+            return settings.value("import/autocorrect/proper_case", False, type=bool)
+        legacy_settings = QSettings("AbCS", "AbCS")
+        return legacy_settings.value("import/autocorrect/proper_case", False, type=bool)
 
     @classmethod
     def _normalize_name_field(cls, text: str) -> str:
@@ -107,6 +111,8 @@ class BookDetailsWindow(QDialog):
 
         if not self.is_new:
             self.load_book_data()
+        else:
+            self._reset_new_fields()
 
         # bd#6: Setup dirty tracking and initial save button visibility
         self._setup_dirty_tracking()
@@ -120,7 +126,7 @@ class BookDetailsWindow(QDialog):
             "Form for viewing and editing book information")
         self.resize(850, 500)
         announce_dialog_opened(self, title)
-        self.set_status("Ready")
+        self._show_idle_status(announce=False)
         QTimer.singleShot(0, self.title_edit.setFocus)
 
     def showEvent(self, event):
@@ -199,15 +205,6 @@ class BookDetailsWindow(QDialog):
             elif source == self.genre_combo:
                 self._check_combo_change("Genre", self.genre_combo,
                                          self._original_genre, self.genre_queries)
-
-            dirty_widget = self._resolve_dirty_source(source)
-            if dirty_widget is not None:
-                field_name = self._get_dirty_field_name(dirty_widget)
-                self.set_status(
-                    f"{field_name} changed. Press Alt+S Save or Alt+L Cancel",
-                    announce=True
-                )
-                self._pending_dirty_widgets.discard(dirty_widget)
 
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
@@ -415,8 +412,9 @@ class BookDetailsWindow(QDialog):
         row3_layout = QHBoxLayout()
 
         self.year_spin = QSpinBox()
-        self.year_spin.setRange(1900, 2100)
-        self.year_spin.setValue(datetime.now().year)
+        self.year_spin.setRange(0, 2100)
+        self.year_spin.setSpecialValueText("")
+        self.year_spin.setValue(self.year_spin.minimum())
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setMaximumWidth(95)
         row3_layout.addWidget(self.year_spin)
@@ -443,8 +441,10 @@ class BookDetailsWindow(QDialog):
         self.read_date.setCalendarPopup(True)
         self.read_date.setDisplayFormat("yyyy-MM-dd")
         self.read_date.setAccessibleName("Date read")
-        self.read_date.setSpecialValueText("Not read")
+        self.read_date.setMinimumDate(QDate(1, 1, 1))
+        self.read_date.setSpecialValueText("")
         self.read_date.setMaximumWidth(150)
+        self.read_date.setDate(self.read_date.minimumDate())
         read_label.setBuddy(self.read_date)
         row3_layout.addWidget(read_label)
         row3_layout.addWidget(self.read_date)
@@ -488,7 +488,7 @@ class BookDetailsWindow(QDialog):
 
         files_label = QLabel("&Files:")
         self.files_edit = QLineEdit()
-        self.files_edit.setReadOnly(True)
+        self.files_edit.setReadOnly(False)
         self.files_edit.setAccessibleName("Number of files")
         self.files_edit.setMaximumWidth(70)
         files_label.setBuddy(self.files_edit)
@@ -496,7 +496,7 @@ class BookDetailsWindow(QDialog):
 
         bitrate_label = QLabel("&Bitrate:")
         self.bitrate_edit = QLineEdit()
-        self.bitrate_edit.setReadOnly(True)
+        self.bitrate_edit.setReadOnly(False)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
         self.bitrate_edit.setMaximumWidth(95)
         bitrate_label.setBuddy(self.bitrate_edit)
@@ -505,7 +505,7 @@ class BookDetailsWindow(QDialog):
 
         size_label = QLabel("Si&ze:")
         self.size_edit = QLineEdit()
-        self.size_edit.setReadOnly(True)
+        self.size_edit.setReadOnly(False)
         self.size_edit.setAccessibleName("File size in megabytes")
         self.size_edit.setMaximumWidth(100)
         size_label.setBuddy(self.size_edit)
@@ -513,12 +513,22 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(self.size_edit)
 
         format_label = QLabel("Format:")
-        self.format_edit = QLineEdit()
-        self.format_edit.setReadOnly(True)
-        self.format_edit.setAccessibleName("File format")
-        self.format_edit.setMaximumWidth(90)
+        self.format_combo = QComboBox()
+        self.format_combo.setAccessibleName("File format")
+        self.format_combo.setMaximumWidth(110)
+        format_items = [
+            ("MP3", "mp3"),
+            ("M4A", "m4a"),
+            ("M4B", "m4b"),
+            ("FLAC", "flac"),
+            ("OGG", "ogg"),
+            ("WAV", "wav"),
+            ("WMA", "wma"),
+        ]
+        for label, value in format_items:
+            self.format_combo.addItem(label, value)
         row5_layout.addWidget(format_label)
-        row5_layout.addWidget(self.format_edit)
+        row5_layout.addWidget(self.format_combo)
 
         source_label = QLabel("Source:")
         self.source_edit = QLineEdit()
@@ -534,7 +544,7 @@ class BookDetailsWindow(QDialog):
         row6_layout = QHBoxLayout()
 
         self.path_edit = QLineEdit()
-        self.path_edit.setReadOnly(True)
+        self.path_edit.setReadOnly(False)
         self.path_edit.setAccessibleName("File path")
         row6_layout.addWidget(self.path_edit, 3)  # stretch=3 (wider)
 
@@ -770,6 +780,12 @@ class BookDetailsWindow(QDialog):
             self.collection_combo: "Collection",
             self.reader_edit: "Reader",
             self.time_edit: "Time",
+            self.files_edit: "Files",
+            self.bitrate_edit: "Bitrate",
+            self.size_edit: "Size",
+            self.format_combo: "Format",
+            self.source_edit: "Source",
+            self.path_edit: "Path",
             self.comments_edit: "Comments",
             self.read_date: "Read date",
         }
@@ -789,6 +805,16 @@ class BookDetailsWindow(QDialog):
             lambda: self._mark_dirty(self.time_edit))
         self.comments_edit.textChanged.connect(
             lambda: self._mark_dirty(self.comments_edit))
+        self.files_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.files_edit))
+        self.bitrate_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.bitrate_edit))
+        self.size_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.size_edit))
+        self.format_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.format_combo))
+        self.path_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.path_edit))
 
         # Combos
         self.author_combo.currentIndexChanged.connect(
@@ -837,12 +863,23 @@ class BookDetailsWindow(QDialog):
 
         return None
 
-    def _clear_dirty(self):
+    def _clear_dirty(self, preserve_status: bool = False):
         """bd#6: Clear dirty flag after save or load."""
         self._dirty = False
         self._first_dirty_widget = None
         self._pending_dirty_widgets.clear()
         self._update_save_button_visibility()
+        if not preserve_status:
+            self._show_idle_status(announce=False)
+
+    def _show_idle_status(self, announce: bool = False):
+        """Show default status when form is not in edit/save mode."""
+        if self.is_new:
+            self.set_status(
+                "New book entry. Press Alt+S Save or Alt+L Cancel", announce=announce)
+        else:
+            self.set_status(
+                "Alt+N New, Alt+D Delete, Alt+C Close", announce=announce)
 
     def _update_save_button_visibility(self):
         """
@@ -959,14 +996,12 @@ class BookDetailsWindow(QDialog):
 
         # Series
         self.series_combo.clear()
-        self.series_combo.addItem("None", None)  # Clear option
         series_list = self.series_queries.get_all()
         for series in series_list:
             self.series_combo.addItem(series.name, series.series_id)
 
         # Genres
         self.genre_combo.clear()
-        self.genre_combo.addItem("None", None)  # Clear option
         genres = self.genre_queries.get_all()
         for genre in genres:
             self.genre_combo.addItem(genre.name, genre.genre_id)
@@ -989,21 +1024,29 @@ class BookDetailsWindow(QDialog):
         # Year
         if self.book.year:
             self.year_spin.setValue(self.book.year)
+        else:
+            self.year_spin.setValue(self.year_spin.minimum())
 
         # Series
         if self.book.series_id:
             idx = self.series_combo.findData(self.book.series_id)
             if idx >= 0:
                 self.series_combo.setCurrentIndex(idx)
+        else:
+            self.series_combo.setCurrentIndex(-1)
+            self.series_combo.clearEditText()
 
         # Genre
         if self.book.genre_id:
             idx = self.genre_combo.findData(self.book.genre_id)
             if idx >= 0:
                 self.genre_combo.setCurrentIndex(idx)
+        else:
+            self.genre_combo.setCurrentIndex(-1)
+            self.genre_combo.clearEditText()
 
         # Reader
-        self.reader_edit.setText(self.book.reader)
+        self.reader_edit.setText(self.book.reader or "")
 
         # Collection
         if self.book.collection_id:
@@ -1019,13 +1062,23 @@ class BookDetailsWindow(QDialog):
                                 if self.book.tracks else "")
 
         # Size
-        self.size_edit.setText(self.book.size_display)
+        self.size_edit.setText(self.book.size_display
+                               if self.book.size_mb else "")
 
         # Bitrate
-        self.bitrate_edit.setText(str(self.book.bitrate))
+        self.bitrate_edit.setText(str(self.book.bitrate)
+                                  if self.book.bitrate else "")
 
         # Format
-        self.format_edit.setText(self.book.file_format)
+        format_value = (self.book.file_format or "").lower()
+        if format_value:
+            idx = self.format_combo.findData(format_value)
+            if idx >= 0:
+                self.format_combo.setCurrentIndex(idx)
+            else:
+                self.format_combo.setCurrentIndex(-1)
+        else:
+            self.format_combo.setCurrentIndex(-1)
 
         # Path
         self.path_edit.setText(self.book.path or "")
@@ -1064,6 +1117,10 @@ class BookDetailsWindow(QDialog):
                               read_date_value.month,
                               read_date_value.day)
                 self.read_date.setDate(qdate)
+            else:
+                self.read_date.setDate(self.read_date.minimumDate())
+        else:
+            self.read_date.setDate(self.read_date.minimumDate())
 
         # Store original combo values for focusOut change detection
         self._original_author = self.author_combo.currentText()
@@ -1080,12 +1137,13 @@ class BookDetailsWindow(QDialog):
         current_text = combo.currentText().strip()
 
         # Skip if empty, unchanged, or "None" (clear option)
-        if not current_text or current_text == original_value or current_text == "None":
+        if not current_text or current_text == original_value:
             return
 
         # Check if this value exists in the database
         existing = query_obj.get_by_name(current_text)
         if existing:
+            self._set_original_combo_value(field_name, current_text)
             return  # Value exists, no warning needed
 
         # Value is new - ask Yes/No
@@ -1103,6 +1161,18 @@ class BookDetailsWindow(QDialog):
         if reply != QMessageBox.Yes:
             # Revert to original value
             combo.setEditText(original_value)
+            return
+
+        self._set_original_combo_value(field_name, current_text)
+
+    def _set_original_combo_value(self, field_name: str, value: str):
+        """Update original text snapshot to avoid repeated 'new value' prompts."""
+        if field_name == "Author":
+            self._original_author = value
+        elif field_name == "Series":
+            self._original_series = value
+        elif field_name == "Genre":
+            self._original_genre = value
 
     def on_save(self):
         """Save book data."""
@@ -1143,20 +1213,20 @@ class BookDetailsWindow(QDialog):
         series_text = self._normalize_name_field(
             self.series_combo.currentText())
         series_id = None
-        if series_text and series_text != "None":
+        if series_text:
             series_id = self.series_queries.get_or_create(series_text)
 
         # Get or create genre (confirmation already done on focusOut)
         genre_text = self._normalize_name_field(self.genre_combo.currentText())
         genre_id = None
-        if genre_text and genre_text != "None":
+        if genre_text:
             genre_id = self.genre_queries.get_or_create(genre_text)
 
         reader_text = self._normalize_name_field(self.reader_edit.text())
 
         # Get collection
         collection_id = self.collection_combo.currentData()
-        if collection_id is None and self.collection_combo.count() > 0:
+        if collection_id is None and self.collection_combo.count() == 1:
             collection_id = self.collection_combo.itemData(0)
 
         # Parse time
@@ -1178,16 +1248,55 @@ class BookDetailsWindow(QDialog):
             read_date = datetime(
                 qdate.year(), qdate.month(), qdate.day()).date()
 
+        year_value = self.year_spin.value()
+        year_value = None if year_value == self.year_spin.minimum() else year_value
+
+        tracks = 0
+        files_text = self.files_edit.text().strip()
+        if files_text:
+            try:
+                tracks = int(files_text)
+            except ValueError:
+                tracks = 0
+
+        bitrate = 0
+        bitrate_text = self.bitrate_edit.text().strip()
+        if bitrate_text:
+            try:
+                bitrate = int(bitrate_text)
+            except ValueError:
+                bitrate = 0
+
+        size_mb = 0.0
+        size_text = self.size_edit.text().strip()
+        if size_text:
+            try:
+                size_mb = float(size_text)
+            except ValueError:
+                size_mb = 0.0
+
+        file_format = ""
+        if self.format_combo.currentIndex() >= 0:
+            file_format = self.format_combo.currentData() or ""
+        source_text = self.source_edit.text().strip()
+        path_text = self.path_edit.text().strip()
+
         # Update book object
         self.book.title = title_text
         self.book.author_id = author_id
-        self.book.year = self.year_spin.value()
+        self.book.year = year_value
         self.book.series_id = series_id
         self.book.genre_id = genre_id
         self.book.collection_id = collection_id
         self.book.reader = reader_text
         self.book.time_hours = time_hours
         self.book.time_minutes = time_minutes
+        self.book.tracks = tracks
+        self.book.size_mb = size_mb
+        self.book.bitrate = bitrate
+        self.book.file_format = file_format
+        self.book.source = source_text
+        self.book.path = path_text
         self.book.comments = self.comments_edit.toPlainText()
         self.book.read_date = read_date
 
@@ -1195,7 +1304,8 @@ class BookDetailsWindow(QDialog):
         try:
             if self.is_new:
                 self.book.date_added = datetime.now()
-                self.book.source = "Manual Entry"
+                if not self.book.source:
+                    self.book.source = "Manual Entry"
                 book_id = self.book_queries.insert(self.book)
                 self.book.book_id = book_id
                 self.is_new = False
@@ -1208,7 +1318,7 @@ class BookDetailsWindow(QDialog):
                 self.set_status("Book updated successfully")
 
             # Clear dirty and update original values (don't close window)
-            self._clear_dirty()
+            self._clear_dirty(preserve_status=True)
             self._original_author = self.author_combo.currentText()
             self._original_series = self.series_combo.currentText()
             self._original_genre = self.genre_combo.currentText()
@@ -1310,24 +1420,7 @@ class BookDetailsWindow(QDialog):
         self.is_new = True
 
         # Clear form fields
-        self.title_edit.clear()
-        self.author_combo.setCurrentIndex(-1)
-        self.author_combo.clearEditText()
-        self.year_spin.setValue(datetime.now().year)
-        self.series_combo.setCurrentIndex(0)  # Empty option
-        self.genre_combo.setCurrentIndex(0)   # Empty option
-        # Keep current collection as default
-        self.reader_edit.clear()
-        self.time_edit.clear()
-        self.files_edit.clear()
-        self.size_edit.clear()
-        self.bitrate_edit.clear()
-        self.format_edit.clear()
-        self.path_edit.clear()
-        self.source_edit.clear()
-        self.added_edit.setText(datetime.now().strftime("%Y-%m-%d"))
-        self.comments_edit.clear()
-        self.read_date.setDate(self.read_date.minimumDate())
+        self._reset_new_fields()
 
         # Update window title
         self.setWindowTitle("New Book")
@@ -1340,6 +1433,39 @@ class BookDetailsWindow(QDialog):
         # Focus title field
         self.title_edit.setFocus()
         self.set_status("New book entry. Press Alt+S Save or Alt+L Cancel")
+
+    def _apply_new_defaults(self):
+        """Apply defaults for new entries without auto-selecting choices."""
+        if self.collection_combo.count() == 1:
+            self.collection_combo.setCurrentIndex(0)
+        else:
+            self.collection_combo.setCurrentIndex(-1)
+        if not self.source_edit.text().strip():
+            self.source_edit.setText(getpass.getuser())
+
+    def _reset_new_fields(self):
+        """Reset all editable fields for a new book without prepopulation."""
+        self.title_edit.clear()
+        self.author_combo.setCurrentIndex(-1)
+        self.author_combo.clearEditText()
+        self.year_spin.setValue(self.year_spin.minimum())
+        self.series_combo.setCurrentIndex(-1)
+        self.series_combo.clearEditText()
+        self.genre_combo.setCurrentIndex(-1)
+        self.genre_combo.clearEditText()
+        self.reader_edit.clear()
+        self.time_edit.clear()
+        self.files_edit.clear()
+        self.size_edit.clear()
+        self.bitrate_edit.clear()
+        self.format_combo.setCurrentIndex(-1)
+        self.path_edit.clear()
+        self.source_edit.clear()
+        self.added_edit.setText("")
+        self.comments_edit.clear()
+        self.read_date.setDate(self.read_date.minimumDate())
+        self._apply_new_defaults()
+        self.reader_edit.setText("")
 
     def on_prev(self):
         """

@@ -10,6 +10,14 @@
 
 AbCS has been successfully upgraded with **PySide6 QAccessible integration** to dramatically improve JAWS and NVDA screen reader support. Both the **quick fix** (status bar accessibility) and **full QAccessible implementation** are complete and working.
 
+### Update: February 23, 2026
+- Import Window: close prompt now reflects valid-count messaging and hides the count when zero.
+- Import Detail: new-value checks for Author/Series/Genre, improved exit prompt context, and field locking for non-editable data.
+- Name List: find normalization (punctuation/case) and consistent status messaging for screen readers.
+- Main Window: header click sorting aligns with Order By for key columns.
+- Preferences: auto-correction description clarified.
+- Added targeted regression tests for Name List and Import flows.
+
 ### What This Means for Users
 - 🎧 **JAWS/NVDA can now hear:** Status messages, table selections, form field changes, dialog openings
 - 📢 **Real-time announcements:** All dynamic UI changes notify screen readers immediately

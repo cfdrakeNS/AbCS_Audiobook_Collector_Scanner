@@ -161,7 +161,7 @@ class BookQueries:
                 genre_id = ?, collection_id = ?, reader = ?,
                 time_hours = ?, time_minutes = ?, tracks = ?,
                 size_mb = ?, bitrate = ?, file_format = ?,
-                path = ?, comments = ?, read_date = ?
+                path = ?, comments = ?, read_date = ?, source = ?
             WHERE book_id = ?
         """
         params = (
@@ -169,7 +169,7 @@ class BookQueries:
             book.genre_id, book.collection_id, book.reader,
             book.time_hours, book.time_minutes, book.tracks,
             book.size_mb, book.bitrate, book.file_format,
-            book.path, book.comments, read_date_value,
+            book.path, book.comments, read_date_value, book.source,
             book.book_id
         )
         self.db.execute(query, params)

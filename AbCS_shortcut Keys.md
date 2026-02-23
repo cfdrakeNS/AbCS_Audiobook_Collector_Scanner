@@ -197,10 +197,9 @@ This list reflects shortcuts currently implemented in code as of 2026-02-17.
 
 ### Import duplicate matching (Preferences setting)
 - Duplicate matching mode options:
-	- **Exact**: Title + Author + Year + Collection
-	- **Ignore Collection**: Title + Author + Year
-	- **Ignore Year**: Title + Author + Collection
-	- **Title + Author only**
+	- **Title + Author + Collection**
+	- **Title + Author + Year**
+	- **Title + Author + Year + Collection**
 - Fuzzy threshold option:
 	- **Fuzzy Duplicate (%)**: `0` disables fuzzy matching; `1-100` enables similarity-based duplicate detection for title and author
 

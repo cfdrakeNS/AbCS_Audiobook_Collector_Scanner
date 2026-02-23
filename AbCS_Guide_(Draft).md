@@ -22,6 +22,8 @@ AbCS is accessibility-first:
 
 When AbCS starts for the first time, the book list may be empty.
 
+- If the database is empty, a dialog appears with options: Import, Preferences, or Continue.
+- The dialog explains how to start an import and how to adjust colors and font size.
 - Open Import from File menu (Alt+F, then Import), or press Ctrl+I.
 - If books already exist, Main Window opens with the current list.
 
@@ -53,7 +55,7 @@ Columns are: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Added
 - Open Book Details with Ctrl+Enter or double-click.
 - Open focused item with Ctrl+Enter or double-click:
 	- Title/other columns: opens Book Details
-	- Author column: opens Authors manager (when author is present)
+	- Author column: always Authors manager 
 	- Series column: always opens Series manager
 	- Genre column: always opens Genre manager
 - Selection with keyboard: Shift+Space starts selection, Shift+Up/Down/Page keys extends selection.
@@ -150,6 +152,8 @@ Use this window to apply bulk changes to selected books.
 
 The Import Window scans a folder, validates metadata, and adds valid books to the database.
 
+If the database is empty at startup, the first-run dialog includes an Import shortcut.
+
 Below the header area, there are five controls left to right:
 
 1. Collection (Alt+C) - target collection for imported books.
@@ -190,6 +194,8 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 ## Preferences Window
 
 The Preferences Window controls display settings and import behavior.
+
+If the database is empty at startup, the first-run dialog includes a Preferences shortcut.
 
 Top to bottom, the window has three areas:
 

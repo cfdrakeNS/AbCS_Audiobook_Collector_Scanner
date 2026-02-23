@@ -54,7 +54,7 @@ Use known data with controlled duplicates.
 | C-01 | Title+Author+Collection | `title_author` | Duplicate if same title/author in same collection | |
 | C-02 | Title+Author+Year | `title_author_year` | Duplicate depends on year match; collection ignored | |
 | C-03 | Title+Author+Year+Collection | `title_author_year_collection` | Duplicate only when all match | |
-| C-04 | Title+Author+Year ignore collection | `title_author_year_ignore_collection` | Duplicate by title/author/year across collections | |
+| C-04 | Legacy alias: ignore_collection | `ignore_collection` | Loads/migrates to `title_author_year` behavior | |
 | C-05 | Fuzzy threshold off | 0% | Only exact matching applies | |
 | C-06 | Fuzzy threshold on | e.g. 85% | Near-match title/author gets flagged as duplicate | |
 
