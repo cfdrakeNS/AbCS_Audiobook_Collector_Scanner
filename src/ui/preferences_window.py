@@ -11,7 +11,8 @@ from PySide6.QtWidgets import (
     QScrollArea, QWidget, QFrame
 )
 from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
-from PySide6.QtGui import QShortcut, QKeySequence
+from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
+from shiboken6 import isValid
 from datetime import datetime
 
 from accessibility.scaling import UIScaler
@@ -329,6 +330,9 @@ class PreferencesWindow(QDialog):
             "Author and title rules description")
         self.rules_section_text.setAccessibleDescription(
             "Read-only description for author and title validation rules")
+        self.rules_section_text.setFocusPolicy(Qt.StrongFocus)
+        self.rules_section_text.setTextInteractionFlags(
+            Qt.TextSelectableByKeyboard)
         self.rules_section_text.setPlainText(
             "Author/Title Rules: configure severity for metadata consistency checks.")
         self._fit_readonly_section_text_height(self.rules_section_text)
@@ -495,8 +499,11 @@ class PreferencesWindow(QDialog):
             "Auto correction description")
         self.autocorrect_section_text.setAccessibleDescription(
             "Read-only description for auto-correction settings")
+        self.autocorrect_section_text.setFocusPolicy(Qt.StrongFocus)
+        self.autocorrect_section_text.setTextInteractionFlags(
+            Qt.TextSelectableByKeyboard)
         self.autocorrect_section_text.setPlainText(
-            "Auto-Correction: applies to Title, Author, Series, Genre, and Narrator. Leading The option applies to Title.")
+            "Auto-Correction: applies to Author, Series, Genre, and Narrator. Trim whitespace always applies to Title.")
         self._fit_readonly_section_text_height(self.autocorrect_section_text)
         self._sync_section_label_heights()
         import_layout.addWidget(self.autocorrect_section_text)
@@ -524,9 +531,9 @@ class PreferencesWindow(QDialog):
         self.autocorrect_proper_case_check.setAccessibleName(
             "Proper case fields")
         self.autocorrect_move_the_check = QCheckBox(
-            "Move leading 'T&he' in title")
+            "Move leading 'T&he' to end of title")
         self.autocorrect_move_the_check.setAccessibleName(
-            "Move leading The in title")
+            "Move leading The to end of title")
 
         self.autocorrect_trim_check.setSizePolicy(
             QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -568,15 +575,15 @@ class PreferencesWindow(QDialog):
         self.audit_button.setAccessibleDescription(
             "Open display audit report - Alt+U")
         self.audit_button.setDefault(False)
-        self.audit_button.setAutoDefault(False)
+        self.audit_button.setAutoDefault(True)
         footer_layout.addWidget(self.audit_button)
 
         self.save_button = QPushButton("Sa&ve")
         self.save_button.setAccessibleName("Save")
         self.save_button.setAccessibleDescription(
             "Save preferences and close - Alt+V")
-        self.save_button.setDefault(False)
-        self.save_button.setAutoDefault(False)
+        self.save_button.setDefault(True)
+        self.save_button.setAutoDefault(True)
         footer_layout.addWidget(self.save_button)
 
         self.cancel_button = QPushButton("&Cancel")
@@ -584,7 +591,7 @@ class PreferencesWindow(QDialog):
         self.cancel_button.setAccessibleDescription(
             "Discard changes and close - Alt+C")
         self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(False)
+        self.cancel_button.setAutoDefault(True)
         footer_layout.addWidget(self.cancel_button)
 
         layout.addLayout(footer_layout)
@@ -1423,11 +1430,46 @@ class PreferencesWindow(QDialog):
 
     def eventFilter(self, source, event):
         """Block Alt+letter input for letters that are not mapped shortcuts."""
+        if event.type() == QEvent.FocusIn:
+            if isinstance(source, QLineEdit):
+                QTimer.singleShot(
+                    0, lambda w=source: (w.setCursorPosition(len(w.text())), w.deselect()))
+            elif isinstance(source, QTextEdit):
+                QTimer.singleShot(
+                    0, lambda w=source: self._safe_move_cursor(w))
+            elif isinstance(source, QComboBox):
+                if source.lineEdit():
+                    QTimer.singleShot(
+                        0,
+                        lambda w=source: (
+                            w.lineEdit().setCursorPosition(len(w.lineEdit().text())),
+                            w.lineEdit().deselect(),
+                        ) if w.lineEdit() else None,
+                    )
+            elif isinstance(source, QSpinBox):
+                QTimer.singleShot(
+                    0,
+                    lambda w=source: (
+                        w.lineEdit().setCursorPosition(len(w.lineEdit().text())),
+                        w.lineEdit().deselect(),
+                    ),
+                )
+
         if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
             event.accept()
             return True
 
         return super().eventFilter(source, event)
+
+    @staticmethod
+    def _safe_move_cursor(widget):
+        """Move cursor safely on QTextEdit that may be deleted by the time the timer fires."""
+        if widget is None or not isValid(widget):
+            return
+        try:
+            widget.moveCursor(QTextCursor.End)
+        except RuntimeError:
+            pass
 
     def on_theme_changed(self):
         """Apply theme change immediately."""

@@ -143,6 +143,10 @@ class MainWindow(QMainWindow):
         # Last search results count (for status messages)
         self.last_search_count = 0
 
+        # Header sort state for non-primary columns
+        self._last_header_sort_column = -1
+        self._last_header_sort_order = Qt.AscendingOrder
+
         # Setup UI
         self.setup_ui()
         self.setup_shortcuts()
@@ -596,6 +600,9 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(1, QHeaderView.Interactive)  # Title
         header.setSectionResizeMode(4, QHeaderView.Interactive)  # Series
         header.setSectionResizeMode(5, QHeaderView.Interactive)  # Genre
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(1, Qt.AscendingOrder)
+        header.sectionClicked.connect(self.on_table_header_clicked)
 
         # Double-click to open details
         self.table.cellDoubleClicked.connect(self.on_book_double_click)
@@ -1458,8 +1465,8 @@ class MainWindow(QMainWindow):
         finally:
             # ALWAYS UNBLOCK SIGNALS - even on error
             self.table.blockSignals(False)
-            # Re-enable sorting AFTER unblocking signals
-            self.table.setSortingEnabled(True)
+            # Keep Qt auto-sorting disabled; header clicks are handled explicitly
+            self.table.setSortingEnabled(False)
             # Allow Qt to process input events (search box keystrokes, etc.)
             QApplication.instance().processEvents()
 
@@ -1481,8 +1488,58 @@ class MainWindow(QMainWindow):
         # Update filter BEFORE calling refresh to ensure correct order is used
         self.current_filter.order_by = text
         self.sort_label.setText(f"Sorted by: {text}")
+        self._set_primary_sort_indicator(text)
         # Only refresh books (no double refresh from combo signal)
         self.refresh_books()
+
+    def on_table_header_clicked(self, column: int):
+        """Handle table header clicks with combo-aligned sorting for key columns."""
+        primary_sort_columns = {
+            0: "Author",
+            1: "Title",
+            4: "Series",
+            5: "Genre",
+        }
+
+        order_by = primary_sort_columns.get(column)
+        if order_by is not None:
+            if self.order_combo.currentText() == order_by:
+                self.on_order_changed(order_by)
+            else:
+                self.order_combo.setCurrentText(order_by)
+            return
+
+        if self._last_header_sort_column == column:
+            next_order = Qt.DescendingOrder if self._last_header_sort_order == Qt.AscendingOrder else Qt.AscendingOrder
+        else:
+            next_order = Qt.AscendingOrder
+
+        self._last_header_sort_column = column
+        self._last_header_sort_order = next_order
+
+        self.table.sortItems(column, next_order)
+        self.table.horizontalHeader().setSortIndicator(column, next_order)
+
+        header_item = self.table.horizontalHeaderItem(column)
+        header_text = header_item.text() if header_item else "Field"
+        direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
+        self.sort_label.setText(f"Sorted by: {header_text} ({direction})")
+
+    def _set_primary_sort_indicator(self, order_by: str):
+        """Keep sort indicator aligned with Order By combo for primary columns."""
+        order_to_column = {
+            "Author": 0,
+            "Title": 1,
+            "Series": 4,
+            "Genre": 5,
+        }
+        column = order_to_column.get(order_by)
+        if column is None:
+            return
+
+        self._last_header_sort_column = column
+        self._last_header_sort_order = Qt.AscendingOrder
+        self.table.horizontalHeader().setSortIndicator(column, Qt.AscendingOrder)
 
     def on_search_changed(self, text: str):
         """Handle search text change."""

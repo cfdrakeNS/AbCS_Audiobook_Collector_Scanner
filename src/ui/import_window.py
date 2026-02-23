@@ -638,19 +638,44 @@ class ImportWindow(QDialog):
         if self.table.rowCount() == 0:
             return True
 
+        valid_count = self._get_valid_import_count()
+
+        message_lines = []
+        if valid_count > 0:
+            message_lines.append(
+                f"There are {valid_count} valid books not added!"
+            )
+        message_lines.append(
+            "Current scan results in this window will be discarded."
+        )
+
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Question,
             title="Close Import Window",
-            text=(
-                "Close import window now?\n\n"
-                "Current scan results in this window will be discarded."
-            ),
+            text="\n\n".join(message_lines),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
         )
         return reply == QMessageBox.Yes
+
+    def _get_valid_import_count(self) -> int:
+        """Return count of valid books currently in the import list."""
+        summary = getattr(self, "_summary_counts", {}) or {}
+        try:
+            summary_valid = int(summary.get("valid", 0))
+            if summary_valid:
+                return summary_valid
+        except (TypeError, ValueError):
+            pass
+
+        valid_count = 0
+        for item in self.scanned_items or []:
+            status = str(item.get("status", "")).strip()
+            if status in ("OK", "Warning"):
+                valid_count += 1
+        return valid_count
 
     def _confirm_cancel_scan(self) -> bool:
         """Ask whether to cancel an active scan."""
@@ -1236,9 +1261,11 @@ class ImportWindow(QDialog):
                 time.perf_counter() - scan_start)
             self.scan_progress.setValue(percent)
             self.scan_progress.setFormat(f"Scanning {processed}/{total}")
-            self.status_bar.showMessage(
+            status_message = (
                 f"Scanning {processed}/{total}: {os.path.basename(file_path)}"
             )
+            self._default_status_message = status_message
+            self.status_bar.showMessage(status_message)
             QApplication.processEvents()
 
         try:

@@ -138,3 +138,86 @@ def test_duplicate_check_is_collection_scoped():
     assert validator.is_duplicate(book, existing_books, target_collection_id=2)
     assert not validator.is_duplicate(
         book, existing_books, target_collection_id=3)
+
+
+def test_scan_progress_updates_status_message_for_alt_slash(
+    qapp, qtbot, temp_db, isolated_qsettings, tmp_path, monkeypatch
+):
+    window = _make_import_window(temp_db, qapp)
+    qtbot.addWidget(window)
+
+    if window.collection_combo.currentData() is None and window.collection_combo.count() > 1:
+        window.collection_combo.setCurrentIndex(1)
+
+    window.folder_edit.setText(str(tmp_path))
+
+    def fake_scan_folder(
+        folder_path,
+        include_subfolders,
+        allowed_extensions,
+        progress_callback,
+        cancel_check,
+    ):
+        progress_callback(1, 2, os.path.join(folder_path, "sample_book.mp3"))
+        assert window._default_status_message.startswith("Scanning 1/2:")
+        assert window.status_bar.currentMessage().startswith("Scanning 1/2:")
+        return []
+
+    monkeypatch.setattr(window.scanner, "scan_folder", fake_scan_folder)
+
+    window.on_scan()
+
+
+def test_close_prompt_uses_valid_count_message(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    window = _make_import_window(temp_db, qapp)
+    qtbot.addWidget(window)
+    window.table.setRowCount(1)
+    window._summary_counts = {
+        "total": 3,
+        "valid": 2,
+        "warnings": 0,
+        "errors": 1,
+    }
+
+    captured = {}
+
+    def fake_message_box(*args, **kwargs):
+        captured["text"] = kwargs.get("text")
+        return False
+
+    monkeypatch.setattr(
+        "ui.import_window.exec_styled_message_box", fake_message_box)
+
+    window._confirm_close_window()
+    assert captured["text"].startswith("There are 2 valid books not added!")
+    assert "Current scan results in this window will be discarded." in captured["text"]
+
+
+def test_close_prompt_hides_valid_count_when_zero(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    window = _make_import_window(temp_db, qapp)
+    qtbot.addWidget(window)
+    window.table.setRowCount(1)
+    window._summary_counts = {
+        "total": 1,
+        "valid": 0,
+        "warnings": 0,
+        "errors": 1,
+    }
+
+    captured = {}
+
+    def fake_message_box(*args, **kwargs):
+        captured["text"] = kwargs.get("text")
+        return False
+
+    monkeypatch.setattr(
+        "ui.import_window.exec_styled_message_box", fake_message_box)
+
+    window._confirm_close_window()
+    assert captured["text"] == (
+        "Current scan results in this window will be discarded."
+    )

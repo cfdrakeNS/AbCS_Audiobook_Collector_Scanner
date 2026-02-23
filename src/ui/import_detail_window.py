@@ -8,7 +8,7 @@ import re
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QPushButton, QLabel,
-    QSpinBox, QMessageBox, QApplication, QTextEdit,
+    QSpinBox, QMessageBox, QApplication, QTextEdit, QAbstractSpinBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QStatusBar
 )
@@ -100,6 +100,9 @@ class ImportDetailWindow(QDialog):
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
         self._closing_via_handler = False
+        self._original_author = ""
+        self._original_series = ""
+        self._original_genre = ""
 
         # Query objects
         self.author_queries = AuthorQueries(db)
@@ -172,6 +175,46 @@ class ImportDetailWindow(QDialog):
             return self._default_status_message
         return f"Import detail: {title} by {author}. No errors."
 
+    def _get_import_list_valid_count(self) -> int:
+        """Return current valid-books count from parent Import Window when available."""
+        parent = self.parent()
+        if parent and hasattr(parent, "_summary_counts"):
+            summary = getattr(parent, "_summary_counts", {}) or {}
+            try:
+                summary_valid = int(summary.get("valid", 0))
+                if summary_valid:
+                    return summary_valid
+            except (TypeError, ValueError):
+                pass
+
+        if parent and hasattr(parent, "scanned_items"):
+            valid_count = 0
+            for item in getattr(parent, "scanned_items", []) or []:
+                status = str(item.get("status", "")).strip()
+                if status in ("OK", "Warning"):
+                    valid_count += 1
+            return valid_count
+        return 0
+
+    def _build_exit_prompt_text(self) -> str:
+        """Build close-confirmation message including import-list context."""
+        valid_count = self._get_import_list_valid_count()
+        parent = self.parent()
+        parent_message = ""
+        if parent and hasattr(parent, "_default_status_message"):
+            parent_message = str(
+                getattr(parent, "_default_status_message", "") or "").strip()
+
+        current_message = parent_message or self.get_status_summary().strip() or "Ready"
+        return (
+            "Import details changed.\n\n"
+            f"Valid books in Import list: {valid_count}\n"
+            f"Current message: {current_message}\n\n"
+            "Yes = Save and close\n"
+            "No = Continue editing\n"
+            "Cancel = Discard and close"
+        )
+
     def on_read_status_bar(self):
         """Read current status (Alt+/)."""
         status_text = self.get_status_summary()
@@ -218,6 +261,28 @@ class ImportDetailWindow(QDialog):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
         if event.type() == QEvent.FocusOut:
+            if source == self.author_combo:
+                self._check_combo_change(
+                    "Author",
+                    self.author_combo,
+                    self._original_author,
+                    self.author_queries,
+                )
+            elif source == self.series_combo:
+                self._check_combo_change(
+                    "Series",
+                    self.series_combo,
+                    self._original_series,
+                    self.series_queries,
+                )
+            elif source == self.genre_combo:
+                self._check_combo_change(
+                    "Genre",
+                    self.genre_combo,
+                    self._original_genre,
+                    self.genre_queries,
+                )
+
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
@@ -394,7 +459,54 @@ class ImportDetailWindow(QDialog):
         else:
             self.errors_edit.setText("")
 
+        self._original_author = self.author_combo.currentText().strip()
+        self._original_series = self.series_combo.currentText().strip()
+        self._original_genre = self.genre_combo.currentText().strip()
+
         self._clear_dirty()
+
+    def _check_combo_change(self, field_name: str, combo: QComboBox,
+                            original_value: str, query_obj):
+        """
+        Check whether combo changed to a new value and confirm create-on-save.
+        """
+        current_text = combo.currentText().strip()
+
+        if not current_text or current_text == original_value:
+            return
+
+        existing = query_obj.get_by_name(current_text)
+        if existing:
+            self._set_original_combo_value(field_name, current_text)
+            return
+
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title=f"New {field_name}",
+            text=(
+                f"'{current_text}' is a new {field_name}.\n\n"
+                f"Create this new {field_name}?"
+            ),
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+        )
+
+        if reply != QMessageBox.Yes:
+            combo.setEditText(original_value)
+            return
+
+        self._set_original_combo_value(field_name, current_text)
+
+    def _set_original_combo_value(self, field_name: str, value: str):
+        """Update original combo snapshots to avoid repeat prompts."""
+        if field_name == "Author":
+            self._original_author = value
+        elif field_name == "Series":
+            self._original_series = value
+        elif field_name == "Genre":
+            self._original_genre = value
 
     @staticmethod
     def _detail_window_title(book_data: dict, errors: list | None = None) -> str:
@@ -639,16 +751,24 @@ class ImportDetailWindow(QDialog):
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setSpecialValueText("")
         self.year_spin.setMaximumWidth(95)
+        self.year_spin.setReadOnly(True)
+        self.year_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
         row3_layout.addWidget(self.year_spin)
+        row3_layout.addSpacing(12)
 
         time_label = QLabel("Ti&me:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setAccessibleName("Duration")
         self.time_edit.setMaximumWidth(100)
+        self.time_edit.setReadOnly(True)
         time_label.setBuddy(self.time_edit)
-        row3_layout.addWidget(time_label)
-        row3_layout.addWidget(self.time_edit)
+        time_pair_layout = QHBoxLayout()
+        time_pair_layout.setContentsMargins(0, 0, 0, 0)
+        time_pair_layout.setSpacing(2)
+        time_pair_layout.addWidget(time_label)
+        time_pair_layout.addWidget(self.time_edit)
+        row3_layout.addLayout(time_pair_layout)
 
         reader_label = QLabel("&Reader:")
         self.reader_edit = QLineEdit()
@@ -684,6 +804,7 @@ class ImportDetailWindow(QDialog):
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
+        self.collection_combo.setEnabled(False)
         collection_label.setBuddy(self.collection_combo)
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
@@ -1033,12 +1154,7 @@ class ImportDetailWindow(QDialog):
                 build_accessible_message_box_style(
                     self.scaler.get_scaled_size(20))
             )
-            msg.setText(
-                "Import details changed.\n\n"
-                "Yes = Save and close\n"
-                "No = Continue editing\n"
-                "Cancel = Discard and close"
-            )
+            msg.setText(self._build_exit_prompt_text())
             msg.setStandardButtons(
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
             msg.button(QMessageBox.Yes).setText("&Yes - Save")

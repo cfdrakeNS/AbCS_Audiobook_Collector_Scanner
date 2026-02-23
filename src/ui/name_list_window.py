@@ -46,6 +46,7 @@ class NameListWindow(QDialog):
     COL_NAME = 0
     COL_ACTIVE = 1
     COL_USAGE = 2
+    AUTHOR_FIND_HINT = " enter for next, alt+F new search "
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -231,6 +232,7 @@ class NameListWindow(QDialog):
             """
         )
         self.table.verticalHeader().setVisible(False)
+        self.table.setVerticalHeaderLabels([])
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setMinimumSectionSize(60)
         self.table.setColumnWidth(
@@ -413,11 +415,38 @@ class NameListWindow(QDialog):
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
     def set_status(self, message: str, announce: bool = False):
+        message = self._format_status_message(message)
         announce_status_message(self.status_bar, message, move_focus=announce)
 
         parent = self.parent()
         if parent and hasattr(parent, "set_status"):
             parent.set_status(message, announce=False)
+
+    def _format_status_message(self, message: str) -> str:
+        text = (message or "").strip()
+        if not text:
+            return text
+
+        if "Alt+E" in text:
+            return text
+
+        is_find_message = (
+            text.startswith("Found ")
+            or text.startswith("No matching ")
+            or self.AUTHOR_FIND_HINT.strip() in text
+        )
+        if is_find_message:
+            return text
+
+        is_edit_mode = (
+            bool(getattr(self, "save_button", None))
+            and self.save_button.isVisible()
+            and self.name_edit.isEnabled()
+        )
+        if is_edit_mode:
+            return text
+
+        return f"{text} Alt+E"
 
     def _book_count_for_item(self, item_id: int) -> int:
         query = f"SELECT COUNT(*) FROM books WHERE {self.book_fk_column} = ?"
@@ -446,6 +475,7 @@ class NameListWindow(QDialog):
         self.table.setUpdatesEnabled(False)
         try:
             self.table.setRowCount(len(items))
+            self.table.setVerticalHeaderLabels([""] * len(items))
 
             for row, item in enumerate(items):
                 item_id = getattr(item, self.id_column)
@@ -798,6 +828,24 @@ class NameListWindow(QDialog):
         if not text:
             return
 
+        if self.is_author_mode:
+            current_row = self.table.currentRow()
+            current_item = self.table.item(
+                current_row, self.COL_NAME) if current_row >= 0 else None
+            current_name = current_item.text() if current_item else ""
+            has_current_match = self._is_find_match(
+                current_name,
+                text,
+                is_author_mode=True,
+            )
+
+            if self._last_find_row >= 0 and has_current_match:
+                self.find_next_match()
+                return
+
+            self.find_first_match(text)
+            return
+
         if self.find_first_match(text):
             self.find_edit.clear()
             self.focus_list()
@@ -814,22 +862,25 @@ class NameListWindow(QDialog):
         self.set_status("Edit canceled.")
 
     def find_first_match(self, text: str) -> bool:
-        text_lower = text.strip().lower()
-        if not text_lower:
+        search_text = self._normalize_find_value(text)
+        if not search_text:
             return False
 
         for row in range(self.table.rowCount()):
             item = self.table.item(row, self.COL_NAME)
-            name = item.text().strip().lower() if item else ""
-            if text_lower in name:
+            name = item.text() if item else ""
+
+            if self._is_find_match(name, search_text, is_author_mode=self.is_author_mode):
                 self._focus_row(row)
                 self._last_find_row = row
+                suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
                 self.set_status(
-                    f"Found {self.entity_singular.lower()}: {item.text()}.")
+                    f"Found {self.entity_singular.lower()}: {item.text()}.{suffix}")
                 return True
 
+        suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
         self.set_status(
-            f"No matching {self.entity_plural.lower()} for '{text}'.", announce=True)
+            f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=True)
         return False
 
     def find_next_match(self):
@@ -839,7 +890,7 @@ class NameListWindow(QDialog):
         self._find_direction(forward=False)
 
     def _find_direction(self, forward: bool):
-        text = self.find_edit.text().strip().lower()
+        text = self._normalize_find_value(self.find_edit.text())
         if not text or self.table.rowCount() == 0:
             return
 
@@ -854,16 +905,18 @@ class NameListWindow(QDialog):
         for _ in range(row_count):
             row = (row + step) % row_count
             item = self.table.item(row, self.COL_NAME)
-            name = item.text().strip().lower() if item else ""
-            if text in name:
+            name = item.text() if item else ""
+            if self._is_find_match(name, text, is_author_mode=self.is_author_mode):
                 self._focus_row(row)
                 self._last_find_row = row
+                suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
                 self.set_status(
-                    f"Found {self.entity_singular.lower()}: {item.text()}.")
+                    f"Found {self.entity_singular.lower()}: {item.text()}.{suffix}")
                 return
 
+        suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
         self.set_status(
-            f"No matching {self.entity_plural.lower()} for '{self.find_edit.text().strip()}'.",
+            f"No matching {self.entity_plural.lower()} for '{self.find_edit.text().strip()}'.{suffix}",
             announce=True,
         )
 
@@ -875,6 +928,35 @@ class NameListWindow(QDialog):
         item = self.table.item(row, self.COL_NAME)
         if item is not None:
             self.table.scrollToItem(item)
+
+    @staticmethod
+    def _normalize_find_value(text: str) -> str:
+        normalized = (text or "").strip().casefold()
+        normalized = re.sub(r"[^\w\s]", " ", normalized)
+        normalized = " ".join(normalized.split())
+        return normalized
+
+    @classmethod
+    def _is_find_match(cls, candidate: str, search_text: str, *, is_author_mode: bool) -> bool:
+        normalized_search = cls._normalize_find_value(search_text)
+        if not normalized_search:
+            return False
+
+        normalized_candidate = cls._normalize_find_value(candidate)
+        if normalized_search in normalized_candidate:
+            return True
+
+        compact_search = normalized_search.replace(" ", "")
+        compact_candidate = normalized_candidate.replace(" ", "")
+        if compact_search and compact_search in compact_candidate:
+            return True
+
+        if not is_author_mode:
+            return False
+
+        search_tokens = [
+            token for token in normalized_search.split(" ") if token]
+        return bool(search_tokens) and all(token in normalized_candidate for token in search_tokens)
 
     def focus_list(self):
         row_count = self.table.rowCount()
