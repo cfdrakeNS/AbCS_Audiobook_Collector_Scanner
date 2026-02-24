@@ -49,7 +49,7 @@ Comparison baseline: current Python app in `src/ui`
   - [x] Validate font scaling/theme compliance (no hardcoded small fonts)
   - [x] Show scan completion summary in progress status bar (no popup)
 
-- [ ] Implement high-volume import flow (auto-add valid while scanning)
+- [x] Implement high-volume import flow (auto-add valid while scanning)
   - [x] Update import pipeline to insert valid books immediately during scan
   - [x] Keep flagged records in import review list (warnings/errors/duplicates/fallback/autocorrect)
   - [x] Add per-record outcome state (`added`, `skipped`, `duplicate`, `warning`, `error`, `fallback_used`, `autocorrect_used`)
