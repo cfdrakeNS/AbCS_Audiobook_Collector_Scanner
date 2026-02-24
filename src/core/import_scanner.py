@@ -72,8 +72,12 @@ class ImportScanner:
 
     def apply_preferences(self, book: Dict):
         book.setdefault("series", "")
+        book.setdefault("errors", [])
         folder = (book.get("folder") or "").strip()
         files = book.get("files") or []
+
+        # Track which fields had fallback applied
+        fallback_applied = set()
 
         narrator = (book.get("narrator") or "").strip()
         if not narrator:
@@ -88,11 +92,21 @@ class ImportScanner:
                 fallback_title = os.path.basename(folder.rstrip("\\/"))
                 if fallback_title:
                     book["title"] = fallback_title
+                    fallback_applied.add("Title")
+                    self._append_flag_once(
+                        book,
+                        "F: Title fallback from folder used",
+                    )
             elif self.title_fallback_mode == "file" and files:
                 fallback_title = os.path.splitext(
                     os.path.basename(files[0]))[0]
                 if fallback_title:
                     book["title"] = fallback_title
+                    fallback_applied.add("Title")
+                    self._append_flag_once(
+                        book,
+                        "F: Title fallback from file used",
+                    )
 
         author = (book.get("author") or "").strip()
         if self._is_placeholder_author(author) and self.author_fallback_mode == "folder" and folder:
@@ -103,6 +117,11 @@ class ImportScanner:
             )
             if fallback_author:
                 book["author"] = fallback_author
+                fallback_applied.add("Author")
+                self._append_flag_once(
+                    book,
+                    "F: Author fallback from folder used",
+                )
 
         author = (book.get("author") or "").strip()
         title = (book.get("title") or "").strip()
@@ -123,7 +142,30 @@ class ImportScanner:
             if series_name:
                 book["series"] = series_name
 
-        self._apply_auto_corrections(book)
+        field_corrections = self._apply_auto_corrections(book)
+        # Only flag Title and Author corrections, but exclude fields that already have fallback flags
+        for field in ["Title", "Author"]:
+            if field in field_corrections and field not in fallback_applied:
+                corrections = field_corrections[field]
+                # Create specific message for each correction
+                correction_text = ", ".join(corrections)
+                self._append_flag_once(
+                    book,
+                    f"C: {field} {correction_text}",
+                )
+
+    @staticmethod
+    def _append_flag_once(book: Dict, message: str):
+        """Append a flag message to book errors exactly once (case-insensitive)."""
+        if not message:
+            return
+        errors = book.setdefault("errors", [])
+        existing = {
+            str(err).strip().lower() for err in errors if str(err).strip()
+        }
+        normalized = message.strip().lower()
+        if normalized not in existing:
+            errors.append(message)
 
     def _extract_reader_from_comment(self, comment: str) -> str:
         if not comment:
@@ -206,31 +248,57 @@ class ImportScanner:
         normalized = cls._normalize_placeholder_text(value)
         return normalized in cls.TITLE_PLACEHOLDERS
 
-    def _apply_auto_corrections(self, book: Dict):
+    def _apply_auto_corrections(self, book: Dict) -> Dict[str, List[str]]:
+        """Apply auto-corrections and return mapping of field -> list of corrections."""
         fields = ["author", "title", "series", "genre", "narrator"]
+        field_corrections: Dict[str, List[str]] = {}
 
         for field in fields:
             value = book.get(field)
             if not isinstance(value, str) or not value:
                 continue
 
+            corrections_applied = []
             updated = value
-            if self.trim_whitespace:
-                updated = " ".join(updated.split())
-            if self.strip_leading_punctuation:
-                updated = re.sub(r"^[^A-Za-z0-9]+", "", updated)
-            if self.remove_non_alphanumeric:
-                updated = re.sub(r"[^A-Za-z0-9\s\.,!?&:;()\-'/]", "", updated)
-                updated = re.sub(r"\s{2,}", " ", updated)
-            if self.proper_case_fields:
-                updated = " ".join(word.capitalize()
-                                   for word in updated.split(" "))
 
-            book[field] = updated.strip()
+            if self.trim_whitespace:
+                trimmed = " ".join(updated.split())
+                if trimmed != updated:
+                    corrections_applied.append("trimmed")
+                    updated = trimmed
+
+            if self.strip_leading_punctuation:
+                stripped = re.sub(r"^[^A-Za-z0-9]+", "", updated)
+                if stripped != updated:
+                    corrections_applied.append("punctuation removed")
+                    updated = stripped
+
+            if self.remove_non_alphanumeric:
+                cleaned = re.sub(r"[^A-Za-z0-9\s\.,!?&:;()\-'/]", "", updated)
+                cleaned = re.sub(r"\s{2,}", " ", cleaned)
+                if cleaned != updated:
+                    corrections_applied.append("special characters removed")
+                    updated = cleaned
+
+            if self.proper_case_fields:
+                proper_cased = " ".join(word.capitalize()
+                                        for word in updated.split(" "))
+                if proper_cased != updated:
+                    # Apply proper case but don't flag it
+                    updated = proper_cased
+
+            normalized_updated = updated.strip()
+            if corrections_applied:
+                field_corrections[field.title()] = corrections_applied
+
+            book[field] = normalized_updated
 
         if self.move_leading_the_title:
             title = (book.get("title") or "").strip()
             if title.lower().startswith("the ") and len(title) > 4:
                 title_core = title[4:].strip()
                 if title_core and not title_core.lower().endswith(", the"):
+                    # Move "The" to end but don't flag it
                     book["title"] = f"{title_core}, The"
+
+        return field_corrections

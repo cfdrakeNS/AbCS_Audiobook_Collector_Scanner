@@ -199,6 +199,10 @@ class ImportValidator:
         error_text = str(error or '').strip()
         if error_text.upper().startswith('W:'):
             return 'warning'
+        if error_text.upper().startswith('F:'):
+            return 'warning'
+        if error_text.upper().startswith('C:'):
+            return 'warning'
         if error_text.upper().startswith('E:'):
             return 'parse'
 
@@ -229,7 +233,7 @@ class ImportValidator:
             return ''
 
         upper_text = text.upper()
-        if upper_text.startswith('E:') or upper_text.startswith('W:'):
+        if upper_text.startswith('E:') or upper_text.startswith('W:') or upper_text.startswith('F:') or upper_text.startswith('C:'):
             text = text[2:].strip()
             upper_text = text.upper()
 
@@ -240,12 +244,20 @@ class ImportValidator:
 
     def format_error_message(self, error: str) -> str:
         """Format a single error for display with compact prefixes."""
+        raw_error = str(error or '').strip()
+        is_fallback_flag = raw_error.upper().startswith('F:')
+        is_correction_flag = raw_error.upper().startswith('C:')
         normalized = self.normalize_error_message(error)
         if not normalized:
             return ''
 
         if normalized.lower() == 'duplicate':
             return 'Duplicate'
+
+        if is_fallback_flag:
+            return f'F: {normalized}'
+        if is_correction_flag:
+            return f'C: {normalized}'
 
         severity = self.categorize_error(error)
         prefix = 'W: ' if severity == 'warning' else 'E: '

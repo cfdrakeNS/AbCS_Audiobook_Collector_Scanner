@@ -75,6 +75,30 @@ def find_duplicates(occurrences: list[MnemonicOccurrence]) -> dict[str, list[Mne
     return {key: items for key, items in grouped.items() if len(items) > 1}
 
 
+def extract_allowed_letters(file_path: Path) -> set[str] | None:
+    """Extract ALLOWED_ALT_LETTERS set from file if it exists."""
+    content = file_path.read_text(encoding="utf-8")
+
+    # Look for ALLOWED_ALT_LETTERS = { ... }
+    match = re.search(
+        r'ALLOWED_ALT_LETTERS\s*=\s*\{([^}]+)\}', content, re.MULTILINE)
+    if not match:
+        return None
+
+    # Extract letters from the set definition
+    letters_text = match.group(1)
+    letters = re.findall(r"['\"]([A-Z])['\"]", letters_text)
+    return set(letters)
+
+
+def find_missing_allowed_letters(
+    occurrences: list[MnemonicOccurrence],
+    allowed_letters: set[str]
+) -> list[MnemonicOccurrence]:
+    """Find mnemonics that are not in ALLOWED_ALT_LETTERS."""
+    return [occ for occ in occurrences if occ.key not in allowed_letters]
+
+
 def main() -> int:
     include_actions = "--include-actions" in sys.argv
     repo_root = Path(__file__).resolve().parents[1]
@@ -87,6 +111,8 @@ def main() -> int:
     print("-" * 50)
 
     total_duplicates = 0
+    total_missing = 0
+
     for file_path in py_files:
         occurrences = scan_file(file_path)
         filtered_occurrences = [
@@ -95,24 +121,47 @@ def main() -> int:
         ]
         duplicates = find_duplicates(filtered_occurrences)
 
-        if not duplicates:
+        # Check for ALLOWED_ALT_LETTERS
+        allowed_letters = extract_allowed_letters(file_path)
+        missing_letters = []
+        if allowed_letters is not None:
+            missing_letters = find_missing_allowed_letters(
+                filtered_occurrences, allowed_letters)
+
+        if not duplicates and not missing_letters:
             print(f"OK   {file_path.relative_to(repo_root)}")
             continue
 
-        total_duplicates += sum(len(items) -
-                                1 for items in duplicates.values())
-        print(f"DUP  {file_path.relative_to(repo_root)}")
-        for key in sorted(duplicates):
-            print(f"  Alt+{key} appears {len(duplicates[key])} times:")
-            for item in duplicates[key]:
-                print(f"    L{item.line}: {item.widget}(\"{item.text}\")")
+        # Report duplicates
+        if duplicates:
+            total_duplicates += sum(len(items) -
+                                    1 for items in duplicates.values())
+            print(f"DUP  {file_path.relative_to(repo_root)}")
+            for key in sorted(duplicates):
+                print(f"  Alt+{key} appears {len(duplicates[key])} times:")
+                for item in duplicates[key]:
+                    print(f"    L{item.line}: {item.widget}(\"{item.text}\")")
+
+        # Report missing from ALLOWED_ALT_LETTERS
+        if missing_letters:
+            total_missing += len(missing_letters)
+            print(f"MISS {file_path.relative_to(repo_root)}")
+            print(f"  ALLOWED_ALT_LETTERS = {sorted(allowed_letters)}")
+            print(f"  Missing {len(missing_letters)} mnemonic(s):")
+            for item in sorted(missing_letters, key=lambda x: x.key):
+                print(
+                    f"    Alt+{item.key} L{item.line}: {item.widget}(\"{item.text}\")")
 
     print("-" * 50)
-    if total_duplicates == 0:
-        print("No duplicate mnemonics found.")
+    if total_duplicates == 0 and total_missing == 0:
+        print("No issues found.")
         return 0
 
-    print(f"Found {total_duplicates} duplicate mnemonic occurrence(s).")
+    if total_duplicates > 0:
+        print(f"Found {total_duplicates} duplicate mnemonic occurrence(s).")
+    if total_missing > 0:
+        print(
+            f"Found {total_missing} mnemonic(s) missing from ALLOWED_ALT_LETTERS.")
     return 1
 
 

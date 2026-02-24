@@ -61,12 +61,14 @@ REM Build executable
 echo.
 echo Building executable...
 echo This may take several minutes...
+echo PyInstaller log level: WARN
 echo.
 
 python -m PyInstaller ^
     --name="AbCS" ^
     --onefile ^
     --windowed ^
+    --log-level=WARN ^
     --clean ^
     --noconfirm ^
     --add-data="data/abcdDB_def.sql;data" ^
@@ -79,7 +81,10 @@ python -m PyInstaller ^
     --hidden-import="mutagen.flac" ^
     --hidden-import="mutagen.oggvorbis" ^
     --hidden-import="mutagen.wave" ^
-    --collect-all="PySide6" ^
+    --exclude-module="PySide6.QtSql" ^
+    --exclude-module="PySide6.QtQml" ^
+    --exclude-module="PySide6.QtQuick" ^
+    --exclude-module="PySide6.QtQuickShapes" ^
     --noconsole ^
     src/main.py
 
