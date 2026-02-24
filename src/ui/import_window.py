@@ -5,7 +5,7 @@ Main interface for scanning folders and importing audiobooks.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
-    QLabel, QLineEdit, QComboBox, QPushButton, QStatusBar, QProgressBar,
+    QLabel, QLineEdit, QComboBox, QPushButton, QStatusBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QMessageBox, QApplication
 )
@@ -29,6 +29,7 @@ from accessibility.accessible_events import (
     announce_status_message, announce_dialog_opened, announce_dialog_closed
 )
 from ui.import_detail_window import ImportDetailWindow
+from ui.import_progress_window import ImportProgressWindow
 
 
 class ImportWindow(QDialog):
@@ -37,7 +38,7 @@ class ImportWindow(QDialog):
     """
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'S', 'V', 'W'
+        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'V', 'W'
     }
 
     COL_AUTHOR = 0
@@ -119,6 +120,7 @@ class ImportWindow(QDialog):
         self._cancel_scan_requested = False
         self._scan_prompt_open = False
         self._closing_via_handler = False
+        self.progress_window: ImportProgressWindow | None = None
 
         self.setup_ui()
         self.install_alt_key_filters()
@@ -218,7 +220,7 @@ class ImportWindow(QDialog):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
 
-        collection_label = QLabel("Co&llection:")
+        collection_label = QLabel("&Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Import collection")
         self.collection_combo.setAccessibleDescription(
@@ -249,12 +251,14 @@ class ImportWindow(QDialog):
         self.error_filter_combo = QComboBox()
         self.error_filter_combo.setAccessibleName("Import error filter")
         self.error_filter_combo.setAccessibleDescription(
-            "Filter import list by All, Valid, Warning, Error, or Duplicate - Alt+E")
+            "Filter import list by All, Valid, Warning, Error, Duplicate, Fallback, or Corrected - Alt+E")
         self.error_filter_combo.addItem("All", "all")
         self.error_filter_combo.addItem("Valid", "valid")
         self.error_filter_combo.addItem("Warning", "warning")
         self.error_filter_combo.addItem("Error", "error")
         self.error_filter_combo.addItem("Duplicate", "duplicate")
+        self.error_filter_combo.addItem("Fallback", "fallback")
+        self.error_filter_combo.addItem("Corrected", "corrected")
         error_filter_label.setBuddy(self.error_filter_combo)
         header_layout.addWidget(error_filter_label)
         header_layout.addWidget(self.error_filter_combo)
@@ -323,17 +327,6 @@ class ImportWindow(QDialog):
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
-
-        self.scan_progress = QProgressBar()
-        self.scan_progress.setAccessibleName("Scan progress")
-        self.scan_progress.setAccessibleDescription(
-            "Shows progress while scanning audio files")
-        self.scan_progress.setMinimum(0)
-        self.scan_progress.setMaximum(100)
-        self.scan_progress.setValue(0)
-        self.scan_progress.setVisible(False)
-        self.scan_progress.setFixedWidth(220)
-        footer_layout.addWidget(self.scan_progress)
 
         self.import_selected_button = QPushButton("Add Selected")
         self.import_selected_button.setAccessibleName("Add Selected")
@@ -432,21 +425,6 @@ class ImportWindow(QDialog):
 
         self.table.setColumnWidth(
             self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56))
-
-        progress_style = f"""
-            QProgressBar {{
-                min-height: {scaled_height - 2}px;
-                max-height: {scaled_height - 2}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                text-align: center;
-                background-color: palette(base);
-            }}
-            QProgressBar::chunk {{
-                background-color: palette(highlight);
-            }}
-        """
-        self.scan_progress.setStyleSheet(progress_style)
 
         table_style = """
             QTableView::item:selected:active {
@@ -623,15 +601,19 @@ class ImportWindow(QDialog):
     def _update_cancel_button_state(self):
         """Show Close when idle; show Cancel while scanning."""
         if self._is_scanning:
-            self.cancel_button.setText("&Cancel")
+            self.cancel_button.setText("Ca&ncel")
             self.cancel_button.setAccessibleName("Cancel")
             self.cancel_button.setAccessibleDescription(
-                "Cancel running scan - Alt+C")
+                "Cancel running scan - Alt+N")
+            self.cancel_button.setDefault(False)
+            self.cancel_button.setAutoDefault(True)
         else:
             self.cancel_button.setText("C&lose")
             self.cancel_button.setAccessibleName("Close")
             self.cancel_button.setAccessibleDescription(
                 "Close import window - Alt+L")
+            self.cancel_button.setDefault(True)
+            self.cancel_button.setAutoDefault(True)
 
     def _confirm_close_window(self) -> bool:
         """Prompt before closing the import window."""
@@ -691,7 +673,7 @@ class ImportWindow(QDialog):
                 title="Cancel Scan",
                 text=(
                     "Cancel the current scan?\n\n"
-                    "Yes: stop scanning and discard partial scan results.\n"
+                    "Yes: stop scanning and keep partial scan results.\n"
                     "No: continue scanning."
                 ),
                 buttons=QMessageBox.Yes | QMessageBox.No,
@@ -752,9 +734,6 @@ class ImportWindow(QDialog):
         self.add_all_shortcut.setContext(Qt.ApplicationShortcut)
         self.add_all_shortcut.activated.connect(self.import_all_button.click)
 
-        self.close_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.close_shortcut.activated.connect(self.on_cancel)
-
         self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.on_cancel)
 
@@ -796,7 +775,7 @@ class ImportWindow(QDialog):
 
         shortcuts = [
             ("Alt+/", "Read status bar"),
-            ("Alt+C", "collection"),
+            ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
             ("Alt+W", "Browse"),
             ("Alt+E", "Error filter"),
@@ -809,6 +788,7 @@ class ImportWindow(QDialog):
             ("Alt+I", "Add selected"),
             ("Alt+V", "Add all valid"),
             ("Alt+L", "Close window"),
+            ("Alt+N", "Cancel scan (when running)"),
             ("F1", "Show keyboard shortcuts"),
         ]
 
@@ -958,6 +938,14 @@ class ImportWindow(QDialog):
             for err in errors
         )
         is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+        has_fallback = any(
+            str(err).startswith("F:")
+            for err in errors
+        )
+        has_correction = any(
+            str(err).startswith("C:")
+            for err in errors
+        )
 
         if selected_filter == "all":
             return True
@@ -969,6 +957,10 @@ class ImportWindow(QDialog):
             return has_hard_error or status in ("Error", "Failed")
         if selected_filter == "duplicate":
             return is_duplicate
+        if selected_filter == "fallback":
+            return has_fallback
+        if selected_filter == "corrected":
+            return has_correction
 
         return True
 
@@ -1036,6 +1028,16 @@ class ImportWindow(QDialog):
             self.table.setFocus(Qt.TabFocusReason)
         else:
             self.scan_button.setFocus(Qt.TabFocusReason)
+
+    def _on_progress_window_closed(self, _result: int):
+        """Restore Import Window focus only after progress window is closed."""
+        self.progress_window = None
+        self._restore_focus_after_scan()
+
+        first_visible = self._first_visible_row()
+        if first_visible >= 0:
+            self.table.setCurrentCell(first_visible, self.COL_TITLE)
+            self.table.setFocus(Qt.TabFocusReason)
 
     def on_table_selection_changed(self):
         """Announce row selection count in status bar."""
@@ -1243,29 +1245,38 @@ class ImportWindow(QDialog):
         self._cancel_scan_requested = False
         self._update_cancel_button_state()
         scan_was_canceled = False
+        self.progress_window = ImportProgressWindow(
+            self.scaler, self.theme_manager, parent=self)
+        self.progress_window.finished.connect(self._on_progress_window_closed)
+        self.progress_window.show()
+        self.progress_window.raise_()
+        self.progress_window.activateWindow()
+        self.progress_window.update_counters(
+            files_scanned=0, elapsed_text="00:00", books_added=0, read_errors=0)
 
         self.scan_button.setEnabled(False)
         self.browse_button.setEnabled(False)
-        self.scan_progress.setVisible(True)
-        self.scan_progress.setRange(0, 100)
-        self.scan_progress.setValue(0)
-        self.scan_progress.setFormat("Scanning... %p%")
+        self.set_status("Scan started")
         scan_start = time.perf_counter()
         elapsed_text = "00:00"
 
         def on_progress(processed: int, total: int, file_path: str):
             if total <= 0:
                 return
-            percent = int((processed / total) * 100)
+            if self.progress_window and self.progress_window.cancel_requested:
+                self._cancel_scan_requested = True
             current_elapsed = self._format_elapsed(
                 time.perf_counter() - scan_start)
-            self.scan_progress.setValue(percent)
-            self.scan_progress.setFormat(f"Scanning {processed}/{total}")
-            status_message = (
-                f"Scanning {processed}/{total}: {os.path.basename(file_path)}"
-            )
-            self._default_status_message = status_message
-            self.status_bar.showMessage(status_message)
+            current_title = os.path.splitext(os.path.basename(file_path))[0]
+            current_author = os.path.basename(os.path.dirname(file_path))
+            if self.progress_window:
+                self.progress_window.update_scan_progress(
+                    processed=processed,
+                    total=total,
+                    elapsed_text=current_elapsed,
+                    current_title=current_title,
+                    current_author=current_author,
+                )
             QApplication.processEvents()
 
         try:
@@ -1285,11 +1296,8 @@ class ImportWindow(QDialog):
             self._update_cancel_button_state()
             self.scan_button.setEnabled(True)
             self.browse_button.setEnabled(True)
-            if scan_was_canceled:
-                self.scan_progress.setFormat(f"Scan canceled ({elapsed_text})")
-            else:
-                self.scan_progress.setValue(100)
-                self.scan_progress.setFormat(f"Scan complete ({elapsed_text})")
+            if self.progress_window and self.progress_window.cancel_requested:
+                scan_was_canceled = True
 
         existing_books = self.book_queries.get_all()
         existing_list = [
@@ -1308,6 +1316,7 @@ class ImportWindow(QDialog):
         error_count = 0
         warning_count = 0
         duplicate_count = 0
+        read_error_count = 0
 
         for row, book in enumerate(books):
             self.import_scanner.apply_preferences(book)
@@ -1333,6 +1342,12 @@ class ImportWindow(QDialog):
                 ]
                 errors.insert(0, "Duplicate")
                 duplicate_count += 1
+
+            current_read_errors = 0
+            for err in errors:
+                if self.validator.categorize_error(err) == "read":
+                    current_read_errors += 1
+            read_error_count += current_read_errors
 
             has_hard_error = any(
                 self.validator.categorize_error(err) in ("read", "parse")
@@ -1376,8 +1391,25 @@ class ImportWindow(QDialog):
                 "is_duplicate": is_duplicate
             })
 
+            issues_text = self._format_error_summary(errors)
+            if issues_text.startswith("OK"):
+                issues_text = ""
+            if self.progress_window:
+                self.progress_window.update_current_item(
+                    title=book.get("title", "") or "",
+                    author=book.get("author", "") or "",
+                    issues_text=issues_text,
+                )
+                self.progress_window.update_counters(
+                    files_scanned=row + 1,
+                    elapsed_text=self._format_elapsed(
+                        time.perf_counter() - scan_start),
+                    books_added=0,
+                    read_errors=read_error_count,
+                )
+            QApplication.processEvents()
+
         if not books:
-            self._restore_focus_after_scan()
             if scan_was_canceled:
                 self.set_status(
                     f"Scan canceled. No partial results found. Elapsed: {elapsed_text}")
@@ -1385,6 +1417,22 @@ class ImportWindow(QDialog):
                 self.set_status(
                     f"No audio files found. Elapsed: {elapsed_text}")
             self.update_summary(0, 0, 0, 0)
+            if self.progress_window:
+                summary_text = (
+                    f"Scanned: 0 | Warnings: 0 | Errors: 0 | Duplicates: 0 | Elapsed: {elapsed_text}"
+                )
+                if scan_was_canceled:
+                    summary_text += " | Scan canceled"
+                else:
+                    summary_text = f"No audio files found. Elapsed: {elapsed_text}"
+                self.progress_window.mark_complete(
+                    canceled=scan_was_canceled,
+                    elapsed_text=elapsed_text,
+                    files_scanned=0,
+                    books_added=0,
+                    read_errors=read_error_count,
+                    summary_text=summary_text,
+                )
             return
 
         self.update_summary(
@@ -1395,8 +1443,6 @@ class ImportWindow(QDialog):
             duplicates=duplicate_count,
             announce=True)
         self._apply_error_filter()
-
-        self._restore_focus_after_scan()
 
         issues_count = warning_count + error_count
         popup_message = (
@@ -1410,22 +1456,26 @@ class ImportWindow(QDialog):
         if scan_was_canceled:
             self.set_status(
                 f"Scanned: {len(books)} | Issues: {issues_count} | Duplicates: {duplicate_count} | Elapsed: {elapsed_text} | Scan canceled (partial results kept)")
-            self._show_info_popup(
-                "Scan Canceled (Partial Results)",
-                f"Partial results kept.\n\n{popup_message}")
         else:
             self.set_status(
                 f"Scanned: {len(books)} | Issues: {issues_count} | Duplicates: {duplicate_count} | Elapsed: {elapsed_text}")
-            self._show_info_popup("Scan Complete", popup_message)
 
-        # Move focus to first title after summary announcement has started
-        def focus_first_title():
-            first_visible = self._first_visible_row()
-            if first_visible >= 0:
-                self.table.setCurrentCell(first_visible, self.COL_TITLE)
-                self.table.setFocus(Qt.TabFocusReason)
-
-        QTimer.singleShot(250, focus_first_title)
+        if self.progress_window:
+            summary_text = (
+                f"Scanned: {len(books)} | Warnings: {warning_count} | "
+                f"Errors: {error_count} | Duplicates: {duplicate_count} | "
+                f"Elapsed: {elapsed_text}"
+            )
+            if scan_was_canceled:
+                summary_text += " | Scan canceled"
+            self.progress_window.mark_complete(
+                canceled=scan_was_canceled,
+                elapsed_text=elapsed_text,
+                files_scanned=len(books),
+                books_added=0,
+                read_errors=read_error_count,
+                summary_text=summary_text,
+            )
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()

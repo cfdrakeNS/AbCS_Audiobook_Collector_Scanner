@@ -31,6 +31,7 @@ from ui.preferences_window import PreferencesWindow
 from ui.import_window import ImportWindow
 from ui.collection_window import CollectionWindow
 from ui.name_list_window import NameListWindow
+from ui.backup_restore_window import BackupRestoreWindow
 
 # Import version from main module
 
@@ -2871,13 +2872,18 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_backup_restore(self):
         """Open backup_restore window."""
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Coming Soon",
-            text="Backup & restore will be available soon!",
+        focus_ctx = self._capture_table_focus_context()
+        dialog = BackupRestoreWindow(
+            self.db,
+            self.scaler,
+            self.theme_manager,
+            parent=self,
         )
+        dialog.exec()
+        if dialog.data_changed:
+            self.refresh_books()
+            self.set_status("Database updated from backup/restore operation")
+        self._restore_table_focus_context(focus_ctx)
 
     def on_about(self):
         """Show about dialog."""

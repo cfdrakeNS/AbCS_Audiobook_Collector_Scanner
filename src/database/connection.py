@@ -548,6 +548,77 @@ class DatabaseManager:
             unique_paths.append(path)
         return unique_paths
 
+    def get_backup_directory(self) -> Path:
+        """Return backup directory and ensure it exists."""
+        backup_dir = Path(self.db_path).resolve().parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        return backup_dir
+
+    def list_backups(self) -> list[Path]:
+        """Return known backup files ordered newest-first."""
+        db_file = Path(self.db_path).resolve()
+        backup_dir = self.get_backup_directory()
+
+        candidates: list[Path] = []
+        candidates.extend(
+            path for path in backup_dir.glob("AbCS_backup_*") if path.is_file()
+        )
+        candidates.extend(
+            path for path in db_file.parent.glob(f"{db_file.stem}.backup_*") if path.is_file()
+        )
+
+        unique: dict[str, Path] = {}
+        for path in candidates:
+            unique[str(path.resolve())] = path.resolve()
+
+        return sorted(unique.values(), key=lambda item: item.stat().st_mtime, reverse=True)
+
+    def create_manual_backup(self) -> Path:
+        """Create a timestamped manual backup in the backup directory."""
+        db_file = Path(self.db_path).resolve()
+        if not db_file.exists():
+            raise FileNotFoundError(f"Database file not found: {db_file}")
+
+        conn = self.connect()
+        conn.commit()
+
+        timestamp = datetime.now().strftime("%Y-%b-%d_%a_%H-%M-%S")
+        extension = db_file.suffix or ".db"
+        backup_name = f"AbCS_backup_{timestamp}{extension}"
+        backup_path = self.get_backup_directory() / backup_name
+        shutil.copy2(db_file, backup_path)
+        return backup_path
+
+    def restore_from_backup(self, backup_file: str | Path):
+        """Restore current database from a selected backup file."""
+        source = Path(backup_file).resolve()
+        if not source.exists() or not source.is_file():
+            raise FileNotFoundError(f"Backup file not found: {source}")
+
+        destination = Path(self.db_path).resolve()
+        self.close()
+
+        if source != destination:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+
+        self.initialize_database()
+
+    def full_reset_database(self, create_backup: bool = True) -> Optional[Path]:
+        """Reset database to a fresh schema, optionally creating a backup first."""
+        backup_path: Optional[Path] = None
+        db_file = Path(self.db_path).resolve()
+
+        if create_backup and db_file.exists():
+            backup_path = self.create_manual_backup()
+
+        self.close()
+        if db_file.exists():
+            db_file.unlink()
+
+        self.initialize_database()
+        return backup_path
+
     def vacuum(self):
         """Optimize database (VACUUM command)."""
         conn = self.connect()
