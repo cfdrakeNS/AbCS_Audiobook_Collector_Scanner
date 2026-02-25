@@ -1,5 +1,12 @@
 # AbCS User Guide (Draft)
 
+## 2026-02-25 Change Log
+
+- Import performance baseline updated with local SSD comparison against USB results.
+- Import Window shortcuts/docs updated: Export is Alt+X; scan-time cancel is Alt+N; `Add All Valid` removed.
+- Import error filter options updated to include Fallback and Corrected.
+- Import Progress behavior documented: status phase messages `Scanning x/x` then `Adding x/x`, with Alt+/ status read verified with JAWS.
+
 ## Overview
 
 AbCS (Audio Book Collector Scanner) is an audiobook collection manager with search, filtering, editing, and metadata import.
@@ -33,7 +40,8 @@ When AbCS starts for the first time, the book list may be empty.
 
 - File (Alt+F): New Book, Import, Quit
 - View (Alt+V): Open Focused Item (Ctrl+Enter), zoom controls
-- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
+- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, 
+/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
 
 ### Header controls
@@ -148,6 +156,33 @@ Use this window to apply bulk changes to selected books.
 - Focus list: Alt+B
 - Close: Alt+C or Escape
 
+## Backup / Restore Window
+
+Open from Main Window: Manage (Alt+M) -> Backup/Restore.
+
+Use this window to create database backups, restore a selected backup, or perform a full reset.
+
+### Main controls
+
+- Backup List: Alt+L
+- Browse for restore file: Browse button
+- Restore file field: Alt+T (read-only)
+
+### Actions
+
+- Backup: Alt+B
+- Restore: Alt+R
+- Full Reset: Alt+F
+- Close: Alt+C or Escape
+- Read status bar: Alt+/
+- Keyboard shortcut help: F1
+
+### Notes
+
+- Backup creates a database snapshot in the configured backup folder.
+- Restore replaces current data with the selected backup file.
+- Full Reset clears all data and recreates an empty database.
+
 ## Import Window
 
 The Import Window scans a folder, validates metadata, and adds valid books to the database.
@@ -159,7 +194,7 @@ Below the header area, there are five controls left to right:
 1. Collection (Alt+C) - target collection for imported books.
 2. Folder (Alt+F) - selected scan path (read-only field).
 3. Browse (Alt+W) - choose folder to scan.
-4. Errors Filter (Alt+E) - All, Valid, Warning, Error, Duplicate.
+4. Errors Filter (Alt+E) - All, Valid, Warning, Error, Duplicate, Fallback, Corrected.
 5. Scan (Alt+S) - starts scan for supported audio files.
 
 ### Import list window detail
@@ -177,10 +212,10 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 ### Footer actions
 
 - Add Selected: Alt+I
-- Add All Valid: Alt+V
+- Export list to CSV: Alt+X
 - Close: Alt+L
 - Escape: same action as Close (or cancel if an operation is running)
-- During scanning, Close changes to Cancel and uses Alt+C
+- During scanning, Close changes to Cancel and uses Alt+N
 - Alt+/ reads the status bar message
 
 ### Import shortcuts summary
@@ -188,8 +223,22 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 - Alt+/, Alt+C, Alt+F, Alt+W, Alt+E, Alt+S, Alt+B
 - Alt+1 to Alt+5
 - Ctrl+Enter
-- Alt+I, Alt+V, Alt+L
+- Alt+I, Alt+X, Alt+L, Alt+N
 - F1
+
+## Import Progress Window
+
+The Import Progress window is shown during scans in compact mode.
+
+- Progress status bar reports phase messages:
+	- Scanning phase: `Scanning x/x`
+	- Import phase: `Adding x/x`
+- Counters shown: Files scanned, Elapsed time, Books added, Read errors.
+- Alt+/ reads the current progress status message (JAWS verified).
+- Cancel scan: Alt+L
+- Close (after completion): Alt+C or Escape
+
+Note: progress information fields are display-only and are not part of tab focus.
 
 ## Preferences Window
 

@@ -5,12 +5,13 @@ Primary interface for browsing and managing audiobook collection.
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
+    QTableView, QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
     QPushButton, QLabel, QStatusBar, QMessageBox, QHeaderView,
     QAbstractItemView, QMenu, QDialog, QTextEdit, QSizePolicy
 )
 from PySide6.QtCore import (
-    Qt, Signal, QTimer, QItemSelection, QItemSelectionModel, QEvent, QPoint, QSettings
+    Qt, Signal, QTimer, QItemSelection, QItemSelectionModel, QEvent, QPoint, QSettings,
+    QAbstractTableModel, QModelIndex
 )
 from PySide6.QtGui import QKeyEvent, QAction, QShortcut, QKeySequence, QColor, QPalette, QMouseEvent, QAccessible
 from PySide6.QtWidgets import QApplication
@@ -61,6 +62,107 @@ class JAWSCompatibleSearchBox(QLineEdit):
 
         # For all other keys, use default handling
         super().keyPressEvent(event)
+
+
+class BookTableView(QTableView):
+    """QTableView with QTableWidget-like convenience helpers."""
+
+    def rowCount(self) -> int:
+        model = self.model()
+        return model.rowCount() if model else 0
+
+    def columnCount(self) -> int:
+        model = self.model()
+        return model.columnCount() if model else 0
+
+    def currentRow(self) -> int:
+        return self.currentIndex().row()
+
+    def currentColumn(self) -> int:
+        return self.currentIndex().column()
+
+    def setCurrentCell(self, row: int, column: int):
+        model = self.model()
+        if model is None:
+            return
+        index = model.index(row, column)
+        self.setCurrentIndex(index)
+
+
+class BookTableModel(QAbstractTableModel):
+    """Model-backed view for large book lists."""
+
+    HEADERS = [
+        "Author", "Title", "Year", "Plot", "Series",
+        "Genre", "Time", "Tracks", "Read", "Added"
+    ]
+
+    def __init__(self, books: list[Book] | None = None, parent=None):
+        super().__init__(parent)
+        self._books = books or []
+
+    def set_books(self, books: list[Book]):
+        self.beginResetModel()
+        self._books = books
+        self.endResetModel()
+
+    def rowCount(self, parent: QModelIndex | None = None) -> int:
+        return len(self._books)
+
+    def columnCount(self, parent: QModelIndex | None = None) -> int:
+        return len(self.HEADERS)
+
+    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+        if not index.isValid():
+            return None
+
+        row = index.row()
+        col = index.column()
+        if row < 0 or row >= len(self._books):
+            return None
+
+        book = self._books[row]
+
+        if role in (Qt.DisplayRole, Qt.AccessibleTextRole):
+            if col == 0:
+                return book.author_name or ""
+            if col == 1:
+                return book.title or ""
+            if col == 2:
+                return str(book.year) if book.year else ""
+            if col == 3:
+                return "Yes" if book.has_substantial_comment else ""
+            if col == 4:
+                return book.series_name or ""
+            if col == 5:
+                return book.genre_name or ""
+            if col == 6:
+                return book.time_display or ""
+            if col == 7:
+                return str(book.tracks or 0)
+            if col == 8:
+                if book.read_date:
+                    return book.read_date if isinstance(book.read_date, str) else str(book.read_date)
+                return ""
+            if col == 9:
+                if book.date_added:
+                    return book.date_added if isinstance(book.date_added, str) else str(book.date_added)
+                return ""
+
+        if role == Qt.TextAlignmentRole and col == 7:
+            return Qt.AlignRight | Qt.AlignVCenter
+
+        return None
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
+        if role != Qt.DisplayRole:
+            return None
+        if orientation == Qt.Horizontal:
+            if 0 <= section < len(self.HEADERS):
+                return self.HEADERS[section]
+            return None
+        # Empty vertical headers to avoid row number announcements
+        return ""
 
 
 class MainWindow(QMainWindow):
@@ -487,6 +589,11 @@ class MainWindow(QMainWindow):
         self.delete_button.setStyleSheet(button_stylesheet)
         self.cancel_button.setStyleSheet(button_stylesheet)
 
+        # Keep table fixed-content columns scaled without expensive content-size scans.
+        if hasattr(self, 'table'):
+            self._apply_fixed_content_column_widths()
+            self.update_stretch_columns()
+
     def apply_control_styles(self):
         """Re-apply dynamic styles for controls and table after theme/scale changes."""
         self.on_scale_changed(self.scaler.current_scale)
@@ -529,7 +636,7 @@ class MainWindow(QMainWindow):
 
     def create_table(self):
         """Create books table."""
-        self.table = QTableWidget()
+        self.table = BookTableView()
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
@@ -537,8 +644,8 @@ class MainWindow(QMainWindow):
         # mw#11: Selection checkbox column removed
         columns = ["Author", "Title", "Year", "Plot", "Series",
                    "Genre", "Time", "Tracks", "Read", "Added"]
-        self.table.setColumnCount(len(columns))
-        self.table.setHorizontalHeaderLabels(columns)
+        self.book_model = BookTableModel([])
+        self.table.setModel(self.book_model)
         self.selection_column = -1  # No selection column
 
         # Table settings - SelectItems for cell-level focus, row selection handled manually
@@ -549,6 +656,7 @@ class MainWindow(QMainWindow):
         self.table.verticalHeader().setVisible(False)
         # mw#22: Enable horizontal scrollbar so columns don't get cut off
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setWordWrap(False)
 
         # Disable hover highlighting for low-vision comfort
         self.table.setMouseTracking(False)
@@ -588,13 +696,8 @@ class MainWindow(QMainWindow):
             5: 1.5,   # Genre
         }
 
-        # Fixed content columns - use ResizeToContents so they're always visible
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Year
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Plot
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Time
-        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Tracks
-        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # Read
-        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)  # Added
+        # Fixed content columns - use fixed/scaled widths for large dataset performance
+        self._apply_fixed_content_column_widths()
 
         # Stretch columns use Interactive mode - we control sizing in resizeEvent
         header.setSectionResizeMode(0, QHeaderView.Interactive)  # Author
@@ -606,17 +709,15 @@ class MainWindow(QMainWindow):
         header.sectionClicked.connect(self.on_table_header_clicked)
 
         # Double-click to open details
-        self.table.cellDoubleClicked.connect(self.on_book_double_click)
+        self.table.doubleClicked.connect(self.on_table_double_clicked)
 
         # Selection change handler
         self.table.selectionModel().selectionChanged.connect(
             self.on_table_selection_changed)
 
         # Current cell change handler (screen reader announcements)
-        self.table.currentCellChanged.connect(self.on_current_cell_changed)
-
-        # Checkbox change handler
-        self.table.itemChanged.connect(self.on_table_item_changed)
+        self.table.selectionModel().currentChanged.connect(
+            self.on_current_cell_changed)
 
         # Install event filter for custom mouse handling
         self.table.viewport().installEventFilter(self)
@@ -625,6 +726,32 @@ class MainWindow(QMainWindow):
         self.table.mousePressEvent = self.table_mouse_press
         self.table.mouseDoubleClickEvent = self.table_mouse_double_click  # mw#18
         self.table.keyPressEvent = self.table_key_press
+
+    def _apply_fixed_content_column_widths(self):
+        """Set fixed/scaled widths for non-stretch content columns.
+
+        Using fixed widths avoids expensive ResizeToContents recalculation on each
+        refresh, which can be very slow on 30k+ row datasets.
+        """
+        if not hasattr(self, 'table'):
+            return
+
+        header = self.table.horizontalHeader()
+        scale = max(getattr(self.scaler, 'current_scale', 100), 50) / 100.0
+
+        # Base widths at 100% scale (pixels)
+        base_widths = {
+            2: 72,   # Year
+            3: 62,   # Plot
+            6: 82,   # Time
+            7: 78,   # Tracks
+            8: 116,  # Read
+            9: 116,  # Added
+        }
+
+        for col, base_width in base_widths.items():
+            header.setSectionResizeMode(col, QHeaderView.Fixed)
+            self.table.setColumnWidth(col, max(int(base_width * scale), 48))
 
     def create_footer(self) -> QHBoxLayout:
         """Create footer with action buttons and info."""
@@ -1320,128 +1447,16 @@ class MainWindow(QMainWindow):
                     if book.book_id in self.duplicate_mode_book_ids
                 ]
 
-            # DISABLE UPDATES WHILE POPULATING TABLE
+            # DISABLE UPDATES WHILE RESETTING MODEL
             self.table.setUpdatesEnabled(False)
-            # CRITICAL: Disable sorting during population
             self.table.setSortingEnabled(False)
 
-            # Clear table completely - setRowCount(0) is cleaner than clearContents
-            # clearContents() leaves internal Qt structures that accumulate over time
-            self.table.setRowCount(0)  # Complete reset, not just clearContents
-            self.table.setRowCount(len(self.books))
+            focus_ctx = self._capture_table_focus_context()
+            self.book_model.set_books(self.books)
+            self._restore_table_focus_context(focus_ctx)
 
-            for row, book in enumerate(self.books):
-                # Create new items - handle None values defensively
-                # Set accessible text to suppress row number announcements in JAWS
-                author_item = QTableWidgetItem(book.author_name or "")
-                author_item.setData(Qt.AccessibleTextRole,
-                                    book.author_name or "")
-                self.table.setItem(row, 0, author_item)
-
-                title_item = QTableWidgetItem(book.title or "")
-                title_item.setData(Qt.AccessibleTextRole, book.title or "")
-                self.table.setItem(row, 1, title_item)
-
-                year_str = str(book.year) if book.year else ""
-                year_item = QTableWidgetItem(year_str)
-                year_item.setData(Qt.AccessibleTextRole, year_str)
-                year_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 2, year_item)
-
-                # Plot (comments) indicator column - "Yes" if comments > 100 chars
-                plot_text = "Yes" if book.has_substantial_comment else ""
-                plot_item = QTableWidgetItem(plot_text)
-                plot_item.setData(Qt.AccessibleTextRole, plot_text)
-                plot_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 3, plot_item)
-
-                series_item = QTableWidgetItem(book.series_name or "")
-                series_item.setData(Qt.AccessibleTextRole,
-                                    book.series_name or "")
-                series_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 4, series_item)
-
-                genre_item = QTableWidgetItem(book.genre_name or "")
-                genre_item.setData(Qt.AccessibleTextRole,
-                                   book.genre_name or "")
-                genre_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 5, genre_item)
-
-                time_item = QTableWidgetItem(book.time_display or "")
-                time_item.setData(Qt.AccessibleTextRole,
-                                  book.time_display or "")
-                time_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 6, time_item)
-
-                tracks_str = str(book.tracks or 0)
-                tracks_item = QTableWidgetItem(tracks_str)
-                tracks_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                tracks_item.setData(Qt.AccessibleTextRole, tracks_str)
-                tracks_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 7, tracks_item)
-
-                # Read date column
-                if book.read_date:
-                    if isinstance(book.read_date, str):
-                        read_date_str = book.read_date[:10]
-                    else:
-                        read_date_str = book.read_date.strftime("%Y-%m-%d")
-                else:
-                    read_date_str = ""
-                read_item = QTableWidgetItem(read_date_str)
-                read_item.setData(Qt.AccessibleTextRole, read_date_str)
-                read_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 8, read_item)
-
-                # Date Added
-                if book.date_added:
-                    if isinstance(book.date_added, str):
-                        date_str = book.date_added[:10]
-                    else:
-                        date_str = book.date_added.strftime("%Y-%m-%d")
-                else:
-                    date_str = ""
-                added_item = QTableWidgetItem(date_str)
-                added_item.setData(Qt.AccessibleTextRole, date_str)
-                added_item.setData(
-                    Qt.AccessibleDescriptionRole,
-                    f"{book.title or ''} by {book.author_name or ''}".strip()
-                )
-                self.table.setItem(row, 9, added_item)
-
-                # mw#11: Selection checkbox column removed - selection indicated by row highlight
-
-            # RE-ENABLE UPDATES FIRST
+            # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
-
-            # Sync selection indicators after repopulating
-            self.sync_selection_indicators()
-
-            # Set empty vertical header labels to prevent JAWS from reading row numbers
-            # Even though header is hidden, JAWS still accesses it via accessibility API
-            vertical_header_labels = [""] * len(self.books)
-            self.table.setVerticalHeaderLabels(vertical_header_labels)
 
             # Update status bar with filter info
             filter_info = ""
@@ -1518,13 +1533,39 @@ class MainWindow(QMainWindow):
         self._last_header_sort_column = column
         self._last_header_sort_order = next_order
 
-        self.table.sortItems(column, next_order)
+        self._sort_books_in_memory(column, next_order)
         self.table.horizontalHeader().setSortIndicator(column, next_order)
 
-        header_item = self.table.horizontalHeaderItem(column)
-        header_text = header_item.text() if header_item else "Field"
+        header_text = self.book_model.headerData(
+            column, Qt.Horizontal, Qt.DisplayRole) or "Field"
         direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
         self.sort_label.setText(f"Sorted by: {header_text} ({direction})")
+
+    def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
+        """Sort books list for non-primary columns without SQL roundtrip."""
+        if not self.books:
+            return
+
+        focus_ctx = self._capture_table_focus_context()
+
+        def sort_key(book: Book):
+            if column == 2:  # Year
+                return (book.year is None, book.year or 0)
+            if column == 3:  # Plot (comments indicator)
+                return (not book.has_substantial_comment, book.title or "")
+            if column == 6:  # Time
+                return ((book.time_hours or 0) * 60 + (book.time_minutes or 0))
+            if column == 7:  # Tracks
+                return (book.tracks or 0)
+            if column == 8:  # Read date
+                return book.read_date or ""
+            if column == 9:  # Date added
+                return book.date_added or ""
+            return ""
+
+        self.books.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
+        self.book_model.set_books(self.books)
+        self._restore_table_focus_context(focus_ctx)
 
     def _set_primary_sort_indicator(self, order_by: str):
         """Keep sort indicator aligned with Order By combo for primary columns."""
@@ -1711,6 +1752,12 @@ class MainWindow(QMainWindow):
         if 0 <= row < len(self.books):
             self._handle_book_table_double_click(row, column)
 
+    def on_table_double_clicked(self, index: QModelIndex):
+        """Handle double-click signal from the table view."""
+        if not index.isValid():
+            return
+        self.on_book_double_click(index.row(), index.column())
+
     def on_table_selection_changed(self):
         """Handle table selection change and announce selection."""
         # Skip if we're programmatically updating selection
@@ -1824,7 +1871,7 @@ class MainWindow(QMainWindow):
         if event.button() == Qt.LeftButton:
             index = self.table.indexAt(event.position().toPoint())
             if not index.isValid():
-                QTableWidget.mousePressEvent(self.table, event)
+                QTableView.mousePressEvent(self.table, event)
                 return
 
             modifiers = event.modifiers()
@@ -1870,7 +1917,7 @@ class MainWindow(QMainWindow):
             event.accept()
             return
 
-        QTableWidget.mousePressEvent(self.table, event)
+        QTableView.mousePressEvent(self.table, event)
 
     def table_mouse_double_click(self, event):
         """Handle mouse double-click from table viewport."""
@@ -1883,7 +1930,7 @@ class MainWindow(QMainWindow):
                     self._handle_book_table_double_click(row, column)
                     event.accept()
                     return
-        QTableWidget.mouseDoubleClickEvent(self.table, event)
+        QTableView.mouseDoubleClickEvent(self.table, event)
 
     def _handle_book_table_double_click(self, row: int, column: int):
         """Route double-click based on focused column."""
@@ -1969,7 +2016,7 @@ class MainWindow(QMainWindow):
 
             # Ctrl+Arrow: just move (Qt default)
             if modifiers & Qt.ControlModifier:
-                QTableWidget.keyPressEvent(self.table, event)
+                QTableView.keyPressEvent(self.table, event)
                 return
 
             # Plain arrow: move without selection
@@ -2042,7 +2089,7 @@ class MainWindow(QMainWindow):
                 return
         else:
             # Call original key press handler
-            QTableWidget.keyPressEvent(self.table, event)
+            QTableView.keyPressEvent(self.table, event)
 
     def focus_book_title(self):
         """Focus book table and move to the Title column."""
@@ -2220,8 +2267,10 @@ class MainWindow(QMainWindow):
             index = self.table.model().index(row, col)
             self.table.scrollTo(index)
 
-    def on_current_cell_changed(self, current_row: int, current_col: int, previous_row: int, previous_col: int):
+    def on_current_cell_changed(self, current: QModelIndex, previous: QModelIndex):
         """Handle current cell changes - track last focused book for search ESC restore."""
+        current_row = current.row()
+        current_col = current.column()
         # Track the last focused book in the table for ESC from search restore
         if 0 <= current_row < len(self.books):
             self._last_table_book_id = self.books[current_row].book_id
@@ -2247,8 +2296,8 @@ class MainWindow(QMainWindow):
             return
 
         book = self.books[row]
-        header_item = self.table.horizontalHeaderItem(col)
-        header_text = header_item.text() if header_item else "Field"
+        header_text = self.book_model.headerData(
+            col, Qt.Horizontal, Qt.DisplayRole) or "Field"
 
         # Build announcement with book context
         value_text = ""
@@ -2376,24 +2425,8 @@ class MainWindow(QMainWindow):
         """Sync text color indicators with current selection.
         mw#11: Checkbox column removed, only using text color highlighting.
         """
-        self._updating_selection_ui = True
-        try:
-            text_color_selected = self.palette().color(QPalette.Highlight)
-            text_color_default = self.palette().color(QPalette.Text)
-
-            for row in range(self.table.rowCount()):
-                is_selected = False
-                if 0 <= row < len(self.books):
-                    is_selected = self.books[row].book_id in self.selected_book_ids
-
-                for col in range(self.table.columnCount()):
-                    item = self.table.item(row, col)
-                    if item is None:
-                        continue
-                    item.setForeground(
-                        QColor(text_color_selected if is_selected else text_color_default))
-        finally:
-            self._updating_selection_ui = False
+        # No-op for model-backed table; selection highlight is handled by the view.
+        return
 
     def on_update_clicked(self):
         """Handle Update button click."""

@@ -3,6 +3,8 @@ Import Window
 Main interface for scanning folders and importing audiobooks.
 """
 
+import csv
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QStatusBar,
@@ -18,7 +20,7 @@ from typing import Optional
 
 from database import (
     DatabaseManager, BookQueries, AuthorQueries,
-    GenreQueries, CollectionQueries, Book, Collection
+    GenreQueries, CollectionQueries, Book, Collection, SearchFilter
 )
 from core import BookScanner, ImportValidator, ImportScanner
 from accessibility.scaling import UIScaler
@@ -38,7 +40,7 @@ class ImportWindow(QDialog):
     """
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'V', 'W'
+        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'W', 'X'
     }
 
     COL_AUTHOR = 0
@@ -176,7 +178,7 @@ class ImportWindow(QDialog):
                 return int(value)
         return None
 
-    def _build_book_from_scan(self, data: dict) -> Book:
+    def _build_book_from_scan(self, data: dict, defer_commits: bool = False) -> Book:
         """Create a Book object from scanned data."""
         title = (data.get("title") or "").strip()
         author_text = (data.get("author") or "").strip()
@@ -186,10 +188,16 @@ class ImportWindow(QDialog):
         if target_collection_id is None:
             raise ValueError("No collection selected")
 
-        author_id = self.author_queries.get_or_create(author_text)
+        author_id = self.author_queries.get_or_create(
+            author_text,
+            commit=not defer_commits,
+        )
         genre_id = None
         if genre_text:
-            genre_id = self.genre_queries.get_or_create(genre_text)
+            genre_id = self.genre_queries.get_or_create(
+                genre_text,
+                commit=not defer_commits,
+            )
 
         return Book(
             title=title,
@@ -221,7 +229,7 @@ class ImportWindow(QDialog):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
 
-        collection_label = QLabel("&Collection:")
+        collection_label = QLabel("Co&llection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Import collection")
         self.collection_combo.setAccessibleDescription(
@@ -252,7 +260,7 @@ class ImportWindow(QDialog):
         self.error_filter_combo = QComboBox()
         self.error_filter_combo.setAccessibleName("Import error filter")
         self.error_filter_combo.setAccessibleDescription(
-            "Filter import list by All, Valid, Warning, Error, Duplicate, Fallback, or Corrected - Alt+E")
+            "Filter import list by All, Valid, Warning, Error, Duplicate, Fallback, or Corrected - Alt+E. Duplicates are kept in review list and are not auto-added.")
         self.error_filter_combo.addItem("All", "all")
         self.error_filter_combo.addItem("Valid", "valid")
         self.error_filter_combo.addItem("Warning", "warning")
@@ -337,13 +345,13 @@ class ImportWindow(QDialog):
         self.import_selected_button.setAutoDefault(True)
         footer_layout.addWidget(self.import_selected_button)
 
-        self.import_all_button = QPushButton("Add All Valid")
-        self.import_all_button.setAccessibleName("Add All Valid")
-        self.import_all_button.setAccessibleDescription(
-            "Add all valid items - Alt+V")
-        self.import_all_button.setDefault(False)
-        self.import_all_button.setAutoDefault(True)
-        footer_layout.addWidget(self.import_all_button)
+        self.export_button = QPushButton("E&xport")
+        self.export_button.setAccessibleName("Export")
+        self.export_button.setAccessibleDescription(
+            "Export current import review list to CSV spreadsheet - Alt+X")
+        self.export_button.setDefault(False)
+        self.export_button.setAutoDefault(True)
+        footer_layout.addWidget(self.export_button)
 
         self.cancel_button = QPushButton("C&lose")
         self.cancel_button.setAccessibleName("Close")
@@ -354,13 +362,16 @@ class ImportWindow(QDialog):
         footer_layout.addWidget(self.cancel_button)
         self._update_cancel_button_state()
 
+        layout.addLayout(footer_layout)
+
         self.setTabOrder(self.collection_combo, self.folder_edit)
         self.setTabOrder(self.folder_edit, self.browse_button)
         self.setTabOrder(self.browse_button, self.error_filter_combo)
         self.setTabOrder(self.error_filter_combo, self.scan_button)
         self.setTabOrder(self.scan_button, self.table)
-
-        layout.addLayout(footer_layout)
+        self.setTabOrder(self.table, self.import_selected_button)
+        self.setTabOrder(self.import_selected_button, self.export_button)
+        self.setTabOrder(self.export_button, self.cancel_button)
 
     def apply_control_styles(self):
         """Apply consistent styling to inputs and buttons."""
@@ -590,7 +601,7 @@ class ImportWindow(QDialog):
         self.collection_combo.currentIndexChanged.connect(
             self.on_collection_changed)
         self.import_selected_button.clicked.connect(self.on_import_selected)
-        self.import_all_button.clicked.connect(self.on_import_all)
+        self.export_button.clicked.connect(self.on_export_csv)
         self.cancel_button.clicked.connect(self.on_cancel)
         self.table.cellDoubleClicked.connect(self.on_open_detail)
         self.table.itemSelectionChanged.connect(
@@ -626,7 +637,7 @@ class ImportWindow(QDialog):
         message_lines = []
         if valid_count > 0:
             message_lines.append(
-                f"There are {valid_count} valid books not added!"
+                f"There are {valid_count} books not added!"
             )
         message_lines.append(
             "Current scan results in this window will be discarded."
@@ -731,9 +742,9 @@ class ImportWindow(QDialog):
         self.add_selected_shortcut.activated.connect(
             self.import_selected_button.click)
 
-        self.add_all_shortcut = QShortcut(QKeySequence("Alt+V"), self)
-        self.add_all_shortcut.setContext(Qt.ApplicationShortcut)
-        self.add_all_shortcut.activated.connect(self.import_all_button.click)
+        self.export_shortcut = QShortcut(QKeySequence("Alt+X"), self)
+        self.export_shortcut.setContext(Qt.ApplicationShortcut)
+        self.export_shortcut.activated.connect(self.export_button.click)
 
         self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.on_cancel)
@@ -787,7 +798,7 @@ class ImportWindow(QDialog):
             ("Alt+3-5", "Jump to Year..."),
             ("Ctrl+Enter", "Open selected import detail"),
             ("Alt+I", "Add selected"),
-            ("Alt+V", "Add all valid"),
+            ("Alt+X", "Export list to CSV"),
             ("Alt+L", "Close window"),
             ("Alt+N", "Cancel scan (when running)"),
             ("F1", "Show keyboard shortcuts"),
@@ -820,6 +831,19 @@ class ImportWindow(QDialog):
         table.setFont(font)
 
         layout.addWidget(table)
+
+        policy_note = QLabel(
+            "Duplicate policy: matching duplicates remain in the review list and are not auto-added."
+        )
+        policy_note.setWordWrap(True)
+        policy_note.setAccessibleName("Duplicate policy note")
+        policy_note.setAccessibleDescription(
+            "Explains that duplicates stay in the review list and are not added automatically"
+        )
+        note_font = policy_note.font()
+        note_font.setPointSize(self.scaler.get_scaled_size(10))
+        policy_note.setFont(note_font)
+        layout.addWidget(policy_note)
 
         close_button = QPushButton("Close")
         close_button.setAccessibleName("Close")
@@ -1083,7 +1107,7 @@ class ImportWindow(QDialog):
         count = len(self.selected_rows)
         current_row = self.table.currentRow()
         title = self._row_title(current_row)
-        shortcuts_text = "Alt+I Add selected, Alt+V Add all valid, Alt+L Close"
+        shortcuts_text = "Alt+I Add selected, Alt+X Export, Alt+L Close"
 
         if count == 1:
             message = f"{title} - selected. {shortcuts_text}"
@@ -1253,6 +1277,7 @@ class ImportWindow(QDialog):
         scan_was_canceled = False
         self.progress_window = ImportProgressWindow(
             self.scaler, self.theme_manager, parent=self)
+        self.progress_window.set_compact_mode(True)
         self.progress_window.finished.connect(self._on_progress_window_closed)
         self.progress_window.show()
         self.progress_window.raise_()
@@ -1265,24 +1290,43 @@ class ImportWindow(QDialog):
         self.set_status("Scan started")
         scan_start = time.perf_counter()
         elapsed_text = "00:00"
+        scan_files_processed = 0
+        scan_total_files = 0
+        progress_update_interval = 0.15
+        counters_update_interval = 0.15
+        next_progress_ui_update = scan_start
+        next_counters_ui_update = scan_start
 
         def on_progress(processed: int, total: int, file_path: str):
-            if total <= 0:
-                return
+            nonlocal scan_files_processed, scan_total_files, next_progress_ui_update
+            scan_files_processed = int(processed)
+            scan_total_files = int(total)
             if self.progress_window and self.progress_window.cancel_requested:
                 self._cancel_scan_requested = True
+
+            now = time.perf_counter()
+            is_final_step = total > 0 and processed >= total
+            should_update_ui = is_final_step or now >= next_progress_ui_update
+
+            if not should_update_ui:
+                return
+
             current_elapsed = self._format_elapsed(
-                time.perf_counter() - scan_start)
-            current_title = os.path.splitext(os.path.basename(file_path))[0]
-            current_author = os.path.basename(os.path.dirname(file_path))
+                now - scan_start)
+
             if self.progress_window:
                 self.progress_window.update_scan_progress(
                     processed=processed,
                     total=total,
                     elapsed_text=current_elapsed,
-                    current_title=current_title,
-                    current_author=current_author,
                 )
+                if total > 0:
+                    self.progress_window.set_status(
+                        f"Scanning {processed}/{total}")
+                else:
+                    self.progress_window.set_status(f"Scanning {processed}")
+
+            next_progress_ui_update = now + progress_update_interval
             QApplication.processEvents()
 
         try:
@@ -1305,7 +1349,9 @@ class ImportWindow(QDialog):
             if self.progress_window and self.progress_window.cancel_requested:
                 scan_was_canceled = True
 
-        existing_books = self.book_queries.get_all()
+        existing_books = self.book_queries.get_all(
+            filter_criteria=SearchFilter(collection_id=target_collection_id)
+        )
         existing_list = [
             {
                 "title": b.title,
@@ -1316,6 +1362,32 @@ class ImportWindow(QDialog):
             for b in existing_books
         ]
 
+        mode = self.validator.duplicate_match_mode
+        include_year = mode in (
+            "title_author_year",
+            "title_author_year_collection",
+        )
+        include_collection = mode in (
+            "title_author",
+            "title_author_year_collection",
+        )
+        fuzzy_enabled = self.validator.duplicate_fuzzy_threshold > 0
+
+        def _dup_key(book_dict: dict, collection_id: int | None):
+            title_key = (book_dict.get("title") or "").strip().lower()
+            author_key = (book_dict.get("author") or "").strip().lower()
+            key_parts = [title_key, author_key]
+            if include_year:
+                key_parts.append(book_dict.get("year"))
+            if include_collection:
+                key_parts.append(collection_id)
+            return tuple(key_parts)
+
+        existing_exact_keys = {
+            _dup_key(b, b.get("collection_id"))
+            for b in existing_list
+        }
+
         valid_count = 0
         error_count = 0
         warning_count = 0
@@ -1323,177 +1395,203 @@ class ImportWindow(QDialog):
         read_error_count = 0
         added_count = 0
 
-        for row, book in enumerate(books):
-            self.import_scanner.apply_preferences(book)
+        conn = self.db.connect()
+        transaction_open = False
+        try:
+            conn.execute("BEGIN")
+            transaction_open = True
 
-            if self.flip_author_names:
-                author_value = (book.get("author") or "").strip()
-                if author_value:
-                    book["author"] = self.validator.flip_author_name(
-                        author_value)
+            # Update progress window to show processing phase starting
+            if self.progress_window:
+                self.progress_window.scan_progress.setValue(100)
+                self.progress_window.scan_progress.setFormat(
+                    "Processing books...")
+                self.progress_window.set_status(
+                    f"Adding 0/{len(books)}")
+                QApplication.processEvents()
 
-            errors = list(book.get("errors", []))
-            errors.extend(self.validator.validate_book(book))
+            for row, book in enumerate(books):
+                self.import_scanner.apply_preferences(book)
 
-            is_duplicate = self.validator.is_duplicate(
-                book,
-                existing_list,
-                target_collection_id=target_collection_id,
-            )
-            if is_duplicate:
-                errors = [
-                    err for err in errors
-                    if str(err).strip().lower() != "duplicate"
-                ]
-                errors.insert(0, "Duplicate")
-                duplicate_count += 1
+                if self.flip_author_names:
+                    author_value = (book.get("author") or "").strip()
+                    if author_value:
+                        book["author"] = self.validator.flip_author_name(
+                            author_value)
 
-            current_read_errors = 0
-            for err in errors:
-                if self.validator.categorize_error(err) == "read":
-                    current_read_errors += 1
-            read_error_count += current_read_errors
+                errors = list(book.get("errors", []))
+                errors.extend(self.validator.validate_book(book))
 
-            has_hard_error = any(
-                self.validator.categorize_error(err) in ("read", "parse")
-                for err in errors
-            )
-            has_warning = any(
-                self.validator.categorize_error(err) == "warning"
-                for err in errors
-            )
-
-            has_fallback = any(
-                str(err).upper().startswith("F:")
-                for err in errors
-            )
-            has_correction = any(
-                str(err).upper().startswith("C:")
-                for err in errors
-            )
-
-            outcomes = set()
-            if is_duplicate:
-                outcomes.add("duplicate")
-            if has_hard_error:
-                outcomes.add("error")
-            elif has_warning:
-                outcomes.add("warning")
-            if has_fallback:
-                outcomes.add("fallback_used")
-            if has_correction:
-                outcomes.add("autocorrect_used")
-
-            # Auto-add valid books to database during scan
-            auto_added = False
-            should_auto_add = (
-                not is_duplicate and not has_hard_error and not has_warning
-            )
-            if should_auto_add:
-                try:
-                    book_to_add = self._build_book_from_scan(book)
-                    self.book_queries.insert(book_to_add)
-                    auto_added = True
-                    outcomes.add("added")
-                    added_count += 1
-                    self.total_imported += 1
-                    # Update existing_list for future duplicate checks
-                    existing_list.append(
-                        {
-                            "title": book.get("title", ""),
-                            "author": book.get("author", ""),
-                            "year": book.get("year"),
-                            "collection_id": target_collection_id,
-                        }
+                candidate_key = _dup_key(book, target_collection_id)
+                is_duplicate = candidate_key in existing_exact_keys
+                if not is_duplicate and fuzzy_enabled:
+                    is_duplicate = self.validator.is_duplicate(
+                        book,
+                        existing_list,
+                        target_collection_id=target_collection_id,
                     )
-                except Exception as exc:
-                    # Add failed auto-add as error
-                    errors.append(f"E: {str(exc)}")
-                    has_hard_error = True
-                    outcomes.discard("added")
+                if is_duplicate:
+                    errors = [
+                        err for err in errors
+                        if str(err).strip().lower() != "duplicate"
+                    ]
+                    errors.insert(0, "Duplicate")
+                    duplicate_count += 1
+
+                current_read_errors = 0
+                for err in errors:
+                    if self.validator.categorize_error(err) == "read":
+                        current_read_errors += 1
+                read_error_count += current_read_errors
+
+                has_hard_error = any(
+                    self.validator.categorize_error(err) in ("read", "parse")
+                    for err in errors
+                )
+                has_warning = any(
+                    self.validator.categorize_error(err) == "warning"
+                    for err in errors
+                )
+
+                has_fallback = any(
+                    str(err).upper().startswith("F:")
+                    for err in errors
+                )
+                has_correction = any(
+                    str(err).upper().startswith("C:")
+                    for err in errors
+                )
+
+                outcomes = set()
+                if is_duplicate:
+                    outcomes.add("duplicate")
+                if has_hard_error:
                     outcomes.add("error")
+                elif has_warning:
+                    outcomes.add("warning")
+                if has_fallback:
+                    outcomes.add("fallback_used")
+                if has_correction:
+                    outcomes.add("autocorrect_used")
 
-            status = "OK"
-            if is_duplicate:
-                status = "Duplicate"
-            elif has_hard_error:
-                status = "Error"
-            elif has_warning:
-                status = "Warning"
+                # Auto-add valid books to database during scan
+                auto_added = False
+                should_auto_add = (
+                    not is_duplicate and not has_hard_error and not has_warning
+                )
+                if should_auto_add:
+                    try:
+                        book_to_add = self._build_book_from_scan(
+                            book,
+                            defer_commits=True,
+                        )
+                        self.book_queries.insert(book_to_add, commit=False)
+                        auto_added = True
+                        outcomes.add("added")
+                        added_count += 1
+                        self.total_imported += 1
+                        # Update existing_list for future duplicate checks
+                        existing_list.append(
+                            {
+                                "title": book.get("title", ""),
+                                "author": book.get("author", ""),
+                                "year": book.get("year"),
+                                "collection_id": target_collection_id,
+                            }
+                        )
+                        existing_exact_keys.add(candidate_key)
+                    except Exception as exc:
+                        # Add failed auto-add as error
+                        errors.append(f"E: {str(exc)}")
+                        has_hard_error = True
+                        outcomes.discard("added")
+                        outcomes.add("error")
 
-            # Only add to review table if not auto-added
-            if not auto_added:
-                table_row = self.table.rowCount()
-                self.table.insertRow(table_row)
-                self.table.setItem(
-                    table_row, self.COL_AUTHOR, QTableWidgetItem(book.get("author", "")))
-                self.table.setItem(
-                    table_row, self.COL_TITLE, QTableWidgetItem(book.get("title", "")))
-                self.table.setItem(
-                    table_row, self.COL_YEAR, QTableWidgetItem(str(book.get("year") or "")))
-                error_summary = self._format_error_summary(errors)
-                self.table.setItem(table_row, self.COL_ERROR,
-                                   QTableWidgetItem(error_summary))
-                self.table.setItem(
-                    table_row, self.COL_PATH, QTableWidgetItem(book.get("folder", "")))
+                status = "OK"
+                if is_duplicate:
+                    status = "Duplicate"
+                elif has_hard_error:
+                    status = "Error"
+                elif has_warning:
+                    status = "Warning"
 
-                self.scanned_items.append({
+                # Only add to review table if not auto-added
+                if not auto_added:
+                    table_row = self.table.rowCount()
+                    self.table.insertRow(table_row)
+                    self.table.setItem(
+                        table_row, self.COL_AUTHOR, QTableWidgetItem(book.get("author", "")))
+                    self.table.setItem(
+                        table_row, self.COL_TITLE, QTableWidgetItem(book.get("title", "")))
+                    self.table.setItem(
+                        table_row, self.COL_YEAR, QTableWidgetItem(str(book.get("year") or "")))
+                    error_summary = self._format_error_summary(errors)
+                    self.table.setItem(table_row, self.COL_ERROR,
+                                       QTableWidgetItem(error_summary))
+                    self.table.setItem(
+                        table_row, self.COL_PATH, QTableWidgetItem(book.get("folder", "")))
+
+                    self.scanned_items.append({
+                        "book": book,
+                        "status": status,
+                        "errors": errors,
+                        "is_duplicate": is_duplicate,
+                        "outcomes": sorted(outcomes),
+                    })
+
+                    if not is_duplicate and not has_hard_error:
+                        if has_warning:
+                            warning_count += 1
+                            valid_count += 1
+                        else:
+                            valid_count += 1
+                    elif is_duplicate:
+                        pass  # already counted
+                    else:
+                        error_count += 1
+
+                # Track all scan outcomes
+                self.scan_outcomes.append({
                     "book": book,
-                    "status": status,
+                    "status": "Added" if auto_added else status,
                     "errors": errors,
                     "is_duplicate": is_duplicate,
                     "outcomes": sorted(outcomes),
                 })
 
-                if not is_duplicate and not has_hard_error:
-                    if has_warning:
-                        warning_count += 1
-                        valid_count += 1
-                    else:
-                        valid_count += 1
-                elif is_duplicate:
-                    pass  # already counted
-                else:
-                    error_count += 1
+                # Update counter/status on the same timer cadence.
+                now = time.perf_counter()
+                is_final_book = row >= len(books) - 1
+                if is_final_book or now >= next_counters_ui_update:
+                    if self.progress_window:
+                        self.progress_window.update_counters(
+                            books_added=added_count,
+                            read_errors=read_error_count,
+                        )
+                        self.progress_window.set_status(
+                            f"Adding {row + 1}/{len(books)}")
+                    next_counters_ui_update = now + counters_update_interval
+                    QApplication.processEvents()
 
-            # Track all scan outcomes
-            self.scan_outcomes.append({
-                "book": book,
-                "status": "Added" if auto_added else status,
-                "errors": errors,
-                "is_duplicate": is_duplicate,
-                "outcomes": sorted(outcomes),
-            })
-
-            issues_text = self._format_error_summary(errors)
-            if issues_text.startswith("OK"):
-                issues_text = ""
-            if self.progress_window:
-                self.progress_window.update_current_item(
-                    title=book.get("title", "") or "",
-                    author=book.get("author", "") or "",
-                    issues_text=issues_text,
-                )
-                self.progress_window.update_counters(
-                    files_scanned=row + 1,
-                    elapsed_text=self._format_elapsed(
-                        time.perf_counter() - scan_start),
-                    books_added=added_count,
-                    read_errors=read_error_count,
-                )
-            QApplication.processEvents()
+            if transaction_open:
+                conn.commit()
+                transaction_open = False
+        except Exception:
+            if transaction_open:
+                conn.rollback()
+            raise
 
         if not books:
             if scan_was_canceled:
-                self.set_status(
-                    f"Scan canceled. No partial results found. Elapsed: {elapsed_text}")
+                final_status = f"Scan canceled. No partial results found. Elapsed: {elapsed_text}"
             else:
-                self.set_status(
-                    f"No audio files found. Elapsed: {elapsed_text}")
+                final_status = f"No audio files found. Elapsed: {elapsed_text}"
+
+            self.set_status(final_status)
             self.update_summary(0, 0, 0, 0, added=added_count)
             if self.progress_window:
                 summary_text = (
-                    f"Scanned: 0 | Added: {added_count} | Warnings: 0 | Errors: 0 | "
+                    f"Files scanned: {scan_files_processed} | Added: {added_count} | Warnings: 0 | Errors: 0 | "
                     f"Duplicates: 0 | Elapsed: {elapsed_text}"
                 )
                 if scan_was_canceled:
@@ -1503,21 +1601,13 @@ class ImportWindow(QDialog):
                 self.progress_window.mark_complete(
                     canceled=scan_was_canceled,
                     elapsed_text=elapsed_text,
-                    files_scanned=0,
+                    files_scanned=scan_files_processed,
                     books_added=added_count,
                     read_errors=read_error_count,
                     summary_text=summary_text,
                 )
             return
 
-        self.update_summary(
-            scanned=len(books),
-            valid=valid_count,
-            errors=error_count,
-            warnings=warning_count,
-            duplicates=duplicate_count,
-            added=added_count,
-            announce=True)
         self._apply_error_filter()
 
         issues_count = warning_count + error_count
@@ -1530,7 +1620,7 @@ class ImportWindow(QDialog):
 
         if self.progress_window:
             summary_text = (
-                f"Scanned: {len(books)} | Added: {added_count} | "
+                f"Files scanned: {scan_files_processed} | Added: {added_count} | "
                 f"Warnings: {warning_count} | Errors: {error_count} | "
                 f"Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
@@ -1540,7 +1630,7 @@ class ImportWindow(QDialog):
             self.progress_window.mark_complete(
                 canceled=scan_was_canceled,
                 elapsed_text=elapsed_text,
-                files_scanned=len(books),
+                files_scanned=scan_files_processed,
                 books_added=added_count,
                 read_errors=read_error_count,
                 summary_text=summary_text,
@@ -1562,22 +1652,75 @@ class ImportWindow(QDialog):
 
         self._import_rows(sorted(selected_rows))
 
-    def on_import_all(self):
-        """Add all valid items."""
-        if not self.scanned_items:
-            self.set_status("No scanned items to add")
+    def on_export_csv(self):
+        """Export visible import rows to CSV for spreadsheet review."""
+        if self.table.rowCount() == 0:
+            self.set_status("No import rows to export")
             return
 
-        eligible_rows = []
-        for idx, item in enumerate(self.scanned_items):
-            if item["status"] == "OK":
-                eligible_rows.append(idx)
+        rows_to_export = []
+        for row in range(self.table.rowCount()):
+            if self.table.isRowHidden(row):
+                continue
 
-        if not eligible_rows:
-            self.set_status("No valid items to add")
+            author_item = self.table.item(row, self.COL_AUTHOR)
+            title_item = self.table.item(row, self.COL_TITLE)
+            year_item = self.table.item(row, self.COL_YEAR)
+            error_item = self.table.item(row, self.COL_ERROR)
+            path_item = self.table.item(row, self.COL_PATH)
+
+            rows_to_export.append(
+                {
+                    "author": author_item.text() if author_item else "",
+                    "title": title_item.text() if title_item else "",
+                    "year": year_item.text() if year_item else "",
+                    "error_type": error_item.text() if error_item else "",
+                    "path": path_item.text() if path_item else "",
+                }
+            )
+
+        if not rows_to_export:
+            self.set_status("No visible rows to export for current filter")
             return
 
-        self._import_rows(eligible_rows)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_name = f"import_review_list_{timestamp}.csv"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Import List",
+            default_name,
+            "CSV Files (*.csv);;All Files (*.*)",
+        )
+        if not file_path:
+            self.set_status("Export canceled")
+            return
+
+        if not file_path.lower().endswith(".csv"):
+            file_path += ".csv"
+
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8-sig") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["Author", "Title", "Year",
+                                "Error Type", "File/Folder"])
+                for row_data in rows_to_export:
+                    writer.writerow(
+                        [
+                            row_data["author"],
+                            row_data["title"],
+                            row_data["year"],
+                            row_data["error_type"],
+                            row_data["path"],
+                        ]
+                    )
+        except Exception as exc:
+            self.set_status(f"Export failed: {str(exc)}", announce=True)
+            return
+
+        self.set_status(
+            f"Exported {len(rows_to_export)} row(s) to CSV: {os.path.basename(file_path)}",
+            announce=True,
+        )
 
     def _refresh_summary_from_items(self):
         """Recalculate summary counters from current scanned items."""
@@ -1615,9 +1758,13 @@ class ImportWindow(QDialog):
         skipped = 0
         failed = 0
         rows_to_remove = []
-        inserted_book_ids = []
+        conn = self.db.connect()
+        transaction_open = False
 
         try:
+            conn.execute("BEGIN")
+            transaction_open = True
+
             for row in row_indices:
                 QApplication.processEvents()
                 if self._cancel_add_requested:
@@ -1640,9 +1787,11 @@ class ImportWindow(QDialog):
                     continue
 
                 try:
-                    book = self._build_book_from_scan(book_data)
-                    book_id = self.book_queries.insert(book)
-                    inserted_book_ids.append(book_id)
+                    book = self._build_book_from_scan(
+                        book_data,
+                        defer_commits=True,
+                    )
+                    self.book_queries.insert(book, commit=False)
                     imported += 1
                     rows_to_remove.append(row)
                 except Exception as exc:
@@ -1656,11 +1805,16 @@ class ImportWindow(QDialog):
                         row, self.COL_ERROR, QTableWidgetItem(combined_error))
 
             if self._cancel_add_requested:
-                if inserted_book_ids:
-                    self.book_queries.delete_many(inserted_book_ids)
+                if transaction_open:
+                    conn.rollback()
+                    transaction_open = False
                 self.set_status(
                     f"Add canceled. No books were added | Skipped: {skipped} | Failed: {failed}")
                 return
+
+            if transaction_open:
+                conn.commit()
+                transaction_open = False
 
             if rows_to_remove:
                 sorted_rows_to_remove = sorted(set(rows_to_remove))
@@ -1692,6 +1846,8 @@ class ImportWindow(QDialog):
                 "Add Complete",
                 f"Books added: {imported}\nLeft in import list: {remaining}")
         finally:
+            if transaction_open:
+                conn.rollback()
             self._is_adding = False
             self._cancel_add_requested = False
 

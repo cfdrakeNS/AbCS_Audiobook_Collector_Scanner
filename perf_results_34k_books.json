@@ -1,0 +1,30 @@
+{
+  "Title": {
+    "runs": 3,
+    "avg_seconds": 0.0462,
+    "min_seconds": 0.0456,
+    "max_seconds": 0.0473,
+    "rows": 34420
+  },
+  "Author": {
+    "runs": 3,
+    "avg_seconds": 0.0676,
+    "min_seconds": 0.0671,
+    "max_seconds": 0.0679,
+    "rows": 34420
+  },
+  "Genre": {
+    "runs": 3,
+    "avg_seconds": 0.0623,
+    "min_seconds": 0.0619,
+    "max_seconds": 0.0627,
+    "rows": 34420
+  },
+  "Series": {
+    "runs": 3,
+    "avg_seconds": 0.0639,
+    "min_seconds": 0.061,
+    "max_seconds": 0.0669,
+    "rows": 34420
+  }
+}

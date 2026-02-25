@@ -16,14 +16,11 @@
       "**/build": true,
       "**/dist": true
     },
-
     "editor.accessibilitySupport": "on",
-
     "python.analysis.typeCheckingMode": "off",
-    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "C:\\Users\\cfran\\ABcS\\abcs\\.venv\\Scripts\\python.exe",
     "python.terminal.activateEnvironment": true,
-
-    "terminal.integrated.environmentChangesRelaunch": "always",
+    "terminal.integrated.environmentChangesRelaunch": true,
     "terminal.integrated.environmentChangesIndicator": "off",
     "terminal.integrated.enablePersistentSessions": false,
     "terminal.integrated.profiles.windows": {
@@ -37,19 +34,15 @@
       }
     },
     "terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
-
     "git.enableStatusBarSync": false,
     "git.showProgress": false,
-
     "github.copilot.enable": {
       "*": true,
       "plaintext": false,
       "markdown": false
     },
-
     "accessibility.verbosity.notification": false,
     "extensions.ignoreRecommendations": true,
-
     "chat.tools.terminal.autoApprove": {
       "/^\\$in = 'AbCS_Guide_\\(Draft\\)\\.md'; \\$out = 'AbCS_Guide_\\(Draft\\)\\.odt'; \\$pandocPath = 'C:\\\\Users\\\\cfran\\\\AppData\\\\Local\\\\Pandoc\\\\pandoc\\.exe'; if \\(-not \\(Test-Path \\$pandocPath\\)\\) \\{ Write-Error \"pandoc not found at \\$pandocPath\"; exit 2 \\}; & \\$pandocPath \\$in -o \\$out; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; Get-Item \\$out \\| Select-Object Name, Length, LastWriteTime \\| Format-Table -AutoSize$/": {
         "approve": true,

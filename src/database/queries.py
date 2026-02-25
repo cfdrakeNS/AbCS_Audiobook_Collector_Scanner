@@ -109,7 +109,9 @@ class BookQueries:
             query += " ORDER BY b.title"
 
         rows = self.db.fetch_all(query, tuple(params) if params else None)
-        return [self._row_to_book(row) for row in rows]
+        # Large list views (e.g., 30k+ books) are much faster when we avoid
+        # per-row datetime parsing during hydration.
+        return [self._row_to_book(row, parse_dates=False) for row in rows]
 
     def get_by_id(self, book_id: int) -> Optional[Book]:
         """Get book by ID."""
@@ -127,9 +129,10 @@ class BookQueries:
             WHERE b.book_id = ?
         """
         row = self.db.fetch_one(query, (book_id,))
-        return self._row_to_book(row) if row else None
+        # Detail form benefits from parsed dates.
+        return self._row_to_book(row, parse_dates=True) if row else None
 
-    def insert(self, book: Book) -> int:
+    def insert(self, book: Book, commit: bool = True) -> int:
         """Insert a new book into the 'books' table."""
         read_date_value = self._serialize_read_date(book.read_date)
         date_added_value = self._serialize_date_added(book.date_added)
@@ -149,7 +152,8 @@ class BookQueries:
             date_added_value, book.source
         )
         cursor = self.db.execute(query, params)
-        self.db.connect().commit()
+        if commit:
+            self.db.connect().commit()
         return cursor.lastrowid
 
     def update(self, book: Book):
@@ -209,7 +213,7 @@ class BookQueries:
             ORDER BY b.title, a.name, b.year
         """
         rows = self.db.fetch_all(query)
-        return [self._row_to_book(row) for row in rows]
+        return [self._row_to_book(row, parse_dates=False) for row in rows]
 
     def bulk_update_series(self, book_ids: List[int], series_id: Optional[int]):
         """Bulk update series for multiple books."""
@@ -241,37 +245,43 @@ class BookQueries:
         )
         self.db.connect().commit()
 
-    def _row_to_book(self, row):
+    def _row_to_book(self, row, parse_dates: bool = True):
         """Convert database row to Book dataclass."""
         row_dict = dict(row) if not isinstance(row, dict) else row
 
-        # Convert string dates from SQLite to Python date objects
-        read_date_str = row_dict.get('read_date')
-        read_date_obj = None
-        if read_date_str and read_date_str.strip() and read_date_str != '2000-01-01':
-            try:
-                # Try YYYY-MM-DD format (our standard)
-                read_date_obj = datetime.strptime(
-                    read_date_str, '%Y-%m-%d').date()
-            except (ValueError, TypeError):
+        if parse_dates:
+            # Convert string dates from SQLite to Python date objects
+            read_date_str = row_dict.get('read_date')
+            read_date_obj = None
+            if read_date_str and read_date_str.strip() and read_date_str != '2000-01-01':
                 try:
-                    # Try M/D/YYYY format (from Access import)
+                    # Try YYYY-MM-DD format (our standard)
                     read_date_obj = datetime.strptime(
-                        read_date_str, '%m/%d/%Y').date()
+                        read_date_str, '%Y-%m-%d').date()
                 except (ValueError, TypeError):
-                    read_date_obj = None
+                    try:
+                        # Try M/D/YYYY format (from Access import)
+                        read_date_obj = datetime.strptime(
+                            read_date_str, '%m/%d/%Y').date()
+                    except (ValueError, TypeError):
+                        read_date_obj = None
 
-        date_added_str = row_dict.get('date_added')
-        date_added_obj = None
-        if date_added_str:
-            try:
-                # SQLite stores datetime as 'YYYY-MM-DD HH:MM:SS' strings
-                date_added_obj = datetime.strptime(
-                    date_added_str, '%Y-%m-%d %H:%M:%S')
-            except (ValueError, TypeError):
+            date_added_str = row_dict.get('date_added')
+            date_added_obj = None
+            if date_added_str:
+                try:
+                    # SQLite stores datetime as 'YYYY-MM-DD HH:MM:SS' strings
+                    date_added_obj = datetime.strptime(
+                        date_added_str, '%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError):
+                    date_added_obj = datetime.now()
+            else:
                 date_added_obj = datetime.now()
         else:
-            date_added_obj = datetime.now()
+            # Fast path for large list hydration: keep date values as strings.
+            read_date_obj = row_dict.get('read_date')
+            date_added_obj = row_dict.get(
+                'date_added') or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         return Book(
             book_id=row_dict.get('book_id', 0),
@@ -350,19 +360,20 @@ class AuthorQueries:
             "SELECT * FROM authors WHERE name = ?", (name,))
         return Author(author_id=row['author_id'], name=row['name']) if row else None
 
-    def insert(self, name: str) -> int:
+    def insert(self, name: str, commit: bool = True) -> int:
         """Insert a new author."""
         cursor = self.db.execute(
             "INSERT INTO authors (name) VALUES (?)", (name,))
-        self.db.connect().commit()
+        if commit:
+            self.db.connect().commit()
         return cursor.lastrowid
 
-    def get_or_create(self, name: str) -> int:
+    def get_or_create(self, name: str, commit: bool = True) -> int:
         """Get author ID by name, create if doesn't exist."""
         author = self.get_by_name(name)
         if author:
             return author.author_id
-        return self.insert(name)
+        return self.insert(name, commit=commit)
 
     def update(self, author_id: int, name: str):
         """Update author name."""
@@ -409,19 +420,20 @@ class SeriesQueries:
             "SELECT * FROM series WHERE name = ?", (name,))
         return Series(series_id=row['series_id'], name=row['name']) if row else None
 
-    def insert(self, name: str) -> int:
+    def insert(self, name: str, commit: bool = True) -> int:
         """Insert a new series."""
         cursor = self.db.execute(
             "INSERT INTO series (name) VALUES (?)", (name,))
-        self.db.connect().commit()
+        if commit:
+            self.db.connect().commit()
         return cursor.lastrowid
 
-    def get_or_create(self, name: str) -> int:
+    def get_or_create(self, name: str, commit: bool = True) -> int:
         """Get series ID by name, create if doesn't exist."""
         series = self.get_by_name(name)
         if series:
             return series.series_id
-        return self.insert(name)
+        return self.insert(name, commit=commit)
 
     def update(self, series_id: int, name: str):
         """Update series name."""
@@ -467,19 +479,20 @@ class GenreQueries:
             "SELECT * FROM genres WHERE name = ?", (name,))
         return Genre(genre_id=row['genre_id'], name=row['name']) if row else None
 
-    def insert(self, name: str) -> int:
+    def insert(self, name: str, commit: bool = True) -> int:
         """Insert a new genre."""
         cursor = self.db.execute(
             "INSERT INTO genres (name) VALUES (?)", (name,))
-        self.db.connect().commit()
+        if commit:
+            self.db.connect().commit()
         return cursor.lastrowid
 
-    def get_or_create(self, name: str) -> int:
+    def get_or_create(self, name: str, commit: bool = True) -> int:
         """Get genre ID by name, create if doesn't exist."""
         genre = self.get_by_name(name)
         if genre:
             return genre.genre_id
-        return self.insert(name)
+        return self.insert(name, commit=commit)
 
     def update(self, genre_id: int, name: str):
         """Update genre name."""

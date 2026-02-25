@@ -117,6 +117,49 @@ def test_duplicate_match_mode_title_author_year_ignore_collection(isolated_qsett
         book, existing_books, target_collection_id=1)
 
 
+def test_duplicate_matching_is_case_and_whitespace_insensitive(isolated_qsettings):
+    isolated_qsettings.setValue(
+        "import/rules/duplicate/match_mode", "title_author_year_collection")
+
+    validator = ImportValidator()
+    book = {"title": "  Dune  ", "author": "  Frank Herbert  ", "year": 1965}
+    existing_books = [
+        {
+            "title": "dune",
+            "author": "frank herbert",
+            "year": 1965,
+            "collection_id": 7,
+        }
+    ]
+
+    assert validator.is_duplicate(
+        book, existing_books, target_collection_id=7)
+
+
+def test_duplicate_year_sensitivity_depends_on_match_mode(isolated_qsettings):
+    book = {"title": "Dune", "author": "Frank Herbert", "year": 1965}
+    existing_books = [
+        {
+            "title": "Dune",
+            "author": "Frank Herbert",
+            "year": 1966,
+            "collection_id": 3,
+        }
+    ]
+
+    isolated_qsettings.setValue(
+        "import/rules/duplicate/match_mode", "title_author_year_collection")
+    validator = ImportValidator()
+    assert not validator.is_duplicate(
+        book, existing_books, target_collection_id=3)
+
+    isolated_qsettings.setValue(
+        "import/rules/duplicate/match_mode", "title_author")
+    validator.reload_settings()
+    assert validator.is_duplicate(
+        book, existing_books, target_collection_id=3)
+
+
 def test_year_consistency_flags_null_blank_whitespace_year(isolated_qsettings):
     isolated_qsettings.setValue("import/rules/year_out_of_range/enabled", True)
     isolated_qsettings.setValue(

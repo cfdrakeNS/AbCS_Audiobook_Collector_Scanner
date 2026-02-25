@@ -4,6 +4,9 @@ Form for viewing and editing scanned audiobook details before import.
 """
 
 import re
+import os
+import shutil
+import subprocess
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -38,7 +41,7 @@ class ImportDetailWindow(QDialog):
     MIN_VALID_YEAR = 1900
     MAX_VALID_YEAR = 2100
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'L', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
     }
 
     @staticmethod
@@ -465,6 +468,106 @@ class ImportDetailWindow(QDialog):
 
         self._clear_dirty()
 
+    def _resolve_tag_target_path(self) -> str:
+        """Return best file/folder path to open in external tag editor."""
+        files = self.book_data.get("files")
+        if isinstance(files, list):
+            for file_path in files:
+                if isinstance(file_path, str) and file_path.strip() and os.path.exists(file_path):
+                    return file_path
+
+        folder_path = str(self.book_data.get("folder") or "").strip()
+        if folder_path and os.path.exists(folder_path):
+            return folder_path
+
+        path_from_form = self.path_edit.text().strip() if hasattr(self, "path_edit") else ""
+        if path_from_form and os.path.exists(path_from_form):
+            return path_from_form
+
+        return ""
+
+    def _discover_tag_editor(self) -> tuple[str, str] | None:
+        """Find supported external tag editor executable and return display name + path."""
+        candidates = []
+
+        for command_name in [
+            "Mp3tag.exe",
+            "Mp3tag",
+            "TagScanner.exe",
+            "TagScanner",
+            "Tagscan.exe",
+            "Tagscan",
+        ]:
+            command_path = shutil.which(command_name)
+            if command_path:
+                display_name = "Mp3tag" if "mp3tag" in command_name.lower() else "TagScanner"
+                candidates.append((display_name, command_path))
+
+        program_files_roots = [
+            os.environ.get("ProgramFiles", ""),
+            os.environ.get("ProgramFiles(x86)", ""),
+            os.environ.get("LOCALAPPDATA", ""),
+        ]
+        known_relative_paths = [
+            ("Mp3tag", os.path.join("Mp3tag", "Mp3tag.exe")),
+            ("TagScanner", os.path.join("TagScanner", "Tagscan.exe")),
+            ("TagScanner", os.path.join("TagScanner", "TagScanner.exe")),
+        ]
+
+        for root in program_files_roots:
+            if not root:
+                continue
+            for display_name, relative_path in known_relative_paths:
+                full_path = os.path.join(root, relative_path)
+                if os.path.isfile(full_path):
+                    candidates.append((display_name, full_path))
+
+        seen = set()
+        for display_name, executable_path in candidates:
+            normalized = os.path.normcase(os.path.abspath(executable_path))
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            return display_name, executable_path
+
+        return None
+
+    def on_launch_tag_editor(self):
+        """Launch Mp3tag/TagScanner for current item folder/file when available."""
+        target_path = self._resolve_tag_target_path()
+        if not target_path:
+            self.set_status(
+                "Edit Tag unavailable: no valid file or folder path", announce=True)
+            return
+
+        editor = self._discover_tag_editor()
+        if not editor:
+            self.set_status(
+                "Edit Tag unavailable: install Mp3tag or TagScanner",
+                announce=True,
+            )
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Edit Tag",
+                text=(
+                    "No supported tag editor was detected.\n\n"
+                    "Install Mp3tag or TagScanner, then use Launch Tag again."
+                ),
+            )
+            return
+
+        editor_name, editor_path = editor
+        try:
+            subprocess.Popen([editor_path, target_path])
+        except Exception as exc:
+            self.set_status(f"Edit Tag failed: {str(exc)}", announce=True)
+            return
+
+        self.set_status(
+            f"Opened {editor_name} for current import item", announce=True)
+
     def _check_combo_change(self, field_name: str, combo: QComboBox,
                             original_value: str, query_obj):
         """
@@ -804,6 +907,7 @@ class ImportDetailWindow(QDialog):
         self.collection_combo.setMaximumWidth(220)
         self.collection_combo.setEditable(True)
         self.collection_combo.lineEdit().setReadOnly(True)
+        self.collection_combo.setEnabled(False)
         collection_label.setBuddy(self.collection_combo)
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
@@ -907,6 +1011,15 @@ class ImportDetailWindow(QDialog):
         self.save_return_button.setVisible(False)
         button_layout.addWidget(self.save_return_button)
 
+        self.launch_tag_button = QPushButton("&Launch Tag")
+        self.launch_tag_button.setAccessibleName("Launch Tag")
+        self.launch_tag_button.setAccessibleDescription(
+            "Open current item in external tag editor - Alt+L")
+        self.launch_tag_button.setShortcut(QKeySequence("Alt+L"))
+        self.launch_tag_button.setFocusPolicy(Qt.StrongFocus)
+        self.launch_tag_button.clicked.connect(self.on_launch_tag_editor)
+        button_layout.addWidget(self.launch_tag_button)
+
         self.skip_button = QPushButton("&Discard")
         self.skip_button.setAccessibleName("Discard")
         self.skip_button.setAccessibleDescription(
@@ -989,6 +1102,7 @@ class ImportDetailWindow(QDialog):
             ("Alt+E", "Errors"),
             ("Alt+H", "Path"),
             ("Alt+S", "Save"),
+            ("Alt+L", "Launch tag editor"),
             ("Alt+D", "Discard"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),

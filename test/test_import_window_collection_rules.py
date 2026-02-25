@@ -8,6 +8,7 @@ from database.connection import DatabaseManager
 from core.validator import ImportValidator
 from accessibility.theme_manager import ThemeManager
 from accessibility.scaling import UIScaler
+from ui.import_progress_window import ImportProgressWindow
 
 import os
 import shutil
@@ -15,6 +16,7 @@ import sys
 
 import pytest
 from PySide6.QtCore import QSettings
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -221,3 +223,256 @@ def test_close_prompt_hides_valid_count_when_zero(
     assert captured["text"] == (
         "Current scan results in this window will be discarded."
     )
+
+
+def test_mixed_dataset_routes_to_expected_outcomes(
+    qapp, qtbot, temp_db, isolated_qsettings, tmp_path, monkeypatch
+):
+    """Mixed scan dataset should route to Added/Duplicate/Warning/Error outcomes."""
+    window = _make_import_window(temp_db, qapp)
+    qtbot.addWidget(window)
+
+    if window.collection_combo.currentData() is None and window.collection_combo.count() > 1:
+        window.collection_combo.setCurrentIndex(1)
+
+    window.folder_edit.setText(str(tmp_path))
+
+    books = [
+        {
+            "title": "Valid Auto Added",
+            "author": "Frank Herbert",
+            "year": 1965,
+            "genre": "Science Fiction",
+            "narrator": "",
+            "comment": "",
+            "files": [str(tmp_path / "valid.mp3")],
+            "folder": str(tmp_path),
+            "errors": [],
+            "time_hours": 1,
+            "time_minutes": 0,
+            "tracks": 1,
+            "size_mb": 1.0,
+            "bitrate": 128,
+            "format": "MP3",
+        },
+        {
+            "title": "Duplicate Routed",
+            "author": "Frank Herbert",
+            "year": 1965,
+            "genre": "Science Fiction",
+            "narrator": "",
+            "comment": "",
+            "files": [str(tmp_path / "dup.mp3")],
+            "folder": str(tmp_path),
+            "errors": [],
+            "time_hours": 1,
+            "time_minutes": 0,
+            "tracks": 1,
+            "size_mb": 1.0,
+            "bitrate": 128,
+            "format": "MP3",
+        },
+        {
+            "title": "Warning Routed",
+            "author": "Frank Herbert",
+            "year": 1965,
+            "genre": "Science Fiction",
+            "narrator": "",
+            "comment": "",
+            "files": [str(tmp_path / "warn.mp3")],
+            "folder": str(tmp_path),
+            "errors": ["W: Simulated warning"],
+            "time_hours": 1,
+            "time_minutes": 0,
+            "tracks": 1,
+            "size_mb": 1.0,
+            "bitrate": 128,
+            "format": "MP3",
+        },
+        {
+            "title": "Error Routed",
+            "author": "",
+            "year": 1965,
+            "genre": "Science Fiction",
+            "narrator": "",
+            "comment": "",
+            "files": [str(tmp_path / "error.mp3")],
+            "folder": str(tmp_path),
+            "errors": ["E: Simulated parse error"],
+            "time_hours": 1,
+            "time_minutes": 0,
+            "tracks": 1,
+            "size_mb": 1.0,
+            "bitrate": 128,
+            "format": "MP3",
+        },
+    ]
+
+    def fake_scan_folder(
+        folder_path,
+        include_subfolders,
+        allowed_extensions,
+        progress_callback,
+        cancel_check,
+    ):
+        total = len(books)
+        for index, _ in enumerate(books, start=1):
+            progress_callback(index, total, os.path.join(
+                folder_path, f"item_{index}.mp3"))
+        return books
+
+    monkeypatch.setattr(window.scanner, "scan_folder", fake_scan_folder)
+
+    original_is_duplicate = window.validator.is_duplicate
+
+    def fake_is_duplicate(book, existing_books, target_collection_id=None):
+        if book.get("title") == "Duplicate Routed":
+            return True
+        return original_is_duplicate(
+            book,
+            existing_books,
+            target_collection_id=target_collection_id,
+        )
+
+    monkeypatch.setattr(window.validator, "is_duplicate", fake_is_duplicate)
+
+    window.on_scan()
+
+    assert len(window.scan_outcomes) == 4
+
+    by_title = {
+        item.get("book", {}).get("title"): item
+        for item in window.scan_outcomes
+    }
+
+    assert by_title["Valid Auto Added"]["status"] == "Added"
+    assert "added" in by_title["Valid Auto Added"].get("outcomes", [])
+
+    assert by_title["Duplicate Routed"]["status"] == "Duplicate"
+    assert "duplicate" in by_title["Duplicate Routed"].get("outcomes", [])
+
+    assert by_title["Warning Routed"]["status"] == "Warning"
+    assert "warning" in by_title["Warning Routed"].get(
+        "outcomes", [])
+
+    assert by_title["Error Routed"]["status"] == "Error"
+    assert "error" in by_title["Error Routed"].get("outcomes", [])
+
+    # Auto-added valid item should not remain in review list; others should.
+    review_titles = {
+        item.get("book", {}).get("title")
+        for item in window.scanned_items
+    }
+    assert "Valid Auto Added" not in review_titles
+    assert {"Duplicate Routed", "Warning Routed",
+            "Error Routed"}.issubset(review_titles)
+
+
+def test_progress_window_keyboard_only_interaction(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    """Progress window supports keyboard-only cancel/close workflow in compact mode."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportProgressWindow(scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    window.set_compact_mode(True)
+    window.update_scan_progress(processed=3, total=10, elapsed_text="00:04")
+    window.update_counters(
+        files_scanned=3,
+        elapsed_text="00:04",
+        books_added=1,
+        read_errors=0,
+    )
+    window.show()
+
+    assert not window.title_edit.isVisible()
+    assert not window.author_edit.isVisible()
+    assert window.files_edit.isVisible()
+
+    monkeypatch.setattr(
+        "ui.import_progress_window.exec_styled_message_box",
+        lambda *args, **kwargs: 16384,  # QMessageBox.Yes
+    )
+
+    # Keyboard-only cancel during active scan.
+    window.cancel_shortcut.activated.emit()
+    assert window.cancel_requested is True
+
+    # Complete then close via keyboard-only Alt+C.
+    window.mark_complete(
+        canceled=True,
+        elapsed_text="00:08",
+        files_scanned=10,
+        books_added=1,
+        read_errors=0,
+        summary_text="Files scanned: 10 | Added: 1 | Warnings: 0 | Errors: 0 | Duplicates: 0 | Elapsed: 00:08",
+    )
+    assert window.close_button.isVisible()
+
+    window.close_shortcut.activated.emit()
+    qtbot.waitUntil(lambda: not window.isVisible(), timeout=2000)
+
+
+def test_progress_window_alt_slash_announces_with_accessibility_active(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    """Alt+/ should route status to accessibility announce path when active."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportProgressWindow(scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    calls = []
+
+    def announce_spy(widget, message, move_focus=False):
+        calls.append((message, move_focus))
+
+    popup_calls = {"count": 0}
+
+    monkeypatch.setattr(
+        "ui.import_progress_window.announce_status_message", announce_spy)
+    monkeypatch.setattr(
+        "ui.import_progress_window.QAccessible.isActive", lambda: True)
+    monkeypatch.setattr(
+        "ui.import_progress_window.exec_styled_message_box",
+        lambda *args, **kwargs: popup_calls.__setitem__(
+            "count", popup_calls["count"] + 1),
+    )
+
+    window.set_status("Scanning 3/10")
+    window.on_read_status_bar()
+
+    assert calls[-1] == ("Scanning 3/10", True)
+    assert popup_calls["count"] == 0
+
+
+def test_progress_window_mark_complete_announces_summary(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    """Completion summary should be announced for screen readers."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportProgressWindow(scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    calls = []
+
+    def announce_spy(widget, message, move_focus=False):
+        calls.append((message, move_focus))
+
+    monkeypatch.setattr(
+        "ui.import_progress_window.announce_status_message", announce_spy)
+
+    summary = "Files scanned: 10 | Added: 1 | Warnings: 0 | Errors: 0 | Duplicates: 0 | Elapsed: 00:08"
+    window.mark_complete(
+        canceled=False,
+        elapsed_text="00:08",
+        files_scanned=10,
+        books_added=1,
+        read_errors=0,
+        summary_text=summary,
+    )
+
+    assert calls[-1] == (summary, True)

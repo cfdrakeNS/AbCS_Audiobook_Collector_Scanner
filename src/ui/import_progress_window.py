@@ -42,6 +42,7 @@ class ImportProgressWindow(QDialog):
         self._default_status_message = "Ready"
         self._cancel_requested = False
         self._scan_active = True
+        self._compact_mode = False
 
         self.setup_ui()
         self.setup_shortcuts()
@@ -66,26 +67,28 @@ class ImportProgressWindow(QDialog):
         layout.setSpacing(8)
 
         title_layout = QHBoxLayout()
-        title_label = QLabel("&Title:")
+        self.title_label = QLabel("&Title:")
         self.title_edit = QLineEdit()
         self.title_edit.setReadOnly(True)
+        self.title_edit.setFocusPolicy(Qt.NoFocus)
         self.title_edit.setAccessibleName("Current title")
         self.title_edit.setAccessibleDescription(
             "Current title being processed - Alt+T")
-        title_label.setBuddy(self.title_edit)
-        title_layout.addWidget(title_label)
+        self.title_label.setBuddy(self.title_edit)
+        title_layout.addWidget(self.title_label)
         title_layout.addWidget(self.title_edit, 1)
         layout.addLayout(title_layout)
 
         author_layout = QHBoxLayout()
-        author_label = QLabel("&Author:")
+        self.author_label = QLabel("&Author:")
         self.author_edit = QLineEdit()
         self.author_edit.setReadOnly(True)
+        self.author_edit.setFocusPolicy(Qt.NoFocus)
         self.author_edit.setAccessibleName("Current author")
         self.author_edit.setAccessibleDescription(
             "Current author being processed - Alt+A")
-        author_label.setBuddy(self.author_edit)
-        author_layout.addWidget(author_label)
+        self.author_label.setBuddy(self.author_edit)
+        author_layout.addWidget(self.author_label)
         author_layout.addWidget(self.author_edit, 1)
         layout.addLayout(author_layout)
 
@@ -93,6 +96,7 @@ class ImportProgressWindow(QDialog):
         self.issues_label = QLabel("&Issues:")
         self.issues_edit = QLineEdit()
         self.issues_edit.setReadOnly(True)
+        self.issues_edit.setFocusPolicy(Qt.NoFocus)
         self.issues_edit.setAccessibleName("Issues")
         self.issues_edit.setAccessibleDescription(
             "Current issues for this item - Alt+I")
@@ -109,6 +113,7 @@ class ImportProgressWindow(QDialog):
         files_label = QLabel("&Files scanned:")
         self.files_edit = QLineEdit("0")
         self.files_edit.setReadOnly(True)
+        self.files_edit.setFocusPolicy(Qt.NoFocus)
         self.files_edit.setMaximumWidth(90)
         self.files_edit.setAccessibleName("Files scanned")
         self.files_edit.setAccessibleDescription(
@@ -118,6 +123,7 @@ class ImportProgressWindow(QDialog):
         elapsed_label = QLabel("Elapsed ti&me:")
         self.elapsed_edit = QLineEdit("00:00")
         self.elapsed_edit.setReadOnly(True)
+        self.elapsed_edit.setFocusPolicy(Qt.NoFocus)
         self.elapsed_edit.setMaximumWidth(100)
         self.elapsed_edit.setAccessibleName("Elapsed time")
         self.elapsed_edit.setAccessibleDescription("Elapsed scan time - Alt+M")
@@ -126,6 +132,7 @@ class ImportProgressWindow(QDialog):
         added_label = QLabel("&Books added:")
         self.added_edit = QLineEdit("0")
         self.added_edit.setReadOnly(True)
+        self.added_edit.setFocusPolicy(Qt.NoFocus)
         self.added_edit.setMaximumWidth(90)
         self.added_edit.setAccessibleName("Books added")
         self.added_edit.setAccessibleDescription(
@@ -135,6 +142,7 @@ class ImportProgressWindow(QDialog):
         read_err_label = QLabel("Read e&rrors:")
         self.read_errors_edit = QLineEdit("0")
         self.read_errors_edit.setReadOnly(True)
+        self.read_errors_edit.setFocusPolicy(Qt.NoFocus)
         self.read_errors_edit.setMaximumWidth(90)
         self.read_errors_edit.setAccessibleName("Read errors")
         self.read_errors_edit.setAccessibleDescription(
@@ -192,27 +200,49 @@ class ImportProgressWindow(QDialog):
         self.status_bar.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.status_bar)
 
-        self.setTabOrder(self.title_edit, self.author_edit)
-        self.setTabOrder(self.author_edit, self.issues_edit)
-        self.setTabOrder(self.issues_edit, self.files_edit)
-        self.setTabOrder(self.files_edit, self.elapsed_edit)
-        self.setTabOrder(self.elapsed_edit, self.added_edit)
-        self.setTabOrder(self.added_edit, self.read_errors_edit)
-        self.setTabOrder(self.read_errors_edit, self.cancel_button)
+        self._apply_tab_order()
+
+    def _apply_tab_order(self):
+        if self._compact_mode:
+            self.setTabOrder(self.cancel_button, self.close_button)
+            return
+
         self.setTabOrder(self.cancel_button, self.close_button)
+
+    def set_compact_mode(self, enabled: bool):
+        self._compact_mode = bool(enabled)
+        show_details = not self._compact_mode
+
+        self.title_label.setVisible(show_details)
+        self.title_edit.setVisible(show_details)
+        self.author_label.setVisible(show_details)
+        self.author_edit.setVisible(show_details)
+
+        if self._compact_mode:
+            self.issues_label.setVisible(False)
+            self.issues_edit.setVisible(False)
+        else:
+            has_issues = bool(self.issues_edit.text().strip())
+            self.issues_label.setVisible(has_issues)
+            self.issues_edit.setVisible(has_issues)
+
+        self._apply_tab_order()
 
     def setup_shortcuts(self):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.ApplicationShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
         self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
+        self.status_shortcut_shift.setContext(Qt.ApplicationShortcut)
         self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
         self.status_shortcut_division = QShortcut(
             QKeySequence("Alt+Divide"), self)
+        self.status_shortcut_division.setContext(Qt.ApplicationShortcut)
         self.status_shortcut_division.activated.connect(
             self.on_read_status_bar)
 
@@ -234,12 +264,13 @@ class ImportProgressWindow(QDialog):
         self.status_bar.installEventFilter(self)
 
     def eventFilter(self, source, event):
-        if event.type() == QEvent.KeyPress:
+        if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress):
             is_alt = bool(event.modifiers() & Qt.AltModifier)
             is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question, Qt.Key_division)
             is_status_text = event.text() in ("/", "?")
             if is_alt and (is_status_key or is_status_text):
                 self.on_read_status_bar()
+                event.accept()
                 return True
 
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
@@ -339,12 +370,10 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setValue(0)
             self.scan_progress.setFormat("Scanning...")
 
-        if total > 0:
-            self.set_status(f"Scanning {processed}/{total}")
-        else:
-            self.set_status(f"Scanning {processed}")
-
     def update_current_item(self, *, title: str, author: str, issues_text: str = ""):
+        if self._compact_mode:
+            return
+
         self.title_edit.setText(title or "")
         self.author_edit.setText(author or "")
 
