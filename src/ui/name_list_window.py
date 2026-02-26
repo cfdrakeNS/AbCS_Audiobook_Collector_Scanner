@@ -239,7 +239,7 @@ class NameListWindow(QDialog):
             self.COL_NAME, 460 if self.is_collection_mode else 520)
         if self.is_collection_mode:
             self.table.setColumnWidth(self.COL_ACTIVE, 120)
-        self.table.setColumnWidth(self.COL_USAGE, 90)
+        self.table.setColumnWidth(self._usage_column(), 90)
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         layout.addWidget(self.table, 1)
 
@@ -453,6 +453,9 @@ class NameListWindow(QDialog):
         row = self.db.fetch_one(query, (item_id,))
         return int(row[0]) if row else 0
 
+    def _usage_column(self) -> int:
+        return self.COL_USAGE if self.is_collection_mode else self.COL_ACTIVE
+
     def _active_collection_count(self) -> int:
         if not self.is_collection_mode:
             return 0
@@ -493,7 +496,7 @@ class NameListWindow(QDialog):
                         "Yes" if item.active else "No")
                     active_item.setTextAlignment(Qt.AlignCenter)
                     self.table.setItem(row, self.COL_ACTIVE, active_item)
-                self.table.setItem(row, self.COL_USAGE, usage_item)
+                self.table.setItem(row, self._usage_column(), usage_item)
 
                 if preserve_id is not None and item_id == preserve_id:
                     selected_row = row
@@ -734,7 +737,7 @@ class NameListWindow(QDialog):
         self._set_collection_editor_locked(True)
 
     def on_read_status(self):
-        message = self.status_bar.currentMessage().strip() or "Ready"
+        message = self._build_read_status_message()
         if QAccessible.isActive():
             self.set_status(message, announce=True)
             return
@@ -746,6 +749,22 @@ class NameListWindow(QDialog):
             title="Status",
             text=f"No screen reader active.\n\nStatus: {message}",
         )
+
+    def _build_read_status_message(self) -> str:
+        row = self.table.currentRow()
+        if row < 0:
+            return self.status_bar.currentMessage().strip() or "Ready"
+
+        name_item = self.table.item(row, self.COL_NAME)
+        usage_item = self.table.item(row, self._usage_column())
+
+        name_text = (name_item.text() if name_item else "").strip()
+        usage_text = (usage_item.text() if usage_item else "0").strip() or "0"
+
+        if not name_text:
+            return self.status_bar.currentMessage().strip() or "Ready"
+
+        return f"{name_text} - books {usage_text}, Alt+E Edit, Alt+C Close"
 
     def on_show_shortcuts(self):
         dlg = QDialog(self)

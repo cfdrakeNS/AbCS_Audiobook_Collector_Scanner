@@ -5,7 +5,18 @@
 - Import performance baseline updated with local SSD comparison against USB results.
 - Import Window shortcuts/docs updated: Export is Alt+X; scan-time cancel is Alt+N; `Add All Valid` removed.
 - Import error filter options updated to include Fallback and Corrected.
-- Import Progress behavior documented: status phase messages `Scanning x/x` then `Adding x/x`, with Alt+/ status read verified with JAWS.
+- Import Progress behavior documented: status phase messages `Scanning x/x` then `Adding x/x`, with Alt+/ status read verification.
+
+## 2026-02-26 Change Log
+
+- Backup/Restore keyboard flow updated: backup list supports arrow navigation with reliable Alt+/ status read.
+- Backup/Restore actions updated: Browse shortcut is Alt+O, Delete selected backup is Alt+D (shown only when backup list has focus and a selected row).
+- Import summary wording/counts updated: `Fixed` replaces `Valid`; issue count is `Errors/Warnings`.
+- Import review behavior updated: only clean items auto-add; fixed/warning/error/duplicate items remain in the review list for manual `Add Selected`.
+- Name List status read updated to include books count and actions in row format: `Name - books xx, Alt+E Edit, Alt+C Close`.
+- Focus return documented for Main-window-launched dialogs (for example Import, Backup/Restore, Preferences): focus returns to Main list Title cell on close.
+- Main Window safety update: `Ctrl+A` is disabled in the book list to prevent accidental large-batch actions.
+- Large batch reliability update: bulk delete/update operations now run in safe chunks for large libraries.
 
 ## Overview
 
@@ -40,8 +51,7 @@ When AbCS starts for the first time, the book list may be empty.
 
 - File (Alt+F): New Book, Import, Quit
 - View (Alt+V): Open Focused Item (Ctrl+Enter), zoom controls
-- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, 
-/Restore, Statistics
+- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
 
 ### Header controls
@@ -51,7 +61,7 @@ Below the menu bar, left to right:
 1. Collection (Alt+C) - choose All Collections or one collection.
 2. Read? (Alt+R) - All, Read, or Unread.
 3. Order By (Alt+O) - Title, Author, Genre, or Series.
-4. Search (Alt+S) - type to search/filter; Enter moves to the first match; Escape clears search.
+4. Search (Alt+S) - type to search/filter. Use `?` prefix for keyword/phrase search; Enter runs keyword search and moves to the first match; Escape clears search.
 5. Menu bar access: Alt+F (File), Alt+V (View), Alt+M (Manage), Alt+H (Help).
 
 ### Book list window detail
@@ -90,6 +100,7 @@ Columns are: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Added
 - New Book: Ctrl+N
 - Import: Ctrl+I
 - Open focused item (context-sensitive): Ctrl+Enter
+- Ctrl+A: disabled in Main Window book list (safety guard)
 
 ## Book Details Window
 
@@ -130,19 +141,22 @@ Main Window opens these from the Manage menu, and from table context actions on 
 ### Header and list
 
 - Find: Alt+F
-- Name Edit: Alt+E
+- Name field: Alt+M
 - Active checkbox (Collections only): Alt+A
 - Jump to list: Alt+B
 - Enter in Find moves focus to the matched list item.
 
 ### Actions
 
-- Save: Alt+V
-- Delete: Alt+D (not shown in Authors)
+- Edit: Alt+E
+- Save: Alt+S
+- Cancel edit: Alt+L
 - Close: Alt+C
-- Find next: F3
-- Find previous: Shift+F3
 - Read status bar: Alt+/
+
+### Status read format (Alt+/)
+
+- With a row focused, status reads: `Name - books xx, Alt+E Edit, Alt+C Close`.
 
 ## Update Window
 
@@ -154,6 +168,7 @@ Use this window to apply bulk changes to selected books.
 - Genre: Alt+G
 - Collection (when shown): Alt+L
 - Focus list: Alt+B
+- Read status bar: Alt+/
 - Close: Alt+C or Escape
 
 ## Backup / Restore Window
@@ -165,13 +180,14 @@ Use this window to create database backups, restore a selected backup, or perfor
 ### Main controls
 
 - Backup List: Alt+L
-- Browse for restore file: Browse button
+- Browse for restore file: Alt+O
 - Restore file field: Alt+T (read-only)
 
 ### Actions
 
 - Backup: Alt+B
 - Restore: Alt+R
+- Delete selected backup: Alt+D
 - Full Reset: Alt+F
 - Close: Alt+C or Escape
 - Read status bar: Alt+/
@@ -181,11 +197,13 @@ Use this window to create database backups, restore a selected backup, or perfor
 
 - Backup creates a database snapshot in the configured backup folder.
 - Restore replaces current data with the selected backup file.
+- Delete removes the currently selected backup file from disk.
 - Full Reset clears all data and recreates an empty database.
+- Delete action is shown only when the backup list has focus and a row is selected.
 
 ## Import Window
 
-The Import Window scans a folder, validates metadata, and adds valid books to the database.
+The Import Window scans a folder, validates metadata, and imports clean books while keeping review items visible for manual action.
 
 If the database is empty at startup, the first-run dialog includes an Import shortcut.
 
@@ -194,8 +212,14 @@ Below the header area, there are five controls left to right:
 1. Collection (Alt+C) - target collection for imported books.
 2. Folder (Alt+F) - selected scan path (read-only field).
 3. Browse (Alt+W) - choose folder to scan.
-4. Errors Filter (Alt+E) - All, Valid, Warning, Error, Duplicate, Fallback, Corrected.
+4. Errors Filter (Alt+E) - All, Warning, Error, Duplicate, Fallback, Corrected.
 5. Scan (Alt+S) - starts scan for supported audio files.
+
+Summary/status after scan uses: `Scanned`, `Added`, `Fixed`, `Errors/Warnings`, `Duplicates`, `Elapsed`.
+
+- `Fixed` counts items corrected by auto-correction or fallback.
+- `Errors/Warnings` counts unresolved issues requiring review.
+- Warning filter shows unresolved warnings; fixed/fallback-corrected rows are tracked as `Fixed`.
 
 ### Import list window detail
 
@@ -218,6 +242,11 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 - During scanning, Close changes to Cancel and uses Alt+N
 - Alt+/ reads the status bar message
 
+Import behavior notes:
+
+- Clean rows are auto-added during scan.
+- Rows with fixed metadata, warnings, errors, or duplicates remain in the table for review and manual `Add Selected`.
+
 ### Import shortcuts summary
 
 - Alt+/, Alt+C, Alt+F, Alt+W, Alt+E, Alt+S, Alt+B
@@ -234,11 +263,15 @@ The Import Progress window is shown during scans in compact mode.
 	- Scanning phase: `Scanning x/x`
 	- Import phase: `Adding x/x`
 - Counters shown: Files scanned, Elapsed time, Books added, Read errors.
-- Alt+/ reads the current progress status message (JAWS verified).
+- Alt+/ reads the current progress status message.
 - Cancel scan: Alt+L
 - Close (after completion): Alt+C or Escape
 
 Note: progress information fields are display-only and are not part of tab focus.
+
+## Focus return after dialogs
+
+When dialogs launched from Main Window close (for example Import, Backup/Restore, Preferences, Statistics, About, and Keyboard Shortcuts), focus is restored to Main Window with the Title cell focused on the first visible row.
 
 ## Preferences Window
 
@@ -280,7 +313,6 @@ Auto-correction options include:
 
 ### Footer actions
 
-- Audit Display: Alt+U
 - Save: Alt+V
 - Cancel: Alt+C
 - Alt+/ reads current status bar message

@@ -604,6 +604,19 @@ class DatabaseManager:
 
         self.initialize_database()
 
+    def delete_backup_file(self, backup_file: str | Path) -> Path:
+        """Delete a backup file and return the deleted path."""
+        source = Path(backup_file).resolve()
+        if not source.exists() or not source.is_file():
+            raise FileNotFoundError(f"Backup file not found: {source}")
+
+        destination = Path(self.db_path).resolve()
+        if source == destination:
+            raise ValueError("Cannot delete the active database file")
+
+        source.unlink()
+        return source
+
     def full_reset_database(self, create_backup: bool = True) -> Optional[Path]:
         """Reset database to a fresh schema, optionally creating a backup first."""
         backup_path: Optional[Path] = None

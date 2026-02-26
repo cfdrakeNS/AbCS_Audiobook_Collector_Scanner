@@ -30,7 +30,7 @@ class PreferencesWindow(QDialog):
     """
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z'
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'V', 'W', 'Y', 'Z'
     }
 
     IMPORT_SCENARIOS = [
@@ -570,14 +570,6 @@ class PreferencesWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.audit_button = QPushButton("A&udit Display")
-        self.audit_button.setAccessibleName("Audit Display")
-        self.audit_button.setAccessibleDescription(
-            "Open display audit report - Alt+U")
-        self.audit_button.setDefault(False)
-        self.audit_button.setAutoDefault(True)
-        footer_layout.addWidget(self.audit_button)
-
         self.save_button = QPushButton("Sa&ve")
         self.save_button.setAccessibleName("Save")
         self.save_button.setAccessibleDescription(
@@ -725,7 +717,6 @@ class PreferencesWindow(QDialog):
         self.reader_keywords_edit.setStyleSheet(lineedit_style)
         self.rule_min_title_value.setStyleSheet(combo_style)
         self.browse_button.setStyleSheet(button_style)
-        self.audit_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
         self.cancel_button.setStyleSheet(button_style)
 
@@ -1233,7 +1224,6 @@ class PreferencesWindow(QDialog):
         self.import_scenario_combo.currentIndexChanged.connect(
             self.on_import_scenario_changed)
         self.browse_button.clicked.connect(self.on_browse)
-        self.audit_button.clicked.connect(self.on_run_display_audit)
 
         self.save_button.clicked.connect(self.on_save)
         self.cancel_button.clicked.connect(self.on_cancel)
@@ -1245,9 +1235,6 @@ class PreferencesWindow(QDialog):
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.audit_shortcut = QShortcut(QKeySequence("Alt+U"), self)
-        self.audit_shortcut.activated.connect(self.on_run_display_audit)
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -1286,7 +1273,6 @@ class PreferencesWindow(QDialog):
             ("Alt+K", "Reader Keywords"),
             ("Alt+W", "Trim whitespace"),
             ("Alt+L", "Proper case fields"),
-            ("Alt+U", "Audit display"),
             ("Alt+V", "Save"),
             ("Alt+C", "Cancel"),
             ("F1", "Show this help"),
@@ -1410,8 +1396,6 @@ class PreferencesWindow(QDialog):
              self.zoom_spin.font().pointSize()),
             ("Preferences", "Save button font (pt)",
              self.save_button.font().pointSize()),
-            ("Preferences", "Audit button font (pt)",
-             self.audit_button.font().pointSize()),
             ("Import", "Scenario", self.import_scenario_combo.currentText()),
             ("Import", "Formats enabled", sum(
                 1 for checkbox in self.format_checks.values() if checkbox.isChecked())),

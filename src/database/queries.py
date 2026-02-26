@@ -33,6 +33,18 @@ class BookQueries:
     def __init__(self, db: DatabaseManager):
         # db is a DatabaseManager object that handles SQLite connection and operations
         self.db = db
+        # Keep comfortably below SQLite variable limit (often 999).
+        # Update queries use one extra variable for target value, so we use 900 for safety.
+        self._book_id_chunk_size = 900
+
+    def _book_id_chunks(self, book_ids: List[int]):
+        """Yield non-empty chunks of book IDs for IN-clause statements."""
+        if not book_ids:
+            return
+        for index in range(0, len(book_ids), self._book_id_chunk_size):
+            chunk = book_ids[index:index + self._book_id_chunk_size]
+            if chunk:
+                yield chunk
 
     def get_all(self, filter_criteria: SearchFilter = None) -> List[Book]:
         """
@@ -186,9 +198,15 @@ class BookQueries:
 
     def delete_many(self, book_ids: List[int]):
         """Delete multiple books."""
-        placeholders = ','.join('?' * len(book_ids))
-        self.db.execute(f"DELETE FROM books WHERE book_id IN ({placeholders})",
-                        tuple(book_ids))
+        if not book_ids:
+            return
+
+        for chunk in self._book_id_chunks(book_ids):
+            placeholders = ','.join('?' * len(chunk))
+            self.db.execute(
+                f"DELETE FROM books WHERE book_id IN ({placeholders})",
+                tuple(chunk),
+            )
         self.db.connect().commit()
 
     def find_duplicates(self) -> List[Book]:
@@ -217,32 +235,44 @@ class BookQueries:
 
     def bulk_update_series(self, book_ids: List[int], series_id: Optional[int]):
         """Bulk update series for multiple books."""
-        placeholders = ','.join('?' * len(book_ids))
-        params = [series_id] + book_ids
-        self.db.execute(
-            f"UPDATE books SET series_id = ? WHERE book_id IN ({placeholders})",
-            tuple(params)
-        )
+        if not book_ids:
+            return
+
+        for chunk in self._book_id_chunks(book_ids):
+            placeholders = ','.join('?' * len(chunk))
+            params = [series_id] + chunk
+            self.db.execute(
+                f"UPDATE books SET series_id = ? WHERE book_id IN ({placeholders})",
+                tuple(params)
+            )
         self.db.connect().commit()
 
     def bulk_update_genre(self, book_ids: List[int], genre_id: Optional[int]):
         """Bulk update genre for multiple books."""
-        placeholders = ','.join('?' * len(book_ids))
-        params = [genre_id] + book_ids
-        self.db.execute(
-            f"UPDATE books SET genre_id = ? WHERE book_id IN ({placeholders})",
-            tuple(params)
-        )
+        if not book_ids:
+            return
+
+        for chunk in self._book_id_chunks(book_ids):
+            placeholders = ','.join('?' * len(chunk))
+            params = [genre_id] + chunk
+            self.db.execute(
+                f"UPDATE books SET genre_id = ? WHERE book_id IN ({placeholders})",
+                tuple(params)
+            )
         self.db.connect().commit()
 
     def bulk_update_collection(self, book_ids: List[int], collection_id: int):
         """Bulk update collection for multiple books."""
-        placeholders = ','.join('?' * len(book_ids))
-        params = [collection_id] + book_ids
-        self.db.execute(
-            f"UPDATE books SET collection_id = ? WHERE book_id IN ({placeholders})",
-            tuple(params)
-        )
+        if not book_ids:
+            return
+
+        for chunk in self._book_id_chunks(book_ids):
+            placeholders = ','.join('?' * len(chunk))
+            params = [collection_id] + chunk
+            self.db.execute(
+                f"UPDATE books SET collection_id = ? WHERE book_id IN ({placeholders})",
+                tuple(params)
+            )
         self.db.connect().commit()
 
     def _row_to_book(self, row, parse_dates: bool = True):

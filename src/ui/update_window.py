@@ -145,6 +145,9 @@ class UpdateWindow(QDialog):
         series_label = QLabel("&Series:")
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
+        self.series_combo.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.series_combo.setMinimumContentsLength(20)
         self.series_combo.setAccessibleName("Series")
         self.series_combo.setAccessibleDescription(
             "Select series to apply, enter new, or select None to clear - Alt+S")
@@ -156,6 +159,9 @@ class UpdateWindow(QDialog):
         genre_label = QLabel("&Genre:")
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
+        self.genre_combo.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.genre_combo.setMinimumContentsLength(20)
         self.genre_combo.setAccessibleName("Genre")
         self.genre_combo.setAccessibleDescription(
             "Select genre to apply, enter new, or select None to clear - Alt+G")
@@ -177,6 +183,8 @@ class UpdateWindow(QDialog):
         if not self.has_multiple_collections:
             self.collection_label.setVisible(False)
             self.collection_combo.setVisible(False)
+
+        self._apply_header_combo_widths()
 
         layout.addLayout(header_layout)
 
@@ -633,6 +641,13 @@ class UpdateWindow(QDialog):
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
         self.table.setStyleSheet(table_style)
+        self._apply_header_combo_widths()
+
+    def _apply_header_combo_widths(self):
+        """Keep Series and Genre combos visually aligned with same width."""
+        min_width = max(self.scaler.get_scaled_size(220), 180)
+        self.series_combo.setMinimumWidth(min_width)
+        self.genre_combo.setMinimumWidth(min_width)
 
     def load_combos(self):
         """Load combo box items from database."""

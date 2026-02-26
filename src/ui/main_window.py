@@ -1987,6 +1987,15 @@ class MainWindow(QMainWindow):
 
     def table_key_press(self, event: QKeyEvent):
         """Handle key press in table."""
+        if event.matches(QKeySequence.SelectAll):
+            self.set_status(
+                "Ctrl+A is disabled in Main Window to prevent accidental bulk actions",
+                timeout_ms=3000,
+                announce=True,
+            )
+            event.accept()
+            return
+
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             # Ctrl+Enter follows double-click routing by focused column
             if event.modifiers() & Qt.ControlModifier:
@@ -2676,6 +2685,45 @@ class MainWindow(QMainWindow):
                     timeout_ms=6000,
                 )
 
+        self.focus_first_title_after_import_close()
+
+    def focus_first_title_after_import_close(self):
+        """Return focus to Main Window and place cursor on first Title cell."""
+        self.raise_()
+        self.activateWindow()
+
+        if self.table.rowCount() <= 0:
+            self.table.setFocus(Qt.TabFocusReason)
+            return
+
+        title_col = 1
+        self.table.setCurrentCell(0, title_col)
+        index = self.table.model().index(0, title_col)
+        self.table.selectionModel().setCurrentIndex(
+            index, QItemSelectionModel.NoUpdate)
+        self.table.scrollTo(index)
+        self.table.setFocus(Qt.TabFocusReason)
+
+    def restore_main_focus_after_modal(self):
+        """Ensure Main Window regains focus on a sensible table cell after modal dialogs."""
+        self.raise_()
+        self.activateWindow()
+
+        if self.table.rowCount() <= 0:
+            self.table.setFocus(Qt.TabFocusReason)
+            return
+
+        row = self.table.currentRow()
+        if row < 0 or row >= self.table.rowCount():
+            row = 0
+        title_col = 1
+        self.table.setCurrentCell(row, title_col)
+        index = self.table.model().index(row, title_col)
+        self.table.selectionModel().setCurrentIndex(
+            index, QItemSelectionModel.NoUpdate)
+        self.table.scrollTo(index)
+        self.table.setFocus(Qt.TabFocusReason)
+
     def open_book_details(self, book: Book):
         """Open book details window."""
         # bd#8: Pass current sort order to show in header
@@ -2706,9 +2754,12 @@ class MainWindow(QMainWindow):
 
     def on_preferences(self):
         """Open preferences dialog."""
+        focus_ctx = self._capture_table_focus_context()
         dialog = PreferencesWindow(
             self.scaler, self.theme_manager, parent=self)
         dialog.exec()
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
 
     def on_show_splash(self):
         """Show library statistics."""
@@ -2748,6 +2799,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
             font.setPointSize(self.scaler.get_scaled_size(12))
             text_edit.setFont(font)
             layout.addWidget(text_edit)
+            QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
         else:
             # Show statistics in a single-column table
             table = QTableWidget()
@@ -2797,12 +2849,16 @@ Use Ctrl+I to import or Alt+M for menu options."""
             table.setFont(font)
 
             layout.addWidget(table)
+            QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
 
         ok_btn = QPushButton("Close")
         ok_btn.clicked.connect(dlg.close)
         layout.addWidget(ok_btn)
 
+        focus_ctx = self._capture_table_focus_context()
         dlg.exec()
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
 
     def on_import(self):
         """Open import window."""
@@ -2834,6 +2890,8 @@ Use Ctrl+I to import or Alt+M for menu options."""
                     f"Imported {imported_count}. Database now has {db_total_books} books, but the table view is not rendering rows.",
                     timeout_ms=6000,
                 )
+
+        self.focus_first_title_after_import_close()
 
     def on_show_authors(self):
         """Open Author window."""
@@ -2973,6 +3031,7 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         font.setPointSize(scaled_size)
         text_edit.setFont(font)
         layout.addWidget(text_edit)
+        QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
 
         close_btn = QPushButton("Close")
         close_btn.setAccessibleName("Close")
@@ -2982,7 +3041,10 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         close_btn.setFont(btn_font)
         layout.addWidget(close_btn)
 
+        focus_ctx = self._capture_table_focus_context()
         dlg.exec()
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for JAWS accessibility."""
@@ -3066,7 +3128,11 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
 
         dlg.setTabOrder(table, close_btn)
 
+        QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
+        focus_ctx = self._capture_table_focus_context()
         dlg.exec()
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
 
     def resizeEvent(self, event):
         """Handle window resize - recalculate proportional column widths."""

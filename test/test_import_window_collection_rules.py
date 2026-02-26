@@ -92,7 +92,7 @@ def test_import_window_requires_selection_when_multiple_collections(
     header_layout = root_layout.itemAt(0).layout()
     first_header_widget = header_layout.itemAt(0).widget()
     assert isinstance(first_header_widget, QLabel)
-    assert first_header_widget.text() == "Co&llection:"
+    assert first_header_widget.text() == "&Collection:"
 
     assert window.collection_combo.itemText(0) == "None"
     assert window.collection_combo.itemData(0) is None
@@ -161,8 +161,8 @@ def test_scan_progress_updates_status_message_for_alt_slash(
         cancel_check,
     ):
         progress_callback(1, 2, os.path.join(folder_path, "sample_book.mp3"))
-        assert window._default_status_message.startswith("Scanning 1/2:")
-        assert window.status_bar.currentMessage().startswith("Scanning 1/2:")
+        assert window._default_status_message.startswith("Scan started")
+        assert window.status_bar.currentMessage().startswith("Scan started")
         return []
 
     monkeypatch.setattr(window.scanner, "scan_folder", fake_scan_folder)
@@ -176,12 +176,11 @@ def test_close_prompt_uses_valid_count_message(
     window = _make_import_window(temp_db, qapp)
     qtbot.addWidget(window)
     window.table.setRowCount(1)
-    window._summary_counts = {
-        "total": 3,
-        "valid": 2,
-        "warnings": 0,
-        "errors": 1,
-    }
+    window.scanned_items = [
+        {"status": "OK"},
+        {"status": "Warning"},
+        {"status": "Error"},
+    ]
 
     captured = {}
 
@@ -193,7 +192,7 @@ def test_close_prompt_uses_valid_count_message(
         "ui.import_window.exec_styled_message_box", fake_message_box)
 
     window._confirm_close_window()
-    assert captured["text"].startswith("There are 2 valid books not added!")
+    assert captured["text"].startswith("There are 2 books not added!")
     assert "Current scan results in this window will be discarded." in captured["text"]
 
 
@@ -203,12 +202,9 @@ def test_close_prompt_hides_valid_count_when_zero(
     window = _make_import_window(temp_db, qapp)
     qtbot.addWidget(window)
     window.table.setRowCount(1)
-    window._summary_counts = {
-        "total": 1,
-        "valid": 0,
-        "warnings": 0,
-        "errors": 1,
-    }
+    window.scanned_items = [
+        {"status": "Error"},
+    ]
 
     captured = {}
 

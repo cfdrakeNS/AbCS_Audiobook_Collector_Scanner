@@ -104,9 +104,18 @@ def announce_status_message(status_bar: QStatusBar, message: str, announcement_w
 
                 # Use a timer to restore focus after JAWS reads the message
                 def restore_focus():
-                    if previous_focus:
-                        previous_focus.setFocus()
-                    status_bar.setFocusPolicy(Qt.NoFocus)
+                    try:
+                        active_app = QApplication.instance()
+                        if active_app and previous_focus and active_app.focusWidget() == status_bar:
+                            try:
+                                previous_focus.setFocus()
+                            except RuntimeError:
+                                pass
+                    finally:
+                        try:
+                            status_bar.setFocusPolicy(Qt.NoFocus)
+                        except RuntimeError:
+                            pass
 
                 # Restore focus after 300ms (more time for JAWS to read)
                 from PySide6.QtCore import QTimer
