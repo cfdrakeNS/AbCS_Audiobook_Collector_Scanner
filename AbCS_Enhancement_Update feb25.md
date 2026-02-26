@@ -38,8 +38,6 @@ Capture the latest import-flag updates, current behavior, and follow-up decision
 - Focused tests exist for fallback and auto-correct flag generation.
 
 ### Not Yet Completed
-- Import filter options do not yet include explicit `Fallback` and `Corrected` categories.
-- Import flow that auto-adds valid records during scanning (item B) is not yet implemented.
 - Optional policy to auto-add corrected books is not yet implemented.
 
 ## Recommended Message Standard (for consistency)
@@ -62,11 +60,10 @@ Use one consistent, screen-reader-friendly format:
 
 ## Decisions Needed
 
-1. Filter labels: add separate filters (`Fallback`, `Corrected`) or keep under `Warning`?
-2. Auto-add policy: when item B is implemented, should corrected/fallback always auto-add, or be controlled by a preference toggle?
+1. Optional preference policy: should corrected books be auto-added by default, or controlled by a user preference toggle?
 
 ## Next Implementation Steps
 
-1. Update filter logic and UI labels in Import Window.
-2. Implement item B processing flow (auto-add valid during scan, keep flagged in review list).
-3. Add tests for filter behavior and corrected/fallback validity routing.
+1. Decide whether to add an optional user preference for auto-adding corrected books.
+2. If approved, implement the preference in Import settings and route behavior accordingly.
+3. Add/adjust tests for preference-on/off behavior.

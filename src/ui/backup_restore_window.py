@@ -229,10 +229,6 @@ class BackupRestoreWindow(QDialog):
         self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
         self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
-        self.status_shortcut_divide = QShortcut(
-            QKeySequence("Alt+Divide"), self)
-        self.status_shortcut_divide.activated.connect(self.on_read_status_bar)
-
         self.status_shortcut_equal = QShortcut(QKeySequence("Alt+="), self)
         self.status_shortcut_equal.activated.connect(self.on_read_status_bar)
 

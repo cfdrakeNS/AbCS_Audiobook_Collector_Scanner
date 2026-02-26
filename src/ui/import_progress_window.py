@@ -240,12 +240,6 @@ class ImportProgressWindow(QDialog):
         self.status_shortcut_shift.setContext(Qt.ApplicationShortcut)
         self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
-        self.status_shortcut_division = QShortcut(
-            QKeySequence("Alt+Divide"), self)
-        self.status_shortcut_division.setContext(Qt.ApplicationShortcut)
-        self.status_shortcut_division.activated.connect(
-            self.on_read_status_bar)
-
         self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.cancel_shortcut.activated.connect(self.on_cancel_requested)
 
@@ -266,7 +260,7 @@ class ImportProgressWindow(QDialog):
     def eventFilter(self, source, event):
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress):
             is_alt = bool(event.modifiers() & Qt.AltModifier)
-            is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question, Qt.Key_division)
+            is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question)
             is_status_text = event.text() in ("/", "?")
             if is_alt and (is_status_key or is_status_text):
                 self.on_read_status_bar()
@@ -279,7 +273,7 @@ class ImportProgressWindow(QDialog):
 
     def keyPressEvent(self, event):
         is_alt = bool(event.modifiers() & Qt.AltModifier)
-        is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question, Qt.Key_division)
+        is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question)
         is_status_text = event.text() in ("/", "?")
         if is_alt and (is_status_key or is_status_text):
             self.on_read_status_bar()

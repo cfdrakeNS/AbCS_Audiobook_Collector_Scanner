@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import uuid
+from pathlib import Path
 
 from database.connection import DatabaseManager
 
@@ -13,7 +14,24 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def _temp_db(tmp_path):
-    source_db = os.path.join(PROJECT_ROOT, "data", "abcs.db")
+    data_dir = Path(PROJECT_ROOT) / "data"
+    candidates = [
+        data_dir / "abcs.db",
+        data_dir / "wh abcs.db",
+    ]
+    backup_candidates = sorted(
+        data_dir.glob("abcs.db.backup.*"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    candidates.extend(backup_candidates)
+
+    source_db = next((path for path in candidates if path.exists()), None)
+    if source_db is None:
+        raise FileNotFoundError(
+            f"No testable database found in {data_dir}. Expected one of: abcs.db, wh abcs.db, or abcs.db.backup.*"
+        )
+
     target_db = tmp_path / "abcs_test.db"
     shutil.copy2(source_db, target_db)
     db = DatabaseManager(str(target_db))

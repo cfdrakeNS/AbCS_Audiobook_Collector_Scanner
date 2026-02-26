@@ -146,25 +146,11 @@ See [AbCS_Enhancement_Update.md](AbCS_Enhancement_Update.md) for the consolidate
 - ✅ Test coverage: Focused tests for all flag scenarios
 
 ### Pending (To Be Implemented)
-- ⏳ Import window filter: Add `Fallback` and `Corrected` filter options alongside existing filters
-- ⏳ Import processing behavior (item B): Auto-add valid books during scan, keep flagged items in review list
-- ⏳ Valid book classification: When item B is implemented, treat fallback/corrected items as valid (can be auto-added)
 - ⏳ Optional preference: User-controlled auto-add policy for corrected books
 
-F: Author Fallback folder 
-
-auto-correction messages
-C: Trimmed whitespace
-C: Skipped leading punctuation 
-C: Removed Special characters 
-C: Trimmed whitespace
-
-these will be like warning that can be added by selecting them 
-import window add corrected and fallback to the filter 
-
-Once we implement item B Import processing behavior we will consider fallback and corrected as valid books in the import window 
-
-Optionally, we could add a choice to auto add corrected books directly  
+Fallback/corrected records remain warning-level, reviewable, and addable via selection.
+Import window filter already includes corrected and fallback options.
+Optional future enhancement: add a user preference to auto-add corrected books directly.
 
 
 

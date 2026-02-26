@@ -141,7 +141,7 @@ Comparison baseline: current Python app in `src/ui`
     - [x] Captured timing for Title/Author/Genre/Series (3 runs each)
     - [x] Output generated: `perf_results_34k_books.json`
     - [x] DB query timings are excellent (Title 0.046s, Author 0.068s, Genre 0.062s, Series 0.064s avg)
-  - [ ] Investigate UI table rendering bottleneck on sort switch (query layer appears healthy)
+  - [x] Investigate UI table rendering bottleneck on sort switch (query layer appears healthy)
     - [x] Profile `MainWindow.refresh_books()` population path with 34k rows
     - [x] Implement targeted optimization passes (selection repaint, column sizing, date hydration)
     - [x] Implement model-based table path (`QTableView` + model) for large datasets
@@ -153,9 +153,9 @@ Comparison baseline: current Python app in `src/ui`
     - [x] Manual keyboard navigation regression pass (2026-02-25)
       - [x] Arrow keys, Shift+Space + Shift+Arrows, Ctrl+Space, Ctrl+Enter, ESC all OK
   - [x] If performance is acceptable (< 1 sec), schedule handoff to Wayne
-  - [ ] If performance is still slow after UI optimization, investigate deeper rendering hot paths
+  - [x] If performance is still slow after UI optimization, investigate deeper rendering hot paths (not required; performance target met)
 
-- [ ] Add automation coverage for new import flow
+- [x] Add automation coverage for new import flow
   - [x] Mixed dataset routing test (valid + duplicate + warning + error)
   - [x] Keyboard-only progress window interaction test
   - [x] JAWS/NVDA smoke checks for progress announcements
