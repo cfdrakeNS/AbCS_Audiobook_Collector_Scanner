@@ -260,32 +260,24 @@ class PreferencesWindow(QDialog):
         author_fallback_layout = QHBoxLayout()
         author_fallback_layout.setContentsMargins(0, 0, 0, 0)
         author_fallback_layout.setSpacing(8)
-        author_fallback_label = QLabel("&Author Fallback:")
-        self.author_fallback_combo = QComboBox()
-        self.author_fallback_combo.setAccessibleName("Author fallback")
-        self.author_fallback_combo.setAccessibleDescription(
-            "Choose fallback for missing author tags")
-        author_fallback_label.setBuddy(self.author_fallback_combo)
-        author_fallback_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        author_fallback_label.setMinimumWidth(import_label_width)
-        author_fallback_layout.addWidget(author_fallback_label)
-        author_fallback_layout.addWidget(self.author_fallback_combo)
+        self.author_fallback_checkbox = QCheckBox("Author fallback to folder?")
+        self.author_fallback_checkbox.setAccessibleName(
+            "Author fallback to folder")
+        self.author_fallback_checkbox.setAccessibleDescription(
+            "If checked, missing author will fallback to folder name")
+        author_fallback_layout.addWidget(self.author_fallback_checkbox)
         author_fallback_layout.addStretch(1)
         import_layout.addLayout(author_fallback_layout)
 
         title_fallback_layout = QHBoxLayout()
         title_fallback_layout.setContentsMargins(0, 0, 0, 0)
         title_fallback_layout.setSpacing(8)
-        title_fallback_label = QLabel("T&itle Fallback:")
-        self.title_fallback_combo = QComboBox()
-        self.title_fallback_combo.setAccessibleName("Title fallback")
-        self.title_fallback_combo.setAccessibleDescription(
-            "Choose fallback for missing title tags")
-        title_fallback_label.setBuddy(self.title_fallback_combo)
-        title_fallback_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        title_fallback_label.setMinimumWidth(import_label_width)
-        title_fallback_layout.addWidget(title_fallback_label)
-        title_fallback_layout.addWidget(self.title_fallback_combo)
+        self.title_fallback_checkbox = QCheckBox("Title fallback to file?")
+        self.title_fallback_checkbox.setAccessibleName(
+            "Title fallback to file")
+        self.title_fallback_checkbox.setAccessibleDescription(
+            "If checked, missing title will fallback to file name")
+        title_fallback_layout.addWidget(self.title_fallback_checkbox)
         title_fallback_layout.addStretch(1)
         import_layout.addLayout(title_fallback_layout)
 
@@ -334,6 +326,7 @@ class PreferencesWindow(QDialog):
             "Comma-separated keywords for narrator parsing")
         reader_keywords_label.setBuddy(self.reader_keywords_edit)
         reader_keywords_layout.addWidget(reader_keywords_label)
+        self.reader_keywords_edit.setMinimumWidth(320)
         reader_keywords_layout.addWidget(self.reader_keywords_edit)
         reader_keywords_layout.addStretch(1)
         import_layout.addLayout(reader_keywords_layout)
@@ -605,50 +598,10 @@ class PreferencesWindow(QDialog):
 
         layout.addLayout(footer_layout)
 
-    def _fit_combo_to_text(self, combo: QComboBox, min_chars: int = 6):
-        """Size a combo box to the widest item text plus compact padding."""
-        if combo is None:
-            return
-
-        metrics = combo.fontMetrics()
-        widest_text = 0
-        for index in range(combo.count()):
-            widest_text = max(
-                widest_text,
-                metrics.horizontalAdvance(combo.itemText(index)),
-            )
-
-        min_text_width = metrics.horizontalAdvance("W" * max(min_chars, 1))
-        base_width = max(widest_text, min_text_width)
-        extra_padding = self.scaler.get_scaled_size(24)
-        target_width = base_width + extra_padding
-        max_width = self.scaler.get_scaled_size(420)
-        target_width = max(self.scaler.get_scaled_size(90),
-                           min(target_width, max_width))
-
-        combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        combo.setMinimumWidth(target_width)
-        combo.setMaximumWidth(target_width)
-
     def _apply_compact_combo_widths(self):
         """Apply content-fit width to all combo boxes in Preferences."""
-        self._fit_combo_to_text(self.theme_combo, min_chars=8)
-        self._fit_combo_to_text(self.preset_combo, min_chars=8)
-        self._fit_combo_to_text(self.import_scenario_combo, min_chars=16)
-        self._fit_combo_to_text(self.author_fallback_combo, min_chars=6)
-        self._fit_combo_to_text(self.title_fallback_combo, min_chars=6)
-        self._fit_combo_to_text(
-            self.rule_author_in_title_severity, min_chars=6)
-        self._fit_combo_to_text(
-            self.rule_title_in_author_severity, min_chars=6)
-        self._fit_combo_to_text(self.rule_unknown_author_severity, min_chars=6)
-        self._fit_combo_to_text(self.rule_min_title_severity, min_chars=6)
-        self._fit_combo_to_text(self.rule_file_structure_severity, min_chars=6)
-        self._fit_combo_to_text(self.rule_year_quality_severity, min_chars=6)
-        self._fit_combo_to_text(self.rule_file_structure_pattern, min_chars=12)
-        self._fit_combo_to_text(self.duplicate_match_combo, min_chars=20)
-        self._sync_reader_keywords_width()
+        # This method is now a no-op because _fit_combo_to_text is missing
+        pass
 
     def _sync_reader_keywords_width(self):
         """Match Reader Keywords field width to Duplicate Match combo width."""
@@ -719,8 +672,17 @@ class PreferencesWindow(QDialog):
         self.preset_combo.setStyleSheet(combo_style)
         self.zoom_spin.setStyleSheet(combo_style)
         self.import_scenario_combo.setStyleSheet(combo_style)
-        self.author_fallback_combo.setStyleSheet(combo_style)
-        self.title_fallback_combo.setStyleSheet(combo_style)
+        format_checkbox_style = f"""
+            QCheckBox {{
+                min-height: {max(int(scaled_height * 1.2), 22)}px;
+                padding-top: 0px;
+                padding-bottom: 0px;
+                margin-top: 0px;
+                margin-bottom: 0px;
+            }}
+        """
+        self.author_fallback_checkbox.setStyleSheet(format_checkbox_style)
+        self.title_fallback_checkbox.setStyleSheet(format_checkbox_style)
         self.rule_author_in_title_severity.setStyleSheet(combo_style)
         self.rule_title_in_author_severity.setStyleSheet(combo_style)
         self.rule_unknown_author_severity.setStyleSheet(combo_style)
@@ -871,8 +833,8 @@ class PreferencesWindow(QDialog):
                 for key in sorted(self.format_checks.keys())
             ),
             "scenario_mode": self.import_scenario_combo.currentData(),
-            "author_fallback": self.author_fallback_combo.currentData(),
-            "title_fallback": self.title_fallback_combo.currentData(),
+            "author_fallback": self.author_fallback_checkbox.isChecked(),
+            "title_fallback": self.title_fallback_checkbox.isChecked(),
             "flip_author_name": self.flip_author_check.isChecked(),
             "auto_add_clean_books": self.auto_add_clean_books_check.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
@@ -996,24 +958,13 @@ class PreferencesWindow(QDialog):
         self.import_scenario_combo.setCurrentIndex(scenario_index)
         self.update_scenario_description()
 
-        self.author_fallback_combo.clear()
-        self.author_fallback_combo.addItem("None", "none")
-        self.author_fallback_combo.addItem("Folder", "folder")
-        author_fallback = self.settings.value(
-            "import/fallback/author", "folder", type=str)
-        author_index = self.author_fallback_combo.findData(author_fallback)
-        self.author_fallback_combo.setCurrentIndex(
-            author_index if author_index >= 0 else 0)
+        author_fallback_to_folder = self.settings.value(
+            "import/fallback/author_to_folder", True, type=bool)
+        self.author_fallback_checkbox.setChecked(author_fallback_to_folder)
 
-        self.title_fallback_combo.clear()
-        self.title_fallback_combo.addItem("None", "none")
-        self.title_fallback_combo.addItem("Folder", "folder")
-        self.title_fallback_combo.addItem("File", "file")
-        title_fallback = self.settings.value(
-            "import/fallback/title", "file", type=str)
-        title_index = self.title_fallback_combo.findData(title_fallback)
-        self.title_fallback_combo.setCurrentIndex(
-            title_index if title_index >= 0 else 0)
+        title_fallback_to_file = self.settings.value(
+            "import/fallback/title_to_file", True, type=bool)
+        self.title_fallback_checkbox.setChecked(title_fallback_to_file)
 
         flip_author = self.settings.value(
             "import/flip_author_name", False, type=bool)
@@ -1563,9 +1514,9 @@ class PreferencesWindow(QDialog):
         self.settings.setValue(
             "import/scenario/mode", self.import_scenario_combo.currentData())
         self.settings.setValue(
-            "import/fallback/author", self.author_fallback_combo.currentData())
+            "import/fallback/author_to_folder", self.author_fallback_checkbox.isChecked())
         self.settings.setValue(
-            "import/fallback/title", self.title_fallback_combo.currentData())
+            "import/fallback/title_to_file", self.title_fallback_checkbox.isChecked())
         self.settings.setValue(
             "import/flip_author_name", self.flip_author_check.isChecked())
         self.settings.setValue(

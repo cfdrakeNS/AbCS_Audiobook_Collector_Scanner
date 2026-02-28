@@ -1,43 +1,104 @@
-"""
-Import Window
-Main interface for scanning folders and importing audiobooks.
-"""
-
-import csv
-
+from ui.import_progress_window import ImportProgressWindow
+from ui.import_detail_window import ImportDetailWindow
+from accessibility.accessible_events import (
+    announce_status_message, announce_dialog_opened, announce_dialog_closed
+)
+from accessibility.key_filters import is_unmapped_alt_letter
+from accessibility.theme_manager import ThemeManager
+from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from accessibility.scaling import UIScaler
+from core import BookScanner, ImportValidator, ImportScanner
+from database import (
+    DatabaseManager, BookQueries, AuthorQueries,
+    GenreQueries, CollectionQueries, Book, Collection, SearchFilter
+)
+from typing import Optional
+import time
+import os
+from datetime import datetime
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel, QEvent, QModelIndex
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QStatusBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QMessageBox, QApplication
 )
-from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel, QEvent, QModelIndex
-from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
-from datetime import datetime
-import os
-import time
-from typing import Optional
+import csv
 
-from database import (
-    DatabaseManager, BookQueries, AuthorQueries,
-    GenreQueries, CollectionQueries, Book, Collection, SearchFilter
-)
-from core import BookScanner, ImportValidator, ImportScanner
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from accessibility.theme_manager import ThemeManager
-from accessibility.key_filters import is_unmapped_alt_letter
-from accessibility.accessible_events import (
-    announce_status_message, announce_dialog_opened, announce_dialog_closed
-)
-from ui.import_detail_window import ImportDetailWindow
-from ui.import_progress_window import ImportProgressWindow
+
+"""
+Import Window
+Main interface for scanning folders and importing audiobooks.
+"""
 
 
 class ImportWindow(QDialog):
-    """
-    Import dialog for scanning folders and importing metadata.
-    """
+    # Removed duplicate and mis-indented setup_shortcuts
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts."""
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.focus_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
+        self.focus_list_shortcut.activated.connect(self.on_focus_list)
+
+        self.open_detail_shortcut = QShortcut(
+            QKeySequence("Ctrl+Return"), self)
+        self.open_detail_shortcut.activated.connect(
+            self.on_open_detail_selected)
+
+        self.open_detail_shortcut_num = QShortcut(
+            QKeySequence("Ctrl+Enter"), self)
+        self.open_detail_shortcut_num.activated.connect(
+            self.on_open_detail_selected)
+
+        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+
+        self.add_selected_shortcut = QShortcut(QKeySequence("Alt+I"), self)
+        self.add_selected_shortcut.setContext(Qt.ApplicationShortcut)
+        self.add_selected_shortcut.activated.connect(
+            self.import_selected_button.click)
+
+        self.export_shortcut = QShortcut(QKeySequence("Alt+X"), self)
+        self.export_shortcut.setContext(Qt.ApplicationShortcut)
+        self.export_shortcut.activated.connect(self.export_button.click)
+
+        self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self.escape_shortcut.activated.connect(self.on_cancel)
+
+        self.author_col_shortcut = QShortcut(QKeySequence("Alt+1"), self)
+        self.author_col_shortcut.activated.connect(
+            lambda: self.jump_to_column(self.COL_AUTHOR))
+
+        self.title_col_shortcut = QShortcut(QKeySequence("Alt+2"), self)
+        self.title_col_shortcut.activated.connect(
+            lambda: self.jump_to_column(self.COL_TITLE))
+
+        self.year_col_shortcut = QShortcut(QKeySequence("Alt+3"), self)
+        self.year_col_shortcut.activated.connect(
+            lambda: self.jump_to_column(self.COL_YEAR))
+
+        self.error_col_shortcut = QShortcut(QKeySequence("Alt+4"), self)
+        self.error_col_shortcut.activated.connect(
+            lambda: self.jump_to_column(self.COL_ERROR))
+
+        self.path_col_shortcut = QShortcut(QKeySequence("Alt+5"), self)
+        self.path_col_shortcut.activated.connect(
+            lambda: self.jump_to_column(self.COL_PATH))
+
+    def install_alt_key_filters(self):
+        """Install key filters to block unmapped Alt+letter input."""
+        widgets = []
+        widgets.extend(self.findChildren(QLineEdit))
+        widgets.extend(self.findChildren(QComboBox))
+        widgets.extend(self.findChildren(QPushButton))
+        widgets.extend(self.findChildren(QTableWidget))
+        for widget in widgets:
+            widget.installEventFilter(self)
+
+    # Import dialog for scanning folders and importing metadata.
 
     ALLOWED_ALT_LETTERS = {
         'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'W', 'X'
@@ -95,10 +156,9 @@ class ImportWindow(QDialog):
         self.import_scenario_mode = "mass_standard"
         self.current_formats_text = "None"
         self.current_mode_text = self.SCENARIO_LABELS.get(
-            self.import_scenario_mode, "Mass Standard Import"
-        )
-        self.author_fallback_mode = "folder"
-        self.title_fallback_mode = "file"
+            self.import_scenario_mode, "Mass Standard Import")
+        self.author_fallback_to_folder = True
+        self.title_fallback_to_file = True
         self.flip_author_names = False
         self.autocorrect_trim_whitespace = False
         self.autocorrect_strip_leading_punctuation = False
@@ -125,19 +185,76 @@ class ImportWindow(QDialog):
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
 
+        # Fallback checkboxes initialization (must be before signal connections)
+        self.author_fallback_checkbox = QPushButton(
+            "Author fallback to folder?")
+        self.author_fallback_checkbox.setCheckable(True)
+        self.author_fallback_checkbox.setChecked(
+            self.author_fallback_to_folder)
+        self.author_fallback_checkbox.setAccessibleName(
+            "Author fallback to folder")
+        self.author_fallback_checkbox.setAccessibleDescription(
+            "If checked, missing author will fallback to folder name")
+
+        self.title_fallback_checkbox = QPushButton("Title fallback to file?")
+        self.title_fallback_checkbox.setCheckable(True)
+        self.title_fallback_checkbox.setChecked(self.title_fallback_to_file)
+        self.title_fallback_checkbox.setAccessibleName(
+            "Title fallback to file")
+        self.title_fallback_checkbox.setAccessibleDescription(
+            "If checked, missing title will fallback to file name")
         self.setup_ui()
+        self.resize(1100, 600)  # Ensure height is set after UI is built
         self.install_alt_key_filters()
         self.apply_control_styles()
         self.load_preferences()
         self.connect_signals()
         self.setup_shortcuts()
+        self.author_fallback_checkbox.toggled.connect(
+            self.on_author_fallback_toggled)
+        self.title_fallback_checkbox.toggled.connect(
+            self.on_title_fallback_toggled)
         self.scaler.scale_changed.connect(self.on_scale_changed)
+
+    def on_author_fallback_toggled(self, checked):
+        self.author_fallback_to_folder = checked
+        self.settings.setValue("import/fallback/author_to_folder", checked)
+        self.import_scanner.configure(
+            scenario_mode=self.import_scenario_mode,
+            author_fallback_mode="folder" if checked else None,
+            title_fallback_mode="file" if self.title_fallback_to_file else None,
+            reader_keywords=self.reader_keywords,
+            trim_whitespace=self.autocorrect_trim_whitespace,
+            strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
+            remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
+            proper_case_fields=self.autocorrect_proper_case,
+            move_leading_the_title=self.autocorrect_move_leading_the,
+        )
+        self.set_status("Author fallback to folder {}".format(
+            "enabled" if checked else "disabled"), announce=True)
+
+    def on_title_fallback_toggled(self, checked):
+        self.title_fallback_to_file = checked
+        self.settings.setValue("import/fallback/title_to_file", checked)
+        self.import_scanner.configure(
+            scenario_mode=self.import_scenario_mode,
+            author_fallback_mode="folder" if self.author_fallback_to_folder else None,
+            title_fallback_mode="file" if checked else None,
+            reader_keywords=self.reader_keywords,
+            trim_whitespace=self.autocorrect_trim_whitespace,
+            strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
+            remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
+            proper_case_fields=self.autocorrect_proper_case,
+            move_leading_the_title=self.autocorrect_move_leading_the,
+        )
+        self.set_status("Title fallback to file {}".format(
+            "enabled" if checked else "disabled"), announce=True)
 
         self._update_header_info_line()
         self.setAccessibleName(self._base_window_title)
         self.setAccessibleDescription(
             "Scan folders for audiobooks and import metadata")
-        self.resize(1100, 600)
+        self.resize(1100, 600)  # Restore previous height
         self.setMinimumWidth(900)
 
         announce_dialog_opened(self, self.windowTitle())
@@ -153,6 +270,26 @@ class ImportWindow(QDialog):
             return self.default_collection_id
 
         if self.default_collection_id is not None:
+            # Fallback checkboxes initialization
+            self.author_fallback_checkbox = QPushButton(
+                "Author fallback to folder?")
+            self.author_fallback_checkbox.setCheckable(True)
+            self.author_fallback_checkbox.setChecked(
+                self.author_fallback_to_folder)
+            self.author_fallback_checkbox.setAccessibleName(
+                "Author fallback to folder")
+            self.author_fallback_checkbox.setAccessibleDescription(
+                "If checked, missing author will fallback to folder name")
+
+            self.title_fallback_checkbox = QPushButton(
+                "Title fallback to file?")
+            self.title_fallback_checkbox.setCheckable(True)
+            self.title_fallback_checkbox.setChecked(
+                self.title_fallback_to_file)
+            self.title_fallback_checkbox.setAccessibleName(
+                "Title fallback to file")
+            self.title_fallback_checkbox.setAccessibleDescription(
+                "If checked, missing title will fallback to file name")
             return self.default_collection_id
 
         collections = self.collection_queries.get_all()
@@ -224,7 +361,6 @@ class ImportWindow(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
-
         # Header section
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
@@ -255,6 +391,27 @@ class ImportWindow(QDialog):
         self.browse_button.setDefault(False)
         self.browse_button.setAutoDefault(True)
         header_layout.addWidget(self.browse_button)
+
+        # Fallback checkboxes
+        self.author_fallback_checkbox = QPushButton(
+            "Author fallback to folder?")
+        self.author_fallback_checkbox.setCheckable(True)
+        self.author_fallback_checkbox.setChecked(
+            self.author_fallback_to_folder)
+        self.author_fallback_checkbox.setAccessibleName(
+            "Author fallback to folder")
+        self.author_fallback_checkbox.setAccessibleDescription(
+            "If checked, missing author will fallback to folder name")
+        header_layout.addWidget(self.author_fallback_checkbox)
+
+        self.title_fallback_checkbox = QPushButton("Title fallback to file?")
+        self.title_fallback_checkbox.setCheckable(True)
+        self.title_fallback_checkbox.setChecked(self.title_fallback_to_file)
+        self.title_fallback_checkbox.setAccessibleName(
+            "Title fallback to file")
+        self.title_fallback_checkbox.setAccessibleDescription(
+            "If checked, missing title will fallback to file name")
+        header_layout.addWidget(self.title_fallback_checkbox)
 
         error_filter_label = QLabel("&Errors Filter:")
         self.error_filter_combo = QComboBox()
@@ -500,10 +657,10 @@ class ImportWindow(QDialog):
             "import/scenario/mode", "mass_standard", type=str)
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import")
-        self.author_fallback_mode = self.settings.value(
-            "import/fallback/author", "folder", type=str)
-        self.title_fallback_mode = self.settings.value(
-            "import/fallback/title", "file", type=str)
+        self.author_fallback_to_folder = self.settings.value(
+            "import/fallback/author_to_folder", True, type=bool)
+        self.title_fallback_to_file = self.settings.value(
+            "import/fallback/title_to_file", True, type=bool)
         self.flip_author_names = self.settings.value(
             "import/flip_author_name", False, type=bool)
         self.autocorrect_trim_whitespace = self.settings.value(
@@ -533,8 +690,8 @@ class ImportWindow(QDialog):
 
         self.import_scanner.configure(
             scenario_mode=self.import_scenario_mode,
-            author_fallback_mode=self.author_fallback_mode,
-            title_fallback_mode=self.title_fallback_mode,
+            author_fallback_mode="folder" if self.author_fallback_to_folder else None,
+            title_fallback_mode="file" if self.title_fallback_to_file else None,
             reader_keywords=self.reader_keywords,
             trim_whitespace=self.autocorrect_trim_whitespace,
             strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
@@ -673,101 +830,11 @@ class ImportWindow(QDialog):
 
     def _confirm_cancel_scan(self) -> bool:
         """Ask whether to cancel an active scan."""
-        if self._scan_prompt_open:
-            return False
-
-        self._scan_prompt_open = True
-        try:
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Cancel Scan",
-                text=(
-                    "Cancel the current scan?\n\n"
-                    "Yes: stop scanning and keep partial scan results.\n"
-                    "No: continue scanning."
-                ),
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No,
-            )
-            return reply == QMessageBox.Yes
-        finally:
-            self._scan_prompt_open = False
-
-    def install_alt_key_filters(self):
-        """Install key filters to block unmapped Alt+letter input."""
-        widgets = []
-        widgets.extend(self.findChildren(QLineEdit))
-        widgets.extend(self.findChildren(QComboBox))
-        widgets.extend(self.findChildren(QPushButton))
-        widgets.extend(self.findChildren(QTableWidget))
-        for widget in widgets:
-            widget.installEventFilter(self)
-
-    def eventFilter(self, source, event):
-        """Block Alt+letter input for letters that are not mapped shortcuts."""
-        if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
-            event.accept()
-            return True
-
-        if event.type() == QEvent.FocusIn and source != self.table:
-            self._hide_table_cell_highlight()
-
-        return super().eventFilter(source, event)
-
-    def setup_shortcuts(self):
-        """Setup keyboard shortcuts."""
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
-        self.focus_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        self.focus_list_shortcut.activated.connect(self.on_focus_list)
-
-        self.open_detail_shortcut = QShortcut(
-            QKeySequence("Ctrl+Return"), self)
-        self.open_detail_shortcut.activated.connect(
-            self.on_open_detail_selected)
-
-        self.open_detail_shortcut_num = QShortcut(
-            QKeySequence("Ctrl+Enter"), self)
-        self.open_detail_shortcut_num.activated.connect(
-            self.on_open_detail_selected)
-
-        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.add_selected_shortcut = QShortcut(QKeySequence("Alt+I"), self)
-        self.add_selected_shortcut.setContext(Qt.ApplicationShortcut)
-        self.add_selected_shortcut.activated.connect(
-            self.import_selected_button.click)
-
-        self.export_shortcut = QShortcut(QKeySequence("Alt+X"), self)
-        self.export_shortcut.setContext(Qt.ApplicationShortcut)
-        self.export_shortcut.activated.connect(self.export_button.click)
-
-        self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self.escape_shortcut.activated.connect(self.on_cancel)
-
-        self.author_col_shortcut = QShortcut(QKeySequence("Alt+1"), self)
-        self.author_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_AUTHOR))
-
-        self.title_col_shortcut = QShortcut(QKeySequence("Alt+2"), self)
-        self.title_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_TITLE))
-
-        self.year_col_shortcut = QShortcut(QKeySequence("Alt+3"), self)
-        self.year_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_YEAR))
-
-        self.error_col_shortcut = QShortcut(QKeySequence("Alt+4"), self)
-        self.error_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_ERROR))
-
-        self.path_col_shortcut = QShortcut(QKeySequence("Alt+5"), self)
-        self.path_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_PATH))
+        # This method should not redefine header_layout or use layout.addLayout(header_layout)
+        # ...existing code...
+        # Remove duplicate header_layout and layout usage
+        # ...existing code...
+        pass
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -1420,6 +1487,8 @@ class ImportWindow(QDialog):
                 QApplication.processEvents()
 
             for row, book in enumerate(books):
+                auto_added = False
+                self.import_scanner.apply_preferences(book)
                 self.import_scanner.apply_preferences(book)
 
                 if self.flip_author_names:
@@ -1492,7 +1561,10 @@ class ImportWindow(QDialog):
                     and not has_fallback
                     and not has_correction
                 )
-                if should_auto_add:
+                # Prevent auto-add if duplicate
+                if is_duplicate:
+                    auto_added = False
+                elif should_auto_add:
                     try:
                         book_to_add = self._build_book_from_scan(
                             book,
@@ -1528,7 +1600,7 @@ class ImportWindow(QDialog):
                 elif has_warning:
                     status = "Warning"
 
-                # Only add to review table if not auto-added
+                # Only add to review table if not auto_added:
                 if not auto_added:
                     table_row = self.table.rowCount()
                     self.table.insertRow(table_row)

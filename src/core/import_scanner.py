@@ -47,9 +47,9 @@ class ImportScanner:
     def configure(
         self,
         scenario_mode: str,
-        author_fallback_mode: str,
-        title_fallback_mode: str,
-        reader_keywords: List[str],
+        author_fallback_mode: str = None,
+        title_fallback_mode: str = None,
+        reader_keywords: List[str] = None,
         trim_whitespace: bool = False,
         strip_leading_punctuation: bool = False,
         remove_non_alphanumeric: bool = False,
@@ -57,18 +57,19 @@ class ImportScanner:
         move_leading_the_title: bool = False,
     ):
         self.scenario_mode = scenario_mode or "mass_standard"
-        self.author_fallback_mode = author_fallback_mode or "folder"
-        self.title_fallback_mode = title_fallback_mode or "file"
+        self.author_fallback_mode = author_fallback_mode if author_fallback_mode else None
+        self.title_fallback_mode = title_fallback_mode if title_fallback_mode else None
         self.trim_whitespace = bool(trim_whitespace)
         self.strip_leading_punctuation = bool(strip_leading_punctuation)
         self.remove_non_alphanumeric = bool(remove_non_alphanumeric)
         self.proper_case_fields = bool(proper_case_fields)
         self.move_leading_the_title = bool(move_leading_the_title)
 
-        cleaned = [keyword.strip().lower()
-                   for keyword in reader_keywords if keyword and keyword.strip()]
-        if cleaned:
-            self.reader_keywords = cleaned
+        if reader_keywords:
+            cleaned = [keyword.strip().lower()
+                       for keyword in reader_keywords if keyword and keyword.strip()]
+            if cleaned:
+                self.reader_keywords = cleaned
 
     def apply_preferences(self, book: Dict):
         book.setdefault("series", "")
@@ -88,16 +89,7 @@ class ImportScanner:
 
         title = (book.get("title") or "").strip()
         if self._is_placeholder_title(title):
-            if self.title_fallback_mode == "folder" and folder:
-                fallback_title = os.path.basename(folder.rstrip("\\/"))
-                if fallback_title:
-                    book["title"] = fallback_title
-                    fallback_applied.add("Title")
-                    self._append_flag_once(
-                        book,
-                        "F: Title fallback from folder used",
-                    )
-            elif self.title_fallback_mode == "file" and files:
+            if self.title_fallback_mode == "file" and files:
                 fallback_title = os.path.splitext(
                     os.path.basename(files[0]))[0]
                 if fallback_title:
