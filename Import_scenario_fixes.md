@@ -103,13 +103,41 @@ Gap / difference:
 - Status: Implemented.
 - Notes: Duplicate comment text for grouped files is filtered out.
 
-## Suggested next updates (doc-level action list)
 
-1. Define exact path rules per scenario (especially folder depth assumptions).
-2. Decide whether title fallback should support strict chain mode per scenario.
-3. Add explicit single-file import path for `single_item` mode.
-4. Specify exact filename parser for `series_from_filename` (series name + numeric suffix behavior).
-5. Add acceptance tests for all four scenarios and fallback outcomes.
+## Additional Gap Notes (Feb 28)
+
+- **Series-from-filename:**
+  - Edge cases (multiple parentheses, malformed series info) should be handled or flagged in future updates.
+
+- **Single-item mode:**
+  - File dialog filters must match all supported audio formats (MP3, M4A, FLAC, OGG, WAV).
+  - Accessibility (keyboard navigation, Alt+letter shortcuts) must be preserved in the file picker.
+
+- **Fallback chains:**
+  - Fallback logic should be unit-tested for each scenario.
+  - Status bar feedback should be provided when a fallback is triggered.
+
+- **Testing:**
+  - Accessibility regression checks (keyboard, screen reader feedback) should be included in each scenario's test block.
+
+- **Documentation:**
+  - Update user-facing documentation/help to reflect new scenario behaviors and fallback logic once implemented.
+
+## Plan for Tomorrow (Feb 29)
+
+**Goal:**
+- Complete Scenario 1 (Mass Standard) end-to-end: implementation, tests, and focused regression.
+
+**Tasks:**
+1. Implement chained title fallback in src/core/import_scanner.py for mass_standard scenario.
+2. Add/extend tests in test_import_scanner_fallbacks.py for fallback logic and edge cases.
+3. Run scenario-specific and accessibility regression tests.
+4. Update Import_scenario_fixes.md checklist and user documentation as features are completed.
+5. If Scenario 1 is fully green, prepare Scenario 2 test cases (do not implement yet).
+
+**Notes:**
+- Stop and fix immediately on first test failure before continuing.
+- Record all changes, tests run, and next steps at session end.
 
 ## Technical implementation checklist (file-by-file)
 

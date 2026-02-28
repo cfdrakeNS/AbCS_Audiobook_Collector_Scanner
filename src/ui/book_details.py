@@ -33,11 +33,16 @@ class BookDetailsWindow(QDialog):
         value = text.strip().lower()
         if not value:
             return ""
-        return re.sub(
-            r"(^|[\s\-'])([a-z])",
-            lambda match: f"{match.group(1)}{match.group(2).upper()}",
-            value,
-        )
+        # Capitalize after space, hyphen, or apostrophe
+
+        def capitalize_match(match):
+            return match.group(1) + match.group(2).upper()
+        # First, capitalize after space, hyphen, or apostrophe
+        value = re.sub(r"(^|[\s\-'])([a-z])", capitalize_match, value)
+        # Then, capitalize after apostrophe (for O'Connor)
+        value = re.sub(
+            r"(\bO')([a-z])", lambda m: m.group(1) + m.group(2).upper(), value)
+        return value
 
     @staticmethod
     def _is_proper_case_enabled() -> bool:

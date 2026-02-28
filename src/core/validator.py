@@ -1,13 +1,15 @@
+
 """
 Validator for audiobook import data.
 Detects errors and issues in imported audiobook metadata.
 """
 
+
+import re
+from .import_rules import ImportRulesEngine
+from PySide6.QtCore import QSettings
 from typing import List, Dict, Any
 from difflib import SequenceMatcher
-import re
-from PySide6.QtCore import QSettings
-from .import_rules import ImportRulesEngine
 
 
 class ImportValidator:
@@ -15,6 +17,18 @@ class ImportValidator:
     Validates imported audiobook data and identifies errors.
     Matches the error detection from MS Access version.
     """
+
+    @staticmethod
+    def append_flag_once(book: dict, message: str):
+        """Append a flag message to book errors exactly once (case-insensitive)."""
+        if not message:
+            return
+        errors = book.setdefault("errors", [])
+        existing = {str(err).strip().lower()
+                    for err in errors if str(err).strip()}
+        normalized = message.strip().lower()
+        if normalized not in existing:
+            errors.append(message)
 
     def __init__(self):
         """Initialize validator."""
@@ -167,14 +181,16 @@ class ImportValidator:
         Returns:
             Normalized title
         """
-        # Remove extra whitespace
-        title = ' '.join(title.split())
-
-        # Remove common problematic patterns
-        title = re.sub(r'\s*\(unabridged\)\s*', '', title, flags=re.IGNORECASE)
-        title = re.sub(r'\s*\[unabridged\]\s*', '', title, flags=re.IGNORECASE)
-
-        return title.strip()
+        from core.import_scanner import ImportScanner
+        scanner = ImportScanner()
+        book = {"title": title}
+        scanner.trim_whitespace = True
+        scanner.strip_leading_punctuation = True
+        scanner.remove_non_alphanumeric = True
+        scanner.proper_case_fields = False
+        scanner.move_leading_the_title = False
+        scanner._apply_auto_corrections(book)
+        return book["title"].strip()
 
     def categorize_error(self, error: str) -> str:
         """

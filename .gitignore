@@ -42,3 +42,6 @@ backups/
 # Temporary files
 *.tmp
 *.temp
+
+# Archive folder
+archive/

@@ -1,7 +1,7 @@
-"""Scenario-aware import preference application for scanned book metadata."""
 
-import os
+"""Scenario-aware import preference application for scanned book metadata."""
 import re
+import os
 from typing import Dict, List
 
 
@@ -95,7 +95,8 @@ class ImportScanner:
                 if fallback_title:
                     book["title"] = fallback_title
                     fallback_applied.add("Title")
-                    self._append_flag_once(
+                    from core.validator import ImportValidator
+                    ImportValidator.append_flag_once(
                         book,
                         "F: Title fallback from file used",
                     )
@@ -110,7 +111,8 @@ class ImportScanner:
             if fallback_author:
                 book["author"] = fallback_author
                 fallback_applied.add("Author")
-                self._append_flag_once(
+                from core.validator import ImportValidator
+                ImportValidator.append_flag_once(
                     book,
                     "F: Author fallback from folder used",
                 )
@@ -141,23 +143,13 @@ class ImportScanner:
                 corrections = field_corrections[field]
                 # Create specific message for each correction
                 correction_text = ", ".join(corrections)
-                self._append_flag_once(
+                from core.validator import ImportValidator
+                ImportValidator.append_flag_once(
                     book,
                     f"C: {field} {correction_text}",
                 )
 
-    @staticmethod
-    def _append_flag_once(book: Dict, message: str):
-        """Append a flag message to book errors exactly once (case-insensitive)."""
-        if not message:
-            return
-        errors = book.setdefault("errors", [])
-        existing = {
-            str(err).strip().lower() for err in errors if str(err).strip()
-        }
-        normalized = message.strip().lower()
-        if normalized not in existing:
-            errors.append(message)
+    # Error/correction flagging now uses ImportValidator.append_flag_once
 
     def _extract_reader_from_comment(self, comment: str) -> str:
         if not comment:
@@ -175,6 +167,7 @@ class ImportScanner:
                     if value:
                         return value
         return ""
+    import re
 
     @staticmethod
     def _series_from_filename(file_path: str) -> str:
