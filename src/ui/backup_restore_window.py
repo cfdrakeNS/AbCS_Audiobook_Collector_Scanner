@@ -63,6 +63,8 @@ class BackupRestoreWindow(QDialog):
         self.theme_manager = theme_manager
         self.data_changed = False
         self._default_status_message = "Ready"
+        self._restore_file_explicitly_selected = False
+        self._suppress_backup_selection_events = False
 
         self.setup_ui()
         self.setup_shortcuts()
@@ -96,6 +98,7 @@ class BackupRestoreWindow(QDialog):
         self.backup_list.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.backup_list.setSelectionMode(QAbstractItemView.SingleSelection)
         self.backup_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.backup_list.setTabKeyNavigation(False)
         self.backup_list.verticalHeader().setVisible(False)
         self.backup_list.horizontalHeader().setStretchLastSection(True)
         self.backup_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -377,8 +380,8 @@ class BackupRestoreWindow(QDialog):
         return focus_widget in (self.backup_list, self.backup_list.viewport())
 
     def _update_delete_button_visibility(self):
-        should_show = self._is_backup_list_focused() and self._has_backup_list_selection()
-        self.delete_button.setVisible(should_show)
+        self.delete_button.setVisible(True)
+        self.delete_button.setEnabled(True)
 
     def _add_backup_item(self, path: Path):
         row = self.backup_list.rowCount()
@@ -390,18 +393,23 @@ class BackupRestoreWindow(QDialog):
 
     def refresh_backup_list(self):
         selected_path = self.restore_path_edit.text().strip()
+        explicit_selected = self._restore_file_explicitly_selected
         self.backup_list.setRowCount(0)
+        self._suppress_backup_selection_events = True
 
         backups = self.db.list_backups()
         for backup_path in backups:
             self._add_backup_item(backup_path)
 
-        if selected_path:
+        if selected_path and explicit_selected:
             self._select_backup_path(selected_path)
-        elif backups:
-            self.backup_list.setCurrentCell(0, 0)
         else:
+            self.backup_list.clearSelection()
+            self.backup_list.setCurrentCell(-1, -1)
             self._set_restore_path("")
+            self._restore_file_explicitly_selected = False
+
+        self._suppress_backup_selection_events = False
 
         self._update_delete_button_visibility()
 
@@ -412,15 +420,21 @@ class BackupRestoreWindow(QDialog):
             item_path = item.data(Qt.UserRole)
             if item_path and str(Path(item_path).resolve()) == normalized:
                 self.backup_list.setCurrentCell(index, 0)
+                self._restore_file_explicitly_selected = True
                 self._update_delete_button_visibility()
                 return
         self.backup_list.clearSelection()
         self._set_restore_path(path_text)
+        self._restore_file_explicitly_selected = bool(path_text.strip())
         self._update_delete_button_visibility()
 
     def on_backup_selected(self, current_row: int, _current_col: int, _prev_row: int, _prev_col: int):
+        if self._suppress_backup_selection_events:
+            return
+
         if current_row < 0:
             self._set_restore_path("")
+            self._restore_file_explicitly_selected = False
             self._update_delete_button_visibility()
             return
 
@@ -428,6 +442,7 @@ class BackupRestoreWindow(QDialog):
         path_text = (current.data(Qt.UserRole)
                      if current is not None else "") or ""
         self._set_restore_path(path_text)
+        self._restore_file_explicitly_selected = bool(path_text.strip())
         self._update_delete_button_visibility()
 
     def on_browse(self):
@@ -442,6 +457,7 @@ class BackupRestoreWindow(QDialog):
             return
 
         self._select_backup_path(file_path)
+        self._restore_file_explicitly_selected = True
         self.set_status(f"Selected backup: {Path(file_path).name}")
 
     def on_backup(self):
@@ -510,22 +526,31 @@ class BackupRestoreWindow(QDialog):
         self.set_status("Restore completed")
 
     def on_delete_backup(self):
+        if not self._is_backup_list_focused() or not self._has_backup_list_selection():
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="No Backup Selected",
+                text="Focus Backup List and select a backup file before deleting.",
+            )
+            self.set_status("Delete canceled: no backup row selected in Backup List")
+            return
+
         current_row = self.backup_list.currentRow()
-        current_item = self.backup_list.item(
-            current_row, 0) if current_row >= 0 else None
+        current_item = self.backup_list.item(current_row, 0) if current_row >= 0 else None
         backup_path = ""
         if current_item is not None:
             backup_path = (current_item.data(Qt.UserRole) or "").strip()
-
         if not backup_path:
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="No Backup Selected",
-                text="Select a backup file to delete.",
+                text="Focus Backup List and select a backup file before deleting.",
             )
-            self.set_status("Delete canceled: no backup selected")
+            self.set_status("Delete canceled: no backup row selected in Backup List")
             return
 
         backup_name = Path(backup_path).name
@@ -545,7 +570,6 @@ class BackupRestoreWindow(QDialog):
             self.set_status("Delete backup canceled")
             return
 
-        deleted_row = current_row
         try:
             self.db.delete_backup_file(backup_path)
         except Exception as exc:
@@ -560,11 +584,6 @@ class BackupRestoreWindow(QDialog):
             return
 
         self.refresh_backup_list()
-        if self.backup_list.rowCount() > 0:
-            self.backup_list.setCurrentCell(
-                min(max(deleted_row, 0), self.backup_list.rowCount() - 1),
-                0,
-            )
         self.set_status(f"Deleted backup: {backup_name}")
 
     def on_full_reset(self):

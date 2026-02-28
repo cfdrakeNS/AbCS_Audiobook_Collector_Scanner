@@ -305,6 +305,23 @@ class PreferencesWindow(QDialog):
         flip_author_layout.addStretch(1)
         import_layout.addLayout(flip_author_layout)
 
+        auto_add_layout = QHBoxLayout()
+        auto_add_layout.setContentsMargins(0, 0, 0, 0)
+        auto_add_layout.setSpacing(8)
+        auto_add_label = QLabel("Review Clean Books Before Adding (&Y):")
+        auto_add_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        auto_add_label.setMinimumWidth(import_label_width)
+        self.auto_add_clean_books_check = QCheckBox("Enabled")
+        self.auto_add_clean_books_check.setAccessibleName(
+            "Review clean books before adding")
+        self.auto_add_clean_books_check.setAccessibleDescription(
+            "Keep valid books in Import Window for review and Add Valid when enabled - Alt+Y")
+        auto_add_label.setBuddy(self.auto_add_clean_books_check)
+        auto_add_layout.addWidget(auto_add_label)
+        auto_add_layout.addWidget(self.auto_add_clean_books_check)
+        auto_add_layout.addStretch(1)
+        import_layout.addLayout(auto_add_layout)
+
         reader_keywords_layout = QHBoxLayout()
         reader_keywords_layout.setContentsMargins(0, 0, 0, 0)
         reader_keywords_layout.setSpacing(8)
@@ -732,6 +749,7 @@ class PreferencesWindow(QDialog):
         for checkbox in self.format_checks.values():
             checkbox.setStyleSheet(format_checkbox_style)
         self.flip_author_check.setStyleSheet(format_checkbox_style)
+        self.auto_add_clean_books_check.setStyleSheet(format_checkbox_style)
         self.autocorrect_trim_check.setStyleSheet(format_checkbox_style)
         self.autocorrect_strip_punct_check.setStyleSheet(format_checkbox_style)
         self.autocorrect_non_alnum_check.setStyleSheet(format_checkbox_style)
@@ -856,6 +874,7 @@ class PreferencesWindow(QDialog):
             "author_fallback": self.author_fallback_combo.currentData(),
             "title_fallback": self.title_fallback_combo.currentData(),
             "flip_author_name": self.flip_author_check.isChecked(),
+            "auto_add_clean_books": self.auto_add_clean_books_check.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
             "rule_author_in_title": (
                 self.rule_author_in_title_severity.currentData(),
@@ -999,6 +1018,10 @@ class PreferencesWindow(QDialog):
         flip_author = self.settings.value(
             "import/flip_author_name", False, type=bool)
         self.flip_author_check.setChecked(flip_author)
+
+        auto_add_clean_books = self.settings.value(
+            "import/auto_add_clean_books", False, type=bool)
+        self.auto_add_clean_books_check.setChecked(auto_add_clean_books)
 
         reader_keywords = self.settings.value(
             "import/reader_keywords",
@@ -1270,6 +1293,7 @@ class PreferencesWindow(QDialog):
             ("Alt+A", "Author Fallback"),
             ("Alt+I", "Title Fallback"),
             ("Alt+F", "Flip Author"),
+            ("Alt+Y", "Review clean books before adding"),
             ("Alt+K", "Reader Keywords"),
             ("Alt+W", "Trim whitespace"),
             ("Alt+L", "Proper case fields"),
@@ -1417,7 +1441,7 @@ class PreferencesWindow(QDialog):
         if event.type() == QEvent.FocusIn:
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(
-                    0, lambda w=source: (w.setCursorPosition(len(w.text())), w.deselect()))
+                    0, lambda w=source: (w.setCursorPosition(len(w.text())), w.deselect()) if w is not None and w is not getattr(w, 'deleted', False) else None)
             elif isinstance(source, QTextEdit):
                 QTimer.singleShot(
                     0, lambda w=source: self._safe_move_cursor(w))
@@ -1544,6 +1568,8 @@ class PreferencesWindow(QDialog):
             "import/fallback/title", self.title_fallback_combo.currentData())
         self.settings.setValue(
             "import/flip_author_name", self.flip_author_check.isChecked())
+        self.settings.setValue(
+            "import/auto_add_clean_books", self.auto_add_clean_books_check.isChecked())
         self.settings.setValue(
             "import/reader_keywords", self.reader_keywords_edit.text().strip())
 

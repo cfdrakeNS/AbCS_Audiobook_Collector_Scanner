@@ -1,0 +1,445 @@
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: 
+  Author: Robert R. Mccammon, (Fallback: False)
+  Title: No Author File 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: 
+  Author: Robert R. Mccammon, (Fallback: False)
+  Title: No Author File 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: 
+  Author: Robert R. Mccammon, (Fallback: False)
+  Title: No Author File 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: 
+  Author: Robert R. Mccammon, (Fallback: False)
+  Title: No Author File 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: 
+  Author: Robert R. Mccammon, (Fallback: False)
+  Title: No Author File 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\02 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Author fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\03 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Title fallback from previous file used']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\04 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['Group contains missing or fallback author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: ['F: Multi-file book uses fallback or missing author/title']
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
+Imported: E:/test Mass Standard Import/Robert R. McCammon\No Author file 2\01 no author file 2.mp3
+  Author: Robert R. McCammon, (Fallback: False)
+  Title: no author file 2 (Fallback: False)
+  Errors: []
+---
