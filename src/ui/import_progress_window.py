@@ -28,7 +28,7 @@ class ImportProgressWindow(QDialog):
     """Modeless progress window for long-running import scans."""
 
     ALLOWED_ALT_LETTERS = {
-        'B', 'C', 'F', 'I', 'L', 'M', 'R'
+        'B', 'C', 'F', 'I', 'L', 'M', 'R', 'V'
     }
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
@@ -136,6 +136,16 @@ class ImportProgressWindow(QDialog):
             "Number of books added - Alt+B")
         added_label.setBuddy(self.added_edit)
 
+        self.valid_label = QLabel("&Valid:")
+        self.valid_edit = QLineEdit("0")
+        self.valid_edit.setReadOnly(True)
+        self.valid_edit.setFocusPolicy(Qt.NoFocus)
+        self.valid_edit.setMaximumWidth(90)
+        self.valid_edit.setAccessibleName("Valid books")
+        self.valid_edit.setAccessibleDescription(
+            "Number of clean valid books pending review - Alt+V")
+        self.valid_label.setBuddy(self.valid_edit)
+
         read_err_label = QLabel("Read e&rrors:")
         self.read_errors_edit = QLineEdit("0")
         self.read_errors_edit.setReadOnly(True)
@@ -152,6 +162,8 @@ class ImportProgressWindow(QDialog):
         counters_layout.addWidget(self.elapsed_edit)
         counters_layout.addWidget(added_label)
         counters_layout.addWidget(self.added_edit)
+        counters_layout.addWidget(self.valid_label)
+        counters_layout.addWidget(self.valid_edit)
         counters_layout.addWidget(read_err_label)
         counters_layout.addWidget(self.read_errors_edit)
         counters_layout.addStretch(1)
@@ -198,6 +210,12 @@ class ImportProgressWindow(QDialog):
         layout.addWidget(self.status_bar)
 
         self._apply_tab_order()
+
+    def set_show_valid_counter(self, enabled: bool):
+        """Show or hide the Valid counter widgets."""
+        show_valid = bool(enabled)
+        self.valid_label.setVisible(show_valid)
+        self.valid_edit.setVisible(show_valid)
 
     def _apply_tab_order(self):
         if self._compact_mode:
@@ -427,6 +445,7 @@ class ImportProgressWindow(QDialog):
         files_scanned: int | None = None,
         elapsed_text: str | None = None,
         books_added: int | None = None,
+        valid_books: int | None = None,
         read_errors: int | None = None,
     ):
         if files_scanned is not None:
@@ -435,6 +454,8 @@ class ImportProgressWindow(QDialog):
             self.elapsed_edit.setText(elapsed_text)
         if books_added is not None:
             self.added_edit.setText(str(max(0, int(books_added))))
+        if valid_books is not None:
+            self.valid_edit.setText(str(max(0, int(valid_books))))
         if read_errors is not None:
             self.read_errors_edit.setText(str(max(0, int(read_errors))))
 
@@ -474,6 +495,7 @@ class ImportProgressWindow(QDialog):
         elapsed_text: str,
         files_scanned: int,
         books_added: int,
+        valid_books: int,
         read_errors: int,
         summary_text: str | None = None,
     ):
@@ -483,6 +505,7 @@ class ImportProgressWindow(QDialog):
             elapsed_text=elapsed_text,
             files_scanned=files_scanned,
             books_added=books_added,
+            valid_books=valid_books,
             read_errors=read_errors,
             summary_text=summary_text,
         )
@@ -507,6 +530,7 @@ class ImportProgressWindow(QDialog):
         elapsed_text: str,
         files_scanned: int,
         books_added: int,
+        valid_books: int,
         read_errors: int,
         summary_text: str | None = None,
     ):
@@ -515,6 +539,7 @@ class ImportProgressWindow(QDialog):
             files_scanned=files_scanned,
             elapsed_text=elapsed_text,
             books_added=books_added,
+            valid_books=valid_books,
             read_errors=read_errors,
         )
 
@@ -577,6 +602,7 @@ Author             Current file author being processed
 Files scanned      Total files scanned so far
 Elapsed time       Time elapsed during scan
 Books added        Books added to database
+Valid              Clean valid books pending review
 Read errors        Number of files with read errors
 Issues             Any issues encountered during scan"""
 

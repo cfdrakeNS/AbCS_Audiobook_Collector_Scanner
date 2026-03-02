@@ -156,6 +156,8 @@ def test_import_warning_filter_excludes_fallback_and_corrected(
     theme_manager = ThemeManager(qapp)
     window = ImportWindow(temp_db, scaler, theme_manager)
     qtbot.addWidget(window)
+    window.settings.setValue("import/auto_add_clean_books", False)
+    window.auto_add_clean_books = False
 
     warning_index = window.error_filter_combo.findData("warning")
     assert warning_index >= 0

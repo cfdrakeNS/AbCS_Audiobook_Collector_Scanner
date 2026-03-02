@@ -1,94 +1,73 @@
 # Mar 02 TODO
 
-## Restore and Reapply: Review Clean Books Before Adding
+## Review Mode for Clean Books Before Adding
 
-## Implementation Breakdown (Mar 02)
+### Current State (verified in code)
+- [x] Preferences UI already has "Review clean books before adding" and persists `import/auto_add_clean_books` in `src/ui/preferences_window.py`.
+- [x] Import flow in `src/ui/import_window.py` no longer auto-adds clean rows when review mode is enabled.
+- [x] Dedicated "Add Valid" action is implemented.
+- [x] Error filter includes a "Valid" option when review mode is enabled.
 
-## Implementation Breakdown (Mar 02) — With File/Module References
+### Scope Decision
+- This change should be implemented in `src/ui/import_window.py` only for runtime behavior.
+- `src/core/validator.py` and `src/core/import_scanner.py` should remain unchanged unless a real blocker appears.
 
-### 1. Preferences Window
-- [ ] Add checkbox: "Review clean books before adding" (`auto_add_clean_books`)
-  - **File:** src/ui/preferences_window.py (or wherever PreferencesWindow is implemented)
-  - **Module/Class:** PreferencesWindow
-- [ ] Save/load value to QSettings as "import/auto_add_clean_books"
-  - **File:** src/ui/preferences_window.py
-  - **Module/Class:** PreferencesWindow
+### Implementation Plan (delta only)
 
-### 2. Import Window
-- [ ] Add `self.auto_add_clean_books` property, loaded from QSettings
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] Update error filter combo:
-  - If `auto_add_clean_books` is enabled, add "Valid" filter option
-  - Accessible description should mention "Valid" when present
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] Add "Add Valid" button:
-  - Only visible/enabled when `auto_add_clean_books` is enabled
-  - Accessible name/description: "Add all clean valid rows without warning, correction, fallback, or error flags - Alt+V"
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] Connect `add_valid_button.clicked` to `on_add_valid`
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] Implement `_update_add_valid_button_visibility()` to show/hide the button
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] Implement `_get_valid_import_count()` to count valid books for review
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] Adjust scan counters and summary to include valid count
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
+#### 1) Wire preference into Import Window
+- [x] Add `self.auto_add_clean_books` state and load it in `load_preferences()` from `import/auto_add_clean_books`.
+- [x] Add a helper to determine "clean valid" row (no duplicate, no warning, no hard error, no fallback, no correction).
 
-### 3. Import Scanner / Validator
-- [ ] Ensure valid books are flagged appropriately for review and can be added via the "Add Valid" button
-  - **File:** src/core/validator.py
-  - **Module/Class:** Validator (and related import logic)
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
+#### 2) Change scan behavior
+- [x] In scan/add loop, gate current auto-add logic behind `not self.auto_add_clean_books`.
+- [x] When `self.auto_add_clean_books` is enabled, keep clean valid rows in review table instead of inserting into DB immediately.
+- [x] Keep duplicate behavior unchanged (duplicates stay in review list and are never auto-added).
 
-### 4. Accessibility
-- [ ] Confirm all controls have accessible names/descriptions and keyboard shortcuts
-  - **File:** src/ui/import_window.py
-  - **File:** src/ui/preferences_window.py
-  - **File:** src/accessibility/shortcuts.py
-  - **Module/Class:** ShortcutManager, ImportWindow, PreferencesWindow
+#### 3) Add review actions
+- [x] Add footer button `Add Valid` (Alt+V) in `ImportWindow`.
+- [x] Hook button to `on_add_valid()` that imports all currently displayed clean valid rows.
+- [x] Reuse existing row import pipeline (`_import_rows`) where possible.
+- [x] After add, refresh table, counters, and status text.
 
-### 5. Add Valid Handler & Counters
-- [ ] Implement handler to add all valid books at once (`on_add_valid`)
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
-- [ ] After adding, refresh all summary counters and ensure status bar/table reflect new counts
-  - **File:** src/ui/import_window.py
-  - **Module/Class:** ImportWindow
+#### 4) Add filter support
+- [x] Add `("Valid", "valid")` to error filter options.
+- [x] Update `_matches_error_filter()` to support `valid` by using the same clean-valid helper.
+- [x] Keep all existing filters unchanged.
 
----
+#### 5) Accessibility + keyboard
+- [x] Update `ALLOWED_ALT_LETTERS` to include `V`.
+- [x] Add `Alt+V` shortcut registration in `setup_shortcuts()`.
+- [x] Add accessible name/description for `Add Valid` and update shortcut help text (`on_show_shortcuts`).
+- [x] Update error-filter accessible description so it mentions `Valid` when enabled.
 
----
+#### 6) Counter and close-confirm behavior
+- [x] Update `_get_valid_import_count()` to count clean valid rows (not warning rows).
+- [x] Ensure close confirmation message reports pending clean valid rows correctly.
+- [x] Ensure summary/status messaging remains accurate after scan and after Add Valid.
 
-## Large Import Compatibility (Threaded Scan)
+### Acceptance Checklist
+- [x] With `import/auto_add_clean_books = False`: clean rows auto-add during scan (current behavior preserved).
+- [x] With `import/auto_add_clean_books = True`: clean rows stay in table, no auto-add during scan.
+- [x] `Add Valid` adds only clean valid rows, skips warnings/errors/duplicates/fallback/corrected rows.
+- [x] `Valid` filter shows only clean valid rows.
+- [x] All shortcuts and accessible descriptions are announced correctly by screen readers.
+- [x] With review mode enabled, `Valid` count appears and updates in both Import status summary and Import Progress counters.
 
-- Ensure ImportScanWorker (QThread) and signal-based scan logic remain in src/ui/import_window.py for large import responsiveness.
-- Progress and counters should be updated via signals (progress, result, finished, cancelled).
-- The scan loop must not block the UI; results and progress should be emitted to the UI.
-- The 'review clean books before adding' feature, error filter, and Add Valid button logic are compatible with threaded scan.
-- No changes needed in src/core/import_scanner.py or src/core/tag_reader.py for large import compatibility.
+### Quick Test Pass (manual)
+- [x] Scan folder with mixed outcomes: clean, warning, duplicate, fallback, corrected, error.
+- [x] Verify counts before/after `Add Valid`.
+- [x] Verify `Alt+V`, `Alt+E`, and F1 shortcut list updates.
+- [x] Verify close warning reflects remaining clean valid rows.
+- [x] Verify `Valid` count is shown in Import status line and Import Progress window while scanning.
 
----
+### Post-Test Notes (Mar 02)
+- [x] With review mode enabled, `Valid` count behavior passed.
+- [x] Minor adjustment requested: hide `Valid` counts when review mode is disabled.
+- [x] Minor adjustment requested: place `Valid` immediately after `Added` in Import and Progress displays when shown.
 
-# Mar 02 Summary
-
-Today’s work focused on:
-
-- Reviewing and fixing all import scenario logic and gaps (see Import_scenario_fixes.md)
-- Ensuring proper case autocorrect works as intended, with accessibility and test coverage
-- Removing legacy test and diagnostic code, streamlining the codebase
-- Documenting all findings and improvements in Fdb28_finding-Full_review.md and import_improvement_Feb28.md
-- Planning next steps for scenario implementation and enhancements
-
-All tests now pass, accessibility is fully supported, and the codebase is clean and ready for further enhancements. Next session will begin with scenario implementation as outlined in Import_scenario_fixes.md.
-
----
-End of day summary: all major goals for Mar 02 are complete.
+### Implementation Complete (Mar 02)
+- [x] Review Mode for Import is complete and validated.
+- [x] Major behavior updates implemented: review gating, Add Valid action, Valid filter, accessibility/shortcuts, and counter consistency.
+- [x] Counter behavior finalized for both review modes, including Add Selected/Add Valid recalculation path.
+- [x] Manual validation and regression test passes completed.
 
