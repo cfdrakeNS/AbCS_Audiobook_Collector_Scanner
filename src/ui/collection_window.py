@@ -179,12 +179,6 @@ class CollectionWindow(QDialog):
             "Delete selected collection if unused - Alt+D")
         footer_layout.addWidget(self.delete_button)
 
-        self.close_button = QPushButton("&Close")
-        self.close_button.clicked.connect(self.accept)
-        self.close_button.setAccessibleDescription(
-            "Close collection window - Alt+C")
-        footer_layout.addWidget(self.close_button)
-
         button_style = build_accessible_button_style(
             self.scaler.get_scaled_size(20)
         )
@@ -194,7 +188,6 @@ class CollectionWindow(QDialog):
             self.save_button,
             self.cancel_button,
             self.delete_button,
-            self.close_button,
         ):
             button.setStyleSheet(button_style)
 
@@ -205,6 +198,9 @@ class CollectionWindow(QDialog):
     def setup_shortcuts(self):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.activated.connect(self.accept)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
@@ -282,7 +278,6 @@ class CollectionWindow(QDialog):
         self.save_button.setVisible(editing_mode)
         self.cancel_button.setVisible(editing_mode)
         self.delete_button.setVisible(not editing_mode)
-        self.close_button.setVisible(not editing_mode)
 
         self._apply_tab_order()
 
@@ -294,7 +289,6 @@ class CollectionWindow(QDialog):
             self.save_button,
             self.cancel_button,
             self.delete_button,
-            self.close_button,
         ]
         visible_footer_buttons = [
             button for button in footer_buttons
@@ -604,7 +598,7 @@ class CollectionWindow(QDialog):
             ("Alt+S", "Save"),
             ("Alt+L", "Cancel edit/new"),
             ("Alt+D", "Delete"),
-            ("Alt+C", "Close window"),
+            ("Escape", "Close window"),
             ("F1", "Show this help"),
         ]
 
@@ -641,24 +635,12 @@ class CollectionWindow(QDialog):
 
         layout.addWidget(table)
 
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        close_btn.setStyleSheet(
-            build_accessible_button_style(self.scaler.get_scaled_size(20))
-        )
-        layout.addWidget(close_btn)
-
         dlg.exec()
 
     def _allowed_alt_letter_keys(self) -> set[int]:
         return {
             Qt.Key_A,
             Qt.Key_B,
-            Qt.Key_C,
             Qt.Key_D,
             Qt.Key_E,
             Qt.Key_L,

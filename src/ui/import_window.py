@@ -57,17 +57,16 @@ class ImportWindow(QDialog):
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
 
         self.add_selected_shortcut = QShortcut(QKeySequence("Alt+I"), self)
-        self.add_selected_shortcut.setContext(Qt.ApplicationShortcut)
-        self.add_selected_shortcut.activated.connect(
-            self.import_selected_button.click)
+        self.add_selected_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.add_selected_shortcut.activated.connect(self.on_import_selected)
 
         self.add_valid_shortcut = QShortcut(QKeySequence("Alt+V"), self)
-        self.add_valid_shortcut.setContext(Qt.ApplicationShortcut)
-        self.add_valid_shortcut.activated.connect(self.add_valid_button.click)
+        self.add_valid_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.add_valid_shortcut.activated.connect(self.on_add_valid)
 
         self.export_shortcut = QShortcut(QKeySequence("Alt+X"), self)
-        self.export_shortcut.setContext(Qt.ApplicationShortcut)
-        self.export_shortcut.activated.connect(self.export_button.click)
+        self.export_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.export_shortcut.activated.connect(self.on_export_csv)
 
         self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.on_cancel)
@@ -94,6 +93,7 @@ class ImportWindow(QDialog):
 
     def install_alt_key_filters(self):
         """Install key filters to block unmapped Alt+letter input."""
+        self.installEventFilter(self)
         widgets = []
         widgets.extend(self.findChildren(QLineEdit))
         widgets.extend(self.findChildren(QComboBox))
@@ -102,10 +102,32 @@ class ImportWindow(QDialog):
         for widget in widgets:
             widget.installEventFilter(self)
 
+    def eventFilter(self, source, event):
+        """Handle mapped Alt+letter actions reliably across child widgets."""
+        if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
+            key = event.key()
+            if key == Qt.Key_I:
+                self.on_import_selected()
+                event.accept()
+                return True
+            if key == Qt.Key_V:
+                self.on_add_valid()
+                event.accept()
+                return True
+            if key == Qt.Key_X:
+                self.on_export_csv()
+                event.accept()
+                return True
+
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                return True
+
+        return super().eventFilter(source, event)
+
     # Import dialog for scanning folders and importing metadata.
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'V', 'W', 'X'
+        'A', 'B', 'C', 'E', 'F', 'I', 'N', 'S', 'V', 'W', 'X'
     }
 
     COL_AUTHOR = 0
@@ -193,25 +215,6 @@ class ImportWindow(QDialog):
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
-
-        # Fallback checkboxes initialization (must be before signal connections)
-        self.author_fallback_checkbox = QPushButton(
-            "Author fallback to folder?")
-        self.author_fallback_checkbox.setCheckable(True)
-        self.author_fallback_checkbox.setChecked(
-            self.author_fallback_to_folder)
-        self.author_fallback_checkbox.setAccessibleName(
-            "Author fallback to folder")
-        self.author_fallback_checkbox.setAccessibleDescription(
-            "If checked, missing author will fallback to folder name")
-
-        self.title_fallback_checkbox = QPushButton("Title fallback to file?")
-        self.title_fallback_checkbox.setCheckable(True)
-        self.title_fallback_checkbox.setChecked(self.title_fallback_to_file)
-        self.title_fallback_checkbox.setAccessibleName(
-            "Title fallback to file")
-        self.title_fallback_checkbox.setAccessibleDescription(
-            "If checked, missing title will fallback to file name")
         self.setup_ui()
         self.resize(1100, 600)  # Ensure height is set after UI is built
         self.install_alt_key_filters()
@@ -219,55 +222,7 @@ class ImportWindow(QDialog):
         self.load_preferences()
         self.connect_signals()
         self.setup_shortcuts()
-        self.author_fallback_checkbox.toggled.connect(
-            self.on_author_fallback_toggled)
-        self.title_fallback_checkbox.toggled.connect(
-            self.on_title_fallback_toggled)
         self.scaler.scale_changed.connect(self.on_scale_changed)
-
-    def on_author_fallback_toggled(self, checked):
-        self.author_fallback_to_folder = checked
-        self.settings.setValue("import/fallback/author_to_folder", checked)
-        self.import_scanner.configure(
-            scenario_mode=self.import_scenario_mode,
-            author_fallback_mode="folder" if checked else None,
-            title_fallback_mode="file" if self.title_fallback_to_file else None,
-            reader_keywords=self.reader_keywords,
-            trim_whitespace=self.autocorrect_trim_whitespace,
-            strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
-            remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
-            proper_case_fields=self.autocorrect_proper_case,
-            move_leading_the_title=self.autocorrect_move_leading_the,
-        )
-        self.set_status("Author fallback to folder {}".format(
-            "enabled" if checked else "disabled"), announce=True)
-
-    def on_title_fallback_toggled(self, checked):
-        self.title_fallback_to_file = checked
-        self.settings.setValue("import/fallback/title_to_file", checked)
-        self.import_scanner.configure(
-            scenario_mode=self.import_scenario_mode,
-            author_fallback_mode="folder" if self.author_fallback_to_folder else None,
-            title_fallback_mode="file" if checked else None,
-            reader_keywords=self.reader_keywords,
-            trim_whitespace=self.autocorrect_trim_whitespace,
-            strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
-            remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
-            proper_case_fields=self.autocorrect_proper_case,
-            move_leading_the_title=self.autocorrect_move_leading_the,
-        )
-        self.set_status("Title fallback to file {}".format(
-            "enabled" if checked else "disabled"), announce=True)
-
-        self._update_header_info_line()
-        self.setAccessibleName(self._base_window_title)
-        self.setAccessibleDescription(
-            "Scan folders for audiobooks and import metadata")
-        self.resize(1100, 600)  # Restore previous height
-        self.setMinimumWidth(900)
-
-        announce_dialog_opened(self, self.windowTitle())
-        self.update_summary()
 
     def _get_target_collection_id(self) -> Optional[int]:
         """Get selected target collection ID for imports."""
@@ -279,26 +234,6 @@ class ImportWindow(QDialog):
             return self.default_collection_id
 
         if self.default_collection_id is not None:
-            # Fallback checkboxes initialization
-            self.author_fallback_checkbox = QPushButton(
-                "Author fallback to folder?")
-            self.author_fallback_checkbox.setCheckable(True)
-            self.author_fallback_checkbox.setChecked(
-                self.author_fallback_to_folder)
-            self.author_fallback_checkbox.setAccessibleName(
-                "Author fallback to folder")
-            self.author_fallback_checkbox.setAccessibleDescription(
-                "If checked, missing author will fallback to folder name")
-
-            self.title_fallback_checkbox = QPushButton(
-                "Title fallback to file?")
-            self.title_fallback_checkbox.setCheckable(True)
-            self.title_fallback_checkbox.setChecked(
-                self.title_fallback_to_file)
-            self.title_fallback_checkbox.setAccessibleName(
-                "Title fallback to file")
-            self.title_fallback_checkbox.setAccessibleDescription(
-                "If checked, missing title will fallback to file name")
             return self.default_collection_id
 
         collections = self.collection_queries.get_all()
@@ -409,27 +344,6 @@ class ImportWindow(QDialog):
         self.browse_button.setAutoDefault(True)
         header_layout.addWidget(self.browse_button)
 
-        # Fallback checkboxes
-        self.author_fallback_checkbox = QPushButton(
-            "Author fallback to folder?")
-        self.author_fallback_checkbox.setCheckable(True)
-        self.author_fallback_checkbox.setChecked(
-            self.author_fallback_to_folder)
-        self.author_fallback_checkbox.setAccessibleName(
-            "Author fallback to folder")
-        self.author_fallback_checkbox.setAccessibleDescription(
-            "If checked, missing author will fallback to folder name")
-        header_layout.addWidget(self.author_fallback_checkbox)
-
-        self.title_fallback_checkbox = QPushButton("Title fallback to file?")
-        self.title_fallback_checkbox.setCheckable(True)
-        self.title_fallback_checkbox.setChecked(self.title_fallback_to_file)
-        self.title_fallback_checkbox.setAccessibleName(
-            "Title fallback to file")
-        self.title_fallback_checkbox.setAccessibleDescription(
-            "If checked, missing title will fallback to file name")
-        header_layout.addWidget(self.title_fallback_checkbox)
-
         error_filter_label = QLabel("&Errors Filter:")
         self.error_filter_combo = QComboBox()
         self.error_filter_combo.setAccessibleName("Import error filter")
@@ -535,12 +449,13 @@ class ImportWindow(QDialog):
         self.export_button.setAutoDefault(True)
         footer_layout.addWidget(self.export_button)
 
-        self.cancel_button = QPushButton("C&lose")
-        self.cancel_button.setAccessibleName("Close")
+        self.cancel_button = QPushButton("Ca&ncel")
+        self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription(
-            "Close import window - Alt+L")
+            "Cancel running scan - Alt+N")
         self.cancel_button.setDefault(False)
         self.cancel_button.setAutoDefault(True)
+        self.cancel_button.setVisible(False)
         footer_layout.addWidget(self.cancel_button)
         self._update_cancel_button_state()
 
@@ -554,7 +469,6 @@ class ImportWindow(QDialog):
         self.setTabOrder(self.table, self.import_selected_button)
         self.setTabOrder(self.import_selected_button, self.add_valid_button)
         self.setTabOrder(self.add_valid_button, self.export_button)
-        self.setTabOrder(self.export_button, self.cancel_button)
 
     def apply_control_styles(self):
         """Apply consistent styling to inputs and buttons."""
@@ -804,7 +718,7 @@ class ImportWindow(QDialog):
         self.table.keyPressEvent = self.table_key_press
 
     def _update_cancel_button_state(self):
-        """Show Close when idle; show Cancel while scanning."""
+        """Show Cancel only while scanning."""
         if self._is_scanning:
             self.cancel_button.setText("Ca&ncel")
             self.cancel_button.setAccessibleName("Cancel")
@@ -812,13 +726,15 @@ class ImportWindow(QDialog):
                 "Cancel running scan - Alt+N")
             self.cancel_button.setDefault(False)
             self.cancel_button.setAutoDefault(True)
+            self.cancel_button.setVisible(True)
         else:
-            self.cancel_button.setText("C&lose")
-            self.cancel_button.setAccessibleName("Close")
+            self.cancel_button.setText("Ca&ncel")
+            self.cancel_button.setAccessibleName("Cancel")
             self.cancel_button.setAccessibleDescription(
-                "Close import window - Alt+L")
-            self.cancel_button.setDefault(True)
+                "Cancel running scan - Alt+N")
+            self.cancel_button.setDefault(False)
             self.cancel_button.setAutoDefault(True)
+            self.cancel_button.setVisible(False)
 
     def _confirm_close_window(self) -> bool:
         """Prompt before closing the import window."""
@@ -894,8 +810,8 @@ class ImportWindow(QDialog):
             ("Alt+I", "Add selected"),
             ("Alt+V", "Add valid"),
             ("Alt+X", "Export list to CSV"),
-            ("Alt+L", "Close window"),
             ("Alt+N", "Cancel scan (when running)"),
+            ("Escape", "Close window"),
             ("F1", "Show keyboard shortcuts"),
         ]
 
@@ -939,16 +855,6 @@ class ImportWindow(QDialog):
         note_font.setPointSize(self.scaler.get_scaled_size(10))
         policy_note.setFont(note_font)
         layout.addWidget(policy_note)
-
-        close_button = QPushButton("Close")
-        close_button.setAccessibleName("Close")
-        close_button.clicked.connect(dlg.accept)
-        btn_font = close_button.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_button.setFont(btn_font)
-        layout.addWidget(close_button)
-
-        dlg.setTabOrder(table, close_button)
 
         dlg.exec()
 
@@ -1021,14 +927,8 @@ class ImportWindow(QDialog):
         self.table.setFocus()
 
     def _update_header_info_line(self):
-        """Update read-only info line below header controls."""
-        flip_text = "On" if self.flip_author_names else "Off"
-        info_text = (
-            f"Formats: {self.current_formats_text}    "
-            f"Mode: {self.current_mode_text}    "
-            f"Flip Author: {flip_text}"
-        )
-        self.setWindowTitle(f"{self._base_window_title} - {info_text}")
+        """Keep window title simple for screen-reader clarity."""
+        self.setWindowTitle(self._base_window_title)
 
     def _first_visible_row(self) -> int:
         """Return first visible row index or -1 when all rows hidden."""
@@ -1289,7 +1189,7 @@ class ImportWindow(QDialog):
         count = len(self.selected_rows)
         current_row = self.table.currentRow()
         title = self._row_title(current_row)
-        shortcuts_text = "Alt+I Add selected, Alt+V Add valid, Alt+X Export, Alt+L Close"
+        shortcuts_text = "Alt+I Add selected, Alt+V Add valid, Alt+X Export, Escape Close"
 
         if count == 1:
             message = f"{title} - selected. {shortcuts_text}"

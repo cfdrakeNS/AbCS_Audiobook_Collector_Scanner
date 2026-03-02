@@ -124,7 +124,7 @@ class BookDetailsWindow(QDialog):
         self._update_save_button_visibility()
 
         # Window settings
-        title = "New Book" if self.is_new else f"Book Details - {self.book.title}"
+        title = "New Book" if self.is_new else "Book Details"
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription(
@@ -567,7 +567,7 @@ class BookDetailsWindow(QDialog):
 
         layout.addLayout(form)
 
-        # bd#4: Four buttons - New, Save, Delete, Close (Prev/Next via Page Up/Down)
+        # bd#4: Action buttons - New, Save, Delete (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
 
         # New button (Alt+N) - clears form for new entry
@@ -608,15 +608,6 @@ class BookDetailsWindow(QDialog):
         button_layout.addWidget(self.cancel_button)
 
         button_layout.addStretch()
-
-        # Close button (Alt+C)
-        self.close_button = QPushButton("&Close")
-        self.close_button.setAccessibleName("Close window")
-        self.close_button.setAccessibleDescription(
-            "Close window - Alt+C or Escape")
-        self.close_button.setFocusPolicy(Qt.StrongFocus)
-        self.close_button.clicked.connect(self.reject)
-        button_layout.addWidget(self.close_button)
 
         layout.addLayout(button_layout)
 
@@ -725,8 +716,8 @@ class BookDetailsWindow(QDialog):
                 self.is_new = False
                 self.load_book_data()
                 self.update_navigation_state()
-                self.setWindowTitle(f"Book Details - {self.book.title}")
-                self.setAccessibleName(f"Book Details - {self.book.title}")
+                self.setWindowTitle("Book Details")
+                self.setAccessibleName("Book Details")
             else:
                 super().reject()
                 return
@@ -884,7 +875,7 @@ class BookDetailsWindow(QDialog):
                 "New book entry. Press Alt+S Save or Alt+L Cancel", announce=announce)
         else:
             self.set_status(
-                "Alt+N New, Alt+D Delete, Alt+C Close", announce=announce)
+                "Alt+N New, Alt+D Delete, Escape Close", announce=announce)
 
     def _update_save_button_visibility(self):
         """
@@ -898,7 +889,6 @@ class BookDetailsWindow(QDialog):
         self.new_button.setVisible(not save_active)
         self.delete_button.setVisible((not self.is_new) and (not save_active))
         self.cancel_button.setVisible(save_active)
-        self.close_button.setVisible(not save_active)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -932,7 +922,6 @@ class BookDetailsWindow(QDialog):
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
             ("Alt+L", "Cancel"),
-            ("Alt+C", "Close window"),
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
             ("Escape", "Close window"),
@@ -978,16 +967,6 @@ class BookDetailsWindow(QDialog):
         table.setFont(font)
 
         layout.addWidget(table)
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        layout.addWidget(close_btn)
-
-        dlg.setTabOrder(table, close_btn)
 
         dlg.exec()
 
@@ -1327,7 +1306,8 @@ class BookDetailsWindow(QDialog):
             self._original_author = self.author_combo.currentText()
             self._original_series = self.series_combo.currentText()
             self._original_genre = self.genre_combo.currentText()
-            self.setWindowTitle(f"Book Details - {self.book.title}")
+            self.setWindowTitle("Book Details")
+            self.setAccessibleName("Book Details")
 
         except Exception as e:
             self.set_status("Error saving book")
@@ -1386,7 +1366,8 @@ class BookDetailsWindow(QDialog):
                     self.load_book_data()
                     self._clear_dirty()
                     self.update_navigation_state()
-                    self.setWindowTitle(f"Book Details - {self.book.title}")
+                    self.setWindowTitle("Book Details")
+                    self.setAccessibleName("Book Details")
                     exec_styled_message_box(
                         self,
                         self.scaler.get_scaled_size(20),
@@ -1495,8 +1476,8 @@ class BookDetailsWindow(QDialog):
         self.update_navigation_state()
 
         # Update window title
-        self.setWindowTitle(f"Book Details - {self.book.title}")
-        self.setAccessibleName(f"Book Details - {self.book.title}")
+        self.setWindowTitle("Book Details")
+        self.setAccessibleName("Book Details")
 
     def on_next(self):
         """
@@ -1521,8 +1502,8 @@ class BookDetailsWindow(QDialog):
         self.update_navigation_state()
 
         # Update window title
-        self.setWindowTitle(f"Book Details - {self.book.title}")
-        self.setAccessibleName(f"Book Details - {self.book.title}")
+        self.setWindowTitle("Book Details")
+        self.setAccessibleName("Book Details")
 
     def _adjust_comments_height(self):
         """Adjust comments QTextEdit height to fit content."""

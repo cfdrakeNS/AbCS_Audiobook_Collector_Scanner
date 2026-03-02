@@ -35,12 +35,11 @@ class BackupRestoreWindow(QDialog):
     """Manage database backups, restore, and full reset."""
 
     ALLOWED_ALT_LETTERS = {
-        'B', 'C', 'D', 'F', 'L', 'O', 'R', 'T'
+        'B', 'D', 'F', 'L', 'O', 'R', 'T'
     }
 
     ALT_SHORTCUT_STATUS = {
         Qt.Key_B: "Alt+B: Backup",
-        Qt.Key_C: "Alt+C: Close",
         Qt.Key_D: "Alt+D: Delete",
         Qt.Key_F: "Alt+F: Full reset",
         Qt.Key_L: "Alt+L: Backup list",
@@ -80,7 +79,7 @@ class BackupRestoreWindow(QDialog):
         self.resize(860, 520)
         self.set_status("Ready")
         QTimer.singleShot(
-            0, lambda: self.close_button.setFocus(Qt.TabFocusReason))
+            0, lambda: self.backup_list.setFocus(Qt.TabFocusReason))
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -174,18 +173,11 @@ class BackupRestoreWindow(QDialog):
             "Clear all data and recreate an empty database - Alt+F"
         )
 
-        self.close_button = QPushButton("&Close")
-        self.close_button.setAccessibleName("Close")
-        self.close_button.setAccessibleDescription(
-            "Close this window - Alt+C"
-        )
-
         footer_layout.addWidget(self.backup_button)
         footer_layout.addWidget(self.restore_button)
         footer_layout.addWidget(self.delete_button)
         footer_layout.addWidget(self.full_reset_button)
         footer_layout.addStretch(1)
-        footer_layout.addWidget(self.close_button)
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
@@ -201,7 +193,6 @@ class BackupRestoreWindow(QDialog):
         self.restore_button.clicked.connect(self.on_restore)
         self.delete_button.clicked.connect(self.on_delete_backup)
         self.full_reset_button.clicked.connect(self.on_full_reset)
-        self.close_button.clicked.connect(self.accept)
 
         self.setTabOrder(self.backup_list, self.browse_button)
         self.setTabOrder(self.browse_button, self.restore_path_edit)
@@ -209,7 +200,6 @@ class BackupRestoreWindow(QDialog):
         self.setTabOrder(self.backup_button, self.restore_button)
         self.setTabOrder(self.restore_button, self.delete_button)
         self.setTabOrder(self.delete_button, self.full_reset_button)
-        self.setTabOrder(self.full_reset_button, self.close_button)
 
         self._update_delete_button_visibility()
 
@@ -232,9 +222,6 @@ class BackupRestoreWindow(QDialog):
         self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
         self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
-        self.status_shortcut_equal = QShortcut(QKeySequence("Alt+="), self)
-        self.status_shortcut_equal.activated.connect(self.on_read_status_bar)
-
     def install_event_filters(self):
         """Install key event filters on dialog and key child controls."""
         self.installEventFilter(self)
@@ -245,7 +232,6 @@ class BackupRestoreWindow(QDialog):
         self.restore_button.installEventFilter(self)
         self.delete_button.installEventFilter(self)
         self.full_reset_button.installEventFilter(self)
-        self.close_button.installEventFilter(self)
         self.status_bar.installEventFilter(self)
 
     def eventFilter(self, source, event):
@@ -300,7 +286,6 @@ class BackupRestoreWindow(QDialog):
             ("Alt+R", "Run restore from selected backup"),
             ("Alt+D", "Delete selected backup"),
             ("Alt+F", "Full reset"),
-            ("Alt+C", "Close window"),
             ("Escape", "Close window"),
             ("F1", "Show this help"),
         ]
@@ -335,16 +320,6 @@ class BackupRestoreWindow(QDialog):
         font.setPointSize(self.scaler.get_scaled_size(11))
         table.setFont(font)
         layout.addWidget(table)
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        layout.addWidget(close_btn)
-
-        dlg.setTabOrder(table, close_btn)
         dlg.exec()
 
     def on_read_status_bar(self):
@@ -534,11 +509,13 @@ class BackupRestoreWindow(QDialog):
                 title="No Backup Selected",
                 text="Focus Backup List and select a backup file before deleting.",
             )
-            self.set_status("Delete canceled: no backup row selected in Backup List")
+            self.set_status(
+                "Delete canceled: no backup row selected in Backup List")
             return
 
         current_row = self.backup_list.currentRow()
-        current_item = self.backup_list.item(current_row, 0) if current_row >= 0 else None
+        current_item = self.backup_list.item(
+            current_row, 0) if current_row >= 0 else None
         backup_path = ""
         if current_item is not None:
             backup_path = (current_item.data(Qt.UserRole) or "").strip()
@@ -550,7 +527,8 @@ class BackupRestoreWindow(QDialog):
                 title="No Backup Selected",
                 text="Focus Backup List and select a backup file before deleting.",
             )
-            self.set_status("Delete canceled: no backup row selected in Backup List")
+            self.set_status(
+                "Delete canceled: no backup row selected in Backup List")
             return
 
         backup_name = Path(backup_path).name

@@ -1283,16 +1283,6 @@ class PreferencesWindow(QDialog):
         font.setPointSize(self.scaler.get_scaled_size(11))
         table.setFont(font)
         layout.addWidget(table)
-
-        close_button = QPushButton("Close")
-        close_button.setAccessibleName("Close")
-        close_button.clicked.connect(dlg.accept)
-        btn_font = close_button.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_button.setFont(btn_font)
-        layout.addWidget(close_button)
-
-        dlg.setTabOrder(table, close_button)
         dlg.exec()
 
     def on_run_display_audit(self):
@@ -1340,16 +1330,6 @@ class PreferencesWindow(QDialog):
         table.setFont(font)
 
         layout.addWidget(table, 1)
-
-        close_button = QPushButton("Close")
-        close_button.setAccessibleName("Close")
-        close_button.clicked.connect(dlg.accept)
-        btn_font = close_button.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_button.setFont(btn_font)
-        layout.addWidget(close_button)
-
-        dlg.setTabOrder(table, close_button)
 
         dlg.exec()
         self.set_status("Display audit opened")

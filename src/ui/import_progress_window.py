@@ -14,7 +14,10 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QStatusBar,
     QMessageBox,
-    QTextEdit,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
 )
 
 from accessibility.scaling import UIScaler
@@ -28,7 +31,7 @@ class ImportProgressWindow(QDialog):
     """Modeless progress window for long-running import scans."""
 
     ALLOWED_ALT_LETTERS = {
-        'B', 'C', 'F', 'I', 'L', 'M', 'R', 'V'
+        'B', 'F', 'I', 'L', 'M', 'R', 'V'
     }
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
@@ -192,14 +195,6 @@ class ImportProgressWindow(QDialog):
         self.cancel_button.clicked.connect(self.on_cancel_requested)
         footer_layout.addWidget(self.cancel_button)
 
-        self.close_button = QPushButton("&Close")
-        self.close_button.setAccessibleName("Close")
-        self.close_button.setAccessibleDescription(
-            "Close progress window - Alt+C")
-        self.close_button.setVisible(False)
-        self.close_button.clicked.connect(self.accept)
-        footer_layout.addWidget(self.close_button)
-
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
@@ -218,11 +213,7 @@ class ImportProgressWindow(QDialog):
         self.valid_edit.setVisible(show_valid)
 
     def _apply_tab_order(self):
-        if self._compact_mode:
-            self.setTabOrder(self.cancel_button, self.close_button)
-            return
-
-        self.setTabOrder(self.cancel_button, self.close_button)
+        return
 
     def set_compact_mode(self, enabled: bool):
         self._compact_mode = bool(enabled)
@@ -258,9 +249,6 @@ class ImportProgressWindow(QDialog):
         self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.cancel_shortcut.activated.connect(self.on_cancel_requested)
 
-        self.close_shortcut = QShortcut(QKeySequence("Alt+C"), self)
-        self.close_shortcut.activated.connect(self.on_close_requested)
-
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_close_requested)
 
@@ -269,13 +257,16 @@ class ImportProgressWindow(QDialog):
         for widget in self.findChildren(QLineEdit):
             widget.installEventFilter(self)
         self.cancel_button.installEventFilter(self)
-        self.close_button.installEventFilter(self)
         self.status_bar.installEventFilter(self)
 
     def eventFilter(self, source, event):
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress):
             is_alt = bool(event.modifiers() & Qt.AltModifier)
-            is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question)
+            is_status_key = event.key() in (
+                Qt.Key_Slash,
+                Qt.Key_Question,
+                Qt.Key_7,
+            )
             is_status_text = event.text() in ("/", "?")
             if is_alt and (is_status_key or is_status_text):
                 self.on_read_status_bar()
@@ -288,7 +279,11 @@ class ImportProgressWindow(QDialog):
 
     def keyPressEvent(self, event):
         is_alt = bool(event.modifiers() & Qt.AltModifier)
-        is_status_key = event.key() in (Qt.Key_Slash, Qt.Key_Question)
+        is_status_key = event.key() in (
+            Qt.Key_Slash,
+            Qt.Key_Question,
+            Qt.Key_7,
+        )
         is_status_text = event.text() in ("/", "?")
         if is_alt and (is_status_key or is_status_text):
             self.on_read_status_bar()
@@ -343,7 +338,7 @@ class ImportProgressWindow(QDialog):
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
-        status_text = self._default_status_message
+        status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
@@ -384,7 +379,6 @@ class ImportProgressWindow(QDialog):
         safe_total = max(0, int(total_books))
         self._scan_active = True
         self.cancel_button.setVisible(True)
-        self.close_button.setVisible(False)
         self.scan_progress.setValue(0)
         if safe_total > 0:
             self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
@@ -516,10 +510,11 @@ class ImportProgressWindow(QDialog):
         self.scan_progress.setValue(100)
         self.scan_progress.setFormat(
             f"Add complete - {books_added} book(s) added ({elapsed_text})")
-        self.close_button.setVisible(True)
-        self.close_button.setDefault(True)
-        self.close_button.setFocus(Qt.TabFocusReason)
         self.cancel_button.setVisible(False)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.raise_()
+        self.activateWindow()
+        self.setFocus(Qt.TabFocusReason)
         self.set_status(
             f"Add complete. {books_added} book(s) added. Esc to close.", announce=True)
 
@@ -550,9 +545,10 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setFormat(f"Scan complete ({elapsed_text})")
 
         self.cancel_button.setVisible(False)
-        self.close_button.setVisible(True)
-        self.close_button.setDefault(True)
-        self.close_button.setFocus(Qt.TabFocusReason)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.raise_()
+        self.activateWindow()
+        self.setFocus(Qt.TabFocusReason)
 
         if summary_text:
             message = summary_text.strip()
@@ -578,53 +574,49 @@ class ImportProgressWindow(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Create read-only text box for JAWS accessibility
-        text_edit = QTextEdit()
-        text_edit.setReadOnly(True)
-        text_edit.setAccessibleName("Keyboard shortcuts")
-        text_edit.setAccessibleDescription(
-            "List of all keyboard shortcuts for this window")
+        shortcuts = [
+            ("Alt+/", "Read status bar message"),
+            ("Alt+L", "Cancel current scan"),
+            ("Escape", "Close progress window (after completion)"),
+            ("F1", "Show this help"),
+        ]
 
-        shortcuts_text = """Keyboard Shortcuts - Import Progress
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected { border: none; outline: none; }"
+        )
 
-Active Shortcuts:
+        for row, (key, description) in enumerate(shortcuts):
+            combined_text = f"{description} - {key}" if key else description
+            item = QTableWidgetItem(combined_text)
+            item.setData(
+                Qt.AccessibleTextRole,
+                f"{description}: {key}" if key else description,
+            )
+            table.setItem(row, 0, item)
 
-Alt+/    Read status bar message
-Alt+L    Cancel current scan
-Alt+C    Close progress window
-F1       Show this help
-Escape   Close progress window (after completion)
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
 
-Display Fields (Read-Only):
-
-Title              Current file title being processed
-Author             Current file author being processed
-Files scanned      Total files scanned so far
-Elapsed time       Time elapsed during scan
-Books added        Books added to database
-Valid              Clean valid books pending review
-Read errors        Number of files with read errors
-Issues             Any issues encountered during scan"""
-
-        text_edit.setPlainText(shortcuts_text)
-
-        # Apply font scaling
-        font = text_edit.font()
+        font = table.font()
         font.setPointSize(self.scaler.get_scaled_size(11))
-        text_edit.setFont(font)
-        text_edit.setLineWrapMode(1)  # WordWrap
+        table.setFont(font)
 
-        layout.addWidget(text_edit)
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        layout.addWidget(close_btn)
-
-        dlg.setTabOrder(text_edit, close_btn)
+        layout.addWidget(table)
         dlg.exec()
 
     def closeEvent(self, event):

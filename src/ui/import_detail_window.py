@@ -621,28 +621,8 @@ class ImportDetailWindow(QDialog):
 
     @staticmethod
     def _detail_window_title(book_data: dict, errors: list | None = None) -> str:
-        """Build window title from current book data and active errors."""
-        base_title = "Import Detail - " + \
-            (book_data.get("title") or "Untitled")
-        if not errors:
-            return base_title
-
-        clean_errors = []
-        seen = set()
-        for error in errors:
-            text = str(error).strip()
-            if not text:
-                continue
-            key = text.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            clean_errors.append(text)
-
-        if not clean_errors:
-            return base_title
-
-        return f"{base_title} - {', '.join(clean_errors)}"
+        """Return a stable title for screen-reader clarity."""
+        return "Import Detail"
 
     def _build_errors_for_row(self, row: int) -> list:
         """Build current error list for a row from parent scanned items."""
@@ -1131,16 +1111,6 @@ class ImportDetailWindow(QDialog):
         font.setPointSize(self.scaler.get_scaled_size(11))
         table.setFont(font)
         layout.addWidget(table)
-
-        close_button = QPushButton("Close")
-        close_button.setAccessibleName("Close")
-        close_button.clicked.connect(dlg.accept)
-        btn_font = close_button.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_button.setFont(btn_font)
-        layout.addWidget(close_button)
-
-        dlg.setTabOrder(table, close_button)
 
         dlg.exec()
 

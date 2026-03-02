@@ -22,7 +22,7 @@ from database import (
     GenreQueries, CollectionQueries, SearchFilter, Book, StatisticsQueries
 )
 from accessibility.scaling import UIScaler
-from accessibility.style_helpers import exec_styled_message_box
+from accessibility.style_helpers import exec_styled_message_box, build_accessible_button_style
 from accessibility.theme_manager import ThemeManager
 from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from accessibility.key_filters import is_unmapped_alt_letter
@@ -1240,6 +1240,26 @@ class MainWindow(QMainWindow):
         mode_combo.setAccessibleDescription(
             "Same duplicate matching options as Preferences"
         )
+        combo_height = max(self.scaler.get_scaled_size(24), 18)
+        mode_combo.setStyleSheet(
+            f"""
+            QComboBox {{
+                min-height: {combo_height}px;
+                max-height: {combo_height}px;
+                padding: 2px 6px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }}
+            QComboBox:focus {{
+                border: 2px solid palette(highlight);
+                outline: none;
+            }}
+            QComboBox QAbstractItemView {{
+                outline: none;
+                border: 1px solid palette(dark);
+            }}
+            """
+        )
         for label, data in self.DUPLICATE_MATCH_OPTIONS:
             mode_combo.addItem(label, data)
         preferred_index = mode_combo.findData(preferred_mode)
@@ -1250,6 +1270,11 @@ class MainWindow(QMainWindow):
         buttons_layout = QHBoxLayout()
         start_button = QPushButton("Start")
         cancel_button = QPushButton("Cancel")
+        button_style = build_accessible_button_style(
+            self.scaler.get_scaled_size(20)
+        )
+        start_button.setStyleSheet(button_style)
+        cancel_button.setStyleSheet(button_style)
         start_button.clicked.connect(dialog.accept)
         cancel_button.clicked.connect(dialog.reject)
         buttons_layout.addStretch()
@@ -2851,10 +2876,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
             layout.addWidget(table)
             QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
 
-        ok_btn = QPushButton("Close")
-        ok_btn.clicked.connect(dlg.close)
-        layout.addWidget(ok_btn)
-
         focus_ctx = self._capture_table_focus_context()
         dlg.exec()
         self._restore_table_focus_context(focus_ctx)
@@ -3091,16 +3112,6 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         table.setFont(font)
 
         layout.addWidget(table)
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        layout.addWidget(close_btn)
-
-        dlg.setTabOrder(table, close_btn)
 
         QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
         focus_ctx = self._capture_table_focus_context()

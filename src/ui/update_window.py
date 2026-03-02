@@ -226,24 +226,13 @@ class UpdateWindow(QDialog):
 
         layout.addWidget(self.table, 1)  # stretch=1 to fill space
 
-        # === Footer Section: Status bar and Close button ===
+        # === Footer Section: Status bar ===
         footer_layout = QHBoxLayout()
 
         # Status bar for messages
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
-
-        # Close button (Alt+C)
-        self.close_button = QPushButton("&Close")
-        self.close_button.setAccessibleName("Close")
-        self.close_button.setAccessibleDescription(
-            "Close window - Alt+C or Escape")
-        self.close_button.setFocusPolicy(Qt.StrongFocus)
-        self.close_button.setDefault(False)  # Don't trigger on Enter
-        self.close_button.setAutoDefault(False)  # Don't auto-trigger on Enter
-        self.close_button.clicked.connect(self.accept)
-        footer_layout.addWidget(self.close_button)
 
         layout.addLayout(footer_layout)
 
@@ -254,7 +243,7 @@ class UpdateWindow(QDialog):
             self.setTabOrder(self.collection_combo, self.table)
         else:
             self.setTabOrder(self.genre_combo, self.table)
-        self.setTabOrder(self.table, self.close_button)
+        self.table.setFocusPolicy(Qt.StrongFocus)
 
     def install_event_filters(self):
         """Install event filters on combo boxes to block plain arrow keys and handle FocusOut."""
@@ -287,7 +276,7 @@ class UpdateWindow(QDialog):
                 modifiers = event.modifiers()
                 if modifiers & Qt.AltModifier:
                     allowed_alt_keys = {
-                        Qt.Key_S, Qt.Key_G, Qt.Key_L, Qt.Key_B, Qt.Key_C,
+                        Qt.Key_S, Qt.Key_G, Qt.Key_L, Qt.Key_B,
                         Qt.Key_Slash, Qt.Key_Question, Qt.Key_Up, Qt.Key_Down
                     }
                     if Qt.Key_A <= key <= Qt.Key_Z and key not in allowed_alt_keys:
@@ -904,7 +893,6 @@ class UpdateWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("Alt+Down", "Open combo dropdown"),
             ("Alt+B", "Book list"),
-            ("Alt+C", "Close window"),
             ("Escape", "Close window"),
             ("F1", "Show keyboard shortcuts"),
         ]
@@ -946,15 +934,5 @@ class UpdateWindow(QDialog):
         table.setFont(font)
 
         layout.addWidget(table)
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(base_font_size)
-        close_btn.setFont(btn_font)
-        layout.addWidget(close_btn)
-
-        dlg.setTabOrder(table, close_btn)
 
         dlg.exec()

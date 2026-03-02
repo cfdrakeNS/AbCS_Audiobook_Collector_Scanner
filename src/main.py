@@ -14,6 +14,7 @@ from ui.main_window import MainWindow
 from accessibility.shortcuts import find_shortcut_conflicts
 from accessibility.theme_manager import get_theme_manager
 from accessibility.scaling import get_scaler
+from accessibility.style_helpers import build_accessible_button_style
 from database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries, AuthorQueries
 from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt, QTimer
@@ -359,6 +360,13 @@ Use Ctrl+I to import or Alt+M for menu options."""
         continue_btn = QPushButton("&Continue")
         continue_btn.setDefault(True)
         continue_btn.setAutoDefault(True)
+
+        button_style = build_accessible_button_style(
+            self.scaler.get_scaled_size(20)
+        )
+        import_btn.setStyleSheet(button_style)
+        prefs_btn.setStyleSheet(button_style)
+        continue_btn.setStyleSheet(button_style)
 
         button_row.addWidget(import_btn)
         button_row.addWidget(prefs_btn)

@@ -270,13 +270,6 @@ class NameListWindow(QDialog):
         )
         footer_layout.addWidget(self.cancel_button)
 
-        self.close_button = QPushButton("&Close")
-        self.close_button.clicked.connect(self.accept)
-        self.close_button.setAccessibleDescription(
-            f"Close {self.entity_singular.lower()} window - Alt+C"
-        )
-        footer_layout.addWidget(self.close_button)
-
         button_style = build_accessible_button_style(
             self.scaler.get_scaled_size(20)
         )
@@ -285,7 +278,6 @@ class NameListWindow(QDialog):
             self.edit_button,
             self.save_button,
             self.cancel_button,
-            self.close_button,
         ):
             button.setStyleSheet(button_style)
 
@@ -314,7 +306,6 @@ class NameListWindow(QDialog):
             self.edit_button,
             self.save_button,
             self.cancel_button,
-            self.close_button,
         ]
 
         chain.extend([
@@ -362,7 +353,6 @@ class NameListWindow(QDialog):
                     self.edit_button,
                     self.save_button,
                     self.cancel_button,
-                    self.close_button,
                 ):
                     if button is not None and button.isVisible() and button.isEnabled():
                         next_footer_button = button
@@ -372,7 +362,7 @@ class NameListWindow(QDialog):
             if key in (Qt.Key_Backtab, Qt.Key_Tab) and (event.modifiers() & Qt.ShiftModifier):
                 if self.is_collection_mode:
                     if self._collection_editor_locked:
-                        self.close_button.setFocus(Qt.BacktabFocusReason)
+                        self.edit_button.setFocus(Qt.BacktabFocusReason)
                     else:
                         self.active_check.setFocus(Qt.BacktabFocusReason)
                 else:
@@ -384,7 +374,6 @@ class NameListWindow(QDialog):
     def _allowed_alt_letter_keys(self) -> set[int]:
         keys = {
             Qt.Key_B,
-            Qt.Key_C,
             Qt.Key_E,
             Qt.Key_L,
             Qt.Key_M,
@@ -402,6 +391,9 @@ class NameListWindow(QDialog):
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
+
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.activated.connect(self.accept)
 
         self.list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
         self.list_shortcut.activated.connect(self.focus_list)
@@ -552,14 +544,12 @@ class NameListWindow(QDialog):
         self.edit_button.setVisible(not editing_mode)
         self.save_button.setVisible(editing_mode)
         self.cancel_button.setVisible(editing_mode)
-        self.close_button.setVisible(not editing_mode)
         self._apply_tab_order()
 
     def _force_locked_button_state(self):
         """Force locked-mode button visibility after queued UI events."""
         self._collection_editor_locked = True
         self.edit_button.setVisible(True)
-        self.close_button.setVisible(True)
         self.save_button.setVisible(False)
         self.cancel_button.setVisible(False)
         self._apply_tab_order()
@@ -764,7 +754,7 @@ class NameListWindow(QDialog):
         if not name_text:
             return self.status_bar.currentMessage().strip() or "Ready"
 
-        return f"{name_text} - books {usage_text}, Alt+E Edit, Alt+C Close"
+        return f"{name_text} - books {usage_text}, Alt+E Edit, Escape Close"
 
     def on_show_shortcuts(self):
         dlg = QDialog(self)
@@ -785,7 +775,7 @@ class NameListWindow(QDialog):
             ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
             ("Alt+S", "Save"),
             ("Alt+L", "Cancel edit/new"),
-            ("Alt+C", "Close window"),
+            ("Escape", "Close window"),
             ("F1", "Show this help"),
         ]
         shortcuts = [item for item in shortcuts if item is not None]
@@ -821,17 +811,6 @@ class NameListWindow(QDialog):
         table.setFont(font)
 
         layout.addWidget(table)
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        close_btn.setStyleSheet(
-            build_accessible_button_style(self.scaler.get_scaled_size(20))
-        )
-        layout.addWidget(close_btn)
 
         dlg.exec()
 
