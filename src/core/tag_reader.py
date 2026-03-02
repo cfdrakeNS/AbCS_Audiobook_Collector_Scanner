@@ -328,6 +328,10 @@ class BookScanner:
         Returns:
             List of book dictionaries
         """
+        # Check if path is a single file (for single-item mode)
+        if os.path.isfile(folder_path):
+            return self.scan_file(folder_path, progress_callback, cancel_check)
+
         # Find all audio files
         audio_files = []
         if not folder_path or not os.path.isdir(folder_path):
@@ -423,3 +427,71 @@ class BookScanner:
             result.append(book)
 
         return result
+
+    def scan_file(self, file_path: str,
+                  progress_callback: Optional[Callable[[
+                      int, int, str], None]] = None,
+                  cancel_check: Optional[Callable[[], bool]] = None) -> List[Dict[str, Any]]:
+        """
+        Scan a single audio file.
+        Used for single-item import mode.
+
+        Args:
+            file_path: Path to audio file
+            progress_callback: Optional callback(processed, total, file_path)
+            cancel_check: Optional callback that returns True to stop early
+
+        Returns:
+            List with single book dictionary
+        """
+        if not file_path or not os.path.isfile(file_path):
+            return []
+
+        if not self.tag_reader.is_supported_file(file_path):
+            return []
+
+        if cancel_check is not None and cancel_check():
+            return []
+
+        if progress_callback is not None:
+            progress_callback(1, 1, file_path)
+
+        info = self.tag_reader.read_file(file_path)
+
+        # Use filename without extension as book key
+        file_name = os.path.basename(file_path)
+        book_key = os.path.splitext(file_name)[0]
+
+        # Build book dictionary
+        book = {
+            'title': info.album or book_key,
+            'author': info.album_artist or info.artist,
+            'year': info.year,
+            'genre': info.genre,
+            'narrator': self.tag_reader.extract_narrator(info.comment, info.composer),
+            'comment': info.comment or '',
+            'files': [file_path],
+            'total_duration': info.duration_seconds,
+            'total_size': info.file_size_bytes,
+            'bitrate': info.bitrate,
+            'format': info.file_format,
+            'folder': os.path.dirname(file_path),
+            'errors': []
+        }
+
+        # Add error if present
+        if info.read_error:
+            book['errors'].append(f"{file_name}: {info.read_error}")
+
+        # Convert duration to hours/minutes
+        total_minutes = int(book['total_duration'] / 60)
+        book['time_hours'] = total_minutes // 60
+        book['time_minutes'] = total_minutes % 60
+
+        # Convert size to MB
+        book['size_mb'] = book['total_size'] / (1024 * 1024)
+
+        # Track count (always 1 for single file)
+        book['tracks'] = 1
+
+        return [book]

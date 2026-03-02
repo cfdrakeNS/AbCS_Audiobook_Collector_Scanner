@@ -303,6 +303,13 @@ Top to bottom, the window has three areas:
 - Flip Author: Alt+F
 - Reader Keywords: Alt+K
 
+Import scenario behavior:
+
+- Mass Standard Import: mixed author/book/series folder structures under root.
+- Mass Import - Series From Directory: uses book folder as series (Author/Series/Files); ambiguous or mismatched paths skip series with a warning.
+- Mass Import - Series From File Name: parses first `( ... )` block in file name as series; trailing number appends ` - NN` to title.
+- Single Author / Book Import: supports folder or single-file import; file picker uses enabled format filters.
+
 Auto-correction options include:
 
 - Trim whitespace: Alt+W

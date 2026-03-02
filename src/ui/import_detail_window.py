@@ -249,6 +249,14 @@ class ImportDetailWindow(QDialog):
         """
         Event filter to handle focus events on form fields.
         """
+        if event.type() == QEvent.KeyPress and source in (self.author_combo, self.series_combo, self.genre_combo):
+            key = event.key()
+            modifiers = event.modifiers()
+            if key in (Qt.Key_Up, Qt.Key_Down):
+                if not (modifiers & Qt.AltModifier):
+                    QApplication.beep()
+                    return True
+
         if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
             event.accept()
             return True

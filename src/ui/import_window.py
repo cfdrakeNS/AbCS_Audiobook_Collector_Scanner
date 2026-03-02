@@ -10,7 +10,7 @@ from accessibility.scaling import UIScaler
 from core import BookScanner, ImportValidator, ImportScanner
 from database import (
     DatabaseManager, BookQueries, AuthorQueries,
-    GenreQueries, CollectionQueries, Book, Collection, SearchFilter
+    GenreQueries, CollectionQueries, SeriesQueries, Book, Collection, SearchFilter
 )
 from typing import Optional
 import time
@@ -139,6 +139,7 @@ class ImportWindow(QDialog):
         self.book_queries = BookQueries(self.db)
         self.author_queries = AuthorQueries(self.db)
         self.genre_queries = GenreQueries(self.db)
+        self.series_queries = SeriesQueries(self.db)
         self.collection_queries = CollectionQueries(self.db)
         self.scanner = BookScanner()
         self.validator = ImportValidator()
@@ -184,6 +185,7 @@ class ImportWindow(QDialog):
         self._scan_prompt_open = False
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
+        self._pending_info_popup = None  # For non-blocking popups
 
         # Fallback checkboxes initialization (must be before signal connections)
         self.author_fallback_checkbox = QPushButton(
@@ -319,6 +321,7 @@ class ImportWindow(QDialog):
         """Create a Book object from scanned data."""
         title = (data.get("title") or "").strip()
         author_text = (data.get("author") or "").strip()
+        series_text = (data.get("series") or "").strip()
         genre_text = (data.get("genre") or "").strip()
         reader_text = (data.get("narrator") or "").strip()
         target_collection_id = self._get_target_collection_id()
@@ -336,11 +339,18 @@ class ImportWindow(QDialog):
                 commit=not defer_commits,
             )
 
+        series_id = None
+        if series_text:
+            series_id = self.series_queries.get_or_create(
+                series_text,
+                commit=not defer_commits,
+            )
+
         return Book(
             title=title,
             author_id=author_id,
             year=self._normalize_year(data.get("year")),
-            series_id=None,
+            series_id=series_id,
             genre_id=genre_id,
             collection_id=target_collection_id,
             reader=reader_text,
@@ -1286,26 +1296,51 @@ class ImportWindow(QDialog):
         )
 
     def _show_info_popup(self, title: str, message: str):
-        """Show an informational popup."""
+        """Show an informational popup (non-blocking)."""
         msg = QMessageBox(self)
         msg.setWindowTitle(title)
         msg.setIcon(QMessageBox.Information)
         msg.setText(message)
         msg.setStandardButtons(QMessageBox.Ok)
         self._style_message_box(msg)
-        msg.exec()
+        # Store as instance variable so it doesn't get garbage collected
+        # Use show() instead of exec() to avoid blocking the event loop
+        self._pending_info_popup = msg
+        msg.show()
+        # Connect finished signal to clean up
+        msg.finished.connect(lambda: self._on_info_popup_closed(msg))
+
+    def _on_info_popup_closed(self, popup: QMessageBox):
+        """Handle cleanup when info popup closes."""
+        if self._pending_info_popup is popup:
+            self._pending_info_popup = None
 
     def on_browse(self):
-        """Open folder browser for scan root."""
-        current_dir = self.folder_edit.text().strip() or ""
-        selected = QFileDialog.getExistingDirectory(
-            self, "Select Import Folder", current_dir)
-        if selected:
-            self.folder_edit.setText(selected)
-            self.set_status("Import folder selected")
+        """Open folder or file browser based on scenario."""
+        current_path = self.folder_edit.text().strip() or ""
+
+        # For single-item scenario, allow selecting a single audio file
+        if self.import_scenario_mode == "single_item":
+            # Build file dialog filter for audio files
+            audio_filters = "Audio Files (*.mp3 *.m4a *.m4b *.flac *.ogg *.oga *.wma *.wav *.aac *.opus);;All Files (*.*)"
+            selected = QFileDialog.getOpenFileName(
+                self, "Select Audio File", current_path, audio_filters)[0]
+            if selected:
+                self.folder_edit.setText(selected)
+                file_name = os.path.basename(selected)
+                self.set_status(
+                    f"Audio file selected: {file_name} | Mode: {self.current_mode_text}")
+        else:
+            # For other scenarios, use folder picker
+            selected = QFileDialog.getExistingDirectory(
+                self, "Select Import Folder", current_path)
+            if selected:
+                self.folder_edit.setText(selected)
+                self.set_status(
+                    f"Import folder selected | Mode: {self.current_mode_text}")
 
     def on_scan(self):
-        """Scan the selected folder for audiobooks."""
+        """Scan the selected folder or file for audiobooks."""
         self.validator.reload_settings()
 
         target_collection_id = self._get_target_collection_id()
@@ -1316,21 +1351,46 @@ class ImportWindow(QDialog):
 
         folder_path = self.folder_edit.text().strip()
         if not folder_path:
-            self.set_status("Select a folder before scanning")
+            self.set_status("Select a folder or file before scanning")
             return
 
-        if not os.path.isdir(folder_path):
+        # Validate path based on scenario
+        is_single_item = self.import_scenario_mode == "single_item"
+        is_valid = False
+        path_type = "folder"
+
+        if is_single_item:
+            # Single item mode: accept either file or folder
+            if os.path.isfile(folder_path):
+                is_valid = True
+                path_type = "file"
+            elif os.path.isdir(folder_path):
+                is_valid = True
+                path_type = "folder"
+        else:
+            # Other modes: expect folder only
+            if os.path.isdir(folder_path):
+                is_valid = True
+                path_type = "folder"
+
+        if not is_valid:
             msg = QMessageBox(self)
-            msg.setWindowTitle("Invalid Folder")
+            msg.setWindowTitle("Invalid Path")
             msg.setIcon(QMessageBox.Warning)
-            msg.setText(
-                "The selected import folder does not exist.\n\n"
-                "Please choose a valid folder and try again."
-            )
+            if is_single_item:
+                msg.setText(
+                    "The selected import path (folder or file) does not exist.\n\n"
+                    "Please choose a valid folder or audio file and try again."
+                )
+            else:
+                msg.setText(
+                    "The selected import folder does not exist.\n\n"
+                    "Please choose a valid folder and try again."
+                )
             msg.setStandardButtons(QMessageBox.Ok)
             self._style_message_box(msg)
             msg.exec()
-            self.set_status("Selected folder does not exist")
+            self.set_status("Selected path does not exist")
             self.folder_edit.setFocus(Qt.TabFocusReason)
             return
 
@@ -1414,6 +1474,11 @@ class ImportWindow(QDialog):
                 cancel_check=lambda: self._cancel_scan_requested,
             )
             scan_was_canceled = self._cancel_scan_requested
+
+            # Debug: Log number of books found
+            if is_single_item:
+                self.set_status(
+                    f"Single file scan: {len(books)} book(s) found")
         finally:
             elapsed = time.perf_counter() - scan_start
             elapsed_text = self._format_elapsed(elapsed)
@@ -1477,13 +1542,15 @@ class ImportWindow(QDialog):
             conn.execute("BEGIN")
             transaction_open = True
 
-            # Update progress window to show processing phase starting
+            # Update progress window to show add phase starting.
             if self.progress_window:
-                self.progress_window.scan_progress.setValue(100)
-                self.progress_window.scan_progress.setFormat(
-                    "Processing books...")
-                self.progress_window.set_status(
-                    f"Adding 0/{len(books)} | Elapsed 00:00")
+                self.progress_window.prepare_for_add_phase(len(books))
+                self.progress_window.update_add_progress(
+                    processed=0,
+                    total=len(books),
+                    books_added=0,
+                    elapsed_text="00:00",
+                )
                 QApplication.processEvents()
 
             for row, book in enumerate(books):
@@ -1649,11 +1716,14 @@ class ImportWindow(QDialog):
                         current_elapsed = self._format_elapsed(
                             now - scan_start)
                         self.progress_window.update_counters(
-                            books_added=added_count,
                             read_errors=read_error_count,
                         )
-                        self.progress_window.set_status(
-                            f"Adding {row + 1}/{len(books)} | Elapsed {current_elapsed}")
+                        self.progress_window.update_add_progress(
+                            processed=row + 1,
+                            total=len(books),
+                            books_added=added_count,
+                            elapsed_text=current_elapsed,
+                        )
                     next_counters_ui_update = now + counters_update_interval
                     QApplication.processEvents()
 
@@ -1670,7 +1740,10 @@ class ImportWindow(QDialog):
             if scan_was_canceled:
                 final_status = f"Scan canceled. No partial results found. Elapsed: {elapsed_text}"
             else:
-                final_status = f"No audio files found. Elapsed: {elapsed_text}"
+                if is_single_item:
+                    final_status = f"No audio found. Selected file may be unsupported or inaccessible. Elapsed: {elapsed_text}"
+                else:
+                    final_status = f"No audio files found. Elapsed: {elapsed_text}"
 
             self.update_summary(scanned_total, 0, 0, 0, added=added_count)
             self.set_status(final_status)
@@ -1683,7 +1756,7 @@ class ImportWindow(QDialog):
                     summary_text += " | Scan canceled"
                 else:
                     summary_text = f"No audio files found. Elapsed: {elapsed_text}"
-                self.progress_window.mark_complete(
+                self.progress_window.mark_scan_complete(
                     canceled=scan_was_canceled,
                     elapsed_text=elapsed_text,
                     files_scanned=scanned_total,
@@ -1713,7 +1786,7 @@ class ImportWindow(QDialog):
             )
             if scan_was_canceled:
                 summary_text += " | Scan canceled"
-            self.progress_window.mark_complete(
+            self.progress_window.mark_scan_complete(
                 canceled=scan_was_canceled,
                 elapsed_text=elapsed_text,
                 files_scanned=scanned_total,
@@ -1861,9 +1934,34 @@ class ImportWindow(QDialog):
         imported = 0
         skipped = 0
         failed = 0
+        processed_valid = 0
         rows_to_remove = []
         conn = self.db.connect()
         transaction_open = False
+
+        # Count how many rows will actually be added (valid status, title, author)
+        valid_count = 0
+        for row in row_indices:
+            if row < 0 or row >= len(self.scanned_items):
+                continue
+            item = self.scanned_items[row]
+            status = item.get("status")
+            if status not in ("OK", "Warning"):
+                continue
+            book_data = item.get("book", {})
+            title = (book_data.get("title") or "").strip()
+            author_text = (book_data.get("author") or "").strip()
+            if not title or not author_text:
+                continue
+            valid_count += 1
+
+        # Prepare progress window for add phase with actual valid count
+        if self.progress_window:
+            self.progress_window.prepare_for_add_phase(valid_count)
+            self.progress_window.show()
+            self.progress_window.raise_()
+            self.progress_window.activateWindow()
+            QApplication.processEvents()
 
         try:
             conn.execute("BEGIN")
@@ -1890,6 +1988,8 @@ class ImportWindow(QDialog):
                     skipped += 1
                     continue
 
+                processed_valid += 1
+
                 try:
                     book = self._build_book_from_scan(
                         book_data,
@@ -1907,6 +2007,14 @@ class ImportWindow(QDialog):
                         error_text + "; " if error_text else "") + f"E: {str(exc)}"
                     self.table.setItem(
                         row, self.COL_ERROR, QTableWidgetItem(combined_error))
+
+                if self.progress_window:
+                    self.progress_window.update_add_progress(
+                        processed=processed_valid,
+                        total=valid_count,
+                        books_added=imported,
+                    )
+                    QApplication.processEvents()
 
             if self._cancel_add_requested:
                 if transaction_open:
@@ -1946,6 +2054,16 @@ class ImportWindow(QDialog):
                 self.total_imported += imported
 
             remaining = len(self.scanned_items)
+
+            # Mark add phase complete in progress window
+            if self.progress_window:
+                self.progress_window.mark_add_phase_complete(
+                    books_added=imported,
+                    elapsed_text="",
+                )
+
+            # Show result popup
+            # Non-blocking show() keeps event loop responsive
             self._show_info_popup(
                 "Add Complete",
                 f"Books added: {imported}\nLeft in import list: {remaining}")

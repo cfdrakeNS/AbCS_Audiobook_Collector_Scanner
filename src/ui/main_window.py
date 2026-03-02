@@ -2978,23 +2978,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_about(self):
         """Show about dialog."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle("About AbCS")
-        dlg.setAccessibleName("About AbCS")
-        dlg.setAccessibleDescription(
-            "Information about AbCS - Audio Book Collector Scanner")
-        dlg.resize(600, 400)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        text_edit = QTextEdit()
-        text_edit.setReadOnly(True)
-        text_edit.setAccessibleName("About text")
-        text_edit.setAccessibleDescription(
-            "Information about AbCS application")
-
         screen_reader_text = "Screen reader is detected."
         if not QAccessible.isActive():
             screen_reader_text = (
@@ -3024,25 +3007,16 @@ Screen Reader Status:
 {screen_reader_text}
 
 Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
-
-        text_edit.setPlainText(about_text)
-        font = text_edit.font()
-        scaled_size = self.scaler.get_scaled_size(12)
-        font.setPointSize(scaled_size)
-        text_edit.setFont(font)
-        layout.addWidget(text_edit)
-        QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
-
-        close_btn = QPushButton("Close")
-        close_btn.setAccessibleName("Close")
-        close_btn.clicked.connect(dlg.accept)
-        btn_font = close_btn.font()
-        btn_font.setPointSize(self.scaler.get_scaled_size(11))
-        close_btn.setFont(btn_font)
-        layout.addWidget(close_btn)
-
         focus_ctx = self._capture_table_focus_context()
-        dlg.exec()
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="About AbCS",
+            text=about_text,
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok,
+        )
         self._restore_table_focus_context(focus_ctx)
         self.restore_main_focus_after_modal()
 

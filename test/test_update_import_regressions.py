@@ -8,17 +8,28 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QSettings
+from PySide6.QtWidgets import QApplication
 
 from accessibility.scaling import UIScaler
 from accessibility.theme_manager import ThemeManager
 from database.connection import DatabaseManager
 from ui.import_window import ImportWindow
+from ui.import_progress_window import ImportProgressWindow
 from ui.update_window import UpdateWindow
 from database.queries import CollectionQueries
 from database.models import Collection
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+
+@pytest.fixture(autouse=True)
+def suppress_import_confirmations(monkeypatch):
+    """Avoid modal close/cancel prompts during automated test teardown."""
+    monkeypatch.setattr(
+        ImportWindow, "_confirm_close_window", lambda self: True)
+    monkeypatch.setattr(
+        ImportWindow, "_confirm_cancel_scan", lambda self: True)
 
 
 @pytest.fixture
@@ -64,6 +75,66 @@ def temp_db(tmp_path):
         db.close()
 
 
+def cleanup_window(window):
+    """Helper to forcefully cleanup a window and all its children."""
+    if not window:
+        return
+
+    # Close any visible dialogs/message boxes first
+    for widget in QApplication.topLevelWidgets():
+        if widget.isVisible() and widget != window:
+            try:
+                if hasattr(widget, 'reject'):
+                    widget.reject()
+                elif hasattr(widget, 'close'):
+                    widget.close()
+                widget.setVisible(False)
+            except:
+                pass
+
+    QApplication.processEvents()
+
+    # Force close progress window if exists
+    if hasattr(window, 'progress_window') and window.progress_window is not None:
+        pw = window.progress_window
+        try:
+            if pw.isVisible():
+                pw.setVisible(False)
+            pw.reject()
+        except:
+            pass
+        window.progress_window = None
+
+    QApplication.processEvents()
+
+    # Close the main window
+    if window and window.isVisible():
+        try:
+            window.setVisible(False)
+            window.reject()
+        except:
+            pass
+
+    # Process events multiple times
+    for _ in range(5):
+        QApplication.processEvents()
+
+    # Final sweep: close any lingering top-level dialogs (including hidden prompts)
+    for widget in QApplication.topLevelWidgets():
+        if not widget:
+            continue
+        try:
+            if hasattr(widget, 'reject'):
+                widget.reject()
+            elif hasattr(widget, 'close'):
+                widget.close()
+            widget.setVisible(False)
+        except Exception:
+            pass
+
+    QApplication.processEvents()
+
+
 def test_update_window_series_and_genre_combo_widths_match(qapp, qtbot, temp_db):
     """Series and Genre combos should keep the same minimum width."""
     scaler = UIScaler(qapp)
@@ -72,6 +143,9 @@ def test_update_window_series_and_genre_combo_widths_match(qapp, qtbot, temp_db)
 
     assert window.series_combo.minimumWidth() == window.genre_combo.minimumWidth()
     assert window.series_combo.minimumWidth() > 0
+
+    # Cleanup
+    cleanup_window(window)
 
 
 def test_import_warning_filter_excludes_fallback_and_corrected(
@@ -104,6 +178,9 @@ def test_import_warning_filter_excludes_fallback_and_corrected(
     assert window._matches_error_filter(warning_with_fallback) is False
     assert window._matches_error_filter(warning_with_corrected) is False
 
+    # Cleanup
+    cleanup_window(window)
+
 
 def test_import_summary_uses_errors_warnings_label(qapp, qtbot, temp_db, isolated_qsettings):
     """Status summary should display combined Errors/Warnings count label."""
@@ -119,6 +196,9 @@ def test_import_summary_uses_errors_warnings_label(qapp, qtbot, temp_db, isolate
     assert "Fixed: 3" in status_text
     assert "Errors/Warnings: 6" in status_text
     assert "Issues:" not in status_text
+
+    # Cleanup
+    cleanup_window(window)
 
 
 def test_import_fixed_counter_counts_fallback_and_autocorrect(
@@ -149,6 +229,9 @@ def test_import_fixed_counter_counts_fallback_and_autocorrect(
     assert window._summary_counts["fixed"] == 8
     assert window._summary_counts["errors"] == 0
     assert window._summary_counts["warnings"] == 0
+
+    # Cleanup
+    cleanup_window(window)
 
 
 def test_scan_keeps_fixed_warning_rows_for_manual_add(
@@ -218,9 +301,49 @@ def test_scan_keeps_fixed_warning_rows_for_manual_add(
 
     window.on_scan()
 
+    # Wait a bit for the scan to complete and UI updates to process
+    qtbot.wait(200)
+
+    # Process any pending Qt events to ensure all UI updates have been processed
+    from PySide6.QtWidgets import QApplication
+    QApplication.processEvents()
+
+    # Give the progress window time to update
+    qtbot.wait(100)
+
     # Clean row auto-added, fixed row remains for review/manual add.
     assert any((item.get("book", {}).get("title") == "Fixed Example")
                for item in window.scanned_items)
     assert not any((item.get("book", {}).get("title") == "Clean Example")
                    for item in window.scanned_items)
     assert window._summary_counts["fixed"] >= 1
+
+    # Cleanup: use helper to close all windows properly
+    cleanup_window(window)
+
+
+def test_import_progress_add_phase_resets_then_increments(qapp, qtbot):
+    """Progress bar should reset at add-phase start, then increment as items process."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportProgressWindow(scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    window.prepare_for_add_phase(4)
+
+    assert window.scan_progress.value() == 0
+    assert window.scan_progress.format() == "Adding... 0/4"
+
+    window.update_add_progress(
+        processed=2,
+        total=4,
+        books_added=1,
+        elapsed_text="00:05",
+    )
+
+    assert window.scan_progress.value() == 50
+    assert window.scan_progress.format() == "Adding... 2/4"
+    assert window.added_edit.text() == "1"
+    assert window.elapsed_edit.text() == "00:05"
+
+    cleanup_window(window)

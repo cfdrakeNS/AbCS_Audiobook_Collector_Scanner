@@ -88,10 +88,13 @@ class ImportScanner:
                 book["narrator"] = narrator
 
         title = (book.get("title") or "").strip()
-        if self._is_placeholder_title(title):
-            if self.title_fallback_mode == "file" and files:
+        if self._is_placeholder_title(title) and self.title_fallback_mode == "file":
+            # Fallback for all scenarios: use file stem only
+            if files:
                 fallback_title = os.path.splitext(
                     os.path.basename(files[0]))[0]
+                # Remove leading number and trim
+                fallback_title = re.sub(r'^\d+\s*', '', fallback_title).strip()
                 if fallback_title:
                     book["title"] = fallback_title
                     fallback_applied.add("Title")
@@ -125,16 +128,34 @@ class ImportScanner:
                 book["author"] = parent_name
 
         if self.scenario_mode == "series_from_directory" and files:
-            series_name = os.path.basename(
-                os.path.dirname(files[0]).rstrip("\\/"))
-            book_folder_name = os.path.basename(
-                folder.rstrip("\\/")) if folder else ""
-            if series_name and series_name.lower() != book_folder_name.lower():
-                book["series"] = series_name
-        elif self.scenario_mode == "series_from_filename" and files:
-            series_name = self._series_from_filename(files[0])
+            series_name, ambiguous_reason = self._derive_series_from_directory(
+                book=book,
+                folder=folder,
+                files=files,
+            )
             if series_name:
                 book["series"] = series_name
+            elif ambiguous_reason:
+                from core.validator import ImportValidator
+                ImportValidator.append_flag_once(
+                    book,
+                    f"W: Series from directory skipped ({ambiguous_reason})",
+                )
+        elif self.scenario_mode == "series_from_filename" and files:
+            source_text = os.path.splitext(os.path.basename(files[0]))[0]
+
+            parsed_series, parsed_number, _raw_block = self._parse_series_from_filename_text(
+                source_text
+            )
+            if parsed_series:
+                book["series"] = parsed_series
+
+            if parsed_number:
+                current_title = (book.get("title") or "").strip()
+                if current_title:
+                    suffix = f" - {parsed_number}"
+                    if not current_title.endswith(suffix):
+                        book["title"] = f"{current_title}{suffix}"
 
         field_corrections = self._apply_auto_corrections(book)
         # Only flag Title and Author corrections, but exclude fields that already have fallback flags
@@ -178,11 +199,65 @@ class ImportScanner:
         return match.group(1).strip() if match else ""
 
     @staticmethod
+    def _parse_series_from_filename_text(text: str):
+        """Parse first parenthesized block from text into series name/number/raw block."""
+        if not text:
+            return (None, None, None)
+
+        match = re.search(r"\(([^()]*)\)", str(text))
+        if not match:
+            return (None, None, None)
+
+        raw_block = match.group(1).strip()
+        if not raw_block:
+            return (None, None, "")
+
+        trailing_number_match = re.match(r"^(.*?)(?:\s+)(\d+)$", raw_block)
+        if not trailing_number_match:
+            return (raw_block, None, raw_block)
+
+        series_name = trailing_number_match.group(1).strip()
+        series_number = trailing_number_match.group(2).strip()
+        if not series_name:
+            return (raw_block, None, raw_block)
+
+        return (series_name, series_number, raw_block)
+
+    @staticmethod
     def _folder_parent_name(folder: str) -> str:
         if not folder:
             return ""
         parent = os.path.dirname(folder.rstrip("\\/"))
         return os.path.basename(parent.rstrip("\\/")) if parent else ""
+
+    def _derive_series_from_directory(self, book: Dict, folder: str, files: List[str]):
+        """Return (series_name, ambiguous_reason) for scenario series_from_directory."""
+        candidate_folder = (folder or "").strip()
+        if not candidate_folder and files:
+            candidate_folder = os.path.dirname(files[0])
+
+        candidate_folder = candidate_folder.rstrip("\\/")
+        if not candidate_folder:
+            return (None, "missing folder path")
+
+        series_candidate = os.path.basename(candidate_folder)
+        parent_folder = os.path.dirname(candidate_folder)
+        author_candidate = os.path.basename(
+            parent_folder.rstrip("\\/")) if parent_folder else ""
+
+        if not series_candidate:
+            return (None, "missing series folder name")
+        if not author_candidate:
+            return (None, "missing author folder name")
+
+        author_text = (book.get("author") or "").strip()
+        if author_text:
+            if series_candidate.casefold() == author_text.casefold():
+                return (None, "series folder matches author")
+            if author_candidate.casefold() != author_text.casefold():
+                return (None, "folder does not match author/series pattern")
+
+        return (series_candidate, None)
 
     def _fallback_author_from_path(self, folder: str, files: List[str], title_hint: str) -> str:
         folder_name = os.path.basename(folder.rstrip("\\/")) if folder else ""

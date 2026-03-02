@@ -14,10 +14,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QStatusBar,
     QMessageBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QAbstractItemView,
+    QTextEdit,
 )
 
 from accessibility.scaling import UIScaler
@@ -31,7 +28,7 @@ class ImportProgressWindow(QDialog):
     """Modeless progress window for long-running import scans."""
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'F', 'I', 'L', 'M', 'R', 'T'
+        'B', 'C', 'F', 'I', 'L', 'M', 'R'
     }
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
@@ -67,26 +64,26 @@ class ImportProgressWindow(QDialog):
         layout.setSpacing(8)
 
         title_layout = QHBoxLayout()
-        self.title_label = QLabel("&Title:")
+        self.title_label = QLabel("Title:")
         self.title_edit = QLineEdit()
         self.title_edit.setReadOnly(True)
         self.title_edit.setFocusPolicy(Qt.NoFocus)
         self.title_edit.setAccessibleName("Current title")
         self.title_edit.setAccessibleDescription(
-            "Current title being processed - Alt+T")
+            "Current title being processed")
         self.title_label.setBuddy(self.title_edit)
         title_layout.addWidget(self.title_label)
         title_layout.addWidget(self.title_edit, 1)
         layout.addLayout(title_layout)
 
         author_layout = QHBoxLayout()
-        self.author_label = QLabel("&Author:")
+        self.author_label = QLabel("Author:")
         self.author_edit = QLineEdit()
         self.author_edit.setReadOnly(True)
         self.author_edit.setFocusPolicy(Qt.NoFocus)
         self.author_edit.setAccessibleName("Current author")
         self.author_edit.setAccessibleDescription(
-            "Current author being processed - Alt+A")
+            "Current author being processed")
         self.author_label.setBuddy(self.author_edit)
         author_layout.addWidget(self.author_label)
         author_layout.addWidget(self.author_edit, 1)
@@ -364,6 +361,53 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setValue(0)
             self.scan_progress.setFormat("Scanning...")
 
+    def prepare_for_add_phase(self, total_books: int):
+        """Prepare progress display for add phase."""
+        safe_total = max(0, int(total_books))
+        self._scan_active = True
+        self.cancel_button.setVisible(True)
+        self.close_button.setVisible(False)
+        self.scan_progress.setValue(0)
+        if safe_total > 0:
+            self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
+            self.set_status(
+                f"Adding started. 0/{safe_total}. Press Alt+/ for status.", announce=True)
+        else:
+            self.scan_progress.setFormat("Adding...")
+            self.set_status(
+                "Adding started. Press Alt+/ for status.", announce=True)
+
+    def update_add_progress(
+        self,
+        *,
+        processed: int,
+        total: int,
+        books_added: int | None = None,
+        elapsed_text: str | None = None,
+    ):
+        """Update progress during add/processing phase."""
+        safe_total = max(0, int(total))
+        safe_processed = max(0, int(processed))
+        if safe_total > 0:
+            safe_processed = min(safe_processed, safe_total)
+            percent = int((safe_processed / safe_total) * 100)
+            self.scan_progress.setValue(percent)
+            self.scan_progress.setFormat(
+                f"Adding... {safe_processed}/{safe_total}")
+            status_text = f"Adding {safe_processed}/{safe_total}"
+        else:
+            self.scan_progress.setValue(0)
+            self.scan_progress.setFormat("Adding...")
+            status_text = "Adding"
+
+        if books_added is not None:
+            self.added_edit.setText(str(max(0, int(books_added))))
+        if elapsed_text is not None:
+            self.elapsed_edit.setText(elapsed_text)
+            status_text = f"{status_text} | Elapsed {elapsed_text}"
+
+        self.set_status(status_text)
+
     def update_current_item(self, *, title: str, author: str, issues_text: str = ""):
         if self._compact_mode:
             return
@@ -423,6 +467,39 @@ class ImportProgressWindow(QDialog):
             return
         self.accept()
 
+    def mark_scan_complete(
+        self,
+        *,
+        canceled: bool,
+        elapsed_text: str,
+        files_scanned: int,
+        books_added: int,
+        read_errors: int,
+        summary_text: str | None = None,
+    ):
+        """Mark scan phase as complete."""
+        self.mark_complete(
+            canceled=canceled,
+            elapsed_text=elapsed_text,
+            files_scanned=files_scanned,
+            books_added=books_added,
+            read_errors=read_errors,
+            summary_text=summary_text,
+        )
+
+    def mark_add_phase_complete(self, *, books_added: int, elapsed_text: str):
+        """Mark add phase as complete."""
+        self._scan_active = False
+        self.scan_progress.setValue(100)
+        self.scan_progress.setFormat(
+            f"Add complete - {books_added} book(s) added ({elapsed_text})")
+        self.close_button.setVisible(True)
+        self.close_button.setDefault(True)
+        self.close_button.setFocus(Qt.TabFocusReason)
+        self.cancel_button.setVisible(False)
+        self.set_status(
+            f"Add complete. {books_added} book(s) added. Esc to close.", announce=True)
+
     def mark_complete(
         self,
         *,
@@ -453,69 +530,65 @@ class ImportProgressWindow(QDialog):
         self.close_button.setFocus(Qt.TabFocusReason)
 
         if summary_text:
-            self.set_status(summary_text, announce=True)
+            message = summary_text.strip()
+            if "esc to close" not in message.lower():
+                message = f"{message}. Esc to close"
+            self.set_status(message, announce=True)
             return
 
         if canceled:
             self.set_status(
-                f"Scan canceled. Elapsed: {elapsed_text}", announce=True)
+                f"Scan canceled. Elapsed: {elapsed_text}. Esc to close.", announce=True)
         else:
             self.set_status(
-                f"Scan complete. Elapsed: {elapsed_text}", announce=True)
+                f"Scan complete. Elapsed: {elapsed_text}. Esc to close.", announce=True)
 
     def on_show_shortcuts(self):
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Import Progress")
         dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(460, 420)
+        dlg.resize(500, 350)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        shortcuts = [
-            ("Alt+/", "Read status bar"),
-            ("Alt+T", "Title"),
-            ("Alt+A", "Author"),
-            ("Alt+I", "Issues"),
-            ("Alt+F", "Files scanned"),
-            ("Alt+M", "Elapsed time"),
-            ("Alt+B", "Books added"),
-            ("Alt+R", "Read errors"),
-            ("Alt+L", "Cancel scan"),
-            ("Alt+C", "Close (on completion)"),
-            ("F1", "Show this help"),
-            ("Escape", "Close (on completion)"),
-        ]
+        # Create read-only text box for JAWS accessibility
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setAccessibleName("Keyboard shortcuts")
+        text_edit.setAccessibleDescription(
+            "List of all keyboard shortcuts for this window")
 
-        table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }")
+        shortcuts_text = """Keyboard Shortcuts - Import Progress
 
-        for row, (key, description) in enumerate(shortcuts):
-            text = f"{description} - {key}"
-            item = QTableWidgetItem(text)
-            item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
-            table.setItem(row, 0, item)
+Active Shortcuts:
 
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        font = table.font()
+Alt+/    Read status bar message
+Alt+L    Cancel current scan
+Alt+C    Close progress window
+F1       Show this help
+Escape   Close progress window (after completion)
+
+Display Fields (Read-Only):
+
+Title              Current file title being processed
+Author             Current file author being processed
+Files scanned      Total files scanned so far
+Elapsed time       Time elapsed during scan
+Books added        Books added to database
+Read errors        Number of files with read errors
+Issues             Any issues encountered during scan"""
+
+        text_edit.setPlainText(shortcuts_text)
+
+        # Apply font scaling
+        font = text_edit.font()
         font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
-        layout.addWidget(table)
+        text_edit.setFont(font)
+        text_edit.setLineWrapMode(1)  # WordWrap
+
+        layout.addWidget(text_edit)
 
         close_btn = QPushButton("Close")
         close_btn.setAccessibleName("Close")
@@ -525,7 +598,7 @@ class ImportProgressWindow(QDialog):
         close_btn.setFont(btn_font)
         layout.addWidget(close_btn)
 
-        dlg.setTabOrder(table, close_btn)
+        dlg.setTabOrder(text_edit, close_btn)
         dlg.exec()
 
     def closeEvent(self, event):

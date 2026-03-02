@@ -8,6 +8,15 @@ A comprehensive investigation into JAWS screen reader compatibility has been com
 
 ## 📁 New Accessibility Documentation Files
 
+### Copilot + JAWS Workflow
+1. **[Copilot_JAWS_ Working_Agreement (AbCS).md](Copilot_JAWS_%20Working_Agreement%20(AbCS).md)**
+   - Full collaboration workflow for Copilot + JAWS
+   - Default mode, templates, verification checklist
+
+2. **[copilot_jaws_quick_ref.txt](copilot_jaws_quick_ref.txt)**
+   - Ultra-short copy/paste quick reference
+   - Session start line, request template, done-check list
+
 ### Quick Start
 1. **[ACCESSIBILITY_DOCS_README.md](ACCESSIBILITY_DOCS_README.md)** ← START HERE
    - Navigation guide to all accessibility docs

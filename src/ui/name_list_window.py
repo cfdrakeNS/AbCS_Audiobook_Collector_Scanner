@@ -397,8 +397,8 @@ class NameListWindow(QDialog):
         return keys
 
     def setup_shortcuts(self):
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+        se_shortcut = QShortcut(QKeySequence("F1"), self)
+        se_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)

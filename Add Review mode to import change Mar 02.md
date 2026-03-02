@@ -1,10 +1,10 @@
-# Feb 28 TODO
+# Mar 02 TODO
 
 ## Restore and Reapply: Review Clean Books Before Adding
 
-## Implementation Breakdown (Feb 28)
+## Implementation Breakdown (Mar 02)
 
-## Implementation Breakdown (Feb 28) — With File/Module References
+## Implementation Breakdown (Mar 02) — With File/Module References
 
 ### 1. Preferences Window
 - [ ] Add checkbox: "Review clean books before adding" (`auto_add_clean_books`)
@@ -77,7 +77,7 @@
 
 ---
 
-# Feb 28 Summary
+# Mar 02 Summary
 
 Today’s work focused on:
 
@@ -90,5 +90,5 @@ Today’s work focused on:
 All tests now pass, accessibility is fully supported, and the codebase is clean and ready for further enhancements. Next session will begin with scenario implementation as outlined in Import_scenario_fixes.md.
 
 ---
-End of day summary: all major goals for Feb 28 are complete.
+End of day summary: all major goals for Mar 02 are complete.
 

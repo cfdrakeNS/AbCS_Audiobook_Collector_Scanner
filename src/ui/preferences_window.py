@@ -47,16 +47,17 @@ class PreferencesWindow(QDialog):
             "Series extraction from path is conservative."
         ),
         "series_from_directory": (
-            "Root contains author folders. Author subfolders are series names. "
-            "Books are single files in series folders."
+            "Uses book folder as series (Author/Series/Files). "
+            "If folder path is ambiguous or does not match author, "
+            "series is skipped and flagged with a warning."
         ),
         "series_from_filename": (
-            "Root contains author folders with single-file books. "
-            "Series is parsed from file name text in parentheses."
+            "Parses first parenthesized block in file name as series. "
+            "If that block ends in a number, title gets suffix: - NN."
         ),
         "single_item": (
             "Import one author folder, one series/book folder, or one file. "
-            "File chooser filters by enabled audio formats."
+            "Single-file picker uses enabled audio format filters."
         ),
     }
 
@@ -1389,6 +1390,14 @@ class PreferencesWindow(QDialog):
 
     def eventFilter(self, source, event):
         """Block Alt+letter input for letters that are not mapped shortcuts."""
+        if event.type() == QEvent.KeyPress and isinstance(source, QComboBox):
+            key = event.key()
+            modifiers = event.modifiers()
+            if key in (Qt.Key_Up, Qt.Key_Down):
+                if not (modifiers & Qt.AltModifier):
+                    QApplication.beep()
+                    return True
+
         if event.type() == QEvent.FocusIn:
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(
