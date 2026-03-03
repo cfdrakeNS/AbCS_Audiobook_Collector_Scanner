@@ -767,7 +767,6 @@ class NameListWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+F", "Find"),
             ("Alt+M", "Name edit"),
             ("Alt+E", "Edit selected row"),
@@ -776,6 +775,7 @@ class NameListWindow(QDialog):
             ("Alt+S", "Save"),
             ("Alt+L", "Cancel edit/new"),
             ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
         shortcuts = [item for item in shortcuts if item is not None]

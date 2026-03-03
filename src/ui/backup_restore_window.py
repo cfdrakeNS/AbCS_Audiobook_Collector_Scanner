@@ -278,7 +278,6 @@ class BackupRestoreWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+L", "Backup list"),
             ("Alt+O", "Browse for restore file"),
             ("Alt+T", "Focus restore file"),
@@ -287,6 +286,7 @@ class BackupRestoreWindow(QDialog):
             ("Alt+D", "Delete selected backup"),
             ("Alt+F", "Full reset"),
             ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
 

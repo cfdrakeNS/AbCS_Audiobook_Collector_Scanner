@@ -575,9 +575,9 @@ class ImportProgressWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+/", "Read status bar message"),
             ("Alt+L", "Cancel current scan"),
-            ("Escape", "Close progress window (after completion)"),
+            ("Escape", "Close window "),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
 

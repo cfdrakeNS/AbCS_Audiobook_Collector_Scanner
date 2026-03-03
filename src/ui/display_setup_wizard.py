@@ -1,6 +1,6 @@
 """First-run display setup wizard."""
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings, Qt, QTimer
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -8,7 +8,10 @@ from PySide6.QtWidgets import (
     QLabel,
     QComboBox,
     QSpinBox,
-    QTextEdit,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
     QPushButton,
 )
 
@@ -75,17 +78,49 @@ class DisplaySetupWizard(QDialog):
         zoom_row.addStretch(1)
         layout.addLayout(zoom_row)
 
-        shortcuts_help = QTextEdit()
-        shortcuts_help.setReadOnly(True)
-        shortcuts_help.setAccessibleName("Shortcut Help")
-        shortcuts_help.setPlainText(
-            "Keyboard quick help:\n"
-            "- F1: Show keyboard shortcuts\n"
-            "- Alt+/: Read status bar\n"
-            "- Ctrl++ / Ctrl+- / Ctrl+0: Zoom in/out/reset\n"
-            "- Alt+M: Open menu in main window"
+        shortcut_lines = [
+            "Keyboard quick help",
+            "F1: Show keyboard shortcuts",
+            "Alt+/: Read status bar",
+            "Ctrl++ / Ctrl+- / Ctrl+0: Zoom in, out, reset",
+            "Alt+M: Open menu in main window",
+        ]
+        self.shortcuts_help = QTableWidget(self)
+        self.shortcuts_help.setAccessibleName("Shortcut Help")
+        self.shortcuts_help.setAccessibleDescription(
+            "Read-only shortcut help. Use arrow keys to read line by line."
         )
-        layout.addWidget(shortcuts_help, 1)
+        self.shortcuts_help.setColumnCount(1)
+        self.shortcuts_help.setHorizontalHeaderLabels([""])
+        self.shortcuts_help.setRowCount(len(shortcut_lines))
+        self.shortcuts_help.setVerticalHeaderLabels([""] * len(shortcut_lines))
+        self.shortcuts_help.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.shortcuts_help.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.shortcuts_help.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.shortcuts_help.setTabKeyNavigation(False)
+        self.shortcuts_help.setAlternatingRowColors(True)
+        self.shortcuts_help.setFocusPolicy(Qt.StrongFocus)
+        self.shortcuts_help.verticalHeader().setVisible(False)
+        self.shortcuts_help.horizontalHeader().setVisible(False)
+        self.shortcuts_help.setShowGrid(False)
+        self.shortcuts_help.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected {"
+            " background-color: transparent;"
+            " color: palette(text);"
+            "}"
+            "QTableWidget::item:focus { outline: none; }"
+        )
+        for row, line in enumerate(shortcut_lines):
+            item = QTableWidgetItem(line)
+            item.setData(Qt.AccessibleTextRole, line)
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            self.shortcuts_help.setItem(row, 0, item)
+        self.shortcuts_help.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.Stretch)
+        if self.shortcuts_help.rowCount() > 0:
+            self.shortcuts_help.setCurrentCell(0, 0)
+        layout.addWidget(self.shortcuts_help, 1)
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
@@ -100,6 +135,18 @@ class DisplaySetupWizard(QDialog):
         )
         self.continue_button.setStyleSheet(button_style)
         self.skip_button.setStyleSheet(button_style)
+        self.setTabOrder(self.shortcuts_help, self.continue_button)
+        self.setTabOrder(self.continue_button, self.skip_button)
+
+    def _focus_shortcut_help(self) -> None:
+        if self.shortcuts_help.rowCount() > 0:
+            self.shortcuts_help.setCurrentCell(0, 0)
+        self.shortcuts_help.setFocus(Qt.ActiveWindowFocusReason)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, self._focus_shortcut_help)
+        QTimer.singleShot(150, self._focus_shortcut_help)
 
     def _load_values(self):
         self._loading = True

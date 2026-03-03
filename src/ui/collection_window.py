@@ -589,7 +589,6 @@ class CollectionWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+B", "Jump to list"),
             ("Alt+M", "Name edit"),
             ("Alt+A", "Active checkbox"),
@@ -599,6 +598,7 @@ class CollectionWindow(QDialog):
             ("Alt+L", "Cancel edit/new"),
             ("Alt+D", "Delete"),
             ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
 

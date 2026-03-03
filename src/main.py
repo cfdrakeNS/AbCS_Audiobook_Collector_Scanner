@@ -69,8 +69,8 @@ def show_launch_message_if_executable():
 show_launch_message_if_executable()
 
 # Version information - update this with each release
-APP_VERSION = "1.6.3"
-APP_BUILD_DATE = "2026-02-26"
+APP_VERSION = "1.7.3"
+APP_BUILD_DATE = "2026-03-03"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -92,10 +92,25 @@ def get_database_path():
         user_data_dir = Path.home() / 'AppData' / 'Local' / 'AbCS'
         user_data_dir.mkdir(parents=True, exist_ok=True)
         user_db = user_data_dir / 'abcs.db'
+        first_run_marker = user_data_dir / '.bundled_first_run_complete'
 
-        if not user_db.exists() and bundled_db.exists():
+        if bundled_db.exists():
             import shutil
-            shutil.copy2(bundled_db, user_db)
+
+            # First run of bundled app: always reset local DB from embedded DB.
+            # This ensures stale local databases don't persist across fresh installs.
+            if not first_run_marker.exists():
+                if user_db.exists():
+                    try:
+                        user_db.unlink()
+                    except Exception:
+                        # If unlink fails, attempt to overwrite on copy below.
+                        pass
+                shutil.copy2(bundled_db, user_db)
+                first_run_marker.write_text('1', encoding='utf-8')
+            elif not user_db.exists():
+                # Subsequent runs: recreate local DB only if missing.
+                shutil.copy2(bundled_db, user_db)
 
         return str(user_db)
     else:
@@ -327,7 +342,17 @@ Use Ctrl+I to import or Alt+M for menu options."""
         if stats.total_books != 0:
             return
 
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QHBoxLayout
+        from PySide6.QtWidgets import (
+            QDialog,
+            QVBoxLayout,
+            QPushButton,
+            QHBoxLayout,
+            QTableWidget,
+            QTableWidgetItem,
+            QHeaderView,
+            QAbstractItemView,
+        )
+        from PySide6.QtCore import QTimer
 
         dlg = QDialog(self.main_window)
         dlg.setWindowTitle(self.main_window.windowTitle())
@@ -340,15 +365,51 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        text = QTextEdit()
-        text.setReadOnly(True)
+        guidance_lines = [
+            "The database is empty.",
+            "",
+            "To get started, import audiobooks from your folders.",
+            "You can also open Preferences to adjust colors and font size.",
+            "",
+            "Choose Import, Preferences, or Continue.",
+        ]
+
+        text = QTableWidget(dlg)
         text.setAccessibleName("First run guidance")
-        text.setPlainText(
-            "The database is empty.\n\n"
-            "To get started, import audiobooks from your folders.\n"
-            "You can also open Preferences to adjust colors and font size.\n\n"
-            "Click OK or press Enter to continue."
+        text.setAccessibleDescription(
+            "Read-only guidance. Use arrow keys to read line by line."
         )
+        text.setColumnCount(1)
+        text.setHorizontalHeaderLabels([""])
+        text.setRowCount(len(guidance_lines))
+        text.setVerticalHeaderLabels([""] * len(guidance_lines))
+        text.setSelectionBehavior(QAbstractItemView.SelectRows)
+        text.setSelectionMode(QAbstractItemView.SingleSelection)
+        text.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        text.setTabKeyNavigation(False)
+        text.setAlternatingRowColors(True)
+        text.verticalHeader().setVisible(False)
+        text.horizontalHeader().setVisible(False)
+        text.setShowGrid(False)
+        text.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected {"
+            " background-color: transparent;"
+            " color: palette(text);"
+            "}"
+            "QTableWidget::item:focus { outline: none; }"
+        )
+
+        for row, line in enumerate(guidance_lines):
+            item = QTableWidgetItem(line)
+            item.setData(Qt.AccessibleTextRole, line)
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            text.setItem(row, 0, item)
+
+        text.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        if text.rowCount() > 0:
+            text.setCurrentCell(0, 0)
+
         font = text.font()
         font.setPointSize(self.scaler.get_scaled_size(12))
         text.setFont(font)
@@ -385,6 +446,14 @@ Use Ctrl+I to import or Alt+M for menu options."""
         import_btn.clicked.connect(on_import)
         prefs_btn.clicked.connect(on_preferences)
         continue_btn.clicked.connect(dlg.accept)
+
+        def focus_guidance_table() -> None:
+            if text.rowCount() > 0:
+                text.setCurrentCell(0, 0)
+            text.setFocus(Qt.ActiveWindowFocusReason)
+
+        QTimer.singleShot(0, focus_guidance_table)
+        QTimer.singleShot(150, focus_guidance_table)
 
         dlg.exec()
 

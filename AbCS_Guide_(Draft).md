@@ -1,5 +1,19 @@
 # AbCS User Guide (Draft)
 
+## 2026-03-02 Change Log
+
+- Window dismissal behavior simplified: dismiss-only Close buttons were removed from major windows; Escape is now the standard close path.
+- Import Window footer updated: `Add Valid` (Alt+V) available in review mode; Cancel (Alt+N) is shown only while scan/add is running.
+- Import review mode added in Preferences: `Review Clean Books Before Adding` (Alt+Y) keeps clean rows in Import Window for manual review.
+- Import Progress and shortcut help updated for reliable Alt+/ status read flow and post-complete Escape close.
+- Name List status read wording updated to announce edit/close actions as `Alt+E Edit, Escape Close`.
+- Main Window About dialog updated to a line-by-line table format for more reliable JAWS reading.
+- First-run startup guidance and Display Setup shortcut help updated to line-by-line table format for arrow-key reading.
+- Status announcement handling standardized in Main Window, Book Details, and Update Window via shared announcer path.
+- Book Details Cancel shortcut reliability improved (Alt+L conflict removed).
+- Manage menu includes `Preferences Reorg Preview...` for side-by-side validation of the reorganized preferences layout.
+- Startup/version updated to AbCS 1.7.2 (build date 2026-03-02).
+
 ## 2026-02-25 Change Log
 
 - Import performance baseline updated with local SSD comparison against USB results.
@@ -41,7 +55,7 @@ AbCS is accessibility-first:
 When AbCS starts for the first time, the book list may be empty.
 
 - If the database is empty, a dialog appears with options: Import, Preferences, or Continue.
-- The dialog explains how to start an import and how to adjust colors and font size.
+- The startup guidance is presented in a line-by-line read-only table; use Up/Down arrows to read each line.
 - Open Import from File menu (Alt+F, then Import), or press Ctrl+I.
 - If books already exist, Main Window opens with the current list.
 
@@ -51,8 +65,14 @@ When AbCS starts for the first time, the book list may be empty.
 
 - File (Alt+F): New Book, Import, Quit
 - View (Alt+V): Open Focused Item (Ctrl+Enter), zoom controls
-- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
+- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Preferences Reorg Preview, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
+
+### About dialog
+
+- About content is presented in a single-column line-by-line table for screen reader reliability.
+- Use Up/Down arrows to read each line.
+- Screen-reader detected/not-detected status text is no longer shown.
 
 ### Header controls
 
@@ -129,7 +149,7 @@ Open from Main Window by focusing the Title (or another non-manager column) and 
 - Save: Alt+S
 - Delete: Alt+D
 - Cancel (when shown): Alt+L
-- Close: Alt+C or Escape
+- Close window: Escape
 - Previous book: Page Up
 - Next book: Page Down
 - Read status bar: Alt+/
@@ -151,12 +171,12 @@ Main Window opens these from the Manage menu, and from table context actions on 
 - Edit: Alt+E
 - Save: Alt+S
 - Cancel edit: Alt+L
-- Close: Alt+C
+- Close window: Escape
 - Read status bar: Alt+/
 
 ### Status read format (Alt+/)
 
-- With a row focused, status reads: `Name - books xx, Alt+E Edit, Alt+C Close`.
+- With a row focused, status reads: `Name - books xx, Alt+E Edit, Escape Close`.
 
 ## Update Window
 
@@ -169,7 +189,7 @@ Use this window to apply bulk changes to selected books.
 - Collection (when shown): Alt+L
 - Focus list: Alt+B
 - Read status bar: Alt+/
-- Close: Alt+C or Escape
+- Close window: Escape
 
 ## Backup / Restore Window
 
@@ -189,7 +209,7 @@ Use this window to create database backups, restore a selected backup, or perfor
 - Restore: Alt+R
 - Delete selected backup: Alt+D
 - Full Reset: Alt+F
-- Close: Alt+C or Escape
+- Close window: Escape
 - Read status bar: Alt+/
 - Keyboard shortcut help: F1
 
@@ -236,10 +256,10 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 ### Footer actions
 
 - Add Selected: Alt+I
+- Add Valid (review mode): Alt+V
 - Export list to CSV: Alt+X
-- Close: Alt+L
-- Escape: same action as Close (or cancel if an operation is running)
-- During scanning, Close changes to Cancel and uses Alt+N
+- Cancel running scan/add: Alt+N (shown only while operation is active)
+- Escape: close window (or cancel if an operation is running)
 - Alt+/ reads the status bar message
 
 Import behavior notes:
@@ -252,7 +272,7 @@ Import behavior notes:
 - Alt+/, Alt+C, Alt+F, Alt+W, Alt+E, Alt+S, Alt+B
 - Alt+1 to Alt+5
 - Ctrl+Enter
-- Alt+I, Alt+X, Alt+L, Alt+N
+- Alt+I, Alt+V, Alt+X, Alt+N
 - F1
 
 ## Import Progress Window
@@ -265,7 +285,7 @@ The Import Progress window is shown during scans in compact mode.
 - Counters shown: Files scanned, Elapsed time, Books added, Read errors.
 - Alt+/ reads the current progress status message.
 - Cancel scan: Alt+L
-- Close (after completion): Alt+C or Escape
+- Close (after completion): Escape
 
 Note: progress information fields are display-only and are not part of tab focus.
 
@@ -301,6 +321,7 @@ Top to bottom, the window has three areas:
 - Author Fallback: Alt+A
 - Title Fallback: Alt+I
 - Flip Author: Alt+F
+- Review Clean Books Before Adding: Alt+Y
 - Reader Keywords: Alt+K
 
 Import scenario behavior:

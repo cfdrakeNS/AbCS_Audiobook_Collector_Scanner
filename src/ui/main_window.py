@@ -22,6 +22,7 @@ from database import (
     GenreQueries, CollectionQueries, SearchFilter, Book, StatisticsQueries
 )
 from accessibility.scaling import UIScaler
+from accessibility.accessible_events import announce_status_message
 from accessibility.style_helpers import exec_styled_message_box, build_accessible_button_style
 from accessibility.theme_manager import ThemeManager
 from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
@@ -1346,23 +1347,7 @@ class MainWindow(QMainWindow):
                        If 0, message stays until manually changed.
             announce: If True, briefly move focus to status bar so JAWS/NVDA read it
         """
-        self.status_bar.showMessage(message)
-
-        # Announce to screen readers by briefly moving focus (JAWS/NVDA workaround)
-        if announce and QAccessible.isActive():
-            previous_focus = QApplication.instance().focusWidget()
-
-            # Temporarily make status bar focusable
-            self.status_bar.setFocusPolicy(Qt.StrongFocus)
-            self.status_bar.setFocus()
-
-            # Restore focus after screen reader reads message
-            def restore_focus():
-                if previous_focus:
-                    previous_focus.setFocus()
-                self.status_bar.setFocusPolicy(Qt.NoFocus)
-
-            QTimer.singleShot(100, restore_focus)
+        announce_status_message(self.status_bar, message, move_focus=announce)
 
         if timeout_ms > 0:
             self.status_clear_timer.stop()
@@ -2501,8 +2486,7 @@ class MainWindow(QMainWindow):
                     self.set_status(
                         f"Updated {updated_count} books - filters cleared (no matching records)", announce=True)
                 else:
-                    self.statusBar().showMessage(
-                        f"Updated {updated_count} books")
+                    self.set_status(f"Updated {updated_count} books")
 
             # Return focus to the first selected row (or same position)
             if first_selected_row is not None:
@@ -2999,45 +2983,102 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_about(self):
         """Show about dialog."""
-        screen_reader_text = "Screen reader is detected."
-        if not QAccessible.isActive():
-            screen_reader_text = (
-                "No screen reader detected. "
-                "For best accessibility, start JAWS or NVDA before launching AbCS."
-            )
-
-        about_text = f"""AbCS - Audio Book Collector Scanner
-
-Version 1.0 (Python Edition)
-
-A cross-platform audiobook collection manager with full accessibility support.
-
-FEATURES:
-• Audio Book Management with full metadata
-• ID3 Tag Import from folders
-• Advanced Search and Filtering
-• Complete Keyboard Navigation
-• Screen Reader Support
-• Scalable UI (50%-200%+)
-• High Contrast Themes
-
-ACCESSIBILITY:
-This application is designed to be fully accessible to users with low vision or who use screen readers. All features have keyboard shortcuts.
-
-Screen Reader Status:
-{screen_reader_text}
-
-Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
+        about_lines = [
+            "AbCS - Audio Book Collector Scanner",
+            get_app_version(),
+            "",
+            "A cross-platform audiobook collection manager with full accessibility support.",
+            "",
+            "FEATURES",
+            "Audio Book Management with full metadata",
+            "ID3 Tag Import from folders",
+            "Advanced Search and Filtering",
+            "Complete Keyboard Navigation",
+            "Screen Reader Support",
+            "Scalable UI (50%-200%+)",
+            "High Contrast Themes",
+            "",
+            "ACCESSIBILITY",
+            "Designed for users with low vision and screen readers.",
+            "All features include keyboard shortcuts.",
+            "",
+            "Press F1 or use Help menu for Keyboard Shortcuts.",
+        ]
         focus_ctx = self._capture_table_focus_context()
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="About AbCS",
-            text=about_text,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok,
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("About AbCS")
+        dlg.setAccessibleName("About AbCS")
+        dlg.setAccessibleDescription(
+            "Dialog containing read-only information about AbCS and accessibility features."
         )
+        dlg.resize(self.scaler.get_scaled_size(700),
+                   self.scaler.get_scaled_size(520))
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        about_table = QTableWidget(dlg)
+        about_table.setAccessibleName("About AbCS information")
+        about_table.setAccessibleDescription(
+            "Read-only table of About information. Use arrow keys to read line by line."
+        )
+        about_table.setColumnCount(1)
+        about_table.setHorizontalHeaderLabels([""])
+        about_table.setRowCount(len(about_lines))
+        about_table.setVerticalHeaderLabels([""] * len(about_lines))
+        about_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        about_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        about_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        about_table.setTabKeyNavigation(False)
+        about_table.setAlternatingRowColors(True)
+        about_table.verticalHeader().setVisible(False)
+        about_table.horizontalHeader().setVisible(False)
+        about_table.setShowGrid(False)
+        about_table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected {"
+            " background-color: transparent;"
+            " color: palette(text);"
+            "}"
+            "QTableWidget::item:focus { outline: none; }"
+        )
+
+        for row, line in enumerate(about_lines):
+            item = QTableWidgetItem(line)
+            item.setData(Qt.AccessibleTextRole, line)
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            about_table.setItem(row, 0, item)
+
+        about_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = about_table.font()
+        font.setPointSize(self.scaler.get_scaled_size(12))
+        about_table.setFont(font)
+        layout.addWidget(about_table)
+
+        close_button = QPushButton("&OK", dlg)
+        close_button.setAccessibleName("Close About dialog")
+        close_button.setAccessibleDescription("Closes About AbCS dialog")
+        close_button.setStyleSheet(
+            build_accessible_button_style(self.scaler.get_scaled_size(20))
+        )
+        close_button.clicked.connect(dlg.accept)
+        layout.addWidget(close_button, alignment=Qt.AlignRight)
+
+        dlg.setTabOrder(about_table, close_button)
+
+        def focus_about_table() -> None:
+            if about_table.rowCount() > 0:
+                about_table.setCurrentCell(0, 0)
+            about_table.setFocus(Qt.ActiveWindowFocusReason)
+
+        self.set_status("About dialog opened. Use arrow keys to read")
+        QTimer.singleShot(0, focus_about_table)
+        QTimer.singleShot(150, focus_about_table)
+        dlg.exec()
+
         self._restore_table_focus_context(focus_ctx)
         self.restore_main_focus_after_modal()
 
@@ -3054,7 +3095,6 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+C", "Collection filter"),
             ("Alt+R", "Read filter"),
             ("Alt+O", "Order by"),
@@ -3073,6 +3113,7 @@ Press F1 or use Help → Keyboard Shortcuts to see all available shortcuts."""
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
 

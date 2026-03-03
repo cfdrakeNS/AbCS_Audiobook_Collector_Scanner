@@ -599,7 +599,7 @@ class BookDetailsWindow(QDialog):
         button_layout.addWidget(self.delete_button)
 
         # Cancel button (Alt+L) - visible only when save/new is active
-        self.cancel_button = QPushButton("Cance&l")
+        self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription("Cancel editing - Alt+L")
         self.cancel_button.setFocusPolicy(Qt.StrongFocus)
@@ -730,25 +730,16 @@ class BookDetailsWindow(QDialog):
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
         """Set status bar message with optional screen reader announcement."""
         self._default_status_message = message
-        self.status_bar.showMessage(message)
-
-        if announce and QAccessible.isActive():
-            previous_focus = QApplication.instance().focusWidget()
-            self.status_bar.setFocusPolicy(Qt.StrongFocus)
-            self.status_bar.setFocus()
-
-            def restore_focus():
-                if previous_focus:
-                    previous_focus.setFocus()
-                self.status_bar.setFocusPolicy(Qt.NoFocus)
-
-            QTimer.singleShot(100, restore_focus)
+        announce_status_message(self.status_bar, message, move_focus=announce)
 
         if timeout_ms > 0:
             QTimer.singleShot(
                 timeout_ms,
-                lambda: self.status_bar.showMessage(
-                    self._default_status_message)
+                lambda: announce_status_message(
+                    self.status_bar,
+                    self._default_status_message,
+                    move_focus=False,
+                )
             )
 
     def on_read_status_bar(self):

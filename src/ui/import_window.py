@@ -796,7 +796,6 @@ class ImportWindow(QDialog):
         table.setHorizontalHeaderLabels([""])
 
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
             ("Alt+W", "Browse"),
@@ -806,12 +805,13 @@ class ImportWindow(QDialog):
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
             ("Alt+3-5", "Jump to Year..."),
-            ("Ctrl+Enter", "Open selected import detail"),
+            ("Ctrl+Enter", "Open import detail"),
             ("Alt+I", "Add selected"),
             ("Alt+V", "Add valid"),
             ("Alt+X", "Export list to CSV"),
             ("Alt+N", "Cancel scan (when running)"),
             ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
 

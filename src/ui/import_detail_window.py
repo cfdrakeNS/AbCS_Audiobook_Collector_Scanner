@@ -1074,7 +1074,6 @@ class ImportDetailWindow(QDialog):
         )
 
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
             ("Alt+O", "Comments"),
@@ -1095,6 +1094,7 @@ class ImportDetailWindow(QDialog):
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),
             ("Escape", "Close detail"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
 

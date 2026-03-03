@@ -20,6 +20,7 @@ from database import (
     DatabaseManager, Book, BookQueries, SeriesQueries,
     GenreQueries, CollectionQueries
 )
+from accessibility.accessible_events import announce_status_message
 from accessibility.scaling import UIScaler
 from accessibility.style_helpers import exec_styled_message_box
 
@@ -733,20 +734,7 @@ class UpdateWindow(QDialog):
     def show_status(self, message: str, announce: bool = True):
         """Show message in status bar and announce to screen readers."""
         self._default_status_message = message
-        self.status_bar.showMessage(message)
-        # Announce to screen readers (JAWS/NVDA) using focus trick
-        if announce and QAccessible.isActive():
-            previous_focus = QApplication.instance().focusWidget()
-            self.status_bar.setFocusPolicy(Qt.StrongFocus)
-            self.status_bar.setFocus()
-
-            def restore_focus():
-                # Only restore if status bar still owns focus.
-                # This avoids stealing focus back after Enter/Tab navigation.
-                if QApplication.instance().focusWidget() == self.status_bar and previous_focus:
-                    previous_focus.setFocus()
-                self.status_bar.setFocusPolicy(Qt.NoFocus)
-            QTimer.singleShot(100, restore_focus)
+        announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
@@ -890,10 +878,10 @@ class UpdateWindow(QDialog):
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+L", "Collection"),
-            ("Alt+/", "Read status bar"),
             ("Alt+Down", "Open combo dropdown"),
             ("Alt+B", "Book list"),
             ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
 

@@ -8,6 +8,10 @@ A comprehensive investigation into JAWS screen reader compatibility has been com
 
 ## 📁 New Accessibility Documentation Files
 
+### Archived Reviews
+- **[archive/acessibility/accessibility_gaps_mar01.md](archive/acessibility/accessibility_gaps_mar01.md)**
+   - Finalized accessibility gap review with rule-by-rule updates and testing notes
+
 ### Copilot + JAWS Workflow
 1. **[Copilot_JAWS_ Working_Agreement (AbCS).md](Copilot_JAWS_%20Working_Agreement%20(AbCS).md)**
    - Full collaboration workflow for Copilot + JAWS
