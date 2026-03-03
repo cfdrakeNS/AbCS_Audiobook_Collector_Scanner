@@ -327,7 +327,7 @@ class ImportDetailWindow(QDialog):
             self.genre_combo: "Genre",
             self.collection_combo: "Collection",
             self.reader_edit: "Reader",
-            self.time_edit: "Time",
+            self.time_edit: "Length",
             self.comments_edit: "Comments",
         }
         return mapping.get(widget, "Import details")
@@ -833,7 +833,7 @@ class ImportDetailWindow(QDialog):
         self.comments_label.setBuddy(self.comments_edit)
         form.addRow(self.comments_label, self.comments_edit)
 
-        # Row 3: Year + Time + Reader
+        # Row 3: Year + Length + Reader
         row3_layout = QHBoxLayout()
 
         self.year_spin = QSpinBox()
@@ -847,10 +847,10 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.year_spin)
         row3_layout.addSpacing(40)
 
-        time_label = QLabel("Ti&me:")
+        time_label = QLabel("Length (&M):")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
-        self.time_edit.setAccessibleName("Duration")
+        self.time_edit.setAccessibleName("Length")
         self.time_edit.setFixedWidth(100)
         self.time_edit.setReadOnly(True)
         time_label.setBuddy(self.time_edit)
@@ -1003,9 +1003,10 @@ class ImportDetailWindow(QDialog):
         self.launch_tag_button.setAccessibleName("Launch Tag")
         self.launch_tag_button.setAccessibleDescription(
             "Open current item in external tag editor - Alt+L")
-        self.launch_tag_button.setShortcut(QKeySequence("Alt+L"))
         self.launch_tag_button.setFocusPolicy(Qt.StrongFocus)
         self.launch_tag_button.clicked.connect(self.on_launch_tag_editor)
+        self.launch_tag_button.setEnabled(False)
+        self.launch_tag_button.setVisible(False)
         button_layout.addWidget(self.launch_tag_button)
 
         self.skip_button = QPushButton("&Discard")
@@ -1078,7 +1079,7 @@ class ImportDetailWindow(QDialog):
             ("Alt+A", "Author"),
             ("Alt+O", "Comments"),
             ("Alt+Y", "Year"),
-            ("Alt+M", "Time"),
+            ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
@@ -1089,7 +1090,6 @@ class ImportDetailWindow(QDialog):
             ("Alt+E", "Errors"),
             ("Alt+H", "Path"),
             ("Alt+S", "Save"),
-            ("Alt+L", "Launch tag editor"),
             ("Alt+D", "Discard"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),

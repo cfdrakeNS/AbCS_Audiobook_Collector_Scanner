@@ -6,14 +6,14 @@ Primary interface for browsing and managing audiobook collection.
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTableView, QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
-    QPushButton, QLabel, QStatusBar, QMessageBox, QHeaderView,
+    QPushButton, QLabel, QStatusBar, QMessageBox, QHeaderView, QCheckBox,
     QAbstractItemView, QMenu, QDialog, QTextEdit, QSizePolicy
 )
 from PySide6.QtCore import (
     Qt, Signal, QTimer, QItemSelection, QItemSelectionModel, QEvent, QPoint, QSettings,
     QAbstractTableModel, QModelIndex
 )
-from PySide6.QtGui import QKeyEvent, QAction, QShortcut, QKeySequence, QColor, QPalette, QMouseEvent, QAccessible
+from PySide6.QtGui import QKeyEvent, QAction, QActionGroup, QShortcut, QKeySequence, QColor, QPalette, QMouseEvent, QAccessible
 from PySide6.QtWidgets import QApplication
 import datetime
 
@@ -95,7 +95,7 @@ class BookTableModel(QAbstractTableModel):
 
     HEADERS = [
         "Author", "Title", "Year", "Plot", "Series",
-        "Genre", "Time", "Tracks", "Read", "Added"
+        "Genre", "Length", "Tracks", "Read", "Added"
     ]
 
     def __init__(self, books: list[Book] | None = None, parent=None):
@@ -172,9 +172,7 @@ class MainWindow(QMainWindow):
     Displays list of books with filtering and search.
     """
 
-    ALLOWED_ALT_LETTERS = {
-        'B', 'C', 'D', 'F', 'H', 'L', 'M', 'O', 'R', 'S', 'U', 'V'
-    }
+    FIND_ALLOWED_ALT_LETTERS = {'I', 'T', 'X'}
 
     DUPLICATE_MATCH_OPTIONS = [
         ("Title + Author + Collection", "title_author"),
@@ -229,27 +227,15 @@ class MainWindow(QMainWindow):
         self._last_table_book_id = None
         self._last_table_column = 1
 
-        # Search timer for debounced search
-        self.search_timer = QTimer()
-        self.search_timer.setSingleShot(True)
-        self.search_timer.timeout.connect(self.on_search_timeout)
-
         # Status message clear timer
         self.status_clear_timer = QTimer()
         self.status_clear_timer.setSingleShot(True)
         self.status_clear_timer.timeout.connect(self.clear_status_message)
 
-        # Focus move timer (for moving focus after search completes)
-        self.focus_move_timer = QTimer()
-        self.focus_move_timer.setSingleShot(True)
-        self.focus_move_timer.timeout.connect(self.on_focus_move_timeout)
-
-        # Last search results count (for status messages)
-        self.last_search_count = 0
-
         # Header sort state for non-primary columns
         self._last_header_sort_column = -1
         self._last_header_sort_order = Qt.AscendingOrder
+        self._active_sort_key = "Title"
 
         # Setup UI
         self.setup_ui()
@@ -275,9 +261,8 @@ class MainWindow(QMainWindow):
         # mw#22: Minimum size to prevent columns from being cut off
         self.setMinimumSize(900, 400)
 
-        # Set focus to search field on startup for accessibility
-        # Users can immediately search rather than navigate the full list
-        self.search_box.setFocus()
+        # Set focus to table on startup (inline search replaced by Find dialog).
+        self.table.setFocus()
 
     def setup_ui(self):
         """Setup user interface."""
@@ -392,35 +377,26 @@ class MainWindow(QMainWindow):
             }
         """
 
-        # Collection filter
-        self.coll_label = QLabel("Collection:")
-        # mw#10: Use min-width to keep label text visible
-        self.coll_label.setStyleSheet(
-            "QLabel { min-width: 85px; padding-right: 5px; }")
-        self.coll_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        layout.addWidget(self.coll_label, 0)
-        layout.addSpacing(5)
-
+        # Collection filter moved to View > Collections (Phase 2).
+        # Keep the combo as an internal state holder to avoid broad logic changes.
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection filter")
         self.collection_combo.setStyleSheet(combo_stylesheet)
-        # Increased width for collection names - use setFixedWidth for absolute control
         self.collection_combo.setFixedWidth(160)
         self.collection_combo.setSizePolicy(
             QSizePolicy.Fixed, QSizePolicy.Preferred)
         self.collection_combo.currentTextChanged.connect(
             self.on_collection_changed)
-        layout.addWidget(self.collection_combo, 0)
-        layout.addSpacing(40)
+        self.collection_combo.setVisible(False)
 
-        # Read filter
+        # Read filter moved to View > Read (Phase 3).
+        # Keep header controls hidden as internal state holders for low-risk behavior parity.
         self.read_label = QLabel("Read?")
         # mw#10: Use min-width to keep label text visible
         self.read_label.setStyleSheet(
             "QLabel { min-width: 50px; }")
         self.read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        layout.addWidget(self.read_label, 0)
-        layout.addSpacing(5)
+        self.read_label.setVisible(False)
 
         self.read_combo = QComboBox()
         self.read_combo.setAccessibleName("Read filter")
@@ -429,8 +405,7 @@ class MainWindow(QMainWindow):
         self.read_combo.setMinimumWidth(80)  # mw#10: Min width for "Unread"
         self.read_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         self.read_combo.currentTextChanged.connect(self.on_read_filter_changed)
-        layout.addWidget(self.read_combo, 0)
-        layout.addSpacing(40)
+        self.read_combo.setVisible(False)
 
         # Order by
         self.order_label = QLabel("Order By:")
@@ -438,8 +413,7 @@ class MainWindow(QMainWindow):
         self.order_label.setStyleSheet(
             "QLabel { min-width: 75px; }")
         self.order_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        layout.addWidget(self.order_label, 0)
-        layout.addSpacing(5)
+        self.order_label.setVisible(False)
 
         self.order_combo = QComboBox()
         self.order_combo.setAccessibleName("Sort order")
@@ -449,28 +423,25 @@ class MainWindow(QMainWindow):
         self.order_combo.setSizePolicy(
             QSizePolicy.Fixed, QSizePolicy.Preferred)
         self.order_combo.currentTextChanged.connect(self.on_order_changed)
-        layout.addWidget(self.order_combo, 0)
-        layout.addSpacing(40)
+        self.order_combo.setVisible(False)
 
-        # Search box
+        # Search moved to popup Find dialog (Phase 5).
+        # Keep hidden search controls as internal state holders for existing filter flow.
         self.search_label = QLabel("Search:")
         # mw#10: Use min-width to keep label text visible
         self.search_label.setStyleSheet(
             "QLabel { min-width: 60px; }")
         self.search_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        layout.addWidget(self.search_label, 0)
-        layout.addSpacing(5)
+        self.search_label.setVisible(False)
 
         self.search_box = JAWSCompatibleSearchBox()
         self.search_box.setAccessibleName("Search")
         self.search_box.setPlaceholderText(
             "Type to search or ? for keyword search...")
         self.search_box.setStyleSheet(search_stylesheet)
-        self.search_box.textChanged.connect(self.on_search_changed)
-        self.search_box.installEventFilter(self)
         self.search_box.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.Preferred)
-        layout.addWidget(self.search_box, 1)  # Stretch to fill remaining space
+        self.search_box.setVisible(False)
 
         return layout
 
@@ -554,10 +525,6 @@ class MainWindow(QMainWindow):
         self.collection_combo.setFixedWidth(scaled_width)
 
         # Re-apply label widths and alignment with scaling via stylesheet
-        self.coll_label.setStyleSheet(
-            f"QLabel {{ min-width: {int(90 * (scale_percentage / 100.0))}px; text-align: right; }}")
-        self.coll_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
         self.read_label.setStyleSheet(
             f"QLabel {{ min-width: {int(60 * (scale_percentage / 100.0))}px; text-align: right; }}")
         self.read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -606,7 +573,6 @@ class MainWindow(QMainWindow):
             self.read_combo,
             self.order_combo,
             self.search_box,
-            self.coll_label,
             self.read_label,
             self.order_label,
             self.search_label,
@@ -641,10 +607,10 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Date Added
+        # Columns: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Date Added
         # mw#11: Selection checkbox column removed
         columns = ["Author", "Title", "Year", "Plot", "Series",
-                   "Genre", "Time", "Tracks", "Read", "Added"]
+                   "Genre", "Length", "Tracks", "Read", "Added"]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         self.selection_column = -1  # No selection column
@@ -744,7 +710,7 @@ class MainWindow(QMainWindow):
         base_widths = {
             2: 72,   # Year
             3: 62,   # Plot
-            6: 82,   # Time
+            6: 82,   # Length
             7: 78,   # Tracks
             8: 116,  # Read
             9: 116,  # Added
@@ -824,7 +790,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(quit_action)
 
         # View menu
-        view_menu = menubar.addMenu("&View")
+        self.view_menu = menubar.addMenu("&View")
 
         # mw#17: Context-sensitive open at top of View menu
         book_details_action = QAction("&Open Focused Item\tCtrl+Enter", self)
@@ -832,22 +798,44 @@ class MainWindow(QMainWindow):
             [QKeySequence("Ctrl+Enter"), QKeySequence("Ctrl+Return")]
         )
         book_details_action.triggered.connect(self.on_open_book_details)
-        view_menu.addAction(book_details_action)
+        self.view_menu.addAction(book_details_action)
 
-        view_menu.addSeparator()
+        find_action = QAction("&Find...\tCtrl+F", self)
+        find_action.setShortcuts([QKeySequence("Ctrl+F")])
+        find_action.triggered.connect(self.on_find)
+        self.view_menu.addAction(find_action)
+
+        self.view_menu.addSeparator()
+
+        # Phase 2: collection filter moved from header combo to View menu.
+        self.view_collections_menu = self.view_menu.addMenu("&Collections")
+        self.collection_filter_group = QActionGroup(self)
+        self.collection_filter_group.setExclusive(True)
+
+        # Phase 3: read filter moved from header combo to View menu.
+        self.view_read_menu = self.view_menu.addMenu("&Read")
+        self.read_filter_group = QActionGroup(self)
+        self.read_filter_group.setExclusive(True)
+        self._rebuild_read_filter_menu()
 
         # mw#16: Zoom actions with shortcut keys displayed
         zoom_in_action = QAction("Zoom &In\tCtrl++", self)
         zoom_in_action.triggered.connect(self.on_zoom_in)
-        view_menu.addAction(zoom_in_action)
+        self.view_menu.addAction(zoom_in_action)
 
         zoom_out_action = QAction("Zoom &Out\tCtrl+-", self)
         zoom_out_action.triggered.connect(self.on_zoom_out)
-        view_menu.addAction(zoom_out_action)
+        self.view_menu.addAction(zoom_out_action)
 
         zoom_reset_action = QAction("&Reset Zoom\tCtrl+0", self)
         zoom_reset_action.triggered.connect(self.on_zoom_reset)
-        view_menu.addAction(zoom_reset_action)
+        self.view_menu.addAction(zoom_reset_action)
+
+        # Phase 4: sorting moved from header combo to dedicated Sort menu.
+        self.sort_menu = menubar.addMenu("&Sort")
+        self.sort_action_group = QActionGroup(self)
+        self.sort_action_group.setExclusive(True)
+        self._rebuild_sort_menu()
 
         # manage menu
         view_menu = menubar.addMenu("&Manage")
@@ -903,10 +891,6 @@ class MainWindow(QMainWindow):
 
         # Alt+Key shortcuts
         callback_map = {
-            'collection_combo': lambda: self.collection_combo.setFocus(),
-            'read_combo': lambda: self.read_combo.setFocus(),
-            'order_combo': lambda: self.order_combo.setFocus(),
-            'search_box': lambda: (self.search_box.setFocus(), self.search_box.selectAll()),
             'menu_combo': lambda: self.menu_combo.setFocus(),
             'book_list': self.focus_book_title,
             'update_button': self.on_update_clicked,
@@ -1016,7 +1000,7 @@ class MainWindow(QMainWindow):
             if search_text.startswith('?'):
                 search_text = search_text[1:]
             count = len(self.books)
-            order_by = self.current_filter.order_by
+            order_by = self._active_sort_key or "Title"
             if count == 0:
                 return f"No {order_by.lower()}s found matching '{search_text}'. Esc to exit search"
             elif count == 1:
@@ -1028,7 +1012,7 @@ class MainWindow(QMainWindow):
         parts = [f"Showing {len(self.books)} books"]
 
         # mw#12: Show current sort order (especially Series/Genre)
-        order_by = self.current_filter.order_by
+        order_by = self._active_sort_key or "Title"
         if order_by and order_by != "Title":  # Only show if not default
             parts.append(f"by {order_by}")
 
@@ -1040,7 +1024,7 @@ class MainWindow(QMainWindow):
 
         # Collection filter
         if self.current_filter.collection_id is not None:
-            parts.append(self.collection_combo.currentText())
+            parts.append(self._current_collection_label())
 
         return " • ".join(parts)
 
@@ -1099,6 +1083,7 @@ class MainWindow(QMainWindow):
                 self.current_filter.order_by)
             self.order_combo.setCurrentIndex(
                 0 if order_index < 0 else order_index)
+            self._active_sort_key = self.order_combo.currentText()
             self.sort_label.setText(
                 f"Sorted by: {self.order_combo.currentText()}")
         finally:
@@ -1106,6 +1091,18 @@ class MainWindow(QMainWindow):
             self.collection_combo.blockSignals(False)
             self.read_combo.blockSignals(False)
             self.order_combo.blockSignals(False)
+
+        self._sync_collection_menu_selection()
+        self._sync_read_menu_selection()
+        self._sync_sort_menu_selection(self.order_combo.currentText())
+
+    def _current_collection_label(self) -> str:
+        """Return the active collection filter label for status messages."""
+        index = self.collection_combo.findData(
+            self.current_filter.collection_id)
+        if index >= 0:
+            return self.collection_combo.itemText(index)
+        return "All Collections"
 
     def _duplicate_key_for_book(self, book: Book, mode: str):
         """Build duplicate comparison key for a book based on mode."""
@@ -1399,13 +1396,28 @@ class MainWindow(QMainWindow):
     # ========== End Status Bar Helpers ==========
 
     def refresh_collections(self):
-        """Refresh collection combo box."""
-        self.collection_combo.clear()
-        self.collection_combo.addItem("All Collections", None)
+        """Refresh collection filter data and rebuild View > Collections menu."""
+        selected_collection_id = self.current_filter.collection_id
 
-        collections = self.collection_queries.get_all(active_only=True)
-        for coll in collections:
-            self.collection_combo.addItem(coll.name, coll.collection_id)
+        self.collection_combo.blockSignals(True)
+        try:
+            self.collection_combo.clear()
+            self.collection_combo.addItem("All Collections", None)
+
+            collections = self.collection_queries.get_all(active_only=True)
+            for coll in collections:
+                self.collection_combo.addItem(coll.name, coll.collection_id)
+
+            selected_index = self.collection_combo.findData(
+                selected_collection_id)
+            if selected_index < 0:
+                selected_index = 0
+                self.current_filter.collection_id = None
+            self.collection_combo.setCurrentIndex(selected_index)
+        finally:
+            self.collection_combo.blockSignals(False)
+
+        self._rebuild_collection_filter_menu()
 
     def clear_all_filters(self):
         """Clear all filters and search, reset to show all books."""
@@ -1432,6 +1444,189 @@ class MainWindow(QMainWindow):
             self.search_box.blockSignals(False)
             self.collection_combo.blockSignals(False)
             self.read_combo.blockSignals(False)
+
+        self._sync_collection_menu_selection()
+        self._sync_read_menu_selection()
+
+    def _rebuild_read_filter_menu(self):
+        """Populate View > Read submenu from read filter options."""
+        if not hasattr(self, "view_read_menu"):
+            return
+
+        self.view_read_menu.clear()
+        self.read_filter_group = QActionGroup(self)
+        self.read_filter_group.setExclusive(True)
+
+        for i in range(self.read_combo.count()):
+            label = self.read_combo.itemText(i)
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(label)
+            action.triggered.connect(
+                lambda _checked=False, value=label: self.on_read_menu_selected(
+                    value)
+            )
+            self.read_filter_group.addAction(action)
+            self.view_read_menu.addAction(action)
+
+        self._sync_read_menu_selection()
+
+    def _sync_read_menu_selection(self):
+        """Keep View > Read checked item synced with current filter."""
+        if not hasattr(self, "read_filter_group"):
+            return
+
+        current_value = self.current_filter.read_filter or "All"
+        for action in self.read_filter_group.actions():
+            action.blockSignals(True)
+            action.setChecked(action.data() == current_value)
+            action.blockSignals(False)
+
+    def on_read_menu_selected(self, read_filter: str):
+        """Handle View > Read menu selection."""
+        target = read_filter if read_filter in {
+            "All", "Read", "Unread"} else "All"
+
+        if self.read_combo.currentText() == target:
+            self.current_filter.read_filter = target
+            self._sync_read_menu_selection()
+            self.refresh_books()
+            return
+
+        self.read_combo.setCurrentText(target)
+
+    def _rebuild_sort_menu(self):
+        """Populate Sort menu with supported sort fields."""
+        if not hasattr(self, "sort_menu"):
+            return
+
+        self.sort_menu.clear()
+        self.sort_action_group = QActionGroup(self)
+        self.sort_action_group.setExclusive(True)
+
+        self._sort_menu_options = [
+            ("Author", "&Author", 0, True),
+            ("Title", "&Title", 1, True),
+            ("Year", "&Year", 2, False),
+            ("Plot", "&Plot", 3, False),
+            ("Series", "&Series", 4, True),
+            ("Genre", "&Genre", 5, True),
+            ("Length", "&Length", 6, False),
+            ("Tracks", "Trac&ks", 7, False),
+            ("Read", "&Read", 8, False),
+            ("Added", "Add&ed", 9, False),
+        ]
+
+        self._sort_actions_by_key = {}
+
+        for key, menu_text, column, is_primary in self._sort_menu_options:
+            action = QAction(menu_text, self)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda _checked=False, key=key, col=column, primary=is_primary: self.on_sort_menu_selected(
+                    key, col, primary)
+            )
+            self.sort_action_group.addAction(action)
+            self.sort_menu.addAction(action)
+            self._sort_actions_by_key[key] = action
+
+        self._sync_sort_menu_selection(self.order_combo.currentText())
+
+    def _sort_key_for_column(self, column: int) -> str:
+        """Return Sort menu key for a table column index."""
+        mapping = {
+            0: "Author",
+            1: "Title",
+            2: "Year",
+            3: "Plot",
+            4: "Series",
+            5: "Genre",
+            6: "Length",
+            7: "Tracks",
+            8: "Read",
+            9: "Added",
+        }
+        return mapping.get(column, "Title")
+
+    def _sync_sort_menu_selection(self, key: str):
+        """Keep Sort menu checked item synced with current active sort."""
+        if not hasattr(self, "_sort_actions_by_key"):
+            return
+
+        target_key = key if key in self._sort_actions_by_key else "Title"
+
+        for action_key, action in self._sort_actions_by_key.items():
+            action.blockSignals(True)
+            action.setChecked(action_key == target_key)
+            action.blockSignals(False)
+
+    def on_sort_menu_selected(self, key: str, column: int, is_primary: bool):
+        """Handle Sort menu selection."""
+        if is_primary:
+            if self.order_combo.currentText() == key:
+                self.on_order_changed(key)
+            else:
+                self.order_combo.setCurrentText(key)
+            return
+
+        self._last_header_sort_column = column
+        self._last_header_sort_order = Qt.AscendingOrder
+        self._active_sort_key = key
+        self._sort_books_in_memory(column, Qt.AscendingOrder)
+        self.table.horizontalHeader().setSortIndicator(column, Qt.AscendingOrder)
+        self.sort_label.setText(f"Sorted by: {key} (Ascending)")
+        self._sync_sort_menu_selection(key)
+
+    def _rebuild_collection_filter_menu(self):
+        """Populate View > Collections submenu from current collection list."""
+        if not hasattr(self, "view_collections_menu"):
+            return
+
+        self.view_collections_menu.clear()
+        self.collection_filter_group = QActionGroup(self)
+        self.collection_filter_group.setExclusive(True)
+
+        for i in range(self.collection_combo.count()):
+            label = self.collection_combo.itemText(i)
+            collection_id = self.collection_combo.itemData(i)
+
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(collection_id)
+            action.triggered.connect(
+                lambda _checked=False, cid=collection_id: self.on_collection_menu_selected(
+                    cid)
+            )
+            self.collection_filter_group.addAction(action)
+            self.view_collections_menu.addAction(action)
+
+        self._sync_collection_menu_selection()
+
+    def _sync_collection_menu_selection(self):
+        """Keep View > Collections checked item synced with current filter."""
+        if not hasattr(self, "collection_filter_group"):
+            return
+
+        for action in self.collection_filter_group.actions():
+            action.blockSignals(True)
+            action.setChecked(
+                action.data() == self.current_filter.collection_id)
+            action.blockSignals(False)
+
+    def on_collection_menu_selected(self, collection_id):
+        """Handle View > Collections menu selection."""
+        index = self.collection_combo.findData(collection_id)
+        if index < 0:
+            index = 0
+            collection_id = None
+
+        if self.collection_combo.currentIndex() == index:
+            self.current_filter.collection_id = collection_id
+            self._sync_collection_menu_selection()
+            self.refresh_books()
+            return
+
+        self.collection_combo.setCurrentIndex(index)
 
     def has_active_filters(self) -> bool:
         """Check if any filters or search are active."""
@@ -1502,19 +1697,23 @@ class MainWindow(QMainWindow):
         """Handle collection filter change."""
         coll_id = self.collection_combo.currentData()
         self.current_filter.collection_id = coll_id
+        self._sync_collection_menu_selection()
         self.refresh_books()
 
     def on_read_filter_changed(self, text: str):
         """Handle read filter change."""
         self.current_filter.read_filter = text
+        self._sync_read_menu_selection()
         self.refresh_books()
 
     def on_order_changed(self, text: str):
         """Handle sort order change."""
         # Update filter BEFORE calling refresh to ensure correct order is used
         self.current_filter.order_by = text
+        self._active_sort_key = text
         self.sort_label.setText(f"Sorted by: {text}")
         self._set_primary_sort_indicator(text)
+        self._sync_sort_menu_selection(text)
         # Only refresh books (no double refresh from combo signal)
         self.refresh_books()
 
@@ -1549,7 +1748,9 @@ class MainWindow(QMainWindow):
         header_text = self.book_model.headerData(
             column, Qt.Horizontal, Qt.DisplayRole) or "Field"
         direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
+        self._active_sort_key = self._sort_key_for_column(column)
         self.sort_label.setText(f"Sorted by: {header_text} ({direction})")
+        self._sync_sort_menu_selection(self._active_sort_key)
 
     def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
         """Sort books list for non-primary columns without SQL roundtrip."""
@@ -1563,7 +1764,7 @@ class MainWindow(QMainWindow):
                 return (book.year is None, book.year or 0)
             if column == 3:  # Plot (comments indicator)
                 return (not book.has_substantial_comment, book.title or "")
-            if column == 6:  # Time
+            if column == 6:  # Length
                 return ((book.time_hours or 0) * 60 + (book.time_minutes or 0))
             if column == 7:  # Tracks
                 return (book.tracks or 0)
@@ -1593,88 +1794,133 @@ class MainWindow(QMainWindow):
         self._last_header_sort_order = Qt.AscendingOrder
         self.table.horizontalHeader().setSortIndicator(column, Qt.AscendingOrder)
 
-    def on_search_changed(self, text: str):
-        """Handle search text change."""
-        self.current_filter.search_text = text
-        self.current_filter.is_keyword_search = text.startswith('?')
+    def on_find(self):
+        """Open popup Find dialog (Ctrl+F)."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Find")
+        dialog.setAccessibleName("Find")
+        dialog.setAccessibleDescription(
+            "Find books by field. Enter text and press Enter to find."
+        )
+        dialog.resize(500, 180)
 
-        # Stop existing timer
-        self.search_timer.stop()
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
 
-        # If empty, clear search immediately (without status - eventFilter handles this)
-        if not text:
-            self.current_filter.search_text = ""
-            # Only refresh if we were actually filtering (avoid redundant refresh)
-            if self.current_filter.search_text or self.current_filter.read_filter or self.current_filter.collection_id:
-                self.refresh_books()
-            return
+        field_row = QHBoxLayout()
+        field_label = QLabel("Find &in:")
+        field_combo = QComboBox()
+        field_combo.addItems(["Author", "Title", "Series", "Genre"])
+        field_combo.setAccessibleName("Find field")
+        combo_height = max(int(20 * (self.scaler.current_scale / 100.0)), 18)
+        field_combo.setStyleSheet(
+            f"QComboBox {{ min-height: {combo_height}px; max-height: {combo_height}px; }}"
+        )
+        field_label.setBuddy(field_combo)
+        field_row.addWidget(field_label)
+        field_row.addWidget(field_combo, 1)
 
-        # Keyword search (starts with ?) requires Enter key
-        if text.startswith('?'):
-            # Don't filter yet - wait for Enter
-            return
+        exact_check = QCheckBox("E&xact match")
+        exact_check.setAccessibleName("Exact match")
+        exact_check.setChecked(True)
+        field_row.addSpacing(12)
+        field_row.addWidget(exact_check)
+        layout.addLayout(field_row)
 
-        # Live filtering: filter as user types (with debounce)
-        self.search_timer.start(300)  # 300ms debounce for responsiveness
+        text_row = QHBoxLayout()
+        text_label = QLabel("Find &text:")
+        text_edit = QLineEdit()
+        text_edit.setAccessibleName("Find text")
+        text_label.setBuddy(text_edit)
+        text_row.addWidget(text_label)
+        text_row.addWidget(text_edit, 1)
+        layout.addLayout(text_row)
 
-    def on_search_enter(self):
-        """Handle Enter key in search box."""
-        # Stop any pending live search timer immediately
-        self.search_timer.stop()
+        dialog_status = QStatusBar(dialog)
+        dialog_status.setSizeGripEnabled(False)
+        dialog_status.showMessage(
+            "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
+        )
+        layout.addWidget(dialog_status)
 
-        search_text = self.search_box.text().strip()
-        if not search_text:
-            return
-
-        # Determine if this is a keyword search (contains ?) and strip it
-        is_keyword = search_text.startswith('?')
-        if is_keyword:
-            search_text = search_text[1:].strip()
-
-        # Update filter with final search text
-        self.current_filter.search_text = search_text
-        self.current_filter.is_keyword_search = is_keyword
-
-        # Perform search
-        self.refresh_books()
-
-        # Move focus to first search result using timer to ensure it happens after all events
-        if len(self.books) > 0:
-            def move_focus():
-                # Focus the appropriate column based on order-by setting
-                self.focus_search_result_cell(0)
-                # Explicitly set focus to table AFTER setting cell (critical for keyboard nav)
-                self.table.setFocus(Qt.TabFocusReason)
-                # Announce search results
-                self.set_status(self.get_default_status(),
-                                timeout_ms=0, announce=False)
-
-            # Use slightly longer delay to ensure refresh is complete
-            QTimer.singleShot(150, move_focus)
-        else:
-            # No results - just show status
-            self.set_status(self.get_default_status(),
-                            timeout_ms=0, announce=False)
-
-    def focus_search_result_cell(self, row: int):
-        """Focus the result cell that matches the current order-by field."""
-        order_column_map = {
+        field_to_column = {
             "Author": 0,
             "Title": 1,
             "Series": 4,
             "Genre": 5,
         }
-        column = order_column_map.get(self.order_combo.currentText(), 1)
-        if 0 <= row < self.table.rowCount():
-            # Clear any existing selection
-            self.table.clearSelection()
-            # First scroll to ensure visibility
-            index = self.table.model().index(row, column)
-            self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
-            # Set current cell - this highlights and focuses
-            self.table.setCurrentCell(row, column)
-            # Also select the cell to ensure visible highlight
-            self.table.setCurrentIndex(index)
+
+        current_order = self.order_combo.currentText()
+        if current_order in field_to_column:
+            field_combo.setCurrentText(current_order)
+        else:
+            field_combo.setCurrentText("Title")
+
+        if self.current_filter.search_text:
+            text_edit.setText(self.current_filter.search_text)
+        exact_check.setChecked(not self.current_filter.is_keyword_search)
+
+        self._find_filter_widgets = {
+            dialog, field_combo, text_edit, exact_check}
+        for widget in self._find_filter_widgets:
+            widget.installEventFilter(self)
+
+        find_status_shortcut = QShortcut(QKeySequence("Alt+/"), dialog)
+
+        def read_find_status():
+            status_text = dialog_status.currentMessage() or "Find dialog ready"
+            announce_status_message(
+                dialog_status, status_text, move_focus=True)
+
+        find_status_shortcut.activated.connect(read_find_status)
+
+        def run_find():
+            query = text_edit.text().strip()
+            if not query:
+                QApplication.beep()
+                dialog_status.showMessage(
+                    "Enter text to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
+                )
+                return
+
+            selected_field = field_combo.currentText()
+            selected_column = field_to_column.get(selected_field, 1)
+
+            if self.order_combo.currentText() != selected_field:
+                self.order_combo.setCurrentText(selected_field)
+
+            self.current_filter.search_text = query
+            self.current_filter.is_keyword_search = not exact_check.isChecked()
+            self.refresh_books()
+
+            if not self.books:
+                message = f"No match found for {selected_field.lower()}: {query}"
+                QApplication.beep()
+                dialog_status.showMessage(message)
+                self.set_status(message, timeout_ms=3000, announce=True)
+                return
+
+            found_book = self.books[0]
+            title = found_book.title or "Unknown"
+            author = found_book.author_name or "Unknown"
+            dialog.accept()
+            self.focus_book_by_id(found_book.book_id, selected_column)
+            self.set_status(
+                f"Found: {title} by {author}",
+                timeout_ms=3000,
+                announce=True,
+            )
+
+        text_edit.returnPressed.connect(run_find)
+        field_combo.activated.connect(lambda _index: text_edit.setFocus())
+        QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
+
+        dialog.exec()
+
+        for widget in self._find_filter_widgets:
+            widget.removeEventFilter(self)
+        self._find_filter_widgets = set()
 
     def focus_book_by_id(self, book_id: int, column: int = 1):
         """Find a book by ID and focus its cell in the table."""
@@ -1751,12 +1997,6 @@ class MainWindow(QMainWindow):
         self.table.setCurrentIndex(index)
         self.table.setFocus(Qt.TabFocusReason)
 
-    def on_search_timeout(self):
-        """Handle search timer timeout for live filtering."""
-        # This is called after user stops typing (300ms debounce)
-        self.refresh_books()
-        self.show_search_results_message()
-
     def on_book_double_click(self, row: int, column: int):
         """Handle double-click on book."""
         if 0 <= row < len(self.books):
@@ -1798,47 +2038,16 @@ class MainWindow(QMainWindow):
             self.announce_selection()
 
     def eventFilter(self, source, event):
-        """Filter events to implement Explorer-like selection and handle search ESC and Enter."""
-        if source is self.search_box and event.type() == QEvent.KeyPress:
-            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+        """Filter events for find-dialog Alt-key handling and table mouse behavior."""
+        if (
+            event.type() == QEvent.KeyPress
+            and hasattr(self, '_find_filter_widgets')
+            and source in self._find_filter_widgets
+        ):
+            if is_unmapped_alt_letter(event, self.FIND_ALLOWED_ALT_LETTERS):
                 event.accept()
                 return True
-            if event.key() == Qt.Key_Escape:
-                # Use last table position (tracked by on_current_cell_changed)
-                restore_book_id = self._last_table_book_id
-                restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
-                # Clear search box and filter efficiently
-                # Disconnect signal temporarily to avoid double refresh
-                self.search_box.textChanged.disconnect(self.on_search_changed)
-                self.search_box.clear()
-                self.search_box.textChanged.connect(self.on_search_changed)
-
-                # Clear search filter and refresh once
-                self.current_filter.search_text = ""
-                self.search_timer.stop()
-                self.refresh_books()
-
-                # Always restore focus to table after clearing search
-                def restore_focus():
-                    if restore_book_id is not None:
-                        self.focus_book_by_id(restore_book_id, restore_column)
-                    else:
-                        # No book to restore - just focus first row
-                        if self.table.rowCount() > 0:
-                            self.table.setCurrentCell(0, 1)
-                        self.table.setFocus(Qt.TabFocusReason)
-                QTimer.singleShot(150, restore_focus)
-
-                self.set_status("Search cleared",
-                                timeout_ms=2000, announce=False)
-                return True
-            elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
-                # Handle Enter in search box - perform immediate search
-                self.on_search_enter()
-                return True  # Consume the event so search box doesn't process it
-            # Let all other keys (including backspace) pass through normally
-            return False
         if hasattr(self, 'table') and source is self.table.viewport() and event.type() == QEvent.MouseButtonPress:
             # Let mouse press be handled by our custom handler
             return False
@@ -2083,14 +2292,10 @@ class MainWindow(QMainWindow):
                 restore_book_id = self._last_table_book_id
                 restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
-                # Disconnect to avoid double refresh
-                self.search_box.textChanged.disconnect(self.on_search_changed)
                 self.search_box.clear()
-                self.search_box.textChanged.connect(self.on_search_changed)
 
                 # Clear search filter and refresh
                 self.current_filter.search_text = ""
-                self.search_timer.stop()
                 self.refresh_books()
 
                 # Restore focus to the actual book that was selected
@@ -2295,11 +2500,6 @@ class MainWindow(QMainWindow):
             self._last_table_book_id = self.books[current_row].book_id
             self._last_table_column = current_col if current_col >= 0 else 1
 
-    def on_focus_move_timeout(self):
-        """Move focus to first search result after delay."""
-        if len(self.books) > 0:
-            self.focus_search_result_cell(0)
-
     def announce_current_cell(self, force: bool = False):
         """Announce current cell value to the status bar for screen readers."""
         # Do not announce during selection operations (unless forced)
@@ -2330,7 +2530,7 @@ class MainWindow(QMainWindow):
             value_text = book.series_name or "blank"
         elif col == 4:  # Genre
             value_text = book.genre_name or "blank"
-        elif col == 5:  # Time
+        elif col == 5:  # Length
             value_text = book.time_display or "blank"
         elif col == 6:  # Tracks
             value_text = str(book.tracks or 0)
@@ -2594,14 +2794,10 @@ class MainWindow(QMainWindow):
             restore_book_id = self._last_table_book_id
             restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
-            # Disconnect signal to prevent refresh during clear
-            self.search_box.textChanged.disconnect(self.on_search_changed)
             self.search_box.clear()
-            self.search_box.textChanged.connect(self.on_search_changed)
 
             # Clear filter and refresh
             self.current_filter.search_text = ""
-            self.search_timer.stop()
             self.refresh_books()
 
             # Restore focus to the actual book that was selected
@@ -2618,10 +2814,6 @@ class MainWindow(QMainWindow):
 
     def clear_status_message(self):
         """Clear temporary status message and restore default status."""
-        self.set_default_status(announce=False)
-
-    def show_search_results_message(self):
-        """Show search results in status bar without re-announcing (already announced in on_search_enter)."""
         self.set_default_status(announce=False)
 
     def on_status_bar_focus(self):
@@ -3095,10 +3287,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+C", "Collection filter"),
-            ("Alt+R", "Read filter"),
-            ("Alt+O", "Order by"),
-            ("Alt+S", "Search"),
+            ("Ctrl+F", "Find"),
             ("Alt+B", "Book list"),
             ("Alt+1", "Jump to Title column"),
             ("Alt+2", "Jump to Author column"),

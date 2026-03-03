@@ -28,10 +28,6 @@ class ShortcutManager(QObject):
     # Alt+Key shortcuts (context-specific)
     # Main Window
     MAIN_WINDOW_SHORTCUTS = {
-        'C': ('Collection filter', 'collection_combo'),
-        'R': ('Read filter', 'read_combo'),
-        'O': ('Order by', 'order_combo'),
-        'S': ('Search', 'search_box'),
         'B': ('Book list', 'book_list'),
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
