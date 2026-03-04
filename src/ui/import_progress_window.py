@@ -31,7 +31,7 @@ class ImportProgressWindow(QDialog):
     """Modeless progress window for long-running import scans."""
 
     ALLOWED_ALT_LETTERS = {
-        'B', 'F', 'I', 'L', 'M', 'R', 'V'
+        'I', 'L'
     }
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
@@ -52,9 +52,9 @@ class ImportProgressWindow(QDialog):
         self.setWindowTitle("Import Progress")
         self.setAccessibleName("Import Progress")
         self.setAccessibleDescription(
-            "Shows import scan progress with current item, counters, and cancel control"
+            "Shows import scan progress and cancel control"
         )
-        self.resize(760, 420)
+        self.resize(760, 220)
         self.set_status("Ready")
 
     @property
@@ -63,8 +63,8 @@ class ImportProgressWindow(QDialog):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
+        layout.setContentsMargins(16, 14, 16, 6)
+        layout.setSpacing(6)
 
         title_layout = QHBoxLayout()
         self.title_label = QLabel("Title:")
@@ -107,70 +107,7 @@ class ImportProgressWindow(QDialog):
         self.issues_label.setVisible(False)
         self.issues_edit.setVisible(False)
 
-        counters_layout = QHBoxLayout()
-        counters_layout.setSpacing(8)
-
-        files_label = QLabel("&Files scanned:")
-        self.files_edit = QLineEdit("0")
-        self.files_edit.setReadOnly(True)
-        self.files_edit.setFocusPolicy(Qt.NoFocus)
-        self.files_edit.setMaximumWidth(90)
-        self.files_edit.setAccessibleName("Files scanned")
-        self.files_edit.setAccessibleDescription(
-            "Number of files scanned - Alt+F")
-        files_label.setBuddy(self.files_edit)
-
-        elapsed_label = QLabel("Elapsed ti&me:")
-        self.elapsed_edit = QLineEdit("00:00")
-        self.elapsed_edit.setReadOnly(True)
-        self.elapsed_edit.setFocusPolicy(Qt.NoFocus)
-        self.elapsed_edit.setMaximumWidth(100)
-        self.elapsed_edit.setAccessibleName("Elapsed time")
-        self.elapsed_edit.setAccessibleDescription("Elapsed scan time - Alt+M")
-        elapsed_label.setBuddy(self.elapsed_edit)
-
-        added_label = QLabel("&Books added:")
-        self.added_edit = QLineEdit("0")
-        self.added_edit.setReadOnly(True)
-        self.added_edit.setFocusPolicy(Qt.NoFocus)
-        self.added_edit.setMaximumWidth(90)
-        self.added_edit.setAccessibleName("Books added")
-        self.added_edit.setAccessibleDescription(
-            "Number of books added - Alt+B")
-        added_label.setBuddy(self.added_edit)
-
-        self.valid_label = QLabel("&Valid:")
-        self.valid_edit = QLineEdit("0")
-        self.valid_edit.setReadOnly(True)
-        self.valid_edit.setFocusPolicy(Qt.NoFocus)
-        self.valid_edit.setMaximumWidth(90)
-        self.valid_edit.setAccessibleName("Valid books")
-        self.valid_edit.setAccessibleDescription(
-            "Number of clean valid books pending review - Alt+V")
-        self.valid_label.setBuddy(self.valid_edit)
-
-        read_err_label = QLabel("Read e&rrors:")
-        self.read_errors_edit = QLineEdit("0")
-        self.read_errors_edit.setReadOnly(True)
-        self.read_errors_edit.setFocusPolicy(Qt.NoFocus)
-        self.read_errors_edit.setMaximumWidth(90)
-        self.read_errors_edit.setAccessibleName("Read errors")
-        self.read_errors_edit.setAccessibleDescription(
-            "Number of read errors - Alt+R")
-        read_err_label.setBuddy(self.read_errors_edit)
-
-        counters_layout.addWidget(files_label)
-        counters_layout.addWidget(self.files_edit)
-        counters_layout.addWidget(elapsed_label)
-        counters_layout.addWidget(self.elapsed_edit)
-        counters_layout.addWidget(added_label)
-        counters_layout.addWidget(self.added_edit)
-        counters_layout.addWidget(self.valid_label)
-        counters_layout.addWidget(self.valid_edit)
-        counters_layout.addWidget(read_err_label)
-        counters_layout.addWidget(self.read_errors_edit)
-        counters_layout.addStretch(1)
-        layout.addLayout(counters_layout)
+        layout.addStretch(1)
 
         progress_layout = QHBoxLayout()
         progress_layout.setSpacing(8)
@@ -184,6 +121,8 @@ class ImportProgressWindow(QDialog):
         self.scan_progress.setFormat("Scanning... %p%")
         progress_layout.addWidget(self.scan_progress, 1)
         layout.addLayout(progress_layout)
+
+        layout.addStretch(1)
 
         footer_layout = QHBoxLayout()
         footer_layout.addStretch(1)
@@ -201,16 +140,14 @@ class ImportProgressWindow(QDialog):
         self.status_bar.setAccessibleName("Status")
         self.status_bar.setAccessibleDescription("Import progress status")
         self.status_bar.setSizeGripEnabled(False)
-        self.status_bar.setContentsMargins(0, 0, 0, 0)
+        self.status_bar.setContentsMargins(0, 10, 0, 0)
         layout.addWidget(self.status_bar)
 
         self._apply_tab_order()
 
     def set_show_valid_counter(self, enabled: bool):
-        """Show or hide the Valid counter widgets."""
-        show_valid = bool(enabled)
-        self.valid_label.setVisible(show_valid)
-        self.valid_edit.setVisible(show_valid)
+        """Compatibility no-op: counter widgets were removed in favor of status-only updates."""
+        return
 
     def _apply_tab_order(self):
         return
@@ -293,6 +230,7 @@ class ImportProgressWindow(QDialog):
 
     def apply_control_styles(self):
         scaled_height = max(self.scaler.get_scaled_size(20), 16)
+        progress_height = max(self.scaler.get_scaled_size(14), 12)
 
         lineedit_style = f"""
             QLineEdit {{
@@ -312,8 +250,8 @@ class ImportProgressWindow(QDialog):
 
         progress_style = f"""
             QProgressBar {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
+                min-height: {progress_height}px;
+                max-height: {progress_height}px;
                 border: 1px solid palette(dark);
                 border-radius: 3px;
                 text-align: center;
@@ -359,8 +297,6 @@ class ImportProgressWindow(QDialog):
         current_title: str = "",
         current_author: str = "",
     ):
-        self.files_edit.setText(str(max(0, processed)))
-        self.elapsed_edit.setText(elapsed_text)
         if current_title:
             self.title_edit.setText(current_title)
         if current_author:
@@ -412,10 +348,7 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setFormat("Adding...")
             status_text = "Adding"
 
-        if books_added is not None:
-            self.added_edit.setText(str(max(0, int(books_added))))
         if elapsed_text is not None:
-            self.elapsed_edit.setText(elapsed_text)
             status_text = f"{status_text} | Elapsed {elapsed_text}"
 
         self.set_status(status_text)
@@ -442,16 +375,7 @@ class ImportProgressWindow(QDialog):
         valid_books: int | None = None,
         read_errors: int | None = None,
     ):
-        if files_scanned is not None:
-            self.files_edit.setText(str(max(0, int(files_scanned))))
-        if elapsed_text is not None:
-            self.elapsed_edit.setText(elapsed_text)
-        if books_added is not None:
-            self.added_edit.setText(str(max(0, int(books_added))))
-        if valid_books is not None:
-            self.valid_edit.setText(str(max(0, int(valid_books))))
-        if read_errors is not None:
-            self.read_errors_edit.setText(str(max(0, int(read_errors))))
+        return
 
     def on_cancel_requested(self):
         if not self._scan_active or self._cancel_requested:

@@ -7,15 +7,14 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTableView, QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
     QPushButton, QLabel, QStatusBar, QMessageBox, QHeaderView, QCheckBox,
-    QAbstractItemView, QMenu, QDialog, QTextEdit, QSizePolicy
+    QAbstractItemView, QDialog, QTextEdit
 )
 from PySide6.QtCore import (
-    Qt, Signal, QTimer, QItemSelection, QItemSelectionModel, QEvent, QPoint, QSettings,
+    Qt, QTimer, QItemSelection, QItemSelectionModel, QEvent, QSettings,
     QAbstractTableModel, QModelIndex
 )
-from PySide6.QtGui import QKeyEvent, QAction, QActionGroup, QShortcut, QKeySequence, QColor, QPalette, QMouseEvent, QAccessible
+from PySide6.QtGui import QKeyEvent, QAction, QActionGroup, QShortcut, QKeySequence, QAccessible
 from PySide6.QtWidgets import QApplication
-import datetime
 
 from database import (
     DatabaseManager, BookQueries, AuthorQueries, SeriesQueries,
@@ -45,24 +44,6 @@ def get_app_version():
         return f"v{APP_VERSION} (build {APP_BUILD_DATE})"
     except ImportError:
         return "v?.?.?"
-
-
-class JAWSCompatibleSearchBox(QLineEdit):
-    """
-    Custom QLineEdit for search box that works better with JAWS.
-    Directly handles backspace and delete keys to bypass JAWS interception.
-    """
-
-    def keyPressEvent(self, event: QKeyEvent):
-        """Handle key press events, with special handling for backspace/delete with JAWS."""
-        # Always allow backspace and delete to work normally
-        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
-            # Let the default implementation handle it
-            super().keyPressEvent(event)
-            return
-
-        # For all other keys, use default handling
-        super().keyPressEvent(event)
 
 
 class BookTableView(QTableView):
@@ -204,6 +185,9 @@ class MainWindow(QMainWindow):
 
         # Current filter
         self.current_filter = SearchFilter()
+        self._collection_filter_items = [("All Collections", None)]
+        self._read_filter_options = ["All", "Read", "Unread"]
+        self._primary_sort_options = ["Title", "Author", "Genre", "Series"]
 
         # Selected books (for bulk operations)
         self.selected_book_ids = set()
@@ -309,139 +293,7 @@ class MainWindow(QMainWindow):
         """Create header with filters and search."""
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)  # Remove layout margins
-        # Increased spacing between items to separate controls
         layout.setSpacing(0)
-
-        # Set a uniform height for all controls using stylesheet
-        # This is more reliable than setFixedHeight for combo boxes
-        combo_stylesheet = """
-            QComboBox {
-                min-height: 20px;
-                max-height: 20px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }
-            QComboBox:focus {
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }
-            QComboBox QAbstractItemView {
-                min-height: 20px;
-                outline: none;
-            }
-        """
-
-        # Collection combo stylesheet with explicit width
-        collection_combo_stylesheet = """
-            QComboBox {
-                min-height: 20px;
-                max-height: 20px;
-                width: 160px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }
-            QComboBox:focus {
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }
-            QComboBox QAbstractItemView {
-                min-height: 20px;
-                outline: none;
-            }
-        """
-
-        search_stylesheet = """
-            QLineEdit {
-                min-height: 20px;
-                max-height: 20px;
-                width: 400px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }
-            QLineEdit:focus {
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }
-        """
-
-        # Collection filter moved to View > Collections (Phase 2).
-        # Keep the combo as an internal state holder to avoid broad logic changes.
-        self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Collection filter")
-        self.collection_combo.setStyleSheet(combo_stylesheet)
-        self.collection_combo.setFixedWidth(160)
-        self.collection_combo.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Preferred)
-        self.collection_combo.currentTextChanged.connect(
-            self.on_collection_changed)
-        self.collection_combo.setVisible(False)
-
-        # Read filter moved to View > Read (Phase 3).
-        # Keep header controls hidden as internal state holders for low-risk behavior parity.
-        self.read_label = QLabel("Read?")
-        # mw#10: Use min-width to keep label text visible
-        self.read_label.setStyleSheet(
-            "QLabel { min-width: 50px; }")
-        self.read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.read_label.setVisible(False)
-
-        self.read_combo = QComboBox()
-        self.read_combo.setAccessibleName("Read filter")
-        self.read_combo.addItems(["All", "Read", "Unread"])
-        self.read_combo.setStyleSheet(combo_stylesheet)
-        self.read_combo.setMinimumWidth(80)  # mw#10: Min width for "Unread"
-        self.read_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
-        self.read_combo.currentTextChanged.connect(self.on_read_filter_changed)
-        self.read_combo.setVisible(False)
-
-        # Order by
-        self.order_label = QLabel("Order By:")
-        # mw#10: Use min-width to keep label text visible
-        self.order_label.setStyleSheet(
-            "QLabel { min-width: 75px; }")
-        self.order_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.order_label.setVisible(False)
-
-        self.order_combo = QComboBox()
-        self.order_combo.setAccessibleName("Sort order")
-        self.order_combo.addItems(["Title", "Author", "Genre", "Series"])
-        self.order_combo.setStyleSheet(combo_stylesheet)
-        self.order_combo.setMinimumWidth(90)  # mw#10: Min width for "Author"
-        self.order_combo.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Preferred)
-        self.order_combo.currentTextChanged.connect(self.on_order_changed)
-        self.order_combo.setVisible(False)
-
-        # Search moved to popup Find dialog (Phase 5).
-        # Keep hidden search controls as internal state holders for existing filter flow.
-        self.search_label = QLabel("Search:")
-        # mw#10: Use min-width to keep label text visible
-        self.search_label.setStyleSheet(
-            "QLabel { min-width: 60px; }")
-        self.search_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.search_label.setVisible(False)
-
-        self.search_box = JAWSCompatibleSearchBox()
-        self.search_box.setAccessibleName("Search")
-        self.search_box.setPlaceholderText(
-            "Type to search or ? for keyword search...")
-        self.search_box.setStyleSheet(search_stylesheet)
-        self.search_box.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.search_box.setVisible(False)
 
         return layout
 
@@ -450,92 +302,6 @@ class MainWindow(QMainWindow):
         # Scale the height proportionally: base is 20px at 100% scale
         base_height = 20
         scaled_height = int(base_height * (scale_percentage / 100.0))
-        scaled_width = int(160 * (scale_percentage / 100.0))
-
-        combo_stylesheet = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-            QComboBox QAbstractItemView {{
-                min-height: {scaled_height}px;
-                outline: none;
-            }}
-        """
-
-        collection_combo_stylesheet = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                width: {scaled_width}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-            QComboBox QAbstractItemView {{
-                min-height: {scaled_height}px;
-                outline: none;
-            }}
-        """
-
-        scaled_search_width = int(400 * (scale_percentage / 100.0))
-        search_stylesheet = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                width: {scaled_search_width}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-        """
-
-        # Update all combo boxes
-        self.collection_combo.setStyleSheet(collection_combo_stylesheet)
-        self.read_combo.setStyleSheet(combo_stylesheet)
-        self.order_combo.setStyleSheet(combo_stylesheet)
-        self.search_box.setStyleSheet(search_stylesheet)
-
-        # Scale the collection combo width proportionally
-        self.collection_combo.setFixedWidth(scaled_width)
-
-        # Re-apply label widths and alignment with scaling via stylesheet
-        self.read_label.setStyleSheet(
-            f"QLabel {{ min-width: {int(60 * (scale_percentage / 100.0))}px; text-align: right; }}")
-        self.read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.order_label.setStyleSheet(
-            f"QLabel {{ min-width: {int(80 * (scale_percentage / 100.0))}px; text-align: right; }}")
-        self.order_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.search_label.setStyleSheet(
-            f"QLabel {{ min-width: {int(70 * (scale_percentage / 100.0))}px; text-align: right; }}")
-        self.search_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         # Button sizing - compact height
         button_stylesheet = f"""
@@ -569,13 +335,6 @@ class MainWindow(QMainWindow):
         table_vertical_header = self.table.verticalHeader()
 
         widgets_to_repolish = [
-            self.collection_combo,
-            self.read_combo,
-            self.order_combo,
-            self.search_box,
-            self.read_label,
-            self.order_label,
-            self.search_label,
             self.update_button,
             self.delete_button,
             self.cancel_button,
@@ -1060,48 +819,30 @@ class MainWindow(QMainWindow):
 
     def _apply_current_filter_to_controls(self):
         """Apply current filter state into header controls without triggering refresh."""
-        self.search_box.blockSignals(True)
-        self.collection_combo.blockSignals(True)
-        self.read_combo.blockSignals(True)
-        self.order_combo.blockSignals(True)
-        try:
-            self.search_box.setText(self.current_filter.search_text or "")
+        valid_collection_ids = {
+            item[1] for item in self._collection_filter_items if item[1] is not None
+        }
+        if self.current_filter.collection_id not in valid_collection_ids:
+            self.current_filter.collection_id = None
 
-            collection_index = self.collection_combo.findData(
-                self.current_filter.collection_id)
-            if collection_index < 0:
-                collection_index = 0
-                self.current_filter.collection_id = None
-            self.collection_combo.setCurrentIndex(collection_index)
+        if self.current_filter.read_filter not in self._read_filter_options:
+            self.current_filter.read_filter = "All"
 
-            read_index = self.read_combo.findText(
-                self.current_filter.read_filter)
-            self.read_combo.setCurrentIndex(
-                0 if read_index < 0 else read_index)
+        if self.current_filter.order_by not in self._primary_sort_options:
+            self.current_filter.order_by = "Title"
 
-            order_index = self.order_combo.findText(
-                self.current_filter.order_by)
-            self.order_combo.setCurrentIndex(
-                0 if order_index < 0 else order_index)
-            self._active_sort_key = self.order_combo.currentText()
-            self.sort_label.setText(
-                f"Sorted by: {self.order_combo.currentText()}")
-        finally:
-            self.search_box.blockSignals(False)
-            self.collection_combo.blockSignals(False)
-            self.read_combo.blockSignals(False)
-            self.order_combo.blockSignals(False)
+        self._active_sort_key = self.current_filter.order_by
+        self.sort_label.setText(f"Sorted by: {self.current_filter.order_by}")
 
         self._sync_collection_menu_selection()
         self._sync_read_menu_selection()
-        self._sync_sort_menu_selection(self.order_combo.currentText())
+        self._sync_sort_menu_selection(self.current_filter.order_by)
 
     def _current_collection_label(self) -> str:
         """Return the active collection filter label for status messages."""
-        index = self.collection_combo.findData(
-            self.current_filter.collection_id)
-        if index >= 0:
-            return self.collection_combo.itemText(index)
+        for label, collection_id in self._collection_filter_items:
+            if collection_id == self.current_filter.collection_id:
+                return label
         return "All Collections"
 
     def _duplicate_key_for_book(self, book: Book, mode: str):
@@ -1398,52 +1139,28 @@ class MainWindow(QMainWindow):
     def refresh_collections(self):
         """Refresh collection filter data and rebuild View > Collections menu."""
         selected_collection_id = self.current_filter.collection_id
+        self._collection_filter_items = [("All Collections", None)]
 
-        self.collection_combo.blockSignals(True)
-        try:
-            self.collection_combo.clear()
-            self.collection_combo.addItem("All Collections", None)
+        collections = self.collection_queries.get_all(active_only=True)
+        for coll in collections:
+            self._collection_filter_items.append(
+                (coll.name, coll.collection_id))
 
-            collections = self.collection_queries.get_all(active_only=True)
-            for coll in collections:
-                self.collection_combo.addItem(coll.name, coll.collection_id)
-
-            selected_index = self.collection_combo.findData(
-                selected_collection_id)
-            if selected_index < 0:
-                selected_index = 0
-                self.current_filter.collection_id = None
-            self.collection_combo.setCurrentIndex(selected_index)
-        finally:
-            self.collection_combo.blockSignals(False)
+        valid_ids = {
+            collection_id for _label, collection_id in self._collection_filter_items if collection_id is not None
+        }
+        if selected_collection_id not in valid_ids:
+            self.current_filter.collection_id = None
 
         self._rebuild_collection_filter_menu()
 
     def clear_all_filters(self):
         """Clear all filters and search, reset to show all books."""
-        # Block signals to prevent multiple refreshes
-        self.search_box.blockSignals(True)
-        self.collection_combo.blockSignals(True)
-        self.read_combo.blockSignals(True)
-
-        try:
-            # Clear search box
-            self.search_box.clear()
-
-            # Reset combos to "All"
-            self.collection_combo.setCurrentIndex(0)  # "All Collections"
-            self.read_combo.setCurrentIndex(0)  # "All"
-
-            # Reset filter object
-            self.current_filter.search_text = ""
-            self.current_filter.is_keyword_search = False
-            self.current_filter.collection_id = None
-            self.current_filter.read_filter = "All"
-            # Keep order_by unchanged
-        finally:
-            self.search_box.blockSignals(False)
-            self.collection_combo.blockSignals(False)
-            self.read_combo.blockSignals(False)
+        self.current_filter.search_text = ""
+        self.current_filter.is_keyword_search = False
+        self.current_filter.collection_id = None
+        self.current_filter.read_filter = "All"
+        self._apply_current_filter_to_controls()
 
         self._sync_collection_menu_selection()
         self._sync_read_menu_selection()
@@ -1457,8 +1174,7 @@ class MainWindow(QMainWindow):
         self.read_filter_group = QActionGroup(self)
         self.read_filter_group.setExclusive(True)
 
-        for i in range(self.read_combo.count()):
-            label = self.read_combo.itemText(i)
+        for label in self._read_filter_options:
             action = QAction(label, self)
             action.setCheckable(True)
             action.setData(label)
@@ -1486,14 +1202,7 @@ class MainWindow(QMainWindow):
         """Handle View > Read menu selection."""
         target = read_filter if read_filter in {
             "All", "Read", "Unread"} else "All"
-
-        if self.read_combo.currentText() == target:
-            self.current_filter.read_filter = target
-            self._sync_read_menu_selection()
-            self.refresh_books()
-            return
-
-        self.read_combo.setCurrentText(target)
+        self.on_read_filter_changed(target)
 
     def _rebuild_sort_menu(self):
         """Populate Sort menu with supported sort fields."""
@@ -1530,7 +1239,7 @@ class MainWindow(QMainWindow):
             self.sort_menu.addAction(action)
             self._sort_actions_by_key[key] = action
 
-        self._sync_sort_menu_selection(self.order_combo.currentText())
+        self._sync_sort_menu_selection(self.current_filter.order_by)
 
     def _sort_key_for_column(self, column: int) -> str:
         """Return Sort menu key for a table column index."""
@@ -1563,10 +1272,7 @@ class MainWindow(QMainWindow):
     def on_sort_menu_selected(self, key: str, column: int, is_primary: bool):
         """Handle Sort menu selection."""
         if is_primary:
-            if self.order_combo.currentText() == key:
-                self.on_order_changed(key)
-            else:
-                self.order_combo.setCurrentText(key)
+            self.on_order_changed(key)
             return
 
         self._last_header_sort_column = column
@@ -1586,9 +1292,7 @@ class MainWindow(QMainWindow):
         self.collection_filter_group = QActionGroup(self)
         self.collection_filter_group.setExclusive(True)
 
-        for i in range(self.collection_combo.count()):
-            label = self.collection_combo.itemText(i)
-            collection_id = self.collection_combo.itemData(i)
+        for label, collection_id in self._collection_filter_items:
 
             action = QAction(label, self)
             action.setCheckable(True)
@@ -1615,18 +1319,12 @@ class MainWindow(QMainWindow):
 
     def on_collection_menu_selected(self, collection_id):
         """Handle View > Collections menu selection."""
-        index = self.collection_combo.findData(collection_id)
-        if index < 0:
-            index = 0
-            collection_id = None
-
-        if self.collection_combo.currentIndex() == index:
-            self.current_filter.collection_id = collection_id
-            self._sync_collection_menu_selection()
-            self.refresh_books()
-            return
-
-        self.collection_combo.setCurrentIndex(index)
+        valid_ids = {
+            collection_id_value for _label, collection_id_value in self._collection_filter_items
+        }
+        self.current_filter.collection_id = collection_id if collection_id in valid_ids else None
+        self._sync_collection_menu_selection()
+        self.refresh_books()
 
     def has_active_filters(self) -> bool:
         """Check if any filters or search are active."""
@@ -1672,10 +1370,7 @@ class MainWindow(QMainWindow):
 
             collection_info = ""
             if self.current_filter.collection_id is not None:
-                # Find collection name
-                collection_item = self.collection_combo.currentData()
-                if collection_item:
-                    collection_info = f" • {self.collection_combo.currentText()}"
+                collection_info = f" • {self._current_collection_label()}"
 
             self.set_default_status(announce=True)
 
@@ -1688,33 +1383,37 @@ class MainWindow(QMainWindow):
             self.table.blockSignals(False)
             # Keep Qt auto-sorting disabled; header clicks are handled explicitly
             self.table.setSortingEnabled(False)
-            # Allow Qt to process input events (search box keystrokes, etc.)
+            # Allow Qt to process pending UI events.
             QApplication.instance().processEvents()
 
     # Event handlers
 
-    def on_collection_changed(self):
+    def on_collection_changed(self, collection_id=None):
         """Handle collection filter change."""
-        coll_id = self.collection_combo.currentData()
+        valid_ids = {
+            item_collection_id
+            for _label, item_collection_id in self._collection_filter_items
+            if item_collection_id is not None
+        }
+        coll_id = collection_id if collection_id in valid_ids else None
         self.current_filter.collection_id = coll_id
         self._sync_collection_menu_selection()
         self.refresh_books()
 
     def on_read_filter_changed(self, text: str):
         """Handle read filter change."""
-        self.current_filter.read_filter = text
+        self.current_filter.read_filter = text if text in self._read_filter_options else "All"
         self._sync_read_menu_selection()
         self.refresh_books()
 
     def on_order_changed(self, text: str):
         """Handle sort order change."""
-        # Update filter BEFORE calling refresh to ensure correct order is used
-        self.current_filter.order_by = text
-        self._active_sort_key = text
-        self.sort_label.setText(f"Sorted by: {text}")
-        self._set_primary_sort_indicator(text)
-        self._sync_sort_menu_selection(text)
-        # Only refresh books (no double refresh from combo signal)
+        target = text if text in self._primary_sort_options else "Title"
+        self.current_filter.order_by = target
+        self._active_sort_key = target
+        self.sort_label.setText(f"Sorted by: {target}")
+        self._set_primary_sort_indicator(target)
+        self._sync_sort_menu_selection(target)
         self.refresh_books()
 
     def on_table_header_clicked(self, column: int):
@@ -1728,10 +1427,7 @@ class MainWindow(QMainWindow):
 
         order_by = primary_sort_columns.get(column)
         if order_by is not None:
-            if self.order_combo.currentText() == order_by:
-                self.on_order_changed(order_by)
-            else:
-                self.order_combo.setCurrentText(order_by)
+            self.on_order_changed(order_by)
             return
 
         if self._last_header_sort_column == column:
@@ -1851,7 +1547,7 @@ class MainWindow(QMainWindow):
             "Genre": 5,
         }
 
-        current_order = self.order_combo.currentText()
+        current_order = self.current_filter.order_by
         if current_order in field_to_column:
             field_combo.setCurrentText(current_order)
         else:
@@ -1887,8 +1583,8 @@ class MainWindow(QMainWindow):
             selected_field = field_combo.currentText()
             selected_column = field_to_column.get(selected_field, 1)
 
-            if self.order_combo.currentText() != selected_field:
-                self.order_combo.setCurrentText(selected_field)
+            if self.current_filter.order_by != selected_field:
+                self.on_order_changed(selected_field)
 
             self.current_filter.search_text = query
             self.current_filter.is_keyword_search = not exact_check.isChecked()
@@ -2292,10 +1988,9 @@ class MainWindow(QMainWindow):
                 restore_book_id = self._last_table_book_id
                 restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
-                self.search_box.clear()
-
                 # Clear search filter and refresh
                 self.current_filter.search_text = ""
+                self.current_filter.is_keyword_search = False
                 self.refresh_books()
 
                 # Restore focus to the actual book that was selected
@@ -2794,10 +2489,9 @@ class MainWindow(QMainWindow):
             restore_book_id = self._last_table_book_id
             restore_column = self._last_table_column if self._last_table_column >= 0 else 1
 
-            self.search_box.clear()
-
             # Clear filter and refresh
             self.current_filter.search_text = ""
+            self.current_filter.is_keyword_search = False
             self.refresh_books()
 
             # Restore focus to the actual book that was selected
@@ -2841,7 +2535,7 @@ class MainWindow(QMainWindow):
     def on_new_book(self):
         """Open book details for new book."""
         # bd#8: Pass current sort order to show in header
-        sort_order = self.order_combo.currentText()
+        sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
             self.db, self.scaler, sort_order=sort_order, parent=self)
         details.exec()
@@ -2869,10 +2563,10 @@ class MainWindow(QMainWindow):
         if imported_count > 0 and len(self.books) == 0:
             self.current_filter = SearchFilter(order_by="Title")
             self.clear_all_filters()
-            self.order_combo.setCurrentText("Title")
+            self.on_order_changed("Title")
             self.refresh_collections()
-            self.collection_combo.setCurrentIndex(0)
-            self.read_combo.setCurrentIndex(0)
+            self.current_filter.collection_id = None
+            self.current_filter.read_filter = "All"
             self.refresh_books()
 
             if len(self.books) > 0:
@@ -2928,7 +2622,7 @@ class MainWindow(QMainWindow):
     def open_book_details(self, book: Book):
         """Open book details window."""
         # bd#8: Pass current sort order to show in header
-        sort_order = self.order_combo.currentText()
+        sort_order = self.current_filter.order_by
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
         current_index = 0
@@ -3057,39 +2751,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
         self._restore_table_focus_context(focus_ctx)
         self.restore_main_focus_after_modal()
 
-    def on_import(self):
-        """Open import window."""
-        dialog = ImportWindow(self.db, self.scaler,
-                              self.theme_manager, parent=self)
-        dialog.exec()
-        imported_count = getattr(dialog, "total_imported", 0)
-        self.refresh_books()
-
-        db_total_row = self.db.fetch_one("SELECT COUNT(*) FROM books")
-        db_total_books = int(db_total_row[0]) if db_total_row else 0
-
-        if imported_count > 0 and len(self.books) == 0:
-            self.current_filter = SearchFilter(order_by="Title")
-            self.clear_all_filters()
-            self.order_combo.setCurrentText("Title")
-            self.refresh_collections()
-            self.collection_combo.setCurrentIndex(0)
-            self.read_combo.setCurrentIndex(0)
-            self.refresh_books()
-
-            if len(self.books) > 0:
-                self.set_status(
-                    f"Imported {imported_count} books. View reset to show all books.",
-                    timeout_ms=4000,
-                )
-            elif db_total_books > 0:
-                self.set_status(
-                    f"Imported {imported_count}. Database now has {db_total_books} books, but the table view is not rendering rows.",
-                    timeout_ms=6000,
-                )
-
-        self.focus_first_title_after_import_close()
-
     def on_show_authors(self):
         """Open Author window."""
         focus_ctx = self._capture_table_focus_context()
@@ -3119,12 +2780,14 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
         self.refresh_collections()
 
-        restored_index = self.collection_combo.findData(previous_collection_id)
-        if previous_collection_id is not None and restored_index >= 0:
-            self.collection_combo.setCurrentIndex(restored_index)
+        valid_ids = {
+            collection_id
+            for _label, collection_id in self._collection_filter_items
+            if collection_id is not None
+        }
+        if previous_collection_id is not None and previous_collection_id in valid_ids:
             self.current_filter.collection_id = previous_collection_id
         else:
-            self.collection_combo.setCurrentIndex(0)
             self.current_filter.collection_id = None
 
         self.refresh_books()

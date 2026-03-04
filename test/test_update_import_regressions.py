@@ -345,7 +345,7 @@ def test_import_progress_add_phase_resets_then_increments(qapp, qtbot):
 
     assert window.scan_progress.value() == 50
     assert window.scan_progress.format() == "Adding... 2/4"
-    assert window.added_edit.text() == "1"
-    assert window.elapsed_edit.text() == "00:05"
+    assert "Adding 2/4" in window.status_bar.currentMessage()
+    assert "Elapsed 00:05" in window.status_bar.currentMessage()
 
     cleanup_window(window)

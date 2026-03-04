@@ -166,7 +166,7 @@ class PreferencesWindow(QDialog):
         import_layout.setSpacing(11)
         import_label_width = 180
 
-        source_scope_group = QGroupBox("Source & Scope")
+        source_scope_group = QGroupBox("Source and Scope")
         source_scope_layout = QVBoxLayout(source_scope_group)
         source_scope_layout.setSpacing(8)
 
@@ -177,7 +177,7 @@ class PreferencesWindow(QDialog):
         options_layout.setHorizontalSpacing(20)
         options_layout.setVerticalSpacing(8)
 
-        fallback_group = QGroupBox("Fallback & Parsing Behavior")
+        fallback_group = QGroupBox("Fallback and Parsing Behavior")
         fallback_layout = QVBoxLayout(fallback_group)
         fallback_layout.setContentsMargins(8, 8, 8, 8)
         fallback_layout.setSpacing(8)
@@ -1329,7 +1329,7 @@ class PreferencesWindow(QDialog):
         self._focus_section_widget(self.theme_combo, "Display")
 
     def focus_source_scope_section(self):
-        """Focus first control in Source & Scope section."""
+        """Focus first control in Source and Scope section."""
         self._focus_section_widget(self.import_dir_edit, "Source and Scope")
 
     def focus_options_section(self):
@@ -1338,7 +1338,7 @@ class PreferencesWindow(QDialog):
             self.auto_add_clean_books_check, "Options")
 
     def focus_fallback_section(self):
-        """Focus first control in Fallback & Parsing section."""
+        """Focus first control in Fallback and Parsing section."""
         self._focus_section_widget(
             self.author_fallback_checkbox, "Fallback and Parsing Behavior")
 
@@ -1375,9 +1375,9 @@ class PreferencesWindow(QDialog):
 
         shortcuts = [
             ("Alt+D", "Display section"),
-            ("Alt+S", "Source & Scope section"),
+            ("Alt+S", "Source and Scope section"),
             ("Alt+O", "Options section"),
-            ("Alt+F", "Fallback & Parsing Behavior section"),
+            ("Alt+F", "Fallback and Parsing Behavior section"),
             ("Alt+R", "Validation Rules section"),
             ("Alt+A", "Auto-Correction section"),
             ("Alt+V", "Save"),

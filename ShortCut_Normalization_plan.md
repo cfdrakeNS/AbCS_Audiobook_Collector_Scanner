@@ -1,22 +1,65 @@
-# Shortcut review & normalization plan Feb 26
+# Shortcut review & normalization plan (updated 2026-03-03)
 
 ## Scope
 - Review only `Alt+letter` and `Ctrl+letter/number` shortcuts.
 - Keep `F1`, `Escape`, `Ctrl+Enter` as-is.
 - No need to force the same number of shortcuts in every window until shortcut standards are solid.
 
+## Related roadmap
+- See [App_Standardization_Implementation_Order.md](App_Standardization_Implementation_Order.md) for phased UI/menu standardization status and validation milestones.
+
+## Implemented changes (current status)
+
+### Main Window (implemented)
+- Header combo shortcuts removed as part of menu standardization:
+	- Removed `Alt+C` (Collection filter)
+	- Removed `Alt+R` (Read filter)
+	- Removed `Alt+O` (Order By)
+	- Removed `Alt+S` (inline Search)
+- Filters/sort now menu-driven:
+	- `View > Collections`
+	- `View > Read`
+	- Top-level `Sort` menu
+- Find workflow standardized:
+	- `View > Find...`
+	- `Ctrl+F` opens Find dialog
+- Existing core shortcuts retained:
+	- `Alt+B` book list, `Alt+U` update, `Alt+D` delete, `Alt+L` cancel selection
+	- `Ctrl+I`, `Ctrl+N`, `Ctrl+Q`, zoom keys
+
+### Preferences Window (implemented)
+- Preferences uses section-navigation shortcuts (reorg-aware):
+	- `Alt+D` Display
+	- `Alt+S` Source & Scope
+	- `Alt+O` Options
+	- `Alt+F` Fallback & Parsing Behavior
+	- `Alt+R` Validation Rules
+	- `Alt+A` Auto-Correction
+- Footer/status shortcuts:
+	- `Alt+V` Save
+	- `Alt+C` Cancel
+	- `Alt+/` read status
+	- `F1` shortcut help
+
+### Time → Length terminology (implemented)
+- User-facing `Time` label/name updated to `Length` in:
+	- Main Window column/header text
+	- Book Details window field label/help text
+	- Import Detail window field label/help text
+- Mnemonic compatibility preserved for details forms using `Length (&M):`.
+
 ## Normalization rules (target)
 
 ### Alt+letter
-- Reserve `Alt+C` for **Close** (or Cancel/Close when only one exit action exists).
-- Reserve `Alt+X` for **Cancel** when a window has both Cancel and Close.
+- Dismiss-only **Close** buttons are removed; use `Escape` as the close path.
+- Use `Alt+C` for **Cancel** when a cancel action is present.
 - Use first letter for common actions where available:
 	- `Alt+S` Save/Scan/Search (primary action in that window)
 	- `Alt+D` Delete
 	- `Alt+E` Edit
 	- `Alt+I` Import
 	- `Alt+B` Browse/Book list (context-based)
-	- `Alt+L` Collection/List (not Close/Cancel)
+	- `Alt+L` Collection/List or context-specific cancel where already established
 - Combo/text controls should prefer first letter unless it conflicts with high-priority action.
 
 ### Ctrl+ shortcuts
@@ -26,65 +69,64 @@
 - `Ctrl+Q` Quit (main window only)
 - Keep zoom set global where supported: `Ctrl+Plus`, `Ctrl+Minus`, `Ctrl+0`
 
-## Suggested normalization by window
+## Suggested normalization by window (remaining / optional)
 
 ### Main Window
-- `Alt+C` Collection filter -> `Alt+L` Collection filter (reason: reserve `Alt+C` for Close/Cancel pattern).
-- `Alt+L` Cancel selection -> `Alt+X` Cancel selection (reason: `X` for cancel action consistency).
+- Completed: filter/sort/search moved out of header into menus and `Ctrl+F` Find.
 - Keep `Ctrl+I`, `Ctrl+N`, `Ctrl+Q`, zoom keys (reason: already good standards).
+- Optional future decision: whether `Alt+L` cancel selection should remain as-is or migrate to `Alt+X`.
 
 ### Book Details
-- `Alt+K` Collection -> `Alt+L` Collection (reason: first-letter consistency with other windows).
-- `Alt+L` Cancel -> `Alt+X` Cancel (reason: reserve `Alt+L` for List/Collection).
-- Keep `Alt+C` Close and `Alt+S` Save (reason: standard action keys).
-- Add `Ctrl+S` Save and `Ctrl+N` New (reason: cross-window Ctrl consistency).
+- Keep `Alt+K` Collection and `Alt+L` Cancel unless/until a broader cross-window remap is approved.
+- Keep `Alt+S` Save and use `Escape` to close.
+- Length label change completed (`Alt+M` preserved).
+- Optional: add `Ctrl+S` Save and `Ctrl+N` New (reason: cross-window Ctrl consistency).
 
 ### Import Window
-- Keep `Alt+I` Import, `Alt+X` Export, `Alt+V` View, `Alt+A` Add, `Alt+C` Close (reason: first-letter mapping is clear).
+- Keep `Alt+I` Import, `Alt+X` Export, `Alt+V` View, `Alt+A` Add; use `Escape` to close when idle.
 - Keep `Alt+L` Collection (reason: aligns with collection standard).
 - Optional: add `Ctrl+I` Import (reason: main/import consistency).
 
 ### Import Detail Window
-- Keep `Alt+C` Close and `Alt+E` Error filter/Edit-context action (reason: predictable and short reach).
-- If any cancel action exists, use `Alt+X` (reason: avoid `Alt+L` overload).
+- Keep `Alt+E` Error filter/Edit-context action; use `Escape` to close.
+- If any cancel action exists, prefer `Alt+C` for cancel consistency.
+- Length label change completed (`Alt+M` preserved).
 
 ### Import Progress Window
-- Keep `Alt+C` Close (completion state) and avoid using `Alt+L` for close/cancel (reason: global Close rule).
-- If cancel scan shortcut is needed, use `Alt+X` (reason: action consistency).
+- Progress counters were removed from the window UI; status bar is the authoritative progress output.
+- Keep current interaction model: `Alt+L` cancel while active, `Escape` close after completion, `Alt+/` read status.
 
 ### Update Window
-- Keep `Alt+S` Series, `Alt+G` Genre, `Alt+L` Collection, `Alt+C` Close (reason: good first-letter mapping).
-- Optional: add `Ctrl+S` Apply/Save update if save-style action exists (reason: Ctrl consistency).
+- Keep `Alt+S` Series, `Alt+G` Genre, `Alt+L` Collection; use `Escape` to close.
 
 ### Name List Window
-- `Alt+L` Cancel edit/new -> `Alt+X` Cancel edit/new (reason: `Alt+L` should stay list/collection semantic).
-- Keep `Alt+C` Close, `Alt+E` Edit, `Alt+S` Save, `Alt+F` Find (reason: clear and standard).
+- Keep `Alt+L` Cancel edit/new (current behavior), and `Escape` to close.
+- Keep `Alt+E` Edit, `Alt+S` Save, `Alt+F` Find (reason: clear and standard).
 - Add `Ctrl+S` Save, `Ctrl+N` New row where applicable (reason: common form behavior).
 
 ### Collection Window
-- Keep `Alt+C` Close and `Alt+A` Active (reason: established semantic).
-- If Cancel exists, set to `Alt+X` (reason: separate from Close).
+- Keep `Alt+A` Active and use `Escape` to close.
+- If Cancel exists, use `Alt+C` for cancel consistency.
 - Add `Ctrl+S` Save and `Ctrl+N` New collection (reason: consistency with edit forms).
 
 ### Preferences Window
-- `Alt+V` Save -> `Alt+S` Save (reason: Save should be `S` globally).
-- Move current `Alt+S` Scenario -> `Alt+N` Scenario (reason: free `Alt+S` for Save).
-- Keep `Alt+C` Cancel/Close (reason: global exit key rule).
-- Add `Ctrl+S` Save (reason: cross-window standard).
+- Current implementation intentionally uses section-level shortcuts (`Alt+D/S/O/F/R/A`) plus `Alt+V` Save and `Alt+C` Cancel.
+- Keep as-is unless a full-window save-key policy change is approved.
+- Optional: add `Ctrl+S` Save if no conflict emerges.
 
 ### Backup/Restore Window
-- Keep `Alt+C` Close and `Alt+B` Create backup (reason: strong first-letter match).
+- Keep `Alt+B` Create backup and use `Escape` to close.
 - Keep `Alt+L` for list semantics only (reason: avoid close/cancel conflict).
 - Optional: `Ctrl+S` for “start backup” only if not conflicting (reason: consistent primary action key).
 
-## High-priority inconsistencies to fix first
-- Close/Cancel split currently mixed (`Alt+C` vs `Alt+L`) -> normalize to `Alt+C` Close, `Alt+X` Cancel.
-- Collection key inconsistent (`Alt+C`, `Alt+K`, `Alt+L`) -> normalize to `Alt+L`.
-- Save key inconsistent (`Alt+S` vs `Alt+V`) -> normalize to `Alt+S` (+ `Ctrl+S`).
+## High-priority inconsistencies to monitor next
+- Confirm all dismiss-only flows use `Escape` close and no stale Close-button shortcut text remains.
+- Collection key remains context-specific (`Alt+K` Book Details, `Alt+L` Import); no breakage, but not globally uniform.
+- Save key remains mixed (`Alt+S` in some windows, `Alt+V` in Preferences by design).
 
 ## Next implementation pass (after approval)
-- Phase 1: Exit/action keys (`Alt+C`, `Alt+X`, `Alt+S`, `Alt+L`).
-- Phase 2: Add/align `Ctrl+S`, `Ctrl+N`, `Ctrl+I`.
+- Phase 1: Decide whether to keep or remap `Alt+L` cancel behavior in detail windows.
+- Phase 2: Decide whether to introduce `Ctrl+S` in Preferences and other edit forms.
 - Phase 3: Re-run shortcut matrix + conflict report and verify no regressions.
 
 ## Test-enforcement follow-up

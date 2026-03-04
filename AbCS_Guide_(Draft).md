@@ -1,5 +1,15 @@
 # AbCS User Guide (Draft)
 
+## 2026-03-03 Change Log
+
+- Main Window standardization completed: Collection/Read/Sort moved from header controls into menus.
+- Find workflow standardized: `View > Find...` with `Ctrl+F` replaces inline Search in the header.
+- Main list duration terminology standardized from `Time` to `Length` in user-facing labels.
+- Main Window legacy shortcuts removed: `Alt+C` (Collection), `Alt+R` (Read), `Alt+O` (Order By), `Alt+S` (Search).
+- Sort menu behavior updated: first-letter menu activation and status-bar sort wording now cover non-primary sorts (for example Year).
+- Regression tests expanded for Main Window menu/shortcut behavior; full test suite passing (33 tests).
+- Preferences documentation updated for the reorganized Import Settings layout and section-jump shortcuts (`Alt+D/S/O/F/R/A`) with current footer/help behavior.
+
 ## 2026-03-02 Change Log
 
 - Window dismissal behavior simplified: dismiss-only Close buttons were removed from major windows; Escape is now the standard close path.
@@ -64,7 +74,8 @@ When AbCS starts for the first time, the book list may be empty.
 ### Menu
 
 - File (Alt+F): New Book, Import, Quit
-- View (Alt+V): Open Focused Item (Ctrl+Enter), zoom controls
+- View (Alt+V): Open Focused Item (Ctrl+Enter), Find (Ctrl+F), Collections filter menu, Read filter menu, zoom controls
+- Sort (Alt+S): Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added
 - Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Preferences Reorg Preview, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
 
@@ -76,19 +87,19 @@ When AbCS starts for the first time, the book list may be empty.
 
 ### Header controls
 
-Below the menu bar, left to right:
+Header filter controls are no longer shown in Main Window.
 
-1. Collection (Alt+C) - choose All Collections or one collection.
-2. Read? (Alt+R) - All, Read, or Unread.
-3. Order By (Alt+O) - Title, Author, Genre, or Series.
-4. Search (Alt+S) - type to search/filter. Use `?` prefix for keyword/phrase search; Enter runs keyword search and moves to the first match; Escape clears search.
-5. Menu bar access: Alt+F (File), Alt+V (View), Alt+M (Manage), Alt+H (Help).
+- Collection filtering is available in `View > Collections`.
+- Read filtering is available in `View > Read`.
+- Sorting is available in the top-level `Sort` menu.
+- Finding is available in `View > Find...` and with `Ctrl+F`.
+- Main Window Escape behavior clears active find/search filter state.
 
 ### Book list window detail
 
 Press Alt+B to move focus to the book list table.
 
-Columns are: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Added.
+Columns are: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added.
 
 - Open Book Details with Ctrl+Enter or double-click.
 - Open focused item with Ctrl+Enter or double-click:
@@ -103,15 +114,13 @@ Columns are: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Added
 
 ### Main Window shortcuts
 
-- Collection: Alt+C
-- Read filter: Alt+R
-- Order By: Alt+O
-- Search: Alt+S
 - File menu: Alt+F
 - View menu: Alt+V
+- Sort menu: Alt+S
 - Manage menu: Alt+M
 - Help menu: Alt+H
 - Focus book list: Alt+B
+- Find: Ctrl+F
 - Update selected: Alt+U
 - Delete selected: Alt+D
 - Cancel selection: Alt+L
@@ -136,7 +145,7 @@ Open from Main Window by focusing the Title (or another non-manager column) and 
 - Genre: Alt+G
 - Reader: Alt+R
 - Collection: Alt+K
-- Time: Alt+M
+- Length: Alt+M
 - Read date: Alt+E
 - Size: Alt+Z
 - Bitrate: Alt+B
@@ -258,7 +267,6 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 - Add Selected: Alt+I
 - Add Valid (review mode): Alt+V
 - Export list to CSV: Alt+X
-- Cancel running scan/add: Alt+N (shown only while operation is active)
 - Escape: close window (or cancel if an operation is running)
 - Alt+/ reads the status bar message
 
@@ -302,27 +310,57 @@ If the database is empty at startup, the first-run dialog includes a Preferences
 Top to bottom, the window has three areas:
 
 1. Display Settings
-2. Import Settings
+2. Import Settings (organized into Source & Scope, Options, Fallback & Parsing Behavior, Validation Rules, Auto-Correction)
 3. Footer actions and status bar
+
+### Section navigation shortcuts
+
+Use section shortcuts to jump quickly to the first control in each section:
+
+- Display section: Alt+D
+- Source & Scope section: Alt+S
+- Options section: Alt+O
+- Fallback & Parsing Behavior section: Alt+F
+- Validation Rules section: Alt+R
+- Auto-Correction section: Alt+A
 
 ### Display Settings (top)
 
-- Theme: Alt+T
-- Preset: Alt+P
-- Zoom (%): Alt+Z
+- Theme selector
+- Preset selector
+- Zoom (%)
+
+Tip: use Alt+D to jump to Display, then Tab/Shift+Tab to move between controls.
 
 ### Import Settings (middle)
 
-- Directory: Alt+D
-- Browse: Alt+B
-- Formats: Alt+O (focuses first format checkbox)
-- Scenario: Alt+S
-- Scenario Description: Alt+R (read-only text)
-- Author Fallback: Alt+A
-- Title Fallback: Alt+I
-- Flip Author: Alt+F
-- Review Clean Books Before Adding: Alt+Y
-- Reader Keywords: Alt+K
+Source & Scope includes:
+
+- Default import directory and Browse
+- Enabled formats (MP3, M4A, M4B, FLAC, OGG, WAV, WMA)
+- Import scenario selector and read-only scenario description
+
+Options includes:
+
+- Review Clean Books Before Adding
+- Flip Author Last, First
+- Apply proper case
+- Move leading `The` to end of title
+
+Fallback & Parsing Behavior includes:
+
+- Author fallback to folder
+- Title fallback to file
+- Reader keywords
+
+Validation Rules includes severity/value settings for:
+
+- Author in title
+- Title in author
+- Unknown author handling
+- Minimum title length
+- Duplicate matching/fuzzy settings
+- File structure and year quality
 
 Import scenario behavior:
 
@@ -333,11 +371,9 @@ Import scenario behavior:
 
 Auto-correction options include:
 
-- Trim whitespace: Alt+W
-- Strip leading punctuation: Alt+P
-- Remove special characters: Alt+E
-- Proper case fields: Alt+L
-- Move leading 'The' in title: Alt+H
+- Trim whitespace
+- Strip leading punctuation
+- Remove special characters
 
 ### Footer actions
 
@@ -345,6 +381,7 @@ Auto-correction options include:
 - Cancel: Alt+C
 - Alt+/ reads current status bar message
 - F1 opens keyboard shortcut help
+- Tab/Shift+Tab moves between controls in the current section
 - Escape triggers Cancel behavior (including unsaved changes prompt)
 
 ## Accessibility notes
