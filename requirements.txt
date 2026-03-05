@@ -2,7 +2,10 @@
 # Requirements for Python 3.9+
 
 # GUI Framework
-PySide6>=6.6.0
+# PySide6 6.7+ Qt builds require SSE4.2/POPCNT on x86_64.
+# Keep Python <=3.12 on a compatible Qt line for older CPUs.
+PySide6>=6.6.0,<6.7; python_version < "3.13"
+PySide6>=6.10.0; python_version >= "3.13"
 
 # Audio metadata reading
 mutagen>=1.47.0

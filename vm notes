@@ -1,0 +1,22 @@
+Yes, build on the ZBook VM.
+
+Best approach for your case:
+
+1. Build on the faster/newer ZBook VM.
+2. Keep compatibility settings so it still runs on the old HP 600 Pro:
+   - Use `Python 3.12`
+   - Use `PySide6 < 6.7` (already handled by your updated requirements.txt when using Python 3.12)
+3. Always test the final `dist/AbCS` on the HP 600 Pro before sharing.
+
+Use this in the VM:
+
+```bash
+cd "/path/to/redevelop-AbCS-project"
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./build_linux.sh
+```
+
+Then copy `dist/AbCS` to the HP and run it there as the final compatibility check.  
+If it runs on the HP, it should run on newer machines too.

@@ -94,6 +94,18 @@ pip install -r requirements.txt
 pip install pyinstaller
 ```
 
+If startup fails with this message:
+- `Incompatible processor. This Qt build requires the following features: sse4.2 popcnt`
+
+Run the legacy CPU repair script:
+
+```bash
+chmod +x fix_linux_legacy_cpu_env.sh
+./fix_linux_legacy_cpu_env.sh
+```
+
+This recreates `.venv` with Python 3.12 and installs a Qt build compatible with older CPUs.
+
 ### 3.4 Clean old build artifacts
 
 ```bash
@@ -101,6 +113,15 @@ rm -rf build dist
 ```
 
 ### 3.5 Build Linux executable
+
+Recommended (short copy/paste):
+
+```bash
+chmod +x build_linux.sh
+./build_linux.sh
+```
+
+Manual fallback (same build, expanded command):
 
 ```bash
 python -m PyInstaller \
@@ -130,6 +151,25 @@ python -m PyInstaller \
 
 Output:
 - `dist/AbCS`
+
+If the app does not launch on Linux, run the debug flow:
+
+```bash
+chmod +x build_linux_debug.sh
+./build_linux_debug.sh
+```
+
+This builds a console-enabled binary and writes runtime output to:
+- `abcs_linux_run.log`
+
+The script also writes setup/build output to:
+- `abcs_linux_build.log`
+
+If `abcs_linux_run.log` does not exist, the app never launched. Check:
+
+```bash
+tail -n 120 abcs_linux_build.log
+```
 
 Important platform difference:
 - Windows uses `--add-data="source;dest"`

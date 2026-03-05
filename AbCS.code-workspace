@@ -18,7 +18,7 @@
     },
     "editor.accessibilitySupport": "on",
     "python.analysis.typeCheckingMode": "off",
-    "python.defaultInterpreterPath": "C:\\Users\\cfran\\ABcS\\abcs\\.venv\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
     "python.terminal.activateEnvironment": true,
     "terminal.integrated.environmentChangesRelaunch": true,
     "terminal.integrated.environmentChangesIndicator": "off",

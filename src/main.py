@@ -28,6 +28,9 @@ import os
 
 def _show_native_message(title: str, message: str, auto_close_seconds: float = 3.0):
     """Show a Windows-native message box that auto-closes after a delay."""
+    if not hasattr(ctypes, "windll"):
+        return
+
     user32 = ctypes.windll.user32
     MB_ICONINFORMATION = 0x40
     MB_TOPMOST = 0x00040000
@@ -57,6 +60,8 @@ def show_launch_message_if_executable():
     if __name__ != '__main__':
         return
     if not getattr(sys, 'frozen', False):
+        return
+    if sys.platform != "win32":
         return
     if os.environ.get("ABCS_LAUNCH_MSG_SHOWN") == "1":
         return

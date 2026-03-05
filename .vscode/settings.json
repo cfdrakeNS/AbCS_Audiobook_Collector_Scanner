@@ -7,7 +7,7 @@
     "editor.formatOnPaste": true,
     "editor.accessibilitySupport": "on",
     "python.analysis.typeCheckingMode": "off",
-    "python.defaultInterpreterPath": "C:\\Users\\cfran\\ABcS\\abcs\\.venv\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
     "python.terminal.activateEnvironment": true,
     "terminal.integrated.env.windows": {
         "VIRTUAL_ENV": "${workspaceFolder}\\.venv",
