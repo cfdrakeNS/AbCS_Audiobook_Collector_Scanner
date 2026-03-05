@@ -5,7 +5,7 @@ a = Analysis(
     ['src\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[('data/abcdDB_def.sql', 'data'), ('data/abcs.db', 'data')],
+    datas=[('data/abcdDB_def.sql', 'data')],
     hiddenimports=['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'mutagen', 'mutagen.mp3', 'mutagen.mp4', 'mutagen.flac', 'mutagen.oggvorbis', 'mutagen.wave'],
     hookspath=[],
     hooksconfig={},

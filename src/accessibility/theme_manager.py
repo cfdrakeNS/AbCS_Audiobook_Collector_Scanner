@@ -20,6 +20,10 @@ class ThemeName(Enum):
     SOLARIZED_DARK = "solarized_dark"
     COMFORT_LIGHT = "comfort_light"
     MUTED_DARK = "muted_dark"
+    NORD_LIGHT = "nord_light"
+    OCEANIC_DARK = "oceanic_dark"
+    FOREST_MIST = "forest_mist"
+    PAPER_SEPIA = "paper_sepia"
 
 
 class Theme:
@@ -185,6 +189,54 @@ class ThemeManager(QObject):
             'highlight': '#5D7FA3',
             'highlight_text': '#FFFFFF',
             'link': '#7AA2CF',
+        }),
+
+        ThemeName.NORD_LIGHT: Theme("Nord Light", {
+            'window': '#ECEFF4',
+            'window_text': '#2E3440',
+            'base': '#E5E9F0',
+            'text': '#2E3440',
+            'button': '#D8DEE9',
+            'button_text': '#2E3440',
+            'highlight': '#5E81AC',
+            'highlight_text': '#ECEFF4',
+            'link': '#4C72A1',
+        }),
+
+        ThemeName.OCEANIC_DARK: Theme("Oceanic Dark", {
+            'window': '#1B2632',
+            'window_text': '#DCE6F0',
+            'base': '#14202B',
+            'text': '#DCE6F0',
+            'button': '#243343',
+            'button_text': '#DCE6F0',
+            'highlight': '#2E8BC0',
+            'highlight_text': '#FFFFFF',
+            'link': '#6FC3DF',
+        }),
+
+        ThemeName.FOREST_MIST: Theme("Forest Mist", {
+            'window': '#EDF3EC',
+            'window_text': '#2F3A33',
+            'base': '#F7FAF6',
+            'text': '#2F3A33',
+            'button': '#DCE8DB',
+            'button_text': '#2F3A33',
+            'highlight': '#5F8C6A',
+            'highlight_text': '#FFFFFF',
+            'link': '#3F6E4C',
+        }),
+
+        ThemeName.PAPER_SEPIA: Theme("Paper Sepia", {
+            'window': '#F7F1E4',
+            'window_text': '#3F3427',
+            'base': '#FFF9EC',
+            'text': '#3F3427',
+            'button': '#E8DDC8',
+            'button_text': '#3F3427',
+            'highlight': '#B07A3E',
+            'highlight_text': '#FFFFFF',
+            'link': '#8B5E2A',
         }),
     }
 

@@ -1,0 +1,47 @@
+Shortcut,backup_restore_window,book_details,collection_window,import_detail_window,import_progress_window,import_window,main_window,name_list_window,preferences_window,update_window
+Alt+/,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar
+Alt+1,,,,,,Jump to Author,Jump to Title column,,,
+Alt+1..Alt+0,,,,,,,Jump to other columns (see table order),,,
+Alt+2,,,,,,Jump to Title,Jump to Author column,,,
+Alt+3,,,,,,Year Col Shortcut,,,,
+Alt+3-5,,,,,,Jump to Year...,,,,
+Alt+4,,,,,,Error Col Shortcut,,,,
+Alt+5,,,,,,Path Col Shortcut,,,,
+Alt+A,,Author,Active checkbox,Author,,,,Active checkbox,Auto-Correction section,
+Alt+B,Create backup,Bitrate,Jump to list,Bitrate,,import Book list,Book list,Jump to list,,Book list
+Alt+C,,,,Collection,,Collection,,,Cancel,
+Alt+D,Delete selected backup,Delete,Delete,Discard,,,Delete selected,,Display section,
+Alt+Down,,,,,,,,,,Open combo dropdown
+Alt+E,,Read date,Edit selected row,Errors,,Error filter,,Edit selected row,,
+Alt+F,Full reset,Files,,Files,,Folder,,Find,Fallback and Parsing Behavior section,
+Alt+G,,Genre,,Genre,,,,,,Genre
+Alt+H,,Path,,Path,,,,,,
+Alt+I,,Series,,Series,Issues:,Add selected,,,,
+Alt+K,,Collection,,,,,,,,
+Alt+L,Backup list,Cancel,Cancel edit/new,Launch Tag,Cancel current scan,,Cancel selection,Cancel edit/new,,Collection
+Alt+M,,Length,Name edit,Length,,,,Name edit,,
+Alt+N,,New book,New,,,Cancel scan (when running),,,,
+Alt+O,Browse for restore file,Comments,,Comments,,,,,Options section,
+Alt+P,,,,,,,,,,
+Alt+Q,,,,,,,,,,
+Alt+R,Run restore from selected backup,Reader,,Reader,,,,,Validation Rules section,
+Alt+S,,Save,Save,Save,,Scan,,Save,Source and Scope section,Series
+Alt+T,Focus restore file,Title,,Title,,,,,,
+Alt+U,,,,,,,Update selected,,,
+Alt+V,,,,,,Add valid,,,Save,
+Alt+W,,,,,,Browse,,,,
+Alt+X,,,,,,Export list to CSV,,,,
+Alt+Y,,Year,,Year,,,,,,
+Alt+Z,,Size,,Size,,,,,,
+Ctrl+0,,,,,,,Reset zoom,,,
+Ctrl+Enter,,New Shortcut,,,,Open import detail,Open focused item (Title=details; Author/Series/Genre=manager),,,
+Ctrl+F,,,,,,,Find,,,
+Ctrl+I,,,,,,,Import,,,
+Ctrl+Minus,,,,,,,Zoom out,,,
+Ctrl+N,,,,,,,New book,,,
+Ctrl+NumMinus,,,,,,,,,,
+Ctrl+NumPlus,,,,,,,,,,
+Ctrl+Plus,,,,,,,Zoom in,,,
+Ctrl+Q,,,,,,,Quit Action,,,
+F1,Show this help,Show this help,Show this help,Show keyboard shortcuts,Show this help,Show keyboard shortcuts,Show keyboard shortcuts,Show this help,Show this help,Show keyboard shortcuts
+Escape,Close window,Close window,Close window,Close detail,Close window,Close window,Clear selection/search,Close window,,Close window
