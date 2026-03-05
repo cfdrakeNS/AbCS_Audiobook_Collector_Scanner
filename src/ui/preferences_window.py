@@ -83,6 +83,8 @@ class PreferencesWindow(QDialog):
         self.connect_signals()
         self.setup_shortcuts()
         self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(
+            self.on_application_theme_changed)
 
         title = "Preferences"
         self.setWindowTitle(title)
@@ -1587,6 +1589,16 @@ class PreferencesWindow(QDialog):
 
             announce_status_message(
                 self.status_bar, "Theme applied")
+
+    def on_application_theme_changed(self, _theme_name: str):
+        """Refresh controls immediately when any window changes the app theme."""
+        self.apply_control_styles()
+
+        for widget in [self, *self.findChildren(QWidget)]:
+            style = widget.style()
+            style.unpolish(widget)
+            style.polish(widget)
+            widget.update()
 
     def on_preset_changed(self, preset_name: str):
         """Update zoom value to match preset."""

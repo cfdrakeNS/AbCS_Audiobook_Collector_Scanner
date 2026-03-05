@@ -604,6 +604,8 @@ class ImportWindow(QDialog):
             "import/auto_add_clean_books", False, type=bool)
         self._configure_error_filter_options(
             include_valid=self.auto_add_clean_books)
+        # Keep Add Valid visibility in sync on first window open.
+        self._update_add_valid_button_visibility()
         self.autocorrect_trim_whitespace = self.settings.value(
             "import/autocorrect/trim_whitespace", False, type=bool)
         self.autocorrect_strip_leading_punctuation = self.settings.value(

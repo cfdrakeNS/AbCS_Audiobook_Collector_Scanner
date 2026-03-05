@@ -5,7 +5,7 @@ Manages color schemes and high contrast themes for accessibility.
 
 from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtGui import QPalette, QColor
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 from typing import Dict, Optional
 from enum import Enum
 
@@ -253,6 +253,9 @@ class ThemeManager(QObject):
 
         # Store original palette for reset
         self.original_palette = QPalette(app.palette())
+        # Preserve any pre-existing application stylesheet so theme-specific
+        # additions can be replaced cleanly instead of accumulating.
+        self.base_stylesheet = app.styleSheet() or ""
 
         # Load saved theme or use default
         saved_theme = self.settings.value('theme', ThemeName.DEFAULT.value)
@@ -312,12 +315,10 @@ class ThemeManager(QObject):
         theme = self.THEMES[theme_enum]
 
         # Create new palette
-        if theme_enum == ThemeName.DEFAULT:
-            # Use system default
-            palette = self.original_palette
-        else:
-            # Start with current palette and modify
-            palette = QPalette(self.app.palette())
+        # Always start from the original palette so switching between themes
+        # does not carry stale color roles from the previous theme.
+        palette = QPalette(self.original_palette)
+        if theme_enum != ThemeName.DEFAULT:
             palette = theme.apply_to_palette(palette)
 
         # Apply to application
@@ -341,8 +342,26 @@ class ThemeManager(QObject):
             """
 
         if extra_style:
-            current_style = self.app.styleSheet()
-            self.app.setStyleSheet(current_style + "\n" + extra_style)
+            self.app.setStyleSheet(self.base_stylesheet + "\n" + extra_style)
+        else:
+            self.app.setStyleSheet(self.base_stylesheet)
+
+        self._repolish_open_widgets()
+
+    def _repolish_open_widgets(self):
+        """Force immediate visual refresh of open windows after theme changes."""
+        for top_level in self.app.topLevelWidgets():
+            if not isinstance(top_level, QWidget):
+                continue
+
+            widgets = [top_level]
+            widgets.extend(top_level.findChildren(QWidget))
+
+            for widget in widgets:
+                style = widget.style()
+                style.unpolish(widget)
+                style.polish(widget)
+                widget.update()
 
 
 # Global instance
