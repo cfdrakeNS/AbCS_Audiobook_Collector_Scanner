@@ -20,11 +20,11 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
 )
 
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
-from accessibility.theme_manager import ThemeManager
-from accessibility.key_filters import is_unmapped_alt_letter
-from accessibility.accessible_events import announce_status_message
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.accessible_events import announce_status_message
 
 
 class ImportProgressWindow(QDialog):
@@ -184,6 +184,7 @@ class ImportProgressWindow(QDialog):
         self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
         self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.cancel_shortcut.setContext(Qt.WidgetShortcut)
         self.cancel_shortcut.activated.connect(self.on_cancel_requested)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)

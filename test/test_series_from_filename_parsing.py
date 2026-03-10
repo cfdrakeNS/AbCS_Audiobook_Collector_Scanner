@@ -1,6 +1,6 @@
 """Tests for Scenario 3 series parsing from filename text."""
 
-from core.import_scanner import ImportScanner
+from src.core.import_scanner import ImportScanner
 
 
 def _apply_scenario_3(file_name: str, title: str):

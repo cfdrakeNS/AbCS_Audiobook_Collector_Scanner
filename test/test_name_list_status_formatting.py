@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 
-from ui.name_list_window import NameListWindow
+from src.ui.name_list_window import NameListWindow
 
 
 class _WidgetState:

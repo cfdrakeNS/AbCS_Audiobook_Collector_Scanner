@@ -1,6 +1,6 @@
 """Targeted tests for NameListWindow find normalization and matching."""
 
-from ui.name_list_window import NameListWindow
+from src.ui.name_list_window import NameListWindow
 
 
 def test_normalize_find_value_strips_punctuation_and_case():

@@ -16,23 +16,23 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QKeyEvent, QAction, QActionGroup, QShortcut, QKeySequence, QAccessible
 from PySide6.QtWidgets import QApplication
 
-from database import (
+from src.database import (
     DatabaseManager, BookQueries, AuthorQueries, SeriesQueries,
     GenreQueries, CollectionQueries, SearchFilter, Book, StatisticsQueries
 )
-from accessibility.scaling import UIScaler
-from accessibility.accessible_events import announce_status_message
-from accessibility.style_helpers import exec_styled_message_box, build_accessible_button_style
-from accessibility.theme_manager import ThemeManager
-from accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-from accessibility.key_filters import is_unmapped_alt_letter
-from ui.book_details import BookDetailsWindow
-from ui.update_window import UpdateWindow
-from ui.preferences_window import PreferencesWindow
-from ui.import_window import ImportWindow
-from ui.collection_window import CollectionWindow
-from ui.name_list_window import NameListWindow
-from ui.backup_restore_window import BackupRestoreWindow
+from src.accessibility.scaling import UIScaler
+from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_button_style
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.ui.book_details import BookDetailsWindow
+from src.ui.update_window import UpdateWindow
+from src.ui.preferences_window import PreferencesWindow
+from src.ui.import_window import ImportWindow
+from src.ui.collection_window import CollectionWindow
+from src.ui.name_list_window import NameListWindow
+from src.ui.backup_restore_window import BackupRestoreWindow
 
 # Import version from main module
 
@@ -148,6 +148,7 @@ class BookTableModel(QAbstractTableModel):
 
 
 class MainWindow(QMainWindow):
+
     """
     Main application window - Audio Book Window.
     Displays list of books with filtering and search.
@@ -160,6 +161,22 @@ class MainWindow(QMainWindow):
         ("Title + Author + Year", "title_author_year"),
         ("Title + Author + Year + Collection", "title_author_year_collection"),
     ]
+
+    def _set_sort_label(self, order_by=None, direction=None):
+        """Set the sort label with custom message for Author, Genre, Series."""
+        key = order_by or self.current_filter.order_by
+        if key == "Author":
+            msg = "Author, Year, Title"
+        elif key == "Series":
+            msg = "Series, Year, Title"
+        elif key == "Genre":
+            msg = "Genre, Title"
+        else:
+            msg = key
+        if direction:
+            self.sort_label.setText(f"Sorted: {msg} ({direction})")
+        else:
+            self.sort_label.setText(f"Sorted: {msg}")
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler, theme_manager: ThemeManager):
         """
@@ -245,8 +262,15 @@ class MainWindow(QMainWindow):
         # mw#22: Minimum size to prevent columns from being cut off
         self.setMinimumSize(900, 400)
 
-        # Set focus to table on startup (inline search replaced by Find dialog).
-        self.table.setFocus()
+        # Set focus to first title in book list on startup.
+        if self.table.model() and self.table.model().rowCount() > 0:
+            self.table.setCurrentCell(0, 1)  # Column 1 is Title
+            self.table.setFocus()
+        else:
+            self.table.setFocus()
+
+        # Maximize window on open (accessibility requirement)
+        self.showMaximized()
 
     def setup_ui(self):
         """Setup user interface."""
@@ -372,7 +396,7 @@ class MainWindow(QMainWindow):
                    "Genre", "Length", "Tracks", "Read", "Added"]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
-        self.selection_column = -1  # No selection column
+        # Selection column removed; only text highlighting used
 
         # Table settings - SelectItems for cell-level focus, row selection handled manually
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
@@ -651,7 +675,6 @@ class MainWindow(QMainWindow):
         # Alt+Key shortcuts
         callback_map = {
             'menu_combo': lambda: self.menu_combo.setFocus(),
-            'book_list': self.focus_book_title,
             'update_button': self.on_update_clicked,
             'delete_button': self.on_delete_clicked,
             'cancel_button': self.on_cancel_clicked,
@@ -771,9 +794,7 @@ class MainWindow(QMainWindow):
         parts = [f"Showing {len(self.books)} books"]
 
         # mw#12: Show current sort order (especially Series/Genre)
-        order_by = self._active_sort_key or "Title"
-        if order_by and order_by != "Title":  # Only show if not default
-            parts.append(f"by {order_by}")
+        # Remove 'BY xxx' and only show 'Showing XX books'
 
         # Read filter
         if self.current_filter.read_filter == "Read":
@@ -832,7 +853,7 @@ class MainWindow(QMainWindow):
             self.current_filter.order_by = "Title"
 
         self._active_sort_key = self.current_filter.order_by
-        self.sort_label.setText(f"Sorted by: {self.current_filter.order_by}")
+        self._set_sort_label()
 
         self._sync_collection_menu_selection()
         self._sync_read_menu_selection()
@@ -1280,7 +1301,7 @@ class MainWindow(QMainWindow):
         self._active_sort_key = key
         self._sort_books_in_memory(column, Qt.AscendingOrder)
         self.table.horizontalHeader().setSortIndicator(column, Qt.AscendingOrder)
-        self.sort_label.setText(f"Sorted by: {key} (Ascending)")
+        self._set_sort_label(order_by=key, direction="Ascending")
         self._sync_sort_menu_selection(key)
 
     def _rebuild_collection_filter_menu(self):
@@ -1411,24 +1432,21 @@ class MainWindow(QMainWindow):
         target = text if text in self._primary_sort_options else "Title"
         self.current_filter.order_by = target
         self._active_sort_key = target
-        self.sort_label.setText(f"Sorted by: {target}")
+        self._set_sort_label(order_by=target)
         self._set_primary_sort_indicator(target)
         self._sync_sort_menu_selection(target)
         self.refresh_books()
 
     def on_table_header_clicked(self, column: int):
         """Handle table header clicks with combo-aligned sorting for key columns."""
-        primary_sort_columns = {
-            0: "Author",
-            1: "Title",
-            4: "Series",
-            5: "Genre",
-        }
-
-        order_by = primary_sort_columns.get(column)
-        if order_by is not None:
-            self.on_order_changed(order_by)
+        # Custom sort for Author and Series columns
+        if column == 0:  # Author
+            self.on_order_changed("Author")
             return
+        elif column == 4:  # Series
+            self.on_order_changed("Series")
+            return
+        # Title and Genre use default logic
 
         if self._last_header_sort_column == column:
             next_order = Qt.DescendingOrder if self._last_header_sort_order == Qt.AscendingOrder else Qt.AscendingOrder
@@ -1445,7 +1463,7 @@ class MainWindow(QMainWindow):
             column, Qt.Horizontal, Qt.DisplayRole) or "Field"
         direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
         self._active_sort_key = self._sort_key_for_column(column)
-        self.sort_label.setText(f"Sorted by: {header_text} ({direction})")
+        self._set_sort_label(order_by=header_text, direction=direction)
         self._sync_sort_menu_selection(self._active_sort_key)
 
     def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
@@ -1749,37 +1767,7 @@ class MainWindow(QMainWindow):
             return False
         return super().eventFilter(source, event)
 
-    def on_table_item_changed(self, item: QTableWidgetItem):
-        """Handle checkbox changes in selection column."""
-        if self._updating_selection_ui:
-            return
-
-        if item.column() != self.selection_column:
-            return
-
-        row = item.row()
-        if row < 0 or row >= len(self.books):
-            return
-
-        book_id = self.books[row].book_id
-        is_checked = item.checkState() == Qt.Checked
-
-        model = self.table.selectionModel()
-        index = self.table.model().index(row, 0)
-
-        if is_checked:
-            model.select(index, QItemSelectionModel.Select |
-                         QItemSelectionModel.Rows)
-            self.selected_book_ids.add(book_id)
-            self.selection_anchor_row = row
-        else:
-            model.select(index, QItemSelectionModel.Deselect |
-                         QItemSelectionModel.Rows)
-            self.selected_book_ids.discard(book_id)
-            if not self.selected_book_ids:
-                self.selection_anchor_row = None
-
-        self.update_selection_ui()
+    # Checkbox selection logic removed; only text highlighting used
 
     def table_mouse_press(self, event):
         """Handle mouse press - Explorer-like selection behavior."""
@@ -2336,11 +2324,8 @@ class MainWindow(QMainWindow):
         self.set_default_status(announce=has_selection)
 
     def sync_selection_indicators(self):
-        """Sync text color indicators with current selection.
-        mw#11: Checkbox column removed, only using text color highlighting.
-        """
-        # No-op for model-backed table; selection highlight is handled by the view.
-        return
+        # Selection highlight handled by the view; no custom indicator logic needed.
+        pass
 
     def on_update_clicked(self):
         """Handle Update button click."""
@@ -2510,11 +2495,7 @@ class MainWindow(QMainWindow):
         """Clear temporary status message and restore default status."""
         self.set_default_status(announce=False)
 
-    def on_status_bar_focus(self):
-        """Status bar is already accessible - this is just for manual focus if needed."""
-        # The status bar is already accessible to screen readers via Qt
-        # This method is kept for F7 shortcut but doesn't need complex focus management
-        pass
+    # Status bar is accessible via Qt; no manual focus logic needed.
 
     def on_zoom_in(self):
         """Handle Ctrl++ zoom in."""
@@ -2658,8 +2639,7 @@ class MainWindow(QMainWindow):
 
     def on_show_splash(self):
         """Show library statistics."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QHeaderView, QAbstractItemView, QTextEdit
-        from PySide6.QtCore import Qt, QTimer
+        # Redundant imports removed; already imported at top
 
         # Get statistics from database
         stats_queries = StatisticsQueries(self.db)

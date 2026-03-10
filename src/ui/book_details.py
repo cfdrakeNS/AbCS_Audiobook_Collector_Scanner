@@ -4,6 +4,12 @@ Form for viewing and editing individual book information.
 """
 
 import re
+from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.scaling import UIScaler
+from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
+from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
 import getpass
 
 from PySide6.QtWidgets import (
@@ -17,10 +23,10 @@ from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
-from database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
+from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
 
 
 class BookDetailsWindow(QDialog):

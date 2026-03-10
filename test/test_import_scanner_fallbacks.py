@@ -1,6 +1,6 @@
 """Tests for import scanner fallback behavior (Scenario 2 focus)."""
 
-from core.import_scanner import ImportScanner
+from src.core.import_scanner import ImportScanner
 
 
 def _apply_scenario_2(book: dict, *, title_fallback_mode: str | None = None):

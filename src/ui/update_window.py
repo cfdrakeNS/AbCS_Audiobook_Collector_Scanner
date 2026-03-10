@@ -16,13 +16,13 @@ from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from typing import Set, List
 import time
 
-from database import (
+from src.database import (
     DatabaseManager, Book, BookQueries, SeriesQueries,
     GenreQueries, CollectionQueries
 )
-from accessibility.accessible_events import announce_status_message
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import exec_styled_message_box
+from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import exec_styled_message_box
 
 
 # Special marker for "None" option to clear a field

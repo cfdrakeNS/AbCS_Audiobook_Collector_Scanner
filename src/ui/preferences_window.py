@@ -15,11 +15,11 @@ from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
 from shiboken6 import isValid
 from datetime import datetime
 
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_message_box_style
-from accessibility.theme_manager import ThemeManager
-from accessibility.key_filters import is_unmapped_alt_letter
-from accessibility.accessible_events import (
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_message_box_style
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.accessible_events import (
     announce_status_message, announce_dialog_opened, announce_dialog_closed
 )
 
@@ -168,7 +168,7 @@ class PreferencesWindow(QDialog):
         import_layout.setSpacing(11)
         import_label_width = 180
 
-        source_scope_group = QGroupBox("Source and Scope")
+        source_scope_group = QGroupBox("Path & Scope")
         source_scope_layout = QVBoxLayout(source_scope_group)
         source_scope_layout.setSpacing(8)
 
@@ -561,11 +561,11 @@ class PreferencesWindow(QDialog):
         self.autocorrect_trim_check = QCheckBox("Trim whitespace")
         self.autocorrect_trim_check.setAccessibleName("Trim whitespace")
         self.autocorrect_strip_punct_check = QCheckBox(
-            "Strip leading &punctuation")
+            "Strip leading punctuation")
         self.autocorrect_strip_punct_check.setAccessibleName(
             "Strip leading punctuation")
         self.autocorrect_non_alnum_check = QCheckBox(
-            "Remove sp&ecial characters")
+            "Remove special characters")
         self.autocorrect_non_alnum_check.setAccessibleName(
             "Remove special characters")
 
@@ -600,18 +600,18 @@ class PreferencesWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.save_button = QPushButton("Sa&ve")
+        self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
         self.save_button.setAccessibleDescription(
-            "Save preferences and close - Alt+V")
+            "Save preferences and close - Alt+S")
         self.save_button.setDefault(True)
         self.save_button.setAutoDefault(True)
         footer_layout.addWidget(self.save_button)
 
-        self.cancel_button = QPushButton("&Cancel")
+        self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription(
-            "Discard changes and close - Alt+C")
+            "Discard changes and close - Alt+L")
         self.cancel_button.setDefault(False)
         self.cancel_button.setAutoDefault(True)
         footer_layout.addWidget(self.cancel_button)
@@ -1304,7 +1304,7 @@ class PreferencesWindow(QDialog):
         self.section_shortcuts = []
         section_shortcut_map = [
             ("Alt+D", self.focus_display_section),
-            ("Alt+S", self.focus_source_scope_section),
+            ("Alt+P", self.focus_source_scope_section),
             ("Alt+O", self.focus_options_section),
             ("Alt+F", self.focus_fallback_section),
             ("Alt+R", self.focus_validation_section),
@@ -1314,6 +1314,12 @@ class PreferencesWindow(QDialog):
             shortcut = QShortcut(QKeySequence(key_sequence), self)
             shortcut.activated.connect(handler)
             self.section_shortcuts.append(shortcut)
+
+        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.save_shortcut.activated.connect(self.on_save)
+
+        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.cancel_shortcut.activated.connect(self.on_cancel)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
@@ -1331,8 +1337,8 @@ class PreferencesWindow(QDialog):
         self._focus_section_widget(self.theme_combo, "Display")
 
     def focus_source_scope_section(self):
-        """Focus first control in Source and Scope section."""
-        self._focus_section_widget(self.import_dir_edit, "Source and Scope")
+        """Focus first control in Path & Scope section."""
+        self._focus_section_widget(self.import_dir_edit, "Path & Scope")
 
     def focus_options_section(self):
         """Focus first control in Options section."""
@@ -1377,13 +1383,13 @@ class PreferencesWindow(QDialog):
 
         shortcuts = [
             ("Alt+D", "Display section"),
-            ("Alt+S", "Source and Scope section"),
+            ("Alt+P", "Path & Scope section"),
             ("Alt+O", "Options section"),
             ("Alt+F", "Fallback and Parsing Behavior section"),
             ("Alt+R", "Validation Rules section"),
             ("Alt+A", "Auto-Correction section"),
-            ("Alt+V", "Save"),
-            ("Alt+C", "Cancel"),
+            ("Alt+S", "Save"),
+            ("Alt+L", "Cancel"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Tab/Shift+Tab", "Move between controls in the current section"),

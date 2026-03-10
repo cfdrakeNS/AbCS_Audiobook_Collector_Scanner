@@ -18,14 +18,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
-from database import (
+from src.database import (
     DatabaseManager, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 )
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from accessibility.theme_manager import ThemeManager
-from accessibility.key_filters import is_unmapped_alt_letter
-from accessibility.accessible_events import (
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.accessible_events import (
     announce_status_message, announce_dialog_opened, announce_dialog_closed
 )
 

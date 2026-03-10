@@ -98,7 +98,7 @@ class ImportScanner:
                 if fallback_title:
                     book["title"] = fallback_title
                     fallback_applied.add("Title")
-                    from core.validator import ImportValidator
+                    from src.core.validator import ImportValidator
                     ImportValidator.append_flag_once(
                         book,
                         "F: Title fallback from file used",
@@ -114,7 +114,7 @@ class ImportScanner:
             if fallback_author:
                 book["author"] = fallback_author
                 fallback_applied.add("Author")
-                from core.validator import ImportValidator
+                from src.core.validator import ImportValidator
                 ImportValidator.append_flag_once(
                     book,
                     "F: Author fallback from folder used",
@@ -136,7 +136,7 @@ class ImportScanner:
             if series_name:
                 book["series"] = series_name
             elif ambiguous_reason:
-                from core.validator import ImportValidator
+                from src.core.validator import ImportValidator
                 ImportValidator.append_flag_once(
                     book,
                     f"W: Series from directory skipped ({ambiguous_reason})",
@@ -164,7 +164,7 @@ class ImportScanner:
                 corrections = field_corrections[field]
                 # Create specific message for each correction
                 correction_text = ", ".join(corrections)
-                from core.validator import ImportValidator
+                from src.core.validator import ImportValidator
                 ImportValidator.append_flag_once(
                     book,
                     f"C: {field} {correction_text}",
@@ -334,10 +334,11 @@ class ImportScanner:
                     updated = stripped
 
             if self.remove_non_alphanumeric:
-                cleaned = re.sub(r"[^A-Za-z0-9\s\.,!?&:;()\-'/]", "", updated)
-                cleaned = re.sub(r"\s{2,}", " ", cleaned)
+                # Remove only non-printable characters, keep punctuation and accent letters
+                cleaned = ''.join(c for c in updated if c.isprintable())
                 if cleaned != updated:
-                    corrections_applied.append("special characters removed")
+                    corrections_applied.append(
+                        "non-printable characters removed")
                     updated = cleaned
 
             if self.proper_case_fields:

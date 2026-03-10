@@ -10,14 +10,14 @@ import pytest
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication
 
-from accessibility.scaling import UIScaler
-from accessibility.theme_manager import ThemeManager
-from database.connection import DatabaseManager
-from ui.import_window import ImportWindow
-from ui.import_progress_window import ImportProgressWindow
-from ui.update_window import UpdateWindow
-from database.queries import CollectionQueries
-from database.models import Collection
+from src.accessibility.scaling import UIScaler
+from src.accessibility.theme_manager import ThemeManager
+from src.database.connection import DatabaseManager
+from src.ui.import_window import ImportWindow
+from src.ui.import_progress_window import ImportProgressWindow
+from src.ui.update_window import UpdateWindow
+from src.database.queries import CollectionQueries
+from src.database.models import Collection
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

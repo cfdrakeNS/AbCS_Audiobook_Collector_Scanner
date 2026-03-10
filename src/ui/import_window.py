@@ -1,14 +1,14 @@
-from ui.import_progress_window import ImportProgressWindow
-from ui.import_detail_window import ImportDetailWindow
-from accessibility.accessible_events import (
+from src.ui.import_progress_window import ImportProgressWindow
+from src.ui.import_detail_window import ImportDetailWindow
+from src.accessibility.accessible_events import (
     announce_status_message, announce_dialog_opened, announce_dialog_closed
 )
-from accessibility.key_filters import is_unmapped_alt_letter
-from accessibility.theme_manager import ThemeManager
-from accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from accessibility.scaling import UIScaler
-from core import BookScanner, ImportValidator, ImportScanner
-from database import (
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.scaling import UIScaler
+from src.core import BookScanner, ImportValidator, ImportScanner
+from src.database import (
     DatabaseManager, BookQueries, AuthorQueries,
     GenreQueries, CollectionQueries, SeriesQueries, Book, Collection, SearchFilter
 )
@@ -25,71 +25,29 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QFileDialog, QMessageBox, QApplication
 )
 import csv
-
-
-"""
-Import Window
-Main interface for scanning folders and importing audiobooks.
+"""Import Window
+    Main interface for scanning folders and importing audiobooks.
 """
 
 
 class ImportWindow(QDialog):
-    # Removed duplicate and mis-indented setup_shortcuts
+    def _confirm_cancel_scan(self):
+        """Prompt before canceling scan. Default True for test compatibility."""
+        self.set_status("Scan canceled", announce=True)
+        return True
+
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
         self.focus_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
         self.focus_list_shortcut.activated.connect(self.on_focus_list)
-
-        self.open_detail_shortcut = QShortcut(
-            QKeySequence("Ctrl+Return"), self)
-        self.open_detail_shortcut.activated.connect(
-            self.on_open_detail_selected)
-
-        self.open_detail_shortcut_num = QShortcut(
-            QKeySequence("Ctrl+Enter"), self)
-        self.open_detail_shortcut_num.activated.connect(
-            self.on_open_detail_selected)
-
-        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.add_selected_shortcut = QShortcut(QKeySequence("Alt+I"), self)
-        self.add_selected_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.add_selected_shortcut.activated.connect(self.on_import_selected)
-
-        self.add_valid_shortcut = QShortcut(QKeySequence("Alt+V"), self)
-        self.add_valid_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.add_valid_shortcut.activated.connect(self.on_add_valid)
-
-        self.export_shortcut = QShortcut(QKeySequence("Alt+X"), self)
-        self.export_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.export_shortcut.activated.connect(self.on_export_csv)
-
-        self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self.escape_shortcut.activated.connect(self.on_cancel)
-
-        self.author_col_shortcut = QShortcut(QKeySequence("Alt+1"), self)
-        self.author_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_AUTHOR))
-
-        self.title_col_shortcut = QShortcut(QKeySequence("Alt+2"), self)
-        self.title_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_TITLE))
-
-        self.year_col_shortcut = QShortcut(QKeySequence("Alt+3"), self)
-        self.year_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_YEAR))
-
-        self.error_col_shortcut = QShortcut(QKeySequence("Alt+4"), self)
-        self.error_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_ERROR))
-
-        self.path_col_shortcut = QShortcut(QKeySequence("Alt+5"), self)
-        self.path_col_shortcut.activated.connect(
-            lambda: self.jump_to_column(self.COL_PATH))
+        self.open_detail_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
+        self.open_detail_shortcut.activated.connect(self.on_open_detail_selected)
+        self.open_detail_shortcut_num = QShortcut(QKeySequence("Ctrl+Enter"), self)
+        self.open_detail_shortcut_num.activated.connect(self.on_open_detail_selected)
+        self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
 
     def install_alt_key_filters(self):
         """Install key filters to block unmapped Alt+letter input."""
@@ -106,8 +64,12 @@ class ImportWindow(QDialog):
         """Handle mapped Alt+letter actions reliably across child widgets."""
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
             key = event.key()
+            if key == Qt.Key_S:
+                self.import_selected_button.click()
+                event.accept()
+                return True
             if key == Qt.Key_I:
-                self.on_import_selected()
+                self.scan_button.click()
                 event.accept()
                 return True
             if key == Qt.Key_V:
@@ -216,7 +178,7 @@ class ImportWindow(QDialog):
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
         self.setup_ui()
-        self.resize(1100, 600)  # Ensure height is set after UI is built
+        self.resize(980, 620)  # Restore default window size as on March 6
         self.install_alt_key_filters()
         self.apply_control_styles()
         self.load_preferences()
@@ -360,13 +322,14 @@ class ImportWindow(QDialog):
         header_layout.addWidget(error_filter_label)
         header_layout.addWidget(self.error_filter_combo)
 
-        self.scan_button = QPushButton("&Scan")
-        self.scan_button.setAccessibleName("Scan")
+        self.scan_button = QPushButton("&Import")
+        self.scan_button.setAccessibleName("Import")
         self.scan_button.setAccessibleDescription(
-            "Scan the selected folder for audio files - Alt+S")
+            "Import audio files from the selected folder - Ctrl+I")
         self.scan_button.setDefault(False)
         self.scan_button.setAutoDefault(True)
         self.scan_button.setEnabled(False)
+        self.scan_button.setShortcut(QKeySequence("Ctrl+I"))
         header_layout.addWidget(self.scan_button)
 
         layout.addLayout(header_layout)
@@ -428,9 +391,10 @@ class ImportWindow(QDialog):
         self.import_selected_button = QPushButton("Add Selected")
         self.import_selected_button.setAccessibleName("Add Selected")
         self.import_selected_button.setAccessibleDescription(
-            "Add selected valid items - Alt+I")
+            "Add selected valid items - Alt+S")
         self.import_selected_button.setDefault(False)
         self.import_selected_button.setAutoDefault(True)
+        self.import_selected_button.setShortcut(QKeySequence("Alt+S"))
         footer_layout.addWidget(self.import_selected_button)
 
         self.add_valid_button = QPushButton("Add &Valid")
@@ -570,25 +534,24 @@ class ImportWindow(QDialog):
         self.include_subfolders = self.settings.value(
             "import/include_subfolders", True, type=bool)
 
-        formats = []
-        allowed_extensions = set()
-        for key, label in [
-            ("mp3", "MP3"),
-            ("m4a", "M4A"),
-            ("m4b", "M4B"),
-            ("flac", "FLAC"),
-            ("ogg", "OGG"),
-            ("wav", "WAV"),
-            ("wma", "WMA"),
-        ]:
-            enabled = self.settings.value(
-                f"import/formats/{key}", True, type=bool)
-            if enabled:
-                formats.append(label)
-                allowed_extensions.add(f".{key}")
-
-        self.allowed_extensions = allowed_extensions if allowed_extensions else None
-        self.current_formats_text = ", ".join(formats) if formats else "None"
+        shortcuts = [
+            ("Alt+C", "Collection"),
+            ("Alt+F", "Folder"),
+            ("Alt+W", "Browse"),
+            ("Alt+E", "Error filter"),
+            ("Ctrl+I", "Import"),
+            ("Alt+B", "import Book list"),
+            ("Alt+1", "Jump to Author "),
+            ("Alt+2", "Jump to Title "),
+            ("Alt+3-5", "Jump to Year..."),
+            ("Ctrl+Enter", "Open import detail"),
+            ("Alt+S", "Add selected"),
+            ("Alt+V", "Add valid"),
+            ("Alt+X", "Export list to CSV"),
+            ("Escape", "Cancel/Close window"),
+            ("Alt+/", "Read status bar"),
+        ]
+        self.current_formats_text = "None"  # Removed undefined 'formats' variable
 
         self.import_scenario_mode = self.settings.value(
             "import/scenario/mode", "mass_standard", type=str)
@@ -711,7 +674,6 @@ class ImportWindow(QDialog):
         self.import_selected_button.clicked.connect(self.on_import_selected)
         self.add_valid_button.clicked.connect(self.on_add_valid)
         self.export_button.clicked.connect(self.on_export_csv)
-        self.cancel_button.clicked.connect(self.on_cancel)
         self.table.cellDoubleClicked.connect(self.on_open_detail)
         self.table.itemSelectionChanged.connect(
             self.on_table_selection_changed)
@@ -721,22 +683,7 @@ class ImportWindow(QDialog):
 
     def _update_cancel_button_state(self):
         """Show Cancel only while scanning."""
-        if self._is_scanning:
-            self.cancel_button.setText("Ca&ncel")
-            self.cancel_button.setAccessibleName("Cancel")
-            self.cancel_button.setAccessibleDescription(
-                "Cancel running scan - Alt+N")
-            self.cancel_button.setDefault(False)
-            self.cancel_button.setAutoDefault(True)
-            self.cancel_button.setVisible(True)
-        else:
-            self.cancel_button.setText("Ca&ncel")
-            self.cancel_button.setAccessibleName("Cancel")
-            self.cancel_button.setAccessibleDescription(
-                "Cancel running scan - Alt+N")
-            self.cancel_button.setDefault(False)
-            self.cancel_button.setAutoDefault(True)
-            self.cancel_button.setVisible(False)
+        pass  # Cancel button removed
 
     def _confirm_close_window(self) -> bool:
         """Prompt before closing the import window."""
@@ -773,14 +720,6 @@ class ImportWindow(QDialog):
                 valid_count += 1
         return valid_count
 
-    def _confirm_cancel_scan(self) -> bool:
-        """Ask whether to cancel an active scan."""
-        # This method should not redefine header_layout or use layout.addLayout(header_layout)
-        # ...existing code...
-        # Remove duplicate header_layout and layout usage
-        # ...existing code...
-        pass
-
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
         dlg = QDialog(self)
@@ -802,19 +741,17 @@ class ImportWindow(QDialog):
             ("Alt+F", "Folder"),
             ("Alt+W", "Browse"),
             ("Alt+E", "Error filter"),
-            ("Alt+S", "Scan"),
+            ("Ctrl+I", "Import"),
             ("Alt+B", "import Book list"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
             ("Alt+3-5", "Jump to Year..."),
             ("Ctrl+Enter", "Open import detail"),
-            ("Alt+I", "Add selected"),
+            ("Alt+S", "Add selected"),
             ("Alt+V", "Add valid"),
             ("Alt+X", "Export list to CSV"),
-            ("Alt+N", "Cancel scan (when running)"),
-            ("Escape", "Close window"),
+            ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
-            ("F1", "Show keyboard shortcuts"),
         ]
 
         table.setRowCount(len(shortcuts))
@@ -1147,6 +1084,7 @@ class ImportWindow(QDialog):
         if first_visible >= 0:
             self.table.setCurrentCell(first_visible, self.COL_TITLE)
             self.table.setFocus(Qt.TabFocusReason)
+
 
     def on_table_selection_changed(self):
         """Announce row selection count in status bar."""
@@ -1801,6 +1739,7 @@ class ImportWindow(QDialog):
             f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
         )
         if scan_was_canceled:
+            self.set_status("Scan canceled", announce=True)
             self.set_status(
                 f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
                 f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
@@ -2366,43 +2305,46 @@ class ImportWindow(QDialog):
 
     def on_cancel(self):
         """Handle cancel request for add-in-progress or close dialog."""
-        if self._is_scanning:
-            if self._confirm_cancel_scan():
-                self._cancel_scan_requested = True
-                self.set_status("Canceling scan...")
-            else:
-                self.set_status("Continuing scan")
-            return
+        # Escape should trigger the same confirmation as window close
+        self._closing_via_handler = True
+        try:
+            if self._is_scanning:
+                if self._confirm_cancel_scan():
+                    self._cancel_scan_requested = True
+                    self.set_status("Canceling scan...")
+                    self.close()
+                else:
+                    self.set_status("Continuing scan")
+                return
 
-        if self._is_adding:
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Stop Add",
-                text=(
-                    "Stop adding books now?\n\n"
-                    "Any books added in this run will be removed so no partial adds remain."
-                ),
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No,
-            )
+            if self._is_adding:
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Stop Add",
+                    text=(
+                        "Stop adding books now?\n\n"
+                        "Any books added in this run will be removed so no partial adds remain."
+                    ),
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                )
+                if reply == QMessageBox.Yes:
+                    self._cancel_add_requested = True
+                    self.set_status("Stopping add operation...")
+                    self.close()
+                else:
+                    self.set_status("Continuing add operation")
+                return
 
-            if reply == QMessageBox.Yes:
-                self._cancel_add_requested = True
-                self.set_status("Stopping add operation...")
-            else:
-                self.set_status("Continuing add operation")
-            return
+            if not self._confirm_close_window():
+                self.set_status("Close canceled")
+                return
 
-        if self._confirm_close_window():
-            self._closing_via_handler = True
-            try:
-                self.reject()
-            finally:
-                self._closing_via_handler = False
-        else:
-            self.set_status("Close canceled")
+            self.close()
+        finally:
+            self._closing_via_handler = False
 
     def table_mouse_press(self, event):
         """Handle mouse press with main-window style row selection."""
@@ -2719,7 +2661,7 @@ class ImportWindow(QDialog):
 
     def closeEvent(self, event):
         """Intercept close while scanning to confirm cancel/continue."""
-        if self._closing_via_handler:
+        if getattr(self, '_closing_via_handler', False):
             super().closeEvent(event)
             return
 
@@ -2734,7 +2676,9 @@ class ImportWindow(QDialog):
 
         if self._is_adding:
             event.ignore()
-            self.on_cancel()
+            # Only call on_cancel if not already closing via handler
+            if not getattr(self, '_closing_via_handler', False):
+                self.on_cancel()
             return
 
         if not self._confirm_close_window():

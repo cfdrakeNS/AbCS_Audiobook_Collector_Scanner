@@ -24,11 +24,11 @@ from PySide6.QtWidgets import (
     QHeaderView,
 )
 
-from accessibility.accessible_events import announce_status_message
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
-from accessibility.theme_manager import ThemeManager
-from database import (
+from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
+from src.accessibility.theme_manager import ThemeManager
+from src.database import (
     DatabaseManager,
     AuthorQueries,
     GenreQueries,

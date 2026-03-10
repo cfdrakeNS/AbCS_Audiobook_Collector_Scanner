@@ -15,9 +15,9 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 
-from accessibility.scaling import UIScaler
-from accessibility.style_helpers import build_accessible_button_style
-from accessibility.theme_manager import ThemeManager
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_button_style
+from src.accessibility.theme_manager import ThemeManager
 
 
 class DisplaySetupWizard(QDialog):

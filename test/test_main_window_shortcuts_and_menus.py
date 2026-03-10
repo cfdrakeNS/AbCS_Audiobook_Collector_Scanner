@@ -8,13 +8,13 @@ from pathlib import Path
 
 import pytest
 
-from accessibility.scaling import UIScaler
-from accessibility.shortcuts import ShortcutManager
-from accessibility.theme_manager import ThemeManager
-from database.connection import DatabaseManager
-from database.models import Collection
-from database.queries import CollectionQueries
-from ui.main_window import MainWindow
+from src.accessibility.scaling import UIScaler
+from src.accessibility.shortcuts import ShortcutManager
+from src.accessibility.theme_manager import ThemeManager
+from src.database.connection import DatabaseManager
+from src.database.models import Collection
+from src.database.queries import CollectionQueries
+from src.ui.main_window import MainWindow
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

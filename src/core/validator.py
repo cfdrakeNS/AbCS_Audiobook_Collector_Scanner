@@ -181,7 +181,7 @@ class ImportValidator:
         Returns:
             Normalized title
         """
-        from core.import_scanner import ImportScanner
+        from src.core.import_scanner import ImportScanner
         scanner = ImportScanner()
         book = {"title": title}
         scanner.trim_whitespace = True
