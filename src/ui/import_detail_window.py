@@ -893,9 +893,9 @@ class ImportDetailWindow(QDialog):
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
-        self.collection_combo.setEditable(True)
-        self.collection_combo.lineEdit().setReadOnly(True)
-        self.collection_combo.setEnabled(False)
+        self.collection_combo.setEditable(
+            False)  # Make read-only, not editable
+        self.collection_combo.setEnabled(True)    # Always enabled for focus
         collection_label.setBuddy(self.collection_combo)
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
@@ -919,7 +919,7 @@ class ImportDetailWindow(QDialog):
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
-        self.bitrate_edit.setMaximumWidth(95)
+        collection_label = QLabel("Collection:")
         bitrate_label.setBuddy(self.bitrate_edit)
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
@@ -1045,6 +1045,13 @@ class ImportDetailWindow(QDialog):
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+
+        self.collection_shortcut = QShortcut(QKeySequence("Alt+C"), self)
+        self.collection_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+
+        def focus_collection():
+            self.collection_combo.setFocus()
+        self.collection_shortcut.activated.connect(focus_collection)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""

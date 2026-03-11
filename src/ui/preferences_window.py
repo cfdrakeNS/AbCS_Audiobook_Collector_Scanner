@@ -290,18 +290,19 @@ class PreferencesWindow(QDialog):
             "Review clean books before adding")
         self.auto_add_clean_books_check.setAccessibleDescription(
             "Keep valid books in Import Window for review and Add Valid when enabled")
-        self.flip_author_check = QCheckBox("Flip Author Last, First")
-        self.flip_author_check.setAccessibleName("Flip author name")
+        self.flip_author_check = QCheckBox("Flip Author Name Last, First")
+        self.flip_author_check.setAccessibleName(
+            "Flip author name Last, First")
         self.flip_author_check.setAccessibleDescription(
             "Flip author names to Last, First during import")
         self.autocorrect_proper_case_check = QCheckBox(
             "Apply proper case")
         self.autocorrect_proper_case_check.setAccessibleName(
-            "Proper case fields")
+            "Apply proper case to fields")
         self.autocorrect_move_the_check = QCheckBox(
             "Move leading 'The' to end of title")
         self.autocorrect_move_the_check.setAccessibleName(
-            "Move leading The to end of title")
+            "Move leading 'The' to end of title")
         options_layout.addWidget(self.auto_add_clean_books_check, 0, 0)
         options_layout.addWidget(self.flip_author_check, 0, 1)
         options_layout.addWidget(self.autocorrect_proper_case_check, 1, 0)
@@ -369,10 +370,10 @@ class PreferencesWindow(QDialog):
         self.rules_section_text = QTextEdit()
         self.rules_section_text.setReadOnly(True)
         self.rules_section_text.setTabChangesFocus(True)
-        self.rules_section_text.setAccessibleName(
-            "Author and title rules description")
-        self.rules_section_text.setAccessibleDescription(
-            "Read-only description for author and title validation rules")
+        # self.rules_section_text.setAccessibleName(
+        #     "Author and title rules description")
+        # self.rules_section_text.setAccessibleDescription(
+        #     "")
         self.rules_section_text.setFocusPolicy(Qt.StrongFocus)
         self.rules_section_text.setTextInteractionFlags(
             Qt.TextSelectableByKeyboard)
@@ -531,18 +532,14 @@ class PreferencesWindow(QDialog):
             combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
             combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        validation_layout.addWidget(rules_group, 0, Qt.AlignLeft)
         validation_layout.addWidget(self.rules_section_text)
+        validation_layout.addWidget(rules_group, 0, Qt.AlignLeft)
         import_layout.addWidget(validation_group)
         import_layout.addSpacing(self.scaler.get_scaled_size(8))
 
         self.autocorrect_section_text = QTextEdit()
         self.autocorrect_section_text.setReadOnly(True)
         self.autocorrect_section_text.setTabChangesFocus(True)
-        self.autocorrect_section_text.setAccessibleName(
-            "Auto correction description")
-        self.autocorrect_section_text.setAccessibleDescription(
-            "Read-only description for auto-correction settings")
         self.autocorrect_section_text.setFocusPolicy(Qt.StrongFocus)
         self.autocorrect_section_text.setTextInteractionFlags(
             Qt.TextSelectableByKeyboard)
@@ -584,10 +581,9 @@ class PreferencesWindow(QDialog):
         self.autocorrect_layout.addWidget(self.autocorrect_strip_punct_check)
         self.autocorrect_layout.addWidget(self.autocorrect_non_alnum_check)
         self.autocorrect_layout.addStretch(1)
-
+        autocorrect_block_layout.addWidget(self.autocorrect_section_text)
         autocorrect_block_layout.addWidget(
             self.autocorrect_group, 0, Qt.AlignLeft)
-        autocorrect_block_layout.addWidget(self.autocorrect_section_text)
         import_layout.addWidget(autocorrect_block_group)
         self._sync_autocorrect_group_width()
 
@@ -1353,12 +1349,12 @@ class PreferencesWindow(QDialog):
     def focus_validation_section(self):
         """Focus first control in Validation Rules section."""
         self._focus_section_widget(
-            self.rule_author_in_title_severity, "Validation Rules")
+            self.rules_section_text, "Validation Rules")
 
     def focus_autocorrect_section(self):
         """Focus first control in Auto-Correction section."""
         self._focus_section_widget(
-            self.autocorrect_trim_check, "Auto-Correction")
+            self.autocorrect_section_text, "Auto-Correction")
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""

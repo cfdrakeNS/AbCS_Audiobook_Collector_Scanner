@@ -1537,7 +1537,8 @@ class MainWindow(QMainWindow):
 
         exact_check = QCheckBox("E&xact match")
         exact_check.setAccessibleName("Exact match")
-        exact_check.setChecked(True)
+        # Always default to unchecked (False) every time dialog opens
+        exact_check.setChecked(False)
         field_row.addSpacing(12)
         field_row.addWidget(exact_check)
         layout.addLayout(field_row)
@@ -1573,7 +1574,15 @@ class MainWindow(QMainWindow):
 
         if self.current_filter.search_text:
             text_edit.setText(self.current_filter.search_text)
-        exact_check.setChecked(not self.current_filter.is_keyword_search)
+        # Only override with filter if user changed during session
+        # settings = QSettings('AbCS', 'AudioBookCollector')
+        # Always start unchecked; do not override with previous session
+        # Persist Exact Match setting on change
+
+        def update_exact_match_setting():
+            settings = QSettings('AbCS', 'AudioBookCollector')
+            settings.setValue('find/exact_match', exact_check.isChecked())
+        exact_check.stateChanged.connect(update_exact_match_setting)
 
         self._find_filter_widgets = {
             dialog, field_combo, text_edit, exact_check}
@@ -1613,6 +1622,17 @@ class MainWindow(QMainWindow):
                 QApplication.beep()
                 dialog_status.showMessage(message)
                 self.set_status(message, timeout_ms=3000, announce=True)
+                # Popup for screen reader users
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Information,
+                    title="No Match Found",
+                    text=message,
+                )
+                # Clear filter so new search works
+                self.current_filter.search_text = ""
+                self.refresh_books()
                 return
 
             found_book = self.books[0]
@@ -1630,7 +1650,12 @@ class MainWindow(QMainWindow):
         field_combo.activated.connect(lambda _index: text_edit.setFocus())
         QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
 
-        dialog.exec()
+        result = dialog.exec()
+
+        # If dialog closed and no match was found, clear filter
+        if not self.books or (result != QDialog.Accepted and self.current_filter.search_text):
+            self.current_filter.search_text = ""
+            self.refresh_books()
 
         for widget in self._find_filter_widgets:
             widget.removeEventFilter(self)

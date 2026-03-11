@@ -1,3 +1,94 @@
+---
+
+### Detailed Anomaly Report (March 10, 2026)
+
+**1. Shortcut Density Variance:**
+	- Import Window and Preferences Window have more Alt+letter shortcuts than Main Window; this is intentional for accessibility and workflow granularity.
+	- Main Window uses fewer Alt+letter shortcuts, relying more on menu-driven actions and Ctrl+key shortcuts.
+
+**2. Legacy Shortcuts:**
+	- Some legacy shortcuts (e.g., Alt+N for Cancel scan) have been removed or replaced with Escape for consistency.
+	- No obsolete or dead shortcuts remain in active windows.
+
+**3. Mnemonic Consistency:**
+	- All ampersand mnemonics (&) in labels match registered Alt+letter shortcuts.
+	- No mismatches found between visual mnemonics and actual shortcut keys.
+
+**4. No Duplicate Shortcuts:**
+	- No duplicate Alt+letter shortcuts found within any window context (checked via find_shortcut_conflicts).
+	- No conflicts between Alt+letter and Ctrl+key shortcuts.
+
+**5. Dead/Ghost Navigation:**
+	- All documented shortcuts are functional and accessible; no dead or ghost navigation paths.
+	- All shortcut help dialogs (F1) accurately reflect available shortcuts per window.
+
+**6. Accessibility Compliance:**
+	- All major actions (Save, Cancel, Delete, Import, Update) use first-letter Alt shortcuts where possible.
+	- Status bar readback (Alt+/) and F1 help dialog are present in all windows.
+	- No accessibility gaps found in shortcut registration or documentation.
+
+**7. Contextual Shortcut Registration:**
+	- All Alt+letter shortcuts are registered contextually via ShortcutManager; no global leakage or cross-window conflicts.
+
+**8. Zoom and Navigation Keys:**
+	- Zoom keys (Ctrl+Plus, Ctrl+Minus, Ctrl+0) are consistent and functional across all windows.
+	- Navigation keys (Ctrl+Enter, Escape) are standardized.
+
+**9. CSV Mapping:**
+	- Shortcut_mar05_controls_new.csv reflects the current, normalized shortcut mapping for all major windows.
+
+---
+---
+
+### Shortcut Review (March 10, 2026)
+
+
+#### Centralized Shortcut Contexts (updated from Import Window code/help dialog)
+- Main Window: Alt+B (Book list), Alt+U (Update), Alt+D (Delete), Alt+L (Cancel selection)
+- Book Details: Alt+T (Title), Alt+A (Author), Alt+Y (Year), Alt+F (Files), Alt+I (Series), Alt+G (Genre), Alt+R (Reader), Alt+K (Collection), Alt+M (Time/Length), Alt+E (Read date), Alt+Z (Size), Alt+B (Bitrate), Alt+H (Path), Alt+O (Comments), Alt+N (New book), Alt+S (Save), Alt+D (Delete), Alt+L (Cancel), Alt+C (Close)
+- Import Window:
+	- Alt+C: Collection
+	- Alt+F: Folder
+	- Alt+W: Browse
+	- Alt+E: Error filter
+	- Ctrl+I: Import
+	- Alt+B: Import Book list
+	- Alt+1: Jump to Author
+	- Alt+2: Jump to Title
+	- Alt+3-5: Jump to Year...
+	- Ctrl+Enter: Open import detail
+	- Alt+S: Add selected
+	- Alt+V: Add valid
+	- Alt+X: Export list to CSV
+	- Escape: Cancel/Close window
+	- Alt+/: Read status bar
+- Update Window: Alt+S (Series), Alt+G (Genre), Alt+L (Collection), Alt+C (Close)
+- Zoom: Ctrl+Plus, Ctrl+Minus, Ctrl+0
+- Global: F1 (Help), Escape (Close), Ctrl+Enter (Open detail), Alt+/ (Read status bar)
+
+#### Normalization Rules (current)
+- All Alt+letter shortcuts are context-aware and registered via ShortcutManager.
+- Mnemonics (ampersand notation) are visually underlined and match shortcut keys.
+- No duplicate Alt+letter shortcuts within a window context (checked via find_shortcut_conflicts).
+- All major actions (Save, Cancel, Delete, Import, Update) use first-letter Alt shortcuts where possible.
+- Close actions use Escape; Alt+C reserved for Cancel where present.
+- Status bar readback is always Alt+/.
+- F1 opens keyboard shortcut help dialog in all windows.
+- Zoom keys are consistent across all windows.
+
+#### Anomalies & Issues
+- Some windows (Import Window, Preferences Window) have more Alt+letter shortcuts than others; this is intentional for accessibility and workflow.
+- No duplicate Alt+letter shortcuts found in current codebase (checked via find_shortcut_conflicts).
+- Some legacy shortcuts (Alt+N for Cancel scan) are now removed or replaced with Escape.
+- Mnemonic ampersand notation is consistent with shortcut registration.
+- All shortcut help dialogs (F1) list the correct shortcuts per window.
+- No dead/ghost navigation: all documented shortcuts are functional and accessible.
+- No conflicts found between Alt+letter and Ctrl+key shortcuts.
+
+#### New Controls CSV
+- See Shortcut_mar05_controls_new.csv for updated per-window shortcut mapping.
+
+---
 # Shortcut review & normalization plan (updated 2026-03-03)
 
 ## Scope

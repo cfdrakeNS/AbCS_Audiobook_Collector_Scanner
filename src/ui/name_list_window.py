@@ -767,13 +767,14 @@ class NameListWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+F", "Find"),
+            ("Alt+F", "Find") if not self.is_collection_mode else None,
             ("Alt+M", "Name edit"),
             ("Alt+E", "Edit selected row"),
             ("Alt+B", "Jump to list"),
             ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
-            ("Alt+S", "Save"),
-            ("Alt+L", "Cancel edit/new"),
+            ("Alt+S", "Save") if self.save_button.isVisible() and self.save_button.isEnabled() else None,
+            ("Alt+L", "Cancel edit/new") if self.cancel_button.isVisible(
+            ) and self.cancel_button.isEnabled() else None,
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),

@@ -1,0 +1,18 @@
+Shortcut,backup_restore_window,book_details,collection_window,import_detail_window,import_progress_window,import_window,main_window,name_list_window,preferences_window,update_window
+Alt+/,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar
+Alt+1,,,,,,Jump to Author,,,,
+Alt+2,,,,,,Jump to Title,,,,
+Alt+3-5,,,,,,Jump to Year...,,,,
+Alt+B,,,,,,Import Book list,Book list,,,Book list
+Alt+C,,,,Collection,,,,Cancel,,
+Alt+E,,,,,,Error filter,,,,
+Alt+F,,,,,,Folder,,,,Fallback and Parsing Behavior section
+Alt+S,,,,,,Add selected,,,,Save
+Alt+V,,,,,,Add valid,,,,Save
+Alt+W,,,,,,Browse,,,,
+Alt+X,,,,,,Export list to CSV,,,,
+Ctrl+I,,,,,,Import,,,,
+Ctrl+Enter,,,,,,Open import detail,,,,
+Escape,,,,,,Cancel/Close window,,,,
+Alt+/,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar,Read status bar
+F1,Show this help,Show this help,Show this help,Show keyboard shortcuts,Show this help,Show keyboard shortcuts,Show keyboard shortcuts,Show this help,Show this help,Show keyboard shortcuts

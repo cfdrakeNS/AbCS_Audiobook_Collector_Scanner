@@ -482,7 +482,7 @@ class BookDetailsWindow(QDialog):
         row4_layout.addWidget(genre_label)
         row4_layout.addWidget(self.genre_combo, 1)
 
-        collection_label = QLabel("Collection (&K):")
+        collection_label = QLabel("Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
@@ -709,6 +709,12 @@ class BookDetailsWindow(QDialog):
         self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.cancel_shortcut.activated.connect(self.on_cancel_shortcut)
 
+        # Alt+C focuses collection combo
+        self.collection_shortcut = QShortcut(QKeySequence("Alt+C"), self)
+        self.collection_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.collection_shortcut.activated.connect(
+            lambda: self.collection_combo.setFocus())
+
     def on_cancel_shortcut(self):
         """Handle Alt+L when Cancel is available."""
         if self.cancel_button.isVisible():
@@ -900,7 +906,6 @@ class BookDetailsWindow(QDialog):
 
         # Shortcuts list
         shortcuts = [
-            ("Alt+/", "Read status bar"),
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
             ("Alt+O", "Comments"),
@@ -910,7 +915,7 @@ class BookDetailsWindow(QDialog):
             ("Alt+E", "Read date"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+K", "Collection"),
+            ("Alt+C", "Collection"),
             ("Alt+F", "Files"),
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
@@ -922,6 +927,7 @@ class BookDetailsWindow(QDialog):
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
             ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
 

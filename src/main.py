@@ -74,8 +74,8 @@ def show_launch_message_if_executable():
 show_launch_message_if_executable()
 
 # Version information - update this with each release
-APP_VERSION = "1.7.3"
-APP_BUILD_DATE = "2026-03-03"
+APP_VERSION = "1.8.1"
+APP_BUILD_DATE = "2026-03-11"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'

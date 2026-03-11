@@ -35,15 +35,15 @@ class BackupRestoreWindow(QDialog):
     """Manage database backups, restore, and full reset."""
 
     ALLOWED_ALT_LETTERS = {
-        'B', 'D', 'F', 'L', 'O', 'R', 'T'
+        'B', 'D', 'F', 'K', 'R', 'T', 'W'
     }
 
     ALT_SHORTCUT_STATUS = {
-        Qt.Key_B: "Alt+B: Backup",
+        Qt.Key_K: "Alt+K: Create backup",
+        Qt.Key_B: "Alt+B: Backup list",
+        Qt.Key_W: "Alt+W: Browse",
         Qt.Key_D: "Alt+D: Delete",
         Qt.Key_F: "Alt+F: Full reset",
-        Qt.Key_L: "Alt+L: Backup list",
-        Qt.Key_O: "Alt+O: Browse",
         Qt.Key_R: "Alt+R: Restore",
         Qt.Key_T: "Alt+T: Focus restore file",
     }
@@ -56,21 +56,17 @@ class BackupRestoreWindow(QDialog):
         parent=None,
     ):
         super().__init__(parent)
-
         self.db = db
         self.scaler = scaler
         self.theme_manager = theme_manager
         self.data_changed = False
-        self._default_status_message = "Ready"
-        self._restore_file_explicitly_selected = False
         self._suppress_backup_selection_events = False
-
+        self._restore_file_explicitly_selected = False
         self.setup_ui()
         self.setup_shortcuts()
         self.install_event_filters()
         self.apply_control_styles()
         self.refresh_backup_list()
-
         self.setWindowTitle("Backup / Restore")
         self.setAccessibleName("Backup Restore")
         self.setAccessibleDescription(
@@ -129,7 +125,7 @@ class BackupRestoreWindow(QDialog):
         self.browse_button = QPushButton("Br&owse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a backup file to restore - Alt+O"
+            "Browse for a backup file to restore - Alt+W"
         )
         browse_layout.addWidget(self.browse_button)
         browse_layout.addStretch(1)
@@ -149,10 +145,10 @@ class BackupRestoreWindow(QDialog):
         layout.addLayout(restore_layout)
 
         footer_layout = QHBoxLayout()
-        self.backup_button = QPushButton("&Backup")
+        self.backup_button = QPushButton("Backup")
         self.backup_button.setAccessibleName("Backup")
         self.backup_button.setAccessibleDescription(
-            "Create a backup in the default backup folder - Alt+B"
+            "Create a backup in the default backup folder - Alt+K"
         )
 
         self.restore_button = QPushButton("&Restore")
@@ -207,8 +203,14 @@ class BackupRestoreWindow(QDialog):
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape_shortcut.activated.connect(self.accept)
 
-        self.list_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
         self.list_shortcut.activated.connect(self.focus_backup_list)
+
+        self.browse_shortcut = QShortcut(QKeySequence("Alt+W"), self)
+        self.browse_shortcut.activated.connect(self.on_browse)
+
+        self.backup_shortcut = QShortcut(QKeySequence("Alt+K"), self)
+        self.backup_shortcut.activated.connect(self.on_backup)
 
         self.restore_file_shortcut = QShortcut(QKeySequence("Alt+T"), self)
         self.restore_file_shortcut.activated.connect(self.focus_restore_file)
@@ -233,6 +235,10 @@ class BackupRestoreWindow(QDialog):
         self.delete_button.installEventFilter(self)
         self.full_reset_button.installEventFilter(self)
         self.status_bar.installEventFilter(self)
+        # Add Delete key shortcut for backup_list
+        delete_shortcut = QShortcut(
+            QKeySequence(Qt.Key_Delete), self.backup_list)
+        delete_shortcut.activated.connect(self.on_delete_backup)
 
     def eventFilter(self, source, event):
         if event.type() in (QEvent.FocusIn, QEvent.FocusOut):
@@ -278,10 +284,10 @@ class BackupRestoreWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+L", "Backup list"),
-            ("Alt+O", "Browse for restore file"),
+            ("Alt+B", "Backup list"),
+            ("Alt+W", "Browse for restore file"),
             ("Alt+T", "Focus restore file"),
-            ("Alt+B", "Create backup"),
+            ("Alt+K", "Create backup"),
             ("Alt+R", "Run restore from selected backup"),
             ("Alt+D", "Delete selected backup"),
             ("Alt+F", "Full reset"),
@@ -501,13 +507,13 @@ class BackupRestoreWindow(QDialog):
         self.set_status("Restore completed")
 
     def on_delete_backup(self):
-        if not self._is_backup_list_focused() or not self._has_backup_list_selection():
+        if not self._has_backup_list_selection():
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="No Backup Selected",
-                text="Focus Backup List and select a backup file before deleting.",
+                text="Select a backup file before deleting.",
             )
             self.set_status(
                 "Delete canceled: no backup row selected in Backup List")

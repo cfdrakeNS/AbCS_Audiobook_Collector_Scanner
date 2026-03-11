@@ -42,12 +42,17 @@ class ImportWindow(QDialog):
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
         self.focus_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
         self.focus_list_shortcut.activated.connect(self.on_focus_list)
-        self.open_detail_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
-        self.open_detail_shortcut.activated.connect(self.on_open_detail_selected)
-        self.open_detail_shortcut_num = QShortcut(QKeySequence("Ctrl+Enter"), self)
-        self.open_detail_shortcut_num.activated.connect(self.on_open_detail_selected)
+        self.open_detail_shortcut = QShortcut(
+            QKeySequence("Ctrl+Return"), self)
+        self.open_detail_shortcut.activated.connect(
+            self.on_open_detail_selected)
+        self.open_detail_shortcut_num = QShortcut(
+            QKeySequence("Ctrl+Enter"), self)
+        self.open_detail_shortcut_num.activated.connect(
+            self.on_open_detail_selected)
         self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
+        self.read_status_bar_shortcut.activated.connect(
+            self.on_read_status_bar)
 
     def install_alt_key_filters(self):
         """Install key filters to block unmapped Alt+letter input."""
@@ -178,7 +183,8 @@ class ImportWindow(QDialog):
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
         self.setup_ui()
-        self.resize(980, 620)  # Restore default window size as on March 6
+        # Set default window size to 1300x800 (March 11)
+        self.resize(1400, 800)
         self.install_alt_key_filters()
         self.apply_control_styles()
         self.load_preferences()
@@ -1084,7 +1090,6 @@ class ImportWindow(QDialog):
         if first_visible >= 0:
             self.table.setCurrentCell(first_visible, self.COL_TITLE)
             self.table.setFocus(Qt.TabFocusReason)
-
 
     def on_table_selection_changed(self):
         """Announce row selection count in status bar."""
