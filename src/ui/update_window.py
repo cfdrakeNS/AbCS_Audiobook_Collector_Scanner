@@ -1,28 +1,53 @@
-"""
-Update Window - Bulk update for selected books.
-Allows mass updating or removing of Series, Genre, and Collection for selected books.
-Updates occur immediately when a selection is made.
-"""
-
-import re
-
+from src.accessibility.style_helpers import exec_styled_message_box
+from src.accessibility.scaling import UIScaler
+from src.accessibility.accessible_events import announce_status_message
+from src.database import (
+    DatabaseManager, Book, BookQueries, SeriesQueries,
+    GenreQueries, CollectionQueries
+)
+import time
+from typing import Set, List
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QComboBox, QPushButton, QLabel, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QStatusBar, QMessageBox, QApplication,
 )
-from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
-from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
-from typing import Set, List
-import time
+import re
 
-from src.database import (
-    DatabaseManager, Book, BookQueries, SeriesQueries,
-    GenreQueries, CollectionQueries
-)
-from src.accessibility.accessible_events import announce_status_message
-from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import exec_styled_message_box
+
+def setup_shortcuts(self):
+    from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+    mgr = get_shortcut_manager()
+    callback_map = {
+        'series_combo': self.series_combo.setFocus,
+        'genre_combo': self.genre_combo.setFocus,
+        'collection_combo': self.collection_combo.setFocus,
+        'book_list': self.focus_book_list,
+        'status_bar': self.on_read_status_bar,
+    }
+    mgr.register_alt_shortcuts(
+        self, ShortcutContext.UPDATE_WINDOW, callback_map)
+
+    # Escape to close
+    escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+    escape_shortcut.activated.connect(self.accept)
+
+    # F1 for keyboard shortcuts help
+    help_shortcut = QShortcut(QKeySequence("F1"), self)
+    help_shortcut.activated.connect(self.on_show_shortcuts)
+
+    # Explicit Alt+/ registration as fallback
+    alt_slash_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+    alt_slash_shortcut.activated.connect(self.on_read_status_bar)
+
+
+"""
+Update Window - Bulk update for selected books.
+Allows mass updating or removing of Series, Genre, and Collection for selected books.
+Updates occur immediately when a selection is made.
+"""
 
 
 # Special marker for "None" option to clear a field
@@ -170,12 +195,12 @@ class UpdateWindow(QDialog):
         header_layout.addWidget(genre_label)
         header_layout.addWidget(self.genre_combo, 1)
 
-        # Collection combo (Alt+L) - only if multiple collections exist
-        self.collection_label = QLabel("Co&llection:")
+        # Collection combo (Alt+C) - only if multiple collections exist
+        self.collection_label = QLabel("&Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setAccessibleDescription(
-            "Select collection to apply - Alt+L")
+            "Select collection to apply - Alt+C")
         self.collection_label.setBuddy(self.collection_combo)
         header_layout.addWidget(self.collection_label)
         header_layout.addWidget(self.collection_combo, 1)
@@ -280,6 +305,9 @@ class UpdateWindow(QDialog):
                         Qt.Key_S, Qt.Key_G, Qt.Key_L, Qt.Key_B,
                         Qt.Key_Slash, Qt.Key_Question, Qt.Key_Up, Qt.Key_Down
                     }
+                    # Block Alt+/ from typing through
+                    if key == Qt.Key_Slash:
+                        return True
                     if Qt.Key_A <= key <= Qt.Key_Z and key not in allowed_alt_keys:
                         return True
 
@@ -695,21 +723,28 @@ class UpdateWindow(QDialog):
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'series_combo': self.series_combo.setFocus,
+            'genre_combo': self.genre_combo.setFocus,
+            'collection_combo': self.collection_combo.setFocus,
+            'book_list': self.focus_book_list,
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.UPDATE_WINDOW, callback_map)
+
         # Escape to close
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape_shortcut.activated.connect(self.accept)
-
-        # Alt+B to focus book list
-        book_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        book_list_shortcut.activated.connect(self.focus_book_list)
 
         # F1 for keyboard shortcuts help
         help_shortcut = QShortcut(QKeySequence("F1"), self)
         help_shortcut.activated.connect(self.on_show_shortcuts)
 
-        # Alt+/ reads status bar message
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.activated.connect(self.on_read_status_bar)
+        # Alt+/ reads status bar message (local only)
+        alt_slash_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        alt_slash_shortcut.activated.connect(self.on_read_status_bar)
 
     def focus_book_list(self):
         """Move focus to the book list table."""
@@ -877,7 +912,7 @@ class UpdateWindow(QDialog):
         shortcuts = [
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+L", "Collection"),
+            ("Alt+C", "Collection"),
             ("Alt+Down", "Open combo dropdown"),
             ("Alt+B", "Book list"),
             ("Escape", "Close window"),

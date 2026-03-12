@@ -112,6 +112,8 @@ class BookDetailsWindow(QDialog):
         self.series_queries = SeriesQueries(db)
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
+        # Accessibility: Shortcut manager
+        self.shortcut_manager = ShortcutManager()
 
         # Setup UI
         self.setup_ui()
@@ -185,6 +187,13 @@ class BookDetailsWindow(QDialog):
         bd#2: When a field gains focus, we deselect text so the user doesn't
         accidentally overwrite existing content by pressing a key.
         """
+        # Debug: Trace all key events for Alt+ shortcuts
+        if event.type() == QEvent.KeyPress:
+            key = event.key()
+            modifiers = event.modifiers()
+            if modifiers & Qt.AltModifier:
+                print(
+                    f"DEBUG: Alt+ key pressed: {key}, source: {source.objectName() if hasattr(source, 'objectName') else str(source)}")
         if event.type() == QEvent.FocusIn:
             # Schedule deselection AFTER Qt finishes its default focus handling
             # QTimer.singleShot(0, ...) runs on the next event loop iteration
@@ -577,28 +586,31 @@ class BookDetailsWindow(QDialog):
         button_layout = QHBoxLayout()
 
         # New button (Alt+N) - clears form for new entry
-        self.new_button = QPushButton("&New")
+        self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
         self.new_button.setAccessibleDescription(
             "Clear form for new book entry - Alt+N or Ctrl+Enter")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
+        # self.new_button.setShortcut(QKeySequence("Alt+N"))  # Commented out for accessibility
         self.new_button.clicked.connect(self.on_new)
         button_layout.addWidget(self.new_button)
 
         # Save button (Alt+S)
-        self.save_button = QPushButton("&Save")
+        self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save book")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
+        # self.save_button.setShortcut(QKeySequence("Alt+S"))  # Commented out for accessibility
         self.save_button.clicked.connect(self.on_save)
         button_layout.addWidget(self.save_button)
 
         # Delete button (Alt+D)
-        self.delete_button = QPushButton("&Delete")
+        self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete book")
         self.delete_button.setAccessibleDescription(
             "Delete this book - Alt+D or Delete key")
         self.delete_button.setFocusPolicy(Qt.StrongFocus)
+        # self.delete_button.setShortcut(QKeySequence("Alt+D"))  # Commented out for accessibility
         self.delete_button.clicked.connect(self.on_delete)
         # Hide delete for new books (nothing to delete yet)
         self.delete_button.setVisible(not self.is_new)
@@ -609,6 +621,7 @@ class BookDetailsWindow(QDialog):
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription("Cancel editing - Alt+L")
         self.cancel_button.setFocusPolicy(Qt.StrongFocus)
+        # self.cancel_button.setShortcut(QKeySequence("Alt+L"))  # Commented out for accessibility
         self.cancel_button.clicked.connect(self.on_cancel_edit)
         self.cancel_button.setVisible(False)
         button_layout.addWidget(self.cancel_button)
@@ -677,48 +690,53 @@ class BookDetailsWindow(QDialog):
 
     def setup_shortcuts(self):
         """bd#4: Setup keyboard shortcuts for buttons."""
-        # Ctrl+Enter for New (consistent with other windows)
-        self.new_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
-        self.new_shortcut.activated.connect(self.on_new)
-
-        # Delete key for Delete
-        self.delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self)
-        self.delete_shortcut.activated.connect(self.on_delete)
-
-        # Page Up for Prev
-        self.pageup_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
-        self.pageup_shortcut.activated.connect(self.on_prev)
-
-        # Page Down for Next
-        self.pagedown_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
-        self.pagedown_shortcut.activated.connect(self.on_next)
-
-        # Escape for Close
-        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        self.escape_shortcut.activated.connect(self.reject)
-
-        # F1 for Help
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
-        # Alt+/ reads status bar
+        # Restore explicit QShortcut registration for Alt+N, Alt+D, Alt+S, Alt+L
+        # QShortcut handlers now call action methods directly when visible
+        self.new_shortcut = QShortcut(QKeySequence("Alt+N"), self)
+        self.new_shortcut.activated.connect(
+            lambda: self.on_new() if self.new_button.isVisible() else None)
+        self.delete_shortcut = QShortcut(QKeySequence("Alt+D"), self)
+        self.delete_shortcut.activated.connect(
+            lambda: self.on_delete() if self.delete_button.isVisible() else None)
+        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.save_shortcut.activated.connect(
+            lambda: self.on_save() if self.save_button.isVisible() else None)
+        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.cancel_shortcut.activated.connect(
+            lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
+        # Previous focus-only handlers (commented out for reference)
+        # self.new_shortcut.activated.connect(lambda: self.new_button.setFocus() if self.new_button.isVisible() else None)
+        # ...existing code...
+        callback_map = {
+            'author_combo': lambda: self.author_combo.setFocus(),
+            'year_spin': lambda: self.year_spin.setFocus(),
+            'files_edit': lambda: self.files_edit.setFocus(),
+            'series_combo': lambda: self.series_combo.setFocus(),
+            'genre_combo': lambda: self.genre_combo.setFocus(),
+            'collection_combo': lambda: self.collection_combo.setFocus(),
+            'reader_edit': lambda: self.reader_edit.setFocus(),
+            'time_edit': lambda: self.time_edit.setFocus(),
+            'read_date': lambda: self.read_date.setFocus(),
+            'size_edit': lambda: self.size_edit.setFocus(),
+            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
+            'path_edit': lambda: self.path_edit.setFocus(),
+            'comments_edit': lambda: self.comments_edit.setFocus(),
+            'format_combo': lambda: self.format_combo.setFocus(),
+            # 'new_button': self.on_new,  # Commented out to avoid conflict
+            # 'save_button': self.on_save,  # Commented out to avoid conflict
+            # 'delete_button': self.on_delete,  # Commented out to avoid conflict
+            # 'cancel_button': self.on_cancel_edit,  # Commented out to avoid conflict
+        }
+        self.shortcut_manager.register_alt_shortcuts(
+            self, ShortcutContext.BOOK_DETAILS, callback_map)
+        # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
-        # Alt+L cancel when cancel button is active
-        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.cancel_shortcut.activated.connect(self.on_cancel_shortcut)
-
-        # Alt+C focuses collection combo
-        self.collection_shortcut = QShortcut(QKeySequence("Alt+C"), self)
-        self.collection_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.collection_shortcut.activated.connect(
-            lambda: self.collection_combo.setFocus())
-
-    def on_cancel_shortcut(self):
-        """Handle Alt+L when Cancel is available."""
-        if self.cancel_button.isVisible():
-            self.on_cancel_edit()
+        def on_cancel_shortcut(self):
+            """Handle Alt+L when Cancel is available."""
+            if self.cancel_button.isVisible():
+                self.on_cancel_edit()
 
     def on_cancel_edit(self):
         """Cancel edits and revert to standard browsing mode without closing."""
@@ -742,7 +760,8 @@ class BookDetailsWindow(QDialog):
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
         """Set status bar message with optional screen reader announcement."""
         self._default_status_message = message
-        announce_status_message(self.status_bar, message, move_focus=announce)
+        announce_status_message(
+            self.status_bar, message, move_focus=announce)
 
         if timeout_ms > 0:
             QTimer.singleShot(
@@ -890,7 +909,8 @@ class BookDetailsWindow(QDialog):
 
         # bd#16: Hide New and Delete when Save is active
         self.new_button.setVisible(not save_active)
-        self.delete_button.setVisible((not self.is_new) and (not save_active))
+        self.delete_button.setVisible(
+            (not self.is_new) and (not save_active))
         self.cancel_button.setVisible(save_active)
 
     def on_show_shortcuts(self):
@@ -1172,7 +1192,7 @@ class BookDetailsWindow(QDialog):
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="Validation Error",
-                text="Title is required.",
+                text="Title is required."
             )
             self.title_edit.setFocus()
             self.set_status("Title is required")
@@ -1187,7 +1207,7 @@ class BookDetailsWindow(QDialog):
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="Validation Error",
-                text="Author is required.",
+                text="Author is required."
             )
             self.author_combo.setFocus()
             self.set_status("Author is required")
@@ -1319,87 +1339,74 @@ class BookDetailsWindow(QDialog):
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Critical,
                 title="Error",
-                text=f"Error saving book: {str(e)}",
+                text=f"Error saving book: {str(e)}"
             )
 
     def on_delete(self):
         """Delete book."""
         # Don't allow delete for new books
-        if self.is_new:
-            return
+        try:
+            deleted_index = self.current_index
+            self.book_queries.delete(self.book.book_id)
 
-        reply = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title="Confirm Delete",
-            text=f"Are you sure you want to delete '{self.book.title}'?",
-            buttons=QMessageBox.Yes | QMessageBox.No,
-            default_button=QMessageBox.No,
-        )
+            # Remove from books_list and navigate
+            if self.books_list:
+                self.books_list.pop(deleted_index)
 
-        if reply == QMessageBox.Yes:
-            try:
-                deleted_index = self.current_index
-                self.book_queries.delete(self.book.book_id)
-
-                # Remove from books_list and navigate
-                if self.books_list:
-                    self.books_list.pop(deleted_index)
-
-                    if len(self.books_list) == 0:
-                        # No more books - close the window
-                        exec_styled_message_box(
-                            self,
-                            self.scaler.get_scaled_size(20),
-                            icon=QMessageBox.Information,
-                            title="Success",
-                            text="Book deleted. No more books.",
-                        )
-                        self.set_status("Book deleted. No more books")
-                        super().reject()
-                        return
-                    elif deleted_index >= len(self.books_list):
-                        # Was last book, move back one
-                        self.current_index = len(self.books_list) - 1
-                    # else: stay at same index (now points to next book)
-
-                    self.book = self.books_list[self.current_index]
-                    self.is_new = False
-                    self.load_book_data()
-                    self._clear_dirty()
-                    self.update_navigation_state()
-                    self.setWindowTitle("Book Details")
-                    self.setAccessibleName("Book Details")
+                if len(self.books_list) == 0:
+                    # No more books - close the window
                     exec_styled_message_box(
                         self,
                         self.scaler.get_scaled_size(20),
                         icon=QMessageBox.Information,
                         title="Success",
-                        text="Book deleted successfully!",
+                        text="Book deleted. No more books."
                     )
-                    self.set_status("Book deleted successfully")
-                else:
-                    exec_styled_message_box(
-                        self,
-                        self.scaler.get_scaled_size(20),
-                        icon=QMessageBox.Information,
-                        title="Success",
-                        text="Book deleted successfully!",
-                    )
-                    self.set_status("Book deleted successfully")
+                    self.set_status("Book deleted. No more books")
                     super().reject()
-            except Exception as e:
-                self.set_status("Error deleting book")
+                    return
+                elif deleted_index >= len(self.books_list):
+                    # Was last book, move back one
+                    self.current_index = len(self.books_list) - 1
+                # else: stay at same index (now points to next book)
+
+                self.book = self.books_list[self.current_index]
+                self.is_new = False
+                self.load_book_data()
+                self._clear_dirty()
+                self.update_navigation_state()
+                self.setWindowTitle("Book Details")
+                self.setAccessibleName("Book Details")
                 exec_styled_message_box(
                     self,
                     self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Critical,
-                    title="Error",
-                    text=f"Error deleting book: {str(e)}",
+                    icon=QMessageBox.Information,
+                    title="Success",
+                    text="Book deleted successfully!"
                 )
+                self.set_status("Book deleted successfully")
+            else:
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Information,
+                    title="Success",
+                    text="Book deleted successfully!"
+                )
+                self.set_status("Book deleted successfully")
+                super().reject()
+        except Exception as e:
+            self.set_status("Error deleting book")
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Critical,
+                title="Error",
+                text=f"Error deleting book: {str(e)}"
+            )
 
     def on_new(self):
+        print("DEBUG: on_new triggered (Alt+N)")
         """
         bd#4: Clear form for new book entry.
         Resets all fields and switches to 'new book' mode.

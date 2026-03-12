@@ -17,6 +17,7 @@ class ShortcutContext(Enum):
     BOOK_DETAILS = "book_details"
     IMPORT_WINDOW = "import_window"
     UPDATE_WINDOW = "update_window"
+    PREFERENCES_WINDOW = "preferences_window"
 
 
 class ShortcutManager(QObject):
@@ -28,7 +29,7 @@ class ShortcutManager(QObject):
     # Alt+Key shortcuts (context-specific)
     # Main Window
     MAIN_WINDOW_SHORTCUTS = {
-        'B': ('Book list', 'book_list'),
+        'B': ('Book list focus', 'book_list'),
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
         'L': ('Cancel selection', 'cancel_button'),
@@ -43,42 +44,50 @@ class ShortcutManager(QObject):
         'I': ('Series', 'series_combo'),
         'G': ('Genre', 'genre_combo'),
         'R': ('Reader', 'reader_edit'),
-        'K': ('Collection', 'collection_combo'),
-        'M': ('Time', 'time_edit'),
+        'C': ('Collection', 'collection_combo'),
+        'M': ('Length', 'time_edit'),
         'E': ('Read date', 'read_date'),
         'Z': ('Size', 'size_edit'),
         'B': ('Bitrate', 'bitrate_edit'),
         'H': ('Path', 'path_edit'),
         'O': ('Comments', 'comments_edit'),
-        'N': ('New book', 'new_button'),
+        'N': ('New', 'new_button'),
         'S': ('Save', 'save_button'),
         'D': ('Delete', 'delete_button'),
         'L': ('Cancel', 'cancel_button'),
-        'C': ('Close', 'close_button'),
     }
 
     # Import Window
     IMPORT_WINDOW_SHORTCUTS = {
-        'L': ('Collection', 'collection_combo'),
-        'F': ('Flip author name', 'flip_check'),
-        'T': ('Elapsed time', 'time_label'),
-        'S': ('Import list count', 'list_label'),
-        'P': ('Parse errors', 'parse_label'),
-        'R': ('Read errors', 'read_label'),
-        'M': ('Menu', 'menu_combo'),
-        'I': ('Import', 'import_button'),
-        'X': ('Export', 'export_button'),
-        'V': ('View', 'view_button'),
-        'A': ('Add', 'add_button'),
-        'C': ('Close', 'close_button'),
+        'C': ('Collection field', 'collection_combo'),
+        'F': ('Folder field', 'folder_field'),
+        'E': ('Error filter', 'error_filter'),
+        'W': ('Browse', 'browse_button'),
+        'S': ('Import Selected', 'import_selected_button'),
+        'V': ('Import All Valid', 'import_all_valid_button'),
+        'B': ('Focus import list table', 'import_list_table'),
+        'X': ('Export list to CSV', 'export_csv_button'),
     }
 
     # Update Window
     UPDATE_WINDOW_SHORTCUTS = {
         'S': ('Series', 'series_combo'),
         'G': ('Genre', 'genre_combo'),
-        'L': ('Collection', 'collection_combo'),
-        'C': ('Close', 'close_button'),
+        'C': ('Collection', 'collection_combo'),
+        'B': ('Focus book list', 'book_list'),
+    }
+
+    # Preferences Window
+    PREFERENCES_WINDOW_SHORTCUTS = {
+        'D': ('Display section', 'theme_combo'),
+        'P': ('Path & Scope section', 'import_dir_edit'),
+        'O': ('Options section', 'auto_add_clean_books_check'),
+        'F': ('Fallback section', 'author_fallback_checkbox'),
+        'R': ('Validation Rules section', 'rules_section_text'),
+        'A': ('Auto-Correction section', 'autocorrect_section_text'),
+        'S': ('Save', 'save_button'),
+        'L': ('Cancel', 'cancel_button'),
+        '/': ('Status bar', 'status_bar'),
     }
 
     # Zoom shortcuts (Ctrl/Cmd)
@@ -115,6 +124,8 @@ class ShortcutManager(QObject):
             shortcuts = self.IMPORT_WINDOW_SHORTCUTS
         elif context == ShortcutContext.UPDATE_WINDOW:
             shortcuts = self.UPDATE_WINDOW_SHORTCUTS
+        elif context == ShortcutContext.PREFERENCES_WINDOW:
+            shortcuts = self.PREFERENCES_WINDOW_SHORTCUTS
         else:
             return
 

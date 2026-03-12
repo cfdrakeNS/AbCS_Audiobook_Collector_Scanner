@@ -1,47 +1,70 @@
-from src.ui.import_progress_window import ImportProgressWindow
-from src.ui.import_detail_window import ImportDetailWindow
-from src.accessibility.accessible_events import (
-    announce_status_message, announce_dialog_opened, announce_dialog_closed
-)
-from src.accessibility.key_filters import is_unmapped_alt_letter
-from src.accessibility.theme_manager import ThemeManager
-from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from src.accessibility.scaling import UIScaler
-from src.core import BookScanner, ImportValidator, ImportScanner
-from src.database import (
-    DatabaseManager, BookQueries, AuthorQueries,
-    GenreQueries, CollectionQueries, SeriesQueries, Book, Collection, SearchFilter
-)
-from typing import Optional
-import time
-import os
-from datetime import datetime
-from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
-from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel, QEvent, QModelIndex
+# Alt+W remains local for accessibility (file dialog)
+import csv
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QStatusBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QMessageBox, QApplication
 )
-import csv
+from PySide6.QtCore import Qt, QSettings, QTimer, QItemSelectionModel, QEvent, QModelIndex
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from datetime import datetime
+import os
+import time
+from typing import Optional
+from src.database import (
+    DatabaseManager, BookQueries, AuthorQueries,
+    GenreQueries, CollectionQueries, SeriesQueries, Book, Collection, SearchFilter
+)
+from src.core import BookScanner, ImportValidator, ImportScanner
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.accessible_events import (
+    announce_status_message, announce_dialog_opened, announce_dialog_closed
+)
+from src.ui.import_detail_window import ImportDetailWindow
+from src.ui.import_progress_window import ImportProgressWindow
 """Import Window
     Main interface for scanning folders and importing audiobooks.
 """
 
 
 class ImportWindow(QDialog):
+    def keyPressEvent(self, event):
+        # Accessibility: Alt+W always triggers file dialog
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+            self.on_browse()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def _confirm_cancel_scan(self):
         """Prompt before canceling scan. Default True for test compatibility."""
         self.set_status("Scan canceled", announce=True)
         return True
 
     def setup_shortcuts(self):
-        """Setup keyboard shortcuts."""
+        """Setup keyboard shortcuts using ShortcutManager (except Alt+/ and Alt+W)."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'collection_combo': lambda: self.collection_combo.setFocus(),
+            'folder_field': lambda: self.folder_edit.setFocus(),
+            'error_filter': lambda: self.error_filter_combo.setFocus(),
+            # 'browse_button': self.on_browse,  # Alt+W handled locally for accessibility
+            'import_selected_button': self.import_selected_button.click,
+            'add_valid_button': self.add_valid_button.click,
+            'import_list_table': lambda: self.table.setFocus(),
+            'export_button': self.export_button.click,
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.IMPORT_WINDOW, callback_map)
+        # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
-        self.focus_list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        self.focus_list_shortcut.activated.connect(self.on_focus_list)
+        # Ctrl+Enter and Ctrl+Return for detail window
         self.open_detail_shortcut = QShortcut(
             QKeySequence("Ctrl+Return"), self)
         self.open_detail_shortcut.activated.connect(
@@ -50,6 +73,7 @@ class ImportWindow(QDialog):
             QKeySequence("Ctrl+Enter"), self)
         self.open_detail_shortcut_num.activated.connect(
             self.on_open_detail_selected)
+        # Alt+/ remains local for status bar read
         self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_bar_shortcut.activated.connect(
             self.on_read_status_bar)
@@ -69,6 +93,9 @@ class ImportWindow(QDialog):
         """Handle mapped Alt+letter actions reliably across child widgets."""
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
             key = event.key()
+            # Alt+W: let keyPressEvent handle it for accessibility
+            if key == Qt.Key_W:
+                return False  # Do not block Alt+W
             if key == Qt.Key_S:
                 self.import_selected_button.click()
                 event.accept()
@@ -86,7 +113,7 @@ class ImportWindow(QDialog):
                 event.accept()
                 return True
 
-            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {'W'}):
                 return True
 
         return super().eventFilter(source, event)

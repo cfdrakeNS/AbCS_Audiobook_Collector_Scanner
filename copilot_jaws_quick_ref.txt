@@ -44,3 +44,17 @@ py src/main.py *> run.log
 
 GOLDEN RULE:
 If a change is not visible in file diff, it did not happen.
+
+RESPONSE TEMPLATE:
+1. Goal
+2. File
+3. Replace this
+4. With this
+5. Done check
+
+VERIFICATION:
+- git diff -- <file> shows expected edits
+- No indentation/runtime errors
+- Keyboard shortcuts valid
+- Status messages screen-reader friendly
+- Behavior matches “Done when”

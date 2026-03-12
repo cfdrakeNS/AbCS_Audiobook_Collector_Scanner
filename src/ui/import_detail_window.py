@@ -1025,7 +1025,32 @@ class ImportDetailWindow(QDialog):
         self.setup_shortcuts()
 
     def setup_shortcuts(self):
-        """Setup keyboard shortcuts."""
+        """Centralized Alt+letter shortcut registration using ShortcutManager."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'title_edit': lambda: self.title_edit.setFocus(),
+            'author_combo': lambda: self.author_combo.setFocus(),
+            'year_spin': lambda: self.year_spin.setFocus(),
+            'series_combo': lambda: self.series_combo.setFocus(),
+            'genre_combo': lambda: self.genre_combo.setFocus(),
+            'collection_combo': lambda: self.collection_combo.setFocus(),
+            'comments_edit': lambda: self.comments_edit.setFocus(),
+            'files_edit': lambda: self.files_edit.setFocus(),
+            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
+            'size_edit': lambda: self.size_edit.setFocus(),
+            'format_edit': lambda: self.format_edit.setFocus(),
+            'source_edit': lambda: self.source_edit.setFocus(),
+            'path_edit': lambda: self.path_edit.setFocus(),
+            'errors_edit': lambda: self.errors_edit.setFocus(),
+            'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,
+            'skip_button': lambda: self.skip_button.click(),
+            'launch_tag_button': lambda: self.launch_tag_button.click(),
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.BOOK_DETAILS, callback_map)
+
+        # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
@@ -1045,13 +1070,6 @@ class ImportDetailWindow(QDialog):
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.collection_shortcut = QShortcut(QKeySequence("Alt+C"), self)
-        self.collection_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-
-        def focus_collection():
-            self.collection_combo.setFocus()
-        self.collection_shortcut.activated.connect(focus_collection)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""

@@ -35,58 +35,42 @@
 	- Navigation keys (Ctrl+Enter, Escape) are standardized.
 
 **9. CSV Mapping:**
-	- Shortcut_mar05_controls_new.csv reflects the current, normalized shortcut mapping for all major windows.
+	- AbCS_Shortcut_mar11.csv reflects the current, normalized shortcut mapping for all major windows (updated March 11).
 
 ---
 ---
 
-### Shortcut Review (March 10, 2026)
+### Shortcut Review (March 12, 2026)
 
+#### Centralized Shortcut Contexts (latest)
+  - Main Window: Alt+B (Book list), Alt+U (Update), Alt+D (Delete), Alt+L (Cancel selection)
+  - Book Details: Alt+T (Title), Alt+A (Author), Alt+Y (Year), Alt+F (Files), Alt+I (Series), Alt+G (Genre), Alt+R (Reader), Alt+C (Collection), Alt+M (Length), Alt+E (Read date), Alt+Z (Size), Alt+B (Bitrate), Alt+H (Path), Alt+O (Comments), Alt+N (New), Alt+S (Save), Alt+D (Delete), Alt+L (Cancel)
+  - Import Window: Alt+C (Collection), Alt+F (Folder), Alt+E (Error filter), Alt+W (Browse), Alt+S (Import Selected), Alt+V (Import All Valid), Alt+B (Focus import list table), Alt+X (Export list to CSV)
+  - Import Detail Window: Alt+T (Title), Alt+A (Author), Alt+Y (Year), Alt+F (Files), Alt+I (Series), Alt+G (Genre), Alt+R (Reader), Alt+C (Collection), Alt+M (Length), Alt+E (Errors), Alt+Z (Size), Alt+B (Bitrate), Alt+H (Path), Alt+O (Comments), Alt+S (Save), Alt+D (Discard), Alt+L (Launch Tag)
+  - Update Window: Alt+S (Series), Alt+G (Genre), Alt+C (Collection), Alt+B (Focus book list)
+  - Preferences Window: Alt+D (Display), Alt+P (Path & Scope), Alt+O (Options), Alt+F (Fallback), Alt+R (Validation Rules), Alt+A (Auto-Correction), Alt+S (Save), Alt+L (Cancel), Alt+/ (Status bar)
 
-#### Centralized Shortcut Contexts (updated from Import Window code/help dialog)
-- Main Window: Alt+B (Book list), Alt+U (Update), Alt+D (Delete), Alt+L (Cancel selection)
-- Book Details: Alt+T (Title), Alt+A (Author), Alt+Y (Year), Alt+F (Files), Alt+I (Series), Alt+G (Genre), Alt+R (Reader), Alt+K (Collection), Alt+M (Time/Length), Alt+E (Read date), Alt+Z (Size), Alt+B (Bitrate), Alt+H (Path), Alt+O (Comments), Alt+N (New book), Alt+S (Save), Alt+D (Delete), Alt+L (Cancel), Alt+C (Close)
-- Import Window:
-	- Alt+C: Collection
-	- Alt+F: Folder
-	- Alt+W: Browse
-	- Alt+E: Error filter
-	- Ctrl+I: Import
-	- Alt+B: Import Book list
-	- Alt+1: Jump to Author
-	- Alt+2: Jump to Title
-	- Alt+3-5: Jump to Year...
-	- Ctrl+Enter: Open import detail
-	- Alt+S: Add selected
-	- Alt+V: Add valid
-	- Alt+X: Export list to CSV
-	- Escape: Cancel/Close window
-	- Alt+/: Read status bar
-- Update Window: Alt+S (Series), Alt+G (Genre), Alt+L (Collection), Alt+C (Close)
-- Zoom: Ctrl+Plus, Ctrl+Minus, Ctrl+0
-- Global: F1 (Help), Escape (Close), Ctrl+Enter (Open detail), Alt+/ (Read status bar)
+**Global Shortcuts:** Ctrl+Plus, Ctrl+Minus, Ctrl+0 (Zoom), F1 (Help), Escape (Close), Alt+/ (Read status bar), Ctrl+Enter (Open detail)
 
 #### Normalization Rules (current)
-- All Alt+letter shortcuts are context-aware and registered via ShortcutManager.
-- Mnemonics (ampersand notation) are visually underlined and match shortcut keys.
-- No duplicate Alt+letter shortcuts within a window context (checked via find_shortcut_conflicts).
-- All major actions (Save, Cancel, Delete, Import, Update) use first-letter Alt shortcuts where possible.
-- Close actions use Escape; Alt+C reserved for Cancel where present.
+- All Alt+letter shortcuts are registered via ShortcutManager.
+- Mnemonics (&) in labels match shortcut keys.
+- No duplicate Alt+letter shortcuts within a window context.
 - Status bar readback is always Alt+/.
 - F1 opens keyboard shortcut help dialog in all windows.
 - Zoom keys are consistent across all windows.
 
-#### Anomalies & Issues
-- Some windows (Import Window, Preferences Window) have more Alt+letter shortcuts than others; this is intentional for accessibility and workflow.
-- No duplicate Alt+letter shortcuts found in current codebase (checked via find_shortcut_conflicts).
-- Some legacy shortcuts (Alt+N for Cancel scan) are now removed or replaced with Escape.
-- Mnemonic ampersand notation is consistent with shortcut registration.
-- All shortcut help dialogs (F1) list the correct shortcuts per window.
-- No dead/ghost navigation: all documented shortcuts are functional and accessible.
-- No conflicts found between Alt+letter and Ctrl+key shortcuts.
+#### Documented Gaps & Anomalies
+- Import Detail Window: Alt+L (Launch Tag) is unique; ensure it's documented and registered.
+- Book Details: Alt+K (Collection) is not present in shortcut manager, but Collection is mapped to Alt+C.
+- Preferences Window: Some shortcuts (e.g., Alt+V for Save) are not consistently mapped; ensure Save is always Alt+S.
+- Main Window: Fewer Alt+letter shortcuts; relies more on menu and Ctrl+key shortcuts.
+- No duplicate Alt+letter shortcuts found in any window context.
+- All F1 help dialogs reflect the correct shortcuts per window.
+- Status bar read (Alt+/) is present and functional in all windows.
 
 #### New Controls CSV
-- See Shortcut_mar05_controls_new.csv for updated per-window shortcut mapping.
+- See AbCS_Shortcut_mar11.csv for updated per-window shortcut mapping.
 
 ---
 # Shortcut review & normalization plan (updated 2026-03-03)

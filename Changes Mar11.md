@@ -100,3 +100,27 @@ Function: find box
 Change: when no match popup a message saying "No Match found for: xxxx" This will help screen readers users 
 Do not touch: unrelated items
 Done when: on no match popup messge occurs 
+
+File: src/main window
+Function: Help->about 
+Change: add a message to the about popup to say XXX screen reader is active. 
+Do not touch: unrelated items
+Done when: about includes screen reader message
+
+File: src/Import_window  File: src/Shortcut.py 
+Function: Shortcut 
+Change: check shortcut for "add Selected" button it should be alt+s
+Do not touch: unrelated items
+Done when: als+s should add selected books 
+
+file: src/Update_window and File: src/Shortcut.py 
+Function: Shortcut 
+Change: shortcut for Collection" combo from alt+l to alt+c. update shortcut menu f1
+Do not touch: unrelated items
+Done when: alt+c is for collection in update and move focus 
+
+file:  src/Shortcut.py 
+Function: PREFERENCES_WINDOW_SHORTCUTS
+Change: Change the shortcuts so that they are the same as the actual shortcuts in Preference_window   
+Do not touch: unrelated items
+Done when: Shortcuts.py PREFERENCES_WINDOW_SHORTCUTS match actual shorcuts in Preferences window 

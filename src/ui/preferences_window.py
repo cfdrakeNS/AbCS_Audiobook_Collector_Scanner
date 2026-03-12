@@ -29,6 +29,14 @@ class PreferencesWindow(QDialog):
     Preferences dialog for display and import settings.
     """
 
+    def keyPressEvent(self, event):
+        # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
+        if self.browse_button.hasFocus() and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.on_browse()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     ALLOWED_ALT_LETTERS = {
         'A', 'C', 'D', 'F', 'O', 'R', 'S', 'V'
     }
@@ -81,7 +89,7 @@ class PreferencesWindow(QDialog):
         self.load_settings()
         self._initial_state = self._capture_state()
         self.connect_signals()
-        self.setup_shortcuts()
+        self.register_shortcuts()
         self.scaler.scale_changed.connect(self.on_scale_changed)
         self.theme_manager.theme_changed.connect(
             self.on_application_theme_changed)
@@ -1292,31 +1300,26 @@ class PreferencesWindow(QDialog):
         self.save_button.clicked.connect(self.on_save)
         self.cancel_button.clicked.connect(self.on_cancel)
 
-    def setup_shortcuts(self):
-        """Setup keyboard shortcuts for the dialog."""
+    def register_shortcuts(self):
+        """Register keyboard shortcuts using ShortcutManager (except Alt+/)."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'theme_combo': self.focus_display_section,
+            'import_dir_edit': self.focus_source_scope_section,
+            'auto_add_clean_books_check': self.focus_options_section,
+            'author_fallback_checkbox': self.focus_fallback_section,
+            'rules_section_text': self.focus_validation_section,
+            'autocorrect_section_text': self.focus_autocorrect_section,
+            'save_button': self.on_save,
+            'cancel_button': self.on_cancel,
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.PREFERENCES_WINDOW, callback_map)
+        # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
-        self.section_shortcuts = []
-        section_shortcut_map = [
-            ("Alt+D", self.focus_display_section),
-            ("Alt+P", self.focus_source_scope_section),
-            ("Alt+O", self.focus_options_section),
-            ("Alt+F", self.focus_fallback_section),
-            ("Alt+R", self.focus_validation_section),
-            ("Alt+A", self.focus_autocorrect_section),
-        ]
-        for key_sequence, handler in section_shortcut_map:
-            shortcut = QShortcut(QKeySequence(key_sequence), self)
-            shortcut.activated.connect(handler)
-            self.section_shortcuts.append(shortcut)
-
-        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.save_shortcut.activated.connect(self.on_save)
-
-        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.cancel_shortcut.activated.connect(self.on_cancel)
-
+        # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 

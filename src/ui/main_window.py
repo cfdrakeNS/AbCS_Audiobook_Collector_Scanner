@@ -672,12 +672,11 @@ class MainWindow(QMainWindow):
         """Setup keyboard shortcuts."""
         shortcut_mgr = get_shortcut_manager()
 
-        # Alt+Key shortcuts
+        # Alt+Key shortcuts (centralized)
         callback_map = {
-            'menu_combo': lambda: self.menu_combo.setFocus(),
-            'update_button': self.on_update_clicked,
-            'delete_button': self.on_delete_clicked,
-            'cancel_button': self.on_cancel_clicked,
+            'update_button': self.on_update_clicked,     # Alt+U
+            'delete_button': self.on_delete_clicked,     # Alt+D
+            'cancel_button': self.on_cancel_clicked,     # Alt+L
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.MAIN_WINDOW, callback_map)
@@ -2843,6 +2842,13 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_about(self):
         """Show about dialog."""
+        # Detect screen reader
+        try:
+            from src.accessibility.screen_reader_detector import detect_screen_reader
+            screen_reader = detect_screen_reader()
+        except Exception:
+            screen_reader = None
+
         about_lines = [
             "AbCS - Audio Book Collector Scanner",
             get_app_version(),
@@ -2861,6 +2867,8 @@ Use Ctrl+I to import or Alt+M for menu options."""
             "ACCESSIBILITY",
             "Designed for users with low vision and screen readers.",
             "All features include keyboard shortcuts.",
+            "",
+            f"Screen reader active: {screen_reader if screen_reader else 'None detected'}",
             "",
             "Press F1 or use Help menu for Keyboard Shortcuts.",
         ]
