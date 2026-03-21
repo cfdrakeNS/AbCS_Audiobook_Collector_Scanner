@@ -4,7 +4,7 @@ Shows reading statistics and history with full accessibility support.
 """
 
 from PySide6.QtWidgets import (
-    QDialog, QWidget, QVBoxLayout, QHBoxLayout,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QLabel, QPushButton,
     QDateEdit, QComboBox, QLineEdit, QGroupBox,
     QHeaderView, QAbstractItemView, QStatusBar, QMessageBox,
@@ -15,7 +15,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QAction, QShortcut, QKeySequence, QAccessible
 
-from src.database import BookQueries, ReadingQueries, SearchFilter
+from src.database import BookQueries, ReadingQueries
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_button_style
@@ -25,7 +25,7 @@ from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
 
-class ReadingHistoryWindow(QDialog):
+class ReadingHistoryWindow(QMainWindow):
     """Reading History window with statistics and history table."""
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
@@ -49,7 +49,9 @@ class ReadingHistoryWindow(QDialog):
 
     def setup_ui(self):
         """Setup user interface with tabs."""
-        main_layout = QVBoxLayout(self)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # Create tab widget
@@ -66,8 +68,8 @@ class ReadingHistoryWindow(QDialog):
         
         # Status bar
         self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
         self.status_bar.setAccessibleName("Status bar")
-        main_layout.addWidget(self.status_bar)
         
         # Connect signals
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
@@ -288,6 +290,10 @@ class ReadingHistoryWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             'refresh_button': lambda: self.refresh_button.click(),
+            'date_start': lambda: self.start_date_edit.setFocus(),
+            'date_end': lambda: self.end_date_edit.setFocus(),
+            'collection_filter': lambda: self.collection_combo.setFocus(),
+            'history_table': lambda: self.range_table.setFocus(),
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
@@ -481,38 +487,39 @@ class ReadingHistoryWindow(QDialog):
         self.apply_accessible_styling()
 
     def on_show_shortcuts(self):
-        """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Reading History")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(560, 420)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
-
+        """Show keyboard shortcuts help."""
         shortcuts = [
-            ("Alt+G", "General tab"),
-            ("Alt+Y", "Year tab"),
-            ("Alt+M", "Month tab"),
-            ("Alt+R", "Date Range tab"),
+            ("Alt+1", "Switch to General tab"),
+            ("Alt+2", "Switch to Year tab"),
+            ("Alt+3", "Switch to Month tab"),
+            ("Alt+4", "Switch to Date Range tab"),
+            ("Alt+R", "Refresh data"),
+            ("Alt+5", "Focus start date"),
+            ("Alt+6", "Focus end date"),
+            ("Alt+7", "Focus collection filter"),
+            ("Alt+8", "Focus history table"),
             ("Enter", "Open selected book details"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Escape", "Close window"),
         ]
-
+        
+        # Create help dialog
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTableWidget
+        help_dialog = QDialog(self)
+        help_dialog.setWindowTitle("Reading History Shortcuts")
+        help_dialog.setMinimumSize(400, 300)
+        
+        layout = QVBoxLayout(help_dialog)
+        
+        # Create shortcuts table
+        table = QTableWidget()
         table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectItems)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setTabKeyNavigation(False)
         table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
@@ -522,26 +529,18 @@ class ReadingHistoryWindow(QDialog):
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
         
-        # Apply centralized F1 popup style
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
-        # Centralize Alt+/ visibility and order for screen readers
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
+        # Apply F1 popup style
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
         table.setStyleSheet(build_accessible_f1_popup_style())
-
+        
+        # Populate shortcuts
         for row, (key, desc) in enumerate(shortcuts):
-            item = QTableWidgetItem(f"{desc} - {key}")
-            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
-            table.setItem(row, 0, item)
-
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
-
+            table.setItem(row, 0, QTableWidgetItem(key))
+            table.setItem(row, 1, QTableWidgetItem(desc))
+        
         layout.addWidget(table)
-        dlg.setLayout(layout)
-        dlg.exec()
+        help_dialog.setLayout(layout)
+        help_dialog.exec()
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
@@ -551,10 +550,8 @@ class ReadingHistoryWindow(QDialog):
         else:
             exec_styled_message_box(
                 self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
+                "Status Bar",
+                status_text
             )
 
     def set_status(self, message: str, announce: bool = False):
@@ -583,11 +580,40 @@ class ReadingHistoryWindow(QDialog):
 
     def keyPressEvent(self, event):
         """Handle key press events."""
-        # Escape key closes window
-        if event.key() == Qt.Key_Escape:
-            self.close()
-            event.accept()
-            return
+        # Tab switching with Alt+1-4
+        if event.modifiers() == Qt.AltModifier:
+            if event.key() == Qt.Key_1:
+                self.tab_widget.setCurrentIndex(0)
+                event.accept()
+                return
+            elif event.key() == Qt.Key_2:
+                self.tab_widget.setCurrentIndex(1)
+                event.accept()
+                return
+            elif event.key() == Qt.Key_3:
+                self.tab_widget.setCurrentIndex(2)
+                event.accept()
+                return
+            elif event.key() == Qt.Key_4:
+                self.tab_widget.setCurrentIndex(3)
+                event.accept()
+                return
+            elif event.key() == Qt.Key_5:
+                self.start_date_edit.setFocus()
+                event.accept()
+                return
+            elif event.key() == Qt.Key_6:
+                self.end_date_edit.setFocus()
+                event.accept()
+                return
+            elif event.key() == Qt.Key_7:
+                self.collection_combo.setFocus()
+                event.accept()
+                return
+            elif event.key() == Qt.Key_8:
+                self.range_table.setFocus()
+                event.accept()
+                return
         
         # Prevent Enter from closing dialog
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
