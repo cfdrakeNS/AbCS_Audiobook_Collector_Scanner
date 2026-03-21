@@ -315,6 +315,11 @@ class ReadingHistoryWindow(QDialog):
         for table in [self.year_table, self.month_table, self.range_table]:
             if table:
                 table.setStyleSheet(table_style)
+                # Disable hover highlighting for low-vision comfort
+                table.setMouseTracking(False)
+                table.viewport().setMouseTracking(False)
+                table.setAttribute(Qt.WA_Hover, False)
+                table.viewport().setAttribute(Qt.WA_Hover, False)
         
         # Date edit and combo box styling - let theme manager handle it
         for widget in self.findChildren(QDateEdit):
