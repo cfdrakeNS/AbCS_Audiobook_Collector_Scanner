@@ -1,5 +1,5 @@
 """Helpers for accessible shortcut lists and F1 popup styling."""
-from src.accessibility.screen_reader import is_screen_reader_active
+from src.accessibility.screen_reader_detector import is_screen_reader_active
 
 
 def get_accessible_shortcuts_list(shortcuts):
