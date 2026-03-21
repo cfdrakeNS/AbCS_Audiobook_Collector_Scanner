@@ -417,7 +417,7 @@ class ReadingHistoryWindow(QMainWindow):
         filtered_books = []
         for book in books:
             if book.read_date:
-                book_date = book.read_date.toString("yyyy-MM-dd")
+                book_date = book.read_date.strftime("%Y-%m-%d")
                 if start_date <= book_date <= end_date:
                     filtered_books.append(book)
         
@@ -441,7 +441,7 @@ class ReadingHistoryWindow(QMainWindow):
             self.range_table.insertRow(row)
             
             # Date
-            date_item = QTableWidgetItem(book.read_date.toString("yyyy-MM-dd") if book.read_date else "")
+            date_item = QTableWidgetItem(book.read_date.strftime("%Y-%m-%d") if book.read_date else "")
             self.range_table.setItem(row, 0, date_item)
             
             # Title
