@@ -692,9 +692,9 @@ class ImportWindow(QDialog):
         self.collection_combo.blockSignals(False)
 
     def _update_scan_enabled_state(self):
-        """Enable scan only when a target collection is selected."""
-        selected_id = self.collection_combo.currentData()
-        self.scan_button.setEnabled(selected_id is not None)
+        """Keep scan enabled for accessibility - use popup validation instead."""
+        # Button stays enabled for blind users - popup validation will handle missing fields
+        self.scan_button.setEnabled(True)
 
     def connect_signals(self):
         """Connect signals to handlers."""
@@ -1315,6 +1315,26 @@ class ImportWindow(QDialog):
     def on_scan(self):
         """Scan the selected folder or file for audiobooks."""
         self.validator.reload_settings()
+        
+        # Check if collection is selected - popup for accessibility
+        if hasattr(self, 'collection_combo') and self.collection_combo.currentData() is None:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Collection Required", 
+                "Please select a collection first before importing books."
+            )
+            return
+
+        # Check if folder path is empty - popup for accessibility
+        if hasattr(self, 'folder_edit') and not self.folder_edit.text().strip():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Folder Required", 
+                "Please select a folder path first before importing books."
+            )
+            return
 
         target_collection_id = self._get_target_collection_id()
         
