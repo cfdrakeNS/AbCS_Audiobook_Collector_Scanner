@@ -342,9 +342,25 @@ class ThemeManager(QObject):
             """
 
         if extra_style:
-            self.app.setStyleSheet(self.base_stylesheet + "\n" + extra_style)
+            # Add hover disabling for all tables
+            table_hover_disable = """
+                QTableWidget::item:hover, QTableView::item:hover {
+                    background: none !important;
+                    color: inherit !important;
+                }
+            """
+            full_stylesheet = self.base_stylesheet + "\n" + extra_style + "\n" + table_hover_disable
         else:
-            self.app.setStyleSheet(self.base_stylesheet)
+            # Add hover disabling even without extra style
+            table_hover_disable = """
+                QTableWidget::item:hover, QTableView::item:hover {
+                    background: none !important;
+                    color: inherit !important;
+                }
+            """
+            full_stylesheet = self.base_stylesheet + "\n" + table_hover_disable
+        
+        self.app.setStyleSheet(full_stylesheet)
 
         self._repolish_open_widgets()
 
