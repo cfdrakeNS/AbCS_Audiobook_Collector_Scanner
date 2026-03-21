@@ -208,6 +208,13 @@ class NameListWindow(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+        
+        # Disable hover highlighting for low-vision comfort
+        self.table.setMouseTracking(False)
+        self.table.viewport().setMouseTracking(False)
+        self.table.setAttribute(Qt.WA_Hover, False)
+        self.table.viewport().setAttribute(Qt.WA_Hover, False)
+        
         self.table.setStyleSheet(
             """
             QTableView::item:selected,
@@ -795,6 +802,13 @@ class NameListWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
+        
+        # Disable hover highlighting for low-vision comfort
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        
         table.setStyleSheet(
             "QTableWidget:focus { border: none; outline: none; }")
 
