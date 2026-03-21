@@ -1315,13 +1315,29 @@ class ImportWindow(QDialog):
     def on_scan(self):
         """Scan the selected folder or file for audiobooks."""
         self.validator.reload_settings()
-
-        target_collection_id = self._get_target_collection_id()
-        if target_collection_id is None:
-            self.set_status("Select a collection before scanning")
-            self.collection_combo.setFocus(Qt.TabFocusReason)
+        
+        # Check if collection is selected
+        if hasattr(self, 'collection_combo') and self.collection_combo.currentData() is None:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Collection Required", 
+                "Please select a collection first before importing books."
+            )
             return
 
+        # Check if folder path is empty
+        if hasattr(self, 'folder_edit') and not self.folder_edit.text().strip():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Folder Required", 
+                "Please select a folder path first before importing books."
+            )
+            return
+
+        target_collection_id = self._get_target_collection_id()
+        
         folder_path = self.folder_edit.text().strip()
         if not folder_path:
             self.set_status("Select a folder or file before scanning")
