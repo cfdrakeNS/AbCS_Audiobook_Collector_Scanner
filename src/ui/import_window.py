@@ -1830,6 +1830,11 @@ class ImportWindow(QDialog):
             self.set_status("No scanned items to add")
             return
 
+        # Check if collection is selected
+        if hasattr(self, 'collection_combo') and self.collection_combo.currentData() is None:
+            self.set_status("Please select a collection first")
+            return
+
         selected_rows = {index.row() for index in self.table.selectedIndexes()}
         if not selected_rows:
             self.set_status("Select one or more rows to add")
@@ -1841,6 +1846,11 @@ class ImportWindow(QDialog):
         """Add all visible clean-valid rows from current review list."""
         if not self.scanned_items:
             self.set_status("No scanned items to add")
+            return
+
+        # Check if collection is selected
+        if hasattr(self, 'collection_combo') and self.collection_combo.currentData() is None:
+            self.set_status("Please select a collection first")
             return
 
         rows_to_add = []
