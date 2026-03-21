@@ -1832,7 +1832,22 @@ class ImportWindow(QDialog):
 
         # Check if collection is selected
         if hasattr(self, 'collection_combo') and self.collection_combo.currentData() is None:
-            self.set_status("Please select a collection first")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Collection Required", 
+                "Please select a collection first before importing books."
+            )
+            return
+
+        # Check if folder path is empty
+        if hasattr(self, 'folder_edit') and not self.folder_edit.text().strip():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Folder Required", 
+                "Please select a folder path first before importing books."
+            )
             return
 
         selected_rows = {index.row() for index in self.table.selectedIndexes()}
@@ -1850,7 +1865,22 @@ class ImportWindow(QDialog):
 
         # Check if collection is selected
         if hasattr(self, 'collection_combo') and self.collection_combo.currentData() is None:
-            self.set_status("Please select a collection first")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Collection Required", 
+                "Please select a collection first before importing books."
+            )
+            return
+
+        # Check if folder path is empty
+        if hasattr(self, 'folder_edit') and not self.folder_edit.text().strip():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Folder Required", 
+                "Please select a folder path first before importing books."
+            )
             return
 
         rows_to_add = []
