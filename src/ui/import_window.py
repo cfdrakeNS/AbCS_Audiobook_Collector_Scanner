@@ -1077,6 +1077,11 @@ class ImportWindow(QDialog):
             self.table.setFocus(Qt.TabFocusReason)
         self.restore_summary_status()
 
+    def _update_scan_enabled_state(self):
+        """Keep scan enabled for accessibility - use popup validation instead."""
+        # Button stays enabled for blind users - popup validation will handle missing fields
+        self.scan_button.setEnabled(True)
+
     def on_collection_changed(self):
         """Handle target collection change for imports."""
         selected_id = self.collection_combo.currentData()
@@ -1085,7 +1090,12 @@ class ImportWindow(QDialog):
             self.current_collection_name = ""
             self.settings.setValue("import/collection_id", 0)
             self._update_scan_enabled_state()
-            self.set_status("Select a collection to enable scan")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                "Collection Selection",
+                "Please select a collection to import books."
+            )
             return
 
         self.default_collection_id = int(selected_id)
@@ -1341,7 +1351,13 @@ class ImportWindow(QDialog):
         
         folder_path = self.folder_edit.text().strip()
         if not folder_path:
-            self.set_status("Select a folder or file before scanning")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Folder Required", 
+                "Please select a folder or file before scanning."
+            )
+            self.folder_edit.setFocus()
             return
 
         # Validate path based on scenario
