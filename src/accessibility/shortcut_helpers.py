@@ -25,6 +25,13 @@ def get_accessible_shortcuts_list(shortcuts):
 def build_accessible_f1_popup_style() -> str:
     """
     Return a shared stylesheet for F1 help popups (QTableWidget).
+    
+    NOTE: This only provides CSS styling. Mouse tracking must be disabled
+    programmatically on the table widget itself:
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
     """
     return (
         "QTableWidget, QTableView { border: none; background: palette(base); color: palette(text); outline: 0; }"

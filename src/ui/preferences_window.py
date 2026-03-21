@@ -1411,6 +1411,13 @@ class PreferencesWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
+        
+        # Disable hover highlighting for low-vision comfort
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, desc) in enumerate(shortcuts):
