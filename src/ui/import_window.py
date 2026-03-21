@@ -677,9 +677,9 @@ class ImportWindow(QDialog):
         self.collection_combo.blockSignals(False)
 
     def _update_scan_enabled_state(self):
-        """Enable scan only when a target collection is selected."""
-        selected_id = self.collection_combo.currentData()
-        self.scan_button.setEnabled(selected_id is not None)
+        """Keep scan enabled for accessibility - use popup validation instead."""
+        # Button stays enabled for blind users - popup validation will handle missing fields
+        self.scan_button.setEnabled(True)
 
     def connect_signals(self):
         """Connect signals to handlers."""
