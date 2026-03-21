@@ -11,7 +11,7 @@ echo ACCESSIBILITY: Python add-on checks and installs may begin next.
 echo.
 
 REM Activate virtual environment
-call .venv\Scripts\activate.bat
+call venv\Scripts\activate.bat
 if errorlevel 1 (
     echo ERROR: Could not activate virtual environment
     echo Please run setup.bat first
