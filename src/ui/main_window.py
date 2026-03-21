@@ -706,6 +706,15 @@ class MainWindow(QMainWindow):
         zoom_reset_action.triggered.connect(self.on_zoom_reset)
         self.view_menu.addAction(zoom_reset_action)
 
+        self.view_menu.addSeparator()
+
+        # Phase 2: Reading History with Alt+H shortcut
+        reading_history_action = QAction("Reading &History\tAlt+H", self)
+        reading_history_action.setShortcut("Alt+H")
+        reading_history_action.setShortcutContext(Qt.ApplicationShortcut)
+        reading_history_action.triggered.connect(self.on_reading_history)
+        self.view_menu.addAction(reading_history_action)
+
         # Phase 4: sorting moved from header combo to dedicated Sort menu.
         self.sort_menu = menubar.addMenu("&Sort")
         self.sort_action_group = QActionGroup(self)
@@ -2688,6 +2697,21 @@ class MainWindow(QMainWindow):
     def on_zoom_reset(self):
         """Handle Ctrl+0 zoom reset - mw#21: Reset to default (150% ~14pt)."""
         self.scaler.reset_scale()
+
+    def on_reading_history(self):
+        """Handle Alt+H - Show reading history window."""
+        # TODO: Implement reading history window
+        # For now, show a message that this feature is coming
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.information(
+            self,
+            "Reading History",
+            "Reading History feature is coming soon!\n\nThis will show:\n"
+            "- Books you've read\n"
+            "- Reading statistics\n"
+            "- Monthly/yearly breakdowns\n"
+            "- Date range queries"
+        )
 
     def on_new_book(self):
         """Open book details for new book."""
