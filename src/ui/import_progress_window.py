@@ -54,7 +54,7 @@ class ImportProgressWindow(QDialog):
         self.setAccessibleDescription(
             "Shows import scan progress and cancel control"
         )
-        self.resize(760, 220)
+        self.resize(760, 176)  # Reduced height by about 20% from original 220
         self.set_status("Ready")
 
     @property
@@ -92,20 +92,7 @@ class ImportProgressWindow(QDialog):
         author_layout.addWidget(self.author_edit, 1)
         layout.addLayout(author_layout)
 
-        issues_layout = QHBoxLayout()
-        self.issues_label = QLabel("&Issues:")
-        self.issues_edit = QLineEdit()
-        self.issues_edit.setReadOnly(True)
-        self.issues_edit.setFocusPolicy(Qt.NoFocus)
-        self.issues_edit.setAccessibleName("Issues")
-        self.issues_edit.setAccessibleDescription(
-            "Current issues for this item - Alt+I")
-        self.issues_label.setBuddy(self.issues_edit)
-        issues_layout.addWidget(self.issues_label)
-        issues_layout.addWidget(self.issues_edit, 1)
-        layout.addLayout(issues_layout)
-        self.issues_label.setVisible(False)
-        self.issues_edit.setVisible(False)
+        # Issues controls removed; all info is now on the status bar
 
         layout.addStretch(1)
 
@@ -119,6 +106,9 @@ class ImportProgressWindow(QDialog):
         self.scan_progress.setRange(0, 100)
         self.scan_progress.setValue(0)
         self.scan_progress.setFormat("Scanning... %p%")
+        # Increase progress bar height by 10%
+        default_height = self.scan_progress.sizeHint().height()
+        self.scan_progress.setFixedHeight(int(default_height * 1.1))
         progress_layout.addWidget(self.scan_progress, 1)
         layout.addLayout(progress_layout)
 
@@ -155,23 +145,22 @@ class ImportProgressWindow(QDialog):
     def set_compact_mode(self, enabled: bool):
         self._compact_mode = bool(enabled)
         show_details = not self._compact_mode
-
         self.title_label.setVisible(show_details)
         self.title_edit.setVisible(show_details)
         self.author_label.setVisible(show_details)
         self.author_edit.setVisible(show_details)
-
-        if self._compact_mode:
-            self.issues_label.setVisible(False)
-            self.issues_edit.setVisible(False)
-        else:
-            has_issues = bool(self.issues_edit.text().strip())
-            self.issues_label.setVisible(has_issues)
-            self.issues_edit.setVisible(has_issues)
-
+        # Issues controls removed
         self._apply_tab_order()
 
     def setup_shortcuts(self):
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'cancel_button': lambda: self.cancel_button.click(),  # Alt+L
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.IMPORT_PROGRESS_WINDOW, callback_map)
+
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
@@ -182,10 +171,6 @@ class ImportProgressWindow(QDialog):
         self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
         self.status_shortcut_shift.setContext(Qt.ApplicationShortcut)
         self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
-
-        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.cancel_shortcut.setContext(Qt.WidgetShortcut)
-        self.cancel_shortcut.activated.connect(self.on_cancel_requested)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_close_requested)
@@ -246,8 +231,9 @@ class ImportProgressWindow(QDialog):
                 background-color: palette(base);
             }}
         """
+        # Use theme manager styling for text boxes
         for widget in self.findChildren(QLineEdit):
-            widget.setStyleSheet(lineedit_style)
+            widget.setStyleSheet("")  # Clear local style
 
         progress_style = f"""
             QProgressBar {{
@@ -360,12 +346,7 @@ class ImportProgressWindow(QDialog):
 
         self.title_edit.setText(title or "")
         self.author_edit.setText(author or "")
-
-        normalized_issues = (issues_text or "").strip()
-        has_issues = bool(normalized_issues)
-        self.issues_label.setVisible(has_issues)
-        self.issues_edit.setVisible(has_issues)
-        self.issues_edit.setText(normalized_issues)
+        # Issues controls removed
 
     def update_counters(
         self,
@@ -505,6 +486,8 @@ class ImportProgressWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
@@ -516,14 +499,11 @@ class ImportProgressWindow(QDialog):
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected { border: none; outline: none; }"
-        )
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, description) in enumerate(shortcuts):
             combined_text = f"{description} - {key}" if key else description

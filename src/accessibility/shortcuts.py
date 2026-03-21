@@ -1,30 +1,72 @@
-"""
-Keyboard shortcut management for AbCS.
-Centralizes all keyboard shortcuts for consistency and accessibility.
-"""
 
-from PySide6.QtCore import Qt, QObject
-from PySide6.QtGui import QKeySequence, QShortcut, QAction
-from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QCheckBox, QGroupBox
-from typing import Dict, Callable, Optional, List, Tuple
+
 from enum import Enum
+from PySide6.QtCore import QObject, Qt
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QCheckBox, QGroupBox
+from PySide6.QtGui import QKeySequence, QShortcut
+from typing import Dict, Callable, Optional, List, Tuple
 
 
 class ShortcutContext(Enum):
     """Shortcut context - where shortcuts are active."""
+    COLLECTION_WINDOW = "collection_window"
     GLOBAL = "global"  # Active everywhere
     MAIN_WINDOW = "main_window"
     BOOK_DETAILS = "book_details"
     IMPORT_WINDOW = "import_window"
+    IMPORT_PROGRESS_WINDOW = "import_progress_window"
     UPDATE_WINDOW = "update_window"
     PREFERENCES_WINDOW = "preferences_window"
+    DUPLICATE_DIALOG = "duplicate_dialog"
+    BACKUP_RESTORE_WINDOW = "backup_restore_window"
+    NAMELIST_WINDOW = "namelist_window"
 
 
 class ShortcutManager(QObject):
+    # Collection Window (dedicated context)
+    COLLECTION_WINDOW_SHORTCUTS = {
+        'B': ('Jump to list', 'table'),
+        'S': ('Save', 'save_button'),
+        'E': ('Edit selected row', 'edit_button'),
+        'M': ('Name edit', 'name_edit'),
+        'A': ('Active checkbox', 'active_check'),
+        'L': ('Cancel edit/new', 'cancel_button'),
+        'N': ('New', 'new_button'),
+        'D': ('Delete', 'delete_button'),
+    }
+    # NameList Window
+    NAMELIST_WINDOW_SHORTCUTS = {
+        'B': ('Jump to list', 'table'),
+        'S': ('Save', 'save_button'),
+        'E': ('Edit selected row', 'edit_button'),
+        'M': ('Name edit', 'name_edit'),
+        'F': ('Find', 'find_edit'),
+        'A': ('Active checkbox', 'active_check'),
+        'L': ('Cancel edit/new', 'cancel_button'),
+    }
+
+    # Backup/Restore Window
+    BACKUP_RESTORE_WINDOW_SHORTCUTS = {
+        'B': ('Backup list', 'backup_list'),
+        'W': ('Browse', 'browse_button'),
+        'K': ('Create backup', 'backup_button'),
+        'T': ('Focus restore file', 'restore_path_edit'),
+        'R': ('Restore', 'restore_button'),
+        'D': ('Delete', 'delete_button'),
+        'F': ('Full reset', 'full_reset_button'),
+    }
+
     """
     Manages keyboard shortcuts across the application.
     Provides centralized shortcut registration and documentation.
     """
+
+    # Duplicate Check Dialog
+    DUPLICATE_DIALOG_SHORTCUTS = {
+        'R': ('Start duplicate check', 'start_button'),
+        'L': ('Cancel duplicate check', 'cancel_button'),
+        'M': ('Focus match type combo', 'mode_combo'),
+    }
 
     # Alt+Key shortcuts (context-specific)
     # Main Window
@@ -45,16 +87,17 @@ class ShortcutManager(QObject):
         'G': ('Genre', 'genre_combo'),
         'R': ('Reader', 'reader_edit'),
         'C': ('Collection', 'collection_combo'),
-        'M': ('Length', 'time_edit'),
+        'H': ('Length', 'time_edit'),  # Changed from L to H for Length
         'E': ('Read date', 'read_date'),
         'Z': ('Size', 'size_edit'),
         'B': ('Bitrate', 'bitrate_edit'),
-        'H': ('Path', 'path_edit'),
+        'P': ('Path', 'path_edit'),    # Changed from H to P for Path
         'O': ('Comments', 'comments_edit'),
         'N': ('New', 'new_button'),
         'S': ('Save', 'save_button'),
         'D': ('Delete', 'delete_button'),
-        'L': ('Cancel', 'cancel_button'),
+        'L': ('Cancel', 'cancel_button'),  # Alt+L now mapped to Cancel
+        'F1': ('Show help', 'show_help'),
     }
 
     # Import Window
@@ -100,7 +143,7 @@ class ShortcutManager(QObject):
     def __init__(self):
         """Initialize shortcut manager."""
         super().__init__()
-        self._shortcuts: Dict[str, QShortcut] = {}
+        self._shortcuts = {}
 
     def register_alt_shortcuts(self,
                                widget: QWidget,
@@ -126,13 +169,29 @@ class ShortcutManager(QObject):
             shortcuts = self.UPDATE_WINDOW_SHORTCUTS
         elif context == ShortcutContext.PREFERENCES_WINDOW:
             shortcuts = self.PREFERENCES_WINDOW_SHORTCUTS
+        elif context == ShortcutContext.DUPLICATE_DIALOG:
+            shortcuts = self.DUPLICATE_DIALOG_SHORTCUTS
+        elif context == ShortcutContext.BACKUP_RESTORE_WINDOW:
+            shortcuts = self.BACKUP_RESTORE_WINDOW_SHORTCUTS
+        elif context == ShortcutContext.NAMELIST_WINDOW:
+            shortcuts = self.NAMELIST_WINDOW_SHORTCUTS
+        elif context == ShortcutContext.COLLECTION_WINDOW:
+            shortcuts = self.COLLECTION_WINDOW_SHORTCUTS
         else:
             return
 
         # Register each shortcut
         for key, (description, widget_id) in shortcuts.items():
             if widget_id in callback_map:
-                key_seq = QKeySequence(f"Alt+{key}")
+                # Handle function keys (F1-F12) as true function keys, not Alt+F1
+                if key.upper().startswith("F") and key[1:].isdigit():
+                    qt_key = getattr(Qt, f"Key_{key.upper()}", None)
+                    if qt_key is not None:
+                        key_seq = QKeySequence(qt_key)
+                    else:
+                        key_seq = QKeySequence(key)
+                else:
+                    key_seq = QKeySequence(f"Alt+{key}")
                 shortcut = QShortcut(key_seq, widget)
                 shortcut.activated.connect(callback_map[widget_id])
                 shortcut_id = f"{context.value}_{key}"

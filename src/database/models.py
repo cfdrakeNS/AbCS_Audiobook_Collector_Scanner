@@ -129,12 +129,21 @@ class Book:
     @property
     def time_display(self) -> str:
         """Format time as HH:MM."""
-        return f"{self.time_hours:02d}:{self.time_minutes:02d}"
+        try:
+            hours = int(self.time_hours) if self.time_hours else 0
+            minutes = int(self.time_minutes) if self.time_minutes else 0
+            return f"{hours:02d}:{minutes:02d}"
+        except (ValueError, TypeError):
+            return "0:00"
 
     @property
     def size_display(self) -> str:
         """Format size in MB."""
-        return f"{self.size_mb:.1f}"
+        try:
+            size = float(self.size_mb) if self.size_mb else 0.0
+            return f"{size:.1f}"
+        except (ValueError, TypeError):
+            return "0.0"
 
     def __str__(self):
         return f"{self.title} by {self.author_name}"

@@ -716,8 +716,9 @@ class PreferencesWindow(QDialog):
         self.rule_file_structure_pattern.setStyleSheet(combo_style)
         self.rule_file_structure_severity.setStyleSheet(combo_style)
         self.rule_year_quality_severity.setStyleSheet(combo_style)
-        self.import_dir_edit.setStyleSheet(lineedit_style)
-        self.reader_keywords_edit.setStyleSheet(lineedit_style)
+        # Use theme manager styling for text boxes and combo boxes
+        self.import_dir_edit.setStyleSheet("")  # Clear local style
+        self.reader_keywords_edit.setStyleSheet("")  # Clear local style
         self.rule_min_title_value.setStyleSheet(combo_style)
         self.browse_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
@@ -1393,6 +1394,8 @@ class PreferencesWindow(QDialog):
             ("F1", "Show this help"),
             ("Tab/Shift+Tab", "Move between controls in the current section"),
         ]
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
@@ -1404,13 +1407,11 @@ class PreferencesWindow(QDialog):
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-        )
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, desc) in enumerate(shortcuts):
             item = QTableWidgetItem(f"{desc} - {key}")
@@ -1447,7 +1448,7 @@ class PreferencesWindow(QDialog):
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)

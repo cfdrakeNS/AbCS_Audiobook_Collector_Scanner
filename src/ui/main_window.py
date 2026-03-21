@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import (
     Qt, QTimer, QItemSelection, QItemSelectionModel, QEvent, QSettings,
-    QAbstractTableModel, QModelIndex
+    QAbstractTableModel, QModelIndex, QObject
 )
 from PySide6.QtGui import QKeyEvent, QAction, QActionGroup, QShortcut, QKeySequence, QAccessible
 from PySide6.QtWidgets import QApplication
@@ -148,6 +148,100 @@ class BookTableModel(QAbstractTableModel):
 
 
 class MainWindow(QMainWindow):
+    def show_read_date_dialog(self, row: int):
+        """Show a dialog to set the read date for the selected book (accessible version)."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit, QPushButton
+        from PySide6.QtCore import QDate
+        book = self.books[row]
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
+        dlg.setModal(True)
+        layout = QVBoxLayout(dlg)
+        
+        # Use simple QDateEdit with calendar popup
+        date_field = QDateEdit()
+        date_field.setCalendarPopup(True)
+        date_field.setDisplayFormat("yyyy-MM-dd")
+        date_field.setAccessibleName("Date read")
+        date_field.setMinimumDate(QDate(1, 1, 1))
+        date_field.setSpecialValueText("")
+        
+        # Set initial date
+        if book.read_date:
+            if isinstance(book.read_date, str):
+                d = QDate.fromString(book.read_date, "yyyy-MM-dd")
+            else:
+                d = QDate(book.read_date.year,
+                          book.read_date.month, book.read_date.day)
+            if d.isValid():
+                date_field.setDate(d)
+            else:
+                date_field.setDate(QDate.currentDate())
+        else:
+            # Default to today's date for new entries
+            date_field.setDate(QDate.currentDate())
+        
+        # Set font size
+        font = date_field.font()
+        font.setPointSize(self.scaler.get_scaled_size(14))
+        date_field.setFont(font)
+        
+        layout.addWidget(date_field)
+        date_field.setFocus()
+        
+        # Add Alt+Down shortcut to open calendar (though it may not work)
+        from PySide6.QtGui import QShortcut, QKeySequence
+        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
+        alt_down_shortcut.activated.connect(date_field.calendarPopup)
+        
+        # Add Enter key shortcut to close dialog and save date
+        def save_and_close():
+            # Make sure the date field has focus so its value is current
+            date_field.setFocus()
+            # Small delay to ensure the value is updated
+            QTimer.singleShot(0, dlg.accept)
+        
+        enter_shortcut = QShortcut(QKeySequence("Return"), dlg)
+        enter_shortcut.activated.connect(save_and_close)
+        enter_shortcut = QShortcut(QKeySequence("Enter"), dlg)
+        enter_shortcut.activated.connect(save_and_close)
+        
+        dlg.setLayout(layout)
+        if dlg.exec() == QDialog.Accepted:
+            # Check if date is being changed (not just cleared)
+            if date_field.date() == date_field.minimumDate():
+                # Clear the date - no confirmation needed for clearing
+                book.read_date = ""
+                self.book_queries.update(book)
+                self.refresh_books()
+                self.set_status(f"Read date cleared for {book.title}", announce=True)
+            else:
+                new_date = date_field.date().toString("yyyy-MM-dd")
+                # Check if date is actually changing
+                if book.read_date == new_date:
+                    # No change - don't ask for confirmation
+                    self.set_status(f"Read date unchanged for {book.title}", announce=True)
+                else:
+                    # Date is changing - ask for confirmation
+                    from PySide6.QtWidgets import QMessageBox
+                    reply = QMessageBox.question(
+                        self,
+                        "Confirm Read Date",
+                        f"Mark '{book.title}' as read on {new_date}?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        book.read_date = new_date
+                        self.book_queries.update(book)
+                        self.refresh_books()
+                        self.set_status(f"Read date set for {book.title}", announce=True)
+                    else:
+                        # User cancelled - don't update
+                        self.set_status(f"Read date update cancelled for {book.title}", announce=True)
+            # Optionally, move focus back to the same cell
+            self.table.setCurrentCell(row, 8)
+            self.table.setFocus()
 
     """
     Main application window - Audio Book Window.
@@ -203,7 +297,7 @@ class MainWindow(QMainWindow):
         # Current filter
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
-        self._read_filter_options = ["All", "Read", "Unread"]
+        self._read_filter_options = ["Read", "Unread"]
         self._primary_sort_options = ["Title", "Author", "Genre", "Series"]
 
         # Selected books (for bulk operations)
@@ -391,7 +485,6 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
         # Columns: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Date Added
-        # mw#11: Selection checkbox column removed
         columns = ["Author", "Title", "Year", "Plot", "Series",
                    "Genre", "Length", "Tracks", "Read", "Added"]
         self.book_model = BookTableModel([])
@@ -402,7 +495,7 @@ class MainWindow(QMainWindow):
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
         # mw#22: Enable horizontal scrollbar so columns don't get cut off
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -413,21 +506,20 @@ class MainWindow(QMainWindow):
         self.table.viewport().setMouseTracking(False)
         self.table.setAttribute(Qt.WA_Hover, False)
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
+        # Apply centralized F1 popup style to table only
         self.table.setStyleSheet(
             """
-            QTableView::item:hover { 
-                background-color: palette(base); 
-                color: palette(text); 
+            QTableView::item:hover {
+                background-color: palette(base);
+                color: palette(text);
             }
-            QTableView::item:focus {
-                outline: none;
-                border: none;
+            QTableView::item:selected {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
             }
-            QTableView {
-                outline: 0;
-            }
-            QTableView::item {
-                padding-right: 8px;
+            QTableView::item:selected:focus {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
             }
             """
         )
@@ -576,9 +668,9 @@ class MainWindow(QMainWindow):
         self.view_menu = menubar.addMenu("&View")
 
         # mw#17: Context-sensitive open at top of View menu
-        book_details_action = QAction("&Open Focused Item\tCtrl+Enter", self)
+        book_details_action = QAction("&Open Focused Item\tEnter", self)
         book_details_action.setShortcuts(
-            [QKeySequence("Ctrl+Enter"), QKeySequence("Ctrl+Return")]
+            [QKeySequence("Enter"), QKeySequence("Return")]
         )
         book_details_action.triggered.connect(self.on_open_book_details)
         self.view_menu.addAction(book_details_action)
@@ -712,7 +804,7 @@ class MainWindow(QMainWindow):
         self.new_book_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
         self.new_book_shortcut.activated.connect(self.on_new_book)
 
-        # mw#19: Ctrl+Enter handled by menu action and table_key_press
+        # mw#19: Enter handled by menu action and table_key_press
         # (No separate QShortcut to avoid ambiguous shortcut error)
 
         # mw#24: Alt+/ reads status bar aloud
@@ -874,7 +966,7 @@ class MainWindow(QMainWindow):
         collection_key = book.collection_id or 0
 
         if normalized_mode == "title_author":
-            return (title_key, author_key, collection_key)
+            return (title_key, author_key)
         if normalized_mode == "title_author_year":
             return (title_key, author_key, year_key)
         return (title_key, author_key, year_key, collection_key)
@@ -936,10 +1028,7 @@ class MainWindow(QMainWindow):
         }
         self._apply_row_selection_by_book_ids(self.selected_book_ids)
         self.update_selection_ui()
-        self.set_status(
-            f"Duplicate mode: {len(self.duplicate_mode_book_ids)} duplicate books available",
-            timeout_ms=0,
-        )
+        # Do not set a duplicate mode status here to avoid overlapping/jumbled messages
 
     def exit_duplicate_mode(self, message: str = "Duplicate mode canceled", announce: bool = False):
         """Exit duplicate mode and restore previous filter/view."""
@@ -982,7 +1071,7 @@ class MainWindow(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Duplicate Check")
-        dialog.setAccessibleName("Duplicate Check")
+        """Start duplicate mode by prompting for duplicate match type."""
         dialog.setAccessibleDescription(
             "Select duplicate match mode and start duplicate checking"
         )
@@ -1027,8 +1116,13 @@ class MainWindow(QMainWindow):
         layout.addWidget(mode_combo)
 
         buttons_layout = QHBoxLayout()
+        # Restore original button text
         start_button = QPushButton("Start")
+        start_button.setAccessibleName("Start duplicate check")
+        start_button.setAccessibleDescription("Start duplicate check")
         cancel_button = QPushButton("Cancel")
+        cancel_button.setAccessibleName("Cancel duplicate check")
+        cancel_button.setAccessibleDescription("Cancel duplicate check")
         button_style = build_accessible_button_style(
             self.scaler.get_scaled_size(20)
         )
@@ -1036,6 +1130,20 @@ class MainWindow(QMainWindow):
         cancel_button.setStyleSheet(button_style)
         start_button.clicked.connect(dialog.accept)
         cancel_button.clicked.connect(dialog.reject)
+        # Centralized Alt+letter shortcuts for Duplicate Check dialog
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        shortcut_mgr = get_shortcut_manager()
+
+        def focus_mode_combo():
+            mode_combo.setFocus()
+            mode_combo.showPopup()
+        callback_map = {
+            'start_button': start_button.click,
+            'cancel_button': cancel_button.click,
+            'mode_combo': focus_mode_combo,
+        }
+        shortcut_mgr.register_alt_shortcuts(
+            dialog, ShortcutContext.DUPLICATE_DIALOG, callback_map)
         buttons_layout.addStretch()
         buttons_layout.addWidget(start_button)
         buttons_layout.addWidget(cancel_button)
@@ -1054,9 +1162,14 @@ class MainWindow(QMainWindow):
         duplicate_ids = self._collect_duplicate_book_ids(
             all_books, selected_mode)
         if not duplicate_ids:
-            self.set_status(
-                f"No duplicates found for mode: {self._duplicate_mode_label(selected_mode)}",
-                timeout_ms=3000,
+            msg = f"No duplicates found for mode: {self._duplicate_mode_label(selected_mode)}"
+            self.set_status(msg, timeout_ms=3000)
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Duplicate Check Result",
+                text=msg,
             )
             return
 
@@ -1081,19 +1194,26 @@ class MainWindow(QMainWindow):
 
         self.refresh_books()
 
-        self.selected_book_ids = {
-            book.book_id for book in self.books if book.book_id in self.duplicate_mode_book_ids
-        }
+        self.selected_book_ids = set()
         self._apply_row_selection_by_book_ids(self.selected_book_ids)
-        self.selection_anchor_row = self.table.currentRow(
-        ) if self.table.currentRow() >= 0 else None
+        self.selection_anchor_row = None
         self.update_selection_ui()
 
-        self.set_status(
-            f"Duplicate mode started ({self._duplicate_mode_label(selected_mode)}): "
-            f"{len(self.selected_book_ids)} duplicate books selected",
-            timeout_ms=0,
+        dup_count = len(self.duplicate_mode_book_ids)
+        status_msg = f"{dup_count} duplicate books found ({self._duplicate_mode_label(selected_mode)})"
+        self.set_status(status_msg, timeout_ms=0)
+        popup_msg = f"Duplicate check complete: {dup_count} duplicate books found using mode: {self._duplicate_mode_label(selected_mode)}."
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Duplicate Check Result",
+            text=popup_msg,
         )
+        # Set focus to the first title in the table for accessibility
+        if self.table.model() and self.table.model().rowCount() > 0:
+            self.table.setCurrentCell(0, 1)  # Column 1 is Title
+            self.table.setFocus()
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
         """
@@ -1138,7 +1258,7 @@ class MainWindow(QMainWindow):
             )
 
     def on_open_book_details(self):
-        """mw#17,19: Open book details for current book (Ctrl+Enter)."""
+        """mw#17,19: Open book details for current book (Enter)."""
         if self.selected_book_ids:
             # If items are selected, don't open details
             return
@@ -1152,7 +1272,19 @@ class MainWindow(QMainWindow):
             column = self.table.currentColumn()
             if column < 0:
                 column = 1
-            self._handle_book_table_double_click(row, column)
+            # Author, Series, Genre columns open their manager dialogs
+            if column in (0, 4, 5):
+                self._handle_book_table_double_click(row, column)
+            # Read column opens date picker
+            elif column == 8:
+                self.show_read_date_dialog(row)
+            # Title column opens Book Details
+            elif column == 1:
+                self._handle_book_table_double_click(row, column)
+            # All other columns: do nothing, show status
+            else:
+                self.set_status(
+                    "Enter only opens details for Author, Title, Series, Genre, or Read columns.", timeout_ms=2500, announce=True)
 
     # ========== End Status Bar Helpers ==========
 
@@ -1295,12 +1427,21 @@ class MainWindow(QMainWindow):
             self.on_order_changed(key)
             return
 
+        # For custom sorts (Author, Genre, Series), toggle order like header clicks
+        if self._last_header_sort_column == column:
+            next_order = Qt.DescendingOrder if self._last_header_sort_order == Qt.AscendingOrder else Qt.AscendingOrder
+        else:
+            next_order = Qt.AscendingOrder
+
         self._last_header_sort_column = column
-        self._last_header_sort_order = Qt.AscendingOrder
+        self._last_header_sort_order = next_order
         self._active_sort_key = key
-        self._sort_books_in_memory(column, Qt.AscendingOrder)
-        self.table.horizontalHeader().setSortIndicator(column, Qt.AscendingOrder)
-        self._set_sort_label(order_by=key, direction="Ascending")
+        self._sort_books_in_memory(column, next_order)
+        self.table.horizontalHeader().setSortIndicator(column, next_order)
+        
+        # Update sort label with direction
+        direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
+        self._set_sort_label(order_by=key, direction=direction)
         self._sync_sort_menu_selection(key)
 
     def _rebuild_collection_filter_menu(self):
@@ -1530,6 +1671,7 @@ class MainWindow(QMainWindow):
         field_combo.setStyleSheet(
             f"QComboBox {{ min-height: {combo_height}px; max-height: {combo_height}px; }}"
         )
+        # Use theme manager styling instead of F1 popup style for combo boxes
         field_label.setBuddy(field_combo)
         field_row.addWidget(field_label)
         field_row.addWidget(field_combo, 1)
@@ -1546,6 +1688,7 @@ class MainWindow(QMainWindow):
         text_label = QLabel("Find &text:")
         text_edit = QLineEdit()
         text_edit.setAccessibleName("Find text")
+        # Use theme manager styling instead of F1 popup style for text boxes
         text_label.setBuddy(text_edit)
         text_row.addWidget(text_label)
         text_row.addWidget(text_edit, 1)
@@ -1860,18 +2003,16 @@ class MainWindow(QMainWindow):
         QTableView.mouseDoubleClickEvent(self.table, event)
 
     def _handle_book_table_double_click(self, row: int, column: int):
-        """Route double-click based on focused column."""
-        book = self.books[row]
-
-        # Author, Series, Genre columns open their manager focused on clicked value
-        if column == 0 and (book.author_name or "").strip():
+        """Route double-click based on focused column - matches Enter behavior."""
+        # Author column (0): Open author manager
+        if column == 0:
             focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
                 self.db,
                 self.scaler,
                 self.theme_manager,
                 "author",
-                initial_name=book.author_name,
+                initial_name=self.books[row].author_name,
                 parent=self,
             )
             dialog.exec()
@@ -1879,6 +2020,12 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
+        # Title column (1): Open book details
+        if column == 1:
+            self.open_book_details(self.books[row])
+            return
+
+        # Series column (4): Open series manager
         if column == 4:
             focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
@@ -1886,7 +2033,7 @@ class MainWindow(QMainWindow):
                 self.scaler,
                 self.theme_manager,
                 "series",
-                initial_name=(book.series_name or "").strip() or None,
+                initial_name=(self.books[row].series_name or "").strip() or None,
                 parent=self,
             )
             dialog.exec()
@@ -1894,6 +2041,7 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
+        # Genre column (5): Open genre manager
         if column == 5:
             focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
@@ -1901,7 +2049,7 @@ class MainWindow(QMainWindow):
                 self.scaler,
                 self.theme_manager,
                 "genre",
-                initial_name=(book.genre_name or "").strip() or None,
+                initial_name=(self.books[row].genre_name or "").strip() or None,
                 parent=self,
             )
             dialog.exec()
@@ -1909,8 +2057,12 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
-        # Default behavior for all other columns
-        self.open_book_details(book)
+        # Read column (8): Open date dialog
+        if column == 8:
+            self.show_read_date_dialog(row)
+            return
+
+        # All other columns: do nothing (match Enter behavior)
 
     def table_key_press(self, event: QKeyEvent):
         """Handle key press in table."""
@@ -1924,20 +2076,29 @@ class MainWindow(QMainWindow):
             return
 
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            # Ctrl+Enter follows double-click routing by focused column
-            if event.modifiers() & Qt.ControlModifier:
-                if not self.selected_book_ids:
-                    row = self.table.currentRow()
-                    if 0 <= row < len(self.books):
-                        column = self.table.currentColumn()
-                        if column < 0:
-                            column = 1
-                        self._handle_book_table_double_click(row, column)
-            event.accept()
-            return
+            row = self.table.currentRow()
+            col = self.table.currentColumn()
+            if 0 <= row < len(self.books):
+                if col == 8:  # Read column
+                    # Enter: open date dialog for specific date
+                    self.show_read_date_dialog(row)
+                    event.accept()
+                    return
+                else:
+                    # Enter: Author, Series, Genre columns open their manager dialogs
+                    if col in (0, 4, 5):
+                        self._handle_book_table_double_click(row, col)
+                    # Only open Book Details for Title column (1)
+                    elif col == 1:
+                        self._handle_book_table_double_click(row, col)
+                    # All other columns: do nothing, show status
+                    else:
+                        self.set_status(
+                            "Enter only opens details for Author, Title, Series, Genre, or Read columns.", timeout_ms=2500, announce=True)
+                    event.accept()
+                    return
         elif event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown, Qt.Key_Home, Qt.Key_End):
             modifiers = event.modifiers()
-
             # Shift+Arrow: Only extend selection if already in selection mode (anchor set via Shift+Space)
             if modifiers & Qt.ShiftModifier:
                 if self.selection_anchor_row is not None:
@@ -1988,36 +2149,10 @@ class MainWindow(QMainWindow):
             event.accept()
             return
         elif event.key() == Qt.Key_Escape:
-            # ESC clears selection first, then clears search
-            if self.selected_book_ids or self.selection_anchor_row is not None:
-                # Clear selection (same as Cancel button)
-                self.on_cancel_clicked()
-                event.accept()
-                return
-            # ESC: Clear search if active (keep focus on table)
-            if self.current_filter.has_search:
-                # Use tracked book ID (set by on_current_cell_changed)
-                restore_book_id = self._last_table_book_id
-                restore_column = self._last_table_column if self._last_table_column >= 0 else 1
-
-                # Clear search filter and refresh
-                self.current_filter.search_text = ""
-                self.current_filter.is_keyword_search = False
-                self.refresh_books()
-
-                # Restore focus to the actual book that was selected
-                def restore_focus():
-                    if restore_book_id is not None:
-                        self.focus_book_by_id(restore_book_id, restore_column)
-                    else:
-                        if self.table.rowCount() > 0:
-                            self.table.setCurrentCell(0, 1)
-                        self.table.setFocus(Qt.TabFocusReason)
-                QTimer.singleShot(150, restore_focus)
-
-                self.set_status("Search cleared", timeout_ms=2000)
-                event.accept()
-                return
+            # ESC handling is done at window level (on_escape_pressed)
+            # Let the window-level shortcut handle it
+            event.ignore()
+            return
         else:
             # Call original key press handler
             QTableView.keyPressEvent(self.table, event)
@@ -2487,8 +2622,16 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self.table.setFocus)
 
     def on_escape_pressed(self):
-        """Handle ESC key at window level - clears selection first, then search."""
-        # First priority: clear selection mode/selected books
+        """Handle ESC key at window level - clears selection first, then search, then read filter."""
+        # If in duplicate mode, ESC should only clear selection, not exit mode
+        if self.duplicate_mode_active:
+            if self.selected_book_ids or self.selection_anchor_row is not None:
+                self.selected_book_ids.clear()
+                self.selection_anchor_row = None
+                self._apply_row_selection_by_book_ids(set())
+                self.update_selection_ui()
+                return
+        # First priority: clear selection mode/selected books (normal mode)
         if self.selected_book_ids or self.selection_anchor_row is not None:
             self.on_cancel_clicked()
             return
@@ -2514,6 +2657,15 @@ class MainWindow(QMainWindow):
 
             QTimer.singleShot(150, restore_focus)
             self.set_status("Search cleared", timeout_ms=2000)
+            return
+        # Third priority: clear read/unread filter
+        if self.current_filter.read_filter in ("Read", "Unread"):
+            # Clear read filter and refresh
+            self.current_filter.read_filter = "All"
+            self._sync_read_menu_selection()
+            self.refresh_books()
+            self.set_status("Read/Unread filter cleared", timeout_ms=2000)
+            return
 
     def clear_status_message(self):
         """Clear temporary status message and restore default status."""
@@ -2709,12 +2861,15 @@ Use Ctrl+I to import or Alt+M for menu options."""
             table.setSelectionBehavior(QAbstractItemView.SelectRows)
             table.setSelectionMode(QAbstractItemView.SingleSelection)
             table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-            table.setAlternatingRowColors(True)
+            table.setAlternatingRowColors(False)
             table.verticalHeader().setVisible(False)
             table.horizontalHeader().setVisible(False)
             table.setShowGrid(False)
-            table.setStyleSheet(
-                "QTableWidget:focus { border: none; outline: none; }")
+            # Ensure no focus or highlight on click
+            table.setFocusPolicy(Qt.NoFocus)
+            table.clearSelection()
+            from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+            table.setStyleSheet(build_accessible_f1_popup_style())
 
             # Data rows
             data = [
@@ -2842,12 +2997,12 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
     def on_about(self):
         """Show about dialog."""
-        # Detect screen reader
+        # Detect screen reader (using new utility)
         try:
-            from src.accessibility.screen_reader_detector import detect_screen_reader
-            screen_reader = detect_screen_reader()
+            from src.accessibility.screen_reader import is_screen_reader_active
+            sr_active = is_screen_reader_active()
         except Exception:
-            screen_reader = None
+            sr_active = False
 
         about_lines = [
             "AbCS - Audio Book Collector Scanner",
@@ -2868,7 +3023,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
             "Designed for users with low vision and screen readers.",
             "All features include keyboard shortcuts.",
             "",
-            f"Screen reader active: {screen_reader if screen_reader else 'None detected'}",
+            f"Screen reader active: {'Yes' if sr_active else 'None detected'}",
             "",
             "Press F1 or use Help menu for Keyboard Shortcuts.",
         ]
@@ -2900,7 +3055,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
         about_table.setSelectionMode(QAbstractItemView.SingleSelection)
         about_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         about_table.setTabKeyNavigation(False)
-        about_table.setAlternatingRowColors(True)
+        about_table.setAlternatingRowColors(False)
         about_table.verticalHeader().setVisible(False)
         about_table.horizontalHeader().setVisible(False)
         about_table.setShowGrid(False)
@@ -2964,7 +3119,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
         shortcuts = [
             ("Ctrl+F", "Find"),
-            ("Alt+B", "Book list"),
             ("Alt+1", "Jump to Title column"),
             ("Alt+2", "Jump to Author column"),
             ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
@@ -2973,14 +3127,17 @@ Use Ctrl+I to import or Alt+M for menu options."""
             ("Alt+L", "Cancel selection"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
-            ("Ctrl+Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),
-            ("Escape", "Clear selection/search"),
+            ("Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),
+            ("Escape", "Clear selection/search/read filter"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
+        # Centralize Alt+/ visibility and order
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         # Create table with 1 column
         table = QTableWidget()
@@ -2991,15 +3148,20 @@ Use Ctrl+I to import or Alt+M for menu options."""
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setSelectionMode(QAbstractItemView.NoSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
+        # Disable mouse hover and highlight
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        # Apply centralized F1 popup style
+        table.setStyleSheet(build_accessible_f1_popup_style())
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }")
 
         # Populate table
         for row, (key, description) in enumerate(shortcuts):

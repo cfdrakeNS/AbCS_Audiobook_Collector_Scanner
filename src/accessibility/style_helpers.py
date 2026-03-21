@@ -40,14 +40,35 @@ def build_accessible_button_style(
 
 
 def build_accessible_message_box_style(scaled_height: int) -> str:
-    """Return a shared QMessageBox style with clean labels and button borders."""
+    """Return a shared QMessageBox style with theme-aware colors."""
     return "\n".join(
         [
-            "QLabel { border: none; }",
-            build_accessible_button_style(
-                scaled_height,
-                selector="QPushButton",
-            ),
+            "QMessageBox {",
+            "    background-color: palette(window);",
+            "    color: palette(window-text);",
+            "    border: 2px solid palette(dark);",
+            "    border-radius: 5px;",
+            "}",
+            "QMessageBox QLabel {",
+            "    color: palette(window-text);",
+            "    border: none;",
+            "}",
+            "QMessageBox QPushButton {",
+            "    background-color: palette(button);",
+            "    color: palette(button-text);",
+            "    border: 1px solid palette(dark);",
+            "    border-radius: 3px;",
+            "    padding: 5px 15px;",
+            "    min-width: 80px;",
+            "    outline: none;",
+            "}",
+            "QMessageBox QPushButton:hover {",
+            "    background-color: palette(mid);",
+            "}",
+            "QMessageBox QPushButton:default {",
+            "    background-color: palette(highlight);",
+            "    color: palette(highlighted-text);",
+            "}",
         ]
     )
 

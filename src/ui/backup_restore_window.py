@@ -23,12 +23,14 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
 )
 
+
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.database import DatabaseManager
+from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
 
 class BackupRestoreWindow(QDialog):
@@ -98,25 +100,8 @@ class BackupRestoreWindow(QDialog):
         self.backup_list.horizontalHeader().setStretchLastSection(True)
         self.backup_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.backup_list.setShowGrid(False)
-        self.backup_list.setAlternatingRowColors(True)
-        self.backup_list.setStyleSheet(
-            """
-            QTableWidget::item {
-                margin: 0px;
-                padding: 1px 4px;
-            }
-            QTableWidget::item:selected,
-            QTableWidget::item:selected:active,
-            QTableWidget::item:selected:!active {
-                border: none;
-                outline: none;
-            }
-            QTableWidget:focus {
-                border: none;
-                outline: none;
-            }
-            """
-        )
+        self.backup_list.setAlternatingRowColors(False)
+        self.backup_list.setStyleSheet(build_accessible_f1_popup_style())
         backups_label.setBuddy(self.backup_list)
         layout.addWidget(backups_label)
         layout.addWidget(self.backup_list, 1)
@@ -151,19 +136,19 @@ class BackupRestoreWindow(QDialog):
             "Create a backup in the default backup folder - Alt+K"
         )
 
-        self.restore_button = QPushButton("&Restore")
+        self.restore_button = QPushButton("Restore")
         self.restore_button.setAccessibleName("Restore")
         self.restore_button.setAccessibleDescription(
             "Restore from selected backup file - Alt+R"
         )
 
-        self.delete_button = QPushButton("&Delete")
+        self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete")
         self.delete_button.setAccessibleDescription(
             "Delete selected backup file - Alt+D"
         )
 
-        self.full_reset_button = QPushButton("&Full Reset")
+        self.full_reset_button = QPushButton("Full Reset")
         self.full_reset_button.setAccessibleName("Full Reset")
         self.full_reset_button.setAccessibleDescription(
             "Clear all data and recreate an empty database - Alt+F"
@@ -200,20 +185,24 @@ class BackupRestoreWindow(QDialog):
         self._update_delete_button_visibility()
 
     def setup_shortcuts(self):
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        # Map widget_id to callback
+        callback_map = {
+            'backup_list': self.focus_backup_list,
+            'browse_button': self.on_browse,
+            'backup_button': self.on_backup,
+            'restore_path_edit': self.focus_restore_file,
+            'restore_button': self.on_restore,
+            'delete_button': self.on_delete_backup,
+            'full_reset_button': self.on_full_reset,
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.BACKUP_RESTORE_WINDOW, callback_map)
+
+        # Local QShortcuts for Alt+/, F1, and Escape only
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape_shortcut.activated.connect(self.accept)
-
-        self.list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        self.list_shortcut.activated.connect(self.focus_backup_list)
-
-        self.browse_shortcut = QShortcut(QKeySequence("Alt+W"), self)
-        self.browse_shortcut.activated.connect(self.on_browse)
-
-        self.backup_shortcut = QShortcut(QKeySequence("Alt+K"), self)
-        self.backup_shortcut.activated.connect(self.on_backup)
-
-        self.restore_file_shortcut = QShortcut(QKeySequence("Alt+T"), self)
-        self.restore_file_shortcut.activated.connect(self.focus_restore_file)
 
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
@@ -283,6 +272,8 @@ class BackupRestoreWindow(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
+        """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
             ("Alt+B", "Backup list"),
             ("Alt+W", "Browse for restore file"),
@@ -295,6 +286,7 @@ class BackupRestoreWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
+        filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
@@ -306,14 +298,13 @@ class BackupRestoreWindow(QDialog):
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }")
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
-        for row, (key, description) in enumerate(shortcuts):
+        for row, (key, description) in enumerate(filtered_shortcuts):
             combined_text = f"{description} - {key}"
             item = QTableWidgetItem(combined_text)
             item.setData(Qt.AccessibleTextRole, f"{description}: {key}")

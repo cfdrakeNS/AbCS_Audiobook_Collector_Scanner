@@ -40,8 +40,26 @@ class ImportDetailWindow(QDialog):
     RESULT_SKIP = 4
     MIN_VALID_YEAR = 1900
     MAX_VALID_YEAR = 2100
+    # Centralized Alt+letter shortcut mapping (parity with BookDetailsWindow)
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'L', 'M', 'O', 'R', 'S', 'T', 'Y', 'Z'
+        'A',  # Author
+        'B',  # Bitrate
+        'C',  # Collection
+        'D',  # Discard (Skip)
+        'E',  # Errors
+        'F',  # Files
+        'G',  # Genre
+        'H',  # Path (Pat&h)
+        'I',  # Series (Ser&ies)
+        'L',  # Launch Tag
+        'M',  # Length (Length (&M))
+        'O',  # Comments (C&omments)
+        'R',  # Reader
+        'S',  # Save
+        'T',  # Title
+        'Y',  # Year
+        'Z',  # Size (Si&ze)
+        # Add any additional used keys here
     }
 
     @staticmethod
@@ -249,17 +267,19 @@ class ImportDetailWindow(QDialog):
         """
         Event filter to handle focus events on form fields.
         """
-        if event.type() == QEvent.KeyPress and source in (self.author_combo, self.series_combo, self.genre_combo):
+        # Block unused Alt+letter keys everywhere
+        if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
-            if key in (Qt.Key_Up, Qt.Key_Down):
-                if not (modifiers & Qt.AltModifier):
-                    QApplication.beep()
-                    return True
-
-        if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
-            event.accept()
-            return True
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                QApplication.beep()
+                return True
+            # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
+            if isinstance(source, QComboBox):
+                if key in (Qt.Key_Up, Qt.Key_Down):
+                    if not (modifiers & Qt.AltModifier):
+                        QApplication.beep()
+                        return True
 
         if event.type() == QEvent.FocusIn:
             if isinstance(source, QLineEdit):
@@ -732,13 +752,12 @@ class ImportDetailWindow(QDialog):
             QComboBox {{
                 min-height: {scaled_height}px;
                 max-height: {scaled_height}px;
-                padding: 2px;
+                padding: 2px 4px;
                 border: 1px solid palette(dark);
                 border-radius: 3px;
             }}
             QComboBox:focus {{
                 border: 2px solid palette(highlight);
-                background-color: palette(light);
             }}
             QComboBox::drop-down {{
                 subcontrol-origin: padding;
@@ -783,12 +802,8 @@ class ImportDetailWindow(QDialog):
             }
         """
 
-        for widget in self.findChildren(QLineEdit):
-            widget.setStyleSheet(lineedit_style)
-        for widget in self.findChildren(QComboBox):
-            widget.setStyleSheet(combo_style)
-        for widget in self.findChildren(QSpinBox):
-            widget.setStyleSheet(spinbox_style)
+        # Apply styles to widgets that need local styling
+        # Text boxes, combo boxes, and spin boxes use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
@@ -809,6 +824,7 @@ class ImportDetailWindow(QDialog):
         row1_layout = QHBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Book title")
+        self.title_edit.setReadOnly(False)
         row1_layout.addWidget(self.title_edit, 2)
 
         author_label = QLabel("&Author:")
@@ -830,6 +846,7 @@ class ImportDetailWindow(QDialog):
         self.comments_edit.setAccessibleName("Comments")
         self.comments_edit.setTabChangesFocus(True)
         self.comments_edit.setMinimumHeight(40)
+        self.comments_edit.setReadOnly(False)
         self.comments_label.setBuddy(self.comments_edit)
         form.addRow(self.comments_label, self.comments_edit)
 
@@ -842,7 +859,7 @@ class ImportDetailWindow(QDialog):
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setSpecialValueText("")
         self.year_spin.setFixedWidth(110)
-        self.year_spin.setReadOnly(True)
+        self.year_spin.setReadOnly(False)
         self.year_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
         row3_layout.addWidget(self.year_spin)
         row3_layout.addSpacing(40)
@@ -852,7 +869,7 @@ class ImportDetailWindow(QDialog):
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setAccessibleName("Length")
         self.time_edit.setFixedWidth(100)
-        self.time_edit.setReadOnly(True)
+        self.time_edit.setReadOnly(False)
         time_label.setBuddy(self.time_edit)
         row3_layout.addWidget(time_label)
         row3_layout.addWidget(self.time_edit)
@@ -912,6 +929,7 @@ class ImportDetailWindow(QDialog):
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
         self.files_edit.setMaximumWidth(70)
+        self.files_edit.setReadOnly(False)
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
@@ -919,6 +937,7 @@ class ImportDetailWindow(QDialog):
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
+        self.bitrate_edit.setReadOnly(False)
         collection_label = QLabel("Collection:")
         bitrate_label.setBuddy(self.bitrate_edit)
         row5_layout.addWidget(bitrate_label)
@@ -929,6 +948,7 @@ class ImportDetailWindow(QDialog):
         self.size_edit.setReadOnly(True)
         self.size_edit.setAccessibleName("File size in megabytes")
         self.size_edit.setMaximumWidth(100)
+        self.size_edit.setReadOnly(False)
         size_label.setBuddy(self.size_edit)
         row5_layout.addWidget(size_label)
         row5_layout.addWidget(self.size_edit)
@@ -972,6 +992,7 @@ class ImportDetailWindow(QDialog):
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setAccessibleName("File path")
+        self.path_edit.setReadOnly(False)
         row7_layout.addWidget(self.path_edit, 1)
 
         path_label = QLabel("Pat&h:")
@@ -1029,23 +1050,23 @@ class ImportDetailWindow(QDialog):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
         mgr = get_shortcut_manager()
         callback_map = {
-            'title_edit': lambda: self.title_edit.setFocus(),
-            'author_combo': lambda: self.author_combo.setFocus(),
-            'year_spin': lambda: self.year_spin.setFocus(),
-            'series_combo': lambda: self.series_combo.setFocus(),
-            'genre_combo': lambda: self.genre_combo.setFocus(),
-            'collection_combo': lambda: self.collection_combo.setFocus(),
-            'comments_edit': lambda: self.comments_edit.setFocus(),
-            'files_edit': lambda: self.files_edit.setFocus(),
-            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
-            'size_edit': lambda: self.size_edit.setFocus(),
-            'format_edit': lambda: self.format_edit.setFocus(),
-            'source_edit': lambda: self.source_edit.setFocus(),
-            'path_edit': lambda: self.path_edit.setFocus(),
-            'errors_edit': lambda: self.errors_edit.setFocus(),
-            'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,
-            'skip_button': lambda: self.skip_button.click(),
-            'launch_tag_button': lambda: self.launch_tag_button.click(),
+            'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
+            'author_combo': lambda: self.author_combo.setFocus(),  # Alt+A
+            'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
+            'series_combo': lambda: self.series_combo.setFocus(),  # Alt+I
+            'genre_combo': lambda: self.genre_combo.setFocus(),    # Alt+G
+            'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
+            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+O
+            'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
+            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
+            'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
+            'format_edit': lambda: self.format_edit.setFocus(),    # Alt+M
+            'source_edit': lambda: self.source_edit.setFocus(),    # Alt+H
+            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
+            'errors_edit': lambda: self.errors_edit.setFocus(),    # Alt+E
+            'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,  # Alt+S
+            'skip_button': lambda: self.skip_button.click(),       # Alt+D
+            'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.BOOK_DETAILS, callback_map)
@@ -1090,14 +1111,12 @@ class ImportDetailWindow(QDialog):
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected { border: none; outline: none; }"
-        )
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
         shortcuts = [
             ("Alt+T", "Title"),
@@ -1122,6 +1141,7 @@ class ImportDetailWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))

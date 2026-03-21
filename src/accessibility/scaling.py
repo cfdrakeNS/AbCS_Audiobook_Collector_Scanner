@@ -170,23 +170,23 @@ class UIScaler(QObject):
             QTableView::item:selected {{
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
-                border: none;
-                outline: none;
+                border: none !important;
+                outline: none !important;
             }}
 
             QTableView::item:selected:focus {{
-                border: none;
-                outline: none;
+                border: none !important;
+                outline: none !important;
             }}
 
             QTableWidget::item:selected {{
-                border: none;
-                outline: none;
+                border: none !important;
+                outline: none !important;
             }}
 
             QTableWidget::item:selected:focus {{
-                border: none;
-                outline: none;
+                border: none !important;
+                outline: none !important;
             }}
 
             QListView::item:selected {{
@@ -197,6 +197,12 @@ class UIScaler(QObject):
             QListWidget::item:selected {{
                 border: none;
                 outline: none;
+            }}
+
+            /* Disable mouse hover highlighting for all tables */
+            QTableWidget::item:hover, QTableView::item:hover {{
+                background: none !important;
+                color: inherit !important;
             }}
 
             QTableView::item {{

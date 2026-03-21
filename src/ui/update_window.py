@@ -228,7 +228,7 @@ class UpdateWindow(QDialog):
         # Table settings
         self.table.setSelectionMode(QAbstractItemView.NoSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
 
         # Column sizing - use fixed minimum widths for Series and Collection
@@ -596,26 +596,6 @@ class UpdateWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        # Stylesheet for QComboBox controls
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-        """
-
         # Stylesheet for QPushButton
         button_style = f"""
             QPushButton {{
@@ -652,8 +632,7 @@ class UpdateWindow(QDialog):
         """
 
         # Apply styles
-        for widget in self.findChildren(QComboBox):
-            widget.setStyleSheet(combo_style)
+        # Combo boxes use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
@@ -898,17 +877,8 @@ class UpdateWindow(QDialog):
         QTimer.singleShot(0, lambda: self.collection_combo.setFocus())
 
     def on_show_shortcuts(self):
-        """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Update Window")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(450, 400)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Shortcuts list - description on left, key on right
+        """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),
@@ -919,27 +889,35 @@ class UpdateWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
+        filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
 
-        # Create table
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Update Window")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(450, 400)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setRowCount(len(filtered_shortcuts))
+        table.setVerticalHeaderLabels([""] * len(filtered_shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }")
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
         # Populate table - description on left, key on right
-        for row, (key, description) in enumerate(shortcuts):
+        for row, (key, description) in enumerate(filtered_shortcuts):
             combined_text = f"{description} - {key}"
             item = QTableWidgetItem(combined_text)
             item.setData(Qt.AccessibleTextRole, f"{description}: {key}")

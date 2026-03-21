@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
     QPushButton,
+    QWidget,
 )
 
 from src.accessibility.scaling import UIScaler
@@ -39,6 +40,7 @@ class DisplaySetupWizard(QDialog):
         self._build_ui()
         self._load_values()
         self._connect_signals()
+        self.disable_hover_highlight()  # Disable mouse hover effects
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -98,7 +100,7 @@ class DisplaySetupWizard(QDialog):
         self.shortcuts_help.setSelectionMode(QAbstractItemView.SingleSelection)
         self.shortcuts_help.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.shortcuts_help.setTabKeyNavigation(False)
-        self.shortcuts_help.setAlternatingRowColors(True)
+        self.shortcuts_help.setAlternatingRowColors(False)
         self.shortcuts_help.setFocusPolicy(Qt.StrongFocus)
         self.shortcuts_help.verticalHeader().setVisible(False)
         self.shortcuts_help.horizontalHeader().setVisible(False)
@@ -207,6 +209,14 @@ class DisplaySetupWizard(QDialog):
     def _on_skip(self):
         self._mark_done()
         self.accept()
+
+    def disable_hover_highlight(self):
+        """Disable hover highlighting for low-vision comfort."""
+        self.setMouseTracking(False)
+        self.setAttribute(Qt.WA_Hover, False)
+        for child in self.findChildren(QWidget):
+            child.setMouseTracking(False)
+            child.setAttribute(Qt.WA_Hover, False)
 
     @classmethod
     def should_show(cls) -> bool:
