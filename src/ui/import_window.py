@@ -1153,7 +1153,12 @@ class ImportWindow(QDialog):
             self.current_collection_name = ""
             self.settings.setValue("import/collection_id", 0)
             self._update_scan_enabled_state()
-            self.set_status("Select a collection to enable scan")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                "Collection Selection",
+                "Please select a collection to import books."
+            )
             return
 
         self.default_collection_id = int(selected_id)
@@ -1388,13 +1393,24 @@ class ImportWindow(QDialog):
 
         target_collection_id = self._get_target_collection_id()
         if target_collection_id is None:
-            self.set_status("Select a collection before scanning")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Collection Required", 
+                "Please select a collection before scanning."
+            )
             self.collection_combo.setFocus(Qt.TabFocusReason)
             return
 
         folder_path = self.folder_edit.text().strip()
         if not folder_path:
-            self.set_status("Select a folder or file before scanning")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Folder Required", 
+                "Please select a folder or file before scanning."
+            )
+            self.folder_edit.setFocus()
             return
 
         # Validate path based on scenario
