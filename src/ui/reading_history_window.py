@@ -489,15 +489,15 @@ class ReadingHistoryWindow(QMainWindow):
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help."""
         shortcuts = [
-            ("Alt+1", "Switch to General tab"),
-            ("Alt+2", "Switch to Year tab"),
-            ("Alt+3", "Switch to Month tab"),
-            ("Alt+4", "Switch to Date Range tab"),
-            ("Alt+R", "Refresh data"),
-            ("Alt+5", "Focus start date"),
-            ("Alt+6", "Focus end date"),
-            ("Alt+7", "Focus collection filter"),
-            ("Alt+8", "Focus history table"),
+            ("Alt+G", "Switch to General tab"),
+            ("Alt+Y", "Switch to Year tab"),
+            ("Alt+M", "Switch to Month tab"),
+            ("Alt+R", "Switch to Date Range tab"),
+            ("Alt+F", "Refresh data"),
+            ("Alt+S", "Focus start date"),
+            ("Alt+E", "Focus end date"),
+            ("Alt+C", "Focus collection filter"),
+            ("Alt+T", "Focus history table"),
             ("Enter", "Open selected book details"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
@@ -580,40 +580,11 @@ class ReadingHistoryWindow(QMainWindow):
 
     def keyPressEvent(self, event):
         """Handle key press events."""
-        # Tab switching with Alt+1-4
-        if event.modifiers() == Qt.AltModifier:
-            if event.key() == Qt.Key_1:
-                self.tab_widget.setCurrentIndex(0)
-                event.accept()
-                return
-            elif event.key() == Qt.Key_2:
-                self.tab_widget.setCurrentIndex(1)
-                event.accept()
-                return
-            elif event.key() == Qt.Key_3:
-                self.tab_widget.setCurrentIndex(2)
-                event.accept()
-                return
-            elif event.key() == Qt.Key_4:
-                self.tab_widget.setCurrentIndex(3)
-                event.accept()
-                return
-            elif event.key() == Qt.Key_5:
-                self.start_date_edit.setFocus()
-                event.accept()
-                return
-            elif event.key() == Qt.Key_6:
-                self.end_date_edit.setFocus()
-                event.accept()
-                return
-            elif event.key() == Qt.Key_7:
-                self.collection_combo.setFocus()
-                event.accept()
-                return
-            elif event.key() == Qt.Key_8:
-                self.range_table.setFocus()
-                event.accept()
-                return
+        # Escape key closes window
+        if event.key() == Qt.Key_Escape:
+            self.close()
+            event.accept()
+            return
         
         # Prevent Enter from closing dialog
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
