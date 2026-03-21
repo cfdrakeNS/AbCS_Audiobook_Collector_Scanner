@@ -366,17 +366,14 @@ class ReadingHistoryWindow(QMainWindow):
             
             # Year
             year_item = QTableWidgetItem(str(year_data['year']))
-            year_item.setAccessibleName(f"Year: {year_item.text()}")
             self.year_table.setItem(row, 0, year_item)
             
             # Books read
             books_item = QTableWidgetItem(str(year_data['book_count']))
-            books_item.setAccessibleName(f"Books read: {books_item.text()}")
             self.year_table.setItem(row, 1, books_item)
             
             # Total hours
             hours_item = QTableWidgetItem(f"{year_data['total_hours']:.1f}")
-            hours_item.setAccessibleName(f"Total hours: {hours_item.text()}")
             self.year_table.setItem(row, 2, hours_item)
 
     def populate_month_table(self, monthly_data):
@@ -388,22 +385,18 @@ class ReadingHistoryWindow(QMainWindow):
             
             # Month name
             month_item = QTableWidgetItem(month_data['month_name'])
-            month_item.setAccessibleName(f"Month: {month_item.text()}")
             self.month_table.setItem(row, 0, month_item)
             
             # Year
             year_item = QTableWidgetItem(str(month_data['year']))
-            year_item.setAccessibleName(f"Year: {year_item.text()}")
             self.month_table.setItem(row, 1, year_item)
             
             # Books read
             books_item = QTableWidgetItem(str(month_data['book_count']))
-            books_item.setAccessibleName(f"Books read: {books_item.text()}")
             self.month_table.setItem(row, 2, books_item)
             
             # Total hours
             hours_item = QTableWidgetItem(f"{month_data['total_hours']:.1f}")
-            hours_item.setAccessibleName(f"Total hours: {hours_item.text()}")
             self.month_table.setItem(row, 3, hours_item)
 
     def load_date_range_data(self):
@@ -449,27 +442,22 @@ class ReadingHistoryWindow(QMainWindow):
             
             # Date
             date_item = QTableWidgetItem(book.read_date.toString("yyyy-MM-dd") if book.read_date else "")
-            date_item.setAccessibleName(f"Read date: {date_item.text()}")
             self.range_table.setItem(row, 0, date_item)
             
             # Title
             title_item = QTableWidgetItem(book.title or "")
-            title_item.setAccessibleName(f"Title: {title_item.text()}")
             self.range_table.setItem(row, 1, title_item)
             
             # Author
             author_item = QTableWidgetItem(book.author_name or "")
-            author_item.setAccessibleName(f"Author: {author_item.text()}")
             self.range_table.setItem(row, 2, author_item)
             
             # Length (tracks)
             length_item = QTableWidgetItem(str(book.tracks or 0))
-            length_item.setAccessibleName(f"Length: {length_item.text()}")
             self.range_table.setItem(row, 3, length_item)
             
             # Hours
             hours_item = QTableWidgetItem(str(book.time_hours or 0))
-            hours_item.setAccessibleName(f"Hours: {hours_item.text()}")
             self.range_table.setItem(row, 4, hours_item)
 
     def on_tab_changed(self, index):
