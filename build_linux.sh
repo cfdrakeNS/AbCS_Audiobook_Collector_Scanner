@@ -9,12 +9,12 @@ if [[ ! -f "src/main.py" ]]; then
   exit 1
 fi
 
-if [[ ! -d ".venv" ]]; then
-  echo "ERROR: .venv not found. Create it first: python3 -m venv .venv"
+if [[ ! -d "venv" ]]; then
+  echo "ERROR: venv not found. Create it first: python3 -m venv venv"
   exit 1
 fi
 
-source .venv/bin/activate
+source venv/bin/activate
 
 if ! python -m pip show pyinstaller >/dev/null 2>&1; then
   echo "Installing PyInstaller..."
