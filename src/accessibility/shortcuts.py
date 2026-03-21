@@ -59,10 +59,6 @@ class ShortcutManager(QObject):
     # Reading History Window
     READING_HISTORY_WINDOW_SHORTCUTS = {
         'R': ('Refresh data', 'refresh_button'),
-        '1': ('Focus start date', 'date_start'),
-        '2': ('Focus end date', 'date_end'),
-        '3': ('Focus collection filter', 'collection_filter'),
-        '4': ('Focus history table', 'history_table'),
     }
 
     """
