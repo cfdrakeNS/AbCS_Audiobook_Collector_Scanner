@@ -2700,18 +2700,18 @@ class MainWindow(QMainWindow):
 
     def on_reading_history(self):
         """Handle Alt+H - Show reading history window."""
-        # TODO: Implement reading history window
-        # For now, show a message that this feature is coming
-        from PySide6.QtWidgets import QMessageBox
-        QMessageBox.information(
-            self,
-            "Reading History",
-            "Reading History feature is coming soon!\n\nThis will show:\n"
-            "- Books you've read\n"
-            "- Reading statistics\n"
-            "- Monthly/yearly breakdowns\n"
-            "- Date range queries"
+        from src.ui.reading_history_window import ReadingHistoryWindow
+        from src.database import ReadingQueries
+        
+        # Create reading history window
+        reading_window = ReadingHistoryWindow(
+            self.db, self.scaler, self.theme_manager, parent=self
         )
+        
+        # Show window
+        reading_window.show()
+        reading_window.raise_()
+        reading_window.activateWindow()
 
     def on_new_book(self):
         """Open book details for new book."""

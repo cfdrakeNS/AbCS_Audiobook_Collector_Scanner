@@ -12,6 +12,7 @@ from .queries import (
     BookQueries, AuthorQueries, SeriesQueries,
     GenreQueries, CollectionQueries, StatisticsQueries
 )
+from .reading_queries import ReadingQueries
 
 __all__ = [
     # Connection
@@ -23,5 +24,5 @@ __all__ = [
     
     # Queries
     'BookQueries', 'AuthorQueries', 'SeriesQueries',
-    'GenreQueries', 'CollectionQueries', 'StatisticsQueries'
+    'GenreQueries', 'CollectionQueries', 'StatisticsQueries', 'ReadingQueries'
 ]

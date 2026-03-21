@@ -20,6 +20,7 @@ class ShortcutContext(Enum):
     DUPLICATE_DIALOG = "duplicate_dialog"
     BACKUP_RESTORE_WINDOW = "backup_restore_window"
     NAMELIST_WINDOW = "namelist_window"
+    READING_HISTORY_WINDOW = "reading_history_window"
 
 
 class ShortcutManager(QObject):
@@ -54,6 +55,14 @@ class ShortcutManager(QObject):
         'R': ('Restore', 'restore_button'),
         'D': ('Delete', 'delete_button'),
         'F': ('Full reset', 'full_reset_button'),
+    }
+    # Reading History Window
+    READING_HISTORY_WINDOW_SHORTCUTS = {
+        'R': ('Refresh data', 'refresh_button'),
+        '1': ('Focus start date', 'date_start'),
+        '2': ('Focus end date', 'date_end'),
+        '3': ('Focus collection filter', 'collection_filter'),
+        '4': ('Focus history table', 'history_table'),
     }
 
     """
