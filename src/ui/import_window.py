@@ -1334,6 +1334,7 @@ class ImportWindow(QDialog):
                 "Folder Required", 
                 "Please select a folder path first before importing books."
             )
+            self.folder_edit.setFocus()
             return
 
         target_collection_id = self._get_target_collection_id()
