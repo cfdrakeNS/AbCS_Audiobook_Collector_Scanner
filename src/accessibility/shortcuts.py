@@ -183,6 +183,8 @@ class ShortcutManager(QObject):
             shortcuts = self.NAMELIST_WINDOW_SHORTCUTS
         elif context == ShortcutContext.COLLECTION_WINDOW:
             shortcuts = self.COLLECTION_WINDOW_SHORTCUTS
+        elif context == ShortcutContext.READING_HISTORY_WINDOW:
+            shortcuts = self.READING_HISTORY_WINDOW_SHORTCUTS
         else:
             return
 
