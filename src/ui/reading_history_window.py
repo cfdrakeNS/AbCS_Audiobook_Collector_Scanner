@@ -129,6 +129,9 @@ class ReadingHistoryWindow(QDialog):
         self.year_table.verticalHeader().setSectionsClickable(False)
         self.year_table.verticalHeader().setHighlightSections(False)
         self.year_table.verticalHeader().setAccessibleName("")
+        # Disable row announcements for screen readers
+        self.year_table.setAccessibleName("Yearly reading statistics table")
+        self.year_table.setAccessibleDescription("Table showing books read per year. Use arrow keys to navigate cells.")
         
         # Configure header
         header = self.year_table.horizontalHeader()
@@ -172,6 +175,9 @@ class ReadingHistoryWindow(QDialog):
         self.month_table.verticalHeader().setSectionsClickable(False)
         self.month_table.verticalHeader().setHighlightSections(False)
         self.month_table.verticalHeader().setAccessibleName("")
+        # Disable row announcements for screen readers
+        self.month_table.setAccessibleName("Monthly reading statistics table")
+        self.month_table.setAccessibleDescription("Table showing books read per month. Use arrow keys to navigate cells.")
         
         # Configure header
         header = self.month_table.horizontalHeader()
@@ -273,6 +279,9 @@ class ReadingHistoryWindow(QDialog):
         self.range_table.verticalHeader().setSectionsClickable(False)
         self.range_table.verticalHeader().setHighlightSections(False)
         self.range_table.verticalHeader().setAccessibleName("")
+        # Disable row announcements for screen readers
+        self.range_table.setAccessibleName("Date range reading history table")
+        self.range_table.setAccessibleDescription("Table showing reading history with date, title, author, and length. Use arrow keys to navigate cells.")
         
         # Configure header
         header = self.range_table.horizontalHeader()
@@ -281,6 +290,12 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(True)
+        # Set specific column widths: Date=120, Title=200, Author=150, Length=80, Hours=100
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title  
+        header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
+        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Length
+        header.setSectionResizeMode(4, QHeaderView.Fixed)  # Hours
         
         range_layout.addWidget(self.range_table)
         
@@ -291,46 +306,23 @@ class ReadingHistoryWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             'refresh_button': lambda: self.refresh_button.click(),
+            'focus_table': self.focus_current_table
         }
-        mgr.register_alt_shortcuts(
-            self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
-
-        # F1 for help
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
-        # Alt+/ for status bar read
-        self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
+        mgr.register_callbacks(ShortcutContext.READING_HISTORY, callback_map)
         
-        # Alt+B to jump to current table (single shortcut)
-        self.alt_b_table = QShortcut(QKeySequence("Alt+B"), self)
-        self.alt_b_table.activated.connect(self.focus_current_table)
-
+        # Focus on the appropriate table based on current tab
+        self.focus_current_table()
+        
     def focus_current_table(self):
         """Focus on the appropriate table based on current tab."""
         current_tab = self.tab_widget.currentIndex()
         
         if current_tab == 0:  # General tab
-            # Create a dummy table for screen reader accessibility
-            if not hasattr(self, 'general_focus_table'):
-                self.general_focus_table = QTableWidget()
-                self.general_focus_table.setRowCount(1)
-                self.general_focus_table.setColumnCount(1)
-                self.general_focus_table.setHorizontalHeaderLabels(["Statistics"])
-                item = QTableWidgetItem("Reading Statistics - Use arrow keys to navigate")
-                self.general_focus_table.setItem(0, 0, item)
-                self.general_focus_table.setAccessibleName("General statistics")
-                self.general_focus_table.setAccessibleDescription("Reading statistics overview")
-                # Add to general tab layout
-                self.general_tab_layout.addWidget(self.general_focus_table)
-                self.general_focus_table.hide()  # Keep hidden but focusable
-            
-            # Focus on the hidden table for screen reader
-            self.general_focus_table.show()
-            self.general_focus_table.setFocus()
-            self.general_focus_table.setCurrentCell(0, 0)
-            self.set_status("Focused on General statistics", announce=True)
+            # Focus on first statistics label for screen reader
+            self.total_books_label.setAccessibleName("Total Books Read label")
+            self.total_books_label.setAccessibleDescription("Total number of books read")
+            self.total_books_label.setFocus()
+            self.set_status("Focused on Total Books Read", announce=True)
             
         elif current_tab == 1:  # Year tab
             # Focus on year table
