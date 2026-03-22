@@ -249,16 +249,13 @@ class ReadingHistoryWindow(QDialog):
         """Create Date Range tab with filtering."""
         range_widget = QWidget()
         range_layout = QVBoxLayout(range_widget)
+        range_layout.setContentsMargins(0, 0, 0, 0)
+        range_layout.setSpacing(2)
         
-        # Controls section - very tight spacing
-        controls_group = QGroupBox("Date Range Filter")
-        controls_layout = QVBoxLayout(controls_group)
-        controls_layout.setContentsMargins(4, 4, 4, 4)
-        controls_layout.setSpacing(2)
-        
-        # Date range controls - single line, tight
+        # Date range controls - single line, no group box
         date_layout = QHBoxLayout()
-        date_layout.setSpacing(6)
+        date_layout.setSpacing(4)
+        date_layout.setContentsMargins(4, 2, 4, 2)
         
         # Start date
         start_date_label = QLabel("From:")
@@ -291,13 +288,12 @@ class ReadingHistoryWindow(QDialog):
         date_layout.addWidget(self.refresh_button)
         
         date_layout.addStretch()
+        range_layout.addLayout(date_layout)
         
-        controls_layout.addLayout(date_layout)
-        
-        # Period statistics - very tight spacing
-        period_stats_layout = QHBoxLayout()
-        period_stats_layout.setContentsMargins(0, 1, 0, 1)
-        period_stats_layout.setSpacing(2)
+        # Period statistics - no extra spacing
+        period_layout = QHBoxLayout()
+        period_layout.setContentsMargins(4, 0, 4, 2)
+        period_layout.setSpacing(2)
         
         self.period_books_label = QTextEdit()
         self.period_books_label.setReadOnly(True)
@@ -305,14 +301,11 @@ class ReadingHistoryWindow(QDialog):
         self.period_books_label.setAccessibleDescription("Books read in selected date range")
         self.period_books_label.setFocusPolicy(Qt.StrongFocus)
         self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
-        self.period_books_label.setFixedHeight(25)  # Single line height
+        self.period_books_label.setFixedHeight(22)  # Even shorter
         self.period_books_label.setPlainText("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
         
-        period_stats_layout.addWidget(self.period_books_label)
-        period_stats_layout.addStretch()
-        
-        controls_layout.addLayout(period_stats_layout)
-        range_layout.addWidget(controls_group)
+        period_layout.addWidget(self.period_books_label)
+        range_layout.addLayout(period_layout)
         
         # History table
         self.range_table = QTableWidget()
@@ -372,6 +365,10 @@ class ReadingHistoryWindow(QDialog):
         
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
+        
+        # Direct Alt+S shortcut to ensure it works
+        self.search_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.search_shortcut.activated.connect(self.load_date_range_data)
         
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
