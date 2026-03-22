@@ -199,7 +199,7 @@ class ReadingHistoryWindow(QDialog):
         range_layout = QVBoxLayout(range_widget)
         
         # Controls section
-        controls_group = QGroupBox("Date Range & Filters")
+        controls_group = QGroupBox("Date Range Filter")
         controls_layout = QVBoxLayout(controls_group)
         
         # Date range controls
@@ -231,27 +231,12 @@ class ReadingHistoryWindow(QDialog):
         
         controls_layout.addLayout(date_layout)
         
-        # Filter controls
-        filter_layout = QHBoxLayout()
-        
-        # Collection filter
-        collection_label = QLabel("Collection:")
-        collection_label.setAccessibleName("Collection filter")
-        self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Collection filter")
-        self.collection_combo.setAccessibleDescription("Filter reading history by collection")
-        
-        # Refresh button
-        self.refresh_button = QPushButton("&Refresh")
-        self.refresh_button.setAccessibleName("Refresh")
-        self.refresh_button.setAccessibleDescription("Refresh reading history data - Alt+R")
-        
-        filter_layout.addWidget(collection_label)
-        filter_layout.addWidget(self.collection_combo)
-        filter_layout.addWidget(self.refresh_button)
-        filter_layout.addStretch()
-        
-        controls_layout.addLayout(filter_layout)
+        # Search button
+        self.refresh_button = QPushButton("&Search")
+        self.refresh_button.setAccessibleName("Search reading history")
+        self.refresh_button.setAccessibleDescription("Search reading history for selected date range")
+        self.refresh_button.clicked.connect(self.load_date_range_data)
+        controls_layout.addWidget(self.refresh_button)
         
         # Period statistics
         period_stats_layout = QHBoxLayout()
@@ -471,7 +456,6 @@ class ReadingHistoryWindow(QDialog):
         """Load data for date range tab."""
         start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
-        collection_id = self.collection_combo.currentData()
         
         # Convert string dates to date objects for ReadingQueries
         from datetime import datetime
@@ -481,8 +465,7 @@ class ReadingHistoryWindow(QDialog):
         # Use ReadingQueries to get books with proper date objects
         books = self.reading_queries.get_reading_history(
             start_date=start_date_obj,
-            end_date=end_date_obj,
-            collection_id=collection_id
+            end_date=end_date_obj
         )
         
         # Update period statistics

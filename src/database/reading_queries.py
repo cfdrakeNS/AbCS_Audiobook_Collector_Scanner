@@ -309,12 +309,12 @@ class ReadingQueries:
         if end_date:
             query += " AND read_date <= ?"
             params.append(end_date.strftime("%Y-%m-%d"))
-            
+        
         if collection_id is not None:
             query += " AND collection_id = ?"
             params.append(collection_id)
         
-        query += " GROUP BY strftime('%Y', read_date) ORDER BY year DESC"
+        query += " GROUP BY strftime('%Y', read_date) ORDER BY year DESC"  # Show all years
         
         rows = self.db.fetch_all(query, tuple(params))
         
@@ -352,7 +352,7 @@ class ReadingQueries:
             query += " AND collection_id = ?"
             params.append(collection_id)
         
-        query += " GROUP BY strftime('%Y-%m', read_date) ORDER BY month DESC LIMIT 60"  # Show 5 years instead of 1
+        query += " GROUP BY strftime('%Y-%m', read_date) ORDER BY month DESC"  # Show all months
         
         rows = self.db.fetch_all(query, tuple(params))
         
