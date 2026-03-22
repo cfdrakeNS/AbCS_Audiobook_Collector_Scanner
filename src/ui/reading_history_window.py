@@ -278,25 +278,27 @@ class ReadingHistoryWindow(QDialog):
         date_layout.addWidget(self.start_date_edit)
         date_layout.addWidget(end_date_label)
         date_layout.addWidget(self.end_date_edit)
-        date_layout.addStretch()
+        date_layout.addWidget(QLabel(""))  # Spacer
         
-        controls_layout.addLayout(date_layout)
-        
-        # Search button
-        self.refresh_button = QPushButton("&Search")
+        # Search button moved to right of date fields
+        self.refresh_button = QPushButton("Search")
         self.refresh_button.setAccessibleName("Search reading history")
         self.refresh_button.setAccessibleDescription("Search reading history for selected date range")
         self.refresh_button.clicked.connect(self.load_date_range_data)
-        controls_layout.addWidget(self.refresh_button)
+        date_layout.addWidget(self.refresh_button)
         
-        # Period statistics
+        controls_layout.addLayout(date_layout)
+        
+        # Period statistics with accessible labels
         period_stats_layout = QHBoxLayout()
         
         self.period_books_label = QLabel("Books in Period: 0")
         self.period_books_label.setAccessibleName("Books in period")
+        self.period_books_label.setAccessibleDescription("Number of books read in selected date range")
         
         self.period_hours_label = QLabel("Hours in Period: 0.0")
         self.period_hours_label.setAccessibleName("Hours in period")
+        self.period_hours_label.setAccessibleDescription("Total hours read in selected date range")
         
         period_stats_layout.addWidget(self.period_books_label)
         period_stats_layout.addWidget(self.period_hours_label)
@@ -331,15 +333,15 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(False)
-        # Set specific column widths: Date=120, Title=250, Author=180, Length=80, Hours=100
+        # Set specific column widths: Date=120, Title=333, Author=240, Length=80, Hours=100
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title  
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Length
         header.setSectionResizeMode(4, QHeaderView.Fixed)  # Hours
         self.range_table.setColumnWidth(0, 120)  # Date
-        self.range_table.setColumnWidth(1, 250)  # Title
-        self.range_table.setColumnWidth(2, 180)  # Author
+        self.range_table.setColumnWidth(1, 333)  # Title (+33%)
+        self.range_table.setColumnWidth(2, 240)  # Author (+33%)
         self.range_table.setColumnWidth(3, 80)   # Length
         self.range_table.setColumnWidth(4, 100)  # Hours
         
@@ -354,7 +356,7 @@ class ReadingHistoryWindow(QDialog):
             'refresh_button': lambda: self.refresh_button.click(),
             'focus_table': self.focus_current_table
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, {'B': self.focus_current_table})
+        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, {'B': self.focus_current_table, 'F1': self.on_show_shortcuts})
         
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
@@ -443,12 +445,12 @@ class ReadingHistoryWindow(QDialog):
 
     def update_general_stats(self, stats):
         """Update general statistics table."""
-        self.total_books_value.setText(str(stats['total_books']))
+        self.total_books_value.setText(f"{stats['total_books']:,}")
         self.total_hours_value.setText(f"{stats['total_hours']:.1f}")
         self.avg_hours_value.setText(f"{stats['avg_hours_per_book']:.1f}")
         
         # Also update hidden labels for backward compatibility
-        self.total_books_label.setText(f"Total Books Read: {stats['total_books']}")
+        self.total_books_label.setText(f"Total Books Read: {stats['total_books']:,}")
         self.total_hours_label.setText(f"Total Hours Read: {stats['total_hours']:.1f}")
         self.avg_hours_label.setText(f"Average Hours per Book: {stats['avg_hours_per_book']:.1f}")
 
@@ -463,12 +465,14 @@ class ReadingHistoryWindow(QDialog):
             year_item = QTableWidgetItem(str(year_data['year']))
             self.year_table.setItem(row, 0, year_item)
             
-            # Books read
-            books_item = QTableWidgetItem(str(year_data['book_count']))
+            # Books read (right-aligned with thousand separator)
+            books_item = QTableWidgetItem(f"{year_data['book_count']:,}")
+            books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 1, books_item)
             
-            # Total hours
+            # Total hours (right-aligned)
             hours_item = QTableWidgetItem(f"{year_data['total_hours']:.1f}")
+            hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 2, hours_item)
 
     def populate_month_table(self, monthly_data):
@@ -486,12 +490,14 @@ class ReadingHistoryWindow(QDialog):
             year_item = QTableWidgetItem(str(month_data['year']))
             self.month_table.setItem(row, 1, year_item)
             
-            # Books read
-            books_item = QTableWidgetItem(str(month_data['book_count']))
+            # Books read (right-aligned with thousand separator)
+            books_item = QTableWidgetItem(f"{month_data['book_count']:,}")
+            books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 2, books_item)
             
-            # Total hours
+            # Total hours (right-aligned)
             hours_item = QTableWidgetItem(f"{month_data['total_hours']:.1f}")
+            hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 3, hours_item)
 
     def load_date_range_data(self):
@@ -514,8 +520,15 @@ class ReadingHistoryWindow(QDialog):
         total_books = len(books)
         total_hours = sum(book.time_hours or 0 for book in books)
         
-        self.period_books_label.setText(f"Books in Period: {total_books}")
+        # Create accessible message
+        start_date_str = self.start_date_edit.date().toString("yyyy-MM-dd")
+        end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
+        accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:.1f} hours"
+        
+        self.period_books_label.setText(f"Books in Period: {total_books:,}")
         self.period_hours_label.setText(f"Hours in Period: {total_hours:.1f}")
+        self.period_books_label.setAccessibleDescription(accessible_msg)
+        self.period_hours_label.setAccessibleDescription(accessible_msg)
         
         # Populate table
         self.populate_range_table(books)
@@ -541,12 +554,14 @@ class ReadingHistoryWindow(QDialog):
             author_item = QTableWidgetItem(book.author_name or "")
             self.range_table.setItem(row, 2, author_item)
             
-            # Length (tracks)
+            # Length (right-aligned)
             length_item = QTableWidgetItem(str(book.tracks or 0))
+            length_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 3, length_item)
             
-            # Hours
+            # Hours (right-aligned)
             hours_item = QTableWidgetItem(str(book.time_hours or 0))
+            hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 4, hours_item)
 
     def on_tab_changed(self, index):
@@ -554,6 +569,8 @@ class ReadingHistoryWindow(QDialog):
         tab_names = ["General", "Year", "Month", "Date Range"]
         if index < len(tab_names):
             self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            # Set focus to table when tab changes
+            self.focus_current_table()
 
     def on_theme_changed(self):
         """Handle theme change."""
