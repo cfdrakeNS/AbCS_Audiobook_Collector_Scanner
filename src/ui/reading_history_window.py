@@ -308,7 +308,7 @@ class ReadingHistoryWindow(QDialog):
             'refresh_button': lambda: self.refresh_button.click(),
             'focus_table': self.focus_current_table
         }
-        mgr.register_callbacks(ShortcutContext.READING_HISTORY, callback_map)
+        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
         
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
