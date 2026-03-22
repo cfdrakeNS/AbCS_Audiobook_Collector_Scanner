@@ -98,12 +98,9 @@ class ReadingHistoryWindow(QDialog):
         self.general_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.general_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.general_table.setAlternatingRowColors(False)
+        self.general_table.setStyleSheet(build_accessible_f1_popup_style())
         self.general_table.verticalHeader().setVisible(False)
-        self.general_table.verticalHeader().setSectionsClickable(False)
-        self.general_table.verticalHeader().setHighlightSections(False)
-        self.general_table.verticalHeader().setAccessibleName("")
-        # Disable row change announcements
-        self.general_table.setProperty("accessibleTableNavigation", True)
+        self.general_table.setVerticalHeaderLabels([])
         
         # Configure header
         header = self.general_table.horizontalHeader()
@@ -181,15 +178,9 @@ class ReadingHistoryWindow(QDialog):
         self.year_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.year_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.year_table.setAlternatingRowColors(False)
+        self.year_table.setStyleSheet(build_accessible_f1_popup_style())
         self.year_table.verticalHeader().setVisible(False)
-        self.year_table.verticalHeader().setSectionsClickable(False)
-        self.year_table.verticalHeader().setHighlightSections(False)
-        self.year_table.verticalHeader().setAccessibleName("")
-        # Disable row announcements for screen readers
-        self.year_table.setAccessibleName("Yearly reading statistics table")
-        self.year_table.setAccessibleDescription("Table showing books read per year. Use arrow keys to navigate cells.")
-        # Disable row change announcements
-        self.year_table.setProperty("accessibleTableNavigation", True)
+        self.year_table.setVerticalHeaderLabels([])
         
         # Configure header
         header = self.year_table.horizontalHeader()
@@ -229,15 +220,9 @@ class ReadingHistoryWindow(QDialog):
         self.month_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.month_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.month_table.setAlternatingRowColors(False)
+        self.month_table.setStyleSheet(build_accessible_f1_popup_style())
         self.month_table.verticalHeader().setVisible(False)
-        self.month_table.verticalHeader().setSectionsClickable(False)
-        self.month_table.verticalHeader().setHighlightSections(False)
-        self.month_table.verticalHeader().setAccessibleName("")
-        # Disable row announcements for screen readers
-        self.month_table.setAccessibleName("Monthly reading statistics table")
-        self.month_table.setAccessibleDescription("Table showing books read per month. Use arrow keys to navigate cells.")
-        # Disable row change announcements
-        self.month_table.setProperty("accessibleTableNavigation", True)
+        self.month_table.setVerticalHeaderLabels([])
         
         # Configure header
         header = self.month_table.horizontalHeader()
@@ -246,12 +231,12 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(80)
         header.setStretchLastSection(False)
-        # Set specific column widths: Month=100, Year=80, Books=100, Hours=80
+        # Set specific column widths: Month=150, Year=80, Books=100, Hours=80
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         header.setSectionResizeMode(2, QHeaderView.Fixed)
         header.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.month_table.setColumnWidth(0, 100)  # Month
+        self.month_table.setColumnWidth(0, 150)  # Month
         self.month_table.setColumnWidth(1, 80)   # Year
         self.month_table.setColumnWidth(2, 100)  # Books Read
         self.month_table.setColumnWidth(3, 80)   # Total Hours
@@ -335,15 +320,9 @@ class ReadingHistoryWindow(QDialog):
         self.range_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.range_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.range_table.setAlternatingRowColors(False)
+        self.range_table.setStyleSheet(build_accessible_f1_popup_style())
         self.range_table.verticalHeader().setVisible(False)
-        self.range_table.verticalHeader().setSectionsClickable(False)
-        self.range_table.verticalHeader().setHighlightSections(False)
-        self.range_table.verticalHeader().setAccessibleName("")
-        # Disable row announcements for screen readers
-        self.range_table.setAccessibleName("Date range reading history table")
-        self.range_table.setAccessibleDescription("Table showing reading history with date, title, author, and length. Use arrow keys to navigate cells.")
-        # Disable row change announcements
-        self.range_table.setProperty("accessibleTableNavigation", True)
+        self.range_table.setVerticalHeaderLabels([])
         
         # Configure header
         header = self.range_table.horizontalHeader()
@@ -352,17 +331,17 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(False)
-        # Set specific column widths: Date=100, Title=300, Author=200, Length=80, Hours=80
+        # Set specific column widths: Date=120, Title=250, Author=180, Length=80, Hours=100
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title  
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Length
         header.setSectionResizeMode(4, QHeaderView.Fixed)  # Hours
-        self.range_table.setColumnWidth(0, 100)  # Date
-        self.range_table.setColumnWidth(1, 300)  # Title
-        self.range_table.setColumnWidth(2, 200)  # Author
+        self.range_table.setColumnWidth(0, 120)  # Date
+        self.range_table.setColumnWidth(1, 250)  # Title
+        self.range_table.setColumnWidth(2, 180)  # Author
         self.range_table.setColumnWidth(3, 80)   # Length
-        self.range_table.setColumnWidth(4, 80)   # Hours
+        self.range_table.setColumnWidth(4, 100)  # Hours
         
         range_layout.addWidget(self.range_table)
         
@@ -375,7 +354,7 @@ class ReadingHistoryWindow(QDialog):
             'refresh_button': lambda: self.refresh_button.click(),
             'focus_table': self.focus_current_table
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
+        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, {'B': self.focus_current_table})
         
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
