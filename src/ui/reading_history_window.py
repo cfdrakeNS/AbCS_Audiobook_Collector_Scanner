@@ -82,23 +82,79 @@ class ReadingHistoryWindow(QDialog):
         self.general_tab_layout = QVBoxLayout(general_widget)  # Store reference
         
         # Statistics section
-        stats_group = QGroupBox("Overall Reading Statistics")
+        stats_group = QGroupBox("Reading Statistics")
         stats_layout = QVBoxLayout(stats_group)
         
-        # Statistics labels
+        # Create a table for JAWS accessibility
+        self.general_table = QTableWidget()
+        self.general_table.setAccessibleName("General reading statistics table")
+        self.general_table.setAccessibleDescription("Table showing total reading statistics")
+        self.general_table.setColumnCount(2)
+        self.general_table.setHorizontalHeaderLabels(["Statistic", "Value"])
+        self.general_table.setRowCount(3)
+        
+        # Table configuration for accessibility
+        self.general_table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.general_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.general_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.general_table.setAlternatingRowColors(False)
+        self.general_table.verticalHeader().setVisible(False)
+        self.general_table.verticalHeader().setSectionsClickable(False)
+        self.general_table.verticalHeader().setHighlightSections(False)
+        self.general_table.verticalHeader().setAccessibleName("")
+        # Disable row change announcements
+        self.general_table.setProperty("accessibleTableNavigation", True)
+        
+        # Configure header
+        header = self.general_table.horizontalHeader()
+        header.setSectionsClickable(False)
+        header.setSortIndicatorShown(False)
+        header.setMinimumSectionSize(150)
+        header.setStretchLastSection(True)
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Statistic
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Value
+        self.general_table.setColumnWidth(0, 200)  # Statistic
+        self.general_table.setColumnWidth(1, 150)  # Value
+        
+        # Add statistics items to table
+        self.total_books_item = QTableWidgetItem("Total Books Read")
+        self.total_books_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.general_table.setItem(0, 0, self.total_books_item)
+        
+        self.total_books_value = QTableWidgetItem("0")
+        self.total_books_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.general_table.setItem(0, 1, self.total_books_value)
+        
+        self.total_hours_item = QTableWidgetItem("Total Hours Read")
+        self.total_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.general_table.setItem(1, 0, self.total_hours_item)
+        
+        self.total_hours_value = QTableWidgetItem("0.0")
+        self.total_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.general_table.setItem(1, 1, self.total_hours_value)
+        
+        self.avg_hours_item = QTableWidgetItem("Average Hours per Book")
+        self.avg_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.general_table.setItem(2, 0, self.avg_hours_item)
+        
+        self.avg_hours_value = QTableWidgetItem("0.0")
+        self.avg_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.general_table.setItem(2, 1, self.avg_hours_value)
+        
+        stats_layout.addWidget(self.general_table)
+        
+        # Keep labels for backward compatibility but hide them
         self.total_books_label = QLabel("Total Books Read: 0")
         self.total_books_label.setAccessibleName("Total books read")
+        self.total_books_label.hide()
         
         self.total_hours_label = QLabel("Total Hours Read: 0.0")
         self.total_hours_label.setAccessibleName("Total hours read")
+        self.total_hours_label.hide()
         
         self.avg_hours_label = QLabel("Average Hours per Book: 0.0")
         self.avg_hours_label.setAccessibleName("Average hours per book")
-        
-        stats_layout.addWidget(self.total_books_label)
-        stats_layout.addWidget(self.total_hours_label)
-        stats_layout.addWidget(self.avg_hours_label)
-        stats_layout.addStretch()
+        self.avg_hours_label.hide()
         
         self.general_tab_layout.addWidget(stats_group)
         self.general_tab_layout.addStretch()
@@ -132,6 +188,8 @@ class ReadingHistoryWindow(QDialog):
         # Disable row announcements for screen readers
         self.year_table.setAccessibleName("Yearly reading statistics table")
         self.year_table.setAccessibleDescription("Table showing books read per year. Use arrow keys to navigate cells.")
+        # Disable row change announcements
+        self.year_table.setProperty("accessibleTableNavigation", True)
         
         # Configure header
         header = self.year_table.horizontalHeader()
@@ -178,6 +236,8 @@ class ReadingHistoryWindow(QDialog):
         # Disable row announcements for screen readers
         self.month_table.setAccessibleName("Monthly reading statistics table")
         self.month_table.setAccessibleDescription("Table showing books read per month. Use arrow keys to navigate cells.")
+        # Disable row change announcements
+        self.month_table.setProperty("accessibleTableNavigation", True)
         
         # Configure header
         header = self.month_table.horizontalHeader()
@@ -282,6 +342,8 @@ class ReadingHistoryWindow(QDialog):
         # Disable row announcements for screen readers
         self.range_table.setAccessibleName("Date range reading history table")
         self.range_table.setAccessibleDescription("Table showing reading history with date, title, author, and length. Use arrow keys to navigate cells.")
+        # Disable row change announcements
+        self.range_table.setProperty("accessibleTableNavigation", True)
         
         # Configure header
         header = self.range_table.horizontalHeader()
@@ -289,13 +351,18 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicatorShown(True)
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
-        header.setStretchLastSection(True)
-        # Set specific column widths: Date=120, Title=200, Author=150, Length=80, Hours=100
+        header.setStretchLastSection(False)
+        # Set specific column widths: Date=100, Title=300, Author=200, Length=80, Hours=80
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title  
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Length
         header.setSectionResizeMode(4, QHeaderView.Fixed)  # Hours
+        self.range_table.setColumnWidth(0, 100)  # Date
+        self.range_table.setColumnWidth(1, 300)  # Title
+        self.range_table.setColumnWidth(2, 200)  # Author
+        self.range_table.setColumnWidth(3, 80)   # Length
+        self.range_table.setColumnWidth(4, 80)   # Hours
         
         range_layout.addWidget(self.range_table)
         
@@ -318,11 +385,10 @@ class ReadingHistoryWindow(QDialog):
         current_tab = self.tab_widget.currentIndex()
         
         if current_tab == 0:  # General tab
-            # Focus on first statistics label for screen reader
-            self.total_books_label.setAccessibleName("Total Books Read label")
-            self.total_books_label.setAccessibleDescription("Total number of books read")
-            self.total_books_label.setFocus()
-            self.set_status("Focused on Total Books Read", announce=True)
+            # Focus on general table for screen reader
+            self.general_table.setFocus()
+            self.general_table.setCurrentCell(0, 0)
+            self.set_status("Focused on General statistics table", announce=True)
             
         elif current_tab == 1:  # Year tab
             # Focus on year table
@@ -397,7 +463,12 @@ class ReadingHistoryWindow(QDialog):
             self._loading = False
 
     def update_general_stats(self, stats):
-        """Update general statistics labels."""
+        """Update general statistics table."""
+        self.total_books_value.setText(str(stats['total_books']))
+        self.total_hours_value.setText(f"{stats['total_hours']:.1f}")
+        self.avg_hours_value.setText(f"{stats['avg_hours_per_book']:.1f}")
+        
+        # Also update hidden labels for backward compatibility
         self.total_books_label.setText(f"Total Books Read: {stats['total_books']}")
         self.total_hours_label.setText(f"Total Hours Read: {stats['total_hours']:.1f}")
         self.avg_hours_label.setText(f"Average Hours per Book: {stats['avg_hours_per_book']:.1f}")
