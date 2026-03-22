@@ -355,7 +355,7 @@ class ReadingHistoryWindow(QDialog):
         """Setup keyboard shortcuts using ShortcutManager."""
         mgr = get_shortcut_manager()
         callback_map = {
-            'refresh_button': lambda: self.refresh_button.click(),
+            'refresh_button': self.load_date_range_data,
             'table': self.focus_current_table,
             'start_date_edit': lambda: self.start_date_edit.setFocus(Qt.TabFocusReason)
         }
@@ -557,14 +557,17 @@ class ReadingHistoryWindow(QDialog):
         # Create accessible message like preferences scenario description
         start_date_str = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
-        accessible_msg = f"Books read Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
+        accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
         
-        self.period_books_label.setText(f"Books read Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours")
-        self.period_hours_label.setText(f"Books read Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours")
+        self.period_books_label.setText(accessible_msg)
+        self.period_hours_label.setText(accessible_msg)
         self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription(accessible_msg)
         self.period_hours_label.setAccessibleName("Hours read in period")
         self.period_hours_label.setAccessibleDescription(accessible_msg)
+        # Make labels focusable for screen readers
+        self.period_books_label.setFocusPolicy(Qt.TabFocus)
+        self.period_hours_label.setFocusPolicy(Qt.TabFocus)
         
         # Populate table
         self.populate_range_table(books)
