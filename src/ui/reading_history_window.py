@@ -711,8 +711,8 @@ class ReadingHistoryWindow(QDialog):
         """Handle show event."""
         if not self._collections_loaded:
             self._collections_loaded = True
-            # Set focus to table when window opens
-            self.focus_current_table()
+            # Set focus to table when window opens (use timer like name_list_window)
+            QTimer.singleShot(0, self.focus_current_table)
         super().showEvent(event)
 
     def closeEvent(self, event):
