@@ -281,9 +281,9 @@ class ReadingHistoryWindow(QDialog):
         date_layout.addWidget(self.end_date_edit)
         
         # Search button inline with date fields
-        self.refresh_button = QPushButton("Search")
+        self.refresh_button = QPushButton("&Search")
         self.refresh_button.setAccessibleName("Search reading history")
-        self.refresh_button.setAccessibleDescription("Search reading history for selected date range")
+        self.refresh_button.setAccessibleDescription("Search reading history for selected date range - Alt+S")
         self.refresh_button.clicked.connect(self.load_date_range_data)
         date_layout.addWidget(self.refresh_button)
         
@@ -297,7 +297,8 @@ class ReadingHistoryWindow(QDialog):
         self.period_books_label = QLabel("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
         self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription("Books read in selected date range")
-        self.period_books_label.setFocusPolicy(Qt.TabFocus)
+        self.period_books_label.setFocusPolicy(Qt.StrongFocus)
+        self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         
         period_stats_layout.addWidget(self.period_books_label)
         period_stats_layout.addStretch()
@@ -563,7 +564,8 @@ class ReadingHistoryWindow(QDialog):
         self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription(accessible_msg)
         # Make label focusable for screen readers
-        self.period_books_label.setFocusPolicy(Qt.TabFocus)
+        self.period_books_label.setFocusPolicy(Qt.StrongFocus)
+        self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         
         # Populate table
         self.populate_range_table(books)
