@@ -108,7 +108,7 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionsClickable(False)
         header.setSortIndicatorShown(False)
         header.setMinimumSectionSize(150)
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(False)
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Statistic
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Value
         self.general_table.setColumnWidth(0, 200)  # Statistic
