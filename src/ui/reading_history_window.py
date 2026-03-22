@@ -37,6 +37,7 @@ class ReadingHistoryWindow(QDialog):
         self.reading_queries = ReadingQueries(db)
         self._default_status_message = "Ready"
         self._loading = False
+        self._collections_loaded = False
         
         # Window setup
         self.setWindowTitle("Reading History")
