@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QLabel, QPushButton,
     QDateEdit, QComboBox, QLineEdit, QGroupBox,
     QHeaderView, QAbstractItemView, QStatusBar, QMessageBox,
-    QTabWidget
+    QTabWidget, QTextEdit
 )
 from PySide6.QtCore import (
     Qt, QDate, QSettings, QTimer, QItemSelection, QItemSelectionModel
@@ -211,8 +211,8 @@ class ReadingHistoryWindow(QDialog):
         self.month_table.setAccessibleName("Monthly reading statistics table")
         self.month_table.setAccessibleDescription("Table showing books read per month")
         
-        # Setup table columns
-        month_headers = ["Month", "Year", "Books Read", "Total Hours"]
+        # Swap month and year columns: Year, Month, Books Read, Total Hours
+        month_headers = ["Year", "Month", "Books Read", "Total Hours"]
         self.month_table.setColumnCount(len(month_headers))
         self.month_table.setHorizontalHeaderLabels(month_headers)
         
@@ -232,13 +232,13 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(80)
         header.setStretchLastSection(False)
-        # Set specific column widths: Month=150, Year=80, Books=100, Hours=80
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.Fixed)
-        header.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.month_table.setColumnWidth(0, 150)  # Month
-        self.month_table.setColumnWidth(1, 80)   # Year
+        # Set specific column widths: Year=80, Month=150, Books=100, Hours=80
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Year
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Month
+        header.setSectionResizeMode(2, QHeaderView.Fixed)  # Books Read
+        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Total Hours
+        self.month_table.setColumnWidth(0, 80)   # Year
+        self.month_table.setColumnWidth(1, 150)  # Month
         self.month_table.setColumnWidth(2, 100)  # Books Read
         self.month_table.setColumnWidth(3, 80)   # Total Hours
         
@@ -294,11 +294,14 @@ class ReadingHistoryWindow(QDialog):
         # Period statistics with accessible description like preferences scenario
         period_stats_layout = QHBoxLayout()
         
-        self.period_books_label = QLabel("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
+        self.period_books_label = QTextEdit()
+        self.period_books_label.setReadOnly(True)
         self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription("Books read in selected date range")
         self.period_books_label.setFocusPolicy(Qt.StrongFocus)
         self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
+        self.period_books_label.setMinimumHeight(40)
+        self.period_books_label.setPlainText("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
         
         period_stats_layout.addWidget(self.period_books_label)
         period_stats_layout.addStretch()
@@ -514,13 +517,13 @@ class ReadingHistoryWindow(QDialog):
         for row, month_data in enumerate(monthly_data):
             self.month_table.insertRow(row)
             
-            # Month name
-            month_item = QTableWidgetItem(month_data['month_name'])
-            self.month_table.setItem(row, 0, month_item)
-            
             # Year
             year_item = QTableWidgetItem(str(month_data['year']))
-            self.month_table.setItem(row, 1, year_item)
+            self.month_table.setItem(row, 0, year_item)
+            
+            # Month name
+            month_item = QTableWidgetItem(month_data['month_name'])
+            self.month_table.setItem(row, 1, month_item)
             
             # Books read (right-aligned with thousand separator)
             books_item = QTableWidgetItem(f"{month_data['book_count']:,}")
@@ -560,7 +563,7 @@ class ReadingHistoryWindow(QDialog):
         end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
         accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
         
-        self.period_books_label.setText(accessible_msg)
+        self.period_books_label.setPlainText(accessible_msg)
         self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription(accessible_msg)
         # Make label focusable for screen readers
