@@ -359,18 +359,23 @@ class ReadingQueries:
         breakdown = []
         for row in rows:
             month_str = row['month']
+            print(f"DEBUG: Processing month_str: '{month_str}'")
             year = int(month_str[:4])
             month = int(month_str[4:6])
+            print(f"DEBUG: Parsed year={year}, month={month}")
             
             # Get month name with error handling
             import calendar
             try:
                 if 1 <= month <= 12:
                     month_name = calendar.month_name[month]
+                    print(f"DEBUG: Got month_name: '{month_name}'")
                 else:
                     month_name = f"Invalid Month {month}"
-            except (IndexError, ValueError):
+                    print(f"DEBUG: Invalid month {month}")
+            except (IndexError, ValueError) as e:
                 month_name = f"Unknown Month {month}"
+                print(f"DEBUG: Exception in month_name: {e}")
             
             breakdown.append({
                 'year': year,

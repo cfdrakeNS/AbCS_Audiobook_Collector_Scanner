@@ -698,7 +698,7 @@ class MainWindow(QMainWindow):
         reading_history_action.triggered.connect(self.on_reading_history)
         self.view_menu.addAction(reading_history_action)
 
-        # Separator before zoom controls
+        # Separator after reading history, before zoom controls
         self.view_menu.addSeparator()
 
         # mw#16: Zoom actions with shortcut keys displayed
