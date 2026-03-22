@@ -325,31 +325,26 @@ class ReadingHistoryWindow(QDialog):
     def focus_current_table(self):
         """Focus on the appropriate table based on current tab."""
         current_tab = self.tab_widget.currentIndex()
-        print(f"DEBUG: Alt+B pressed, current tab: {current_tab}")
         
         if current_tab == 0:  # General tab
             # Focus on first stat label in general tab
-            print("DEBUG: Focusing on general tab statistics")
             self.total_books_label.setFocus()
             self.set_status("Focused on General tab statistics", announce=True)
             
         elif current_tab == 1:  # Year tab
             # Focus on year table
-            print("DEBUG: Focusing on year table")
             self.year_table.setFocus()
             self.year_table.setCurrentCell(0, 0)
             self.set_status("Focused on Year table", announce=True)
             
         elif current_tab == 2:  # Month tab
             # Focus on month table
-            print("DEBUG: Focusing on month table")
             self.month_table.setFocus()
             self.month_table.setCurrentCell(0, 0)
             self.set_status("Focused on Month table", announce=True)
             
         elif current_tab == 3:  # Date Range tab
             # Focus on range table
-            print("DEBUG: Focusing on date range table")
             self.range_table.setFocus()
             self.range_table.setCurrentCell(0, 0)
             self.set_status("Focused on Date Range table", announce=True)
@@ -410,12 +405,9 @@ class ReadingHistoryWindow(QDialog):
 
     def update_general_stats(self, stats):
         """Update general statistics labels."""
-        print(f"DEBUG: update_general_stats called with: {stats}")
-        print(f"DEBUG: total_books_label exists: {hasattr(self, 'total_books_label')}")
         self.total_books_label.setText(f"Total Books Read: {stats['total_books']}")
         self.total_hours_label.setText(f"Total Hours Read: {stats['total_hours']:.1f}")
         self.avg_hours_label.setText(f"Average Hours per Book: {stats['avg_hours_per_book']:.1f}")
-        print(f"DEBUG: Labels updated successfully")
 
     def populate_year_table(self, yearly_data):
         """Populate year table with yearly breakdown."""
