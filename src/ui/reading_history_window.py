@@ -250,12 +250,15 @@ class ReadingHistoryWindow(QDialog):
         range_widget = QWidget()
         range_layout = QVBoxLayout(range_widget)
         
-        # Controls section
+        # Controls section - tight spacing
         controls_group = QGroupBox("Date Range Filter")
         controls_layout = QVBoxLayout(controls_group)
+        controls_layout.setContentsMargins(6, 6, 6, 6)
+        controls_layout.setSpacing(4)
         
-        # Date range controls
+        # Date range controls - single line
         date_layout = QHBoxLayout()
+        date_layout.setSpacing(8)
         
         # Start date
         start_date_label = QLabel("From:")
@@ -281,10 +284,9 @@ class ReadingHistoryWindow(QDialog):
         date_layout.addWidget(self.end_date_edit)
         
         # Search button inline with date fields
-        self.refresh_button = QPushButton("&Search")
+        self.refresh_button = QPushButton("Search")
         self.refresh_button.setAccessibleName("Search reading history")
         self.refresh_button.setAccessibleDescription("Search reading history for selected date range - Alt+S")
-        self.refresh_button.setAutoDefault(True)
         self.refresh_button.clicked.connect(self.load_date_range_data)
         date_layout.addWidget(self.refresh_button)
         
@@ -294,6 +296,8 @@ class ReadingHistoryWindow(QDialog):
         
         # Period statistics with accessible description like preferences scenario
         period_stats_layout = QHBoxLayout()
+        period_stats_layout.setContentsMargins(0, 2, 0, 2)
+        period_stats_layout.setSpacing(4)
         
         self.period_books_label = QTextEdit()
         self.period_books_label.setReadOnly(True)
