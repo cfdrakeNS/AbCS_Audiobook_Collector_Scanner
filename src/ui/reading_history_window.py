@@ -366,10 +366,6 @@ class ReadingHistoryWindow(QDialog):
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
         
-        # Direct Alt+S shortcut to ensure it works
-        self.search_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.search_shortcut.activated.connect(self.load_date_range_data)
-        
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
         
@@ -538,6 +534,7 @@ class ReadingHistoryWindow(QDialog):
 
     def load_date_range_data(self):
         """Load data for date range tab."""
+        print("DEBUG: load_date_range_data called!")  # Debug line
         start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
         
