@@ -408,31 +408,27 @@ class ReadingHistoryWindow(QDialog):
         end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
         collection_id = self.collection_combo.currentData()
         
-        # Query books with read dates
-        filter_criteria = SearchFilter(
-            collection_id=collection_id,
-            read_filter="Read"  # Only read books
+        # Convert string dates to date objects for ReadingQueries
+        from datetime import datetime
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+        
+        # Use ReadingQueries to get books with proper date objects
+        books = self.reading_queries.get_reading_history(
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            collection_id=collection_id
         )
         
-        books = self.book_queries.get_all(filter_criteria)
-        
-        # Filter by date range
-        filtered_books = []
-        for book in books:
-            if book.read_date:
-                book_date = book.read_date.strftime("%Y-%m-%d")
-                if start_date <= book_date <= end_date:
-                    filtered_books.append(book)
-        
         # Update period statistics
-        total_books = len(filtered_books)
-        total_hours = sum(book.time_hours or 0 for book in filtered_books)
+        total_books = len(books)
+        total_hours = sum(book.time_hours or 0 for book in books)
         
         self.period_books_label.setText(f"Books in Period: {total_books}")
         self.period_hours_label.setText(f"Hours in Period: {total_hours:.1f}")
         
         # Populate table
-        self.populate_range_table(filtered_books)
+        self.populate_range_table(books)
         
         self.set_status(f"Showing {total_books} books in date range")
 
@@ -443,7 +439,7 @@ class ReadingHistoryWindow(QDialog):
         for row, book in enumerate(books):
             self.range_table.insertRow(row)
             
-            # Date
+            # Date - book.read_date is now a proper date object
             date_item = QTableWidgetItem(book.read_date.strftime("%Y-%m-%d") if book.read_date else "")
             self.range_table.setItem(row, 0, date_item)
             
