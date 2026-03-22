@@ -467,9 +467,17 @@ class ReadingHistoryWindow(QDialog):
 
     def update_general_stats(self, stats):
         """Update general statistics table."""
+        # Total books with thousand separator and right alignment
         self.total_books_value.setText(f"{stats['total_books']:,}")
+        self.total_books_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        
+        # Total hours with right alignment
         self.total_hours_value.setText(f"{stats['total_hours']:.1f}")
+        self.total_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        
+        # Average hours with right alignment
         self.avg_hours_value.setText(f"{stats['avg_hours_per_book']:.1f}")
+        self.avg_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         # Also update hidden labels for backward compatibility
         self.total_books_label.setText(f"Total Books Read: {stats['total_books']:,}")
@@ -587,8 +595,8 @@ class ReadingHistoryWindow(QDialog):
             length_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 3, length_item)
             
-            # Hours (right-aligned)
-            hours_item = QTableWidgetItem(str(book.time_hours or 0))
+            # Hours (right-aligned with proper formatting)
+            hours_item = QTableWidgetItem(f"{book.time_hours or 0:.1f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 4, hours_item)
         
