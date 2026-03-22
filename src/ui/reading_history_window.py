@@ -302,50 +302,36 @@ class ReadingHistoryWindow(QDialog):
         self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
         
-        # Alt+B to jump to tables
-        self.alt_b_general = QShortcut(QKeySequence("Alt+B"), self)
-        self.alt_b_general.activated.connect(lambda: self.focus_table('general'))
-        
-        self.alt_b_year = QShortcut(QKeySequence("Alt+B"), self)
-        self.alt_b_year.activated.connect(lambda: self.focus_table('year'))
-        
-        self.alt_b_month = QShortcut(QKeySequence("Alt+B"), self)
-        self.alt_b_month.activated.connect(lambda: self.focus_table('month'))
-        
-        self.alt_b_range = QShortcut(QKeySequence("Alt+B"), self)
-        self.alt_b_range.activated.connect(lambda: self.focus_table('range'))
+        # Alt+B to jump to current table (single shortcut)
+        self.alt_b_table = QShortcut(QKeySequence("Alt+B"), self)
+        self.alt_b_table.activated.connect(self.focus_current_table)
 
-    def focus_table(self, table_name):
+    def focus_current_table(self):
         """Focus on the appropriate table based on current tab."""
         current_tab = self.tab_widget.currentIndex()
         
-        if table_name == 'general':
+        if current_tab == 0:  # General tab
             # Focus on first stat label in general tab
-            self.tab_widget.setCurrentIndex(0)
             self.total_books_label.setFocus()
+            self.set_status("Focused on General tab statistics", announce=True)
             
-        elif table_name == 'year':
+        elif current_tab == 1:  # Year tab
             # Focus on year table
-            self.tab_widget.setCurrentIndex(1)
             self.year_table.setFocus()
             self.year_table.setCurrentCell(0, 0)
+            self.set_status("Focused on Year table", announce=True)
             
-        elif table_name == 'month':
+        elif current_tab == 2:  # Month tab
             # Focus on month table
-            self.tab_widget.setCurrentIndex(2)
             self.month_table.setFocus()
             self.month_table.setCurrentCell(0, 0)
+            self.set_status("Focused on Month table", announce=True)
             
-        elif table_name == 'range':
+        elif current_tab == 3:  # Date Range tab
             # Focus on range table
-            self.tab_widget.setCurrentIndex(3)
             self.range_table.setFocus()
             self.range_table.setCurrentCell(0, 0)
-        
-        # Announce the change
-        tab_names = ["General", "Year", "Month", "Date Range"]
-        if current_tab < len(tab_names):
-            self.set_status(f"Focused on {table_name.title()} table in {tab_names[current_tab]} tab", announce=True)
+            self.set_status("Focused on Date Range table", announce=True)
 
     def apply_accessible_styling(self):
         """Apply accessible styling following import window pattern."""
@@ -537,6 +523,7 @@ class ReadingHistoryWindow(QDialog):
             ("Alt+Y", "Year tab"),
             ("Alt+M", "Month tab"),
             ("Alt+R", "Date Range tab"),
+            ("Alt+B", "Focus current table"),
             ("Enter", "Open selected book details"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
