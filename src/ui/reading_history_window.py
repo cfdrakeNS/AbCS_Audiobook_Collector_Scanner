@@ -279,16 +279,17 @@ class ReadingHistoryWindow(QDialog):
         date_layout.addWidget(self.start_date_edit)
         date_layout.addWidget(end_date_label)
         date_layout.addWidget(self.end_date_edit)
-        date_layout.addStretch()
         
-        controls_layout.addLayout(date_layout)
-        
-        # Search button
+        # Search button inline with date fields
         self.refresh_button = QPushButton("Search")
         self.refresh_button.setAccessibleName("Search reading history")
         self.refresh_button.setAccessibleDescription("Search reading history for selected date range")
         self.refresh_button.clicked.connect(self.load_date_range_data)
-        controls_layout.addWidget(self.refresh_button)
+        date_layout.addWidget(self.refresh_button)
+        
+        date_layout.addStretch()
+        
+        controls_layout.addLayout(date_layout)
         
         # Period statistics with accessible description like preferences scenario
         period_stats_layout = QHBoxLayout()
@@ -379,7 +380,6 @@ class ReadingHistoryWindow(QDialog):
                 row = 0
                 self.general_table.setCurrentCell(row, 0)
             self.general_table.setFocus(Qt.TabFocusReason)
-            self.set_status("Focused on General statistics table", announce=True)
             
         elif current_tab == 1:  # Year tab
             # Focus on year table
@@ -389,7 +389,6 @@ class ReadingHistoryWindow(QDialog):
                     row = 0
                 self.year_table.setCurrentCell(row, 0)
             self.year_table.setFocus(Qt.TabFocusReason)
-            self.set_status("Focused on Year table", announce=True)
             
         elif current_tab == 2:  # Month tab
             # Focus on month table
@@ -399,7 +398,6 @@ class ReadingHistoryWindow(QDialog):
                     row = 0
                 self.month_table.setCurrentCell(row, 0)
             self.month_table.setFocus(Qt.TabFocusReason)
-            self.set_status("Focused on Month table", announce=True)
             
         elif current_tab == 3:  # Date Range tab
             # Focus on range table
@@ -409,7 +407,6 @@ class ReadingHistoryWindow(QDialog):
                     row = 0
                 self.range_table.setCurrentCell(row, 0)
             self.range_table.setFocus(Qt.TabFocusReason)
-            self.set_status("Focused on Date Range table", announce=True)
 
     def apply_accessible_styling(self):
         """Apply accessible styling following import window pattern."""
@@ -471,12 +468,12 @@ class ReadingHistoryWindow(QDialog):
         self.total_books_value.setText(f"{stats['total_books']:,}")
         self.total_books_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
-        # Total hours with right alignment
-        self.total_hours_value.setText(f"{stats['total_hours']:.1f}")
+        # Total hours with thousand separator and right alignment
+        self.total_hours_value.setText(f"{stats['total_hours']:,.0f}")
         self.total_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
-        # Average hours with right alignment
-        self.avg_hours_value.setText(f"{stats['avg_hours_per_book']:.1f}")
+        # Average hours with thousand separator and right alignment
+        self.avg_hours_value.setText(f"{stats['avg_hours_per_book']:,.0f}")
         self.avg_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         # Also update hidden labels for backward compatibility
@@ -500,8 +497,8 @@ class ReadingHistoryWindow(QDialog):
             books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 1, books_item)
             
-            # Total hours (right-aligned)
-            hours_item = QTableWidgetItem(f"{year_data['total_hours']:.1f}")
+            # Total hours (right-aligned with thousand separator)
+            hours_item = QTableWidgetItem(f"{year_data['total_hours']:,.0f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 2, hours_item)
         
@@ -528,8 +525,8 @@ class ReadingHistoryWindow(QDialog):
             books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 2, books_item)
             
-            # Total hours (right-aligned)
-            hours_item = QTableWidgetItem(f"{month_data['total_hours']:.1f}")
+            # Total hours (right-aligned with thousand separator)
+            hours_item = QTableWidgetItem(f"{month_data['total_hours']:,.0f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 3, hours_item)
         
@@ -595,8 +592,8 @@ class ReadingHistoryWindow(QDialog):
             length_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 3, length_item)
             
-            # Hours (right-aligned with proper formatting)
-            hours_item = QTableWidgetItem(f"{book.time_hours or 0:.1f}")
+            # Hours (right-aligned with thousand separator)
+            hours_item = QTableWidgetItem(f"{book.time_hours or 0:,.0f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 4, hours_item)
         
@@ -642,7 +639,7 @@ class ReadingHistoryWindow(QDialog):
             ("Alt+M", "Month tab"),
             ("Alt+R", "Date Range tab"),
             ("Alt+B", "Focus current table"),
-            ("Enter", "Open selected book details"),
+            ("Alt+S", "Search"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Escape", "Close window"),
