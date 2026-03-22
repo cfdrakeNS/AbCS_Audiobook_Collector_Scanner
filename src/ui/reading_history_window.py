@@ -356,7 +356,8 @@ class ReadingHistoryWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             'refresh_button': lambda: self.refresh_button.click(),
-            'table': self.focus_current_table
+            'table': self.focus_current_table,
+            'start_date_edit': lambda: self.start_date_edit.setFocus(Qt.TabFocusReason)
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
         
@@ -556,11 +557,13 @@ class ReadingHistoryWindow(QDialog):
         # Create accessible message like preferences scenario description
         start_date_str = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
-        accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:.1f} hours"
+        accessible_msg = f"Books read Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
         
-        self.period_books_label.setText(f"Books in Period: {total_books:,}")
-        self.period_hours_label.setText(f"Hours in Period: {total_hours:.1f}")
+        self.period_books_label.setText(f"Books read Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours")
+        self.period_hours_label.setText(f"Books read Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours")
+        self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription(accessible_msg)
+        self.period_hours_label.setAccessibleName("Hours read in period")
         self.period_hours_label.setAccessibleDescription(accessible_msg)
         
         # Populate table
@@ -639,6 +642,7 @@ class ReadingHistoryWindow(QDialog):
             ("Alt+M", "Month tab"),
             ("Alt+R", "Date Range tab"),
             ("Alt+B", "Focus current table"),
+            ("Alt+F", "From date field"),
             ("Alt+S", "Search"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),

@@ -61,6 +61,7 @@ class ShortcutManager(QObject):
         'B': ('Jump to list', 'table'),
         'R': ('Refresh data', 'refresh_button'),
         'S': ('Search', 'refresh_button'),
+        'F': ('From date', 'start_date_edit'),
     }
 
     """
