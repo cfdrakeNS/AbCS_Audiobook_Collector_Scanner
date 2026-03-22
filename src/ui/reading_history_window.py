@@ -496,6 +496,9 @@ class ReadingHistoryWindow(QDialog):
             hours_item = QTableWidgetItem(f"{year_data['total_hours']:.1f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 2, hours_item)
+        
+        # Set vertical header labels to prevent row announcements (like name_list_window)
+        self.year_table.setVerticalHeaderLabels([""] * len(yearly_data))
 
     def populate_month_table(self, monthly_data):
         """Populate month table with monthly breakdown."""
@@ -521,6 +524,9 @@ class ReadingHistoryWindow(QDialog):
             hours_item = QTableWidgetItem(f"{month_data['total_hours']:.1f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 3, hours_item)
+        
+        # Set vertical header labels to prevent row announcements (like name_list_window)
+        self.month_table.setVerticalHeaderLabels([""] * len(monthly_data))
 
     def load_date_range_data(self):
         """Load data for date range tab."""
@@ -585,6 +591,9 @@ class ReadingHistoryWindow(QDialog):
             hours_item = QTableWidgetItem(str(book.time_hours or 0))
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.range_table.setItem(row, 4, hours_item)
+        
+        # Set vertical header labels to prevent row announcements (like name_list_window)
+        self.range_table.setVerticalHeaderLabels([""] * len(books))
 
     def on_tab_changed(self, index):
         """Handle tab change."""
