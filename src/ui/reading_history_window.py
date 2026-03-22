@@ -299,13 +299,7 @@ class ReadingHistoryWindow(QDialog):
         self.period_books_label.setAccessibleDescription("Books read in selected date range")
         self.period_books_label.setFocusPolicy(Qt.TabFocus)
         
-        self.period_hours_label = QLabel("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
-        self.period_hours_label.setAccessibleName("Hours read in period")
-        self.period_hours_label.setAccessibleDescription("Hours read in selected date range")
-        self.period_hours_label.setFocusPolicy(Qt.TabFocus)
-        
         period_stats_layout.addWidget(self.period_books_label)
-        period_stats_layout.addWidget(self.period_hours_label)
         period_stats_layout.addStretch()
         
         controls_layout.addLayout(period_stats_layout)
@@ -362,6 +356,10 @@ class ReadingHistoryWindow(QDialog):
             'start_date_edit': lambda: self.start_date_edit.setFocus(Qt.TabFocusReason)
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
+        
+        # Also register Alt+S locally as backup
+        self.search_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.search_shortcut.activated.connect(self.load_date_range_data)
         
         # Local QShortcuts for F1 and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -562,14 +560,10 @@ class ReadingHistoryWindow(QDialog):
         accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
         
         self.period_books_label.setText(accessible_msg)
-        self.period_hours_label.setText(accessible_msg)
         self.period_books_label.setAccessibleName("Books read in period")
         self.period_books_label.setAccessibleDescription(accessible_msg)
-        self.period_hours_label.setAccessibleName("Hours read in period")
-        self.period_hours_label.setAccessibleDescription(accessible_msg)
-        # Make labels focusable for screen readers
+        # Make label focusable for screen readers
         self.period_books_label.setFocusPolicy(Qt.TabFocus)
-        self.period_hours_label.setFocusPolicy(Qt.TabFocus)
         
         # Populate table
         self.populate_range_table(books)
