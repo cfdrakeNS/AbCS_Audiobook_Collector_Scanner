@@ -1,0 +1,94 @@
+winsurf 
+I'll analyze the mouse highlighting issue across both branches to understand the current state and recommend the best approach.
+
+## Analysis Report: Mouse Highlighting Issue
+
+### Current State Analysis
+
+**Phase 2 Branch (Working Correctly):**
+- Mouse highlighting is consistently disabled across all windows
+- Uses centralized approach in [shortcut_helpers.py](cci:7://file:///c:/Users/cfran/PythonProjects/abcs/src/accessibility/shortcut_helpers.py:0:0-0:0) with documentation
+- F1 popup tables use [build_accessible_f1_popup_style()](cci:1://file:///c:/Users/cfran/PythonProjects/abcs/src/accessibility/shortcut_helpers.py:24:0-42:5) with programmatic mouse tracking disable
+- Main tables have `setMouseTracking(False)` + `viewport()` + `setAttribute(Qt.WA_Hover, False)`
+
+**Main Branch (Inconsistent):**
+- Mouse highlighting is partially implemented
+- Some windows have local mouse tracking disable, others don't
+- F1 popup tables use inline CSS instead of centralized style
+- Inconsistent behavior across windows
+
+### Key Findings
+
+1. **Centralized Style Function Exists**: [build_accessible_f1_popup_style()](cci:1://file:///c:/Users/cfran/PythonProjects/abcs/src/accessibility/shortcut_helpers.py:24:0-42:5) in [shortcut_helpers.py](cci:7://file:///c:/Users/cfran/PythonProjects/abcs/src/accessibility/shortcut_helpers.py:0:0-0:0) provides CSS but requires programmatic mouse tracking disable
+
+2. **Documentation Gap**: The centralized function clearly documents that mouse tracking must be disabled programmatically, but this isn't consistently applied
+
+3. **Implementation Inconsistency**: 
+   - Main window: ✅ Has mouse tracking disable
+   - Book details: ✅ Has mouse tracking disable  
+   - Update window: ✅ Recently fixed
+   - Name list window: ✅ Recently fixed
+   - Preferences window: ✅ Recently fixed
+   - Other windows: ❓ Need verification
+
+4. **Root Cause**: The main branch has a hybrid approach - some windows use local fixes, others use centralized style without proper mouse tracking disable
+
+### Recommended Solution Approach
+
+**Option 1: Fully Centralized Approach (Recommended)**
+1. Create a helper function `disable_table_mouse_tracking(table)` in [shortcut_helpers.py](cci:7://file:///c:/Users/cfran/PythonProjects/abcs/src/accessibility/shortcut_helpers.py:0:0-0:0)
+2. Update all windows to use this centralized function
+3. Ensure all F1 popups use [build_accessible_f1_popup_style()](cci:1://file:///c:/Users/cfran/PythonProjects/abcs/src/accessibility/shortcut_helpers.py:24:0-42:5) + mouse tracking disable
+4. Benefits: Consistent, maintainable, single source of truth
+
+**Option 2: Local Implementation Approach**
+1. Keep current local implementations in each window
+2. Add mouse tracking disable to any windows missing it
+3. Benefits: No dependency on centralized functions
+4. Drawbacks: Code duplication, harder to maintain
+
+**Option 3: Hybrid Approach (Current State)**
+1. Keep centralized style for F1 popups
+2. Use local mouse tracking disable for main tables
+3. Drawbacks: Inconsistent, confusing
+
+### Specific Issues Identified
+
+1. **F1 Popup Tables**: Some use centralized style without mouse tracking disable
+2. **Main Tables**: Inconsistent implementation across windows
+3. **Documentation**: Clear but not consistently followed
+4. **Testing**: No systematic verification of mouse tracking behavior
+
+### Implementation Strategy
+
+**Phase 1: Audit**
+- Identify all QTableWidget instances across the codebase
+- Document current mouse tracking settings
+- Create checklist of windows needing fixes
+
+**Phase 2: Centralize**
+- Create `disable_table_mouse_tracking(table)` helper function
+- Update all windows to use centralized approach
+- Ensure consistent pattern application
+
+**Phase 3: Verify**
+- Test mouse behavior in all windows
+- Confirm no hover highlighting anywhere
+- Validate with screen reader testing
+
+### Recommendation
+
+**Go with Option 1 (Fully Centralized)** because:
+- Aligns with phase2 approach
+- Provides single source of truth
+- Easier to maintain and debug
+- More consistent for low-vision users
+- Reduces code duplication
+
+The centralized approach should include:
+1. Helper function for mouse tracking disable
+2. Centralized styling for all tables
+3. Clear documentation and examples
+4. Consistent application across all windows
+
+This will ensure the main branch matches the phase2 behavior and provides the consistent low-vision experience you need.

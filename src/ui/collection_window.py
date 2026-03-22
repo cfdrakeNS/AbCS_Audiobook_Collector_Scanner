@@ -115,7 +115,7 @@ class CollectionWindow(QDialog):
             "List of collections with active status")
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["Collection", "Active"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)

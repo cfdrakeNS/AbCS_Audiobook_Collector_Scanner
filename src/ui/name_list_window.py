@@ -268,7 +268,7 @@ class NameListWindow(QDialog):
             self.table.setColumnCount(2)
             self.table.setHorizontalHeaderLabels(
                 [self.entity_singular, "Books"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
