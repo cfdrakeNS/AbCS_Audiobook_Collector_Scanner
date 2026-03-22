@@ -356,7 +356,14 @@ class ReadingHistoryWindow(QDialog):
             'refresh_button': lambda: self.refresh_button.click(),
             'focus_table': self.focus_current_table
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, {'B': self.focus_current_table, 'F1': self.on_show_shortcuts})
+        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
+        
+        # Local QShortcuts for F1 and Alt+/
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+        
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
         
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
@@ -576,8 +583,35 @@ class ReadingHistoryWindow(QDialog):
         """Handle theme change."""
         self.apply_accessible_styling()
 
+    def on_read_status_bar(self):
+        """Read current status bar message (Alt+/)."""
+        status_text = self._default_status_message
+        if QAccessible.isActive():
+            self.set_status(status_text, announce=True)
+        else:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {status_text}",
+            )
+
     def on_show_shortcuts(self):
-        """Show keyboard shortcuts help dialog."""
+        """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        shortcuts = [
+            ("Alt+G", "General tab"),
+            ("Alt+Y", "Year tab"),
+            ("Alt+M", "Month tab"),
+            ("Alt+R", "Date Range tab"),
+            ("Alt+B", "Focus current table"),
+            ("Enter", "Open selected book details"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show this help"),
+            ("Escape", "Close window"),
+        ]
+        
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Reading History")
         dlg.setAccessibleName("Keyboard Shortcuts")
@@ -591,18 +625,6 @@ class ReadingHistoryWindow(QDialog):
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
-
-        shortcuts = [
-            ("Alt+G", "General tab"),
-            ("Alt+Y", "Year tab"),
-            ("Alt+M", "Month tab"),
-            ("Alt+R", "Date Range tab"),
-            ("Alt+B", "Focus current table"),
-            ("Enter", "Open selected book details"),
-            ("Alt+/", "Read status bar"),
-            ("F1", "Show this help"),
-            ("Escape", "Close window"),
-        ]
 
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
@@ -619,8 +641,6 @@ class ReadingHistoryWindow(QDialog):
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
         
-        # Apply centralized F1 popup style
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         # Centralize Alt+/ visibility and order for screen readers
         shortcuts = get_accessible_shortcuts_list(shortcuts)
         table.setStyleSheet(build_accessible_f1_popup_style())
@@ -639,20 +659,6 @@ class ReadingHistoryWindow(QDialog):
         layout.addWidget(table)
         dlg.setLayout(layout)
         dlg.exec()
-
-    def on_read_status_bar(self):
-        """Read current status bar message (Alt+/)."""
-        status_text = self._default_status_message
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        else:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-            )
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
