@@ -294,13 +294,15 @@ class ReadingHistoryWindow(QDialog):
         # Period statistics with accessible description like preferences scenario
         period_stats_layout = QHBoxLayout()
         
-        self.period_books_label = QLabel("Books in Period: 0")
-        self.period_books_label.setAccessibleName("Books in period")
-        self.period_books_label.setAccessibleDescription("Number of books read in selected date range")
+        self.period_books_label = QLabel("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
+        self.period_books_label.setAccessibleName("Books read in period")
+        self.period_books_label.setAccessibleDescription("Books read in selected date range")
+        self.period_books_label.setFocusPolicy(Qt.TabFocus)
         
-        self.period_hours_label = QLabel("Hours in Period: 0.0")
-        self.period_hours_label.setAccessibleName("Hours in period")
-        self.period_hours_label.setAccessibleDescription("Total hours read in selected date range")
+        self.period_hours_label = QLabel("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
+        self.period_hours_label.setAccessibleName("Hours read in period")
+        self.period_hours_label.setAccessibleDescription("Hours read in selected date range")
+        self.period_hours_label.setFocusPolicy(Qt.TabFocus)
         
         period_stats_layout.addWidget(self.period_books_label)
         period_stats_layout.addWidget(self.period_hours_label)
