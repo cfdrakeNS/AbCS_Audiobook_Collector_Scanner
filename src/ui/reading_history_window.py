@@ -79,7 +79,7 @@ class ReadingHistoryWindow(QDialog):
     def create_general_tab(self):
         """Create General tab with overall statistics."""
         general_widget = QWidget()
-        general_layout = QVBoxLayout(general_widget)
+        self.general_tab_layout = QVBoxLayout(general_widget)  # Store reference
         
         # Statistics section
         stats_group = QGroupBox("Overall Reading Statistics")
@@ -100,8 +100,8 @@ class ReadingHistoryWindow(QDialog):
         stats_layout.addWidget(self.avg_hours_label)
         stats_layout.addStretch()
         
-        general_layout.addWidget(stats_group)
-        general_layout.addStretch()
+        self.general_tab_layout.addWidget(stats_group)
+        self.general_tab_layout.addStretch()
         
         self.tab_widget.addTab(general_widget, "&General")
 
@@ -327,9 +327,25 @@ class ReadingHistoryWindow(QDialog):
         current_tab = self.tab_widget.currentIndex()
         
         if current_tab == 0:  # General tab
-            # Focus on first stat label in general tab
-            self.total_books_label.setFocus()
-            self.set_status("Focused on General tab statistics", announce=True)
+            # Create a dummy table for screen reader accessibility
+            if not hasattr(self, 'general_focus_table'):
+                self.general_focus_table = QTableWidget()
+                self.general_focus_table.setRowCount(1)
+                self.general_focus_table.setColumnCount(1)
+                self.general_focus_table.setHorizontalHeaderLabels(["Statistics"])
+                item = QTableWidgetItem("Reading Statistics - Use arrow keys to navigate")
+                self.general_focus_table.setItem(0, 0, item)
+                self.general_focus_table.setAccessibleName("General statistics")
+                self.general_focus_table.setAccessibleDescription("Reading statistics overview")
+                # Add to general tab layout
+                self.general_tab_layout.addWidget(self.general_focus_table)
+                self.general_focus_table.hide()  # Keep hidden but focusable
+            
+            # Focus on the hidden table for screen reader
+            self.general_focus_table.show()
+            self.general_focus_table.setFocus()
+            self.general_focus_table.setCurrentCell(0, 0)
+            self.set_status("Focused on General statistics", announce=True)
             
         elif current_tab == 1:  # Year tab
             # Focus on year table

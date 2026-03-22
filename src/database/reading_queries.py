@@ -352,7 +352,7 @@ class ReadingQueries:
             query += " AND collection_id = ?"
             params.append(collection_id)
         
-        query += " GROUP BY strftime('%Y-%m', read_date) ORDER BY month DESC LIMIT 12"
+        query += " GROUP BY strftime('%Y-%m', read_date) ORDER BY month DESC LIMIT 60"  # Show 5 years instead of 1
         
         rows = self.db.fetch_all(query, tuple(params))
         
