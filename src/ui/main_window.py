@@ -693,10 +693,8 @@ class MainWindow(QMainWindow):
         self.read_filter_group.setExclusive(True)
         self._rebuild_read_filter_menu()
 
-        # Phase 2: Reading History with Alt+H shortcut (moved after read filter)
-        reading_history_action = QAction("Reading &History\tAlt+H", self)
-        reading_history_action.setShortcut("Alt+H")
-        reading_history_action.setShortcutContext(Qt.ApplicationShortcut)
+        # Phase 2: Reading History (accessed via menu Alt+V then H)
+        reading_history_action = QAction("Reading &History", self)
         reading_history_action.triggered.connect(self.on_reading_history)
         self.view_menu.addAction(reading_history_action)
 
