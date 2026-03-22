@@ -278,18 +278,18 @@ class ReadingHistoryWindow(QDialog):
         date_layout.addWidget(self.start_date_edit)
         date_layout.addWidget(end_date_label)
         date_layout.addWidget(self.end_date_edit)
-        date_layout.addWidget(QLabel(""))  # Spacer
+        date_layout.addStretch()
         
-        # Search button moved to right of date fields
+        controls_layout.addLayout(date_layout)
+        
+        # Search button
         self.refresh_button = QPushButton("Search")
         self.refresh_button.setAccessibleName("Search reading history")
         self.refresh_button.setAccessibleDescription("Search reading history for selected date range")
         self.refresh_button.clicked.connect(self.load_date_range_data)
-        date_layout.addWidget(self.refresh_button)
+        controls_layout.addWidget(self.refresh_button)
         
-        controls_layout.addLayout(date_layout)
-        
-        # Period statistics with accessible labels
+        # Period statistics with accessible description like preferences scenario
         period_stats_layout = QHBoxLayout()
         
         self.period_books_label = QLabel("Books in Period: 0")
@@ -333,15 +333,15 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(False)
-        # Set specific column widths: Date=120, Title=333, Author=240, Length=80, Hours=100
+        # Set specific column widths: Date=120, Title=443, Author=319, Length=80, Hours=100
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title  
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Length
         header.setSectionResizeMode(4, QHeaderView.Fixed)  # Hours
         self.range_table.setColumnWidth(0, 120)  # Date
-        self.range_table.setColumnWidth(1, 333)  # Title (+33%)
-        self.range_table.setColumnWidth(2, 240)  # Author (+33%)
+        self.range_table.setColumnWidth(1, 443)  # Title (+33%)
+        self.range_table.setColumnWidth(2, 319)  # Author (+33%)
         self.range_table.setColumnWidth(3, 80)   # Length
         self.range_table.setColumnWidth(4, 100)  # Hours
         
@@ -354,7 +354,7 @@ class ReadingHistoryWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             'refresh_button': lambda: self.refresh_button.click(),
-            'focus_table': self.focus_current_table
+            'table': self.focus_current_table
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
         
@@ -374,26 +374,40 @@ class ReadingHistoryWindow(QDialog):
         
         if current_tab == 0:  # General tab
             # Focus on general table for screen reader
-            self.general_table.setFocus()
-            self.general_table.setCurrentCell(0, 0)
+            if self.general_table.rowCount() > 0:
+                row = 0
+                self.general_table.setCurrentCell(row, 0)
+            self.general_table.setFocus(Qt.TabFocusReason)
             self.set_status("Focused on General statistics table", announce=True)
             
         elif current_tab == 1:  # Year tab
             # Focus on year table
-            self.year_table.setFocus()
-            self.year_table.setCurrentCell(0, 0)
+            if self.year_table.rowCount() > 0:
+                row = self.year_table.currentRow()
+                if row < 0 or row >= self.year_table.rowCount():
+                    row = 0
+                self.year_table.setCurrentCell(row, 0)
+            self.year_table.setFocus(Qt.TabFocusReason)
             self.set_status("Focused on Year table", announce=True)
             
         elif current_tab == 2:  # Month tab
             # Focus on month table
-            self.month_table.setFocus()
-            self.month_table.setCurrentCell(0, 0)
+            if self.month_table.rowCount() > 0:
+                row = self.month_table.currentRow()
+                if row < 0 or row >= self.month_table.rowCount():
+                    row = 0
+                self.month_table.setCurrentCell(row, 0)
+            self.month_table.setFocus(Qt.TabFocusReason)
             self.set_status("Focused on Month table", announce=True)
             
         elif current_tab == 3:  # Date Range tab
             # Focus on range table
-            self.range_table.setFocus()
-            self.range_table.setCurrentCell(0, 0)
+            if self.range_table.rowCount() > 0:
+                row = self.range_table.currentRow()
+                if row < 0 or row >= self.range_table.rowCount():
+                    row = 0
+                self.range_table.setCurrentCell(row, 0)
+            self.range_table.setFocus(Qt.TabFocusReason)
             self.set_status("Focused on Date Range table", announce=True)
 
     def apply_accessible_styling(self):
@@ -527,7 +541,7 @@ class ReadingHistoryWindow(QDialog):
         total_books = len(books)
         total_hours = sum(book.time_hours or 0 for book in books)
         
-        # Create accessible message
+        # Create accessible message like preferences scenario description
         start_date_str = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
         accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:.1f} hours"
@@ -578,6 +592,10 @@ class ReadingHistoryWindow(QDialog):
             self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
             # Set focus to table when tab changes
             self.focus_current_table()
+            
+            # Set focus to from date when opening date range tab
+            if index == 3:  # Date Range tab
+                self.start_date_edit.setFocus()
 
     def on_theme_changed(self):
         """Handle theme change."""
@@ -678,6 +696,14 @@ class ReadingHistoryWindow(QDialog):
             event.ignore()
             return
         super().keyPressEvent(event)
+
+    def showEvent(self, event):
+        """Handle show event."""
+        if not self._collections_loaded:
+            self._collections_loaded = True
+            # Set focus to table when window opens
+            self.focus_current_table()
+        super().showEvent(event)
 
     def closeEvent(self, event):
         """Handle window close event."""
