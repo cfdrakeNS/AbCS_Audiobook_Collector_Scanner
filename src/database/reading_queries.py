@@ -362,9 +362,15 @@ class ReadingQueries:
             year = int(month_str[:4])
             month = int(month_str[4:6])
             
-            # Get month name
+            # Get month name with error handling
             import calendar
-            month_name = calendar.month_name[month]
+            try:
+                if 1 <= month <= 12:
+                    month_name = calendar.month_name[month]
+                else:
+                    month_name = f"Invalid Month {month}"
+            except (IndexError, ValueError):
+                month_name = f"Unknown Month {month}"
             
             breakdown.append({
                 'year': year,
