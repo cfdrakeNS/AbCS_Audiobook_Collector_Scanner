@@ -250,15 +250,15 @@ class ReadingHistoryWindow(QDialog):
         range_widget = QWidget()
         range_layout = QVBoxLayout(range_widget)
         
-        # Controls section - tight spacing
+        # Controls section - very tight spacing
         controls_group = QGroupBox("Date Range Filter")
         controls_layout = QVBoxLayout(controls_group)
-        controls_layout.setContentsMargins(6, 6, 6, 6)
-        controls_layout.setSpacing(4)
+        controls_layout.setContentsMargins(4, 4, 4, 4)
+        controls_layout.setSpacing(2)
         
-        # Date range controls - single line
+        # Date range controls - single line, tight
         date_layout = QHBoxLayout()
-        date_layout.setSpacing(8)
+        date_layout.setSpacing(6)
         
         # Start date
         start_date_label = QLabel("From:")
@@ -294,10 +294,10 @@ class ReadingHistoryWindow(QDialog):
         
         controls_layout.addLayout(date_layout)
         
-        # Period statistics with accessible description like preferences scenario
+        # Period statistics - very tight spacing
         period_stats_layout = QHBoxLayout()
-        period_stats_layout.setContentsMargins(0, 2, 0, 2)
-        period_stats_layout.setSpacing(4)
+        period_stats_layout.setContentsMargins(0, 1, 0, 1)
+        period_stats_layout.setSpacing(2)
         
         self.period_books_label = QTextEdit()
         self.period_books_label.setReadOnly(True)
@@ -365,10 +365,6 @@ class ReadingHistoryWindow(QDialog):
             'start_date_edit': lambda: self.start_date_edit.setFocus(Qt.TabFocusReason)
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
-        
-        # Also register Alt+S locally as backup
-        self.search_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.search_shortcut.activated.connect(self.load_date_range_data)
         
         # Local QShortcuts for F1 and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
