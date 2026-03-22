@@ -592,25 +592,6 @@ class ReadingHistoryWindow(QDialog):
         self._default_status_message = message
         announce_status_message(self.status_bar, message, move_focus=announce)
 
-    def showEvent(self, event):
-        """Handle window show event."""
-        super().showEvent(event)
-        # Load collections when window is shown
-        if not hasattr(self, '_collections_loaded'):
-            self.load_collections()
-            self._collections_loaded = True
-
-    def load_collections(self):
-        """Load collections into combo box."""
-        from src.database import CollectionQueries
-        collection_queries = CollectionQueries(self.db)
-        collections = collection_queries.get_all()
-        self.collection_combo.clear()
-        self.collection_combo.addItem("All Collections", None)
-        
-        for collection in collections:
-            self.collection_combo.addItem(collection.name, collection.collection_id)
-
     def keyPressEvent(self, event):
         """Handle key press events."""
         # Escape key closes window
