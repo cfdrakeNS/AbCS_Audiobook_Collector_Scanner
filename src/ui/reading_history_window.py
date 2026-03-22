@@ -121,7 +121,7 @@ class ReadingHistoryWindow(QDialog):
         self.year_table.setHorizontalHeaderLabels(year_headers)
         
         # Table configuration
-        self.year_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.year_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.year_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.year_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.year_table.setAlternatingRowColors(False)
@@ -157,7 +157,7 @@ class ReadingHistoryWindow(QDialog):
         self.month_table.setHorizontalHeaderLabels(month_headers)
         
         # Table configuration
-        self.month_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.month_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.month_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.month_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.month_table.setAlternatingRowColors(False)
@@ -195,6 +195,7 @@ class ReadingHistoryWindow(QDialog):
         self.start_date_edit = QDateEdit()
         self.start_date_edit.setAccessibleName("Start date")
         self.start_date_edit.setCalendarPopup(True)
+        self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.start_date_edit.setDate(QDate.currentDate().addMonths(-12))
         
         # End date
@@ -203,6 +204,7 @@ class ReadingHistoryWindow(QDialog):
         self.end_date_edit = QDateEdit()
         self.end_date_edit.setAccessibleName("End date")
         self.end_date_edit.setCalendarPopup(True)
+        self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.end_date_edit.setDate(QDate.currentDate())
         
         date_layout.addWidget(start_date_label)
@@ -262,7 +264,7 @@ class ReadingHistoryWindow(QDialog):
         self.range_table.setHorizontalHeaderLabels(range_headers)
         
         # Table configuration
-        self.range_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.range_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.range_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.range_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.range_table.setAlternatingRowColors(False)
@@ -299,6 +301,51 @@ class ReadingHistoryWindow(QDialog):
         # Alt+/ for status bar read
         self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
+        
+        # Alt+B to jump to tables
+        self.alt_b_general = QShortcut(QKeySequence("Alt+B"), self)
+        self.alt_b_general.activated.connect(lambda: self.focus_table('general'))
+        
+        self.alt_b_year = QShortcut(QKeySequence("Alt+B"), self)
+        self.alt_b_year.activated.connect(lambda: self.focus_table('year'))
+        
+        self.alt_b_month = QShortcut(QKeySequence("Alt+B"), self)
+        self.alt_b_month.activated.connect(lambda: self.focus_table('month'))
+        
+        self.alt_b_range = QShortcut(QKeySequence("Alt+B"), self)
+        self.alt_b_range.activated.connect(lambda: self.focus_table('range'))
+
+    def focus_table(self, table_name):
+        """Focus on the appropriate table based on current tab."""
+        current_tab = self.tab_widget.currentIndex()
+        
+        if table_name == 'general':
+            # Focus on first stat label in general tab
+            self.tab_widget.setCurrentIndex(0)
+            self.total_books_label.setFocus()
+            
+        elif table_name == 'year':
+            # Focus on year table
+            self.tab_widget.setCurrentIndex(1)
+            self.year_table.setFocus()
+            self.year_table.setCurrentCell(0, 0)
+            
+        elif table_name == 'month':
+            # Focus on month table
+            self.tab_widget.setCurrentIndex(2)
+            self.month_table.setFocus()
+            self.month_table.setCurrentCell(0, 0)
+            
+        elif table_name == 'range':
+            # Focus on range table
+            self.tab_widget.setCurrentIndex(3)
+            self.range_table.setFocus()
+            self.range_table.setCurrentCell(0, 0)
+        
+        # Announce the change
+        tab_names = ["General", "Year", "Month", "Date Range"]
+        if current_tab < len(tab_names):
+            self.set_status(f"Focused on {table_name.title()} table in {tab_names[current_tab]} tab", announce=True)
 
     def apply_accessible_styling(self):
         """Apply accessible styling following import window pattern."""
