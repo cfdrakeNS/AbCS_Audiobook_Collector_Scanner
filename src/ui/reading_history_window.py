@@ -112,7 +112,7 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Statistic
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Value
         self.general_table.setColumnWidth(0, 200)  # Statistic
-        self.general_table.setColumnWidth(1, 150)  # Value
+        self.general_table.setColumnWidth(1, 100)  # Value (reduced for low vision)
         
         # Add statistics items to table
         self.total_books_item = QTableWidgetItem("Total Books Read")
