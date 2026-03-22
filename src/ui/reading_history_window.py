@@ -284,6 +284,7 @@ class ReadingHistoryWindow(QDialog):
         self.refresh_button = QPushButton("&Search")
         self.refresh_button.setAccessibleName("Search reading history")
         self.refresh_button.setAccessibleDescription("Search reading history for selected date range - Alt+S")
+        self.refresh_button.setAutoDefault(True)
         self.refresh_button.clicked.connect(self.load_date_range_data)
         date_layout.addWidget(self.refresh_button)
         
@@ -300,7 +301,7 @@ class ReadingHistoryWindow(QDialog):
         self.period_books_label.setAccessibleDescription("Books read in selected date range")
         self.period_books_label.setFocusPolicy(Qt.StrongFocus)
         self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
-        self.period_books_label.setMinimumHeight(40)
+        self.period_books_label.setFixedHeight(25)  # Single line height
         self.period_books_label.setPlainText("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
         
         period_stats_layout.addWidget(self.period_books_label)
