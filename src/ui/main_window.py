@@ -693,6 +693,16 @@ class MainWindow(QMainWindow):
         self.read_filter_group.setExclusive(True)
         self._rebuild_read_filter_menu()
 
+        # Phase 2: Reading History with Alt+H shortcut (moved after read filter)
+        reading_history_action = QAction("Reading &History\tAlt+H", self)
+        reading_history_action.setShortcut("Alt+H")
+        reading_history_action.setShortcutContext(Qt.ApplicationShortcut)
+        reading_history_action.triggered.connect(self.on_reading_history)
+        self.view_menu.addAction(reading_history_action)
+
+        # Separator before zoom controls
+        self.view_menu.addSeparator()
+
         # mw#16: Zoom actions with shortcut keys displayed
         zoom_in_action = QAction("Zoom &In\tCtrl++", self)
         zoom_in_action.triggered.connect(self.on_zoom_in)
@@ -707,13 +717,6 @@ class MainWindow(QMainWindow):
         self.view_menu.addAction(zoom_reset_action)
 
         self.view_menu.addSeparator()
-
-        # Phase 2: Reading History with Alt+H shortcut
-        reading_history_action = QAction("Reading &History\tAlt+H", self)
-        reading_history_action.setShortcut("Alt+H")
-        reading_history_action.setShortcutContext(Qt.ApplicationShortcut)
-        reading_history_action.triggered.connect(self.on_reading_history)
-        self.view_menu.addAction(reading_history_action)
 
         # Phase 4: sorting moved from header combo to dedicated Sort menu.
         self.sort_menu = menubar.addMenu("&Sort")

@@ -135,8 +135,15 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionsClickable(True)
         header.setSortIndicatorShown(True)
         header.setSortIndicator(0, Qt.DescendingOrder)
-        header.setMinimumSectionSize(100)
-        header.setStretchLastSection(True)
+        header.setMinimumSectionSize(80)
+        header.setStretchLastSection(False)
+        # Set specific column widths: Year=80, Books=100, Hours=80
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.year_table.setColumnWidth(0, 80)   # Year
+        self.year_table.setColumnWidth(1, 100)  # Books Read
+        self.year_table.setColumnWidth(2, 80)   # Total Hours
         
         year_layout.addWidget(self.year_table)
         self.tab_widget.addTab(year_widget, "&Year")
@@ -171,8 +178,17 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionsClickable(True)
         header.setSortIndicatorShown(True)
         header.setSortIndicator(0, Qt.DescendingOrder)
-        header.setMinimumSectionSize(100)
-        header.setStretchLastSection(True)
+        header.setMinimumSectionSize(80)
+        header.setStretchLastSection(False)
+        # Set specific column widths: Month=100, Year=80, Books=100, Hours=80
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.Fixed)
+        self.month_table.setColumnWidth(0, 100)  # Month
+        self.month_table.setColumnWidth(1, 80)   # Year
+        self.month_table.setColumnWidth(2, 100)  # Books Read
+        self.month_table.setColumnWidth(3, 80)   # Total Hours
         
         month_layout.addWidget(self.month_table)
         self.tab_widget.addTab(month_widget, "&Month")
@@ -368,15 +384,19 @@ class ReadingHistoryWindow(QDialog):
         self._loading = True
         try:
             # Get overall statistics
+            print("DEBUG: Getting reading statistics...")
             stats = self.reading_queries.get_reading_statistics()
+            print(f"DEBUG: Stats received: {stats}")
             self.update_general_stats(stats)
             
             # Get yearly breakdown
             yearly_data = stats.get('yearly_breakdown', [])
+            print(f"DEBUG: Yearly data: {yearly_data}")
             self.populate_year_table(yearly_data)
             
             # Get monthly breakdown
             monthly_data = stats.get('monthly_breakdown', [])
+            print(f"DEBUG: Monthly data: {monthly_data}")
             self.populate_month_table(monthly_data)
             
             # Load date range data
@@ -415,8 +435,10 @@ class ReadingHistoryWindow(QDialog):
     def populate_month_table(self, monthly_data):
         """Populate month table with monthly breakdown."""
         self.month_table.setRowCount(0)
+        print(f"DEBUG: Monthly data to populate: {monthly_data}")
         
         for row, month_data in enumerate(monthly_data):
+            print(f"DEBUG: Populating row {row} with: {month_data}")
             self.month_table.insertRow(row)
             
             # Month name
