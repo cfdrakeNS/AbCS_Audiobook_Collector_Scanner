@@ -325,18 +325,8 @@ class ImportDetailWindow(QDialog):
 
         return super().eventFilter(source, event)
 
-    def _mark_dirty(self, widget=None):
-        """Mark form as having unsaved changes."""
-        if widget is not None:
-            self._pending_dirty_widgets.add(widget)
-
-        if not self._dirty:
-            self._dirty = True
-            if widget and not self._first_dirty_widget:
-                self._first_dirty_widget = widget
-            self.save_return_button.setEnabled(True)
-            self.save_return_button.setVisible(True)
-
+    def _resolve_dirty_source(self, source):
+        """Resolve the actual widget that should be marked as dirty."""
         if source in self._pending_dirty_widgets:
             return source
 
@@ -349,6 +339,40 @@ class ImportDetailWindow(QDialog):
             return parent
 
         return None
+
+    def _get_dirty_field_name(self, widget):
+        """Get the field name for status announcements."""
+        mapping = {
+            self.title_edit: "Title",
+            self.author_combo: "Author",
+            self.comments_edit: "Plot",
+            self.year_spin: "Year",
+            self.time_edit: "Length",
+            self.reader_edit: "Reader",
+            self.series_combo: "Series",
+            self.genre_combo: "Genre",
+            self.collection_combo: "Collection",
+            self.files_edit: "Files",
+            self.bitrate_edit: "Bitrate",
+            self.size_edit: "Size",
+            self.format_combo: "Format",
+            self.source_edit: "Source",
+            self.path_edit: "Path",
+            self.added_edit: "Added",
+        }
+        return mapping.get(widget, "Field")
+
+    def _mark_dirty(self, widget=None):
+        """Mark form as having unsaved changes."""
+        if widget is not None:
+            self._pending_dirty_widgets.add(widget)
+
+        if not self._dirty:
+            self._dirty = True
+            if widget and not self._first_dirty_widget:
+                self._first_dirty_widget = widget
+            self.save_return_button.setEnabled(True)
+            self.save_return_button.setVisible(True)
 
     def _clear_dirty(self):
         """Clear dirty flag."""
