@@ -58,6 +58,7 @@
 ## 3. Get book details from web 🟢 **NEXT PRIORITY**
 **Current State**: No web integration exists.
 
+
 **Implementation Plan**:
 - **API Integration**: Connect to Google Books API and Open Library API
 - **Libraries Required**: `requests`, `isbnlib`, `thefuzz` for fuzzy matching
@@ -66,6 +67,7 @@
   - `series` table - link via existing `books.series_id` foreign key
   - `genres` table - link via existing `books.genre_id` foreign key
   - `authors` table - link via existing `books.author_id` foreign key
+  - `book cover` field - to be implemented as a new feature after cover import is completed
 
 **Technical Implementation**:
 - **Search Logic**: Use `isbnlib.isbn_from_words()` to find ISBN from title/author
@@ -74,7 +76,7 @@
 - **Data Validation**: Levenshtein distance for spelling corrections
 
 **Book Details Window Enhancement**:
-- add Get Medaata 
+- add Get Details from web -- need a better name for this button
 
 
 **Book Details Window Enhancement**:

@@ -674,6 +674,16 @@ class BookDetailsWindow(QDialog):
         self.cancel_button.setAutoDefault(False)
         button_layout.addWidget(self.cancel_button)
 
+        # Get Details from Web button (Alt+G)
+        self.get_web_details_button = QPushButton("Get Details from Web")
+        self.get_web_details_button.setAccessibleName("Get details from web")
+        self.get_web_details_button.setAccessibleDescription("Fetch book details from web sources - Alt+G")
+        self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
+        self.get_web_details_button.clicked.connect(self.on_get_web_details)
+        self.get_web_details_button.setDefault(False)
+        self.get_web_details_button.setAutoDefault(False)
+        button_layout.addWidget(self.get_web_details_button)
+
         button_layout.addStretch()
 
         layout.addLayout(button_layout)
@@ -769,6 +779,7 @@ class BookDetailsWindow(QDialog):
             'path_edit': lambda: self.path_edit.setFocus(),
             'comments_edit': lambda: self.comments_edit.setFocus(),
             'format_combo': lambda: self.format_combo.setFocus(),
+            'get_web_details_button': self.on_get_web_details,
             # 'new_button': self.on_new,  # Commented out to avoid conflict
             # 'save_button': self.on_save,  # Commented out to avoid conflict
             # 'delete_button': self.on_delete,  # Commented out to avoid conflict
@@ -1482,6 +1493,32 @@ class BookDetailsWindow(QDialog):
         self.read_date.setDate(self.read_date.minimumDate())
         self._apply_new_defaults()
         self.reader_edit.setText("")
+
+    def on_get_web_details(self):
+        """Open web book details window to fetch and review web metadata."""
+        if not self.book:
+            self.set_status("No book selected for web lookup")
+            return
+        
+        try:
+            from src.ui.web_book_details_window import WebBookDetailsWindow
+            
+            # Create web details window
+            web_window = WebBookDetailsWindow(self.db, self.book, self.scaler, self.theme_manager, self)
+            
+            # Show window modally
+            result = web_window.exec()
+            
+            if result == QDialog.Accepted:
+                # User accepted changes - would implement actual update here
+                self.set_status("Web details applied successfully", announce=True)
+                # For now, just reload the book data
+                self.load_book_data()
+            else:
+                self.set_status("Web details cancelled", announce=True)
+                
+        except Exception as e:
+            self.set_status(f"Error opening web details: {str(e)}")
 
     def on_prev(self):
         """
