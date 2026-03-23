@@ -3,8 +3,10 @@ Web Book API - Audio Book Collection
 Fetches book metadata from Google Books and Open Library APIs.
 """
 
-import requests
 import json
+import urllib.request
+import urllib.parse
+import urllib.error
 from typing import Dict, Optional, List
 from urllib.parse import quote
 
@@ -56,10 +58,13 @@ class WebBookAPI:
                 'fields': 'items(id,volumeInfo(title,authors,publisher,publishedDate,description,industryIdentifiers,categories,averageRating,ratingsCount))'
             }
             
-            response = requests.get(self.google_books_url, params=params, timeout=10)
-            response.raise_for_status()
+            # Build URL with parameters
+            url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
             
-            data = response.json()
+            # Make request
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
             
             if 'items' in data and data['items']:
                 item = data['items'][0]
@@ -101,10 +106,13 @@ class WebBookAPI:
                 'fields': 'key,title,author_name,first_publish_year,publisher,subject,cover_i,isbn,ratings_average,ratings_count'
             }
             
-            response = requests.get(self.open_library_url, params=params, timeout=10)
-            response.raise_for_status()
+            # Build URL with parameters
+            url = f"{self.open_library_url}?{urllib.parse.urlencode(params)}"
             
-            data = response.json()
+            # Make request
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
             
             if 'docs' in data and data['docs']:
                 doc = data['docs'][0]
@@ -140,10 +148,9 @@ class WebBookAPI:
         """Get detailed work information from Open Library."""
         try:
             url = f"{self.open_library_work_url}/{work_id}.json"
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            
-            data = response.json()
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
             
             return {
                 'description': self._extract_description(data.get('description', ''))
