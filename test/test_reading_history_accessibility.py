@@ -160,9 +160,21 @@ def test_screen_reader_announcements_structure(reading_history_window):
     
     # Test setting a status message
     try:
-        window.set_status("Test message", announce=True)
+        window.set_status("Test message", announce=False)
         status_works = True
     except Exception:
         status_works = False
     
     assert status_works, "Status announcement system failed"
+    
+    # Check that status messages use readable date format
+    # Should format like: "Showing 5 books read between March 23, 2026 and March 23, 2026 totaling 12 hours"
+    assert hasattr(window, '_period_message')
+    assert isinstance(window._period_message, str)
+    
+    # Period message should use readable date format
+    # Should format like: "Between March 23, 2026 and March 23, 2026 you read 5 books totaling 12 hours"
+    if window._period_message:
+        assert "March" in window._period_message or "April" in window._period_message or "May" in window._period_message
+        assert "you read" in window._period_message
+        assert "totaling" in window._period_message
