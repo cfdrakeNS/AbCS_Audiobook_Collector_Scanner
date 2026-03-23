@@ -38,6 +38,7 @@ class ReadingHistoryWindow(QDialog):
         self._default_status_message = "Ready"
         self._loading = False
         self._collections_loaded = False
+        self._period_message = ""  # Store period message for Alt+/ announcements
         
         # Window setup
         self.setWindowTitle("Reading History")
@@ -554,17 +555,13 @@ class ReadingHistoryWindow(QDialog):
         total_books = len(books)
         total_hours = sum(book.time_hours or 0 for book in books)
         
-        # Create accessible message with readable date format
+        # Create status message with readable date format
         start_date_str = self.start_date_edit.date().toString("MMMM d, yyyy")
         end_date_str = self.end_date_edit.date().toString("MMMM d, yyyy")
-        accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
+        status_msg = f"Showing {total_books} books read between {start_date_str} and {end_date_str} totaling {total_hours:,.0f} hours"
         
-        self.period_books_label.setPlainText(accessible_msg)
-        self.period_books_label.setAccessibleName("Books read in period")
-        self.period_books_label.setAccessibleDescription(accessible_msg)
-        # Make label focusable for screen readers
-        self.period_books_label.setFocusPolicy(Qt.StrongFocus)
-        self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
+        # Store period text for Alt+/ announcements but don't display it
+        self._period_message = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
         
         # Populate table
         self.populate_range_table(books)
@@ -574,7 +571,7 @@ class ReadingHistoryWindow(QDialog):
             self.range_table.setCurrentCell(0, 1)  # Focus on title column (index 1)
             self.range_table.setFocus(Qt.TabFocusReason)
         
-        self.set_status(f"Showing {total_books} books in date range")
+        self.set_status(status_msg)
 
     def populate_range_table(self, books):
         """Populate date range table with reading history data."""
@@ -627,13 +624,11 @@ class ReadingHistoryWindow(QDialog):
     def on_read_status_bar(self):
         """Read period message first, then status bar (Alt+/)."""
         if QAccessible.isActive():
-            # First, read the period message for screen readers
-            period_text = self.period_books_label.toPlainText()
-            if period_text:
-                # Use set_status to ensure proper announcement
-                self.set_status(period_text, announce=True)
+            # First, read stored period message for screen readers
+            if self._period_message:
+                self.set_status(self._period_message, announce=True)
             
-            # Then read the status bar message (with a small delay)
+            # Then read the current status bar message (with a small delay)
             QTimer.singleShot(1000, self._announce_status_bar)
         else:
             exec_styled_message_box(

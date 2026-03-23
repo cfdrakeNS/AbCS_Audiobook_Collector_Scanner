@@ -49,17 +49,21 @@ def test_reading_history_period_message_accessibility(reading_history_window):
     """Test period message is accessible to screen readers."""
     window = reading_history_window
     
-    # Check period message exists and is accessible
-    assert hasattr(window, 'period_books_label')
-    period_widget = window.period_books_label
+    # Check period message storage exists
+    assert hasattr(window, '_period_message')
+    assert isinstance(window._period_message, str)
     
-    # Should be focusable and have accessibility properties
-    assert period_widget.focusPolicy() & Qt.StrongFocus
-    assert period_widget.accessibleName() != ""
-    assert period_widget.accessibleDescription() != ""
+    # Check status bar exists and is accessible
+    assert hasattr(window, 'status_bar')
+    status_widget = window.status_bar
     
-    # Should be text selectable for screen readers
-    assert period_widget.textInteractionFlags() & Qt.TextSelectableByKeyboard
+    # Status bar should have accessibility properties
+    assert status_widget.accessibleName() != ""
+    assert status_widget.accessibleDescription() != ""
+    
+    # Status bar typically doesn't have StrongFocus, but should be accessible via announcements
+    assert hasattr(window, 'set_status')
+    assert hasattr(window, 'on_read_status_bar')
 
 
 def test_alt_s_shortcut_functionality(reading_history_window):
