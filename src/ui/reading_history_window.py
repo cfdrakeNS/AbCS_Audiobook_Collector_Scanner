@@ -534,7 +534,6 @@ class ReadingHistoryWindow(QDialog):
 
     def load_date_range_data(self):
         """Load data for date range tab."""
-        print("DEBUG: load_date_range_data called!")  # Debug line
         start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
         
