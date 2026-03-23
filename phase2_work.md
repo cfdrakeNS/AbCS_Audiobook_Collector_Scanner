@@ -83,7 +83,7 @@
 - **Change Combo Boxes to Text Fields**: author, genre, series (remove combo box code)
 - **Field Properties**: All fields set to read-only but accessible to screen readers (like period message in reading_history_window)
 - **Remove Messaging**: No field update messages/status announcements
-- **Layout Changes**: Vertical alignment with one field per line
+- **Layout Changes**: Vertical alignment with one field per line and comments/plot at the bottom 
 - **Web Data Indicators**: Add accessible indicators to right of each field showing if web data differs (check mark or similar accessible element)
 - **Button Changes**: "Add Plot" and "Update All" buttons
 
@@ -110,10 +110,14 @@
 - `src/main.py` - Add required library imports
 
 **Batch Processing (Future Enhancement)**:
+- main window add new button to the selection process "DownLoad Metadata"
 - Multi-select books for bulk metadata fetching
 - Progress bar with screen reader announcements
 - "Scanning book 5 of 10..." accessibility feedback
-
+- when scan is complete, show message box with buttons: "Auto Update" AND "Review Changes
+- if "Auto Update" is selected, update all books with web data
+- if "Review Changes" is selected, open web details window for each book 
+- allow pgup / pgddn to move through books
 ---
 
 ## Additional Feature Ideas
