@@ -819,7 +819,7 @@ class BookDetailsWindow(QDialog):
             self.format_combo: "Format",
             self.source_edit: "Source",
             self.path_edit: "Path",
-            self.comments_edit: "Comments",
+            self.comments_edit: "Plot",
             self.read_date: "Read date",
         }
         return mapping.get(widget, "Book details")
@@ -930,20 +930,11 @@ class BookDetailsWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(450, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Shortcuts list
-        shortcuts = [
+        # Centralize Alt+/ visibility for screen readers
+        shortcuts = get_accessible_shortcuts_list([
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Comments"),
+            ("Alt+O", "Plot"),  # Updated from Comments
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
@@ -964,13 +955,23 @@ class BookDetailsWindow(QDialog):
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
-        ]
+        ])
+        
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(450, 500)
 
-        # Create table
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Create table for better accessibility (like other windows)
+        from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QHeaderView
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -981,36 +982,46 @@ class BookDetailsWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setMouseTracking(False)
-        table.viewport().setMouseTracking(False)
-        table.setAttribute(Qt.WA_Hover, False)
-        table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         # Populate table
-        for row, (key, description) in enumerate(shortcuts):
-            if key:
-                combined_text = f"{description} - {key}"
-            else:
-                combined_text = ""
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole,
-                         f"{description}: {key}" if key else "")
-            table.setItem(row, 0, item)
+        for row, (shortcut, action) in enumerate(shortcuts):
+            shortcut_item = table.item(row, 0) or table.setItem(row, 0, QTableWidgetItem())
+            action_item = table.item(row, 1) or table.setItem(row, 1, QTableWidgetItem())
+            
+            shortcut_item.setText(shortcut)
+            shortcut_item.setAccessibleName(f"Shortcut {shortcut}")
+            shortcut_item.setAccessibleDescription(f"Keyboard shortcut {shortcut}")
+            
+            action_item.setText(action)
+            action_item.setAccessibleName(f"Action {action}")
+            action_item.setAccessibleDescription(f"Action performed by {shortcut}")
 
-        # Resize column to stretch
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-        # Set font size
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
+        # Resize columns
+        table.resizeColumnsToContents()
+        table.resizeRowsToContents()
+        
+        # Make first column narrower, second wider
+        table.setColumnWidth(0, 120)
+        table.setColumnWidth(1, 300)
 
         layout.addWidget(table)
+        
+        # Close button
+        close_button = QPushButton("Close")
+        close_button.setAccessibleName("Close shortcuts help")
+        close_button.setAccessibleDescription("Close the keyboard shortcuts help dialog")
+        close_button.setFocusPolicy(Qt.StrongFocus)
+        close_button.setDefault(False)
+        close_button.setAutoDefault(False)
+        close_button.clicked.connect(dlg.accept)
+        layout.addWidget(close_button)
 
+        # Apply theme
+        exec_styled_message_box(dlg, self.scaler.get_scaled_size(20))
+        
+        # Show dialog
         dlg.exec()
 
     def load_combos(self):
