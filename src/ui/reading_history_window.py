@@ -630,7 +630,7 @@ class ReadingHistoryWindow(QDialog):
         if QAccessible.isActive():
             period_text = self.period_books_label.toPlainText()
             if period_text:
-                announce_status_message(period_text)
+                announce_status_message(self.status_bar, period_text)
         
         # Then read the status bar message
         status_text = self._default_status_message
