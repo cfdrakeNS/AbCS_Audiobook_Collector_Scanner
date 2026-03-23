@@ -23,6 +23,35 @@ from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
 
+class WebDataFetcher(QThread):
+    """Background thread for fetching web book data."""
+    
+    data_ready = Signal(dict)
+    error_occurred = Signal(str)
+    
+    def __init__(self, title: str, author: str, year: str = None):
+        super().__init__()
+        self.title = title
+        self.author = author
+        self.year = year
+    
+    def run(self):
+        """Fetch web data in background thread."""
+        try:
+            from src.web.web_book_api import WebBookAPI
+            
+            api = WebBookAPI()
+            web_data = api.get_book_metadata(self.title, self.author, self.year)
+            
+            if web_data:
+                self.data_ready.emit(web_data)
+            else:
+                self.error_occurred.emit("No data found for this book")
+                
+        except Exception as e:
+            self.error_occurred.emit(f"Error fetching web data: {str(e)}")
+
+
 class WebBookDetailsWindow(QDialog):
     """Web Book Details window for reviewing and accepting web-fetched metadata."""
 
@@ -57,8 +86,8 @@ class WebBookDetailsWindow(QDialog):
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
         
-        # Web data (fake for now)
-        self.web_data = self._get_fake_web_data()
+        # Web data (will be fetched from API)
+        self.web_data = {}
         
         # Window setup
         self.setWindowTitle("Web Book Details")
@@ -72,20 +101,6 @@ class WebBookDetailsWindow(QDialog):
         self.setup_shortcuts()
         self.load_book_data()
         self.fetch_web_data()  # Start fetching real data
-
-    def _get_fake_web_data(self):
-        """Get fake web data for testing."""
-        return {
-            'title': 'The Great Gatsby: Enhanced Edition',
-            'author': 'F. Scott Fitzgerald',
-            'year': '1925',
-            'series': 'Classic Literature Collection',
-            'genre': 'Fiction > Classic Literature',
-            'plot': 'A classic American novel set in the Jazz Age, exploring themes of wealth, love, and the American Dream through the mysterious Jay Gatsby.',
-            'isbn': '978-0-7432-7356-5',
-            'publisher': 'Scribner',
-            'pages': '180'
-        }
 
     def setup_ui(self):
         """Setup user interface with vertical layout."""
@@ -209,6 +224,59 @@ class WebBookDetailsWindow(QDialog):
         # Apply theme
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.on_theme_changed()
+
+    def fetch_web_data(self):
+        """Start fetching web data in background thread."""
+        self.set_status("Fetching web data...", announce=True)
+        
+        # Create and start web data fetcher thread
+        self.fetcher = WebDataFetcher(
+            self.book.title,
+            self.book.author_name,
+            str(self.book.year) if self.book.year else None
+        )
+        self.fetcher.data_ready.connect(self.on_web_data_ready)
+        self.fetcher.error_occurred.connect(self.on_web_data_error)
+        self.fetcher.start()
+
+    def on_web_data_ready(self, data):
+        """Handle successful web data fetch."""
+        self.web_data = data
+        
+        # Populate fields with fetched data
+        self.title_field.setText(data.get('title', ''))
+        self.author_field.setText(data.get('author', ''))
+        self.year_field.setText(data.get('year', ''))
+        self.series_field.setText(data.get('series', ''))
+        self.genre_field.setText(data.get('genre', ''))
+        self.plot_field.setPlainText(data.get('plot', ''))
+        
+        # Enable buttons
+        self.add_plot_button.setEnabled(bool(data.get('plot')))
+        self.update_all_button.setEnabled(True)
+        
+        # Update status
+        source = data.get('source', 'unknown')
+        self.set_status(f"Web data loaded from {source}", announce=True)
+
+    def on_web_data_error(self, error_message):
+        """Handle web data fetch error."""
+        self.set_status(f"Error fetching web data: {error_message}", announce=True)
+        # Keep loading text in fields to show error state
+
+    def load_book_data(self):
+        """Load current book data for comparison."""
+        # Load existing book data
+        self.original_data = {
+            'title': self.book.title or "",
+            'author': self.book.author_name or "",
+            'year': str(self.book.year or ""),
+            'series': self.book.series_name or "",
+            'genre': self.book.genre_name or "",
+            'plot': self.book.comments or ""
+        }
+        
+        self.set_status(f"Loaded book: {self.book.title}", announce=True)
 
     def _create_field_with_indicator(self, field, web_value):
         """Create a field with web data difference indicator."""
