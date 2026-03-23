@@ -717,10 +717,9 @@ class BookDetailsWindow(QDialog):
             )
             msg.setStandardButtons(
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-            msg.button(QMessageBox.Yes).setText("&Yes - Save")
-            msg.button(QMessageBox.No).setText("&No - Continue editing")
-            msg.button(QMessageBox.Cancel).setText(
-                "Cance&l - Revert and close")
+            msg.button(QMessageBox.Yes).setText("&Yes")
+            msg.button(QMessageBox.No).setText("&No")
+            msg.button(QMessageBox.Cancel).setText("&Cancel")
             reply = msg.exec()
 
             if reply == QMessageBox.Yes:
