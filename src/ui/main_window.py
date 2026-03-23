@@ -2751,7 +2751,8 @@ class MainWindow(QMainWindow):
         # bd#8: Pass current sort order to show in header
         sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
-            self.db, self.scaler, sort_order=sort_order, parent=self)
+            self.db, self.scaler, sort_order=sort_order, 
+            theme_manager=self.theme_manager, parent=self)
         details.exec()
 
         # bd#7: If a new book was saved, get its book_id to focus on it
@@ -2847,7 +2848,8 @@ class MainWindow(QMainWindow):
 
         details = BookDetailsWindow(
             self.db, self.scaler, book=book, sort_order=sort_order,
-            books_list=self.books, current_index=current_index, parent=self)
+            books_list=self.books, current_index=current_index, 
+            theme_manager=self.theme_manager, parent=self)
         details.exec()
 
         # bd#7: After dialog closes, get the last viewed book_id

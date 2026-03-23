@@ -74,7 +74,7 @@ def show_launch_message_if_executable():
 show_launch_message_if_executable()
 
 # Version information - update this with each release
-APP_VERSION = "1.8.6"
+APP_VERSION = "1.9.0"
 APP_BUILD_DATE = "2026-03-23"
 
 

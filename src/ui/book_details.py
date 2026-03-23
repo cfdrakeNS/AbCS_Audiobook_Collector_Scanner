@@ -101,7 +101,7 @@ class BookDetailsWindow(QDialog):
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler, book: Book = None,
                  sort_order: str = "Title", books_list: list = None,
-                 current_index: int = 0, parent=None):
+                 current_index: int = 0, theme_manager: ThemeManager = None, parent=None):
         """
         Initialize book details window.
 
@@ -112,6 +112,7 @@ class BookDetailsWindow(QDialog):
             sort_order: Current sort order from main window (for header display)
             books_list: List of Book objects for Prev/Next navigation
             current_index: Index of current book in books_list
+            theme_manager: Theme manager for styling
             parent: Parent widget
         """
         super().__init__(parent)
@@ -121,6 +122,7 @@ class BookDetailsWindow(QDialog):
 
         self.db = db
         self.scaler = scaler
+        self.theme_manager = theme_manager or ThemeManager(scaler)  # Store theme manager
         self.book = book or Book()
         self.is_new = (book is None)
         self.sort_order = sort_order  # bd#8: Store for header display
@@ -1512,12 +1514,15 @@ class BookDetailsWindow(QDialog):
             if result == QDialog.Accepted:
                 # User accepted changes - would implement actual update here
                 self.set_status("Web details applied successfully", announce=True)
-                # For now, just reload the book data
+                # For now, just reload book data
                 self.load_book_data()
             else:
                 self.set_status("Web details cancelled", announce=True)
                 
         except Exception as e:
+            print(f"DEBUG: Exception in on_get_web_details: {e}")
+            import traceback
+            traceback.print_exc()
             self.set_status(f"Error opening web details: {str(e)}")
 
     def on_prev(self):
