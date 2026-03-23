@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QTextEdit, QPushButton, QLabel, QMessageBox,
     QWidget, QStatusBar, QFrame
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QThread, Signal
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
