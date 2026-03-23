@@ -61,11 +61,11 @@
 **Implementation Plan**:
 - **API Integration**: Connect to Google Books API and Open Library API
 - **Libraries Required**: `requests`, `isbnlib`, `thefuzz` for fuzzy matching
-- **Database Schema**: Add optional fields for API data (no breaking changes):
-  - `plot_summary` (TEXT) - Book description/plot
-  - `series_name` (TEXT) - Series information
-  - `series_index` (INTEGER) - Book order in series
-  - `last_verified` (DATETIME) - Metadata verification timestamp
+- **Database Schema**: NO CHANGES REQUIRED - use existing structure
+  - `books.comments` field - store plot/summary (already exists)
+  - `series` table - link via existing `books.series_id` foreign key
+  - `genres` table - link via existing `books.genre_id` foreign key
+  - `authors` table - link via existing `books.author_id` foreign key
 
 **Technical Implementation**:
 - **Search Logic**: Use `isbnlib.isbn_from_words()` to find ISBN from title/author
@@ -95,7 +95,7 @@
 - **User Consent**: Clear prompts before data updates
 
 **Files to Modify**:
-- `src/database/models.py` - Add optional API fields
+- `src/database/models.py` - NO CHANGES (use existing structure)
 - `src/ui/book_details.py` - Add fetch button and review dialog
 - `src/database/queries.py` - Add API metadata update methods
 - `src/main.py` - Add required library imports
