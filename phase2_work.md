@@ -55,25 +55,55 @@
 
 ---
 
-## 3. Get book details from web 🟢 **FUTURE**
+## 3. Get book details from web 🟢 **NEXT PRIORITY**
 **Current State**: No web integration exists.
 
 **Implementation Plan**:
-- **API Integration**: Connect to Open Library or Google Books API
-- **Book Details Window Enhancement**:
-  - Add fetch button with Alt+G shortcut
-  - Create popup dialog with plot/description
-  - Compare existing vs fetched data (year, series, genre)
-  - Allow user to selectively update fields with checkboxes
-  - Announce results via status bar
-  - Ensure popup is keyboard navigable and screen reader friendly
-- **Error Handling**: Graceful API error handling with clear feedback
+- **API Integration**: Connect to Google Books API and Open Library API
+- **Libraries Required**: `requests`, `isbnlib`, `thefuzz` for fuzzy matching
+- **Database Schema**: Add optional fields for API data (no breaking changes):
+  - `plot_summary` (TEXT) - Book description/plot
+  - `series_name` (TEXT) - Series information
+  - `series_index` (INTEGER) - Book order in series
+  - `last_verified` (DATETIME) - Metadata verification timestamp
 
-**Technical Considerations**:
-- API rate limiting and error handling
-- Network connectivity checks
-- Data validation and sanitization
-- User consent for data updates
+**Technical Implementation**:
+- **Search Logic**: Use `isbnlib.isbn_from_words()` to find ISBN from title/author
+- **Fuzzy Matching**: Use `thefuzz.fuzz.ratio()` to compare scanned vs API data
+- **API Services**: Google Books API (free) + Open Library API (open source)
+- **Data Validation**: Levenshtein distance for spelling corrections
+
+**Book Details Window Enhancement**:
+- **Alt+G Shortcut**: "Get book details from web"
+- **Accessible Review Dialog**: Step-by-step wizard (not complex side-by-side table)
+- **QListWidget**: Display top 3 search results with accessible names
+- **QFormLayout**: Current vs Suggested data comparison
+- **Screen Reader Support**: 
+  - `widget.setAccessibleName("Suggested Author: Stephen King. Match confidence 95 percent.")`
+  - Auto-focus to first correction field after search
+  - Live region announcements for search progress
+- **Keyboard Navigation**: 
+  - `Ctrl+D`: Download metadata
+  - `Enter`: Accept all suggestions
+  - `Ctrl+Arrow Keys`: Toggle between current/suggested data
+- **Visual Accessibility**: High contrast styling (red vs green for differences)
+
+**Error Handling**:
+- **Network Connectivity**: Graceful API error handling
+- **Rate Limiting**: Respect API limits with retry logic
+- **Data Validation**: Sanitize and validate API responses
+- **User Consent**: Clear prompts before data updates
+
+**Files to Modify**:
+- `src/database/models.py` - Add optional API fields
+- `src/ui/book_details.py` - Add fetch button and review dialog
+- `src/database/queries.py` - Add API metadata update methods
+- `src/main.py` - Add required library imports
+
+**Batch Processing (Future Enhancement)**:
+- Multi-select books for bulk metadata fetching
+- Progress bar with screen reader announcements
+- "Scanning book 5 of 10..." accessibility feedback
 
 ---
 
