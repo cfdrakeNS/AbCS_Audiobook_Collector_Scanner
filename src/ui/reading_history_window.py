@@ -626,24 +626,29 @@ class ReadingHistoryWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read period message first, then status bar (Alt+/)."""
-        # First, read the period message for screen readers
         if QAccessible.isActive():
+            # First, read the period message for screen readers
             period_text = self.period_books_label.toPlainText()
             if period_text:
-                announce_status_message(self.status_bar, period_text)
-        
-        # Then read the status bar message
-        status_text = self._default_status_message
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
+                # Use set_status to ensure proper announcement
+                self.set_status(period_text, announce=True)
+            
+            # Then read the status bar message (with a small delay)
+            QTimer.singleShot(1000, self._announce_status_bar)
         else:
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
+                text=f"No screen reader active.\n\nStatus: {self._default_status_message}",
             )
+
+    def _announce_status_bar(self):
+        """Helper method to announce status bar message."""
+        status_text = self._default_status_message
+        if QAccessible.isActive():
+            self.set_status(status_text, announce=True)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
