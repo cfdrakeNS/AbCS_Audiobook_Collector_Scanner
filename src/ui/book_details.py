@@ -10,7 +10,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
-from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list
+from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
 import getpass
 
 from PySide6.QtWidgets import (
@@ -23,11 +23,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
-
-from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
-from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
 
 
 class BookDetailsWindow(QDialog):
@@ -931,11 +926,10 @@ class BookDetailsWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        # Centralize Alt+/ visibility for screen readers
-        shortcuts = get_accessible_shortcuts_list([
+        shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Plot"),  # Updated from Comments
+            ("Alt+O", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
@@ -956,23 +950,25 @@ class BookDetailsWindow(QDialog):
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
-        ])
+        ]
+        
+        # Centralize Alt+/ visibility for screen readers
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
         
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(450, 500)
-
+        dlg.resize(400, 200)
+        
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Create table for better accessibility (like other windows)
+        
+        # Create table for better accessibility (like web_book_details_window)
         from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QHeaderView
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -983,42 +979,17 @@ class BookDetailsWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         # Populate table
         for row, (shortcut, action) in enumerate(shortcuts):
-            shortcut_item = table.item(row, 0) or table.setItem(row, 0, QTableWidgetItem())
-            action_item = table.item(row, 1) or table.setItem(row, 1, QTableWidgetItem())
-            
-            shortcut_item.setText(shortcut)
-            shortcut_item.setAccessibleName(f"Shortcut {shortcut}")
-            shortcut_item.setAccessibleDescription(f"Keyboard shortcut {shortcut}")
-            
-            action_item.setText(action)
-            action_item.setAccessibleName(f"Action {action}")
-            action_item.setAccessibleDescription(f"Action performed by {shortcut}")
-
-        # Resize columns
-        table.resizeColumnsToContents()
-        table.resizeRowsToContents()
-        
-        # Make first column narrower, second wider
-        table.setColumnWidth(0, 120)
-        table.setColumnWidth(1, 300)
+            item = QTableWidgetItem(f"{shortcut} - {action}")
+            item.setAccessibleName(f"Shortcut {shortcut}")
+            item.setAccessibleDescription(f"{shortcut} performs {action}")
+            table.setItem(row, 0, item)
 
         layout.addWidget(table)
         
-        # Close button
-        close_button = QPushButton("Close")
-        close_button.setAccessibleName("Close shortcuts help")
-        close_button.setAccessibleDescription("Close the keyboard shortcuts help dialog")
-        close_button.setFocusPolicy(Qt.StrongFocus)
-        close_button.setDefault(False)
-        close_button.setAutoDefault(False)
-        close_button.clicked.connect(dlg.accept)
-        layout.addWidget(close_button)
-
         # Apply theme
         exec_styled_message_box(dlg, self.scaler.get_scaled_size(20))
         
