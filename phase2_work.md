@@ -74,6 +74,10 @@
 - **Data Validation**: Levenshtein distance for spelling corrections
 
 **Book Details Window Enhancement**:
+- add Get Medaata 
+
+
+**Book Details Window Enhancement**:
 - **New Window**: Create `web_book_details_window.py` modeled from `book_details_window.py`
 - **Accessibility**: Inherit all accessibility features from existing book details window
 - **Alt+G Shortcut**: "Get book details from web" opens new web details window
@@ -87,7 +91,11 @@
 - **Web Data Indicators**: Add accessible indicators to right of each field showing if web data differs (check mark or similar accessible element)
 - **Button Changes**: "Add Plot" and "Update All" buttons
 
-**Technical Implementation**:
+**web detail window Implementation**:
+- before building window please read these doc 
+accessibility_app_patterns
+Accessibility_best-practice_ rules (PySide6)
+Screen_Reader_and_PySide6_best_practices.md
 - **Window Class**: `WebBookDetailsWindow` inherits from `BookDetailsWindow`
 - **Field Layout**: Vertical form layout for screen reader navigation
 - **Accessibility Indicators**: Use `QLabel` with accessible names for web data differences
@@ -109,9 +117,10 @@
 - `src/database/queries.py` - Add API metadata update methods
 - `src/main.py` - Add required library imports
 
-**Batch Processing (Future Enhancement)**:
+**Batch Processing**:
 - main window add new button to the selection process "DownLoad Metadata"
 - Multi-select books for bulk metadata fetching
+- Background processing: Leverage existing update window infrastructure (already supports non-blocking operations)
 - Progress bar with screen reader announcements
 - "Scanning book 5 of 10..." accessibility feedback
 - when scan is complete, show message box with buttons: "Auto Update" AND "Review Changes
@@ -121,10 +130,36 @@
 ---
 
 ## Additional Feature Ideas
-- **Bulk Edit**: Multi-select books for collection management
-- **Custom Collections**: Color-coded user collections
-- **Statistics Dashboard**: Reading metrics and trends
-- **Import/Export**: User settings and collection portability
+
+### **Custom Collections**: Color-coded user collections
+**Purpose**: Go beyond default collections with user-defined, visually distinct categories
+**Implementation**:
+- Add "Manage Collections" dialog with create/edit/delete functions
+- Color picker for each collection (high contrast options for accessibility)
+- Collection icons/symbols for quick visual identification
+- Filter by custom collections in main window and reading history
+- Export/import collection definitions for backup
+- Use case: Create "Beach Reading" (blue) and "Study Materials" (green) collections
+
+### **Statistics Dashboard**: Reading metrics and trends
+**Purpose**: Comprehensive view of reading patterns and progress over time
+**Implementation**:
+- New dashboard window with charts and graphs (accessible data tables as alternative)
+- Metrics: Books per month, reading streaks, average book length, genre distribution
+- Year-over-year comparisons and reading goal tracking
+- Export reports (PDF, CSV) with accessibility support
+- Keyboard navigation between dashboard sections
+- Use case: Track "Read 50 books this year" progress with visual indicators
+
+### **Import/Export**: User settings and collection portability
+**Purpose**: Allow users to backup, share, and transfer their audiobook organization
+**Implementation**:
+- Export: Complete database backup + user preferences + collection definitions
+- Import: Merge functionality (add to existing vs replace all)
+- Format options: JSON (human-readable), CSV (tables), SQLite (full backup)
+- Cloud sync integration (Google Drive, OneDrive) for automatic backups
+- Cross-device sync between laptop and desktop installations
+- Use case: Move entire library to new computer without losing organization
 
 ---
 
