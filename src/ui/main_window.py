@@ -664,6 +664,30 @@ class MainWindow(QMainWindow):
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
 
+        # Edit menu
+        self.edit_menu = menubar.addMenu("&Edit")
+        
+        # Delete action (same as delete button)
+        self.delete_action = QAction("&Delete\tDel", self)
+        self.delete_action.setShortcut(QKeySequence("Del"))
+        self.delete_action.triggered.connect(self.on_delete_clicked)
+        self.delete_action.setEnabled(False)  # Disabled until item selected
+        self.edit_menu.addAction(self.delete_action)
+        
+        # Update action (same as update button)
+        self.update_action = QAction("&Update\tCtrl+U", self)
+        self.update_action.setShortcut("Ctrl+U")
+        self.update_action.triggered.connect(self.on_update_clicked)
+        self.update_action.setEnabled(False)  # Disabled until item selected
+        self.edit_menu.addAction(self.update_action)
+        
+        # Cancel action (same as cancel button)
+        self.cancel_action = QAction("&Cancel\tEsc", self)
+        self.cancel_action.setShortcut(QKeySequence("Esc"))
+        self.cancel_action.triggered.connect(self.on_cancel_clicked)
+        self.cancel_action.setEnabled(False)  # Disabled until item selected
+        self.edit_menu.addAction(self.cancel_action)
+
         # View menu
         self.view_menu = menubar.addMenu("&View")
 
@@ -2486,6 +2510,14 @@ class MainWindow(QMainWindow):
         self.status_hint_label.setText(self._selection_shortcuts_text())
 
         self.sort_label.setVisible(not show_action_buttons)
+        
+        # Enable/disable Edit menu items based on selection
+        if hasattr(self, 'delete_action'):
+            self.delete_action.setEnabled(has_selection)
+        if hasattr(self, 'update_action'):
+            self.update_action.setEnabled(has_selection and not in_duplicate_mode)
+        if hasattr(self, 'cancel_action'):
+            self.cancel_action.setEnabled(show_action_buttons)
 
         self.sync_selection_indicators()
 
