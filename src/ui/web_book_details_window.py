@@ -107,43 +107,43 @@ class WebBookDetailsWindow(QDialog):
         self.title_field.setReadOnly(True)
         self.title_field.setAccessibleName("Title")
         self.title_field.setAccessibleDescription("Book title from web source")
-        form_layout.addRow("Title:", self._create_field_with_indicator(self.title_field, self.web_data['title']))
+        form_layout.addRow("Title:", self._create_field_with_indicator(self.title_field, ""))
         
         # Author field (read-only, was combo box)
         self.author_field = QLineEdit()
         self.author_field.setReadOnly(True)
         self.author_field.setAccessibleName("Author")
         self.author_field.setAccessibleDescription("Author name from web source")
-        form_layout.addRow("Author:", self._create_field_with_indicator(self.author_field, self.web_data['author']))
+        form_layout.addRow("Author:", self._create_field_with_indicator(self.author_field, ""))
         
         # Year field
         self.year_field = QLineEdit()
         self.year_field.setReadOnly(True)
         self.year_field.setAccessibleName("Year")
         self.year_field.setAccessibleDescription("Publication year from web source")
-        form_layout.addRow("Year:", self._create_field_with_indicator(self.year_field, self.web_data['year']))
+        form_layout.addRow("Year:", self._create_field_with_indicator(self.year_field, ""))
         
         # Series field (read-only, was combo box)
         self.series_field = QLineEdit()
         self.series_field.setReadOnly(True)
         self.series_field.setAccessibleName("Series")
         self.series_field.setAccessibleDescription("Series name from web source")
-        form_layout.addRow("Series:", self._create_field_with_indicator(self.series_field, self.web_data['series']))
+        form_layout.addRow("Series:", self._create_field_with_indicator(self.series_field, ""))
         
         # Genre field (read-only, was combo box)
         self.genre_field = QLineEdit()
         self.genre_field.setReadOnly(True)
         self.genre_field.setAccessibleName("Genre")
         self.genre_field.setAccessibleDescription("Genre from web source")
-        form_layout.addRow("Genre:", self._create_field_with_indicator(self.genre_field, self.web_data['genre']))
+        form_layout.addRow("Genre:", self._create_field_with_indicator(self.genre_field, ""))
         
-        # Plot/Comments field
+        # Plot field (read-only)
         self.plot_field = QTextEdit()
         self.plot_field.setReadOnly(True)
         self.plot_field.setAccessibleName("Plot Summary")
         self.plot_field.setAccessibleDescription("Plot summary from web source")
         self.plot_field.setMaximumHeight(120)
-        form_layout.addRow("Plot:", self._create_field_with_indicator(self.plot_field, self.web_data['plot']))
+        form_layout.addRow("Plot:", self._create_field_with_indicator(self.plot_field, ""))
         
         main_layout.addLayout(form_layout)
         
@@ -160,7 +160,10 @@ class WebBookDetailsWindow(QDialog):
         self.add_plot_button = QPushButton("Add Plot")
         self.add_plot_button.setAccessibleName("Add plot to comments")
         self.add_plot_button.setAccessibleDescription("Add web plot summary to book comments field")
+        self.add_plot_button.setFocusPolicy(Qt.StrongFocus)
         self.add_plot_button.clicked.connect(self.on_add_plot)
+        self.add_plot_button.setDefault(False)
+        self.add_plot_button.setAutoDefault(False)
         button_layout.addWidget(self.add_plot_button)
         
         button_layout.addStretch()
@@ -168,13 +171,19 @@ class WebBookDetailsWindow(QDialog):
         self.update_all_button = QPushButton("Update All")
         self.update_all_button.setAccessibleName("Update all fields")
         self.update_all_button.setAccessibleDescription("Apply all web data changes to original book record")
+        self.update_all_button.setFocusPolicy(Qt.StrongFocus)
         self.update_all_button.clicked.connect(self.on_update_all)
+        self.update_all_button.setDefault(False)
+        self.update_all_button.setAutoDefault(False)
         button_layout.addWidget(self.update_all_button)
         
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription("Close window without making changes")
+        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
         self.cancel_button.clicked.connect(self.reject)
+        self.cancel_button.setDefault(False)
+        self.cancel_button.setAutoDefault(False)
         button_layout.addWidget(self.cancel_button)
         
         main_layout.addLayout(button_layout)
@@ -240,30 +249,35 @@ class WebBookDetailsWindow(QDialog):
         """Add plot summary to book comments."""
         if self.web_data['plot']:
             # For now, just show a message - will implement actual update later
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Add Plot",
-                f"Plot summary will be added to comments:\n\n{self.web_data['plot'][:100]}..."
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Add Plot",
+                text=f"Plot summary will be added to comments:\n\n{self.web_data['plot'][:200]}..."
             )
             self.set_status("Plot added to comments", announce=True)
 
     def on_update_all(self):
         """Update all fields with web data."""
         # Show confirmation dialog
-        reply = QMessageBox.question(
-            self,
-            "Update All",
-            "Update all book fields with web data?\n\nThis will replace existing data.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Update All")
+        msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+        msg.setText("Update all book fields with web data?\n\nThis will replace existing data.")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("&Yes - Update")
+        msg.button(QMessageBox.No).setText("&No - Cancel")
+        reply = msg.exec()
         
         if reply == QMessageBox.Yes:
             # For now, just show success message - will implement actual update later
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Update Complete",
-                "All fields updated with web data successfully."
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Update Complete",
+                text="All fields updated with web data successfully."
             )
             self.set_status("All fields updated", announce=True)
             self.accept()
@@ -287,11 +301,50 @@ class WebBookDetailsWindow(QDialog):
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         
-        for key, desc in shortcuts:
-            label = QLabel(f"{desc} - {key}")
-            label.setWordWrap(True)
-            layout.addWidget(label)
+        # Create table for better accessibility (like book_details.py)
+        from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QHeaderView
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        # Apply centralized F1 popup style
+        table.setStyleSheet(build_accessible_f1_popup_style())
         
+        # Populate table
+        for row, (key, desc) in enumerate(shortcuts):
+            if key:
+                combined_text = f"{desc} - {key}"
+            else:
+                combined_text = ""
+            from PySide6.QtWidgets import QTableWidgetItem
+            item = QTableWidgetItem(combined_text)
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}" if key else "")
+            table.setItem(row, 0, item)
+        
+        # Resize column to stretch
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        
+        # Set font size
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+        
+        layout.addWidget(table)
         dlg.exec()
 
     def on_theme_changed(self):
