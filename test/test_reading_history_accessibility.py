@@ -172,9 +172,11 @@ def test_screen_reader_announcements_structure(reading_history_window):
     assert hasattr(window, '_period_message')
     assert isinstance(window._period_message, str)
     
-    # Period message should use readable date format
-    # Should format like: "Between March 23, 2026 and March 23, 2026 you read 5 books totaling 12 hours"
+    # Period message should use "Showing" format with readable dates
+    # Should format like: "Showing 5 books read between March 23, 2026 and March 23, 2026 totaling 12 hours"
     if window._period_message:
-        assert "March" in window._period_message or "April" in window._period_message or "May" in window._period_message
-        assert "you read" in window._period_message
+        assert "Showing" in window._period_message
+        assert "books read between" in window._period_message
         assert "totaling" in window._period_message
+        # Check for readable date format (month name)
+        assert "March" in window._period_message or "April" in window._period_message or "May" in window._period_message

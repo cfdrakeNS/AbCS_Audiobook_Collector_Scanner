@@ -305,7 +305,7 @@ class ReadingHistoryWindow(QDialog):
         self.period_books_label.setFocusPolicy(Qt.StrongFocus)
         self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         self.period_books_label.setFixedHeight(22)  # Even shorter
-        self.period_books_label.setPlainText("Between 2024-01-01 and 2024-12-31 you read 0 books totaling 0 hours")
+        self.period_books_label.setPlainText("")  # Empty - period messages shown in status bar only
         
         period_layout.addWidget(self.period_books_label)
         range_layout.addLayout(period_layout)
@@ -560,8 +560,8 @@ class ReadingHistoryWindow(QDialog):
         end_date_str = self.end_date_edit.date().toString("MMMM d, yyyy")
         status_msg = f"Showing {total_books} books read between {start_date_str} and {end_date_str} totaling {total_hours:,.0f} hours"
         
-        # Store period text for Alt+/ announcements but don't display it
-        self._period_message = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
+        # Store status message for Alt+/ announcements
+        self._period_message = status_msg
         
         # Populate table
         self.populate_range_table(books)
