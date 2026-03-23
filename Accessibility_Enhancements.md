@@ -54,6 +54,7 @@ This document lists only accessibility items that need implementation or investi
    - **Impact**: Better orientation for screen readers in large collections
    - **Files**: `src/ui/main_window.py` - `on_current_cell_changed()` method
    - **Priority**: Medium - would enhance user experience but not critical
+   - **Note**: This is about position announcements, NOT row/column numbers which are irrelevant in this app
 
 4. **Live Region Enhancement** 🟡 **COULD BE IMPROVED**
    - **Current**: Status announcements work well across all windows
