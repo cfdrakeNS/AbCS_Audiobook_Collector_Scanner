@@ -74,19 +74,27 @@
 - **Data Validation**: Levenshtein distance for spelling corrections
 
 **Book Details Window Enhancement**:
-- **Alt+G Shortcut**: "Get book details from web"
-- **Accessible Review Dialog**: Step-by-step wizard (not complex side-by-side table)
-- **QListWidget**: Display top 3 search results with accessible names
-- **QFormLayout**: Current vs Suggested data comparison
-- **Screen Reader Support**: 
-  - `widget.setAccessibleName("Suggested Author: Stephen King. Match confidence 95 percent.")`
-  - Auto-focus to first correction field after search
-  - Live region announcements for search progress
-- **Keyboard Navigation**: 
-  - `Ctrl+D`: Download metadata
-  - `Enter`: Accept all suggestions
-  - `Ctrl+Arrow Keys`: Toggle between current/suggested data
-- **Visual Accessibility**: High contrast styling (red vs green for differences)
+- **New Window**: Create `web_book_details_window.py` modeled from `book_details_window.py`
+- **Accessibility**: Inherit all accessibility features from existing book details window
+- **Alt+G Shortcut**: "Get book details from web" opens new web details window
+
+**Web Book Details Window Modifications**:
+- **Remove Fields**: collection, reader, date read, files, bitrate, size, format, path, date added
+- **Change Combo Boxes to Text Fields**: author, genre, series (remove combo box code)
+- **Field Properties**: All fields set to read-only but accessible to screen readers (like period message in reading_history_window)
+- **Remove Messaging**: No field update messages/status announcements
+- **Layout Changes**: Vertical alignment with one field per line
+- **Web Data Indicators**: Add accessible indicators to right of each field showing if web data differs (check mark or similar accessible element)
+- **Button Changes**: "Add Plot" and "Update All" buttons
+
+**Technical Implementation**:
+- **Window Class**: `WebBookDetailsWindow` inherits from `BookDetailsWindow`
+- **Field Layout**: Vertical form layout for screen reader navigation
+- **Accessibility Indicators**: Use `QLabel` with accessible names for web data differences
+- **Read-Only Fields**: Use `QLineEdit` with `setReadOnly(True)` and proper accessibility
+- **Button Functions**: 
+  - "Add Plot": Add plot summary to comments field
+  - "Update All": Apply all web data changes to original book record
 
 **Error Handling**:
 - **Network Connectivity**: Graceful API error handling
@@ -96,7 +104,8 @@
 
 **Files to Modify**:
 - `src/database/models.py` - NO CHANGES (use existing structure)
-- `src/ui/book_details.py` - Add fetch button and review dialog
+- `src/ui/book_details.py` - Add fetch button to open web details window
+- `src/ui/web_book_details_window.py` - NEW: modeled from book_details_window.py
 - `src/database/queries.py` - Add API metadata update methods
 - `src/main.py` - Add required library imports
 
