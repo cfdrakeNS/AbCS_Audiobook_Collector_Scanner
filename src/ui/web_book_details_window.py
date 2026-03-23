@@ -71,6 +71,7 @@ class WebBookDetailsWindow(QDialog):
         self.setup_ui()
         self.setup_shortcuts()
         self.load_book_data()
+        self.fetch_web_data()  # Start fetching real data
 
     def _get_fake_web_data(self):
         """Get fake web data for testing."""
@@ -108,6 +109,7 @@ class WebBookDetailsWindow(QDialog):
         self.title_field.setReadOnly(True)
         self.title_field.setAccessibleName("Title")
         self.title_field.setAccessibleDescription("Book title from web source")
+        self.title_field.setText(self.book.title or "Loading...")
         form_layout.addRow("Title:", self._create_field_with_indicator(self.title_field, ""))
         
         # Author field (read-only, was combo box)
@@ -115,6 +117,7 @@ class WebBookDetailsWindow(QDialog):
         self.author_field.setReadOnly(True)
         self.author_field.setAccessibleName("Author")
         self.author_field.setAccessibleDescription("Author name from web source")
+        self.author_field.setText(self.book.author_name or "Loading...")
         form_layout.addRow("Author:", self._create_field_with_indicator(self.author_field, ""))
         
         # Year field
@@ -122,6 +125,7 @@ class WebBookDetailsWindow(QDialog):
         self.year_field.setReadOnly(True)
         self.year_field.setAccessibleName("Year")
         self.year_field.setAccessibleDescription("Publication year from web source")
+        self.year_field.setText(str(self.book.year) if self.book.year else "Loading...")
         form_layout.addRow("Year:", self._create_field_with_indicator(self.year_field, ""))
         
         # Series field (read-only, was combo box)
@@ -129,6 +133,7 @@ class WebBookDetailsWindow(QDialog):
         self.series_field.setReadOnly(True)
         self.series_field.setAccessibleName("Series")
         self.series_field.setAccessibleDescription("Series name from web source")
+        self.series_field.setText(self.book.series_name or "Loading...")
         form_layout.addRow("Series:", self._create_field_with_indicator(self.series_field, ""))
         
         # Genre field (read-only, was combo box)
@@ -136,6 +141,7 @@ class WebBookDetailsWindow(QDialog):
         self.genre_field.setReadOnly(True)
         self.genre_field.setAccessibleName("Genre")
         self.genre_field.setAccessibleDescription("Genre from web source")
+        self.genre_field.setText(self.book.genre_name or "Loading...")
         form_layout.addRow("Genre:", self._create_field_with_indicator(self.genre_field, ""))
         
         # Plot field (read-only)
@@ -144,6 +150,7 @@ class WebBookDetailsWindow(QDialog):
         self.plot_field.setAccessibleName("Plot Summary")
         self.plot_field.setAccessibleDescription("Plot summary from web source")
         self.plot_field.setMaximumHeight(120)
+        self.plot_field.setPlainText(self.book.comments or "Loading...")
         form_layout.addRow("Plot:", self.plot_field)
         
         main_layout.addLayout(form_layout)
@@ -162,6 +169,8 @@ class WebBookDetailsWindow(QDialog):
         self.add_plot_button.setAccessibleName("Add plot to comments")
         self.add_plot_button.setAccessibleDescription("Add web plot summary to book comments field")
         self.add_plot_button.setFocusPolicy(Qt.StrongFocus)
+        self.add_plot_button.setMinimumHeight(30)  # Standard button height
+        self.add_plot_button.setMaximumHeight(40)  # Reasonable max height
         self.add_plot_button.clicked.connect(self.on_add_plot)
         self.add_plot_button.setDefault(False)
         self.add_plot_button.setAutoDefault(False)
@@ -173,6 +182,8 @@ class WebBookDetailsWindow(QDialog):
         self.update_all_button.setAccessibleName("Update all fields")
         self.update_all_button.setAccessibleDescription("Apply all web data changes to original book record")
         self.update_all_button.setFocusPolicy(Qt.StrongFocus)
+        self.update_all_button.setMinimumHeight(30)  # Standard button height
+        self.update_all_button.setMaximumHeight(40)  # Reasonable max height
         self.update_all_button.clicked.connect(self.on_update_all)
         self.update_all_button.setDefault(False)
         self.update_all_button.setAutoDefault(False)
@@ -182,6 +193,8 @@ class WebBookDetailsWindow(QDialog):
         self.cancel_button.setAccessibleName("Cancel")
         self.cancel_button.setAccessibleDescription("Close window without making changes")
         self.cancel_button.setFocusPolicy(Qt.StrongFocus)
+        self.cancel_button.setMinimumHeight(30)  # Standard button height
+        self.cancel_button.setMaximumHeight(40)  # Reasonable max height
         self.cancel_button.clicked.connect(self.reject)
         self.cancel_button.setDefault(False)
         self.cancel_button.setAutoDefault(False)
