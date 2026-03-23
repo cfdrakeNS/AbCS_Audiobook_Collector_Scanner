@@ -87,8 +87,8 @@
 
 ## Implementation Priority
 1. ✅ **COMPLETED**: History of books read (new feature, high user value)
-2. 🟡 **NEXT**: Import book cover (visual enhancement)
-3. 🟢 **FUTURE**: Get book details from web (convenience feature)
+2. � **NEXT**: Get book details from web (convenience feature)
+3. � **LATER**: Import book cover (visual enhancement - requires database changes)
 4. 🟢 **FUTURE**: App name change (cosmetic, can be done anytime)
 
 ---
@@ -102,11 +102,12 @@
 - Ultra-compact layout optimized for low vision users
 - Version updated to 1.8.6 with all features working
 
-**Next Recommended Work**: 🟡 **IMPORT BOOK COVERS**
-- Visual enhancement with accessibility considerations
-- Database schema changes needed
-- Book details window layout modifications
-- Image validation and processing required
+**Next Recommended Work**: � **GET BOOK DETAILS FROM WEB**
+- API integration with Open Library or Google Books
+- Popup dialog for data comparison and selective updates
+- No database schema changes required
+- Lower risk implementation path
+- Can be developed and tested independently
 
 ---
 
