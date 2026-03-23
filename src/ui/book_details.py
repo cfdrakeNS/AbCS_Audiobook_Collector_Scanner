@@ -10,7 +10,6 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
-from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
 import getpass
 
 from PySide6.QtWidgets import (
@@ -23,6 +22,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
+
+from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
 
 
 class BookDetailsWindow(QDialog):
@@ -435,10 +439,10 @@ class BookDetailsWindow(QDialog):
         title_label.setBuddy(self.title_edit)
         form.addRow(title_label, row1_layout)
 
-        # bd#3 Row 2: Comments (expand to fit, hide when empty)
-        self.comments_label = QLabel("C&omments:")
+        # bd#3 Row 2: Plot (expand to fit, hide when empty)
+        self.comments_label = QLabel("P&lot:")
         self.comments_edit = QTextEdit()
-        self.comments_edit.setAccessibleName("Comments")
+        self.comments_edit.setAccessibleName("Plot")
         # Tab navigates instead of inserting tabs
         self.comments_edit.setTabChangesFocus(True)
         # Dynamic height: start small, grow with content
@@ -926,10 +930,20 @@ class BookDetailsWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(450, 500)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Shortcuts list
         shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Plot"),
+            ("Alt+O", "Comments"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
@@ -951,20 +965,8 @@ class BookDetailsWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        
-        # Centralize Alt+/ visibility for screen readers
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
-        
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(400, 200)
-        
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Create table for better accessibility (like web_book_details_window)
-        from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QHeaderView
+
+        # Create table
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
@@ -979,21 +981,36 @@ class BookDetailsWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        # Apply centralized F1 popup style
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         # Populate table
-        for row, (shortcut, action) in enumerate(shortcuts):
-            item = QTableWidgetItem(f"{shortcut} - {action}")
-            item.setAccessibleName(f"Shortcut {shortcut}")
-            item.setAccessibleDescription(f"{shortcut} performs {action}")
+        for row, (key, description) in enumerate(shortcuts):
+            if key:
+                combined_text = f"{description} - {key}"
+            else:
+                combined_text = ""
+            item = QTableWidgetItem(combined_text)
+            item.setData(Qt.AccessibleTextRole,
+                         f"{description}: {key}" if key else "")
             table.setItem(row, 0, item)
 
+        # Resize column to stretch
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        # Set font size
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+
         layout.addWidget(table)
-        
-        # Apply theme
-        exec_styled_message_box(dlg, self.scaler.get_scaled_size(20))
-        
-        # Show dialog
+
         dlg.exec()
 
     def load_combos(self):
