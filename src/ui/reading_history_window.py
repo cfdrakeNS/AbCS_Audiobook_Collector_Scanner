@@ -41,6 +41,8 @@ class ReadingHistoryWindow(QDialog):
         
         # Window setup
         self.setWindowTitle("Reading History")
+        self.setAccessibleName("Reading History Window")
+        self.setAccessibleDescription("Window showing reading statistics and history with tabs for General, Year, Month, and Date Range views")
         self.setMinimumSize(800, 600)
         self.resize(1200, 800)
         
@@ -552,9 +554,9 @@ class ReadingHistoryWindow(QDialog):
         total_books = len(books)
         total_hours = sum(book.time_hours or 0 for book in books)
         
-        # Create accessible message like preferences scenario description
-        start_date_str = self.start_date_edit.date().toString("yyyy-MM-dd")
-        end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
+        # Create accessible message with readable date format
+        start_date_str = self.start_date_edit.date().toString("MMMM d, yyyy")
+        end_date_str = self.end_date_edit.date().toString("MMMM d, yyyy")
         accessible_msg = f"Between {start_date_str} and {end_date_str} you read {total_books:,} books totaling {total_hours:,.0f} hours"
         
         self.period_books_label.setPlainText(accessible_msg)
@@ -566,6 +568,11 @@ class ReadingHistoryWindow(QDialog):
         
         # Populate table
         self.populate_range_table(books)
+        
+        # Focus to first title in table after search
+        if books and self.range_table.rowCount() > 0:
+            self.range_table.setCurrentCell(0, 1)  # Focus on title column (index 1)
+            self.range_table.setFocus(Qt.TabFocusReason)
         
         self.set_status(f"Showing {total_books} books in date range")
 
@@ -618,7 +625,14 @@ class ReadingHistoryWindow(QDialog):
         self.apply_accessible_styling()
 
     def on_read_status_bar(self):
-        """Read current status bar message (Alt+/)."""
+        """Read period message first, then status bar (Alt+/)."""
+        # First, read the period message for screen readers
+        if QAccessible.isActive():
+            period_text = self.period_books_label.toPlainText()
+            if period_text:
+                announce_status_message(period_text)
+        
+        # Then read the status bar message
         status_text = self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
@@ -642,7 +656,7 @@ class ReadingHistoryWindow(QDialog):
             ("Alt+B", "Focus current table"),
             ("Alt+F", "From date field"),
             ("Alt+S", "Search"),
-            ("Alt+/", "Read status bar"),
+            ("Alt+/", "Read period message then status bar"),
             ("F1", "Show this help"),
             ("Escape", "Close window"),
         ]
