@@ -649,7 +649,7 @@ class ReadingHistoryWindow(QDialog):
             ("Alt+B", "Focus current table"),
             ("Alt+F", "From date field"),
             ("Alt+S", "Search"),
-            ("Alt+/", "Read period message then status bar"),
+            ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Escape", "Close window"),
         ]
