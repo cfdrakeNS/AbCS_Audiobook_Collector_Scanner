@@ -337,23 +337,6 @@ class ImportDetailWindow(QDialog):
             self.save_return_button.setEnabled(True)
             self.save_return_button.setVisible(True)
 
-    def _get_dirty_field_name(self, widget) -> str:
-        """Return a user-friendly field name for a dirty widget."""
-        mapping = {
-            self.title_edit: "Title",
-            self.author_combo: "Author",
-            self.year_spin: "Year",
-            self.series_combo: "Series",
-            self.genre_combo: "Genre",
-            self.collection_combo: "Collection",
-            self.reader_edit: "Reader",
-            self.time_edit: "Length",
-            self.comments_edit: "Comments",
-        }
-        return mapping.get(widget, "Import details")
-
-    def _resolve_dirty_source(self, source):
-        """Resolve focus-out source widget to tracked dirty control."""
         if source in self._pending_dirty_widgets:
             return source
 
@@ -840,10 +823,10 @@ class ImportDetailWindow(QDialog):
         title_label.setBuddy(self.title_edit)
         form.addRow(title_label, row1_layout)
 
-        # Row 2: Comments
-        self.comments_label = QLabel("C&omments:")
+        # Row 2: Plot
+        self.comments_label = QLabel("P&lot:")
         self.comments_edit = QTextEdit()
-        self.comments_edit.setAccessibleName("Comments")
+        self.comments_edit.setAccessibleName("Plot")
         self.comments_edit.setTabChangesFocus(True)
         self.comments_edit.setMinimumHeight(40)
         self.comments_edit.setReadOnly(False)
@@ -1121,7 +1104,7 @@ class ImportDetailWindow(QDialog):
         shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Comments"),
+            ("Alt+O", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
