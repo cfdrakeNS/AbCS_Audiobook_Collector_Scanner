@@ -1,7 +1,6 @@
 from src.accessibility.style_helpers import exec_styled_message_box
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
-from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
 from src.database import (
     DatabaseManager, Book, BookQueries, SeriesQueries,
     GenreQueries, CollectionQueries
@@ -229,14 +228,8 @@ class UpdateWindow(QDialog):
         # Table settings
         self.table.setSelectionMode(QAbstractItemView.NoSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
-        
-        # Disable hover highlighting for low-vision comfort
-        self.table.setMouseTracking(False)
-        self.table.viewport().setMouseTracking(False)
-        self.table.setAttribute(Qt.WA_Hover, False)
-        self.table.viewport().setAttribute(Qt.WA_Hover, False)
 
         # Column sizing - use fixed minimum widths for Series and Collection
         header = self.table.horizontalHeader()
@@ -603,26 +596,6 @@ class UpdateWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        # Stylesheet for QComboBox controls
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-        """
-
         # Stylesheet for QPushButton
         button_style = f"""
             QPushButton {{
@@ -659,8 +632,7 @@ class UpdateWindow(QDialog):
         """
 
         # Apply styles
-        for widget in self.findChildren(QComboBox):
-            widget.setStyleSheet(combo_style)
+        # Combo boxes use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
@@ -906,6 +878,7 @@ class UpdateWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),

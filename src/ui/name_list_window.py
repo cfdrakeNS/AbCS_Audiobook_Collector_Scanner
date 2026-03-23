@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
+from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 from src.accessibility.theme_manager import ThemeManager
 from src.database import (
     DatabaseManager,
@@ -42,6 +43,69 @@ NameListType = Literal["author", "genre", "series", "collection"]
 
 class NameListWindow(QDialog):
     """Window for adding and editing names in reference tables."""
+
+    def on_find_enter_pressed(self):
+        # Trigger find on Enter in the find box
+        text = self.find_edit.text()
+        if text.strip():
+            found = self.find_first_match(text)
+            if found:
+                # Focus the list after finding a match
+                self.focus_list()
+    
+    def on_clear_find(self):
+        """Clear find box and reset filter (Alt+F)"""
+        self.find_edit.clear()
+        # Show all rows by clearing the filter
+        for row in range(self.table.rowCount()):
+            self.table.setRowHidden(row, False)
+        # Focus the list instead of staying in find box
+        self.focus_list()
+        total_count = self.table.rowCount()
+        self.set_status(f"Find cleared. Showing all {total_count} {self.entity_plural.lower()}.", announce=True)
+
+    def on_find_text_changed(self, text):
+        # Real-time filtering as user types - manual implementation for QTableWidget
+        search_text = text.strip().lower()
+        visible_count = 0
+        total_count = self.table.rowCount()
+        
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, self.COL_NAME)
+            if item:
+                name = item.text().lower()
+                matches = search_text in name if search_text else True
+                self.table.setRowHidden(row, not matches)
+                if matches:
+                    visible_count += 1
+        
+        # Announce filter results to screen reader
+        if search_text:
+            if visible_count > 0:
+                announce_status_message(
+                    self.status_bar, 
+                    f"Found {visible_count} matches for '{text}'",
+                    move_focus=True
+                )
+                # Focus first match if exists
+                for row in range(self.table.rowCount()):
+                    if not self.table.isRowHidden(row):
+                        self.table.selectRow(row)
+                        self.table.scrollToItem(self.table.item(row, self.COL_NAME))
+                        break
+            else:
+                announce_status_message(
+                    self.status_bar, 
+                    f"No matches found for '{text}'",
+                    move_focus=True
+                )
+        else:
+            # Find box cleared, show all items
+            announce_status_message(
+                self.status_bar, 
+                f"Showing all {total_count} {self.entity_plural.lower()}",
+                move_focus=True
+            )
 
     COL_NAME = 0
     COL_ACTIVE = 1
@@ -204,49 +268,23 @@ class NameListWindow(QDialog):
             self.table.setColumnCount(2)
             self.table.setHorizontalHeaderLabels(
                 [self.entity_singular, "Books"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
-        
-        # Disable hover highlighting for low-vision comfort
-        self.table.setMouseTracking(False)
-        self.table.viewport().setMouseTracking(False)
-        self.table.setAttribute(Qt.WA_Hover, False)
-        self.table.viewport().setAttribute(Qt.WA_Hover, False)
-        
-        self.table.setStyleSheet(
-            """
-            QTableView::item:selected,
-            QTableView::item:selected:active,
-            QTableView::item:selected:!active {
-                border: none;
-                outline: none;
-            }
-            QTableView::item:focus {
-                border: none;
-                outline: none;
-            }
-            QTableWidget::item:selected,
-            QTableWidget::item:selected:focus {
-                border: none;
-                outline: none;
-            }
-            QTableWidget:focus {
-                border: none;
-                outline: none;
-            }
-            """
-        )
+        self.table.setAlternatingRowColors(False)
+        self.table.setStyleSheet(build_accessible_f1_popup_style())
         self.table.verticalHeader().setVisible(False)
         self.table.setVerticalHeaderLabels([])
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setMinimumSectionSize(60)
-        self.table.setColumnWidth(
-            self.COL_NAME, 460 if self.is_collection_mode else 520)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         if self.is_collection_mode:
-            self.table.setColumnWidth(self.COL_ACTIVE, 120)
-        self.table.setColumnWidth(self._usage_column(), 90)
+            self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(-1, QHeaderView.ResizeToContents)
+        
+        # Connect proxy model to table for filtering
+        # Note: For QTableWidget, we'll handle filtering differently
+        # since QTableWidget doesn't work directly with QSortFilterProxyModel
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         layout.addWidget(self.table, 1)
 
@@ -256,7 +294,7 @@ class NameListWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.edit_button = QPushButton("&Edit")
+        self.edit_button = QPushButton("Edit")
         self.edit_button.clicked.connect(self.on_edit)
         self.edit_button.setAccessibleDescription(
             f"Edit highlighted {self.entity_singular.lower()} row - Alt+E"
@@ -393,6 +431,21 @@ class NameListWindow(QDialog):
         return keys
 
     def setup_shortcuts(self):
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'table': self.focus_list,
+            'save_button': self.on_save,
+            'edit_button': self.on_edit,
+            'name_edit': self.focus_name_edit,
+            'find_edit': self.on_clear_find if not self.is_collection_mode else self.focus_find_edit,
+            'active_check': self.focus_active_check if hasattr(self, 'active_check') else lambda: None,
+            'cancel_button': self.on_cancel_edit,
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.NAMELIST_WINDOW, callback_map)
+
+        # Local QShortcuts for Alt+/, F1, and Escape
         se_shortcut = QShortcut(QKeySequence("F1"), self)
         se_shortcut.activated.connect(self.on_show_shortcuts)
 
@@ -402,16 +455,25 @@ class NameListWindow(QDialog):
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.accept)
 
-        self.list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        self.list_shortcut.activated.connect(self.focus_list)
-
-        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.save_shortcut.activated.connect(self.on_save)
+        # Add direct Alt+F shortcut for clearing find
+        if not self.is_collection_mode:
+            self.clear_find_shortcut = QShortcut(QKeySequence("Alt+F"), self)
+            self.clear_find_shortcut.activated.connect(self.on_clear_find)
 
         if not self.is_collection_mode:
             self.find_edit.textChanged.connect(self.on_find_text_changed)
             self.find_edit.returnPressed.connect(self.on_find_enter_pressed)
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
+
+    def focus_name_edit(self):
+        self.name_edit.setFocus(Qt.ShortcutFocusReason)
+
+    def focus_find_edit(self):
+        self.find_edit.setFocus(Qt.ShortcutFocusReason)
+
+    def focus_active_check(self):
+        if hasattr(self, 'active_check'):
+            self.active_check.setFocus(Qt.ShortcutFocusReason)
 
     def set_status(self, message: str, announce: bool = False):
         message = self._format_status_message(message)
@@ -764,15 +826,8 @@ class NameListWindow(QDialog):
         return f"{name_text} - books {usage_text}, Alt+E Edit, Escape Close"
 
     def on_show_shortcuts(self):
-        dlg = QDialog(self)
-        dlg.setWindowTitle(f"Keyboard Shortcuts - {self.entity_plural}")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(460, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
+        """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
             ("Alt+F", "Find") if not self.is_collection_mode else None,
             ("Alt+M", "Name edit"),
@@ -787,18 +842,28 @@ class NameListWindow(QDialog):
             ("F1", "Show this help"),
         ]
         shortcuts = [item for item in shortcuts if item is not None]
+        filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Keyboard Shortcuts - {self.entity_plural}")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(460, 500)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setRowCount(len(filtered_shortcuts))
+        table.setVerticalHeaderLabels([""] * len(filtered_shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
@@ -809,10 +874,9 @@ class NameListWindow(QDialog):
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
         
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }")
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
-        for row, (key, description) in enumerate(shortcuts):
+        for row, (key, description) in enumerate(filtered_shortcuts):
             combined_text = f"{description} - {key}"
             item = QTableWidgetItem(combined_text)
             item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
@@ -821,47 +885,15 @@ class NameListWindow(QDialog):
         header = table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
 
+        scale_pct = self.scaler.current_scale
+        base_font_size = int(11 * (scale_pct / 100.0))
         font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
+        font.setPointSize(base_font_size)
         table.setFont(font)
 
         layout.addWidget(table)
 
         dlg.exec()
-
-    def on_find_text_changed(self, text: str):
-        text = text.strip()
-        if not text:
-            self._last_find_row = -1
-            return
-        self.find_first_match(text)
-
-    def on_find_enter_pressed(self):
-        text = self.find_edit.text().strip()
-        if not text:
-            return
-
-        if self.is_author_mode:
-            current_row = self.table.currentRow()
-            current_item = self.table.item(
-                current_row, self.COL_NAME) if current_row >= 0 else None
-            current_name = current_item.text() if current_item else ""
-            has_current_match = self._is_find_match(
-                current_name,
-                text,
-                is_author_mode=True,
-            )
-
-            if self._last_find_row >= 0 and has_current_match:
-                self.find_next_match()
-                return
-
-            self.find_first_match(text)
-            return
-
-        if self.find_first_match(text):
-            self.find_edit.clear()
-            self.focus_list()
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode."""
@@ -879,21 +911,36 @@ class NameListWindow(QDialog):
         if not search_text:
             return False
 
+        # Count total matches for position announcement
+        total_matches = 0
+        first_match_row = -1
+        
         for row in range(self.table.rowCount()):
             item = self.table.item(row, self.COL_NAME)
             name = item.text() if item else ""
-
+            
             if self._is_find_match(name, search_text, is_author_mode=self.is_author_mode):
-                self._focus_row(row)
-                self._last_find_row = row
-                suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
-                self.set_status(
-                    f"Found {self.entity_singular.lower()}: {item.text()}.{suffix}")
-                return True
+                total_matches += 1
+                if first_match_row == -1:
+                    first_match_row = row
+
+        if first_match_row >= 0:
+            self._focus_row(first_match_row)
+            self._last_find_row = first_match_row
+            item = self.table.item(first_match_row, self.COL_NAME)
+            suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
+            
+            # Enhanced announcement with position
+            position_text = f"Showing match 1 of {total_matches}" if total_matches > 1 else "Showing only match"
+            self.set_status(
+                f"Found {self.entity_singular.lower()}: {item.text()}. {position_text}.{suffix}",
+                announce=True
+            )
+            return True
 
         suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
         self.set_status(
-            f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=True)
+            f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=False)
         return False
 
     def find_next_match(self):
@@ -905,6 +952,23 @@ class NameListWindow(QDialog):
     def _find_direction(self, forward: bool):
         text = self._normalize_find_value(self.find_edit.text())
         if not text or self.table.rowCount() == 0:
+            return
+
+        # Count total matches for position announcement
+        total_matches = 0
+        matches_positions = []
+        
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, self.COL_NAME)
+            name = item.text() if item else ""
+            if self._is_find_match(name, text, is_author_mode=self.is_author_mode):
+                total_matches += 1
+                matches_positions.append(row)
+
+        if total_matches == 0:
+            suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
+            self.set_status(
+                f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=True)
             return
 
         start_row = self._last_find_row if self._last_find_row >= 0 else self.table.currentRow()
@@ -922,16 +986,21 @@ class NameListWindow(QDialog):
             if self._is_find_match(name, text, is_author_mode=self.is_author_mode):
                 self._focus_row(row)
                 self._last_find_row = row
+                
+                # Find current position in matches
+                current_position = matches_positions.index(row) + 1
+                position_text = f"Showing match {current_position} of {total_matches}"
+                
                 suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
                 self.set_status(
-                    f"Found {self.entity_singular.lower()}: {item.text()}.{suffix}")
+                    f"Found {self.entity_singular.lower()}: {item.text()}. {position_text}.{suffix}",
+                    announce=True
+                )
                 return
 
         suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
         self.set_status(
-            f"No matching {self.entity_plural.lower()} for '{self.find_edit.text().strip()}'.{suffix}",
-            announce=True,
-        )
+            f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=True)
 
     def _focus_row(self, row: int):
         if row < 0 or row >= self.table.rowCount():

@@ -1,5 +1,5 @@
 """Helpers for accessible shortcut lists and F1 popup styling."""
-from src.accessibility.screen_reader_detector import detect_screen_reader
+from src.accessibility.screen_reader import is_screen_reader_active
 
 
 def get_accessible_shortcuts_list(shortcuts):
@@ -14,10 +14,7 @@ def get_accessible_shortcuts_list(shortcuts):
             alt_slash = tup
         else:
             rest.append(tup)
-    
-    # Check if screen reader is active
-    screen_reader = detect_screen_reader()
-    if screen_reader:  # JAWS or NVDA is running
+    if is_screen_reader_active():
         # Place Alt+/ at the top if present
         return [alt_slash] + rest if alt_slash else rest
     else:

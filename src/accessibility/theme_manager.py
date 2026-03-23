@@ -8,6 +8,7 @@ from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication, QWidget
 from typing import Dict, Optional
 from enum import Enum
+from .windows_theme_detector import detect_windows_dark_mode, get_fallback_dark_theme_colors, get_fallback_light_theme_colors
 
 
 class ThemeName(Enum):
@@ -114,7 +115,7 @@ class ThemeManager(QObject):
             'text': '#FFFFFF',
             'button': '#000000',
             'button_text': '#FFFFFF',
-            'highlight': '#FFFF00',  # Yellow selection
+            'highlight': '#00FF00',  # Bright green selection - more visible than yellow
             'highlight_text': '#000000',
             'link': '#00FFFF',
         }),
@@ -145,11 +146,11 @@ class ThemeManager(QObject):
 
         ThemeName.SOLARIZED_LIGHT: Theme("Solarized Light", {
             'window': '#FDF6E3',
-            'window_text': '#657B83',
+            'window_text': '#4B5B63',  # Darkened from #657B83 for better contrast
             'base': '#EEE8D5',
             'text': '#586E75',
             'button': '#FDF6E3',
-            'button_text': '#657B83',
+            'button_text': '#4B5B63',  # Darkened to match window_text
             'highlight': '#268BD2',
             'highlight_text': '#FDF6E3',
             'link': '#268BD2',
@@ -157,11 +158,11 @@ class ThemeManager(QObject):
 
         ThemeName.SOLARIZED_DARK: Theme("Solarized Dark", {
             'window': '#002B36',
-            'window_text': '#839496',
+            'window_text': '#6B8B8B',  # Darkened from #839496 for better contrast
             'base': '#073642',
             'text': '#93A1A1',
             'button': '#002B36',
-            'button_text': '#839496',
+            'button_text': '#6B8B8B',  # Darkened to match window_text
             'highlight': '#268BD2',
             'highlight_text': '#FDF6E3',
             'link': '#2AA198',
@@ -169,14 +170,14 @@ class ThemeManager(QObject):
 
         ThemeName.COMFORT_LIGHT: Theme("Comfort Light", {
             'window': '#F6F5F1',
-            'window_text': '#2E3138',
+            'window_text': '#40434A',  # Balanced contrast - not too dark, not too light
             'base': '#FBFAF7',
             'text': '#30343C',
             'button': '#EDE9E0',
-            'button_text': '#2E3138',
-            'highlight': '#7A8FA8',
+            'button_text': '#40434A',  # Match window_text
+            'highlight': '#3A506B',
             'highlight_text': '#FFFFFF',
-            'link': '#3E5F8A',
+            'link': '#3A506B',
         }),
 
         ThemeName.MUTED_DARK: Theme("Muted Dark", {
@@ -308,6 +309,53 @@ class ThemeManager(QObject):
             return theme_name
         return ThemeName.DEFAULT.value
 
+    def _is_system_theme_broken(self) -> bool:
+        """
+        Check if Qt system theme detection is broken.
+        
+        Returns:
+            True if system theme appears to be broken (returns default light colors)
+        """
+        # Get current system palette
+        palette = self.app.palette()
+        window_color = palette.color(QPalette.Window)
+        
+        # Default Qt light theme color is #F0F0F0
+        # If we see this exact color, system detection might be broken
+        default_light_color = QColor('#F0F0F0')
+        
+        # Check if window color matches default light theme exactly
+        # but Windows registry says we're in dark mode
+        if window_color == default_light_color:
+            windows_dark = detect_windows_dark_mode()
+            if windows_dark is True:
+                return True
+        
+        return False
+
+    def _apply_system_theme_workaround(self) -> QPalette:
+        """
+        Apply Windows registry-based theme detection workaround.
+        
+        Returns:
+            QPalette with correct system colors
+        """
+        windows_dark = detect_windows_dark_mode()
+        
+        if windows_dark is True:
+            # Use dark theme colors
+            colors = get_fallback_dark_theme_colors()
+            theme = Theme("Windows Dark (Workaround)", colors)
+        elif windows_dark is False:
+            # Use light theme colors
+            colors = get_fallback_light_theme_colors()
+            theme = Theme("Windows Light (Workaround)", colors)
+        else:
+            # Fallback to original palette if detection fails
+            return QPalette(self.original_palette)
+        
+        return theme.apply_to_palette(QPalette(self.original_palette))
+
     def _apply_theme(self):
         """Apply current theme to application."""
         # Get theme
@@ -318,48 +366,399 @@ class ThemeManager(QObject):
         # Always start from the original palette so switching between themes
         # does not carry stale color roles from the previous theme.
         palette = QPalette(self.original_palette)
-        if theme_enum != ThemeName.DEFAULT:
+        
+        if theme_enum == ThemeName.DEFAULT:
+            # Always check system theme detection and apply workaround if needed
+            windows_dark = detect_windows_dark_mode()
+            if windows_dark is True:
+                # Always use Windows registry for dark mode (Qt detection is broken)
+                colors = get_fallback_dark_theme_colors()
+                workaround_theme = Theme("Windows Dark (Registry)", colors)
+                palette = workaround_theme.apply_to_palette(palette)
+            elif windows_dark is False:
+                # Use Windows registry for light mode too
+                print("ACCESSIBILITY: Using Windows registry for light theme detection")
+                colors = get_fallback_light_theme_colors()
+                workaround_theme = Theme("Windows Light (Registry)", colors)
+                palette = workaround_theme.apply_to_palette(palette)
+            else:
+                # Fallback to original system palette if registry fails
+                print("ACCESSIBILITY: Registry detection failed, using Qt system palette")
+        else:
+            # Apply custom theme colors
             palette = theme.apply_to_palette(palette)
 
         # Apply to application
         self.app.setPalette(palette)
 
+        # Disable mouse hover highlighting for all tables
+        table_hover_disable = """
+            QTableWidget::item:hover, QTableView::item:hover {
+                background: none !important;
+                color: palette(text) !important;
+            }
+            QTableView:focus { border: none; outline: none; }
+            QTableView::item:selected { background-color: palette(highlight); color: palette(highlighted-text); }
+            QTableView::item:focus { outline: none; }
+            QTableWidget { alternate-background-color: transparent; }
+            QTableView { alternate-background-color: transparent; }
+        """
+
         # Additional stylesheet tweaks for specific themes
         extra_style = ""
-
+        
+        # Menu styling for better theme consistency
+        menu_style = """
+            QMenu {
+                background-color: palette(base);
+                border: 1px solid palette(dark);
+                padding: 2px;
+            }
+            QMenu::item {
+                padding: 4px 16px 4px 16px;
+                border: none;
+            }
+            QMenu::item:selected {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+            }
+            QMenu::separator {
+                height: 1px;
+                background-color: palette(mid);
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+            QMenuBar {
+                background-color: palette(window);
+                color: palette(window-text);
+                border: none;
+            }
+            QMenuBar::item {
+                padding: 4px 8px 4px 8px;
+                background-color: transparent;
+            }
+            QMenuBar::item:selected {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+            }
+            QHeaderView {
+                background-color: palette(window);
+                color: palette(window-text);
+                border: none;
+                border-bottom: 1px solid palette(dark);
+            }
+            QHeaderView::section {
+                background-color: palette(window);
+                color: palette(window-text);
+                padding: 4px;
+                border: none;
+                border-right: 1px solid palette(dark);
+                border-bottom: 1px solid palette(dark);
+            }
+            QLineEdit {
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                padding: 2px 4px;
+            }
+            QLineEdit:focus {
+                border: 2px solid palette(highlight);
+            }
+            QLineEdit:disabled {
+                background-color: palette(window);
+                color: palette(window-text);
+                border: 1px solid palette(mid);
+            }
+            QTextEdit {
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }
+            QTextEdit:focus {
+                border: 2px solid palette(highlight);
+            }
+            QPlainTextEdit {
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }
+            QPlainTextEdit:focus {
+                border: 2px solid palette(highlight);
+            }
+            QScrollBar:vertical {
+                background-color: palette(base);
+                width: 15px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: palette(mid);
+                border-radius: 3px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: palette(highlight);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                background: none;
+                border: none;
+            }
+            QScrollBar:horizontal {
+                background-color: palette(base);
+                height: 15px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: palette(mid);
+                border-radius: 3px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: palette(highlight);
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                background: none;
+                border: none;
+            }
+            QMessageBox {
+                background-color: palette(window);
+                color: palette(window-text);
+                border: 2px solid palette(dark);
+                border-radius: 5px;
+            }
+            QMessageBox QLabel {
+                color: palette(window-text);
+            }
+            QMessageBox QPushButton {
+                background-color: palette(button);
+                color: palette(button-text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                padding: 5px 15px;
+                min-width: 80px;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: palette(mid);
+            }
+            QMessageBox QPushButton:default {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+            }
+        """
+        
+        # Spin box styling to match combo box height
+        spinbox_style = """
+            QSpinBox {
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                padding: 1px;
+                min-height: 18px;
+                max-height: 18px;
+                text-align: center;
+            }
+            QSpinBox:focus {
+                border: 2px solid palette(highlight);
+            }
+        """
+        
+        # Date edit styling to match other controls
+        dateedit_style = """
+            QDateEdit {
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                padding: 2px 4px;
+                min-height: 18px;
+                max-height: 18px;
+            }
+            QDateEdit:focus {
+                border: 2px solid palette(highlight);
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 15px;
+                border: none;
+            }
+            QDateEdit::down-arrow {
+                image: none;
+                border: none;
+                background-color: palette(dark);
+                width: 7px;
+                height: 7px;
+            }
+            QDateEdit QCalendarWidget {
+                background-color: palette(window);
+                color: palette(window-text);
+            }
+            QDateEdit QCalendarWidget QAbstractItemView {
+                background-color: palette(base);
+                color: palette(text);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+        """
+        
+        # Combo box styling for ALL themes to ensure proper highlight colors
+        combo_style = """
+            QComboBox {
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                padding: 1px;
+                min-height: 18px;
+                max-height: 18px;
+            }
+            QComboBox:focus {
+                border: 2px solid palette(highlight);
+            }
+            QComboBox QAbstractItemView {
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(dark);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+            QComboBox QAbstractItemView::item {
+                padding: 3px 8px;
+            }
+            QComboBox QAbstractItemView::item:selected {
+                background-color: palette(highlight) !important;
+                color: palette(highlighted-text) !important;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: palette(highlight) !important;
+                color: palette(highlighted-text) !important;
+            }
+            QComboBox::drop-down {
+                background-color: palette(button);
+                border: 1px solid palette(dark);
+                border-radius: 2px;
+                width: 15px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: none;
+                background-color: palette(dark);
+                width: 7px;
+                height: 7px;
+            }
+        """
+        
+        # Apply menu styling for ALL themes
         if theme_enum in [ThemeName.HIGH_CONTRAST_DARK, ThemeName.HIGH_CONTRAST_LIGHT]:
-            # Ensure very clear focus indicators for high contrast
-            extra_style = """
-                *:focus {
-                    outline: 3px solid palette(highlight);
-                    outline-offset: 2px;
-                }
-                
-                QPushButton:focus {
+            # Ensure very clear focus indicators for high contrast + menu styling
+            extra_style = f"""
+                QPushButton:focus {{
                     border: 3px solid palette(highlight);
                     outline: none;
-                }
+                }}
+                {menu_style}
+                {combo_style}
+                {spinbox_style}
+                {dateedit_style}
+                /* High contrast combo box fixes */
+                QComboBox {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QComboBox QAbstractItemView {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                    selection-background-color: palette(highlight) !important;
+                    selection-color: palette(highlighted-text) !important;
+                }}
+                QComboBox QAbstractItemView::item:selected {{
+                    background-color: palette(highlight) !important;
+                    color: palette(highlighted-text) !important;
+                }}
+                QComboBox QAbstractItemView::item:hover {{
+                    background-color: palette(highlight) !important;
+                    color: palette(highlighted-text) !important;
+                }}
+                /* High contrast text box fixes */
+                QLineEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QTextEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QPlainTextEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                /* High contrast spin box and date edit fixes */
+                QSpinBox {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QDateEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+            """
+        else:
+            # Apply menu styling for all themes (including default)
+            extra_style = f"""
+                {menu_style}
+                {combo_style}
+                {spinbox_style}
+                {dateedit_style}
+                /* Combo box fixes for all themes */
+                QComboBox {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QComboBox QAbstractItemView {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                    selection-background-color: palette(highlight) !important;
+                    selection-color: palette(highlighted-text) !important;
+                }}
+                QComboBox QAbstractItemView::item:selected {{
+                    background-color: palette(highlight) !important;
+                    color: palette(highlighted-text) !important;
+                }}
+                QComboBox QAbstractItemView::item:hover {{
+                    background-color: palette(highlight) !important;
+                    color: palette(highlighted-text) !important;
+                }}
+                /* Text box fixes for all themes */
+                QLineEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QTextEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QPlainTextEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                /* Spin box and date edit fixes for all themes */
+                QSpinBox {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
+                QDateEdit {{
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }}
             """
 
+        # Always apply table hover disabling
+        full_stylesheet = self.base_stylesheet + "\n" + table_hover_disable
         if extra_style:
-            # Add hover disabling for all tables
-            table_hover_disable = """
-                QTableWidget::item:hover, QTableView::item:hover {
-                    background: none !important;
-                    color: inherit !important;
-                }
-            """
-            full_stylesheet = self.base_stylesheet + "\n" + extra_style + "\n" + table_hover_disable
-        else:
-            # Add hover disabling even without extra style
-            table_hover_disable = """
-                QTableWidget::item:hover, QTableView::item:hover {
-                    background: none !important;
-                    color: inherit !important;
-                }
-            """
-            full_stylesheet = self.base_stylesheet + "\n" + table_hover_disable
-        
+            full_stylesheet += "\n" + extra_style
         self.app.setStyleSheet(full_stylesheet)
 
         self._repolish_open_widgets()
@@ -377,7 +776,12 @@ class ThemeManager(QObject):
                 style = widget.style()
                 style.unpolish(widget)
                 style.polish(widget)
-                widget.update()
+                # Handle widgets with problematic update methods
+                try:
+                    widget.update()
+                except TypeError:
+                    # Skip widgets that don't support parameterless update()
+                    pass
 
 
 # Global instance

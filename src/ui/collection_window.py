@@ -1,4 +1,4 @@
-"""Collection management window."""
+"""Collection management window (centralized shortcuts)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import sqlite3
 
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
+import sys
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -31,7 +32,13 @@ from src.database import Collection, CollectionQueries, DatabaseManager
 
 
 class CollectionWindow(QDialog):
-    """Window for adding, editing, and deleting collections."""
+    def keyPressEvent(self, event):
+        # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
+        super().keyPressEvent(event)
+    """
+    Window for adding, editing, and deleting collections.
+    """
+    # No longer needed: all Alt+letter shortcuts are now centralized
 
     COL_NAME = 0
     COL_ACTIVE = 1
@@ -108,33 +115,12 @@ class CollectionWindow(QDialog):
             "List of collections with active status")
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["Collection", "Active"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet(
-            """
-            QTableView::item:selected,
-            QTableView::item:selected:active,
-            QTableView::item:selected:!active {
-                border: none;
-                outline: none;
-            }
-            QTableView::item:focus {
-                border: none;
-                outline: none;
-            }
-            QTableWidget::item:selected,
-            QTableWidget::item:selected:focus {
-                border: none;
-                outline: none;
-            }
-            QTableWidget:focus {
-                border: none;
-                outline: none;
-            }
-            """
-        )
+        self.table.setAlternatingRowColors(False)
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+        self.table.setStyleSheet(build_accessible_f1_popup_style())
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setMinimumSectionSize(60)
@@ -149,13 +135,13 @@ class CollectionWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.new_button = QPushButton("&New")
+        self.new_button = QPushButton("New")
         self.new_button.clicked.connect(self.on_new)
         self.new_button.setAccessibleDescription(
             "Create a new collection entry - Alt+N")
         footer_layout.addWidget(self.new_button)
 
-        self.edit_button = QPushButton("&Edit")
+        self.edit_button = QPushButton("Edit")
         self.edit_button.clicked.connect(self.on_edit)
         self.edit_button.setAccessibleDescription(
             "Edit highlighted collection - Alt+E")
@@ -167,13 +153,13 @@ class CollectionWindow(QDialog):
             "Save current collection - Alt+S")
         footer_layout.addWidget(self.save_button)
 
-        self.cancel_button = QPushButton("Cance&l")
+        self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.on_cancel_edit)
         self.cancel_button.setAccessibleDescription(
             "Cancel current new/edit and return to list - Alt+L")
         footer_layout.addWidget(self.cancel_button)
 
-        self.delete_button = QPushButton("&Delete")
+        self.delete_button = QPushButton("Delete")
         self.delete_button.clicked.connect(self.on_delete)
         self.delete_button.setAccessibleDescription(
             "Delete selected collection if unused - Alt+D")
@@ -190,12 +176,32 @@ class CollectionWindow(QDialog):
             self.delete_button,
         ):
             button.setStyleSheet(button_style)
+            button.installEventFilter(self)
+
+            self.installEventFilter(self)
 
         layout.addLayout(footer_layout)
 
         QTimer.singleShot(0, self._apply_tab_order)
 
     def setup_shortcuts(self):
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        # Map widget IDs to callbacks for Alt+letter shortcuts
+        callback_map = {
+            'name_edit': lambda: self.name_edit.setFocus(Qt.ShortcutFocusReason),
+            'active_check': lambda: self.active_check.setFocus(Qt.ShortcutFocusReason),
+            'new_button': self.new_button.click,
+            'edit_button': self.edit_button.click,
+            'save_button': self.save_button.click,
+            'cancel_button': self.cancel_button.click,
+            'delete_button': self.delete_button.click,
+            'table': self.focus_list,
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.COLLECTION_WINDOW, callback_map)
+
+        # Local QShortcuts for F1, Escape, Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
@@ -204,9 +210,6 @@ class CollectionWindow(QDialog):
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
-
-        self.list_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        self.list_shortcut.activated.connect(self.focus_list)
 
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
@@ -579,15 +582,8 @@ class CollectionWindow(QDialog):
         )
 
     def on_show_shortcuts(self):
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Collection")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(460, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
+        """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
             ("Alt+B", "Jump to list"),
             ("Alt+M", "Name edit"),
@@ -601,26 +597,34 @@ class CollectionWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
+        filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Collection")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(460, 500)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setRowCount(len(filtered_shortcuts))
+        table.setVerticalHeaderLabels([""] * len(filtered_shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(True)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-        )
+        table.setStyleSheet(build_accessible_f1_popup_style())
 
-        for row, (key, description) in enumerate(shortcuts):
+        for row, (key, description) in enumerate(filtered_shortcuts):
             combined_text = f"{description} - {key}"
             item = QTableWidgetItem(combined_text)
             item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
@@ -637,26 +641,7 @@ class CollectionWindow(QDialog):
 
         dlg.exec()
 
-    def _allowed_alt_letter_keys(self) -> set[int]:
-        return {
-            Qt.Key_A,
-            Qt.Key_B,
-            Qt.Key_D,
-            Qt.Key_E,
-            Qt.Key_L,
-            Qt.Key_M,
-            Qt.Key_N,
-            Qt.Key_S,
-        }
-
-    def eventFilter(self, source, event):
-        if source == self.name_edit and event.type() == QEvent.KeyPress:
-            if event.modifiers() & Qt.AltModifier:
-                key = event.key()
-                if Qt.Key_A <= key <= Qt.Key_Z and key not in self._allowed_alt_letter_keys():
-                    event.accept()
-                    return True
-        return super().eventFilter(source, event)
+    # _allowed_alt_letter_keys and eventFilter are no longer needed with centralized shortcuts
 
     def keyPressEvent(self, event):
         """Prevent Enter from defaulting to footer button activation."""
