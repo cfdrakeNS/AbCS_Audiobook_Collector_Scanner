@@ -100,6 +100,7 @@ class WebBookDetailsWindow(QDialog):
         
         # Form layout for book details (vertical alignment)
         form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignRight)
         form_layout.setSpacing(10)
         
         # Title field (read-only)
@@ -143,7 +144,7 @@ class WebBookDetailsWindow(QDialog):
         self.plot_field.setAccessibleName("Plot Summary")
         self.plot_field.setAccessibleDescription("Plot summary from web source")
         self.plot_field.setMaximumHeight(120)
-        form_layout.addRow("Plot:", self._create_field_with_indicator(self.plot_field, ""))
+        form_layout.addRow("Plot:", self.plot_field)
         
         main_layout.addLayout(form_layout)
         
@@ -201,7 +202,7 @@ class WebBookDetailsWindow(QDialog):
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(5)
+        layout.setSpacing(3)  # Reduced spacing to prevent excessive gaps
         
         # The actual field
         field.setText(str(web_value))
