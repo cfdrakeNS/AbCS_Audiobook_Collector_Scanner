@@ -630,7 +630,15 @@ class ReadingHistoryWindow(QDialog):
             
             # Then read the current status bar message (with a small delay)
             QTimer.singleShot(1000, self._announce_status_bar)
-        # If no screen reader active, do nothing silently
+        else:
+            # No screen reader detected - show message box for testing (consistent with other windows)
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {self._default_status_message}",
+            )
 
     def _announce_status_bar(self):
         """Helper method to announce status bar message."""
