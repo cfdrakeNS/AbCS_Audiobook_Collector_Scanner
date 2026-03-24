@@ -61,19 +61,21 @@ class WebMetadataWindow(QDialog):
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
-        """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
+        """Read period message first, then status bar (Alt+/)."""
         if QAccessible.isActive():
-            # Announce directly without calling set_status to avoid duplicate announcements
-            announce_status_message(self.status_bar, status_text, move_focus=False)
-        else:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status",
-                text=f"Status: {status_text}"
-            )
+            # First, read stored period message for screen readers
+            if self._period_message:
+                self.set_status(self._period_message, announce=True)
+            
+            # Then read the current status bar message (with a small delay)
+            QTimer.singleShot(1000, self._announce_status_bar)
+        # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
+
+    def _announce_status_bar(self):
+        """Helper method to announce status bar message."""
+        status_text = self._default_status_message
+        if QAccessible.isActive():
+            self.set_status(status_text, announce=True)
 
     def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -100,6 +102,7 @@ class WebMetadataWindow(QDialog):
         self.resize(700, 800)
         
         self._default_status_message = "Ready"
+        self._period_message = ""  # Store meaningful message for Alt+/ announcements
         self.setup_ui()
         self.setup_shortcuts()
         self.load_book_data()
@@ -274,7 +277,9 @@ class WebMetadataWindow(QDialog):
         
         # Update status
         source = data.get('source', 'unknown')
-        self.set_status(f"Web data loaded from {source}", announce=True)
+        status_msg = f"Web data loaded from {source}"
+        self._period_message = status_msg  # Store for Alt+/ announcements
+        self.set_status(status_msg, announce=True)
 
     def on_web_data_error(self, error_message):
         """Handle web data fetch error."""
@@ -294,6 +299,7 @@ class WebMetadataWindow(QDialog):
         }
         
         self.set_status(f"Loaded book: {self.book.title}", announce=True)
+        self._period_message = f"Loaded book: {self.book.title}"  # Store for Alt+/ announcements
 
     def _update_field_indicators(self):
         """Update check mark colors based on field differences."""
