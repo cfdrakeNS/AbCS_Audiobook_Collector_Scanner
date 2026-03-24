@@ -1059,24 +1059,24 @@ class ImportDetailWindow(QDialog):
         callback_map = {
             'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
             'author_combo': lambda: self.author_combo.setFocus(),  # Alt+A
+            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
             'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
+            'time_edit': lambda: self.time_edit.setFocus(),        # Alt+M
+            'reader_edit': lambda: self.reader_edit.setFocus(),    # Alt+R
             'series_combo': lambda: self.series_combo.setFocus(),  # Alt+I
             'genre_combo': lambda: self.genre_combo.setFocus(),    # Alt+G
             'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
-            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+O
             'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
             'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
             'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
-            'format_edit': lambda: self.format_edit.setFocus(),    # Alt+M
-            'source_edit': lambda: self.source_edit.setFocus(),    # Alt+H
-            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
             'errors_edit': lambda: self.errors_edit.setFocus(),    # Alt+E
+            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
             'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,  # Alt+S
             'skip_button': lambda: self.skip_button.click(),       # Alt+D
             'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
         }
         mgr.register_alt_shortcuts(
-            self, ShortcutContext.BOOK_DETAILS, callback_map)
+            self, ShortcutContext.IMPORT_DETAIL, callback_map)
 
         # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)

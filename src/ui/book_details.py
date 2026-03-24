@@ -766,21 +766,22 @@ class BookDetailsWindow(QDialog):
         # F1 handled by centralized shortcut manager
         # ...existing code...
         callback_map = {
-            'author_combo': lambda: self.author_combo.setFocus(),
-            'year_spin': lambda: self.year_spin.setFocus(),
-            'files_edit': lambda: self.files_edit.setFocus(),
-            'series_combo': lambda: self.series_combo.setFocus(),
-            'genre_combo': lambda: self.genre_combo.setFocus(),
-            'collection_combo': lambda: self.collection_combo.setFocus(),
-            'reader_edit': lambda: self.reader_edit.setFocus(),
-            'time_edit': lambda: self.time_edit.setFocus(),
-            'read_date': lambda: self.read_date.setFocus(),
-            'size_edit': lambda: self.size_edit.setFocus(),
-            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
-            'path_edit': lambda: self.path_edit.setFocus(),
-            'comments_edit': lambda: self.comments_edit.setFocus(),
-            'format_combo': lambda: self.format_combo.setFocus(),
-            'get_web_details_button': self.on_get_web_details,
+            'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
+            'author_combo': lambda: self.author_combo.setFocus(),  # Alt+A
+            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
+            'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
+            'time_edit': lambda: self.time_edit.setFocus(),        # Alt+M
+            'reader_edit': lambda: self.reader_edit.setFocus(),    # Alt+R
+            'read_date': lambda: self.read_date.setFocus(),        # Alt+E
+            'series_combo': lambda: self.series_combo.setFocus(),  # Alt+I
+            'genre_combo': lambda: self.genre_combo.setFocus(),    # Alt+G
+            'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
+            'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
+            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
+            'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
+            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
+            'format_combo': lambda: self.format_combo.setFocus(),  # Alt+U (if needed)
+            'get_web_details_button': self.on_get_web_details,    # Alt+G
             # 'new_button': self.on_new,  # Commented out to avoid conflict
             # 'save_button': self.on_save,  # Commented out to avoid conflict
             # 'delete_button': self.on_delete,  # Commented out to avoid conflict
