@@ -101,7 +101,8 @@ class ShortcutManager(QObject):
         'B': ('Bitrate', 'bitrate_edit'),
         'Z': ('Size', 'size_edit'),
         'H': ('Path', 'path_edit'),        # From Pat&h label
-        'U': ('Update Metadata', 'get_web_details_button'),  # Alt+U for button
+        'K': ('Keep Plot', 'add_plot_button'),  # Alt+K for Keep Plot button
+        'U': ('Update All', 'update_all_button'),  # Alt+U for Update All button
         'F1': ('Show help', 'show_help'),
     }
 

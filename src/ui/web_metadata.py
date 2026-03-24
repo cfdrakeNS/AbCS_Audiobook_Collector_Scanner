@@ -58,21 +58,16 @@ class WebMetadataWindow(QDialog):
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
         self._default_status_message = message
+        self._status_message = message  # Store for Alt+/ announcements
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
-        """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
+        """Read status bar message (Alt+/)."""
         if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        else:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-            )
+            # Read stored status message for screen readers
+            if self._status_message:
+                announce_status_message(self.status_bar, self._status_message, move_focus=False)
+        # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
 
     def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -97,6 +92,7 @@ class WebMetadataWindow(QDialog):
         self.resize(700, 800)
         
         self._default_status_message = "Ready"
+        self._status_message = ""  # Store status message for Alt+/ announcements
         self.setup_ui()
         self.setup_shortcuts()
         self.load_book_data()
@@ -116,7 +112,7 @@ class WebMetadataWindow(QDialog):
         
         # Form layout for book details (vertical alignment)
         form_layout = QFormLayout()
-        form_layout.setSpacing(5)  # Tighter vertical spacing
+        form_layout.setSpacing(3)  # Tighter vertical spacing
         form_layout.setContentsMargins(20, 20, 20, 20)
         
         # Set proper alignment for labels and fields
@@ -196,7 +192,7 @@ class WebMetadataWindow(QDialog):
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
         
-        self.add_plot_button = QPushButton("Add Plot")
+        self.add_plot_button = QPushButton("Keep Plot")
         self.add_plot_button.setAccessibleName("Add plot to comments")
         self.add_plot_button.setAccessibleDescription("Add web plot summary to book comments field")
         self.add_plot_button.setFocusPolicy(Qt.StrongFocus)
@@ -209,7 +205,7 @@ class WebMetadataWindow(QDialog):
         
         button_layout.addStretch()
         
-        self.update_all_button = QPushButton("Update All")
+        self.update_all_button = QPushButton("Update All &U")
         self.update_all_button.setAccessibleName("Update all fields")
         self.update_all_button.setAccessibleDescription("Apply all web data changes to original book record")
         self.update_all_button.setFocusPolicy(Qt.StrongFocus)
@@ -330,6 +326,8 @@ class WebMetadataWindow(QDialog):
             'series_edit': lambda: self.series_field.setFocus(),    # Alt+I
             'genre_edit': lambda: self.genre_field.setFocus(),      # Alt+G
             'plot_edit': lambda: self.plot_field.setFocus(),        # Alt+P
+            'add_plot_button': self.on_add_plot,                  # Alt+K
+            'update_all_button': self.on_update_all,                # Alt+U
             'show_help': self.on_show_shortcuts,                    # F1
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
@@ -410,6 +408,8 @@ class WebMetadataWindow(QDialog):
             ("Alt+Y", "Year"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
+            ("Alt+K", "Keep Plot"),
+            ("Alt+U", "Update All"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
