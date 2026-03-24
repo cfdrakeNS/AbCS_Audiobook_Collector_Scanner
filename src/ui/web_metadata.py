@@ -432,10 +432,9 @@ class WebMetadataWindow(QDialog):
         self.genre_edit.setText(self.book.genre_name or "")
 
         collection_name = self.book.collection_name or ""
-        if collection_name:
-            self.collection_combo.setCurrentText(collection_name)
-        elif self.collection_combo.count() > 0:
-            self.collection_combo.setCurrentIndex(0)
+        # Web metadata doesn't use collection field yet
+        # if collection_name:
+        #     self.collection_combo.setCurrentText(collection_name)
 
         # Web metadata doesn't need tracks, bitrate, size, format, source fields
         # These will be removed in UI modifications
@@ -781,13 +780,12 @@ class WebMetadataWindow(QDialog):
         row1_layout.addWidget(self.title_edit, 2)
 
         author_label = QLabel("&Author:")
-        self.author_combo = QComboBox()
-        self.author_combo.setEditable(True)
-        self.author_combo.setAccessibleName("Author")
-        self.author_combo.setMaximumWidth(280)
-        author_label.setBuddy(self.author_combo)
+        self.author_edit = QLineEdit()
+        self.author_edit.setAccessibleName("Author")
+        self.author_edit.setMaximumWidth(280)
+        author_label.setBuddy(self.author_edit)
         row1_layout.addWidget(author_label)
-        row1_layout.addWidget(self.author_combo, 1)
+        row1_layout.addWidget(self.author_edit, 1)
 
         title_label = QLabel("&Title:")
         title_label.setBuddy(self.title_edit)
@@ -844,20 +842,21 @@ class WebMetadataWindow(QDialog):
         # Row 4: Series + Genre + Collection
         row4_layout = QHBoxLayout()
 
-        self.series_combo = QComboBox()
-        self.series_combo.setEditable(True)
-        self.series_combo.setAccessibleName("Book series")
-        self.series_combo.setMaximumWidth(260)
-        row4_layout.addWidget(self.series_combo, 1)
+        series_label = QLabel("Ser&ies:")
+        self.series_edit = QLineEdit()
+        self.series_edit.setAccessibleName("Book series")
+        self.series_edit.setMaximumWidth(260)
+        series_label.setBuddy(self.series_edit)
+        row4_layout.addWidget(series_label)
+        row4_layout.addWidget(self.series_edit, 1)
 
         genre_label = QLabel("&Genre:")
-        self.genre_combo = QComboBox()
-        self.genre_combo.setEditable(True)
-        self.genre_combo.setAccessibleName("Genre")
-        self.genre_combo.setMaximumWidth(220)
-        genre_label.setBuddy(self.genre_combo)
+        self.genre_edit = QLineEdit()
+        self.genre_edit.setAccessibleName("Genre")
+        self.genre_edit.setMaximumWidth(220)
+        genre_label.setBuddy(self.genre_edit)
         row4_layout.addWidget(genre_label)
-        row4_layout.addWidget(self.genre_combo, 1)
+        row4_layout.addWidget(self.genre_edit, 1)
 
         collection_label = QLabel("&Collection:")
         self.collection_combo = QComboBox()
@@ -871,7 +870,7 @@ class WebMetadataWindow(QDialog):
         row4_layout.addWidget(self.collection_combo, 1)
 
         series_label = QLabel("Ser&ies:")
-        series_label.setBuddy(self.series_combo)
+        series_label.setBuddy(self.series_edit)
         form.addRow(series_label, row4_layout)
 
         # Row 5: Files + Bitrate + Size + Format + Source
@@ -1004,13 +1003,13 @@ class WebMetadataWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
-            'author_combo': lambda: self.author_combo.setFocus(),  # Alt+A
+            'author_edit': lambda: self.author_edit.setFocus(),  # Alt+A
             'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
             'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
             'time_edit': lambda: self.time_edit.setFocus(),        # Alt+M
             'reader_edit': lambda: self.reader_edit.setFocus(),    # Alt+R
-            'series_combo': lambda: self.series_combo.setFocus(),  # Alt+I
-            'genre_combo': lambda: self.genre_combo.setFocus(),    # Alt+G
+            'series_edit': lambda: self.series_edit.setFocus(),  # Alt+I
+            'genre_edit': lambda: self.genre_edit.setFocus(),    # Alt+G
             'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
             'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
             'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
