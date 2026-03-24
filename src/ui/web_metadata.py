@@ -12,9 +12,10 @@ sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QApplication, QStatusBar, 
-    QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout
+    QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.accessibility.scaling import UIScaler
@@ -206,16 +207,62 @@ class WebMetadataWindow(QDialog):
         self.launch_tag_shortcut.activated.connect(lambda: self.launch_tag_button.click())
     
     def on_show_shortcuts(self):
-        """F1 shortcut - show help."""
-        from PySide6.QtWidgets import QMessageBox
-        from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_message_box_style
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="F1 Help - Web Metadata",
-            text="F1 shortcut working! Web metadata with proven accessibility.\n\nShortcuts:\nAlt+T: Title\nAlt+A: Author\nAlt+P: Plot\nAlt+Y: Year\nAlt+I: Series\nAlt+G: Genre\nAlt+S: Save\nAlt+L: Launch Tag\nAlt+/: Read status\nEscape: Close"
-        )
+        """F1 shortcut - show help with standard table format."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Web Details")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(580, 440)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        table.setStyleSheet(build_accessible_f1_popup_style())
+
+        shortcuts = [
+            ("Alt+T", "Title"),
+            ("Alt+A", "Author"),
+            ("Alt+P", "Plot"),
+            ("Alt+Y", "Year"),
+            ("Alt+I", "Series"),
+            ("Alt+G", "Genre"),
+            ("Alt+S", "Save"),
+            ("Alt+L", "Launch Tag"),
+            ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show keyboard shortcuts"),
+        ]
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
+
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+            table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+        layout.addWidget(table)
+
+        QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
+        dlg.exec()
     
     def on_read_status_bar(self):
         """Alt+/ shortcut - read status."""
