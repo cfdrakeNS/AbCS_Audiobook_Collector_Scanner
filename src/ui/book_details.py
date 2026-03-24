@@ -933,17 +933,31 @@ class BookDetailsWindow(QDialog):
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(450, 500)
+        dlg.resize(580, 440)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Shortcuts list
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        table.setStyleSheet(build_accessible_f1_popup_style())
+
         shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Comments"),
+            ("Alt+O", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
@@ -963,52 +977,22 @@ class BookDetailsWindow(QDialog):
             ("Page Down", "Next book"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
-            ("F1", "Show this help"),
+            ("F1", "Show keyboard shortcuts"),
         ]
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
 
-        # Create table
-        table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(False)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        table.setMouseTracking(False)
-        table.viewport().setMouseTracking(False)
-        table.setAttribute(Qt.WA_Hover, False)
-        table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style
-        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
-        table.setStyleSheet(build_accessible_f1_popup_style())
-
-        # Populate table
-        for row, (key, description) in enumerate(shortcuts):
-            if key:
-                combined_text = f"{description} - {key}"
-            else:
-                combined_text = ""
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole,
-                         f"{description}: {key}" if key else "")
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
             table.setItem(row, 0, item)
 
-        # Resize column to stretch
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
-        # Set font size
         font = table.font()
         font.setPointSize(self.scaler.get_scaled_size(11))
         table.setFont(font)
-
         layout.addWidget(table)
 
         dlg.exec()
