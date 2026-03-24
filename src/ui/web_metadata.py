@@ -205,17 +205,6 @@ class WebMetadataWindow(QDialog):
         
         button_layout.addStretch()
         
-        self.add_plot_button = QPushButton("Keep Plot")
-        self.add_plot_button.setAccessibleName("Add plot to comments")
-        self.add_plot_button.setAccessibleDescription("Add web plot summary to book comments field")
-        self.add_plot_button.setFocusPolicy(Qt.StrongFocus)
-        self.add_plot_button.setMinimumHeight(30)  # Standard button height
-        self.add_plot_button.setMaximumHeight(40)  # Reasonable max height
-        self.add_plot_button.clicked.connect(self.on_add_plot)
-        self.add_plot_button.setDefault(False)
-        self.add_plot_button.setAutoDefault(False)
-        button_layout.addWidget(self.add_plot_button)
-        
         main_layout.addLayout(button_layout)
         
         # Status bar
@@ -253,7 +242,6 @@ class WebMetadataWindow(QDialog):
         self.plot_field.setPlainText(data.get('plot', ''))
         
         # Enable buttons
-        self.add_plot_button.setEnabled(bool(data.get('plot')))
         self.save_button.setEnabled(True)
         
         # Update status
@@ -325,19 +313,6 @@ class WebMetadataWindow(QDialog):
         status_shortcut.activated.connect(self.on_read_status_bar)
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape_shortcut.activated.connect(self.reject)
-
-    def on_add_plot(self):
-        """Add plot summary to book comments."""
-        if self.web_data['plot']:
-            # For now, just show a message - will implement actual update later
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Add Plot",
-                text=f"Plot summary will be added to comments:\n\n{self.web_data['plot'][:200]}..."
-            )
-            self.set_status("Plot added to comments", announce=True)
 
     def on_update_all(self):
         """Update all fields with web data."""

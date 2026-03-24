@@ -67,21 +67,21 @@
 - **F1 Help**: Complete shortcut menu with accessible styling
 - **Button Actions**: Apply, Cancel, and Close buttons with proper behavior
 
-**🔄 IN PROGRESS**:
+**IN PROGRESS**:
 - done **UI Alignment**: Labels slightly above fields - need vertical alignment fixes
 - done **Field Spacing**: Fields need tighter vertical spacing
 - done **Label/Field Alignment**: Different vertical alignment settings causing misalignment
 ### web metadata window 
    check shortcuts.py central shortcut registration and update F1 popups following centralized f1 styling  for changes below.
-- alt+/ not reading the status bar check read_history window as it work fine in that windows
-- remove cancel button, code and shortcuts for it - escape does this already 
-- remove update plot ode and shortcuts for it 
-- change button "update All" to save" change shortcut to alt+s put the button to the left this is standard throughout the app. Make the button the same style and height as buttons on book detail or main windows 
-- the check boxes to the left of the fields are not accessible to jaws but leave them for sighted and low vision user. If there are differences in any of the fields make the check marks red.
-- create a popup message to say if data fetched is different data in the fields before and after the web fetch. 1 items per line with web value. if no changes or not found let the existing status bar message handle that  example of popup message for each difference e.g. Year xxx. pop up message say above the fields "Discrepancies Found"  
+- done **alt+/ not reading status bar check read_history window as it work fine in that windows**
+- done **remove cancel button, code and shortcuts for it - escape does this already**
+- done **remove update plot ode and shortcuts for it**
+- done **change button "update All" to save" change shortcut to alt+s put button to the left this is standard throughout the app. Make button same style and height as buttons on book detail or main windows**
+- check boxes to the left of fields are not accessible to jaws but leave them for sighted and low vision user. If there are differences in any of the fields make the check marks red.
+- create a popup message to say if data fetched is different data in fields before and after the web fetch. 1 items per line with web value. if no changes or not found let the existing status bar message handle that  example of popup message for each difference e.g. Year xxx. pop up message say above the fields "Discrepancies Found"  
 
 
-**📋 TO-DO**:
+**TO-DO**:
 - **API Integration**: Connect to Google Books API and Open Library API
 - **Libraries Required**: `requests`, `isbnlib`, `thefuzz` for fuzzy matching
 - **Search Logic**: Use `isbnlib.isbn_from_words()` to find ISBN from title/author
