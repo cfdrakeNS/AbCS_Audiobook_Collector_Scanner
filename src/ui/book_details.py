@@ -923,9 +923,9 @@ class BookDetailsWindow(QDialog):
         self.save_button.setVisible(save_active)
 
         # bd#16: Show/hide buttons based on save state
-        # For new books: show New, hide Delete, show Save, hide Cancel, show Update Metadata
+        # For new books: show New, hide Delete, show Save, hide Cancel, hide Update Metadata
         # For existing books: show New/Delete when not saving, show Save/Cancel when saving
-        self.new_button.setVisible(self.is_new and not save_active)
+        self.new_button.setVisible(self.is_new or (not self.is_new and not save_active))
         self.delete_button.setVisible(
             (not self.is_new) and (not save_active))
         self.save_button.setVisible(save_active)
