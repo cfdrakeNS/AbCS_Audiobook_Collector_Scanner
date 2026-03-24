@@ -849,14 +849,10 @@ class WebMetadataWindow(QDialog):
         mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map)
 
-        # Local shortcuts (not centralized): Alt+/, Escape, PageUp/PageDown
+        # Local shortcuts (not centralized): Alt+/, PageUp/PageDown
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.close_shortcut.activated.connect(self.reject)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -865,10 +861,6 @@ class WebMetadataWindow(QDialog):
         self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
         self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.next_shortcut.activated.connect(self.on_next)
-
-        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
