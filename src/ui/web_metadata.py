@@ -60,9 +60,11 @@ class WebMetadataWindow(QDialog):
         
         # Setup UI
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)  # Match book_details
+        layout.setSpacing(15)  # Match book_details
         self.setup_ui(layout)
         
-        # Status bar (PROVEN working pattern)
+        # Status bar (add after layout like book_details)
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         layout.addWidget(self.status_bar)
@@ -80,16 +82,12 @@ class WebMetadataWindow(QDialog):
     
     def setup_ui(self, layout):
         """
-        Web metadata UI - match book_details layout.
+        Web metadata UI - match book_details layout exactly.
         """
-        # Main layout setup - match book_details
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-        
         # Form layout for book details - exact backup match
         form_layout = QFormLayout()
         form_layout.setSpacing(3)  # Tighter vertical spacing - EXACT backup value
-        form_layout.setContentsMargins(20, 20, 20, 20)  # EXACT backup margins
+        form_layout.setContentsMargins(0, 0, 0, 0)  # No extra margins - match book_details
         
         # Set proper alignment for labels and fields - EXACT backup alignment
         form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # EXACT backup value
