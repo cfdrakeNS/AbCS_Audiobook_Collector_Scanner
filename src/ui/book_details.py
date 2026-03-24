@@ -462,10 +462,10 @@ class BookDetailsWindow(QDialog):
         self.year_spin.setMaximumWidth(110)
         row3_layout.addWidget(self.year_spin)
 
-        time_label = QLabel("Length (&M):")
+        time_label = QLabel("&Time:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
-        self.time_edit.setAccessibleName("Length")
+        self.time_edit.setAccessibleName("Time")
         self.time_edit.setMaximumWidth(100)
         time_label.setBuddy(self.time_edit)
         row3_layout.addWidget(time_label)
@@ -810,7 +810,7 @@ class BookDetailsWindow(QDialog):
             self.genre_combo: "Genre",
             self.collection_combo: "Collection",
             self.reader_edit: "Reader",
-            self.time_edit: "Length",
+            self.time_edit: "Time",
             self.files_edit: "Files",
             self.bitrate_edit: "Bitrate",
             self.size_edit: "Size",
@@ -962,7 +962,7 @@ class BookDetailsWindow(QDialog):
             ("Alt+A", "Author"),
             ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
-            ("Alt+M", "Length"),
+            ("Alt+M", "Time"),
             ("Alt+R", "Reader"),
             ("Alt+E", "Read date"),
             ("Alt+I", "Series"),

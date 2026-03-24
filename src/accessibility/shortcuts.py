@@ -91,7 +91,7 @@ class ShortcutManager(QObject):
         'A': ('Author', 'author_combo'),
         'P': ('Plot', 'comments_edit'),  # From Pl&ot label
         'Y': ('Year', 'year_spin'),
-        'M': ('Length', 'time_edit'),      # From Length (&M)
+        'M': ('Time', 'time_edit'),      # From &Time label
         'R': ('Reader', 'reader_edit'),
         'E': ('Read date', 'read_date'),
         'I': ('Series', 'series_combo'),

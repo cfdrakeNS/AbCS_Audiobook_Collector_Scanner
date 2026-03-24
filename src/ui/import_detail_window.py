@@ -347,7 +347,7 @@ class ImportDetailWindow(QDialog):
             self.author_combo: "Author",
             self.comments_edit: "Plot",
             self.year_spin: "Year",
-            self.time_edit: "Length",
+            self.time_edit: "Time",
             self.reader_edit: "Reader",
             self.series_combo: "Series",
             self.genre_combo: "Genre",
@@ -871,10 +871,10 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.year_spin)
         row3_layout.addSpacing(40)
 
-        time_label = QLabel("Length (&M):")
+        time_label = QLabel("&Time:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
-        self.time_edit.setAccessibleName("Length")
+        self.time_edit.setAccessibleName("Time")
         self.time_edit.setFixedWidth(100)
         self.time_edit.setReadOnly(False)
         time_label.setBuddy(self.time_edit)
@@ -1130,7 +1130,7 @@ class ImportDetailWindow(QDialog):
             ("Alt+A", "Author"),
             ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
-            ("Alt+M", "Length"),
+            ("Alt+M", "Time"),
             ("Alt+R", "Reader"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
