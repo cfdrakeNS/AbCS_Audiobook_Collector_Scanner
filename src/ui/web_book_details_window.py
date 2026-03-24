@@ -125,15 +125,19 @@ class WebBookDetailsWindow(QDialog):
         self.title_field.setAccessibleName("Title")
         self.title_field.setAccessibleDescription("Book title from web source")
         self.title_field.setText(self.book.title or "Loading...")
-        form_layout.addRow("Title:", self._create_field_with_indicator(self.title_field, ""))
+        title_label = QLabel("&Title:")
+        title_label.setBuddy(self.title_field)
+        form_layout.addRow(title_label, self._create_field_with_indicator(self.title_field, ""))
         
-        # Author field (read-only, was combo box)
+        # Author field (read-only)
         self.author_field = QLineEdit()
         self.author_field.setReadOnly(True)
         self.author_field.setAccessibleName("Author")
         self.author_field.setAccessibleDescription("Author name from web source")
         self.author_field.setText(self.book.author_name or "Loading...")
-        form_layout.addRow("Author:", self._create_field_with_indicator(self.author_field, ""))
+        author_label = QLabel("&Author:")
+        author_label.setBuddy(self.author_field)
+        form_layout.addRow(author_label, self._create_field_with_indicator(self.author_field, ""))
         
         # Year field
         self.year_field = QLineEdit()
@@ -141,23 +145,29 @@ class WebBookDetailsWindow(QDialog):
         self.year_field.setAccessibleName("Year")
         self.year_field.setAccessibleDescription("Publication year from web source")
         self.year_field.setText(str(self.book.year) if self.book.year else "Loading...")
-        form_layout.addRow("Year:", self._create_field_with_indicator(self.year_field, ""))
+        year_label = QLabel("&Year:")
+        year_label.setBuddy(self.year_field)
+        form_layout.addRow(year_label, self._create_field_with_indicator(self.year_field, ""))
         
-        # Series field (read-only, was combo box)
+        # Series field (read-only)
         self.series_field = QLineEdit()
         self.series_field.setReadOnly(True)
         self.series_field.setAccessibleName("Series")
         self.series_field.setAccessibleDescription("Series name from web source")
         self.series_field.setText(self.book.series_name or "Loading...")
-        form_layout.addRow("Series:", self._create_field_with_indicator(self.series_field, ""))
+        series_label = QLabel("Ser&ies:")
+        series_label.setBuddy(self.series_field)
+        form_layout.addRow(series_label, self._create_field_with_indicator(self.series_field, ""))
         
-        # Genre field (read-only, was combo box)
+        # Genre field (read-only)
         self.genre_field = QLineEdit()
         self.genre_field.setReadOnly(True)
         self.genre_field.setAccessibleName("Genre")
         self.genre_field.setAccessibleDescription("Genre from web source")
         self.genre_field.setText(self.book.genre_name or "Loading...")
-        form_layout.addRow("Genre:", self._create_field_with_indicator(self.genre_field, ""))
+        genre_label = QLabel("&Genre:")
+        genre_label.setBuddy(self.genre_field)
+        form_layout.addRow(genre_label, self._create_field_with_indicator(self.genre_field, ""))
         
         # Plot field (read-only)
         self.plot_field = QTextEdit()
@@ -166,7 +176,64 @@ class WebBookDetailsWindow(QDialog):
         self.plot_field.setAccessibleDescription("Plot summary from web source")
         self.plot_field.setMaximumHeight(120)
         self.plot_field.setPlainText(self.book.comments or "Loading...")
-        form_layout.addRow("Plot:", self.plot_field)
+        plot_label = QLabel("Pl&ot:")
+        plot_label.setBuddy(self.plot_field)
+        form_layout.addRow(plot_label, self.plot_field)
+        
+        # Additional fields for consistency with book_details
+        self.reader_field = QLineEdit()
+        self.reader_field.setReadOnly(True)
+        self.reader_field.setAccessibleName("Reader")
+        self.reader_field.setAccessibleDescription("Narrator from web source")
+        self.reader_field.setText("Loading...")
+        reader_label = QLabel("&Reader:")
+        reader_label.setBuddy(self.reader_field)
+        form_layout.addRow(reader_label, self._create_field_with_indicator(self.reader_field, ""))
+        
+        self.time_field = QLineEdit()
+        self.time_field.setReadOnly(True)
+        self.time_field.setAccessibleName("Length")
+        self.time_field.setAccessibleDescription("Audiobook length from web source")
+        self.time_field.setText("Loading...")
+        time_label = QLabel("&Length:")
+        time_label.setBuddy(self.time_field)
+        form_layout.addRow(time_label, self._create_field_with_indicator(self.time_field, ""))
+        
+        self.files_field = QLineEdit()
+        self.files_field.setReadOnly(True)
+        self.files_field.setAccessibleName("Files")
+        self.files_field.setAccessibleDescription("Number of files from web source")
+        self.files_field.setText("Loading...")
+        files_label = QLabel("&Files:")
+        files_label.setBuddy(self.files_field)
+        form_layout.addRow(files_label, self._create_field_with_indicator(self.files_field, ""))
+        
+        self.bitrate_field = QLineEdit()
+        self.bitrate_field.setReadOnly(True)
+        self.bitrate_field.setAccessibleName("Bitrate")
+        self.bitrate_field.setAccessibleDescription("Audio bitrate from web source")
+        self.bitrate_field.setText("Loading...")
+        bitrate_label = QLabel("&Bitrate:")
+        bitrate_label.setBuddy(self.bitrate_field)
+        form_layout.addRow(bitrate_label, self._create_field_with_indicator(self.bitrate_field, ""))
+        
+        self.size_field = QLineEdit()
+        self.size_field.setReadOnly(True)
+        self.size_field.setAccessibleName("Size")
+        self.size_field.setAccessibleDescription("File size from web source")
+        self.size_field.setText("Loading...")
+        size_label = QLabel("&Size:")
+        size_label.setBuddy(self.size_field)
+        form_layout.addRow(size_label, self._create_field_with_indicator(self.size_field, ""))
+        
+        self.path_field = QLineEdit()
+        self.path_field.setReadOnly(True)
+        self.path_field.setAccessibleName("Path")
+        self.path_field.setAccessibleDescription("File path from web source")
+        self.path_field.setText("Loading...")
+        path_label = QLabel("Pat&h:")
+        path_label.setBuddy(self.path_field)
+        form_layout.addRow(path_label, self._create_field_with_indicator(self.path_field, ""))
         
         main_layout.addLayout(form_layout)
         
@@ -380,56 +447,58 @@ class WebBookDetailsWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        shortcuts = [
-            ("F1", "Show this help"),
-            ("Alt+/", "Read status bar"),
-            ("Escape", "Close window"),
-        ]
-        
-        # Centralize Alt+/ visibility for screen readers
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
-        
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Web Book Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(400, 200)
-        
+        dlg.resize(580, 440)
+
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Create table for better accessibility (like book_details.py)
-        from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QHeaderView
+        layout.setSpacing(10)
+
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setTabKeyNavigation(False)
         table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setMouseTracking(False)
-        table.viewport().setMouseTracking(False)
-        table.setAttribute(Qt.WA_Hover, False)
-        table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         table.setStyleSheet(build_accessible_f1_popup_style())
-        
-        # Populate table
+
+        shortcuts = [
+            ("Alt+T", "Title"),
+            ("Alt+A", "Author"),
+            ("Alt+P", "Plot"),
+            ("Alt+Y", "Year"),
+            ("Alt+I", "Series"),
+            ("Alt+G", "Genre"),
+            ("Alt+R", "Reader"),
+            ("Alt+M", "Length"),
+            ("Alt+F", "Files"),
+            ("Alt+B", "Bitrate"),
+            ("Alt+Z", "Size"),
+            ("Alt+H", "Path"),
+            ("Escape", "Close window"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show keyboard shortcuts"),
+        ]
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
+
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
         for row, (key, desc) in enumerate(shortcuts):
-            if key:
-                combined_text = f"{desc} - {key}"
-            else:
-                combined_text = ""
-            from PySide6.QtWidgets import QTableWidgetItem
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}" if key else "")
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
             table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
         
         # Resize column to stretch
         header = table.horizontalHeader()
