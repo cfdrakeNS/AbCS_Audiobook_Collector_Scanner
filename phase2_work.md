@@ -67,6 +67,20 @@
 
 ## 3. Accessibility Foundation ✅ **COMPLETE**
 
+## the web_metadata is not working or is it done 
+- win needs to be wider to allow title and author to show 
+- only one button to the left save and reduces the height of the button look at button in book detail and match the stile with no inside boarder on the text 
+- we had check boxes to the right of the fields, except plot, indicating if they differ from the web read if match green 
+## how it supposed to work 
+when the win open it auto get data from the web title, author, series number in series, genre, year and plot.
+if not found update status bar  
+if found update the fields. number of series if found add to right of title as - nn.
+a popup that shows only fields that change and only the new values e.g. Year - 1998 plot don't show the text show found or not found 
+if escape is press discard 
+if save is press update the book exit no popup conformation 
+upon returning to the book_detail refresh the book so we don't get the messages that the book changed 
+
+
 ### **Files Created**:
 - ✅ `accessible_window_skeleton.py` - Template with proven accessibility
 - ✅ `README_accessible_skeleton.md` - Usage instructions

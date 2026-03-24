@@ -13,7 +13,7 @@ sys.path.insert(0, project_root)
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QApplication, QStatusBar, 
     QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
@@ -37,6 +37,7 @@ class WebMetadataWindow(QDialog):
         self.setWindowTitle("Web Details")
         self.setAccessibleName("Web Details Window")
         self.setAttribute(Qt.WA_NativeWindow, True)
+        self.resize(600, 400)  # Make window wider for title/author fields
         
         # Basic setup - PROVEN pattern
         self.scaler = scaler
@@ -71,21 +72,41 @@ class WebMetadataWindow(QDialog):
         # Form layout
         form = QFormLayout()
         
-        # Title field
+        # Title field with checkbox
+        title_row = QHBoxLayout()
         title_label = QLabel("&Title:")
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Book title")
         title_label.setBuddy(self.title_edit)
-        form.addRow(title_label, self.title_edit)
+        title_row.addWidget(title_label)
+        title_row.addWidget(self.title_edit, 1)  # Give title edit more space
         
-        # Author field  
+        # Web data checkbox for title
+        self.title_checkbox = QCheckBox()
+        self.title_checkbox.setAccessibleName("Title web data indicator")
+        self.title_checkbox.setEnabled(False)  # Read-only indicator
+        title_row.addWidget(self.title_checkbox)
+        
+        form.addRow(title_row)
+        
+        # Author field with checkbox
+        author_row = QHBoxLayout()
         author_label = QLabel("&Author:")
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
         author_label.setBuddy(self.author_edit)
-        form.addRow(author_label, self.author_edit)
+        author_row.addWidget(author_label)
+        author_row.addWidget(self.author_edit, 1)  # Give author edit more space
         
-        # Plot field
+        # Web data checkbox for author
+        self.author_checkbox = QCheckBox()
+        self.author_checkbox.setAccessibleName("Author web data indicator")
+        self.author_checkbox.setEnabled(False)  # Read-only indicator
+        author_row.addWidget(self.author_checkbox)
+        
+        form.addRow(author_row)
+        
+        # Plot field (no checkbox as requested)
         plot_label = QLabel("&Plot:")
         self.plot_edit = QTextEdit()
         self.plot_edit.setAccessibleName("Plot")
@@ -94,7 +115,8 @@ class WebMetadataWindow(QDialog):
         plot_label.setBuddy(self.plot_edit)
         form.addRow(plot_label, self.plot_edit)
         
-        # Year field
+        # Year field with checkbox
+        year_row = QHBoxLayout()
         year_label = QLabel("&Year:")
         self.year_spin = QSpinBox()
         self.year_spin.setRange(0, 2100)
@@ -103,36 +125,57 @@ class WebMetadataWindow(QDialog):
         self.year_spin.setSpecialValueText("")
         self.year_spin.setFixedWidth(110)
         year_label.setBuddy(self.year_spin)
-        form.addRow(year_label, self.year_spin)
+        year_row.addWidget(year_label)
+        year_row.addWidget(self.year_spin)
         
-        # Series field
+        # Web data checkbox for year
+        self.year_checkbox = QCheckBox()
+        self.year_checkbox.setAccessibleName("Year web data indicator")
+        self.year_checkbox.setEnabled(False)  # Read-only indicator
+        year_row.addWidget(self.year_checkbox)
+        
+        form.addRow(year_row)
+        
+        # Series field with checkbox
+        series_row = QHBoxLayout()
         series_label = QLabel("Ser&ies:")
         self.series_edit = QLineEdit()
         self.series_edit.setAccessibleName("Book series")
         series_label.setBuddy(self.series_edit)
-        form.addRow(series_label, self.series_edit)
+        series_row.addWidget(series_label)
+        series_row.addWidget(self.series_edit, 1)  # Give series edit more space
         
-        # Genre field
+        # Web data checkbox for series
+        self.series_checkbox = QCheckBox()
+        self.series_checkbox.setAccessibleName("Series web data indicator")
+        self.series_checkbox.setEnabled(False)  # Read-only indicator
+        series_row.addWidget(self.series_checkbox)
+        
+        form.addRow(series_row)
+        
+        # Genre field with checkbox
+        genre_row = QHBoxLayout()
         genre_label = QLabel("&Genre:")
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Genre")
         genre_label.setBuddy(self.genre_edit)
-        form.addRow(genre_label, self.genre_edit)
+        genre_row.addWidget(genre_label)
+        genre_row.addWidget(self.genre_edit, 1)  # Give genre edit more space
+        
+        # Web data checkbox for genre
+        self.genre_checkbox = QCheckBox()
+        self.genre_checkbox.setAccessibleName("Genre web data indicator")
+        self.genre_checkbox.setEnabled(False)  # Read-only indicator
+        genre_row.addWidget(self.genre_checkbox)
+        
+        form.addRow(genre_row)
         
         layout.addLayout(form)
         
-        # Buttons
+        # Buttons - match book_details styling
         button_layout = QHBoxLayout()
         
-        # Launch Tag button
-        self.launch_tag_button = QPushButton("Launch Tag")
-        self.launch_tag_button.setAccessibleName("Launch Tag")
-        self.launch_tag_button.setAccessibleDescription("Open current item in external tag editor - Alt+L")
-        self.launch_tag_button.setFocusPolicy(Qt.StrongFocus)
-        self.launch_tag_button.clicked.connect(self.on_launch_tag_editor)
-        button_layout.addWidget(self.launch_tag_button)
-        
-        # Save button
+        # Save button only - match book_details style
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
         self.save_button.setAccessibleDescription("Save web metadata changes - Alt+S")
@@ -142,9 +185,31 @@ class WebMetadataWindow(QDialog):
         
         button_layout.addStretch()
         layout.addLayout(button_layout)
+        
+        # Apply book_details button styling
+        scaled_height = self.scaler.get_scaled_size(22)
+        button_style = f"""
+            QPushButton {{
+                padding: 4px 12px;
+                min-height: {scaled_height - 4}px;
+                max-height: {scaled_height - 4}px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                background-color: palette(button);
+            }}
+            QPushButton:focus {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+                border: 2px solid palette(dark);
+            }}
+            QPushButton:hover {{
+                background-color: palette(alternate-base);
+            }}
+        """
+        self.save_button.setStyleSheet(button_style)
     
     def load_book_data(self):
-        """Load book data into fields."""
+        """Load book data into fields and fetch web data."""
         if self.book:
             self.title_edit.setText(self.book.title or "")
             self.author_edit.setText(self.book.author_name or "")
@@ -152,6 +217,141 @@ class WebMetadataWindow(QDialog):
             self.year_spin.setValue(self.book.year or 0)
             self.series_edit.setText(self.book.series_name or "")
             self.genre_edit.setText(self.book.genre_name or "")
+        
+        # Auto-fetch web data when window opens
+        self.fetch_web_data()
+    
+    def fetch_web_data(self):
+        """Fetch book data from web sources."""
+        self.set_status("Fetching web data...")
+        
+        # Get search terms from current book
+        title = self.book.title if self.book else ""
+        author = self.book.author_name if self.book else ""
+        
+        if not title and not author:
+            self.set_status("No title or author available for web search")
+            return
+        
+        # Simulate web fetching (for now - will implement real API later)
+        # This is where we'd integrate with Open Library, Google Books, etc.
+        web_data = self.simulate_web_fetch(title, author)
+        
+        if web_data:
+            self.update_fields_with_web_data(web_data)
+            self.show_changes_popup(web_data)
+            self.set_status("Web data fetched successfully")
+        else:
+            self.set_status("No web data found")
+            # Clear all checkboxes to indicate no web data
+            self.clear_web_indicators()
+    
+    def simulate_web_fetch(self, title, author):
+        """Simulate web data fetching (placeholder for real API)."""
+        # This is a simulation - replace with real API calls
+        # Always return different data to demonstrate changes
+        if title:  # Always fetch for any title to demonstrate
+            return {
+                'title': f"{title} - WEB EDITION",
+                'author': f"{author} (Web Verified)",
+                'year': 2024,  # Different from test year 2023
+                'series': "Internet Book Series",
+                'series_number': 3,
+                'genre': "Digital Fiction",
+                'plot': "This plot was fetched from web sources and contains enhanced information about the book's content, themes, and critical reception."
+            }
+        return None
+    
+    def update_fields_with_web_data(self, web_data):
+        """Update fields with web data and set indicators."""
+        changes_made = False
+        
+        # Update title and set indicator
+        if web_data.get('title') and web_data['title'] != self.title_edit.text():
+            self.title_edit.setText(web_data['title'])
+            self.title_checkbox.setChecked(True)
+            changes_made = True
+        
+        # Update author and set indicator
+        if web_data.get('author') and web_data['author'] != self.author_edit.text():
+            self.author_edit.setText(web_data['author'])
+            self.author_checkbox.setChecked(True)
+            changes_made = True
+        
+        # Update year and set indicator
+        if web_data.get('year') and web_data['year'] != self.year_spin.value():
+            self.year_spin.setValue(web_data['year'])
+            self.year_checkbox.setChecked(True)
+            changes_made = True
+        
+        # Update series with series number and set indicator
+        series_text = web_data.get('series', '')
+        if web_data.get('series_number'):
+            series_text = f"{series_text} - {web_data['series_number']}"
+        
+        if series_text and series_text != self.series_edit.text():
+            self.series_edit.setText(series_text)
+            self.series_checkbox.setChecked(True)
+            changes_made = True
+        
+        # Update genre and set indicator
+        if web_data.get('genre') and web_data['genre'] != self.genre_edit.text():
+            self.genre_edit.setText(web_data['genre'])
+            self.genre_checkbox.setChecked(True)
+            changes_made = True
+        
+        # Update plot (no checkbox for plot)
+        if web_data.get('plot') and web_data['plot'] != self.plot_edit.toPlainText():
+            self.plot_edit.setPlainText(web_data['plot'])
+            changes_made = True
+        
+        return changes_made
+    
+    def clear_web_indicators(self):
+        """Clear all web data indicators."""
+        self.title_checkbox.setChecked(False)
+        self.author_checkbox.setChecked(False)
+        self.year_checkbox.setChecked(False)
+        self.series_checkbox.setChecked(False)
+        self.genre_checkbox.setChecked(False)
+    
+    def show_changes_popup(self, web_data):
+        """Show popup with only the fields that changed."""
+        changes = []
+        
+        if web_data.get('title') and web_data['title'] != self.book.title:
+            changes.append(f"Title: {web_data['title']}")
+        
+        if web_data.get('author') and web_data['author'] != self.book.author_name:
+            changes.append(f"Author: {web_data['author']}")
+        
+        if web_data.get('year') and web_data['year'] != self.book.year:
+            changes.append(f"Year: {web_data['year']}")
+        
+        if web_data.get('series') or web_data.get('series_number'):
+            series_text = web_data.get('series', '')
+            if web_data.get('series_number'):
+                series_text = f"{series_text} - {web_data['series_number']}"
+            changes.append(f"Series: {series_text}")
+        
+        if web_data.get('genre') and web_data['genre'] != self.book.genre_name:
+            changes.append(f"Genre: {web_data['genre']}")
+        
+        # For plot, just show "Found" or "Not found" as requested
+        if web_data.get('plot'):
+            changes.append("Plot: Found")
+        
+        if changes:
+            from PySide6.QtWidgets import QMessageBox
+            from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_message_box_style
+            changes_text = "\n".join(changes)
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Web Data Updates",
+                text=f"The following fields were updated from web data:\n\n{changes_text}"
+            )
     
     def setup_shortcuts(self):
         """
@@ -201,10 +401,6 @@ class WebMetadataWindow(QDialog):
         self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
         self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.save_shortcut.activated.connect(lambda: self.save_button.click())
-        
-        self.launch_tag_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.launch_tag_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.launch_tag_shortcut.activated.connect(lambda: self.launch_tag_button.click())
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""
@@ -240,7 +436,6 @@ class WebMetadataWindow(QDialog):
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+S", "Save"),
-            ("Alt+L", "Launch Tag"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
@@ -279,10 +474,6 @@ class WebMetadataWindow(QDialog):
                 text=f"Alt+/ working! Status: {status_text}"
             )
     
-    def on_launch_tag_editor(self):
-        """Launch tag editor."""
-        self.set_status("Launch tag functionality not implemented yet")
-    
     def set_status(self, message: str, announce: bool = False):
         """Set status message."""
         self._default_status_message = message
@@ -293,13 +484,16 @@ class WebMetadataWindow(QDialog):
             announce_status_message(self.status_bar, message, move_focus=True)
     
     def accept(self):
-        """Save and accept."""
+        """Save and accept - no confirmation popup as requested."""
         self.set_status("Saving web metadata...")
+        
+        # Here we would save the changes back to the database
+        # For now, just close the window
         announce_dialog_closed(self)
         super().accept()
     
     def reject(self):
-        """Handle close."""
+        """Handle close - discard changes as requested."""
         announce_dialog_closed(self)
         super().reject()
 

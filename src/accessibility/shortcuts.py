@@ -114,7 +114,6 @@ class ShortcutManager(QObject):
         'I': ('Series', 'series_edit'),
         'G': ('Genre', 'genre_edit'),
         'S': ('Save', 'save_button'),
-        'L': ('Launch Tag', 'launch_tag_button'),
         'F1': ('Show help', 'show_help'),
         '/': ('Read status', 'read_status_bar'),
         'Escape': ('Close window', 'close_window'),
