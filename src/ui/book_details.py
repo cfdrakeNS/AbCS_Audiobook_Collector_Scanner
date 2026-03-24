@@ -744,56 +744,6 @@ class BookDetailsWindow(QDialog):
             self.on_new()
         else:
             # Reload original data
-            self.load_book_data()
-        self._clear_dirty()
-
-    def setup_shortcuts(self):
-        """bd#4: Setup keyboard shortcuts for buttons."""
-        # Restore explicit QShortcut registration for Alt+N, Alt+D, Alt+S, Alt+L
-        # F1 is handled by centralized shortcut manager
-        self.new_shortcut = QShortcut(QKeySequence("Alt+N"), self)
-        self.new_shortcut.activated.connect(
-            lambda: self.on_new() if self.new_button.isVisible() else None)
-        self.delete_shortcut = QShortcut(QKeySequence("Alt+D"), self)
-        self.delete_shortcut.activated.connect(
-            lambda: self.on_delete() if self.delete_button.isVisible() else None)
-        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.save_shortcut.activated.connect(
-            lambda: self.on_save() if self.save_button.isVisible() else None)
-        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.cancel_shortcut.activated.connect(
-            lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
-        # F1 handled by centralized shortcut manager
-        # ...existing code...
-        callback_map = {
-            'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
-            'author_combo': lambda: self.author_combo.setFocus(),  # Alt+A
-            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
-            'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
-            'time_edit': lambda: self.time_edit.setFocus(),        # Alt+M
-            'reader_edit': lambda: self.reader_edit.setFocus(),    # Alt+R
-            'read_date': lambda: self.read_date.setFocus(),        # Alt+E
-            'series_combo': lambda: self.series_combo.setFocus(),  # Alt+I
-            'genre_combo': lambda: self.genre_combo.setFocus(),    # Alt+G
-            'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
-            'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
-            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
-            'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
-            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
-            'get_web_details_button': self.on_get_web_details,    # Alt+U
-            'new_button': self.on_new,                              # Alt+N
-            'save_button': self.on_save,                              # Alt+S
-            'delete_button': self.on_delete,                            # Alt+D
-            'cancel_button': self.on_cancel_edit,                        # Alt+L
-            'show_help': self.on_show_shortcuts,  # F1 centralized
-        }
-        self.shortcut_manager.register_alt_shortcuts(
-            self, ShortcutContext.BOOK_DETAILS, callback_map)
-        # Alt+/ remains local for status bar read
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.activated.connect(self.on_read_status_bar)
-        
-        # PageUp/PageDown for navigation (like import_detail_window)
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.prev_shortcut.activated.connect(self.on_prev)

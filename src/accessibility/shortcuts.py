@@ -89,23 +89,18 @@ class ShortcutManager(QObject):
     BOOK_DETAILS_SHORTCUTS = {
         'T': ('Title', 'title_edit'),
         'A': ('Author', 'author_combo'),
-        'P': ('Plot', 'comments_edit'),    # Changed from Path/Comments to Plot
         'Y': ('Year', 'year_spin'),
-        'M': ('Length', 'time_edit'),      # Changed from H to M for Length
-        'R': ('Reader', 'reader_edit'),
-        'E': ('Read date', 'read_date'),
+        'F': ('Files', 'files_edit'),
         'I': ('Series', 'series_combo'),
         'G': ('Genre', 'genre_combo'),
+        'R': ('Reader', 'reader_edit'),
         'C': ('Collection', 'collection_combo'),
-        'F': ('Files', 'files_edit'),
-        'B': ('Bitrate', 'bitrate_edit'),
+        'H': ('Length', 'time_edit'),  # Changed from L to H for Length
+        'E': ('Read date', 'read_date'),
         'Z': ('Size', 'size_edit'),
-        'H': ('Path', 'path_edit'),        # Changed from P to H for Path
-        'N': ('New', 'new_button'),          # Added back
-        'S': ('Save', 'save_button'),          # Added back
-        'D': ('Delete', 'delete_button'),        # Added back
-        'L': ('Cancel', 'cancel_button'),       # Added back
-        'U': ('Update Metadata', 'get_web_details_button'),  # Added for Update Metadata
+        'B': ('Bitrate', 'bitrate_edit'),
+        'P': ('Path', 'path_edit'),    # Changed from H to P for Path
+        'O': ('Comments', 'comments_edit'),  # Changed from P to O for Comments
         'F1': ('Show help', 'show_help'),
     }
 
