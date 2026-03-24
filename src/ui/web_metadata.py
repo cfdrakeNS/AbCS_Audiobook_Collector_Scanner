@@ -1113,22 +1113,10 @@ class WebMetadataWindow(QDialog):
         dlg.exec()
 
     def _collect_form_data(self):
-        """Collect edited values back into book_data."""
-        self.book_data["title"] = self._normalize_name_field(
-            self.title_edit.text())
-        self.book_data["author"] = self._normalize_name_field(
-            self.author_combo.currentText())
-        normalized_year = self._normalize_year_value(self.year_spin.value())
-        self.book_data["year"] = normalized_year if normalized_year > 0 else None
-        self.book_data["comment"] = self.comments_edit.toPlainText().strip()
-        self.book_data["narrator"] = self._normalize_name_field(
-            self.reader_edit.text())
-        self.book_data["series"] = self._normalize_name_field(
-            self.series_combo.currentText())
-        self.book_data["genre"] = self._normalize_name_field(
-            self.genre_combo.currentText())
-        self.book_data["collection"] = self._normalize_name_field(
-            self.collection_combo.currentText())
+        """Collect edited values for saving web metadata."""
+        # Web metadata will save to database, not to book_data dict
+        # This method will be implemented when we add save functionality
+        pass
 
     def on_prev(self):
         """Save edits and request previous import item."""
