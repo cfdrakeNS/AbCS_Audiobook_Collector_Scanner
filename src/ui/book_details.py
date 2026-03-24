@@ -697,6 +697,62 @@ class BookDetailsWindow(QDialog):
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
 
+    def setup_shortcuts(self):
+        """bd#4: Setup keyboard shortcuts for buttons."""
+        # Use centralized shortcuts for fields, local shortcuts for buttons (like import_detail)
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        
+        # Field shortcuts (centralized)
+        callback_map = {
+            'title_edit': lambda: self.title_edit.setFocus(),
+            'author_combo': lambda: self.author_combo.setFocus(),
+            'comments_edit': lambda: self.comments_edit.setFocus(),
+            'year_spin': lambda: self.year_spin.setFocus(),
+            'time_edit': lambda: self.time_edit.setFocus(),
+            'reader_edit': lambda: self.reader_edit.setFocus(),
+            'series_combo': lambda: self.series_combo.setFocus(),
+            'genre_combo': lambda: self.genre_combo.setFocus(),
+            'collection_combo': lambda: self.collection_combo.setFocus(),
+            'files_edit': lambda: self.files_edit.setFocus(),
+            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
+            'size_edit': lambda: self.size_edit.setFocus(),
+            'path_edit': lambda: self.path_edit.setFocus(),
+            'format_combo': lambda: self.format_combo.setFocus(),
+            'show_help': self.on_show_shortcuts,
+        }
+        mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
+        
+        # Button shortcuts (local like import_detail)
+        self.new_shortcut = QShortcut(QKeySequence("Alt+N"), self)
+        self.new_shortcut.activated.connect(
+            lambda: self.on_new() if self.new_button.isVisible() else None)
+        self.delete_shortcut = QShortcut(QKeySequence("Alt+D"), self)
+        self.delete_shortcut.activated.connect(
+            lambda: self.on_delete() if self.delete_button.isVisible() else None)
+        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.save_shortcut.activated.connect(
+            lambda: self.on_save() if self.save_button.isVisible() else None)
+        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.cancel_shortcut.activated.connect(
+            lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
+        self.update_shortcut = QShortcut(QKeySequence("Alt+U"), self)
+        self.update_shortcut.activated.connect(
+            lambda: self.on_get_web_details() if self.get_web_details_button.isVisible() else None)
+        
+        # Alt+/ remains local for status bar read
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+        
+        # PageUp/PageDown for navigation (like import_detail_window)
+        self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
+        self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.prev_shortcut.activated.connect(self.on_prev)
+        
+        self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
+        self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.next_shortcut.activated.connect(self.on_next)
+
     def reject(self):
         """
         Override reject to check for unsaved changes before closing.
