@@ -83,14 +83,14 @@ class WebMetadataWindow(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
-        # Form layout for book details - match book_details spacing
+        # Form layout for book details - exact backup match
         form_layout = QFormLayout()
-        form_layout.setSpacing(10)  # Match book_details spacing
-        form_layout.setContentsMargins(0, 0, 0, 0)  # Remove extra margins
+        form_layout.setSpacing(3)  # Tighter vertical spacing - EXACT backup value
+        form_layout.setContentsMargins(20, 20, 20, 20)  # EXACT backup margins
         
-        # Set proper alignment for labels and fields
-        form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)  # Match book_details
-        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        # Set proper alignment for labels and fields - EXACT backup alignment
+        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # EXACT backup value
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # EXACT backup value
         
         # Title field
         self.title_edit = QLineEdit()
