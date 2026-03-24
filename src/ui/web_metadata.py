@@ -58,16 +58,21 @@ class WebMetadataWindow(QDialog):
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
         self._default_status_message = message
-        self._status_message = message  # Store for Alt+/ announcements
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
-        """Read status bar message (Alt+/)."""
+        """Read current status bar message (Alt+/)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
-            # Read stored status message for screen readers
-            if self._status_message:
-                announce_status_message(self.status_bar, self._status_message, move_focus=False)
-        # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
+            self.set_status(status_text, announce=True)
+        else:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status",
+                text=f"Status: {status_text}"
+            )
 
     def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -92,7 +97,6 @@ class WebMetadataWindow(QDialog):
         self.resize(700, 800)
         
         self._default_status_message = "Ready"
-        self._status_message = ""  # Store status message for Alt+/ announcements
         self.setup_ui()
         self.setup_shortcuts()
         self.load_book_data()
@@ -196,8 +200,6 @@ class WebMetadataWindow(QDialog):
         self.save_button.setAccessibleName("Save all fields")
         self.save_button.setAccessibleDescription("Apply all web data changes to original book record")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
-        self.save_button.setMinimumHeight(30)  # Standard button height
-        self.save_button.setMaximumHeight(40)  # Reasonable max height
         self.save_button.clicked.connect(self.on_update_all)
         self.save_button.setDefault(False)
         self.save_button.setAutoDefault(False)
