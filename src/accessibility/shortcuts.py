@@ -101,10 +101,11 @@ class ShortcutManager(QObject):
         'B': ('Bitrate', 'bitrate_edit'),
         'Z': ('Size', 'size_edit'),
         'H': ('Path', 'path_edit'),        # Changed from P to H for Path
-        'N': ('New', 'new_button'),
-        'S': ('Save', 'save_button'),
-        'D': ('Delete', 'delete_button'),
-        'L': ('Cancel', 'cancel_button'),  # Alt+L now mapped to Cancel
+        'N': ('New', 'new_button'),          # Added back
+        'S': ('Save', 'save_button'),          # Added back
+        'D': ('Delete', 'delete_button'),        # Added back
+        'L': ('Cancel', 'cancel_button'),       # Added back
+        'U': ('Update Metadata', 'get_web_details_button'),  # Added for Update Metadata
         'F1': ('Show help', 'show_help'),
     }
 
