@@ -91,8 +91,7 @@ class WebMetadataWindow(QDialog):
         """
         super().__init__(parent)
         self.setAttribute(Qt.WA_NativeWindow, True)
-        self.setWindowModality(Qt.ApplicationModal)
-        self.winId()
+        # Removed setWindowModality - was blocking shortcuts
 
         self.db = db
         self.scaler = scaler
