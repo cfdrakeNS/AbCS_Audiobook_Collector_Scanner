@@ -67,25 +67,79 @@
 
 ## 3. Accessibility Foundation ✅ **COMPLETE**
 
-## the web_metadata is not working or is it done 
-- win needs to be wider to allow title and author to show 
-- only one button to the left save and reduces the height of the button look at button in book detail and match the stile with no inside boarder on the text 
-- we had check boxes to the right of the fields, except plot, indicating if they differ from the web read if match green 
-## how it supposed to work 
-when the win open it auto get data from the web title, author, series number in series, genre, year and plot.
-if not found update status bar  
-if found update the fields. number of series if found add to right of title as - nn.
-a popup that shows only fields that change and only the new values e.g. Year - 1998 plot don't show the text show found or not found 
-if escape is press discard 
-if save is press update the book exit no popup conformation 
-upon returning to the book_detail refresh the book so we don't get the messages that the book changed 
+## 4. Web Metadata Window - **IN PROGRESS - Several Items Still Need Work**
 
+### ✅ **COMPLETED ITEMS:**
+- ✅ Basic window structure with accessibility foundation
+- ✅ Field layout (title, author, year, series, genre, plot)
+- ✅ Green checkmark indicators for web data differences
+- ✅ Save button functionality with database updates
+- ✅ Escape key handling (discard changes)
+- ✅ Refresh callback to book_details after save
+- ✅ Field styling with borders
+- ✅ Compact layout for low vision users
+- ✅ Removed test data (no more fake plot/genre text)
 
-### **Files Created**:
+### ❌ **REMAINING ITEMS TO FIX:**
+
+#### **WINDOW LAYOUT & STYLING:**
+- ❌ Window width: Make wider to allow title/author to show properly
+- ❌ Button styling: Match book_details button style (no inside border on text)
+- ❌ Button height: Reduce height to match book_details
+- ❌ Button position: Save button to the left (currently centered)
+
+#### **WEB DATA FUNCTIONALTY (NEEDS REAL IMPLEMENTATION):**
+- ❌ Auto-fetch web data on window open (currently returns None)
+- ❌ Real API integration (Google Books, Open Library, etc.)
+- ❌ Status bar updates for "fetching" and "not found" states
+- ❌ Series number handling (add "- nn" to series title if found)
+
+#### **POPUP FUNCTIONALTY (NEEDS PROPER IMPLEMENTATION):**
+- ❌ Changes popup: Show only fields that changed
+- ❌ Popup format: "Field - New Value" (not full text)
+- ❌ Plot handling: Show "found" or "not found" (not full plot text)
+- ❌ Popup styling: Match backup window popup appearance
+
+#### **INDICATOR SYSTEM (NEEDS TWEAKING):**
+- ❌ Green checkmarks: Show for web data differences (currently always hidden)
+- ❌ Red indicators: Show for field differences (from backup)
+- ❌ Indicator visibility: Proper show/hide logic based on web data
+
+### **🎯 NEXT STEPS:**
+1. **Fix window width and button styling** (quick UI fixes)
+2. **Implement real web data fetching** (replace simulate_web_fetch with real API calls)
+3. **Fix popup functionality** (show only changed fields with proper format)
+4. **Fix indicator visibility** (show green/red checkmarks properly)
+5. **Test complete workflow** (auto-fetch → popup → save → refresh)
+
+### **📋 REFERENCE:**
+- Working reference: `web_metadata_backup.py` has proper popup and indicator logic
+- Button reference: `book_details.py` for proper button styling
+- API reference: Need to implement real web data fetching
+
+---
+
+## 5. Real API Integration - **PENDING**
+- Implement Google Books API
+- Implement Open Library API  
+- Add error handling for network failures
+- Add timeout handling
+- Add retry logic
+
+---
+
+## 6. Testing & Validation - **PENDING**
+- Test with real book data
+- Test accessibility with screen reader
+- Test keyboard navigation
+- Test error scenarios
+
+### **Files Created/Updated**:
 - ✅ `accessible_window_skeleton.py` - Template with proven accessibility
-- ✅ `README_accessible_skeleton.md` - Usage instructions
-- ✅ `web_metadata.py` - Working example implementation
+- ✅ `README_accessible_skeleton.md` - Usage instructions  
+- ✅ `web_metadata.py` - Current implementation (needs fixes above)
 - ✅ Updated `Screen_Reader_and_PySide6_best_practices.md` with lessons learned
+- ✅ `phase2_work.md` - Updated with actual remaining tasks
 
 ### **Proven Pattern**:
 1. **Copy skeleton** to new window file
