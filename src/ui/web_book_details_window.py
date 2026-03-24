@@ -180,61 +180,6 @@ class WebBookDetailsWindow(QDialog):
         plot_label.setBuddy(self.plot_field)
         form_layout.addRow(plot_label, self.plot_field)
         
-        # Additional fields for consistency with book_details
-        self.reader_field = QLineEdit()
-        self.reader_field.setReadOnly(True)
-        self.reader_field.setAccessibleName("Reader")
-        self.reader_field.setAccessibleDescription("Narrator from web source")
-        self.reader_field.setText("Loading...")
-        reader_label = QLabel("&Reader:")
-        reader_label.setBuddy(self.reader_field)
-        form_layout.addRow(reader_label, self._create_field_with_indicator(self.reader_field, ""))
-        
-        self.time_field = QLineEdit()
-        self.time_field.setReadOnly(True)
-        self.time_field.setAccessibleName("Length")
-        self.time_field.setAccessibleDescription("Audiobook length from web source")
-        self.time_field.setText("Loading...")
-        time_label = QLabel("&Length:")
-        time_label.setBuddy(self.time_field)
-        form_layout.addRow(time_label, self._create_field_with_indicator(self.time_field, ""))
-        
-        self.files_field = QLineEdit()
-        self.files_field.setReadOnly(True)
-        self.files_field.setAccessibleName("Files")
-        self.files_field.setAccessibleDescription("Number of files from web source")
-        self.files_field.setText("Loading...")
-        files_label = QLabel("&Files:")
-        files_label.setBuddy(self.files_field)
-        form_layout.addRow(files_label, self._create_field_with_indicator(self.files_field, ""))
-        
-        self.bitrate_field = QLineEdit()
-        self.bitrate_field.setReadOnly(True)
-        self.bitrate_field.setAccessibleName("Bitrate")
-        self.bitrate_field.setAccessibleDescription("Audio bitrate from web source")
-        self.bitrate_field.setText("Loading...")
-        bitrate_label = QLabel("&Bitrate:")
-        bitrate_label.setBuddy(self.bitrate_field)
-        form_layout.addRow(bitrate_label, self._create_field_with_indicator(self.bitrate_field, ""))
-        
-        self.size_field = QLineEdit()
-        self.size_field.setReadOnly(True)
-        self.size_field.setAccessibleName("Size")
-        self.size_field.setAccessibleDescription("File size from web source")
-        self.size_field.setText("Loading...")
-        size_label = QLabel("&Size:")
-        size_label.setBuddy(self.size_field)
-        form_layout.addRow(size_label, self._create_field_with_indicator(self.size_field, ""))
-        
-        self.path_field = QLineEdit()
-        self.path_field.setReadOnly(True)
-        self.path_field.setAccessibleName("Path")
-        self.path_field.setAccessibleDescription("File path from web source")
-        self.path_field.setText("Loading...")
-        path_label = QLabel("Pat&h:")
-        path_label.setBuddy(self.path_field)
-        form_layout.addRow(path_label, self._create_field_with_indicator(self.path_field, ""))
-        
         main_layout.addLayout(form_layout)
         
         # Separator line
@@ -376,13 +321,6 @@ class WebBookDetailsWindow(QDialog):
             'year_edit': lambda: self.year_field.setFocus(),        # Alt+Y
             'series_edit': lambda: self.series_field.setFocus(),    # Alt+I
             'genre_edit': lambda: self.genre_field.setFocus(),      # Alt+G
-            'collection_edit': lambda: self.collection_field.setFocus(),  # Alt+C
-            'reader_edit': lambda: self.reader_field.setFocus(),    # Alt+R
-            'time_edit': lambda: self.time_field.setFocus(),        # Alt+M
-            'files_edit': lambda: self.files_field.setFocus(),      # Alt+F
-            'bitrate_edit': lambda: self.bitrate_field.setFocus(),  # Alt+B
-            'size_edit': lambda: self.size_field.setFocus(),        # Alt+Z
-            'path_edit': lambda: self.path_field.setFocus(),        # Alt+H
             'plot_edit': lambda: self.plot_field.setFocus(),        # Alt+P
             'show_help': self.on_show_shortcuts,                    # F1
         }
@@ -478,12 +416,6 @@ class WebBookDetailsWindow(QDialog):
             ("Alt+Y", "Year"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+R", "Reader"),
-            ("Alt+M", "Length"),
-            ("Alt+F", "Files"),
-            ("Alt+B", "Bitrate"),
-            ("Alt+Z", "Size"),
-            ("Alt+H", "Path"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
