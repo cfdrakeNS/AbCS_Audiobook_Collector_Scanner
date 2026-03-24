@@ -109,7 +109,7 @@ class ShortcutManager(QObject):
     WEB_METADATA_SHORTCUTS = {
         'T': ('Title', 'title_edit'),
         'A': ('Author', 'author_edit'),
-        'P': ('Plot', 'comments_edit'),
+        'P': ('Plot', 'plot_edit'),
         'Y': ('Year', 'year_spin'),
         'I': ('Series', 'series_edit'),
         'G': ('Genre', 'genre_edit'),
