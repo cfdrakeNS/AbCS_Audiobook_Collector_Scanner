@@ -76,7 +76,7 @@ class BookTableModel(QAbstractTableModel):
 
     HEADERS = [
         "Author", "Title", "Year", "Plot", "Series",
-        "Genre", "Length", "Tracks", "Read", "Added"
+        "Genre", "Time", "Tracks", "Read", "Added"
     ]
 
     def __init__(self, books: list[Book] | None = None, parent=None):
@@ -484,9 +484,9 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Date Added
+        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Date Added
         columns = ["Author", "Title", "Year", "Plot", "Series",
-                   "Genre", "Length", "Tracks", "Read", "Added"]
+                   "Genre", "Time", "Tracks", "Read", "Added"]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         # Selection column removed; only text highlighting used
@@ -585,7 +585,7 @@ class MainWindow(QMainWindow):
         base_widths = {
             2: 72,   # Year
             3: 62,   # Plot
-            6: 82,   # Length
+            6: 82,   # Time
             7: 78,   # Tracks
             8: 116,  # Read
             9: 116,  # Added
@@ -1406,7 +1406,7 @@ class MainWindow(QMainWindow):
             ("Plot", "&Plot", 3, False),
             ("Series", "&Series", 4, True),
             ("Genre", "&Genre", 5, True),
-            ("Length", "&Length", 6, False),
+            ("Time", "&Time", 6, False),
             ("Tracks", "Trac&ks", 7, False),
             ("Read", "&Read", 8, False),
             ("Added", "Add&ed", 9, False),
@@ -1652,7 +1652,7 @@ class MainWindow(QMainWindow):
                 return (book.year is None, book.year or 0)
             if column == 3:  # Plot (comments indicator)
                 return (not book.has_substantial_comment, book.title or "")
-            if column == 6:  # Length
+            if column == 6:  # Time
                 return ((book.time_hours or 0) * 60 + (book.time_minutes or 0))
             if column == 7:  # Tracks
                 return (book.tracks or 0)
@@ -2406,7 +2406,7 @@ class MainWindow(QMainWindow):
             value_text = book.series_name or "blank"
         elif col == 4:  # Genre
             value_text = book.genre_name or "blank"
-        elif col == 5:  # Length
+        elif col == 5:  # Time
             value_text = book.time_display or "blank"
         elif col == 6:  # Tracks
             value_text = str(book.tracks or 0)
