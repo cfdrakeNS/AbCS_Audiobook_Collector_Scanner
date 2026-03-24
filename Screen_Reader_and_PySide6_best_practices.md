@@ -180,9 +180,56 @@ You’re not doing anything “wrong”—you’re hitting known edges of Qt + M
 
 ---
 
+## CRITICAL LESSON LEARNED: Web Metadata Window (Mar 2026)
+
+### The Problem:
+Hours spent debugging basic accessibility shortcuts (F1, Alt+/, Escape) that should work out of box.
+
+### The Root Cause:
+**Window modality and shortcut conflicts** - mixing centralized and local shortcut systems caused blocking.
+
+### The Solution:
+**Start from PROVEN working base** - copy exact working accessibility pattern, then add features incrementally.
+
+### Working Pattern:
+```python
+def setup_shortcuts(self):
+    """Setup shortcuts - EXACT copy from working test window."""
+    # F1 - local shortcut (PROVEN working)
+    self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+    self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+    self.help_shortcut.activated.connect(self.on_show_shortcuts)
+    
+    # Escape - local shortcut (PROVEN working)
+    self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
+    self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+    self.close_shortcut.activated.connect(self.reject)
+    
+    # Alt+/ - local shortcut (PROVEN working)
+    self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+    self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+    self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+```
+
+### Key Rules:
+1. **NEVER mix centralized and local shortcuts** - causes conflicts
+2. **ALWAYS use local shortcuts for F1, Escape, Alt+/** - proven to work
+3. **AVOID `setWindowModality(Qt.ApplicationModal)`** - blocks shortcuts
+4. **START from proven working base** - don't reinvent the wheel
+5. **TEST incrementally** - add features one by one
+
+### Files Created:
+- `accessibility_test_window.py` - Minimal test (PROVEN working)
+- `working_web_metadata.py` - Starts from proven base + web fields
+
+### Result:
+**F1, Alt+/, and Escape work perfectly** when using the correct pattern.
+
+---
+
 If you want, tell me:
 
-* Which widgets you’re using (`QTextEdit`, `QLineEdit`, `QLabel`, etc.)
+* Which widgets you're using (`QTextEdit`, `QLineEdit`, `QLabel`, etc.)
 * Whether this is a dialog, main window, or background task
 * How critical the status messages are (info vs errors)
 
