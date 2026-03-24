@@ -738,7 +738,7 @@ class BookDetailsWindow(QDialog):
             lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
         self.update_shortcut = QShortcut(QKeySequence("Alt+U"), self)
         self.update_shortcut.activated.connect(
-            lambda: self.get_web_details_button.setFocus() if self.get_web_details_button.isVisible() else None)
+            lambda: self.on_get_web_details() if self.get_web_details_button.isVisible() else None)
         
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
