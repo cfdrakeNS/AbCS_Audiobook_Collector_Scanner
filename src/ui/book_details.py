@@ -744,13 +744,7 @@ class BookDetailsWindow(QDialog):
             self.on_new()
         else:
             # Reload original data
-        self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
-        self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.prev_shortcut.activated.connect(self.on_prev)
-        
-        self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
-        self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.next_shortcut.activated.connect(self.on_next)
+            self.load_book_data()
 
     def _get_dirty_field_name(self, widget) -> str:
         """Return a user-friendly field name for a dirty widget."""
