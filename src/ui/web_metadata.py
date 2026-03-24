@@ -427,7 +427,7 @@ class WebMetadataWindow(QDialog):
 
         self.year_spin.setValue(self.book.year or 0)
 
-        self.reader_edit.setText(self.book.reader_name or "")
+        self.reader_edit.setText(self.book.reader or "")
         self.series_edit.setText(self.book.series_name or "")
         self.genre_edit.setText(self.book.genre_name or "")
 
@@ -443,7 +443,7 @@ class WebMetadataWindow(QDialog):
         self.size_edit.setText("")
         self.format_edit.setText("")
         self.source_edit.setText("Web")
-        self.path_edit.setText(self.book.folder_path or "")
+        self.path_edit.setText(self.book.path or "")
 
         # Web metadata doesn't use errors field
         self.errors_edit.setText("")
@@ -457,7 +457,7 @@ class WebMetadataWindow(QDialog):
     def _resolve_tag_target_path(self) -> str:
         """Return best file/folder path to open in external tag editor."""
         # Web metadata doesn't have file paths yet
-        folder_path = self.book.folder_path or ""
+        folder_path = self.book.path or ""
         if folder_path and os.path.exists(folder_path):
             return folder_path
         path_from_form = self.path_edit.text().strip() if hasattr(self, "path_edit") else ""
