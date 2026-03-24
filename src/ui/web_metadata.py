@@ -122,7 +122,7 @@ class WebMetadataWindow(QDialog):
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription("Window for reviewing web-fetched book metadata")
-        self.resize(700, 600)
+        self.resize(880, 500)
 
         announce_dialog_opened(self, title)
         self.set_status("Ready")
@@ -253,27 +253,8 @@ class WebMetadataWindow(QDialog):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
         if event.type() == QEvent.FocusOut:
-            if source == self.author_combo:
-                self._check_combo_change(
-                    "Author",
-                    self.author_combo,
-                    self._original_author,
-                    self.author_queries,
-                )
-            elif source == self.series_combo:
-                self._check_combo_change(
-                    "Series",
-                    self.series_combo,
-                    self._original_series,
-                    self.series_queries,
-                )
-            elif source == self.genre_combo:
-                self._check_combo_change(
-                    "Genre",
-                    self.genre_combo,
-                    self._original_genre,
-                    self.genre_queries,
-                )
+            # Web metadata doesn't use combo change checking
+            # Removed: author_combo, series_combo, genre_combo references
 
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
@@ -291,9 +272,10 @@ class WebMetadataWindow(QDialog):
         if source in self._pending_dirty_widgets:
             return source
 
-        for combo in [self.author_combo, self.series_combo, self.genre_combo, self.collection_combo]:
-            if combo in self._pending_dirty_widgets and source == combo.lineEdit():
-                return combo
+        # Web metadata only has collection_combo
+        if hasattr(self, 'collection_combo'):
+            if self.collection_combo in self._pending_dirty_widgets and source == self.collection_combo.lineEdit():
+                return self.collection_combo
 
         parent = source.parentWidget() if hasattr(source, "parentWidget") else None
         if parent in self._pending_dirty_widgets:
@@ -305,21 +287,12 @@ class WebMetadataWindow(QDialog):
         """Get the field name for status announcements."""
         mapping = {
             self.title_edit: "Title",
-            self.author_combo: "Author",
+            self.author_edit: "Author",
             self.comments_edit: "Plot",
             self.year_spin: "Year",
-            self.time_edit: "Time",
-            self.reader_edit: "Reader",
-            self.series_combo: "Series",
-            self.genre_combo: "Genre",
+            self.series_edit: "Series",
+            self.genre_edit: "Genre",
             self.collection_combo: "Collection",
-            self.files_edit: "Files",
-            self.bitrate_edit: "Bitrate",
-            self.size_edit: "Size",
-            self.format_combo: "Format",
-            self.source_edit: "Source",
-            self.path_edit: "Path",
-            self.added_edit: "Added",
         }
         return mapping.get(widget, "Field")
 
