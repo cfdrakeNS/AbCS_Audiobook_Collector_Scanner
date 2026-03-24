@@ -265,8 +265,8 @@ class WebMetadataWindow(QDialog):
                 'year': 2024,  # Different from test year 2023
                 'series': "Internet Book Series",
                 'series_number': 3,
-                'genre': "Digital Fiction",
-                'plot': "This plot was fetched from web sources and contains enhanced information about the book's content, themes, and critical reception."
+                'genre': "Science Fiction",  # More realistic genre
+                'plot': "A thrilling adventure through cyberspace where data streams flow like rivers and algorithms dance like fireflies. The protagonist must navigate the digital labyrinth to uncover the truth hidden within the machine's core."
             }
         return None
     
