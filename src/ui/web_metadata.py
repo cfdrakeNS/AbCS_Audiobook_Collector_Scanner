@@ -70,6 +70,9 @@ class WebMetadataWindow(QDialog):
         # Setup shortcuts (add field shortcuts here)
         self.setup_shortcuts()
         
+        # Apply field styling like backup window
+        self.apply_field_styling()
+        
         # Load data and set status
         self.load_book_data()
         self.set_status("Ready")
@@ -179,6 +182,18 @@ class WebMetadataWindow(QDialog):
             }}
         """
         self.save_button.setStyleSheet(button_style)
+    
+    def apply_field_styling(self):
+        """Apply field styling like backup window."""
+        # Apply F1 popup style to fields
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+        field_style = build_accessible_f1_popup_style()
+        
+        for field in self.findChildren(QLineEdit):
+            field.setStyleSheet(field_style)
+        
+        for field in self.findChildren(QTextEdit):
+            field.setStyleSheet(field_style)
     
     def _create_field_with_indicator(self, field):
         """Create a field with web data difference indicator."""
