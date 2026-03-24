@@ -16,7 +16,7 @@ from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, bu
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QPushButton, QLabel, QMessageBox,
-    QWidget, QStatusBar, QFrame
+    QWidget, QStatusBar, QFrame, QSizePolicy
 )
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QThread, Signal
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
