@@ -42,8 +42,6 @@ class WebMetadataWindow(QDialog):
     # Centralized Alt+letter shortcut mapping for web metadata
     ALLOWED_ALT_LETTERS = {
         'A',  # Author
-        'C',  # Collection
-        'D',  # Discard (Skip)
         'G',  # Genre
         'I',  # Series (Ser&ies)
         'L',  # Launch Tag
@@ -779,14 +777,7 @@ class WebMetadataWindow(QDialog):
         genre_label.setBuddy(self.genre_edit)
         form.addRow(genre_label, self.genre_edit)
 
-        # Row 6: Collection (vertical layout)
-        collection_label = QLabel("&Collection:")
-        self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Collection")
-        self.collection_combo.setEditable(False)  # Make read-only, not editable
-        self.collection_combo.setEnabled(True)    # Always enabled for focus
-        collection_label.setBuddy(self.collection_combo)
-        form.addRow(collection_label, self.collection_combo)
+        # Row 5: Removed collection field - not needed for web metadata
 
         # Row 5: Removed import-specific fields (files, bitrate, size, format, source)
         # Web metadata doesn't need these fields
@@ -821,14 +812,14 @@ class WebMetadataWindow(QDialog):
         self.launch_tag_button.setVisible(False)
         button_layout.addWidget(self.launch_tag_button)
 
-        self.skip_button = QPushButton("&Discard")
-        self.skip_button.setAccessibleName("Discard")
-        self.skip_button.setAccessibleDescription(
-            "Discard this import item and advance to next available item - Alt+D")
-        self.skip_button.setShortcut(QKeySequence("Alt+D"))
-        self.skip_button.setFocusPolicy(Qt.StrongFocus)
-        self.skip_button.clicked.connect(self.on_skip_discard)
-        button_layout.addWidget(self.skip_button)
+        self.save_button = QPushButton("&Save")
+        self.save_button.setAccessibleName("Save")
+        self.save_button.setAccessibleDescription(
+            "Save web metadata changes - Alt+S")
+        self.save_button.setShortcut(QKeySequence("Alt+S"))
+        self.save_button.setFocusPolicy(Qt.StrongFocus)
+        self.save_button.clicked.connect(self.accept)
+        button_layout.addWidget(self.save_button)
 
         button_layout.addStretch()
         layout.addLayout(button_layout)
@@ -851,18 +842,17 @@ class WebMetadataWindow(QDialog):
             'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
             'series_edit': lambda: self.series_edit.setFocus(),  # Alt+I
             'genre_edit': lambda: self.genre_edit.setFocus(),    # Alt+G
-            'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
-            'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,  # Alt+S
-            'skip_button': lambda: self.skip_button.click(),       # Alt+D
+            'save_button': lambda: self.save_button.click(),      # Alt+S
             'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
+            'show_help': self.on_show_shortcuts,  # F1
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map)
 
-        # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+        # Local shortcuts (not centralized): Alt+/, Escape, PageUp/PageDown
+        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
 
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
