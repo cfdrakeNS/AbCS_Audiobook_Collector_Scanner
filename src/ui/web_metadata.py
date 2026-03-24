@@ -797,12 +797,7 @@ class WebMetadataWindow(QDialog):
 
         layout.addLayout(form)
 
-        # Footer: status bar + buttons
-        self.status_bar = QStatusBar()
-        self.status_bar.setSizeGripEnabled(False)
-        layout.addWidget(self.status_bar)
-
-        # Buttons
+        # Buttons (added before status bar like book_details)
         button_layout = QHBoxLayout()
 
         self.save_return_button = QPushButton("&Save")
@@ -836,8 +831,12 @@ class WebMetadataWindow(QDialog):
         button_layout.addWidget(self.skip_button)
 
         button_layout.addStretch()
-
         layout.addLayout(button_layout)
+
+        # Status bar (added after buttons like book_details)
+        self.status_bar = QStatusBar()
+        self.status_bar.setSizeGripEnabled(False)
+        layout.addWidget(self.status_bar)
 
         self.setup_shortcuts()
 
