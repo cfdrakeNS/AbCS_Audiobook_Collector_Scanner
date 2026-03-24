@@ -2903,7 +2903,7 @@ You can:
 • Import audiobooks from your computer (scan folders)
 • Manually add a new book
 
-Use Ctrl+I to import or Alt+M for menu options."""
+Use Ctrl+I to import or Alt+7 for menu options."""
             text_edit.setPlainText(splash_text)
             font = text_edit.font()
             font.setPointSize(self.scaler.get_scaled_size(12))
