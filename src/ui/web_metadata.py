@@ -77,25 +77,19 @@ class WebMetadataWindow(QDialog):
     
     def setup_ui(self, layout):
         """
-        Web metadata UI - match backup window layout.
+        Web metadata UI - match book_details layout.
         """
-        # Main layout setup
+        # Main layout setup - match book_details
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
-        # Title
-        title_label = QLabel("Web Book Details")
-        title_label.setStyleSheet(f"font-size: {self.scaler.get_scaled_size(16)}px; font-weight: bold;")
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
-        
-        # Form layout for book details (vertical alignment)
+        # Form layout for book details - match book_details spacing
         form_layout = QFormLayout()
-        form_layout.setSpacing(3)  # Tighter vertical spacing
-        form_layout.setContentsMargins(20, 20, 20, 20)
+        form_layout.setSpacing(10)  # Match book_details spacing
+        form_layout.setContentsMargins(0, 0, 0, 0)  # Remove extra margins
         
         # Set proper alignment for labels and fields
-        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)  # Match book_details
         form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         
         # Title field
@@ -114,15 +108,15 @@ class WebMetadataWindow(QDialog):
         author_label.setBuddy(self.author_edit)
         form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
         
-        # Year field
+        # Year field - fix to be like book_details
+        year_label = QLabel("&Year:")
         self.year_spin = QSpinBox()
         self.year_spin.setRange(0, 2100)
         self.year_spin.setValue(0)
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setAccessibleDescription("Publication year from web source")
         self.year_spin.setSpecialValueText("")
-        self.year_spin.setFixedWidth(110)
-        year_label = QLabel("&Year:")
+        self.year_spin.setMaximumWidth(110)  # Match book_details
         year_label.setBuddy(self.year_spin)
         form_layout.addRow(year_label, self._create_field_with_indicator(self.year_spin))
         
