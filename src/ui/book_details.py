@@ -677,7 +677,7 @@ class BookDetailsWindow(QDialog):
         button_layout.addWidget(self.cancel_button)
 
         # Update Metadata button (Alt+U)
-        self.get_web_details_button = QPushButton("&Update Metadata")
+        self.get_web_details_button = QPushButton("Update Metadata")
         self.get_web_details_button.setAccessibleName("Update metadata")
         self.get_web_details_button.setAccessibleDescription("Fetch book metadata from web sources - Alt+U")
         self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
