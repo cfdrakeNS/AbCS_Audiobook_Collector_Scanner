@@ -909,10 +909,10 @@ class BookDetailsWindow(QDialog):
         """Show default status when form is not in edit/save mode."""
         if self.is_new:
             self.set_status(
-                "New book entry. Press Alt+S Save or Alt+L Cancel", announce=announce)
+                "New book entry. Press Alt+S Save, Alt+L Cancel, Alt+U Update Metadata", announce=announce)
         else:
             self.set_status(
-                "Alt+N New, Alt+D Delete, Escape Close", announce=announce)
+                "Alt+N New, Alt+D Delete, Alt+U Update Metadata, Escape Close", announce=announce)
 
     def _update_save_button_visibility(self):
         """
@@ -927,6 +927,8 @@ class BookDetailsWindow(QDialog):
         self.delete_button.setVisible(
             (not self.is_new) and (not save_active))
         self.cancel_button.setVisible(save_active)
+        # Hide Update Metadata button for new books (no book to update)
+        self.get_web_details_button.setVisible(not self.is_new)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
