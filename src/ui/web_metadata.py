@@ -403,12 +403,9 @@ class WebMetadataWindow(QDialog):
                 collection.name, collection.collection_id)
 
     def _format_duration(self) -> str:
-        """Format imported time fields as HH:MM."""
-        hours = int(self.book_data.get("time_hours") or 0)
-        minutes = int(self.book_data.get("time_minutes") or 0)
-        if hours == 0 and minutes == 0:
-            return ""
-        return f"{hours:02d}:{minutes:02d}"
+        """Format book duration as HH:MM."""
+        # Web metadata doesn't have time fields yet
+        return ""
 
     @classmethod
     def _normalize_year_value(cls, year_value) -> int:
@@ -423,66 +420,47 @@ class WebMetadataWindow(QDialog):
         return 0
 
     def load_book_data(self):
-        """Load scanned book data into form fields."""
-        self.title_edit.setText(self.book_data.get("title", ""))
-        self.author_combo.setCurrentText(self.book_data.get("author", ""))
-        self.comments_edit.setPlainText(self.book_data.get("comment", ""))
+        """Load current book data into form fields."""
+        self.title_edit.setText(self.book.title or "")
+        self.author_edit.setText(self.book.author_name or "")
+        self.comments_edit.setPlainText(self.book.comments or "")
 
-        self.year_spin.setValue(self._normalize_year_value(
-            self.book_data.get("year")))
+        self.year_spin.setValue(self.book.year or 0)
 
-        self.time_edit.setText(self._format_duration())
-        self.reader_edit.setText(self.book_data.get("narrator", ""))
-        self.series_combo.setCurrentText(self.book_data.get("series", ""))
-        self.genre_combo.setCurrentText(self.book_data.get("genre", ""))
+        self.reader_edit.setText(self.book.reader_name or "")
+        self.series_edit.setText(self.book.series_name or "")
+        self.genre_edit.setText(self.book.genre_name or "")
 
-        collection_name = self.book_data.get("collection", "")
+        collection_name = self.book.collection_name or ""
         if collection_name:
             self.collection_combo.setCurrentText(collection_name)
         elif self.collection_combo.count() > 0:
             self.collection_combo.setCurrentIndex(0)
 
-        tracks = self.book_data.get("tracks")
-        if not tracks:
-            files = self.book_data.get("files")
-            if isinstance(files, list):
-                tracks = len(files)
-        self.files_edit.setText(str(tracks) if tracks else "")
+        # Web metadata doesn't need tracks, bitrate, size, format, source fields
+        # These will be removed in UI modifications
+        self.files_edit.setText("")
+        self.bitrate_edit.setText("")
+        self.size_edit.setText("")
+        self.format_edit.setText("")
+        self.source_edit.setText("Web")
+        self.path_edit.setText(self.book.folder_path or "")
 
-        bitrate = self.book_data.get("bitrate")
-        self.bitrate_edit.setText(f"{bitrate} kbps" if bitrate else "")
+        # Web metadata doesn't use errors field
+        self.errors_edit.setText("")
 
-        size_mb = self.book_data.get("size_mb")
-        self.size_edit.setText(f"{size_mb:.2f} MB" if size_mb else "")
-
-        self.format_edit.setText(self.book_data.get("format", ""))
-        self.source_edit.setText(self.book_data.get("source", "Import"))
-        self.path_edit.setText(self.book_data.get("folder", ""))
-
-        if self.errors:
-            error_text = "; ".join(self.errors)
-            self.errors_edit.setText(error_text)
-        else:
-            self.errors_edit.setText("")
-
-        self._original_author = self.author_combo.currentText().strip()
-        self._original_series = self.series_combo.currentText().strip()
-        self._original_genre = self.genre_combo.currentText().strip()
+        self._original_author = self.author_edit.text().strip()
+        self._original_series = self.series_edit.text().strip()
+        self._original_genre = self.genre_edit.text().strip()
 
         self._clear_dirty()
 
     def _resolve_tag_target_path(self) -> str:
         """Return best file/folder path to open in external tag editor."""
-        files = self.book_data.get("files")
-        if isinstance(files, list):
-            for file_path in files:
-                if isinstance(file_path, str) and file_path.strip() and os.path.exists(file_path):
-                    return file_path
-
-        folder_path = str(self.book_data.get("folder") or "").strip()
+        # Web metadata doesn't have file paths yet
+        folder_path = self.book.folder_path or ""
         if folder_path and os.path.exists(folder_path):
             return folder_path
-
         path_from_form = self.path_edit.text().strip() if hasattr(self, "path_edit") else ""
         if path_from_form and os.path.exists(path_from_form):
             return path_from_form
