@@ -39,8 +39,8 @@ class WebMetadataWindow(QDialog):
         self.setWindowTitle("Web Book Details")
         self.setAccessibleName("Web Book Details Window")
         self.setAccessibleDescription("Window for reviewing and accepting web-fetched book metadata")
-        self.setMinimumSize(600, 700)
-        self.resize(700, 800)  # Match backup window size
+        self.setMinimumSize(600, 500)  # Reduced height
+        self.resize(700, 600)  # Reduced height - was 700x800
         
         # Basic setup - PROVEN pattern
         self.scaler = scaler
@@ -202,7 +202,7 @@ class WebMetadataWindow(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(3)  # Reduced spacing to prevent excessive gaps
         
-        # Set container to match field height
+        # Set container to match field height - EXACT backup values
         container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
         # The actual field
