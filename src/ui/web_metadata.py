@@ -39,25 +39,18 @@ class WebMetadataWindow(QDialog):
     RESULT_SKIP = 4
     MIN_VALID_YEAR = 1900
     MAX_VALID_YEAR = 2100
-    # Centralized Alt+letter shortcut mapping (parity with BookDetailsWindow)
+    # Centralized Alt+letter shortcut mapping for web metadata
     ALLOWED_ALT_LETTERS = {
         'A',  # Author
-        'B',  # Bitrate
         'C',  # Collection
         'D',  # Discard (Skip)
-        'E',  # Errors
-        'F',  # Files
         'G',  # Genre
-        'H',  # Path (Pat&h)
         'I',  # Series (Ser&ies)
         'L',  # Launch Tag
-        'M',  # Length (Length (&M))
-        'O',  # Comments (C&omments)
-        'R',  # Reader
+        'P',  # Plot (Pl&ot)
         'S',  # Save
         'T',  # Title
         'Y',  # Year
-        'Z',  # Size (Si&ze)
         # Add any additional used keys here
     }
 
@@ -424,29 +417,18 @@ class WebMetadataWindow(QDialog):
         self.title_edit.setText(self.book.title or "")
         self.author_edit.setText(self.book.author_name or "")
         self.comments_edit.setPlainText(self.book.comments or "")
-
         self.year_spin.setValue(self.book.year or 0)
-
-        self.reader_edit.setText(self.book.reader or "")
         self.series_edit.setText(self.book.series_name or "")
         self.genre_edit.setText(self.book.genre_name or "")
 
+        # Collection field (web metadata may not use this yet)
         collection_name = self.book.collection_name or ""
-        # Web metadata doesn't use collection field yet
-        # if collection_name:
-        #     self.collection_combo.setCurrentText(collection_name)
+        if collection_name and hasattr(self, 'collection_combo'):
+            # Load collections into combo if needed
+            pass
 
-        # Web metadata doesn't need tracks, bitrate, size, format, source fields
-        # These will be removed in UI modifications
-        self.files_edit.setText("")
-        self.bitrate_edit.setText("")
-        self.size_edit.setText("")
-        self.format_edit.setText("")
-        self.source_edit.setText("Web")
-        self.path_edit.setText(self.book.path or "")
-
-        # Web metadata doesn't use errors field
-        self.errors_edit.setText("")
+        # Web metadata doesn't use import-specific fields
+        # Removed: files, bitrate, size, format, source, path, errors, time, reader
 
         self._original_author = self.author_edit.text().strip()
         self._original_series = self.series_edit.text().strip()
@@ -772,26 +754,22 @@ class WebMetadataWindow(QDialog):
         form.setLabelAlignment(Qt.AlignRight)
         form.setSpacing(10)
 
-        # Row 1: Title + Author (side by side)
-        row1_layout = QHBoxLayout()
+        # Row 1: Title (vertical layout)
+        title_label = QLabel("&Title:")
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Book title")
         self.title_edit.setReadOnly(False)
-        row1_layout.addWidget(self.title_edit, 2)
+        title_label.setBuddy(self.title_edit)
+        form.addRow(title_label, self.title_edit)
 
+        # Row 2: Author (vertical layout)
         author_label = QLabel("&Author:")
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
-        self.author_edit.setMaximumWidth(280)
         author_label.setBuddy(self.author_edit)
-        row1_layout.addWidget(author_label)
-        row1_layout.addWidget(self.author_edit, 1)
+        form.addRow(author_label, self.author_edit)
 
-        title_label = QLabel("&Title:")
-        title_label.setBuddy(self.title_edit)
-        form.addRow(title_label, row1_layout)
-
-        # Row 2: Plot
+        # Row 3: Plot
         self.comments_label = QLabel("Pl&ot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
@@ -801,9 +779,8 @@ class WebMetadataWindow(QDialog):
         self.comments_label.setBuddy(self.comments_edit)
         form.addRow(self.comments_label, self.comments_edit)
 
-        # Row 3: Year + Length + Reader
-        row3_layout = QHBoxLayout()
-
+        # Row 4: Year (vertical layout)
+        year_label = QLabel("&Year:")
         self.year_spin = QSpinBox()
         self.year_spin.setRange(0, self.MAX_VALID_YEAR)
         self.year_spin.setValue(0)
@@ -812,144 +789,38 @@ class WebMetadataWindow(QDialog):
         self.year_spin.setFixedWidth(110)
         self.year_spin.setReadOnly(False)
         self.year_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
-        row3_layout.addWidget(self.year_spin)
-        row3_layout.addSpacing(40)
-
-        time_label = QLabel("&Time:")
-        self.time_edit = QLineEdit()
-        self.time_edit.setPlaceholderText("HH:MM")
-        self.time_edit.setAccessibleName("Time")
-        self.time_edit.setFixedWidth(100)
-        self.time_edit.setReadOnly(False)
-        time_label.setBuddy(self.time_edit)
-        row3_layout.addWidget(time_label)
-        row3_layout.addWidget(self.time_edit)
-        row3_layout.addSpacing(40)
-
-        reader_label = QLabel("&Reader:")
-        self.reader_edit = QLineEdit()
-        self.reader_edit.setAccessibleName("Reader/Narrator")
-        self.reader_edit.setMaximumWidth(220)
-        reader_label.setBuddy(self.reader_edit)
-        row3_layout.addWidget(reader_label)
-        row3_layout.addWidget(self.reader_edit)
-        row3_layout.addStretch(1)
-
-        year_label = QLabel("&Year:")
         year_label.setBuddy(self.year_spin)
-        form.addRow(year_label, row3_layout)
+        form.addRow(year_label, self.year_spin)
 
-        # Row 4: Series + Genre + Collection
-        row4_layout = QHBoxLayout()
-
+        # Row 4: Series (vertical layout)
         series_label = QLabel("Ser&ies:")
         self.series_edit = QLineEdit()
         self.series_edit.setAccessibleName("Book series")
-        self.series_edit.setMaximumWidth(260)
         series_label.setBuddy(self.series_edit)
-        row4_layout.addWidget(series_label)
-        row4_layout.addWidget(self.series_edit, 1)
+        form.addRow(series_label, self.series_edit)
 
+        # Row 5: Genre (vertical layout)
         genre_label = QLabel("&Genre:")
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Genre")
-        self.genre_edit.setMaximumWidth(220)
         genre_label.setBuddy(self.genre_edit)
-        row4_layout.addWidget(genre_label)
-        row4_layout.addWidget(self.genre_edit, 1)
+        form.addRow(genre_label, self.genre_edit)
 
+        # Row 6: Collection (vertical layout)
         collection_label = QLabel("&Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
-        self.collection_combo.setMaximumWidth(220)
-        self.collection_combo.setEditable(
-            False)  # Make read-only, not editable
+        self.collection_combo.setEditable(False)  # Make read-only, not editable
         self.collection_combo.setEnabled(True)    # Always enabled for focus
         collection_label.setBuddy(self.collection_combo)
-        row4_layout.addWidget(collection_label)
-        row4_layout.addWidget(self.collection_combo, 1)
+        form.addRow(collection_label, self.collection_combo)
 
-        series_label = QLabel("Ser&ies:")
-        series_label.setBuddy(self.series_edit)
-        form.addRow(series_label, row4_layout)
+        # Row 5: Removed import-specific fields (files, bitrate, size, format, source)
+        # Web metadata doesn't need these fields
 
-        # Row 5: Files + Bitrate + Size + Format + Source
-        row5_layout = QHBoxLayout()
+        # Row 6: Removed errors field - web metadata doesn't use validation errors
 
-        files_label = QLabel("&Files:")
-        self.files_edit = QLineEdit()
-        self.files_edit.setReadOnly(True)
-        self.files_edit.setAccessibleName("Number of files")
-        self.files_edit.setMaximumWidth(70)
-        self.files_edit.setReadOnly(False)
-        files_label.setBuddy(self.files_edit)
-        row5_layout.addWidget(self.files_edit)
-
-        bitrate_label = QLabel("&Bitrate:")
-        self.bitrate_edit = QLineEdit()
-        self.bitrate_edit.setReadOnly(True)
-        self.bitrate_edit.setAccessibleName("Bitrate in kbps")
-        self.bitrate_edit.setReadOnly(False)
-        collection_label = QLabel("Collection:")
-        bitrate_label.setBuddy(self.bitrate_edit)
-        row5_layout.addWidget(bitrate_label)
-        row5_layout.addWidget(self.bitrate_edit)
-
-        size_label = QLabel("Si&ze:")
-        self.size_edit = QLineEdit()
-        self.size_edit.setReadOnly(True)
-        self.size_edit.setAccessibleName("File size in megabytes")
-        self.size_edit.setMaximumWidth(100)
-        self.size_edit.setReadOnly(False)
-        size_label.setBuddy(self.size_edit)
-        row5_layout.addWidget(size_label)
-        row5_layout.addWidget(self.size_edit)
-
-        format_label = QLabel("Format:")
-        self.format_edit = QLineEdit()
-        self.format_edit.setReadOnly(True)
-        self.format_edit.setAccessibleName("File format")
-        self.format_edit.setMaximumWidth(90)
-        row5_layout.addWidget(format_label)
-        row5_layout.addWidget(self.format_edit)
-
-        source_label = QLabel("Source:")
-        self.source_edit = QLineEdit()
-        self.source_edit.setReadOnly(True)
-        self.source_edit.setAccessibleName("Import source")
-        self.source_edit.setMaximumWidth(110)
-        row5_layout.addWidget(source_label)
-        row5_layout.addWidget(self.source_edit)
-
-        form.addRow(files_label, row5_layout)
-
-        # Row 6: Errors
-        row6_layout = QHBoxLayout()
-
-        self.errors_label = QLabel("&Errors:")
-        self.errors_edit = QTextEdit()
-        self.errors_edit.setReadOnly(True)
-        self.errors_edit.setAccessibleName("Validation errors")
-        self.errors_edit.setMinimumHeight(60)
-        self.errors_edit.setStyleSheet(
-            "QTextEdit { background-color: palette(base); color: red; }")
-        self.errors_label.setBuddy(self.errors_edit)
-        row6_layout.addWidget(self.errors_edit)
-
-        form.addRow(self.errors_label, row6_layout)
-
-        # Row 7: Path
-        row7_layout = QHBoxLayout()
-
-        self.path_edit = QLineEdit()
-        self.path_edit.setReadOnly(True)
-        self.path_edit.setAccessibleName("File path")
-        self.path_edit.setReadOnly(False)
-        row7_layout.addWidget(self.path_edit, 1)
-
-        path_label = QLabel("Pat&h:")
-        path_label.setBuddy(self.path_edit)
-        form.addRow(path_label, row7_layout)
+        # Row 7: Removed path field - web metadata doesn't show file paths
 
         layout.addLayout(form)
 
@@ -1006,22 +877,15 @@ class WebMetadataWindow(QDialog):
             'author_edit': lambda: self.author_edit.setFocus(),  # Alt+A
             'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
             'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
-            'time_edit': lambda: self.time_edit.setFocus(),        # Alt+M
-            'reader_edit': lambda: self.reader_edit.setFocus(),    # Alt+R
             'series_edit': lambda: self.series_edit.setFocus(),  # Alt+I
             'genre_edit': lambda: self.genre_edit.setFocus(),    # Alt+G
             'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
-            'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
-            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
-            'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
-            'errors_edit': lambda: self.errors_edit.setFocus(),    # Alt+E
-            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
             'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,  # Alt+S
             'skip_button': lambda: self.skip_button.click(),       # Alt+D
             'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
         }
         mgr.register_alt_shortcuts(
-            self, ShortcutContext.BOOK_DETAILS, callback_map)
+            self, ShortcutContext.WEB_METADATA, callback_map)
 
         # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
