@@ -259,29 +259,9 @@ class WebMetadataWindow(QDialog):
     
     def simulate_web_fetch(self, title, author):
         """Simulate web data fetching (placeholder for real API)."""
-        # For demonstration, return some realistic test data
+        # Return None to indicate no web data found
         # In production, this would call actual APIs like Open Library or Google Books
-        
-        if title and author:
-            # Generate dynamic plot based on title keywords
-            plot_text = self.generate_realistic_plot(title)
-            
-            # Generate realistic year (not always 2024)
-            import random
-            current_year = 2024
-            # Random year between current year and 10 years ago
-            year = random.randint(current_year - 10, current_year)
-            
-            return {
-                'title': title,  # Keep original title
-                'author': author,  # Keep original author
-                'year': year,  # Realistic year
-                'series': None,  # No series data found
-                'series_number': None,
-                'genre': 'Mystery Thriller',  # Enhanced genre from web
-                'plot': plot_text  # Dynamic plot based on title
-            }
-        
+        # For now, don't populate any fields with test data
         return None
     
     def generate_realistic_plot(self, title):
