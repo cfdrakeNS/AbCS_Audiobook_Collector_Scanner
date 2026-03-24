@@ -80,6 +80,9 @@
 - done **save button height fixed to match book_details and not overlap status bar**
 - done **alt+/ status bar reading fixed to match book_details working for JAWS**
 - done **removed duplicate code and centralized following book_details pattern**
+- done **button layout margins fixed to prevent status bar overlap**
+- done **critical Alt+/ accessibility fixed - JAWS now working properly**
+- done **duplicate header resize code removed**
 - check boxes to the left of fields are not accessible to jaws but leave them for sighted and low vision user. If there are differences in any of the fields make the check marks red.
 - create a popup message to say if data fetched is different data in fields before and after the web fetch. 1 items per line with web value. if no changes or not found let the existing status bar message handle that  example of popup message for each difference e.g. Year xxx. pop up message say above the fields "Discrepancies Found"  
 
