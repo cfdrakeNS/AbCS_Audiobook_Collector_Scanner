@@ -32,7 +32,7 @@ class WebMetadataWindow(QDialog):
     Built incrementally from accessible skeleton.
     """
     
-    def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+    def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None, refresh_callback=None):
         super().__init__(parent)
         self.setWindowTitle("Web Details")
         self.setAccessibleName("Web Details Window")
@@ -43,6 +43,7 @@ class WebMetadataWindow(QDialog):
         self.scaler = scaler
         self.theme_manager = theme_manager
         self._default_status_message = "Ready"
+        self.refresh_callback = refresh_callback  # Callback to refresh book details
         
         # Database objects
         self.db = db
@@ -484,13 +485,53 @@ class WebMetadataWindow(QDialog):
             announce_status_message(self.status_bar, message, move_focus=True)
     
     def accept(self):
-        """Save and accept - no confirmation popup as requested."""
+        """Save and accept - update database and refresh book details."""
         self.set_status("Saving web metadata...")
         
-        # Here we would save the changes back to the database
-        # For now, just close the window
-        announce_dialog_closed(self)
-        super().accept()
+        if self.book and self.db:
+            try:
+                # Update book object with web metadata
+                self.book.title = self.title_edit.text()
+                self.book.author_name = self.author_edit.text()
+                self.book.comments = self.plot_edit.toPlainText()
+                self.book.year = self.year_spin.value()
+                
+                # Parse series and series number
+                series_text = self.series_edit.text()
+                if " - " in series_text:
+                    parts = series_text.split(" - ")
+                    self.book.series_name = parts[0].strip()
+                    try:
+                        self.book.series_number = int(parts[1].strip())
+                    except ValueError:
+                        self.book.series_number = None
+                else:
+                    self.book.series_name = series_text.strip()
+                    self.book.series_number = None
+                
+                self.book.genre_name = self.genre_edit.text()
+                
+                # Save to database
+                self.db.update_book(self.book)
+                
+                # Set status and close
+                self.set_status("Web metadata saved successfully")
+                
+                # Call refresh callback if provided
+                if self.refresh_callback:
+                    self.refresh_callback()
+                
+                announce_dialog_closed(self)
+                super().accept()
+                
+            except Exception as e:
+                self.set_status(f"Error saving: {str(e)}")
+                # Don't close on error
+                return
+        else:
+            # No book or database - just close
+            announce_dialog_closed(self)
+            super().accept()
     
     def reject(self):
         """Handle close - discard changes as requested."""
@@ -530,7 +571,8 @@ def test_web_metadata():
         db=None, 
         book=book, 
         scaler=scaler, 
-        theme_manager=theme_manager
+        theme_manager=theme_manager,
+        refresh_callback=None  # No callback needed for test
     )
     window.show()
     

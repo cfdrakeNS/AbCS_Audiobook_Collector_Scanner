@@ -1495,8 +1495,15 @@ class BookDetailsWindow(QDialog):
         try:
             from src.ui.web_metadata import WebMetadataWindow
             
-            # Create web details window
-            web_window = WebMetadataWindow(self.db, self.book, self.scaler, self.theme_manager, self)
+            # Create web details window with refresh callback
+            web_window = WebMetadataWindow(
+                self.db, 
+                self.book, 
+                self.scaler, 
+                self.theme_manager, 
+                self,
+                refresh_callback=self.load_book_data  # Refresh book data after save
+            )
             
             # Show window modally
             result = web_window.exec()
