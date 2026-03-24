@@ -1490,10 +1490,10 @@ class BookDetailsWindow(QDialog):
             return
         
         try:
-            from src.ui.web_book_details_window import WebBookDetailsWindow
+            from src.ui.web_metadata import WebMetadataWindow
             
             # Create web details window
-            web_window = WebBookDetailsWindow(self.db, self.book, self.scaler, self.theme_manager, self)
+            web_window = WebMetadataWindow(self.db, self.book, self.scaler, self.theme_manager, self)
             
             # Show window modally
             result = web_window.exec()

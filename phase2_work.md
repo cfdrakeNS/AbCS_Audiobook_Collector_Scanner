@@ -55,25 +55,30 @@
 
 ---
 
-## 3. Get book details from web 🟢 **NEXT PRIORITY**
-**Current State**: No web integration exists.
+## 3. Get book details from web 🟢 **IN PROGRESS**
+**Current State**: Basic web metadata window created, needs UI fixes and API integration.
 
+**✅ COMPLETED**:
+- **New Window**: Created `web_metadata.py` (renamed from web_book_details_window.py)
+- **Accessibility**: Inherited all accessibility features from existing book details window
+- **Alt+U Shortcut**: "Update Metadata" opens web metadata window from book details
+- **UI Layout**: Basic form with web-fetched fields (Title, Author, Year, Series, Genre, Plot)
+- **Centralized Shortcuts**: Alt+T, Alt+A, Alt+P, Alt+Y, Alt+I, Alt+G for field navigation
+- **F1 Help**: Complete shortcut menu with accessible styling
+- **Button Actions**: Apply, Cancel, and Close buttons with proper behavior
 
-**Implementation Plan**:
+**🔄 IN PROGRESS**:
+- **UI Alignment**: Labels slightly above fields - need vertical alignment fixes
+- **Field Spacing**: Fields need tighter vertical spacing
+- **Label/Field Alignment**: Different vertical alignment settings causing misalignment
+
+**📋 TO-DO**:
 - **API Integration**: Connect to Google Books API and Open Library API
 - **Libraries Required**: `requests`, `isbnlib`, `thefuzz` for fuzzy matching
-- **Database Schema**: NO CHANGES REQUIRED - use existing structure
-  - `books.comments` field - store plot/summary (already exists)
-  - `series` table - link via existing `books.series_id` foreign key
-  - `genres` table - link via existing `books.genre_id` foreign key
-  - `authors` table - link via existing `books.author_id` foreign key
-  - `book cover` field - to be implemented as a new feature after cover import is completed
-
-**Technical Implementation**:
 - **Search Logic**: Use `isbnlib.isbn_from_words()` to find ISBN from title/author
 - **Fuzzy Matching**: Use `thefuzz.fuzz.ratio()` to compare scanned vs API data
-- **API Services**: Google Books API (free) + Open Library API (open source)
 - **Data Validation**: Levenshtein distance for spelling corrections
+- **Database Updates**: Apply accepted web metadata to existing book records
 
 **Book Details Window Enhancement**:
 - add Get Details from web -- need a better name for this button
@@ -114,8 +119,8 @@ Screen_Reader_and_PySide6_best_practices.md
 
 **Files to Modify**:
 - `src/database/models.py` - NO CHANGES (use existing structure)
-- `src/ui/book_details.py` - Add fetch button to open web details window
-- `src/ui/web_book_details_window.py` - NEW: modeled from book_details_window.py
+- `src/ui/book_details.py` - Add fetch button to open web metadata window
+- `src/ui/web_metadata.py` - NEW: modeled from book_details_window.py
 - `src/database/queries.py` - Add API metadata update methods
 - `src/main.py` - Add required library imports
 

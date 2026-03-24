@@ -52,7 +52,7 @@ class WebDataFetcher(QThread):
             self.error_occurred.emit(f"Error fetching web data: {str(e)}")
 
 
-class WebBookDetailsWindow(QDialog):
+class WebMetadataWindow(QDialog):
     """Web Book Details window for reviewing and accepting web-fetched metadata."""
 
     def set_status(self, message: str, announce: bool = False):
