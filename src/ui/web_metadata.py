@@ -108,17 +108,13 @@ class WebMetadataWindow(QDialog):
         author_label.setBuddy(self.author_edit)
         form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
         
-        # Year field - fix to be like book_details
+        # Year field - use QLineEdit like backup window
         year_label = QLabel("&Year:")
-        self.year_spin = QSpinBox()
-        self.year_spin.setRange(0, 2100)
-        self.year_spin.setValue(0)
-        self.year_spin.setAccessibleName("Publication year")
-        self.year_spin.setAccessibleDescription("Publication year from web source")
-        self.year_spin.setSpecialValueText("")
-        self.year_spin.setMaximumWidth(110)  # Match book_details
-        year_label.setBuddy(self.year_spin)
-        form_layout.addRow(year_label, self._create_field_with_indicator(self.year_spin))
+        self.year_edit = QLineEdit()  # QLineEdit like backup, NOT QSpinBox
+        self.year_edit.setAccessibleName("Publication year")
+        self.year_edit.setAccessibleDescription("Publication year from web source")
+        year_label.setBuddy(self.year_edit)
+        form_layout.addRow(year_label, self._create_field_with_indicator(self.year_edit))
         
         # Series field
         self.series_edit = QLineEdit()
@@ -216,7 +212,7 @@ class WebMetadataWindow(QDialog):
             self.title_edit.setText(self.book.title or "")
             self.author_edit.setText(self.book.author_name or "")
             self.plot_edit.setPlainText(self.book.comments or "")
-            self.year_spin.setValue(self.book.year or 0)
+            self.year_edit.setText(str(self.book.year) if self.book.year else "")
             self.series_edit.setText(self.book.series_name or "")
             self.genre_edit.setText(self.book.genre_name or "")
         
@@ -313,12 +309,12 @@ class WebMetadataWindow(QDialog):
             self.show_indicator(self.author_edit, False)
         
         # Update year and show indicator
-        if web_data.get('year') and web_data['year'] != self.year_spin.value():
-            self.year_spin.setValue(web_data['year'])
-            self.show_indicator(self.year_spin, True)
+        if web_data.get('year') and str(web_data['year']) != self.year_edit.text():
+            self.year_edit.setText(str(web_data['year']))
+            self.show_indicator(self.year_edit, True)
             changes_made = True
         else:
-            self.show_indicator(self.year_spin, False)
+            self.show_indicator(self.year_edit, False)
         
         # Update series with series number and show indicator
         series_text = web_data.get('series', '')
@@ -362,7 +358,7 @@ class WebMetadataWindow(QDialog):
         """Clear all web data indicators."""
         self.show_indicator(self.title_edit, False)
         self.show_indicator(self.author_edit, False)
-        self.show_indicator(self.year_spin, False)
+        self.show_indicator(self.year_edit, False)
         self.show_indicator(self.series_edit, False)
         self.show_indicator(self.genre_edit, False)
     
@@ -588,15 +584,22 @@ class WebMetadataWindow(QDialog):
                 # Update book object with web metadata (filtered)
                 title_text = self.title_edit.text().strip()
                 author_text = self.author_edit.text().strip()
+                year_text = self.year_edit.text().strip()
                 
                 # Filter out test artifacts
                 title_text = title_text.replace(" - WEB EDITION", "").strip()
                 author_text = author_text.replace(" (Web Verified)", "").strip()
                 
+                # Convert year text to integer
+                try:
+                    year = int(year_text) if year_text else None
+                except ValueError:
+                    year = None
+                
                 self.book.title = title_text
                 self.book.author_id = author_id
                 self.book.comments = self.plot_edit.toPlainText().strip()
-                self.book.year = self.year_spin.value()
+                self.book.year = year
                 self.book.series_id = series_id
                 self.book.genre_id = genre_id
                 
