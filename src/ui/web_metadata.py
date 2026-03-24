@@ -13,7 +13,8 @@ sys.path.insert(0, project_root)
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QApplication, QStatusBar, 
     QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox,
+    QWidget, QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
@@ -75,110 +76,82 @@ class WebMetadataWindow(QDialog):
     
     def setup_ui(self, layout):
         """
-        Web metadata UI - built incrementally.
+        Web metadata UI - match backup window layout.
         """
-        # Form layout
-        form = QFormLayout()
+        # Main layout setup
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
         
-        # Title field with checkbox
-        title_row = QHBoxLayout()
-        title_label = QLabel("&Title:")
+        # Title
+        title_label = QLabel("Web Book Details")
+        title_label.setStyleSheet(f"font-size: {self.scaler.get_scaled_size(16)}px; font-weight: bold;")
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
+        
+        # Form layout for book details (vertical alignment)
+        form_layout = QFormLayout()
+        form_layout.setSpacing(3)  # Tighter vertical spacing
+        form_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Set proper alignment for labels and fields
+        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        
+        # Title field
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("Book title")
+        self.title_edit.setAccessibleName("Title")
+        self.title_edit.setAccessibleDescription("Book title from web source")
+        title_label = QLabel("&Title:")
         title_label.setBuddy(self.title_edit)
-        title_row.addWidget(title_label)
-        title_row.addWidget(self.title_edit, 1)  # Give title edit more space
+        form_layout.addRow(title_label, self._create_field_with_indicator(self.title_edit))
         
-        # Web data checkbox for title
-        self.title_checkbox = QCheckBox()
-        self.title_checkbox.setAccessibleName("Title web data indicator")
-        self.title_checkbox.setEnabled(False)  # Read-only indicator
-        title_row.addWidget(self.title_checkbox)
-        
-        form.addRow(title_row)
-        
-        # Author field with checkbox
-        author_row = QHBoxLayout()
-        author_label = QLabel("&Author:")
+        # Author field
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
+        self.author_edit.setAccessibleDescription("Author name from web source")
+        author_label = QLabel("&Author:")
         author_label.setBuddy(self.author_edit)
-        author_row.addWidget(author_label)
-        author_row.addWidget(self.author_edit, 1)  # Give author edit more space
+        form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
         
-        # Web data checkbox for author
-        self.author_checkbox = QCheckBox()
-        self.author_checkbox.setAccessibleName("Author web data indicator")
-        self.author_checkbox.setEnabled(False)  # Read-only indicator
-        author_row.addWidget(self.author_checkbox)
-        
-        form.addRow(author_row)
-        
-        # Plot field (no checkbox as requested)
-        plot_label = QLabel("&Plot:")
-        self.plot_edit = QTextEdit()
-        self.plot_edit.setAccessibleName("Plot")
-        self.plot_edit.setTabChangesFocus(True)
-        self.plot_edit.setMinimumHeight(40)
-        plot_label.setBuddy(self.plot_edit)
-        form.addRow(plot_label, self.plot_edit)
-        
-        # Year field with checkbox
-        year_row = QHBoxLayout()
-        year_label = QLabel("&Year:")
+        # Year field
         self.year_spin = QSpinBox()
         self.year_spin.setRange(0, 2100)
         self.year_spin.setValue(0)
         self.year_spin.setAccessibleName("Publication year")
+        self.year_spin.setAccessibleDescription("Publication year from web source")
         self.year_spin.setSpecialValueText("")
         self.year_spin.setFixedWidth(110)
+        year_label = QLabel("&Year:")
         year_label.setBuddy(self.year_spin)
-        year_row.addWidget(year_label)
-        year_row.addWidget(self.year_spin)
+        form_layout.addRow(year_label, self._create_field_with_indicator(self.year_spin))
         
-        # Web data checkbox for year
-        self.year_checkbox = QCheckBox()
-        self.year_checkbox.setAccessibleName("Year web data indicator")
-        self.year_checkbox.setEnabled(False)  # Read-only indicator
-        year_row.addWidget(self.year_checkbox)
-        
-        form.addRow(year_row)
-        
-        # Series field with checkbox
-        series_row = QHBoxLayout()
-        series_label = QLabel("Ser&ies:")
+        # Series field
         self.series_edit = QLineEdit()
-        self.series_edit.setAccessibleName("Book series")
+        self.series_edit.setAccessibleName("Series")
+        self.series_edit.setAccessibleDescription("Series name from web source")
+        series_label = QLabel("Ser&ies:")
         series_label.setBuddy(self.series_edit)
-        series_row.addWidget(series_label)
-        series_row.addWidget(self.series_edit, 1)  # Give series edit more space
+        form_layout.addRow(series_label, self._create_field_with_indicator(self.series_edit))
         
-        # Web data checkbox for series
-        self.series_checkbox = QCheckBox()
-        self.series_checkbox.setAccessibleName("Series web data indicator")
-        self.series_checkbox.setEnabled(False)  # Read-only indicator
-        series_row.addWidget(self.series_checkbox)
-        
-        form.addRow(series_row)
-        
-        # Genre field with checkbox
-        genre_row = QHBoxLayout()
-        genre_label = QLabel("&Genre:")
+        # Genre field
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Genre")
+        self.genre_edit.setAccessibleDescription("Genre from web source")
+        genre_label = QLabel("&Genre:")
         genre_label.setBuddy(self.genre_edit)
-        genre_row.addWidget(genre_label)
-        genre_row.addWidget(self.genre_edit, 1)  # Give genre edit more space
+        form_layout.addRow(genre_label, self._create_field_with_indicator(self.genre_edit))
         
-        # Web data checkbox for genre
-        self.genre_checkbox = QCheckBox()
-        self.genre_checkbox.setAccessibleName("Genre web data indicator")
-        self.genre_checkbox.setEnabled(False)  # Read-only indicator
-        genre_row.addWidget(self.genre_checkbox)
+        # Plot field (no indicator as requested)
+        self.plot_edit = QTextEdit()
+        self.plot_edit.setAccessibleName("Plot Summary")
+        self.plot_edit.setAccessibleDescription("Plot summary from web source")
+        self.plot_edit.setTabChangesFocus(True)
+        self.plot_edit.setMinimumHeight(40)
+        plot_label = QLabel("&Plot:")
+        plot_label.setBuddy(self.plot_edit)
+        form_layout.addRow(plot_label, self.plot_edit)
         
-        form.addRow(genre_row)
-        
-        layout.addLayout(form)
+        layout.addLayout(form_layout)
         
         # Buttons - match book_details styling
         button_layout = QHBoxLayout()
@@ -215,6 +188,32 @@ class WebMetadataWindow(QDialog):
             }}
         """
         self.save_button.setStyleSheet(button_style)
+    
+    def _create_field_with_indicator(self, field):
+        """Create a field with web data difference indicator."""
+        from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
+        
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(3)  # Reduced spacing to prevent excessive gaps
+        
+        # Set container to match field height
+        container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
+        # The actual field
+        layout.addWidget(field)
+        
+        # Difference indicator (check mark for web data)
+        indicator = QLabel("✓")
+        indicator.setAccessibleName("Web data indicator")
+        indicator.setAccessibleDescription("This field contains web-fetched data")
+        indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Sea green
+        indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        indicator.setAlignment(Qt.AlignCenter)
+        layout.addWidget(indicator)
+        
+        return container
     
     def load_book_data(self):
         """Load book data into fields and fetch web data."""
@@ -302,54 +301,75 @@ class WebMetadataWindow(QDialog):
         """Update fields with web data and set indicators."""
         changes_made = False
         
-        # Update title and set indicator
+        # Update title and show indicator
         if web_data.get('title') and web_data['title'] != self.title_edit.text():
             self.title_edit.setText(web_data['title'])
-            self.title_checkbox.setChecked(True)
+            self.show_indicator(self.title_edit, True)
             changes_made = True
+        else:
+            self.show_indicator(self.title_edit, False)
         
-        # Update author and set indicator
+        # Update author and show indicator
         if web_data.get('author') and web_data['author'] != self.author_edit.text():
             self.author_edit.setText(web_data['author'])
-            self.author_checkbox.setChecked(True)
+            self.show_indicator(self.author_edit, True)
             changes_made = True
+        else:
+            self.show_indicator(self.author_edit, False)
         
-        # Update year and set indicator
+        # Update year and show indicator
         if web_data.get('year') and web_data['year'] != self.year_spin.value():
             self.year_spin.setValue(web_data['year'])
-            self.year_checkbox.setChecked(True)
+            self.show_indicator(self.year_spin, True)
             changes_made = True
+        else:
+            self.show_indicator(self.year_spin, False)
         
-        # Update series with series number and set indicator
+        # Update series with series number and show indicator
         series_text = web_data.get('series', '')
         if web_data.get('series_number'):
             series_text = f"{series_text} - {web_data['series_number']}"
         
         if series_text and series_text != self.series_edit.text():
             self.series_edit.setText(series_text)
-            self.series_checkbox.setChecked(True)
+            self.show_indicator(self.series_edit, True)
             changes_made = True
+        else:
+            self.show_indicator(self.series_edit, False)
         
-        # Update genre and set indicator
+        # Update genre and show indicator
         if web_data.get('genre') and web_data['genre'] != self.genre_edit.text():
             self.genre_edit.setText(web_data['genre'])
-            self.genre_checkbox.setChecked(True)
+            self.show_indicator(self.genre_edit, True)
             changes_made = True
+        else:
+            self.show_indicator(self.genre_edit, False)
         
-        # Update plot (no checkbox for plot)
+        # Update plot (no indicator for plot)
         if web_data.get('plot') and web_data['plot'] != self.plot_edit.toPlainText():
             self.plot_edit.setPlainText(web_data['plot'])
             changes_made = True
         
         return changes_made
     
+    def show_indicator(self, field, show):
+        """Show or hide the web data indicator for a field."""
+        # Find the container widget that holds the field and indicator
+        parent = field.parent()
+        if parent and isinstance(parent, QWidget):
+            # Find the indicator label (should be the last child)
+            for child in parent.children():
+                if isinstance(child, QLabel) and child.text() == "✓":
+                    child.setVisible(show)
+                    break
+    
     def clear_web_indicators(self):
         """Clear all web data indicators."""
-        self.title_checkbox.setChecked(False)
-        self.author_checkbox.setChecked(False)
-        self.year_checkbox.setChecked(False)
-        self.series_checkbox.setChecked(False)
-        self.genre_checkbox.setChecked(False)
+        self.show_indicator(self.title_edit, False)
+        self.show_indicator(self.author_edit, False)
+        self.show_indicator(self.year_spin, False)
+        self.show_indicator(self.series_edit, False)
+        self.show_indicator(self.genre_edit, False)
     
     def show_changes_popup(self, web_data):
         """Show popup with only the fields that changed."""
