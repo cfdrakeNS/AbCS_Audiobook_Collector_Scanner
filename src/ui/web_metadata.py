@@ -64,7 +64,8 @@ class WebMetadataWindow(QDialog):
         """Read current status bar message (Alt+/)."""
         status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
+            # Announce directly without calling set_status to avoid duplicate announcements
+            announce_status_message(self.status_bar, status_text, move_focus=False)
         else:
             exec_styled_message_box(
                 self,
@@ -88,6 +89,8 @@ class WebMetadataWindow(QDialog):
         
         # Web data (will be fetched from API)
         self.web_data = {}
+        # Track field differences for red indicators
+        self.field_differences = {}
         
         # Window setup
         self.setWindowTitle("Web Book Details")
@@ -195,6 +198,7 @@ class WebMetadataWindow(QDialog):
         # Action buttons
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
+        button_layout.setContentsMargins(0, 5, 0, 5)  # Small margins to prevent overlap
         
         self.save_button = QPushButton("&Save")
         self.save_button.setAccessibleName("Save all fields")
@@ -235,6 +239,24 @@ class WebMetadataWindow(QDialog):
         """Handle successful web data fetch."""
         self.web_data = data
         
+        # Track differences for red indicators
+        self.field_differences = {}
+        if self.book.title != data.get('title', ''):
+            self.field_differences['title'] = data.get('title', '')
+        if self.book.author_name != data.get('author', ''):
+            self.field_differences['author'] = data.get('author', '')
+        if str(self.book.year or '') != data.get('year', ''):
+            self.field_differences['year'] = data.get('year', '')
+        if self.book.series_name != data.get('series', ''):
+            self.field_differences['series'] = data.get('series', '')
+        if self.book.genre_name != data.get('genre', ''):
+            self.field_differences['genre'] = data.get('genre', '')
+        if (self.book.comments or '') != data.get('plot', ''):
+            self.field_differences['plot'] = data.get('plot', '')
+        
+        # Update field indicators
+        self._update_field_indicators()
+        
         # Populate fields with fetched data
         self.title_field.setText(data.get('title', ''))
         self.author_field.setText(data.get('author', ''))
@@ -245,6 +267,10 @@ class WebMetadataWindow(QDialog):
         
         # Enable buttons
         self.save_button.setEnabled(True)
+        
+        # Show discrepancy popup if differences found
+        if self.field_differences:
+            self._show_discrepancy_popup()
         
         # Update status
         source = data.get('source', 'unknown')
@@ -268,6 +294,67 @@ class WebMetadataWindow(QDialog):
         }
         
         self.set_status(f"Loaded book: {self.book.title}", announce=True)
+
+    def _update_field_indicators(self):
+        """Update check mark colors based on field differences."""
+        # Update title field indicator
+        title_container = self.title_field.parent()
+        if title_container and hasattr(title_container, 'findChild'):
+            indicator = title_container.findChild(QLabel)
+            if indicator:
+                if 'title' in self.field_differences:
+                    indicator.setStyleSheet("color: #DC143C; font-weight: bold;")  # Red for differences
+                else:
+                    indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Green for same
+        
+        # Update other field indicators similarly
+        for field_name, field in [
+            ('author', self.author_field),
+            ('year', self.year_field),
+            ('series', self.series_field),
+            ('genre', self.genre_field),
+            ('plot', self.plot_field)
+        ]:
+            container = field.parent()
+            if container and hasattr(container, 'findChild'):
+                indicator = container.findChild(QLabel)
+                if indicator:
+                    if field_name in self.field_differences:
+                        indicator.setStyleSheet("color: #DC143C; font-weight: bold;")  # Red
+                    else:
+                        indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Green
+
+    def _show_discrepancy_popup(self):
+        """Show popup with field differences."""
+        if not self.field_differences:
+            return
+            
+        # Build discrepancy message
+        message_lines = ["Discrepancies Found:"]
+        for field, value in self.field_differences.items():
+            if field == 'plot':
+                field_name = 'Plot'
+            elif field == 'series':
+                field_name = 'Series'
+            elif field == 'genre':
+                field_name = 'Genre'
+            elif field == 'author':
+                field_name = 'Author'
+            elif field == 'year':
+                field_name = 'Year'
+            else:
+                field_name = field.capitalize()
+            
+            message_lines.append(f"{field_name}: {value}")
+        
+        # Show popup
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Discrepancies Found",
+            text="\n".join(message_lines)
+        )
 
     def _create_field_with_indicator(self, field, web_value):
         """Create a field with web data difference indicator."""
@@ -388,11 +475,6 @@ class WebMetadataWindow(QDialog):
             table.setItem(row, 0, item)
 
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-
-        
-        # Resize column to stretch
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
         
         # Set font size
         font = table.font()
