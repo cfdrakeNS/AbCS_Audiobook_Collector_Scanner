@@ -256,14 +256,21 @@ class WebMetadataWindow(QDialog):
     
     def simulate_web_fetch(self, title, author):
         """Simulate web data fetching (placeholder for real API)."""
-        # This should only return data that's actually different and better
-        # Not garbage test data that replaces everything
+        # For demonstration, return some realistic test data
+        # In production, this would call actual APIs like Open Library or Google Books
         
         if title and author:
-            # Only return data if it's actually an improvement
-            # For now, return None to simulate "no web data found"
-            # In real implementation, this would call actual APIs
-            return None
+            # Only return data for books that might have web data
+            # This simulates finding enhanced metadata online
+            return {
+                'title': title,  # Keep original title
+                'author': author,  # Keep original author
+                'year': 2024,  # Updated year if found newer edition
+                'series': None,  # No series data found
+                'series_number': None,
+                'genre': 'Mystery Thriller',  # Enhanced genre from web
+                'plot': 'Enhanced plot summary from web sources: A gripping mystery that unfolds in unexpected ways, keeping readers engaged until the final revelation.'
+            }
         
         return None
     
