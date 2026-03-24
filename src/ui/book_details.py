@@ -922,12 +922,15 @@ class BookDetailsWindow(QDialog):
         save_active = self.is_new or self._dirty
         self.save_button.setVisible(save_active)
 
-        # bd#16: Hide New and Delete when Save is active
-        self.new_button.setVisible(not save_active)
+        # bd#16: Show/hide buttons based on save state
+        # For new books: show New, hide Delete, show Save, hide Cancel, show Update Metadata
+        # For existing books: show New/Delete when not saving, show Save/Cancel when saving
+        self.new_button.setVisible(self.is_new and not save_active)
         self.delete_button.setVisible(
             (not self.is_new) and (not save_active))
+        self.save_button.setVisible(save_active)
         self.cancel_button.setVisible(save_active)
-        # Hide Update Metadata button for new books (no book to update)
+        # Update Metadata: show for existing books, hide for new books
         self.get_web_details_button.setVisible(not self.is_new)
 
     def on_show_shortcuts(self):
