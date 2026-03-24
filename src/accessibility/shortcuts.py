@@ -89,18 +89,18 @@ class ShortcutManager(QObject):
     BOOK_DETAILS_SHORTCUTS = {
         'T': ('Title', 'title_edit'),
         'A': ('Author', 'author_combo'),
+        'P': ('Comments', 'comments_edit'),  # From Pl&ot label
         'Y': ('Year', 'year_spin'),
-        'F': ('Files', 'files_edit'),
+        'M': ('Length', 'time_edit'),      # From Length (&M)
+        'R': ('Reader', 'reader_edit'),
+        'E': ('Read date', 'read_date'),
         'I': ('Series', 'series_combo'),
         'G': ('Genre', 'genre_combo'),
-        'R': ('Reader', 'reader_edit'),
         'C': ('Collection', 'collection_combo'),
-        'H': ('Length', 'time_edit'),  # Changed from L to H for Length
-        'E': ('Read date', 'read_date'),
-        'Z': ('Size', 'size_edit'),
+        'F': ('Files', 'files_edit'),
         'B': ('Bitrate', 'bitrate_edit'),
-        'P': ('Path', 'path_edit'),    # Changed from H to P for Path
-        'O': ('Comments', 'comments_edit'),  # Changed from P to O for Comments
+        'Z': ('Size', 'size_edit'),
+        'H': ('Path', 'path_edit'),        # From Pat&h label
         'F1': ('Show help', 'show_help'),
     }
 
