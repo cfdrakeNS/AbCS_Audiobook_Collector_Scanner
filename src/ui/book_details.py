@@ -440,7 +440,7 @@ class BookDetailsWindow(QDialog):
         form.addRow(title_label, row1_layout)
 
         # bd#3 Row 2: Plot (expand to fit, hide when empty)
-        self.comments_label = QLabel("P&lot:")
+        self.comments_label = QLabel("Pl&ot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
         # Tab navigates instead of inserting tabs
@@ -957,7 +957,7 @@ class BookDetailsWindow(QDialog):
         shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Plot"),
+            ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),

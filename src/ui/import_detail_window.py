@@ -848,7 +848,7 @@ class ImportDetailWindow(QDialog):
         form.addRow(title_label, row1_layout)
 
         # Row 2: Plot
-        self.comments_label = QLabel("P&lot:")
+        self.comments_label = QLabel("Pl&ot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
         self.comments_edit.setTabChangesFocus(True)
@@ -1128,7 +1128,7 @@ class ImportDetailWindow(QDialog):
         shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Plot"),
+            ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Length"),
             ("Alt+R", "Reader"),
