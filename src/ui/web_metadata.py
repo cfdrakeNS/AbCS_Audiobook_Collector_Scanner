@@ -116,8 +116,12 @@ class WebMetadataWindow(QDialog):
         
         # Form layout for book details (vertical alignment)
         form_layout = QFormLayout()
-        form_layout.setLabelAlignment(Qt.AlignRight)
-        form_layout.setSpacing(10)
+        form_layout.setSpacing(5)  # Tighter vertical spacing
+        form_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Set proper alignment for labels and fields
+        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         
         # Title field (read-only)
         self.title_field = QLineEdit()
@@ -297,6 +301,9 @@ class WebMetadataWindow(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(3)  # Reduced spacing to prevent excessive gaps
         
+        # Set container to match field height
+        container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
         # The actual field
         field.setText(str(web_value))
         layout.addWidget(field)
@@ -305,8 +312,9 @@ class WebMetadataWindow(QDialog):
         indicator = QLabel("✓")
         indicator.setAccessibleName("Web data indicator")
         indicator.setAccessibleDescription("This field contains web-fetched data")
-        indicator.setStyleSheet("color: green; font-weight: bold;")
-        indicator.setFixedWidth(20)
+        indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Sea green
+        indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        indicator.setAlignment(Qt.AlignCenter)
         layout.addWidget(indicator)
         
         return container
@@ -331,20 +339,6 @@ class WebMetadataWindow(QDialog):
         status_shortcut.activated.connect(self.on_read_status_bar)
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape_shortcut.activated.connect(self.reject)
-
-    def load_book_data(self):
-        """Load current book data for comparison."""
-        # Load existing book data
-        self.original_data = {
-            'title': self.book.title or "",
-            'author': self.book.author_name or "",
-            'year': str(self.book.year or ""),
-            'series': self.book.series_name or "",
-            'genre': self.book.genre_name or "",
-            'plot': self.book.comments or ""
-        }
-        
-        self.set_status(f"Loaded book: {self.book.title}", announce=True)
 
     def on_add_plot(self):
         """Add plot summary to book comments."""
