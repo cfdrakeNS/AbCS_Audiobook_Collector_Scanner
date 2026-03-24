@@ -300,16 +300,30 @@ class WebBookDetailsWindow(QDialog):
         return container
 
     def setup_shortcuts(self):
-        """Setup keyboard shortcuts."""
-        # F1 for help
-        help_shortcut = QShortcut(QKeySequence("F1"), self)
-        help_shortcut.activated.connect(self.on_show_shortcuts)
+        """Centralized Alt+letter shortcut registration using ShortcutManager."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'title_edit': lambda: self.title_field.setFocus(),      # Alt+T
+            'author_edit': lambda: self.author_field.setFocus(),    # Alt+A
+            'year_edit': lambda: self.year_field.setFocus(),        # Alt+Y
+            'series_edit': lambda: self.series_field.setFocus(),    # Alt+I
+            'genre_edit': lambda: self.genre_field.setFocus(),      # Alt+G
+            'collection_edit': lambda: self.collection_field.setFocus(),  # Alt+C
+            'reader_edit': lambda: self.reader_field.setFocus(),    # Alt+R
+            'time_edit': lambda: self.time_field.setFocus(),        # Alt+M
+            'files_edit': lambda: self.files_field.setFocus(),      # Alt+F
+            'bitrate_edit': lambda: self.bitrate_field.setFocus(),  # Alt+B
+            'size_edit': lambda: self.size_field.setFocus(),        # Alt+Z
+            'path_edit': lambda: self.path_field.setFocus(),        # Alt+H
+            'plot_edit': lambda: self.plot_field.setFocus(),        # Alt+P
+            'show_help': self.on_show_shortcuts,                    # F1
+        }
+        mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
         
-        # Alt+/ for status bar
+        # Local shortcuts: Alt+/, Escape
         status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         status_shortcut.activated.connect(self.on_read_status_bar)
-        
-        # Escape to close
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape_shortcut.activated.connect(self.reject)
 
