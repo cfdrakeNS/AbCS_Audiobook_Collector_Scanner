@@ -13,6 +13,7 @@ class ShortcutContext(Enum):
     GLOBAL = "global"  # Active everywhere
     MAIN_WINDOW = "main_window"
     BOOK_DETAILS = "book_details"
+    WEB_METADATA = "web_metadata"
     IMPORT_WINDOW = "import_window"
     IMPORT_PROGRESS_WINDOW = "import_progress_window"
     UPDATE_WINDOW = "update_window"
@@ -101,8 +102,19 @@ class ShortcutManager(QObject):
         'B': ('Bitrate', 'bitrate_edit'),
         'Z': ('Size', 'size_edit'),
         'H': ('Path', 'path_edit'),        # From Pat&h label
-        'K': ('Keep Plot', 'add_plot_button'),  # Alt+K for Keep Plot button
-        'U': ('Update All', 'update_all_button'),  # Alt+U for Update All button
+        'F1': ('Show help', 'show_help'),
+    }
+
+    # Web Metadata Window
+    WEB_METADATA_SHORTCUTS = {
+        'T': ('Title', 'title_edit'),
+        'A': ('Author', 'author_edit'),
+        'P': ('Plot', 'plot_edit'),
+        'Y': ('Year', 'year_edit'),
+        'I': ('Series', 'series_edit'),
+        'G': ('Genre', 'genre_edit'),
+        'K': ('Keep Plot', 'add_plot_button'),
+        'U': ('Update All', 'update_all_button'),
         'F1': ('Show help', 'show_help'),
     }
 
@@ -169,6 +181,8 @@ class ShortcutManager(QObject):
             shortcuts = self.MAIN_WINDOW_SHORTCUTS
         elif context == ShortcutContext.BOOK_DETAILS:
             shortcuts = self.BOOK_DETAILS_SHORTCUTS
+        elif context == ShortcutContext.WEB_METADATA:
+            shortcuts = self.WEB_METADATA_SHORTCUTS
         elif context == ShortcutContext.IMPORT_WINDOW:
             shortcuts = self.IMPORT_WINDOW_SHORTCUTS
         elif context == ShortcutContext.UPDATE_WINDOW:
@@ -251,6 +265,8 @@ class ShortcutManager(QObject):
             shortcuts = self.MAIN_WINDOW_SHORTCUTS
         elif context == ShortcutContext.BOOK_DETAILS:
             shortcuts = self.BOOK_DETAILS_SHORTCUTS
+        elif context == ShortcutContext.WEB_METADATA:
+            shortcuts = self.WEB_METADATA_SHORTCUTS
         elif context == ShortcutContext.IMPORT_WINDOW:
             shortcuts = self.IMPORT_WINDOW_SHORTCUTS
         elif context == ShortcutContext.UPDATE_WINDOW:

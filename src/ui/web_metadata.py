@@ -330,7 +330,7 @@ class WebMetadataWindow(QDialog):
             'update_all_button': self.on_update_all,                # Alt+U
             'show_help': self.on_show_shortcuts,                    # F1
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
+        mgr.register_alt_shortcuts(self, ShortcutContext.WEB_METADATA, callback_map)
         
         # Local shortcuts: Alt+/, Escape
         status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
