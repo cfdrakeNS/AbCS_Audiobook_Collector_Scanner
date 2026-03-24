@@ -125,7 +125,7 @@ class WebMetadataWindow(QDialog):
         button_layout = QHBoxLayout()
         
         # Launch Tag button
-        self.launch_tag_button = QPushButton("&Launch Tag")
+        self.launch_tag_button = QPushButton("Launch Tag")
         self.launch_tag_button.setAccessibleName("Launch Tag")
         self.launch_tag_button.setAccessibleDescription("Open current item in external tag editor - Alt+L")
         self.launch_tag_button.setFocusPolicy(Qt.StrongFocus)
@@ -133,7 +133,7 @@ class WebMetadataWindow(QDialog):
         button_layout.addWidget(self.launch_tag_button)
         
         # Save button
-        self.save_button = QPushButton("&Save")
+        self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
         self.save_button.setAccessibleDescription("Save web metadata changes - Alt+S")
         self.save_button.setFocusPolicy(Qt.StrongFocus)

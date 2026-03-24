@@ -88,7 +88,7 @@ class AccessibleWindowSkeleton(QDialog):
         
         # Add your buttons
         button_layout = QHBoxLayout()
-        save_button = QPushButton("&Save")
+        save_button = QPushButton("Save")  # No ampersand - avoid shortcut conflicts
         save_button.setAccessibleName("Save")
         save_button.clicked.connect(self.accept)
         button_layout.addWidget(save_button)
@@ -125,6 +125,9 @@ class AccessibleWindowSkeleton(QDialog):
         # self.title_shortcut = QShortcut(QKeySequence("Alt+T"), self)
         # self.title_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         # self.title_shortcut.activated.connect(lambda: self.title_edit.setFocus())
+        # 
+        # IMPORTANT: Avoid ampersands (&) in button text - they conflict with Alt+ shortcuts
+        # Use "Save" not "&Save" when you have Alt+S shortcut
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help."""
