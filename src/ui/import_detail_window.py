@@ -1076,7 +1076,7 @@ class ImportDetailWindow(QDialog):
             'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
         }
         mgr.register_alt_shortcuts(
-            self, ShortcutContext.IMPORT_DETAIL, callback_map)
+            self, ShortcutContext.BOOK_DETAILS, callback_map)
 
         # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
