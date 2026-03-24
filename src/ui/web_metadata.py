@@ -192,6 +192,19 @@ class WebMetadataWindow(QDialog):
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
         
+        self.save_button = QPushButton("&Save")
+        self.save_button.setAccessibleName("Save all fields")
+        self.save_button.setAccessibleDescription("Apply all web data changes to original book record")
+        self.save_button.setFocusPolicy(Qt.StrongFocus)
+        self.save_button.setMinimumHeight(30)  # Standard button height
+        self.save_button.setMaximumHeight(40)  # Reasonable max height
+        self.save_button.clicked.connect(self.on_update_all)
+        self.save_button.setDefault(False)
+        self.save_button.setAutoDefault(False)
+        button_layout.addWidget(self.save_button)
+        
+        button_layout.addStretch()
+        
         self.add_plot_button = QPushButton("Keep Plot")
         self.add_plot_button.setAccessibleName("Add plot to comments")
         self.add_plot_button.setAccessibleDescription("Add web plot summary to book comments field")
@@ -202,30 +215,6 @@ class WebMetadataWindow(QDialog):
         self.add_plot_button.setDefault(False)
         self.add_plot_button.setAutoDefault(False)
         button_layout.addWidget(self.add_plot_button)
-        
-        button_layout.addStretch()
-        
-        self.update_all_button = QPushButton("Update All &U")
-        self.update_all_button.setAccessibleName("Update all fields")
-        self.update_all_button.setAccessibleDescription("Apply all web data changes to original book record")
-        self.update_all_button.setFocusPolicy(Qt.StrongFocus)
-        self.update_all_button.setMinimumHeight(30)  # Standard button height
-        self.update_all_button.setMaximumHeight(40)  # Reasonable max height
-        self.update_all_button.clicked.connect(self.on_update_all)
-        self.update_all_button.setDefault(False)
-        self.update_all_button.setAutoDefault(False)
-        button_layout.addWidget(self.update_all_button)
-        
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setAccessibleName("Cancel")
-        self.cancel_button.setAccessibleDescription("Close window without making changes")
-        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
-        self.cancel_button.setMinimumHeight(30)  # Standard button height
-        self.cancel_button.setMaximumHeight(40)  # Reasonable max height
-        self.cancel_button.clicked.connect(self.reject)
-        self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(False)
-        button_layout.addWidget(self.cancel_button)
         
         main_layout.addLayout(button_layout)
         
@@ -265,7 +254,7 @@ class WebMetadataWindow(QDialog):
         
         # Enable buttons
         self.add_plot_button.setEnabled(bool(data.get('plot')))
-        self.update_all_button.setEnabled(True)
+        self.save_button.setEnabled(True)
         
         # Update status
         source = data.get('source', 'unknown')
@@ -326,8 +315,7 @@ class WebMetadataWindow(QDialog):
             'series_edit': lambda: self.series_field.setFocus(),    # Alt+I
             'genre_edit': lambda: self.genre_field.setFocus(),      # Alt+G
             'plot_edit': lambda: self.plot_field.setFocus(),        # Alt+P
-            'add_plot_button': self.on_add_plot,                  # Alt+K
-            'update_all_button': self.on_update_all,                # Alt+U
+            'save_button': self.on_update_all,                     # Alt+S
             'show_help': self.on_show_shortcuts,                    # F1
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.WEB_METADATA, callback_map)
@@ -408,8 +396,7 @@ class WebMetadataWindow(QDialog):
             ("Alt+Y", "Year"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+K", "Keep Plot"),
-            ("Alt+U", "Update All"),
+            ("Alt+S", "Save"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),

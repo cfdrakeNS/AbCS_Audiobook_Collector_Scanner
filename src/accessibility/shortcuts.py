@@ -113,8 +113,7 @@ class ShortcutManager(QObject):
         'Y': ('Year', 'year_edit'),
         'I': ('Series', 'series_edit'),
         'G': ('Genre', 'genre_edit'),
-        'K': ('Keep Plot', 'add_plot_button'),
-        'U': ('Update All', 'update_all_button'),
+        'S': ('Save', 'save_button'),
         'F1': ('Show help', 'show_help'),
     }
 
