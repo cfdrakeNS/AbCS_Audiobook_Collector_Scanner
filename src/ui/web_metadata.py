@@ -832,39 +832,18 @@ class WebMetadataWindow(QDialog):
         self.setup_shortcuts()
 
     def setup_shortcuts(self):
-        """Setup keyboard shortcuts (pattern from import_detail window)."""
-        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-        mgr = get_shortcut_manager()
-        # Centralized Alt+letter shortcuts for fields/buttons
-        callback_map = {
-            'title_edit': lambda: self.title_edit.setFocus(),
-            'author_edit': lambda: self.author_edit.setFocus(),
-            'comments_edit': lambda: self.comments_edit.setFocus(),
-            'year_spin': lambda: self.year_spin.setFocus(),
-            'series_edit': lambda: self.series_edit.setFocus(),
-            'genre_edit': lambda: self.genre_edit.setFocus(),
-            'save_button': lambda: self.save_button.click(),
-        }
-        mgr.register_alt_shortcuts(
-            self, ShortcutContext.WEB_METADATA, callback_map)
-
-        # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
+        """Setup shortcuts - exact copy from working test window."""
+        # F1 - local shortcut
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
+        
+        # Escape - local shortcut
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.close_shortcut.activated.connect(self.reject)
-
-        self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
-        self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.prev_shortcut.activated.connect(self.on_prev)
-
-        self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
-        self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.next_shortcut.activated.connect(self.on_next)
-
+        
+        # Alt+/ - local shortcut
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
