@@ -196,8 +196,8 @@ class WebMetadataWindow(QDialog):
         )
 
     def on_read_status_bar(self):
-        """Read current status (Alt+/)."""
-        status_text = self.get_status_summary()
+        """Read current status bar message (Alt+/)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
@@ -850,9 +850,9 @@ class WebMetadataWindow(QDialog):
             self, ShortcutContext.WEB_METADATA, callback_map)
 
         # Local shortcuts (not centralized): Alt+/, PageUp/PageDown
-        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
