@@ -62,13 +62,19 @@ class WebMetadataWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read period message first, then status bar (Alt+/)."""
+        # Debug: Check if this method is being called
+        print("DEBUG: Alt+/ pressed in web_metadata")
         if QAccessible.isActive():
+            print("DEBUG: Screen reader is active")
             # First, read stored period message for screen readers
             if self._period_message:
+                print(f"DEBUG: Reading period message: {self._period_message}")
                 self.set_status(self._period_message, announce=True)
             
             # Then read the current status bar message (with a small delay)
             QTimer.singleShot(1000, self._announce_status_bar)
+        else:
+            print("DEBUG: No screen reader active")
         # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
 
     def _announce_status_bar(self):
@@ -218,6 +224,8 @@ class WebMetadataWindow(QDialog):
         
         # Status bar
         self.status_bar = QStatusBar()
+        self.status_bar.setAccessibleName("Status bar")
+        self.status_bar.setSizeGripEnabled(False)
         main_layout.addWidget(self.status_bar)
         
         # Apply theme
