@@ -22,6 +22,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
 from src.database import DatabaseManager, Book
+from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries
 
 
 class WebMetadataWindow(QDialog):
@@ -48,6 +49,12 @@ class WebMetadataWindow(QDialog):
         # Database objects
         self.db = db
         self.book = book
+        
+        # Initialize query objects
+        self.book_queries = BookQueries(db)
+        self.author_queries = AuthorQueries(db)
+        self.series_queries = SeriesQueries(db)
+        self.genre_queries = GenreQueries(db)
         
         # Setup UI
         layout = QVBoxLayout(self)
@@ -490,29 +497,61 @@ class WebMetadataWindow(QDialog):
         
         if self.book and self.db:
             try:
-                # Update book object with web metadata
-                self.book.title = self.title_edit.text()
-                self.book.author_name = self.author_edit.text()
-                self.book.comments = self.plot_edit.toPlainText()
-                self.book.year = self.year_spin.value()
-                
-                # Parse series and series number
-                series_text = self.series_edit.text()
-                if " - " in series_text:
-                    parts = series_text.split(" - ")
-                    self.book.series_name = parts[0].strip()
-                    try:
-                        self.book.series_number = int(parts[1].strip())
-                    except ValueError:
-                        self.book.series_number = None
+                # Handle author - get or create author ID
+                author_name = self.author_edit.text().strip()
+                if author_name:
+                    author = self.author_queries.get_by_name(author_name)
+                    if not author:
+                        author_id = self.author_queries.insert(author_name)
+                    else:
+                        author_id = author.author_id
                 else:
-                    self.book.series_name = series_text.strip()
-                    self.book.series_number = None
+                    author_id = None
                 
-                self.book.genre_name = self.genre_edit.text()
+                # Handle series - get or create series ID
+                series_text = self.series_edit.text().strip()
+                series_id = None
+                series_number = None
+                if series_text:
+                    # Extract series name and number
+                    if " - " in series_text:
+                        parts = series_text.split(" - ")
+                        series_name = parts[0].strip()
+                        try:
+                            series_number = int(parts[1].strip())
+                        except ValueError:
+                            series_number = None
+                    else:
+                        series_name = series_text
+                    
+                    if series_name:
+                        series = self.series_queries.get_by_name(series_name)
+                        if not series:
+                            series_id = self.series_queries.insert(series_name)
+                        else:
+                            series_id = series.series_id
                 
-                # Save to database
-                self.db.update_book(self.book)
+                # Handle genre - get or create genre ID
+                genre_name = self.genre_edit.text().strip()
+                if genre_name:
+                    genre = self.genre_queries.get_by_name(genre_name)
+                    if not genre:
+                        genre_id = self.genre_queries.insert(genre_name)
+                    else:
+                        genre_id = genre.genre_id
+                else:
+                    genre_id = None
+                
+                # Update book object with web metadata
+                self.book.title = self.title_edit.text().strip()
+                self.book.author_id = author_id
+                self.book.comments = self.plot_edit.toPlainText().strip()
+                self.book.year = self.year_spin.value()
+                self.book.series_id = series_id
+                self.book.genre_id = genre_id
+                
+                # Save to database using BookQueries
+                self.book_queries.update(self.book)
                 
                 # Set status and close
                 self.set_status("Web metadata saved successfully")
