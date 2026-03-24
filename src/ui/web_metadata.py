@@ -36,10 +36,11 @@ class WebMetadataWindow(QDialog):
     
     def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None, refresh_callback=None):
         super().__init__(parent)
-        self.setWindowTitle("Web Details")
-        self.setAccessibleName("Web Details Window")
-        self.setAttribute(Qt.WA_NativeWindow, True)
-        self.resize(600, 400)  # Make window wider for title/author fields
+        self.setWindowTitle("Web Book Details")
+        self.setAccessibleName("Web Book Details Window")
+        self.setAccessibleDescription("Window for reviewing and accepting web-fetched book metadata")
+        self.setMinimumSize(600, 700)
+        self.resize(700, 800)  # Match backup window size
         
         # Basic setup - PROVEN pattern
         self.scaler = scaler
@@ -146,7 +147,7 @@ class WebMetadataWindow(QDialog):
         self.plot_edit.setAccessibleName("Plot Summary")
         self.plot_edit.setAccessibleDescription("Plot summary from web source")
         self.plot_edit.setTabChangesFocus(True)
-        self.plot_edit.setMinimumHeight(40)
+        self.plot_edit.setMaximumHeight(120)  # Match backup window
         plot_label = QLabel("&Plot:")
         plot_label.setBuddy(self.plot_edit)
         form_layout.addRow(plot_label, self.plot_edit)
