@@ -89,7 +89,7 @@ class ShortcutManager(QObject):
     BOOK_DETAILS_SHORTCUTS = {
         'T': ('Title', 'title_edit'),
         'A': ('Author', 'author_combo'),
-        'P': ('Comments', 'comments_edit'),  # From Pl&ot label
+        'P': ('Plot', 'comments_edit'),  # From Pl&ot label
         'Y': ('Year', 'year_spin'),
         'M': ('Length', 'time_edit'),      # From Length (&M)
         'R': ('Reader', 'reader_edit'),
@@ -101,6 +101,7 @@ class ShortcutManager(QObject):
         'B': ('Bitrate', 'bitrate_edit'),
         'Z': ('Size', 'size_edit'),
         'H': ('Path', 'path_edit'),        # From Pat&h label
+        'U': ('Update Metadata', 'get_web_details_button'),  # Alt+U for button
         'F1': ('Show help', 'show_help'),
     }
 
