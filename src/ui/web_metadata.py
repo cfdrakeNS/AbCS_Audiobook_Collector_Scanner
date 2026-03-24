@@ -542,8 +542,15 @@ class WebMetadataWindow(QDialog):
                 else:
                     genre_id = None
                 
-                # Update book object with web metadata
-                self.book.title = self.title_edit.text().strip()
+                # Update book object with web metadata (filtered)
+                title_text = self.title_edit.text().strip()
+                author_text = self.author_edit.text().strip()
+                
+                # Filter out test artifacts
+                title_text = title_text.replace(" - WEB EDITION", "").strip()
+                author_text = author_text.replace(" (Web Verified)", "").strip()
+                
+                self.book.title = title_text
                 self.book.author_id = author_id
                 self.book.comments = self.plot_edit.toPlainText().strip()
                 self.book.year = self.year_spin.value()
