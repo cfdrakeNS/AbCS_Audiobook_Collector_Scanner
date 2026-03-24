@@ -676,10 +676,10 @@ class BookDetailsWindow(QDialog):
         self.cancel_button.setAutoDefault(False)
         button_layout.addWidget(self.cancel_button)
 
-        # Get Metadata button (Alt+G)
-        self.get_web_details_button = QPushButton("Get Metadata")
-        self.get_web_details_button.setAccessibleName("Get metadata")
-        self.get_web_details_button.setAccessibleDescription("Fetch book metadata from web sources - Alt+G")
+        # Update Metadata button (Alt+U)
+        self.get_web_details_button = QPushButton("&Update Metadata")
+        self.get_web_details_button.setAccessibleName("Update metadata")
+        self.get_web_details_button.setAccessibleDescription("Fetch book metadata from web sources - Alt+U")
         self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
         self.get_web_details_button.clicked.connect(self.on_get_web_details)
         self.get_web_details_button.setDefault(False)
@@ -780,12 +780,11 @@ class BookDetailsWindow(QDialog):
             'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
             'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
             'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
-            'format_combo': lambda: self.format_combo.setFocus(),  # Alt+U (if needed)
-            'get_web_details_button': self.on_get_web_details,    # Alt+G
-            # 'new_button': self.on_new,  # Commented out to avoid conflict
-            # 'save_button': self.on_save,  # Commented out to avoid conflict
-            # 'delete_button': self.on_delete,  # Commented out to avoid conflict
-            # 'cancel_button': self.on_cancel_edit,  # Commented out to avoid conflict
+            'get_web_details_button': self.on_get_web_details,    # Alt+U
+            'new_button': self.on_new,                              # Alt+N
+            'save_button': self.on_save,                              # Alt+S
+            'delete_button': self.on_delete,                            # Alt+D
+            'cancel_button': self.on_cancel_edit,                        # Alt+L
             'show_help': self.on_show_shortcuts,  # F1 centralized
         }
         self.shortcut_manager.register_alt_shortcuts(
@@ -970,6 +969,7 @@ class BookDetailsWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
+            ("Alt+U", "Update Metadata"),
             ("Alt+N", "New book"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
