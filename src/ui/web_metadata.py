@@ -832,27 +832,30 @@ class WebMetadataWindow(QDialog):
         self.setup_shortcuts()
 
     def setup_shortcuts(self):
-        """Centralized Alt+letter shortcut registration using ShortcutManager."""
+        """Setup keyboard shortcuts (pattern from import_detail window)."""
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
         mgr = get_shortcut_manager()
+        # Centralized Alt+letter shortcuts for fields/buttons
         callback_map = {
-            'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
-            'author_edit': lambda: self.author_edit.setFocus(),  # Alt+A
-            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
-            'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
-            'series_edit': lambda: self.series_edit.setFocus(),  # Alt+I
-            'genre_edit': lambda: self.genre_edit.setFocus(),    # Alt+G
-            'save_button': lambda: self.save_button.click(),      # Alt+S
-            'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
-            'show_help': self.on_show_shortcuts,  # F1
+            'title_edit': lambda: self.title_edit.setFocus(),
+            'author_edit': lambda: self.author_edit.setFocus(),
+            'comments_edit': lambda: self.comments_edit.setFocus(),
+            'year_spin': lambda: self.year_spin.setFocus(),
+            'series_edit': lambda: self.series_edit.setFocus(),
+            'genre_edit': lambda: self.genre_edit.setFocus(),
+            'save_button': lambda: self.save_button.click(),
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map)
 
-        # Local shortcuts (not centralized): Alt+/, PageUp/PageDown
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.status_shortcut.activated.connect(self.on_read_status_bar)
+        # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.close_shortcut.activated.connect(self.reject)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -862,10 +865,14 @@ class WebMetadataWindow(QDialog):
         self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.next_shortcut.activated.connect(self.on_next)
 
+        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
         dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Import Detail")
+        dlg.setWindowTitle("Keyboard Shortcuts - Web Metadata")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(580, 440)
 
@@ -893,21 +900,13 @@ class WebMetadataWindow(QDialog):
             ("Alt+A", "Author"),
             ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
-            ("Alt+M", "Time"),
-            ("Alt+R", "Reader"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+C", "Collection"),
-            ("Alt+F", "Files"),
-            ("Alt+B", "Bitrate"),
-            ("Alt+Z", "Size"),
-            ("Alt+E", "Errors"),
-            ("Alt+H", "Path"),
             ("Alt+S", "Save"),
-            ("Alt+D", "Discard"),
+            ("Alt+L", "Launch Tag"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),
-            ("Escape", "Close detail"),
+            ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
@@ -927,6 +926,7 @@ class WebMetadataWindow(QDialog):
         table.setFont(font)
         layout.addWidget(table)
 
+        QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
         dlg.exec()
 
     def _collect_form_data(self):

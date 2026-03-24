@@ -214,6 +214,10 @@ class ShortcutManager(QObject):
                         key_seq = QKeySequence(qt_key)
                     else:
                         key_seq = QKeySequence(key)
+                elif key == '/':
+                    key_seq = QKeySequence("Alt+/")
+                elif key == 'Escape':
+                    key_seq = QKeySequence(Qt.Key_Escape)
                 else:
                     key_seq = QKeySequence(f"Alt+{key}")
                 shortcut = QShortcut(key_seq, widget)
