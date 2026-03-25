@@ -84,30 +84,36 @@ class WebMetadataWindow(QDialog):
         """
         Web metadata UI - match book_details layout exactly.
         """
-        # Form layout for book details - absolute minimum spacing
+        # Form layout for book details - match import_detail alignment
         form_layout = QFormLayout()
         form_layout.setSpacing(1)  # Absolute minimum spacing for low vision
         form_layout.setContentsMargins(0, 0, 0, 0)  # No extra margins - match book_details
+        form_layout.setLabelAlignment(Qt.AlignRight)  # Right-aligned labels like import_detail
         
-        # Set proper alignment for labels and fields - EXACT backup alignment
-        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # EXACT backup value
-        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # EXACT backup value
+        # Set proper alignment for labels and fields
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         
-        # Title field
+        # Title field - proper width, not full window
+        title_row = QHBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Title")
         self.title_edit.setAccessibleDescription("Book title from web source")
+        self.title_edit.setMaximumWidth(600)  # Leave room for cover image
         title_label = QLabel("&Title:")
         title_label.setBuddy(self.title_edit)
-        form_layout.addRow(title_label, self._create_field_with_indicator(self.title_edit))
+        title_row.addWidget(self._create_field_with_indicator(self.title_edit))
+        form_layout.addRow(title_label, title_row)
         
-        # Author field
+        # Author field - proper width, not full window
+        author_row = QHBoxLayout()
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
         self.author_edit.setAccessibleDescription("Author name from web source")
+        self.author_edit.setMaximumWidth(400)  # Reasonable width for author names
         author_label = QLabel("&Author:")
         author_label.setBuddy(self.author_edit)
-        form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
+        author_row.addWidget(self._create_field_with_indicator(self.author_edit))
+        form_layout.addRow(author_label, author_row)
         
         # Year field - use QLineEdit like backup window, size for 4 digits
         year_label = QLabel("&Year:")
