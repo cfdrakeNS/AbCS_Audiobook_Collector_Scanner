@@ -321,11 +321,11 @@ class WebMetadataWindow(QDialog):
     
     def update_fields_with_web_data(self, web_data):
         """Update UI fields with web data and track differences."""
+        # Store web_data for later use in accept()
+        self.web_data = web_data
         changes_made = False
-        
         # Track differences for popup
         self.field_differences = {}
-        
         # Title
         if web_data.get('title'):
             if web_data['title'] != self.book.title:
@@ -337,7 +337,6 @@ class WebMetadataWindow(QDialog):
                 self.show_indicator(self.title_edit, True, color='green')
         else:
             self.show_indicator(self.title_edit, False)
-
         # Author
         if web_data.get('author'):
             if web_data['author'] != self.book.author_name:
@@ -349,7 +348,6 @@ class WebMetadataWindow(QDialog):
                 self.show_indicator(self.author_edit, True, color='green')
         else:
             self.show_indicator(self.author_edit, False)
-
         # Year
         if web_data.get('year'):
             if str(web_data['year']) != self.year_edit.text():
@@ -361,7 +359,6 @@ class WebMetadataWindow(QDialog):
                 self.show_indicator(self.year_edit, True, color='green')
         else:
             self.show_indicator(self.year_edit, False)
-
         # Series (ignore series_number, only show series name)
         if web_data.get('series'):
             if web_data['series'] != self.book.series_name:
@@ -373,7 +370,6 @@ class WebMetadataWindow(QDialog):
                 self.show_indicator(self.series_edit, True, color='green')
         else:
             self.show_indicator(self.series_edit, False)
-
         # Genre
         if web_data.get('genre'):
             if web_data['genre'] != self.book.genre_name:
@@ -385,7 +381,6 @@ class WebMetadataWindow(QDialog):
                 self.show_indicator(self.genre_edit, True, color='green')
         else:
             self.show_indicator(self.genre_edit, False)
-
         # Plot (no indicator as requested)
         if web_data.get('plot'):
             if web_data['plot'] != self.book.comments:
@@ -597,9 +592,9 @@ class WebMetadataWindow(QDialog):
             announce_status_message(self.status_bar, message, move_focus=True)
     
     def accept(self):
-        """Save and accept - update database and refresh book details."""
+        """Save and accept - update database and refresh book details, with plot field formatted as requested."""
         self.set_status("Saving web metadata...")
-        
+
         if self.book and self.db:
             try:
                 # Handle author - get or create author ID
@@ -659,9 +654,61 @@ class WebMetadataWindow(QDialog):
                 except ValueError:
                     self.book.year = None
 
-                # Update title and plot
+                # Update title
                 self.book.title = self.title_edit.text().strip()
-                self.book.comments = self.plot_edit.toPlainText().strip()
+
+                # Format plot/comments field with rating, source, publisher as requested
+                plot = self.plot_edit.toPlainText().strip()
+                rating_line = ""
+                source_line = ""
+                publisher_line = ""
+                # Use web_data if available
+                web_data = getattr(self, 'web_data', None)
+                if web_data:
+                    rating = web_data.get('rating')
+                    ratings_count = web_data.get('ratings_count')
+                    source = web_data.get('source')
+                    publisher = web_data.get('publisher')
+                    if rating:
+                        try:
+                            rating_val = float(rating)
+                            rating_str = f"{rating_val:.1f}"
+                        except (ValueError, TypeError):
+                            rating_str = str(rating)
+                        if ratings_count:
+                            try:
+                                count_val = int(ratings_count)
+                                count_str = f"{count_val} reviews"
+                            except (ValueError, TypeError):
+                                count_str = f"{ratings_count} reviews"
+                            rating_line = f"Rating {rating_str} ({count_str})"
+                        else:
+                            rating_line = f"Rating {rating_str}"
+                    if source:
+                        source_line = f"Plot Source: {source}"
+                    if publisher:
+                        publisher_line = f"Publisher: {publisher}"
+                # Build the new plot/comments field: rating and source on same line at top, publisher at end
+                plot_lines = []
+                header_line = ""
+                if rating_line and source_line:
+                    header_line = f"{rating_line} | {source_line}"
+                elif rating_line:
+                    header_line = rating_line
+                elif source_line:
+                    header_line = source_line
+                if header_line:
+                    plot_lines.append(header_line)
+                if plot:
+                    if header_line:
+                        plot_lines.append("")  # blank line before plot if header present
+                    plot_lines.append(plot)
+                if publisher_line:
+                    if plot_lines:
+                        plot_lines.append("")  # blank line before publisher if plot or header present
+                    plot_lines.append(publisher_line)
+                new_plot = "\n".join(plot_lines).strip()
+                self.book.comments = new_plot
 
                 # Save to database
                 self.book_queries.update(self.book)
