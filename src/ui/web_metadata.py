@@ -712,11 +712,9 @@ class WebMetadataWindow(QDialog):
                     # Also call save to persist changes
                     if hasattr(self.parent(), 'on_save'):
                         self.parent().on_save()
-                    # Clear dirty state last to ensure it stays clear
-                    if hasattr(self.parent(), '_dirty'):
-                        self.parent()._dirty = False
-                    if hasattr(self.parent(), '_update_save_button_visibility'):
-                        self.parent()._update_save_button_visibility()
+                    # Clear dirty state using the proper method
+                    if hasattr(self.parent(), '_clear_dirty'):
+                        self.parent()._clear_dirty(preserve_status=True)
                     # Force UI update
                     if hasattr(self.parent(), 'repaint'):
                         self.parent().repaint()
