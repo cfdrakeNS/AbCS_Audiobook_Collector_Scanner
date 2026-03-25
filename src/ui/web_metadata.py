@@ -263,17 +263,8 @@ class WebMetadataWindow(QDialog):
         try:
             import requests
         except ImportError:
-            # requests not available, return test data for demonstration
-            print("requests module not available - using test data")
-            if title and author:
-                return {
-                    'title': title,
-                    'author': author,
-                    'year': 2023,
-                    'series': 'Test Series',
-                    'genre': 'Fiction',
-                    'plot': 'This is test plot data because requests module is not available.'
-                }
+            # requests not available, return None
+            print("requests module not available - web fetching disabled")
             return None
         
         import json
