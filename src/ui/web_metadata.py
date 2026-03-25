@@ -51,6 +51,7 @@ class WebMetadataWindow(QDialog):
         # Database objects
         self.db = db
         self.book = book
+        self.parent_window = parent  # Store parent reference directly
         
         # Initialize query objects
         self.book_queries = BookQueries(db)
@@ -708,16 +709,20 @@ class WebMetadataWindow(QDialog):
                 
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
+                    print(f"DEBUG: Before refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     self.refresh_callback()  # This loads the data (may set dirty flag)
+                    print(f"DEBUG: After refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Also call save to persist changes
-                    if hasattr(self.parent(), 'on_save'):
-                        self.parent().on_save()
+                    if hasattr(self.parent_window, 'on_save'):
+                        self.parent_window.on_save()
+                        print(f"DEBUG: After on_save - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Clear dirty state using the proper method
-                    if hasattr(self.parent(), '_clear_dirty'):
-                        self.parent()._clear_dirty(preserve_status=True)
+                    if hasattr(self.parent_window, '_clear_dirty'):
+                        self.parent_window._clear_dirty(preserve_status=True)
+                        print(f"DEBUG: After _clear_dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Force UI update
-                    if hasattr(self.parent(), 'repaint'):
-                        self.parent().repaint()
+                    if hasattr(self.parent_window, 'repaint'):
+                        self.parent_window.repaint()
                 
                 announce_dialog_closed(self)
                 super().accept()
