@@ -93,51 +93,51 @@ class WebMetadataWindow(QDialog):
         form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # EXACT backup
         form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # EXACT backup
         
-        # Title field - proper width, not full window
+        # Title field - add directly like backup
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Title")
         self.title_edit.setAccessibleDescription("Book title from web source")
-        self.title_edit.setMaximumWidth(600)  # Leave room for cover image
+        self.title_edit.setMaximumWidth(600)
         title_label = QLabel("&Title:")
         title_label.setBuddy(self.title_edit)
-        form_layout.addRow(title_label, self._create_field_with_indicator(self.title_edit))
+        form_layout.addRow(title_label, self.title_edit)
         
-        # Author field - proper width, not full window
+        # Author field - add directly like backup
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
         self.author_edit.setAccessibleDescription("Author name from web source")
-        self.author_edit.setMaximumWidth(400)  # Reasonable width for author names
+        self.author_edit.setMaximumWidth(400)
         author_label = QLabel("&Author:")
         author_label.setBuddy(self.author_edit)
-        form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
+        form_layout.addRow(author_label, self.author_edit)
         
-        # Year field - use QLineEdit like backup window, size for 4 digits
-        self.year_edit = QLineEdit()  # QLineEdit like backup, NOT QSpinBox
+        # Year field - add directly like backup
+        self.year_edit = QLineEdit()
         self.year_edit.setAccessibleName("Publication year")
         self.year_edit.setAccessibleDescription("Publication year from web source")
-        self.year_edit.setMaximumWidth(80)  # Size for 4 digits only
-        self.year_edit.setPlaceholderText("YYYY")  # Show format hint
+        self.year_edit.setMaximumWidth(80)
+        self.year_edit.setPlaceholderText("YYYY")
         year_label = QLabel("&Year:")
         year_label.setBuddy(self.year_edit)
-        form_layout.addRow(year_label, self._create_field_with_indicator(self.year_edit))
+        form_layout.addRow(year_label, self.year_edit)
         
-        # Series field - proper width for series names
+        # Series field - add directly like backup
         self.series_edit = QLineEdit()
         self.series_edit.setAccessibleName("Series")
         self.series_edit.setAccessibleDescription("Series name from web source")
-        self.series_edit.setMaximumWidth(300)  # Reasonable width for series names
+        self.series_edit.setMaximumWidth(300)
         series_label = QLabel("Ser&ies:")
         series_label.setBuddy(self.series_edit)
-        form_layout.addRow(series_label, self._create_field_with_indicator(self.series_edit))
+        form_layout.addRow(series_label, self.series_edit)
         
-        # Genre field - proper width for genre names
+        # Genre field - add directly like backup
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Genre")
         self.genre_edit.setAccessibleDescription("Genre from web source")
-        self.genre_edit.setMaximumWidth(200)  # Reasonable width for genre names
+        self.genre_edit.setMaximumWidth(200)
         genre_label = QLabel("&Genre:")
         genre_label.setBuddy(self.genre_edit)
-        form_layout.addRow(genre_label, self._create_field_with_indicator(self.genre_edit))
+        form_layout.addRow(genre_label, self.genre_edit)
         
         # Plot field (no indicator as requested)
         self.plot_edit = QTextEdit()
