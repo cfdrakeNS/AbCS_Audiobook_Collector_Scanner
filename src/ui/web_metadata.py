@@ -94,34 +94,30 @@ class WebMetadataWindow(QDialog):
         form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         
         # Title field - proper width, not full window
-        title_row = QHBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Title")
         self.title_edit.setAccessibleDescription("Book title from web source")
         self.title_edit.setMaximumWidth(600)  # Leave room for cover image
         title_label = QLabel("&Title:")
         title_label.setBuddy(self.title_edit)
-        title_row.addWidget(self._create_field_with_indicator(self.title_edit))
-        form_layout.addRow(title_label, title_row)
+        form_layout.addRow(title_label, self._create_field_with_indicator(self.title_edit))
         
         # Author field - proper width, not full window
-        author_row = QHBoxLayout()
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
         self.author_edit.setAccessibleDescription("Author name from web source")
         self.author_edit.setMaximumWidth(400)  # Reasonable width for author names
         author_label = QLabel("&Author:")
         author_label.setBuddy(self.author_edit)
-        author_row.addWidget(self._create_field_with_indicator(self.author_edit))
-        form_layout.addRow(author_label, author_row)
+        form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
         
         # Year field - use QLineEdit like backup window, size for 4 digits
-        year_label = QLabel("&Year:")
         self.year_edit = QLineEdit()  # QLineEdit like backup, NOT QSpinBox
         self.year_edit.setAccessibleName("Publication year")
         self.year_edit.setAccessibleDescription("Publication year from web source")
         self.year_edit.setMaximumWidth(80)  # Size for 4 digits only
         self.year_edit.setPlaceholderText("YYYY")  # Show format hint
+        year_label = QLabel("&Year:")
         year_label.setBuddy(self.year_edit)
         form_layout.addRow(year_label, self._create_field_with_indicator(self.year_edit))
         
