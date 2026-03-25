@@ -720,9 +720,31 @@ class WebMetadataWindow(QDialog):
                     if hasattr(self.parent_window, '_clear_dirty'):
                         self.parent_window._clear_dirty(preserve_status=True)
                         print(f"DEBUG: After _clear_dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    # Force clear dirty flag one more time
+                    if hasattr(self.parent_window, '_dirty'):
+                        self.parent_window._dirty = False
+                        print(f"DEBUG: Force clear dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    # Update save button visibility
+                    if hasattr(self.parent_window, '_update_save_button_visibility'):
+                        self.parent_window._update_save_button_visibility()
                     # Force UI update
                     if hasattr(self.parent_window, 'repaint'):
                         self.parent_window.repaint()
+                    # Store a flag to prevent save prompt
+                    if hasattr(self.parent_window, '_web_metadata_saved'):
+                        self.parent_window._web_metadata_saved = True
+                    
+                    # Monkey-patch reject method to prevent save prompt
+                    if hasattr(self.parent_window, 'reject'):
+                        original_reject = self.parent_window.reject
+                        def patched_reject():
+                            if getattr(self.parent_window, '_web_metadata_saved', False):
+                                # Skip save prompt if we just saved from web metadata
+                                self.parent_window._web_metadata_saved = False
+                                super(self.parent_window.__class__, self.parent_window).reject()
+                            else:
+                                original_reject()
+                        self.parent_window.reject = patched_reject
                 
                 announce_dialog_closed(self)
                 super().accept()
