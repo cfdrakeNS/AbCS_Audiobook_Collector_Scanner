@@ -342,59 +342,90 @@ class WebMetadataWindow(QDialog):
             return "A compelling story that explores the depths of human nature and the choices we make when faced with impossible situations."
     
     def update_fields_with_web_data(self, web_data):
-        """Update fields with web data and set indicators."""
+        """Update UI fields with web data and track differences."""
         changes_made = False
         
-        # Update title and show indicator
-        if web_data.get('title') and web_data['title'] != self.title_edit.text():
+        # Track differences for popup
+        self.field_differences = {}
+        
+        # Compare and update title
+        if web_data.get('title') and web_data['title'] != self.book.title:
             self.title_edit.setText(web_data['title'])
-            self.show_indicator(self.title_edit, True)
+            self.field_differences['title'] = web_data['title']
             changes_made = True
-        else:
-            self.show_indicator(self.title_edit, False)
         
-        # Update author and show indicator
-        if web_data.get('author') and web_data['author'] != self.author_edit.text():
+        # Compare and update author
+        if web_data.get('author') and web_data['author'] != self.book.author_name:
             self.author_edit.setText(web_data['author'])
-            self.show_indicator(self.author_edit, True)
+            self.field_differences['author'] = web_data['author']
             changes_made = True
-        else:
-            self.show_indicator(self.author_edit, False)
         
-        # Update year and show indicator
+        # Compare and update year
         if web_data.get('year') and str(web_data['year']) != self.year_edit.text():
             self.year_edit.setText(str(web_data['year']))
-            self.show_indicator(self.year_edit, True)
+            self.field_differences['year'] = str(web_data['year'])
             changes_made = True
-        else:
-            self.show_indicator(self.year_edit, False)
         
-        # Update series with series number and show indicator
-        series_text = web_data.get('series', '')
-        if web_data.get('series_number'):
-            series_text = f"{series_text} - {web_data['series_number']}"
-        
-        if series_text and series_text != self.series_edit.text():
-            self.series_edit.setText(series_text)
-            self.show_indicator(self.series_edit, True)
+        # Compare and update series
+        if web_data.get('series') and web_data['series'] != self.book.series_name:
+            self.series_edit.setText(web_data['series'])
+            self.field_differences['series'] = web_data['series']
             changes_made = True
-        else:
-            self.show_indicator(self.series_edit, False)
         
-        # Update genre and show indicator
-        if web_data.get('genre') and web_data['genre'] != self.genre_edit.text():
+        # Compare and update genre
+        if web_data.get('genre') and web_data['genre'] != self.book.genre_name:
             self.genre_edit.setText(web_data['genre'])
-            self.show_indicator(self.genre_edit, True)
+            self.field_differences['genre'] = web_data['genre']
             changes_made = True
-        else:
-            self.show_indicator(self.genre_edit, False)
         
-        # Update plot (no indicator for plot)
-        if web_data.get('plot') and web_data['plot'] != self.plot_edit.toPlainText():
-            self.plot_edit.setPlainText(web_data['plot'])
-            changes_made = True
+        # Compare and update plot (show found/not found)
+        if web_data.get('plot'):
+            if web_data['plot'] != self.book.comments:
+                self.plot_edit.setPlainText(web_data['plot'])
+                self.field_differences['plot'] = 'found'
+                changes_made = True
         
         return changes_made
+    
+    def show_changes_popup(self, web_data):
+        """Show popup with only fields that changed."""
+        if not hasattr(self, 'field_differences') or not self.field_differences:
+            return
+            
+        # Build changes message
+        message_lines = ["Web Data Changes Found:"]
+        for field, value in self.field_differences.items():
+            if field == 'plot':
+                field_name = 'Plot'
+                display_value = 'found' if value == 'found' else 'not found'
+            elif field == 'series':
+                field_name = 'Series'
+                display_value = value
+            elif field == 'genre':
+                field_name = 'Genre'
+                display_value = value
+            elif field == 'author':
+                field_name = 'Author'
+                display_value = value
+            elif field == 'year':
+                field_name = 'Year'
+                display_value = value
+            elif field == 'title':
+                field_name = 'Title'
+                display_value = value
+            else:
+                field_name = field.capitalize()
+                display_value = value
+            
+            message_lines.append(f"{field_name} - {display_value}")
+        
+        # Show popup
+        from PySide6.QtWidgets import QMessageBox
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Web Data Changes")
+        msg.setText("\n".join(message_lines))
+        msg.setIcon(QMessageBox.Information)
+        msg.exec()
     
     def show_indicator(self, field, show):
         """Show or hide the web data indicator for a field."""
