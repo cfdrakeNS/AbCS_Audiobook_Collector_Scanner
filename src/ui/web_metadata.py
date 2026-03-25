@@ -1,3 +1,4 @@
+
 """
 Web Metadata Window - Built from PROVEN accessible skeleton
 Accessibility works out of box: F1, Alt+/, Escape
@@ -14,7 +15,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QApplication, QStatusBar, 
     QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox,
-    QWidget, QSizePolicy
+    QWidget, QSizePolicy, QMessageBox
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
@@ -22,8 +23,10 @@ from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
+
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries
+from src.web.web_book_api import WebBookAPI
 
 
 class WebMetadataWindow(QDialog):
@@ -33,6 +36,14 @@ class WebMetadataWindow(QDialog):
     F1, Alt+/, and Escape work out of box.
     Built incrementally from accessible skeleton.
     """
+
+    def _adjust_plot_height(self):
+        # Dynamically adjust plot_edit height to fit content, up to max height
+        doc_height = self.plot_edit.document().size().height()
+        min_height = 40
+        max_height = 300
+        new_height = max(min_height, min(int(doc_height * 1.25) + 10, max_height))
+        self.plot_edit.setMinimumHeight(new_height)
     
     def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None, refresh_callback=None):
         super().__init__(parent)
@@ -78,7 +89,7 @@ class WebMetadataWindow(QDialog):
         
         # Load data and set status
         self.load_book_data()
-        self.set_status("Ready")
+        # self.set_status("Ready")  # Removed to keep found status visible
         announce_dialog_opened(self, "Web Details")
     
     def setup_ui(self, layout):
@@ -87,69 +98,75 @@ class WebMetadataWindow(QDialog):
         """
         # Form layout for book details - EXACT backup match
         form_layout = QFormLayout()
-        form_layout.setSpacing(3)  # EXACT backup spacing
-        form_layout.setContentsMargins(20, 20, 20, 20)  # EXACT backup margins
+        form_layout.setSpacing(3)  # Restore readable vertical spacing
+        form_layout.setContentsMargins(20, 20, 20, 20)  # Restore original margins for readability
+
+        # Set proper alignment for labels and fields
+        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         
-        # Set proper alignment for labels and fields - EXACT backup values
-        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # EXACT backup
-        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # EXACT backup
-        
-        # Title field - add directly like backup
+        # Title field with indicator
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Title")
         self.title_edit.setAccessibleDescription("Book title from web source")
-        self.title_edit.setMaximumWidth(600)
+        # No maximum width; allow expanding
+        self.title_field_container = self._create_field_with_indicator(self.title_edit)
         title_label = QLabel("&Title:")
         title_label.setBuddy(self.title_edit)
-        form_layout.addRow(title_label, self.title_edit)
+        form_layout.addRow(title_label, self.title_field_container)
         
-        # Author field - add directly like backup
+        # Author field with indicator
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Author")
         self.author_edit.setAccessibleDescription("Author name from web source")
-        self.author_edit.setMaximumWidth(400)
+        # No maximum width; allow expanding
+        self.author_field_container = self._create_field_with_indicator(self.author_edit)
         author_label = QLabel("&Author:")
         author_label.setBuddy(self.author_edit)
-        form_layout.addRow(author_label, self.author_edit)
+        form_layout.addRow(author_label, self.author_field_container)
         
-        # Year field - add directly like backup
+        # Year field with indicator
         self.year_edit = QLineEdit()
         self.year_edit.setAccessibleName("Publication year")
         self.year_edit.setAccessibleDescription("Publication year from web source")
         self.year_edit.setMaximumWidth(80)
         self.year_edit.setPlaceholderText("YYYY")
+        self.year_field_container = self._create_field_with_indicator(self.year_edit)
         year_label = QLabel("&Year:")
         year_label.setBuddy(self.year_edit)
-        form_layout.addRow(year_label, self.year_edit)
+        form_layout.addRow(year_label, self.year_field_container)
         
-        # Series field - add directly like backup
+        # Series field (single row, no number field)
         self.series_edit = QLineEdit()
         self.series_edit.setAccessibleName("Series")
         self.series_edit.setAccessibleDescription("Series name from web source")
-        self.series_edit.setMaximumWidth(300)
+        self.series_field_container = self._create_field_with_indicator(self.series_edit)
         series_label = QLabel("Ser&ies:")
         series_label.setBuddy(self.series_edit)
-        form_layout.addRow(series_label, self.series_edit)
+        form_layout.addRow(series_label, self.series_field_container)
         
-        # Genre field - add directly like backup
+        # Genre field with indicator (match other fields, no extra container)
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Genre")
         self.genre_edit.setAccessibleDescription("Genre from web source")
-        self.genre_edit.setMaximumWidth(200)
+        # No maximum width; allow expanding
+        self.genre_field_container = self._create_field_with_indicator(self.genre_edit)
         genre_label = QLabel("&Genre:")
         genre_label.setBuddy(self.genre_edit)
-        form_layout.addRow(genre_label, self.genre_edit)
+        form_layout.addRow(genre_label, self.genre_field_container)
         
         # Plot field (no indicator as requested)
         self.plot_edit = QTextEdit()
         self.plot_edit.setAccessibleName("Plot Summary")
         self.plot_edit.setAccessibleDescription("Plot summary from web source")
         self.plot_edit.setTabChangesFocus(True)
-        self.plot_edit.setMaximumHeight(120)  # Match backup window
+        self.plot_edit.setMinimumHeight(40)
+        self.plot_edit.setMaximumHeight(300)
+        self.plot_edit.textChanged.connect(self._adjust_plot_height)
         plot_label = QLabel("&Plot:")
         plot_label.setBuddy(self.plot_edit)
         form_layout.addRow(plot_label, self.plot_edit)
-        
+
         layout.addLayout(form_layout)
         
         # Buttons - match book_details styling
@@ -201,29 +218,31 @@ class WebMetadataWindow(QDialog):
             field.setStyleSheet(field_style)
     
     def _create_field_with_indicator(self, field):
-        """Create a field with web data difference indicator."""
+        """Create a field with web data difference indicator, left-aligned for accessibility."""
         from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
-        
+
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(3)  # Reduced spacing to prevent excessive gaps
-        
-        # Set container to match field height - EXACT backup values
+        layout.setSpacing(3)
+        layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        # Set container to expanding horizontally, fixed vertically
         container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        
-        # The actual field
-        layout.addWidget(field)
-        
-        # Difference indicator (check mark for web data)
+
+        # The actual field: expanding horizontally
+        field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addWidget(field, 1)  # stretch=1
+
+        # Difference indicator (check mark for web data): fixed size
         indicator = QLabel("✓")
         indicator.setAccessibleName("Web data indicator")
         indicator.setAccessibleDescription("This field contains web-fetched data")
         indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Sea green
         indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         indicator.setAlignment(Qt.AlignCenter)
-        layout.addWidget(indicator)
-        
+        layout.addWidget(indicator, 0)  # stretch=0
+
         return container
     
     def load_book_data(self):
@@ -242,110 +261,46 @@ class WebMetadataWindow(QDialog):
     def fetch_web_data(self):
         """Fetch web data from API with status updates."""
         self.set_status("Fetching web data...")
-        
+
         # Get current book info
         title = self.book.title
         author = self.book.author_name
-        
-        # Fetch web data
-        web_data = self.simulate_web_fetch(title, author)
-        
+        year = str(self.book.year) if self.book.year else None
+
+        # Use WebBookAPI for fetching with error handling
+        api = WebBookAPI()
+        try:
+            web_data = api.get_book_metadata(title, author, year)
+        except Exception as e:
+            self.set_status(f"Error fetching web data: {str(e)}", announce=True)
+            self.clear_web_indicators()
+            return
+
         if web_data:
             self.update_fields_with_web_data(web_data)
-            self.show_changes_popup(web_data)
-            self.set_status("Web data fetched successfully")
-            print("DEBUG: Web data found - status set to success")
+            # Build found fields message for status bar (Plot, Series, Genre only)
+            found_fields = []
+            plot_found = False
+            if web_data.get('plot') and web_data['plot'].strip():
+                found_fields.append('Plot')
+                plot_found = True
+            if web_data.get('series') and web_data['series'].strip():
+                found_fields.append('Series')
+            if web_data.get('genre') and web_data['genre'].strip():
+                found_fields.append('Genre')
+
+            if found_fields:
+                msg = "Found - " + ", ".join(found_fields)
+                self.set_status(msg, announce=True)
+                if plot_found:
+                    self.plot_edit.setFocus()
+            else:
+                self.set_status("Web data fetched (no new Plot, Series, Genre)")
         else:
             self.set_status("No web data found - book not matched", announce=True)
-            print("DEBUG: No web data found - status set to not found")
-            # Clear all indicators to indicate no web data
             self.clear_web_indicators()
     
-    def simulate_web_fetch(self, title, author):
-        """Fetch real web data from Google Books API."""
-        try:
-            import requests
-        except ImportError:
-            # requests not available, return None
-            print("requests module not available - web fetching disabled")
-            return None
-        
-        import json
-        
-        if not title or not author:
-            return None
-            
-        try:
-            # Build Google Books API query
-            query = f"{title} {author}"
-            url = f"https://www.googleapis.com/books/v1/volumes?q={requests.utils.quote(query)}&maxResults=1"
-            
-            # Make API request
-            response = requests.get(url, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                
-                if data.get('items') and len(data['items']) > 0:
-                    book = data['items'][0]['volumeInfo']
-                    
-                    # Validate that this is a good match
-                    api_title = book.get('title', '').lower()
-                    api_author = book.get('authors', [])
-                    api_author_str = ', '.join(api_author).lower() if api_author else ''
-                    
-                    title_lower = title.lower()
-                    author_lower = author.lower()
-                    
-                    # Check for basic title similarity (at least 50% match)
-                    import difflib
-                    title_similarity = difflib.SequenceMatcher(None, title_lower, api_title).ratio()
-                    
-                    # Check if author name appears in API authors
-                    author_match = any(author_lower in auth.lower() for auth in api_author) if api_author else False
-                    
-                    # Only accept if we have reasonable title match AND author match
-                    if title_similarity > 0.5 and author_match:
-                        # Extract relevant data
-                        result = {
-                            'title': book.get('title', ''),
-                            'author': ', '.join(book.get('authors', [])),
-                            'year': None,
-                            'series': None,
-                            'genre': None,
-                            'plot': book.get('description', '')
-                        }
-                        
-                        # Extract year from publication date
-                        pub_date = book.get('publishedDate', '')
-                        if pub_date:
-                            import re
-                            year_match = re.search(r'(\d{4})', pub_date)
-                            if year_match:
-                                try:
-                                    result['year'] = int(year_match.group(1))
-                                except ValueError:
-                                    pass
-                        
-                        # Extract genre from categories
-                        if 'categories' in book and book['categories']:
-                            result['genre'] = book['categories'][0]
-                        
-                        # Extract series from title (common pattern: "Series Name, Book #")
-                        title_text = book.get('title', '')
-                        if ', ' in title_text:
-                            parts = title_text.split(', ')
-                            if len(parts) >= 2 and 'book' in parts[1].lower():
-                                result['series'] = parts[0]
-                        
-                        return result
-                    else:
-                        print(f"Poor match: title similarity {title_similarity:.2f}, author match {author_match}")
-                        return None
-                    
-        except Exception as e:
-            print(f"Web fetch error: {e}")
-            
-        return None
+
     
     def generate_realistic_plot(self, title):
         """Generate a more realistic plot based on title keywords."""
@@ -371,94 +326,99 @@ class WebMetadataWindow(QDialog):
         # Track differences for popup
         self.field_differences = {}
         
-        # Compare and update title
-        if web_data.get('title') and web_data['title'] != self.book.title:
-            self.title_edit.setText(web_data['title'])
-            self.field_differences['title'] = web_data['title']
-            changes_made = True
-        
-        # Compare and update author
-        if web_data.get('author') and web_data['author'] != self.book.author_name:
-            self.author_edit.setText(web_data['author'])
-            self.field_differences['author'] = web_data['author']
-            changes_made = True
-        
-        # Compare and update year
-        if web_data.get('year') and str(web_data['year']) != self.year_edit.text():
-            self.year_edit.setText(str(web_data['year']))
-            self.field_differences['year'] = str(web_data['year'])
-            changes_made = True
-        
-        # Compare and update series
-        if web_data.get('series') and web_data['series'] != self.book.series_name:
-            self.series_edit.setText(web_data['series'])
-            self.field_differences['series'] = web_data['series']
-            changes_made = True
-        
-        # Compare and update genre
-        if web_data.get('genre') and web_data['genre'] != self.book.genre_name:
-            self.genre_edit.setText(web_data['genre'])
-            self.field_differences['genre'] = web_data['genre']
-            changes_made = True
-        
-        # Compare and update plot (show found/not found)
+        # Title
+        if web_data.get('title'):
+            if web_data['title'] != self.book.title:
+                self.title_edit.setText(web_data['title'])
+                self.field_differences['title'] = web_data['title']
+                self.show_indicator(self.title_edit, True, color='red')
+                changes_made = True
+            else:
+                self.show_indicator(self.title_edit, True, color='green')
+        else:
+            self.show_indicator(self.title_edit, False)
+
+        # Author
+        if web_data.get('author'):
+            if web_data['author'] != self.book.author_name:
+                self.author_edit.setText(web_data['author'])
+                self.field_differences['author'] = web_data['author']
+                self.show_indicator(self.author_edit, True, color='red')
+                changes_made = True
+            else:
+                self.show_indicator(self.author_edit, True, color='green')
+        else:
+            self.show_indicator(self.author_edit, False)
+
+        # Year
+        if web_data.get('year'):
+            if str(web_data['year']) != self.year_edit.text():
+                self.year_edit.setText(str(web_data['year']))
+                self.field_differences['year'] = str(web_data['year'])
+                self.show_indicator(self.year_edit, True, color='red')
+                changes_made = True
+            else:
+                self.show_indicator(self.year_edit, True, color='green')
+        else:
+            self.show_indicator(self.year_edit, False)
+
+        # Series (ignore series_number, only show series name)
+        if web_data.get('series'):
+            if web_data['series'] != self.book.series_name:
+                self.series_edit.setText(web_data['series'])
+                self.field_differences['series'] = web_data['series']
+                self.show_indicator(self.series_edit, True, color='red')
+                changes_made = True
+            else:
+                self.show_indicator(self.series_edit, True, color='green')
+        else:
+            self.show_indicator(self.series_edit, False)
+
+        # Genre
+        if web_data.get('genre'):
+            if web_data['genre'] != self.book.genre_name:
+                self.genre_edit.setText(web_data['genre'])
+                self.field_differences['genre'] = web_data['genre']
+                self.show_indicator(self.genre_edit, True, color='red')
+                changes_made = True
+            else:
+                self.show_indicator(self.genre_edit, True, color='green')
+        else:
+            self.show_indicator(self.genre_edit, False)
+
+        # Plot (no indicator as requested)
         if web_data.get('plot'):
             if web_data['plot'] != self.book.comments:
                 self.plot_edit.setPlainText(web_data['plot'])
                 self.field_differences['plot'] = 'found'
                 changes_made = True
-        
         return changes_made
     
-    def show_changes_popup(self, web_data):
-        """Show popup with only fields that changed."""
-        if not hasattr(self, 'field_differences') or not self.field_differences:
-            return
-            
-        # Build changes message
-        message_lines = ["Web Data Changes Found:"]
-        for field, value in self.field_differences.items():
-            if field == 'plot':
-                field_name = 'Plot'
-                display_value = 'found' if value == 'found' else 'not found'
-            elif field == 'series':
-                field_name = 'Series'
-                display_value = value
-            elif field == 'genre':
-                field_name = 'Genre'
-                display_value = value
-            elif field == 'author':
-                field_name = 'Author'
-                display_value = value
-            elif field == 'year':
-                field_name = 'Year'
-                display_value = value
-            elif field == 'title':
-                field_name = 'Title'
-                display_value = value
-            else:
-                field_name = field.capitalize()
-                display_value = value
-            
-            message_lines.append(f"{field_name} - {display_value}")
-        
-        # Show popup
-        from PySide6.QtWidgets import QMessageBox
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Web Data Changes")
-        msg.setText("\n".join(message_lines))
-        msg.setIcon(QMessageBox.Information)
-        msg.exec()
+    # Removed: show_changes_popup (was for testing only)
     
-    def show_indicator(self, field, show):
-        """Show or hide the web data indicator for a field."""
-        # Find the container widget that holds the field and indicator
-        parent = field.parent()
-        if parent and isinstance(parent, QWidget):
-            # Find the indicator label (should be the last child)
-            for child in parent.children():
+    def show_indicator(self, field, show, color=None):
+        """Show or hide the web data indicator for a field. Color: 'green' or 'red'."""
+        # Find the indicator label in the field's container
+        container = None
+        if field is self.title_edit:
+            container = self.title_field_container
+        elif field is self.author_edit:
+            container = self.author_field_container
+        elif field is self.year_edit:
+            container = self.year_field_container
+        elif field is self.series_edit:
+            container = self.series_field_container
+        elif field is self.genre_edit:
+            container = self.genre_field_container
+        if container:
+            for child in container.children():
                 if isinstance(child, QLabel) and child.text() == "✓":
                     child.setVisible(show)
+                    if show and color:
+                        if color == 'red':
+                            child.setStyleSheet("color: #C0392B; font-weight: bold;")  # Red
+                        elif color == 'green':
+                            child.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Green
                     break
     
     def clear_web_indicators(self):
@@ -632,7 +592,6 @@ class WebMetadataWindow(QDialog):
         """Set status message."""
         self._default_status_message = message
         self.status_bar.showMessage(message)
-        
         if announce:
             from src.accessibility.accessible_events import announce_status_message
             announce_status_message(self.status_bar, message, move_focus=True)
@@ -653,7 +612,7 @@ class WebMetadataWindow(QDialog):
                         author_id = author.author_id
                 else:
                     author_id = None
-                
+
                 # Handle series - get or create series ID
                 series_text = self.series_edit.text().strip()
                 series_id = None
@@ -669,14 +628,14 @@ class WebMetadataWindow(QDialog):
                             series_number = None
                     else:
                         series_name = series_text
-                    
+
                     if series_name:
                         series = self.series_queries.get_by_name(series_name)
                         if not series:
                             series_id = self.series_queries.insert(series_name)
                         else:
                             series_id = series.series_id
-                
+
                 # Handle genre - get or create genre ID
                 genre_name = self.genre_edit.text().strip()
                 genre_id = None
@@ -686,33 +645,31 @@ class WebMetadataWindow(QDialog):
                         genre_id = self.genre_queries.insert(genre_name)
                     else:
                         genre_id = genre.genre_id
-                
+
                 # UPDATE THE BOOK OBJECT with new values
                 self.book.author_id = author_id
                 self.book.series_id = series_id
                 self.book.series_number = series_number
                 self.book.genre_id = genre_id if genre_name else None
-                
+
                 # Handle year
                 year_text = self.year_edit.text().strip()
                 try:
                     self.book.year = int(year_text) if year_text else None
                 except ValueError:
                     self.book.year = None
-                
+
                 # Update title and plot
                 self.book.title = self.title_edit.text().strip()
                 self.book.comments = self.plot_edit.toPlainText().strip()
-                
+
                 # Save to database
                 self.book_queries.update(self.book)
-                
+
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
-                    print(f"DEBUG: Before refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     self.refresh_callback()  # This loads the data (may set dirty flag)
-                    print(f"DEBUG: After refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
-                    
+
                     # Apply monkey-patch to prevent save prompt (do this regardless of web data)
                     if hasattr(self.parent_window, 'reject'):
                         original_reject = self.parent_window.reject
@@ -724,34 +681,23 @@ class WebMetadataWindow(QDialog):
                             else:
                                 original_reject()
                         self.parent_window.reject = patched_reject
-                    
-                    if web_data:
-                        # Also call save to persist changes
-                        if hasattr(self.parent_window, 'on_save'):
-                            self.parent_window.on_save()
-                            print(f"DEBUG: After on_save - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
-                        # Store a flag to prevent save prompt
-                        if hasattr(self.parent_window, '_web_metadata_saved'):
-                            self.parent_window._web_metadata_saved = True
-                    
+
                     # Clear dirty state using the proper method
                     if hasattr(self.parent_window, '_clear_dirty'):
                         self.parent_window._clear_dirty(preserve_status=True)
-                        print(f"DEBUG: After _clear_dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Force clear dirty flag one more time
                     if hasattr(self.parent_window, '_dirty'):
                         self.parent_window._dirty = False
-                        print(f"DEBUG: Force clear dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Update save button visibility
                     if hasattr(self.parent_window, '_update_save_button_visibility'):
                         self.parent_window._update_save_button_visibility()
                     # Force UI update
                     if hasattr(self.parent_window, 'repaint'):
                         self.parent_window.repaint()
-                
+
                 announce_dialog_closed(self)
                 super().accept()
-                
+
             except Exception as e:
                 self.set_status(f"Error saving: {str(e)}")
                 # Don't close on error
@@ -771,11 +717,6 @@ def test_web_metadata():
     """Test web metadata window with proven accessibility."""
     app = QApplication(sys.argv)
     
-    print("=== Web Metadata Window Test ===")
-    print("Built from PROVEN accessible skeleton")
-    print("F1, Alt+/, Escape should work")
-    print("All field shortcuts should work")
-    print("=====================================")
     
     # Create dummy objects for testing
     from src.accessibility.scaling import UIScaler

@@ -44,34 +44,42 @@ class WebBookAPI:
     def _fetch_from_google_books(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
         """Fetch metadata from Google Books API."""
         try:
-            # Build search query
-            query_parts = [title]
+            # Build search query (match previous working logic: just title and author)
+            query = title
             if author:
-                query_parts.append(f"inauthor:{author}")
-            if year:
-                query_parts.append(f"inpublisher:{year}")
-            
-            query = " ".join(query_parts)
+                query += f" {author}"
+            # Do NOT use inpublisher for year, as it restricts results too much
             params = {
                 'q': query,
                 'maxResults': 1,
                 'fields': 'items(id,volumeInfo(title,authors,publisher,publishedDate,description,industryIdentifiers,categories,averageRating,ratingsCount))'
             }
-            
-            # Build URL with parameters
             url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
-            
-            # Make request
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode('utf-8'))
-            
             if 'items' in data and data['items']:
                 item = data['items'][0]
                 volume_info = item.get('volumeInfo', {})
-                
+                # Extract series and series number if available
+                series = ''
+                series_number = ''
+                # Google Books sometimes puts series info in 'subtitle' or 'seriesInfo' (rare)
+                if 'seriesInfo' in volume_info:
+                    series = volume_info['seriesInfo'].get('bookDisplayNumber', '')
+                    # Sometimes the series name is in 'seriesInfo' as well
+                    if not series:
+                        series = volume_info['seriesInfo'].get('series', '')
+                # Try to parse series/volume from title if possible (e.g., "Book 2", "Volume 3")
+                import re
+                title = volume_info.get('title', '')
+                subtitle = volume_info.get('subtitle', '')
+                # Look for patterns like "Book 2", "Volume 3", "#4"
+                match = re.search(r'(Book|Volume|#)\s*(\d+)', f"{title} {subtitle}")
+                if match:
+                    series_number = match.group(2)
                 return {
-                    'title': volume_info.get('title', ''),
+                    'title': title,
                     'author': self._format_authors(volume_info.get('authors', [])),
                     'year': self._extract_year(volume_info.get('publishedDate', '')),
                     'publisher': volume_info.get('publisher', ''),
@@ -80,13 +88,13 @@ class WebBookAPI:
                     'isbn': self._extract_isbn(volume_info.get('industryIdentifiers', [])),
                     'rating': volume_info.get('averageRating', 0),
                     'ratings_count': volume_info.get('ratingsCount', 0),
+                    'series': series,
+                    'series_number': series_number,
                     'source': 'Google Books',
                     'confidence': 0.9
                 }
-            
         except Exception as e:
             print(f"Google Books API error: {e}")
-            
         return None
     
     def _fetch_from_open_library(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
@@ -125,8 +133,23 @@ class WebBookAPI:
                 else:
                     work_details = {}
                 
+                # Extract series and series number if available
+                series = ''
+                series_number = ''
+                # Open Library sometimes has 'series' and 'series_number' fields
+                if 'series' in doc:
+                    if isinstance(doc['series'], list) and doc['series']:
+                        series = doc['series'][0]
+                if 'series_number' in doc:
+                    series_number = str(doc['series_number'])
+                # Try to parse from title if possible
+                import re
+                title = doc.get('title', '')
+                match = re.search(r'(Book|Volume|#)\s*(\d+)', title)
+                if match and not series_number:
+                    series_number = match.group(2)
                 return {
-                    'title': doc.get('title', ''),
+                    'title': title,
                     'author': self._format_authors(doc.get('author_name', [])),
                     'year': str(doc.get('first_publish_year', '')),
                     'publisher': ', '.join(doc.get('publisher', [])),
@@ -135,6 +158,8 @@ class WebBookAPI:
                     'isbn': doc.get('isbn', [''])[0] if doc.get('isbn') else '',
                     'rating': doc.get('ratings_average', 0),
                     'ratings_count': doc.get('ratings_count', 0),
+                    'series': series,
+                    'series_number': series_number,
                     'source': 'Open Library',
                     'confidence': 0.8
                 }

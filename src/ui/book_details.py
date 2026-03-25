@@ -1511,8 +1511,9 @@ class BookDetailsWindow(QDialog):
             if result == QDialog.Accepted:
                 # User accepted changes - would implement actual update here
                 self.set_status("Web details applied successfully", announce=True)
-                # For now, just reload book data
+                # Reload book data and clear dirty flag so user is not prompted to save again
                 self.load_book_data()
+                self._clear_dirty()
             else:
                 self.set_status("Web details cancelled", announce=True)
                 
