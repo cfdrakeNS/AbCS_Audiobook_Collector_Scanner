@@ -39,8 +39,8 @@ class WebMetadataWindow(QDialog):
         self.setWindowTitle("Web Book Details")
         self.setAccessibleName("Web Book Details Window")
         self.setAccessibleDescription("Window for reviewing and accepting web-fetched book metadata")
-        self.setMinimumSize(600, 500)  # Reduced height
-        self.resize(700, 600)  # Reduced height - was 700x800
+        self.setMinimumSize(800, 500)  # Wider for title/author, same height
+        self.resize(900, 600)  # Wider window - was 700x600
         
         # Basic setup - PROVEN pattern
         self.scaler = scaler
@@ -109,26 +109,30 @@ class WebMetadataWindow(QDialog):
         author_label.setBuddy(self.author_edit)
         form_layout.addRow(author_label, self._create_field_with_indicator(self.author_edit))
         
-        # Year field - use QLineEdit like backup window
+        # Year field - use QLineEdit like backup window, size for 4 digits
         year_label = QLabel("&Year:")
         self.year_edit = QLineEdit()  # QLineEdit like backup, NOT QSpinBox
         self.year_edit.setAccessibleName("Publication year")
         self.year_edit.setAccessibleDescription("Publication year from web source")
+        self.year_edit.setMaximumWidth(80)  # Size for 4 digits only
+        self.year_edit.setPlaceholderText("YYYY")  # Show format hint
         year_label.setBuddy(self.year_edit)
         form_layout.addRow(year_label, self._create_field_with_indicator(self.year_edit))
         
-        # Series field
+        # Series field - proper width for series names
         self.series_edit = QLineEdit()
         self.series_edit.setAccessibleName("Series")
         self.series_edit.setAccessibleDescription("Series name from web source")
+        self.series_edit.setMaximumWidth(300)  # Reasonable width for series names
         series_label = QLabel("Ser&ies:")
         series_label.setBuddy(self.series_edit)
         form_layout.addRow(series_label, self._create_field_with_indicator(self.series_edit))
         
-        # Genre field
+        # Genre field - proper width for genre names
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Genre")
         self.genre_edit.setAccessibleDescription("Genre from web source")
+        self.genre_edit.setMaximumWidth(200)  # Reasonable width for genre names
         genre_label = QLabel("&Genre:")
         genre_label.setBuddy(self.genre_edit)
         form_layout.addRow(genre_label, self._create_field_with_indicator(self.genre_edit))

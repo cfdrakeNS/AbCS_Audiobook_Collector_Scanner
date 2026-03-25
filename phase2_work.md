@@ -84,9 +84,8 @@
 
 #### **WINDOW LAYOUT & STYLING:**
 - ❌ Window width: Make wider to allow title/author to show properly
-- ❌ Button styling: Match book_details button style (no inside border on text)
-- ❌ Button height: Reduce height to match book_details
-- ❌ Button position: Save button to the left (currently centered)
+- ❌ make year fields szie to fit 4 digits 
+- ❌ make series & genre fields size to fit there respectiv field size not the with of the window
 
 #### **WEB DATA FUNCTIONALTY (NEEDS REAL IMPLEMENTATION):**
 - ❌ Auto-fetch web data on window open (currently returns None)
@@ -101,8 +100,8 @@
 - ❌ Popup styling: Match backup window popup appearance
 
 #### **INDICATOR SYSTEM (NEEDS TWEAKING):**
-- ❌ Green checkmarks: Show for web data differences (currently always hidden)
-- ❌ Red indicators: Show for field differences (from backup)
+- ❌ Green checkmarks: if no different between web and database data
+- ❌ Red indicators: web data is different from database data
 - ❌ Indicator visibility: Proper show/hide logic based on web data
 
 ### **🎯 NEXT STEPS:**
@@ -111,7 +110,6 @@
 3. **Fix popup functionality** (show only changed fields with proper format)
 4. **Fix indicator visibility** (show green/red checkmarks properly)
 5. **Test complete workflow** (auto-fetch → popup → save → refresh)
-
 ### **📋 REFERENCE:**
 - Working reference: `web_metadata_backup.py` has proper popup and indicator logic
 - Button reference: `book_details.py` for proper button styling
