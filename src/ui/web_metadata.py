@@ -253,8 +253,10 @@ class WebMetadataWindow(QDialog):
             self.update_fields_with_web_data(web_data)
             self.show_changes_popup(web_data)
             self.set_status("Web data fetched successfully")
+            print("DEBUG: Web data found - status set to success")
         else:
-            self.set_status("No web data found - book not matched")
+            self.set_status("No web data found - book not matched", announce=True)
+            print("DEBUG: No web data found - status set to not found")
             # Clear all indicators to indicate no web data
             self.clear_web_indicators()
     
