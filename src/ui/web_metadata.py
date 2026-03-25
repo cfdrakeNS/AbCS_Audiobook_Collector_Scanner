@@ -712,10 +712,28 @@ class WebMetadataWindow(QDialog):
                     print(f"DEBUG: Before refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     self.refresh_callback()  # This loads the data (may set dirty flag)
                     print(f"DEBUG: After refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
-                    # Also call save to persist changes
-                    if hasattr(self.parent_window, 'on_save'):
-                        self.parent_window.on_save()
-                        print(f"DEBUG: After on_save - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    
+                    # Apply monkey-patch to prevent save prompt (do this regardless of web data)
+                    if hasattr(self.parent_window, 'reject'):
+                        original_reject = self.parent_window.reject
+                        def patched_reject():
+                            if getattr(self.parent_window, '_web_metadata_saved', False):
+                                # Skip save prompt if we just saved from web metadata
+                                self.parent_window._web_metadata_saved = False
+                                super(self.parent_window.__class__, self.parent_window).reject()
+                            else:
+                                original_reject()
+                        self.parent_window.reject = patched_reject
+                    
+                    if web_data:
+                        # Also call save to persist changes
+                        if hasattr(self.parent_window, 'on_save'):
+                            self.parent_window.on_save()
+                            print(f"DEBUG: After on_save - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                        # Store a flag to prevent save prompt
+                        if hasattr(self.parent_window, '_web_metadata_saved'):
+                            self.parent_window._web_metadata_saved = True
+                    
                     # Clear dirty state using the proper method
                     if hasattr(self.parent_window, '_clear_dirty'):
                         self.parent_window._clear_dirty(preserve_status=True)
@@ -730,21 +748,6 @@ class WebMetadataWindow(QDialog):
                     # Force UI update
                     if hasattr(self.parent_window, 'repaint'):
                         self.parent_window.repaint()
-                    # Store a flag to prevent save prompt
-                    if hasattr(self.parent_window, '_web_metadata_saved'):
-                        self.parent_window._web_metadata_saved = True
-                    
-                    # Monkey-patch reject method to prevent save prompt
-                    if hasattr(self.parent_window, 'reject'):
-                        original_reject = self.parent_window.reject
-                        def patched_reject():
-                            if getattr(self.parent_window, '_web_metadata_saved', False):
-                                # Skip save prompt if we just saved from web metadata
-                                self.parent_window._web_metadata_saved = False
-                                super(self.parent_window.__class__, self.parent_window).reject()
-                            else:
-                                original_reject()
-                        self.parent_window.reject = patched_reject
                 
                 announce_dialog_closed(self)
                 super().accept()
