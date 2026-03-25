@@ -706,7 +706,10 @@ class WebMetadataWindow(QDialog):
                 
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
-                    self.refresh_callback()
+                    self.refresh_callback()  # This loads the data
+                    # Also call save to persist changes
+                    if hasattr(self.parent(), 'on_save'):
+                        self.parent().on_save()
                 
                 announce_dialog_closed(self)
                 super().accept()
