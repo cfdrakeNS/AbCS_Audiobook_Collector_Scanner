@@ -83,9 +83,12 @@
 ### ❌ **REMAINING ITEMS TO FIX:**
 
 #### **WINDOW LAYOUT & STYLING:**
-- ❌ Window width: Make wider to allow title/author to show properly
-- ❌ make year fields szie to fit 4 digits 
-- ❌ make series & genre fields size to fit there respectiv field size not the with of the window
+- ✅ Window width: Make wider to allow title/author to show properly
+- ✅ Window size: 900x600 (was 700x600) - better for title/author
+- ✅ make year fields szie to fit 4 digits - 80px width with YYYY placeholder
+- ✅ make series & genre fields size to fit there respectiv field size not the with of the window - series 300px, genre 200px
+- ✅ Field alignment: Fixed centering issue - fields now align to labels properly
+- ✅ Container removal: Removed indicator containers that caused centering
 
 #### **WEB DATA FUNCTIONALTY (NEEDS REAL IMPLEMENTATION):**
 - ❌ Auto-fetch web data on window open (currently returns None)
@@ -105,7 +108,7 @@
 - ❌ Indicator visibility: Proper show/hide logic based on web data
 
 ### **🎯 NEXT STEPS:**
-1. **Fix window width and button styling** (quick UI fixes)
+1. ✅ **Fix window width and button styling** (COMPLETED - layout fixed)
 2. **Implement real web data fetching** (replace simulate_web_fetch with real API calls)
 3. **Fix popup functionality** (show only changed fields with proper format)
 4. **Fix indicator visibility** (show green/red checkmarks properly)

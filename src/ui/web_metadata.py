@@ -239,19 +239,14 @@ class WebMetadataWindow(QDialog):
         self.fetch_web_data()
     
     def fetch_web_data(self):
-        """Fetch book data from web sources."""
+        """Fetch web data from API with status updates."""
         self.set_status("Fetching web data...")
         
-        # Get search terms from current book
-        title = self.book.title if self.book else ""
-        author = self.book.author_name if self.book else ""
+        # Get current book info
+        title = self.book.title
+        author = self.book.author_name
         
-        if not title and not author:
-            self.set_status("No title or author available for web search")
-            return
-        
-        # Simulate web fetching (for now - will implement real API later)
-        # This is where we'd integrate with Open Library, Google Books, etc.
+        # Fetch web data
         web_data = self.simulate_web_fetch(title, author)
         
         if web_data:
@@ -260,14 +255,67 @@ class WebMetadataWindow(QDialog):
             self.set_status("Web data fetched successfully")
         else:
             self.set_status("No web data found")
-            # Clear all checkboxes to indicate no web data
+            # Clear all indicators to indicate no web data
             self.clear_web_indicators()
     
     def simulate_web_fetch(self, title, author):
-        """Simulate web data fetching (placeholder for real API)."""
-        # Return None to indicate no web data found
-        # In production, this would call actual APIs like Open Library or Google Books
-        # For now, don't populate any fields with test data
+        """Fetch real web data from Google Books API."""
+        import requests
+        import json
+        
+        if not title or not author:
+            return None
+            
+        try:
+            # Build Google Books API query
+            query = f"{title} {author}"
+            url = f"https://www.googleapis.com/books/v1/volumes?q={requests.utils.quote(query)}&maxResults=1"
+            
+            # Make API request
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                
+                if data.get('items') and len(data['items']) > 0:
+                    book = data['items'][0]['volumeInfo']
+                    
+                    # Extract relevant data
+                    result = {
+                        'title': book.get('title', ''),
+                        'author': ', '.join(book.get('authors', [])),
+                        'year': None,
+                        'series': None,
+                        'genre': None,
+                        'plot': book.get('description', '')
+                    }
+                    
+                    # Extract year from publication date
+                    pub_date = book.get('publishedDate', '')
+                    if pub_date:
+                        import re
+                        year_match = re.search(r'(\d{4})', pub_date)
+                        if year_match:
+                            try:
+                                result['year'] = int(year_match.group(1))
+                            except ValueError:
+                                pass
+                    
+                    # Extract genre from categories
+                    if 'categories' in book and book['categories']:
+                        result['genre'] = book['categories'][0]
+                    
+                    # Extract series from title (common pattern: "Series Name, Book #")
+                    title_text = book.get('title', '')
+                    if ', ' in title_text:
+                        parts = title_text.split(', ')
+                        if len(parts) >= 2 and 'book' in parts[1].lower():
+                            result['series'] = parts[0]
+                    
+                    return result
+                    
+        except Exception as e:
+            print(f"Web fetch error: {e}")
+            
         return None
     
     def generate_realistic_plot(self, title):
