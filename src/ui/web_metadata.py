@@ -681,6 +681,26 @@ class WebMetadataWindow(QDialog):
                     if not genre:
                         genre_id = self.genre_queries.insert(genre_name)
                 
+                # UPDATE THE BOOK OBJECT with new values
+                self.book.author_id = author_id
+                self.book.series_id = series_id
+                self.book.series_number = series_number
+                self.book.genre_id = genre_id if genre_name else None
+                
+                # Handle year
+                year_text = self.year_edit.text().strip()
+                try:
+                    self.book.year = int(year_text) if year_text else None
+                except ValueError:
+                    self.book.year = None
+                
+                # Update title and plot
+                self.book.title = self.title_edit.text().strip()
+                self.book.comments = self.plot_edit.toPlainText().strip()
+                
+                # Save to database
+                self.book_queries.update(self.book)
+                
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
                     self.refresh_callback()
