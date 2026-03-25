@@ -708,15 +708,18 @@ class WebMetadataWindow(QDialog):
                 
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
-                    self.refresh_callback()  # This loads the data
+                    self.refresh_callback()  # This loads the data (may set dirty flag)
                     # Also call save to persist changes
                     if hasattr(self.parent(), 'on_save'):
                         self.parent().on_save()
-                    # Clear dirty state so book details doesn't prompt to save
+                    # Clear dirty state last to ensure it stays clear
                     if hasattr(self.parent(), '_dirty'):
                         self.parent()._dirty = False
                     if hasattr(self.parent(), '_update_save_button_visibility'):
                         self.parent()._update_save_button_visibility()
+                    # Force UI update
+                    if hasattr(self.parent(), 'repaint'):
+                        self.parent().repaint()
                 
                 announce_dialog_closed(self)
                 super().accept()
