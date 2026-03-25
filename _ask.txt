@@ -1,4 +1,4 @@
-reminder I sue jaws so keep response to the facts; what fixed what changed.
-File: src/web/web_metadata_import 
+reminder I use jaws so keep response to the facts; what fixed what changed.
+File: src/ui/main_import 
 Function: save 
 issues: status bar says "error saving name 'web_data" not defined 

@@ -89,6 +89,10 @@
 - Robust error/status handling for network failures, timeouts, and retries. Status bar updates for all states (fetching, not found, error).
 - Series number handling: (TODO) ensure series number is extracted and displayed if found in web data.
 
+#### File: src/ui/book_detail 
+- change the button that says "Update Metadata" to say "Get web info" change the shortcut to alt+w from alt+u update the f1 shortcut menu in shortcuts.py 
+- check the alt key bocking as alt keys that are not used are being passed thru to text boxes.
+- when Get web info button we need a message either on the status bar or a popup that says "Fetching book info from web, please wait!"
 
 #### **TESTING & VALIDATION:**
 - Tested with real book data and various edge cases (Google Books API returns expected results).

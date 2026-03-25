@@ -30,6 +30,8 @@ from src.accessibility.accessible_events import announce_status_message, announc
 
 
 class BookDetailsWindow(QDialog):
+    # List of allowed Alt+key shortcuts for Book Details
+    ALLOWED_ALT_KEYS = {'N', 'D', 'S', 'L', 'W', 'T', 'A', 'P', 'Y', 'M', 'R', 'E', 'I', 'G', 'C', 'F', 'B', 'Z', 'H', '/', 'F1'}
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -224,7 +226,22 @@ class BookDetailsWindow(QDialog):
         if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
-            # Alt+ key tracking removed - was interfering with screen reader operation
+            # Block all Alt+<key> except allowed shortcuts
+            if modifiers & Qt.AltModifier:
+                # Convert Qt key to char (A-Z, 0-9, F1, etc.)
+                if Qt.Key_A <= key <= Qt.Key_Z:
+                    char = chr(key)
+                    if char.upper() not in self.ALLOWED_ALT_KEYS:
+                        QApplication.beep()
+                        return True  # Block event
+                # Block Alt+<other> (non-letter) except allowed
+                elif key == Qt.Key_F1 and 'F1' not in self.ALLOWED_ALT_KEYS:
+                    QApplication.beep()
+                    return True
+                elif key == Qt.Key_Slash and '/' not in self.ALLOWED_ALT_KEYS:
+                    QApplication.beep()
+                    return True
+                # Allow navigation keys, etc. as needed
         if event.type() == QEvent.FocusIn:
             # Schedule deselection AFTER Qt finishes its default focus handling
             # QTimer.singleShot(0, ...) runs on the next event loop iteration
@@ -676,10 +693,10 @@ class BookDetailsWindow(QDialog):
         self.cancel_button.setAutoDefault(False)
         button_layout.addWidget(self.cancel_button)
 
-        # Update Metadata button (Alt+U)
-        self.get_web_details_button = QPushButton("Update Metadata")
-        self.get_web_details_button.setAccessibleName("Update metadata")
-        self.get_web_details_button.setAccessibleDescription("Fetch book metadata from web sources - Alt+U")
+        # Get web info button (Alt+W)
+        self.get_web_details_button = QPushButton("Get web info")
+        self.get_web_details_button.setAccessibleName("Get web info")
+        self.get_web_details_button.setAccessibleDescription("Fetch book info from web - Alt+W")
         self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
         self.get_web_details_button.clicked.connect(self.on_get_web_details)
         self.get_web_details_button.setDefault(False)
@@ -719,7 +736,7 @@ class BookDetailsWindow(QDialog):
             'size_edit': lambda: self.size_edit.setFocus(),
             'path_edit': lambda: self.path_edit.setFocus(),
             'format_combo': lambda: self.format_combo.setFocus(),
-            'get_web_details_button': self.on_get_web_details,  # Alt+U centralized
+            'get_web_details_button': self.on_get_web_details,  # Alt+W centralized
             'show_help': self.on_show_shortcuts,
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
@@ -737,9 +754,6 @@ class BookDetailsWindow(QDialog):
         self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.cancel_shortcut.activated.connect(
             lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
-        self.update_shortcut = QShortcut(QKeySequence("Alt+U"), self)
-        self.update_shortcut.activated.connect(
-            lambda: self.on_get_web_details() if self.get_web_details_button.isVisible() else None)
         
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
@@ -910,10 +924,10 @@ class BookDetailsWindow(QDialog):
         """Show default status when form is not in edit/save mode."""
         if self.is_new:
             self.set_status(
-                "New book entry. Press Alt+S Save, Alt+L Cancel, Alt+U Update Metadata", announce=announce)
+                "New book entry. Press Alt+S Save, Alt+L Cancel, Alt+W Get web info", announce=announce)
         else:
             self.set_status(
-                "Alt+N New, Alt+D Delete, Alt+U Update Metadata, Escape Close", announce=announce)
+                "Alt+N New, Alt+D Delete, Alt+W Get web info, Escape Close", announce=announce)
 
     def _update_save_button_visibility(self):
         """
@@ -975,7 +989,7 @@ class BookDetailsWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
-            ("Alt+U", "Update Metadata"),
+            ("Alt+W", "Get web info"),
             ("Alt+N", "New book"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
@@ -1488,26 +1502,37 @@ class BookDetailsWindow(QDialog):
 
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""
+        # Show auto-closing popup dialog while fetching web info
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        from PySide6.QtCore import QTimer
+        popup = QDialog(self)
+        popup.setWindowTitle("Please wait")
+        popup.setModal(True)
+        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
+        layout = QVBoxLayout(popup)
+        label = QLabel("Fetching book info from web, please wait!")
+        layout.addWidget(label)
+        popup.setLayout(layout)
+        popup.resize(350, 80)
+        QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
+        popup.show()
+        QApplication.processEvents()
         if not self.book:
             self.set_status("No book selected for web lookup")
             return
-        
         try:
             from src.ui.web_metadata import WebMetadataWindow
-            
             # Create web details window with refresh callback
             web_window = WebMetadataWindow(
-                self.db, 
-                self.book, 
-                self.scaler, 
-                self.theme_manager, 
+                self.db,
+                self.book,
+                self.scaler,
+                self.theme_manager,
                 self,
                 refresh_callback=self.load_book_data  # Refresh book data after save
             )
-            
             # Show window modally
             result = web_window.exec()
-            
             if result == QDialog.Accepted:
                 # User accepted changes - would implement actual update here
                 self.set_status("Web details applied successfully", announce=True)
@@ -1516,7 +1541,6 @@ class BookDetailsWindow(QDialog):
                 self._clear_dirty()
             else:
                 self.set_status("Web details cancelled", announce=True)
-                
         except Exception as e:
             print(f"DEBUG: Exception in on_get_web_details: {e}")
             import traceback

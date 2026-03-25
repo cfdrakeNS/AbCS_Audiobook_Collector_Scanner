@@ -102,6 +102,7 @@ class ShortcutManager(QObject):
         'B': ('Bitrate', 'bitrate_edit'),
         'Z': ('Size', 'size_edit'),
         'H': ('Path', 'path_edit'),        # From Pat&h label
+        'W': ('Get web info', 'get_web_details_button'),
         'F1': ('Show help', 'show_help'),
     }
 
