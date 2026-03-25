@@ -712,6 +712,11 @@ class WebMetadataWindow(QDialog):
                     # Also call save to persist changes
                     if hasattr(self.parent(), 'on_save'):
                         self.parent().on_save()
+                    # Clear dirty state so book details doesn't prompt to save
+                    if hasattr(self.parent(), '_dirty'):
+                        self.parent()._dirty = False
+                    if hasattr(self.parent(), '_update_save_button_visibility'):
+                        self.parent()._update_save_button_visibility()
                 
                 announce_dialog_closed(self)
                 super().accept()
