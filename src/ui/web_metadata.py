@@ -676,10 +676,13 @@ class WebMetadataWindow(QDialog):
                 
                 # Handle genre - get or create genre ID
                 genre_name = self.genre_edit.text().strip()
+                genre_id = None
                 if genre_name:
                     genre = self.genre_queries.get_by_name(genre_name)
                     if not genre:
                         genre_id = self.genre_queries.insert(genre_name)
+                    else:
+                        genre_id = genre.genre_id
                 
                 # UPDATE THE BOOK OBJECT with new values
                 self.book.author_id = author_id
