@@ -60,9 +60,8 @@ class WebMetadataWindow(QDialog):
         
         # Setup UI
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)  # Match book_details
-        layout.setSpacing(5)  # Reduced spacing for compact layout
-        layout.setAlignment(Qt.AlignTop)  # Align to top, not center
+        layout.setContentsMargins(20, 20, 20, 20)  # Match backup
+        layout.setSpacing(15)  # Match backup spacing
         self.setup_ui(layout)
         
         # Status bar (add after layout like book_details)
@@ -85,13 +84,14 @@ class WebMetadataWindow(QDialog):
         """
         Web metadata UI - match book_details layout exactly.
         """
-        # Form layout for book details - match import_detail alignment
+        # Form layout for book details - EXACT backup match
         form_layout = QFormLayout()
-        form_layout.setSpacing(1)  # Absolute minimum spacing for low vision
-        form_layout.setContentsMargins(0, 0, 0, 0)  # No extra margins - match book_details
-        form_layout.setLabelAlignment(Qt.AlignRight)  # Right-aligned labels like import_detail
+        form_layout.setSpacing(3)  # EXACT backup spacing
+        form_layout.setContentsMargins(20, 20, 20, 20)  # EXACT backup margins
         
-        # Don't set form alignment - let it align naturally to prevent centering
+        # Set proper alignment for labels and fields - EXACT backup values
+        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # EXACT backup
+        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # EXACT backup
         
         # Title field - proper width, not full window
         self.title_edit = QLineEdit()
