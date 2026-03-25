@@ -254,7 +254,7 @@ class WebMetadataWindow(QDialog):
             self.show_changes_popup(web_data)
             self.set_status("Web data fetched successfully")
         else:
-            self.set_status("No web data found")
+            self.set_status("No web data found - book not matched")
             # Clear all indicators to indicate no web data
             self.clear_web_indicators()
     
@@ -680,40 +680,8 @@ class WebMetadataWindow(QDialog):
                     genre = self.genre_queries.get_by_name(genre_name)
                     if not genre:
                         genre_id = self.genre_queries.insert(genre_name)
-                    else:
-                        genre_id = genre.genre_id
-                else:
-                    genre_id = None
                 
-                # Update book object with web metadata (filtered)
-                title_text = self.title_edit.text().strip()
-                author_text = self.author_edit.text().strip()
-                year_text = self.year_edit.text().strip()
-                
-                # Filter out test artifacts
-                title_text = title_text.replace(" - WEB EDITION", "").strip()
-                author_text = author_text.replace(" (Web Verified)", "").strip()
-                
-                # Convert year text to integer
-                try:
-                    year = int(year_text) if year_text else None
-                except ValueError:
-                    year = None
-                
-                self.book.title = title_text
-                self.book.author_id = author_id
-                self.book.comments = self.plot_edit.toPlainText().strip()
-                self.book.year = year
-                self.book.series_id = series_id
-                self.book.genre_id = genre_id
-                
-                # Save to database using BookQueries
-                self.book_queries.update(self.book)
-                
-                # Set status and close
-                self.set_status("Web metadata saved successfully")
-                
-                # Call refresh callback if provided
+                # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
                     self.refresh_callback()
                 
