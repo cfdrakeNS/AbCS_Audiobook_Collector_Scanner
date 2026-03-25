@@ -285,39 +285,59 @@ class WebMetadataWindow(QDialog):
                 if data.get('items') and len(data['items']) > 0:
                     book = data['items'][0]['volumeInfo']
                     
-                    # Extract relevant data
-                    result = {
-                        'title': book.get('title', ''),
-                        'author': ', '.join(book.get('authors', [])),
-                        'year': None,
-                        'series': None,
-                        'genre': None,
-                        'plot': book.get('description', '')
-                    }
+                    # Validate that this is a good match
+                    api_title = book.get('title', '').lower()
+                    api_author = book.get('authors', [])
+                    api_author_str = ', '.join(api_author).lower() if api_author else ''
                     
-                    # Extract year from publication date
-                    pub_date = book.get('publishedDate', '')
-                    if pub_date:
-                        import re
-                        year_match = re.search(r'(\d{4})', pub_date)
-                        if year_match:
-                            try:
-                                result['year'] = int(year_match.group(1))
-                            except ValueError:
-                                pass
+                    title_lower = title.lower()
+                    author_lower = author.lower()
                     
-                    # Extract genre from categories
-                    if 'categories' in book and book['categories']:
-                        result['genre'] = book['categories'][0]
+                    # Check for basic title similarity (at least 50% match)
+                    import difflib
+                    title_similarity = difflib.SequenceMatcher(None, title_lower, api_title).ratio()
                     
-                    # Extract series from title (common pattern: "Series Name, Book #")
-                    title_text = book.get('title', '')
-                    if ', ' in title_text:
-                        parts = title_text.split(', ')
-                        if len(parts) >= 2 and 'book' in parts[1].lower():
-                            result['series'] = parts[0]
+                    # Check if author name appears in API authors
+                    author_match = any(author_lower in auth.lower() for auth in api_author) if api_author else False
                     
-                    return result
+                    # Only accept if we have reasonable title match AND author match
+                    if title_similarity > 0.5 and author_match:
+                        # Extract relevant data
+                        result = {
+                            'title': book.get('title', ''),
+                            'author': ', '.join(book.get('authors', [])),
+                            'year': None,
+                            'series': None,
+                            'genre': None,
+                            'plot': book.get('description', '')
+                        }
+                        
+                        # Extract year from publication date
+                        pub_date = book.get('publishedDate', '')
+                        if pub_date:
+                            import re
+                            year_match = re.search(r'(\d{4})', pub_date)
+                            if year_match:
+                                try:
+                                    result['year'] = int(year_match.group(1))
+                                except ValueError:
+                                    pass
+                        
+                        # Extract genre from categories
+                        if 'categories' in book and book['categories']:
+                            result['genre'] = book['categories'][0]
+                        
+                        # Extract series from title (common pattern: "Series Name, Book #")
+                        title_text = book.get('title', '')
+                        if ', ' in title_text:
+                            parts = title_text.split(', ')
+                            if len(parts) >= 2 and 'book' in parts[1].lower():
+                                result['series'] = parts[0]
+                        
+                        return result
+                    else:
+                        print(f"Poor match: title similarity {title_similarity:.2f}, author match {author_match}")
+                        return None
                     
         except Exception as e:
             print(f"Web fetch error: {e}")
