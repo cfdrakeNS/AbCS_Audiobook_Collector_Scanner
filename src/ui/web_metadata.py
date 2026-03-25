@@ -260,7 +260,13 @@ class WebMetadataWindow(QDialog):
     
     def simulate_web_fetch(self, title, author):
         """Fetch real web data from Google Books API."""
-        import requests
+        try:
+            import requests
+        except ImportError:
+            # requests not available, return None
+            print("requests module not available - web fetching disabled")
+            return None
+        
         import json
         
         if not title or not author:
