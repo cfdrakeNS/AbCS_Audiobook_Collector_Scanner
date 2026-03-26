@@ -52,11 +52,26 @@
 - ✅ **Database Integration**: Save web metadata changes back to database
 - ✅ **Testing**: Tested in full app context with proper focus management
 
-### **Option 2: Enhanced Web Features** ⭐ **NEXT PRIORITY**
-- **API Integration**: Connect to Open Library or Google Books APIs
-- **Web Fetching**: Automatically fetch book details from web
-- **Data Comparison**: Show differences between local and web data
-- **Selective Updates**: Choose which web data to apply
+### **Option 2: Enhanced Web Features** ✅ **MOSTLY COMPLETE**
+- ✅ **API Integration**: Real Google Books & Open Library APIs implemented
+- ✅ **Web Fetching**: Auto-fetch when window opens with error handling
+- ✅ **Data Comparison**: Visual indicators and checkbox selection for updates
+- ⚠️ **Loading Indicators**: Basic status messages, could enhance with spinners
+
+**✅ What's Working:**
+- Real API calls to Google Books and Open Library
+- Automatic fallback between APIs
+- Series number extraction from web data
+- Error handling for network failures
+- Visual difference indicators (green checkmarks)
+- Checkbox selection for field updates
+- Status bar announcements for screen readers
+
+**⚠️ Minor Enhancements Available:**
+- Add loading spinner during API calls
+- Enhance visual contrast for indicators
+- Add undo functionality for applied changes
+- Implement caching to avoid repeated API calls
 
 ### **Option 3: Apply Accessibility Pattern**
 - **Fix Other Windows**: Apply skeleton pattern to existing windows
@@ -87,40 +102,39 @@
 
 ---
 
-## 🎯 WHAT'S NEXT - Priority Development Areas
+## 🎯 WHAT'S NEXT - Updated Priorities
 
-### **IMMEDIATE NEXT: Enhanced Web Features (Option 2)**
-**Why**: The current web metadata window works but needs real API integration for production use.
+### **IMMEDIATE NEXT: Accessibility Pattern Application (Option 3)**
+**Why**: Most web metadata features are complete, time to improve overall app accessibility.
 
-**Specific Tasks**:
-1. **Implement WebBookAPI Integration**
-   - Replace mock data with real Google Books API calls
-   - Add Open Library API as backup
-   - Implement proper error handling and timeouts
+**Target Windows for Enhancement:**
+- Import Window - Apply skeleton pattern for consistent accessibility
+- Preferences Window - Ensure proper keyboard navigation and screen reader support
+- Collection Management - Audit and fix any accessibility issues
+- Other dialogs that may have accessibility gaps
 
-2. **Enhanced Data Fetching**
-   - Auto-fetch when web metadata opens
-   - Show loading indicators during API calls
-   - Cache results to avoid repeated API calls
+### **ENHANCEMENTS: Web Metadata Polish (Option 2)**
+**Minor improvements available:**
+1. **Loading Indicators**
+   - Add visual spinner during API calls
+   - Enhance status messages for screen readers
+   - Add cancel button for long requests
 
-3. **Data Comparison UI**
-   - Visual indicators for web vs local differences
-   - Checkbox selection for which fields to apply
-   - Preview changes before accepting
+2. **Visual Improvements**
+   - Higher contrast indicators for low-vision users
+   - Better hover states for interactive elements
+   - Enhanced focus indicators
 
-### **FUTURE: Accessibility Pattern Application (Option 3)**
-**Why**: Apply the proven accessibility skeleton to other windows for consistency.
+3. **Functionality**
+   - Implement caching to reduce API calls
+   - Add undo/redo for applied changes
+   - Bulk web updates for multiple books
 
-**Target Windows**:
-- Import Window
-- Preferences Window  
-- Collection Management
-- Other dialogs that may have accessibility issues
-
-### **LONG TERM: Additional Features**
+### **LONG TERM: System Integration**
 - Bulk web metadata updates for multiple books
 - Automatic metadata validation and cleanup
 - Integration with library management systems
+- Export/import functionality for metadata
 
 ---
 
