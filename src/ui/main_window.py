@@ -2531,7 +2531,9 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'cancel_action'):
             self.cancel_action.setEnabled(show_action_buttons)
         if hasattr(self, 'get_web_info_action'):
-            should_enable = has_selection and not in_duplicate_mode
+            # Get Web Info should always be enabled except in duplicate mode
+            # It will use the currently focused book if no specific selection
+            should_enable = not in_duplicate_mode
             self.get_web_info_action.setEnabled(should_enable)
             # Debug: Remove this line after testing
             print(f"DEBUG: Get Web Info menu enabled: {should_enable}, has_selection: {has_selection}, in_duplicate_mode: {in_duplicate_mode}")
@@ -2690,26 +2692,41 @@ class MainWindow(QMainWindow):
             return
 
         if not self.selected_book_ids:
-            return
-
-        # Get the first selected book
-        book_id = list(self.selected_book_ids)[0]
-        book = None
-        for b in self.books:
-            if b.book_id == book_id:
-                book = b
-                break
+            # No specific selection - use currently focused book
+            current_index = self.table.currentIndex()
+            if not current_index.isValid():
+                self.set_status("No book available for web info lookup", timeout_ms=2000)
+                return
+            
+            current_row = current_index.row()
+            if current_row < 0 or current_row >= len(self.books):
+                self.set_status("No book available for web info lookup", timeout_ms=2000)
+                return
+            
+            book = self.books[current_row]
+            book_id = book.book_id
+        else:
+            # Use selected book (first one if multiple)
+            book_id = list(self.selected_book_ids)[0]
+            book = None
+            for b in self.books:
+                if b.book_id == book_id:
+                    book = b
+                    break
 
         if not book:
             self.set_status("No book selected for web info lookup", timeout_ms=2000)
             return
 
         # Track current row to return focus after web metadata
-        current_row = None
-        for row in range(self.table.rowCount()):
-            if row < len(self.books) and self.books[row].book_id == book_id:
-                current_row = row
-                break
+        if not self.selected_book_ids:
+            current_row = self.table.currentIndex().row()
+        else:
+            current_row = None
+            for row in range(self.table.rowCount()):
+                if row < len(self.books) and self.books[row].book_id == book_id:
+                    current_row = row
+                    break
 
         # Open web metadata window with the selected book
         try:
