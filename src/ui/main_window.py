@@ -2763,10 +2763,29 @@ class MainWindow(QMainWindow):
             target_row = min(original_row, self.table.rowCount() - 1)
             target_col = min(original_col, self.table.columnCount() - 1)
             if target_row >= 0 and target_col >= 0:
-                self.table.setCurrentCell(target_row, target_col)
-                self.table.setFocus()
+                # Use QTimer to ensure focus is set after UI updates complete
+                QTimer.singleShot(0, lambda: self._restore_table_focus(target_row, target_col))
         
         self.set_status("Web info updated and saved", announce=True)
+
+    def _restore_table_focus(self, row, col):
+        """Helper method to restore focus to table with proper keyboard handling."""
+        # Ensure main window is active and has focus
+        self.activateWindow()
+        self.raise_()
+        self.setFocus()
+        
+        # Then set focus to the table
+        self.table.setCurrentCell(row, col)
+        self.table.setFocus()
+        # Ensure the table widget is the active window for keyboard input
+        self.table.activateWindow()
+        # Force the table to be the focus widget
+        self.table.setFocusProxy(None)  # Clear any focus proxy
+        self.table.setFocus(Qt.ActiveWindowFocusReason)
+        
+        # Debug: Remove after testing
+        print(f"DEBUG: Restored focus to table cell [{row}, {col}]")
 
     def on_escape_pressed(self):
         """Handle ESC key at window level - clears selection first, then search, then read filter."""
