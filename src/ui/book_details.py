@@ -1532,7 +1532,6 @@ class BookDetailsWindow(QDialog):
             else:
                 self.set_status("Web details cancelled", announce=True)
         except Exception as e:
-            print(f"DEBUG: Exception in on_get_web_details: {e}")
             import traceback
             traceback.print_exc()
             self.set_status(f"Error opening web details: {str(e)}")

@@ -734,24 +734,19 @@ class WebMetadataWindow(QDialog):
 
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
-                    print(f"DEBUG: Before refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     self.refresh_callback()  # This loads the data (may set dirty flag)
-                    print(f"DEBUG: After refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     
                     if web_data:
                         # Also call save to persist changes
                         if hasattr(self.parent_window, 'on_save'):
                             self.parent_window.on_save()
-                            print(f"DEBUG: After on_save - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     
                     # Clear dirty state using the proper method
                     if hasattr(self.parent_window, '_clear_dirty'):
                         self.parent_window._clear_dirty(preserve_status=True)
-                        print(f"DEBUG: After _clear_dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Force clear dirty flag one more time
                     if hasattr(self.parent_window, '_dirty'):
                         self.parent_window._dirty = False
-                        print(f"DEBUG: Force clear dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     # Update save button visibility
                     if hasattr(self.parent_window, '_update_save_button_visibility'):
                         self.parent_window._update_save_button_visibility()
