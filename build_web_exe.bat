@@ -1,25 +1,14 @@
 @echo off
-REM Build AbCS Phase2 executable using PyInstaller
-REM This script creates a standalone .exe for phase2 distribution
+REM Build Web-Enhanced AbCS executable using PyInstaller
+REM This script creates a standalone .exe with web metadata features
 
 echo ========================================
-echo Building AbCS Phase2 Executable
+echo Building Web-Enhanced AbCS Executable
 echo ========================================
 echo.
-echo ACCESSIBILITY: AbCS Phase2 build script has started.
+echo ACCESSIBILITY: Web-enhanced build script has started.
 echo ACCESSIBILITY: Python add-on checks and installs may begin next.
 echo.
-
-REM Check if we're on phase2 branch
-git branch --show-current | findstr /i "phase2" >nul
-if errorlevel 1 (
-    echo ERROR: Not on phase2-enhancements branch
-    echo Please run: git checkout phase2-enhancements
-    pause
-    exit /b 1
-)
-
-echo Building from branch: phase2-enhancements
 
 REM Activate virtual environment
 call venv\Scripts\activate.bat
@@ -43,6 +32,21 @@ if errorlevel 1 (
         exit /b 1
     )
     echo PyInstaller installed successfully
+)
+
+REM Install requests library for web functionality
+echo Checking for requests library...
+python -c "import requests" >nul 2>&1
+if errorlevel 1 (
+    echo ACCESSIBILITY: Installing required Python add-on requests.
+    echo Installing requests...
+    python -m pip install requests
+    if errorlevel 1 (
+        echo ERROR: Failed to install requests
+        pause
+        exit /b 1
+    )
+    echo requests installed successfully
 )
 echo.
 
@@ -68,15 +72,15 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 if exist AbCS.spec del AbCS.spec
 
-REM Build executable
+REM Build web-enhanced executable
 echo.
-echo Building Phase2 executable...
+echo Building web-enhanced executable...
 echo This may take several minutes...
 echo PyInstaller log level: WARN
 echo.
 
 python -m PyInstaller ^
-    --name="AbCS-Phase2" ^
+    --name="AbCS" ^
     --onefile ^
     --windowed ^
     --log-level=WARN ^
@@ -92,6 +96,11 @@ python -m PyInstaller ^
     --hidden-import="mutagen.flac" ^
     --hidden-import="mutagen.oggvorbis" ^
     --hidden-import="mutagen.wave" ^
+    --hidden-import="requests" ^
+    --hidden-import="json" ^
+    --hidden-import="urllib.request" ^
+    --hidden-import="urllib.parse" ^
+    --hidden-import="urllib.error" ^
     --exclude-module="PySide6.QtSql" ^
     --exclude-module="PySide6.QtQml" ^
     --exclude-module="PySide6.QtQuick" ^
@@ -108,13 +117,14 @@ if errorlevel 1 (
 
 echo.
 echo ========================================
-echo Phase2 Build Complete!
+echo Web-Enhanced Build Complete!
 echo ========================================
 echo.
-echo Executable location: dist\AbCS-Phase2.exe
+echo Executable location: dist\AbCS.exe
 echo Database schema bundled: data\abcdDB_def.sql
+echo Web features included: Google Books API integration
 echo.
-echo This is the Phase2 build with Reading History feature.
+echo You can now distribute dist\AbCS.exe with web metadata capabilities.
 echo.
 echo Note: No database file is bundled; first run creates a new database automatically.
 echo.

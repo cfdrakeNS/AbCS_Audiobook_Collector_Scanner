@@ -728,33 +728,30 @@ class WebMetadataWindow(QDialog):
 
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:
+                    print(f"DEBUG: Before refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
                     self.refresh_callback()  # This loads the data (may set dirty flag)
-
-                    # Apply monkey-patch to prevent save prompt (do this regardless of web data)
-                    if self.parent_window:
-                        if hasattr(self.parent_window, 'reject'):
-                            original_reject = self.parent_window.reject
-                            def patched_reject():
-                                if getattr(self.parent_window, '_web_metadata_saved', False):
-                                    # Skip save prompt if we just saved from web metadata
-                                    self.parent_window._web_metadata_saved = False
-                                    super(self.parent_window.__class__, self.parent_window).reject()
-                                else:
-                                    original_reject()
-                            self.parent_window.reject = patched_reject
-
-                        # Clear dirty state using the proper method
-                        if hasattr(self.parent_window, '_clear_dirty'):
-                            self.parent_window._clear_dirty(preserve_status=True)
-                        # Force clear dirty flag one more time
-                        if hasattr(self.parent_window, '_dirty'):
-                            self.parent_window._dirty = False
-                        # Update save button visibility
-                        if hasattr(self.parent_window, '_update_save_button_visibility'):
-                            self.parent_window._update_save_button_visibility()
-                        # Force UI update
-                        if hasattr(self.parent_window, 'repaint'):
-                            self.parent_window.repaint()
+                    print(f"DEBUG: After refresh - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    
+                    if web_data:
+                        # Also call save to persist changes
+                        if hasattr(self.parent_window, 'on_save'):
+                            self.parent_window.on_save()
+                            print(f"DEBUG: After on_save - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    
+                    # Clear dirty state using the proper method
+                    if hasattr(self.parent_window, '_clear_dirty'):
+                        self.parent_window._clear_dirty(preserve_status=True)
+                        print(f"DEBUG: After _clear_dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    # Force clear dirty flag one more time
+                    if hasattr(self.parent_window, '_dirty'):
+                        self.parent_window._dirty = False
+                        print(f"DEBUG: Force clear dirty - dirty: {getattr(self.parent_window, '_dirty', 'N/A')}")
+                    # Update save button visibility
+                    if hasattr(self.parent_window, '_update_save_button_visibility'):
+                        self.parent_window._update_save_button_visibility()
+                    # Force UI update
+                    if hasattr(self.parent_window, 'repaint'):
+                        self.parent_window.repaint()
 
                 announce_dialog_closed(self)
                 super().accept()
