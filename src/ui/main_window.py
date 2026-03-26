@@ -2718,11 +2718,14 @@ class MainWindow(QMainWindow):
             self.set_status("No book selected for web info lookup", timeout_ms=2000)
             return
 
-        # Track current row to return focus after web metadata
+        # Track current cell position to return focus after web metadata
         if not self.selected_book_ids:
-            current_row = self.table.currentIndex().row()
+            current_index = self.table.currentIndex()
+            current_row = current_index.row()
+            current_col = current_index.column()
         else:
             current_row = None
+            current_col = 1  # Default to title column for selections
             for row in range(self.table.rowCount()):
                 if row < len(self.books) and self.books[row].book_id == book_id:
                     current_row = row
@@ -2741,7 +2744,7 @@ class MainWindow(QMainWindow):
             
             # Connect the save signal to handle return to main window
             self.web_metadata_window.data_saved.connect(
-                lambda: self.on_web_metadata_saved(current_row)
+                lambda: self.on_web_metadata_saved(current_row, current_col)
             )
             
             self.web_metadata_window.show()
@@ -2750,16 +2753,17 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.set_status(f"Error opening web info: {str(e)}", timeout_ms=3000)
 
-    def on_web_metadata_saved(self, original_row):
-        """Handle web metadata save - return focus to main window."""
+    def on_web_metadata_saved(self, original_row, original_col):
+        """Handle web metadata save - return focus to exact same cell."""
         # Refresh the book data to show any changes
         self.refresh_books()
         
-        # Return focus to the original row (or adjusted position)
-        if original_row is not None:
+        # Return focus to the exact same cell (or adjusted position)
+        if original_row is not None and original_col is not None:
             target_row = min(original_row, self.table.rowCount() - 1)
-            if target_row >= 0:
-                self.table.setCurrentCell(target_row, 1)  # Title column
+            target_col = min(original_col, self.table.columnCount() - 1)
+            if target_row >= 0 and target_col >= 0:
+                self.table.setCurrentCell(target_row, target_col)
                 self.table.setFocus()
         
         self.set_status("Web info updated and saved", announce=True)
