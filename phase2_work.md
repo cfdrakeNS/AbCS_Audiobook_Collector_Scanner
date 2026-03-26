@@ -63,6 +63,21 @@
 - **Accessibility Audit**: Review other windows for accessibility issues
 - **Documentation**: Update app-wide accessibility documentation
 
+### **Option 4: Edit Menu Integration - NEXT PRIORITY**
+- **Menu Item**: Add "Get Web Info" to Edit menu
+- **Shortcut**: Alt+E, G (Edit menu, then G for Get Web Info)
+- **Main Window Function**: Create function in main.py to handle menu selection
+- **Book Selection**: Pass currently selected book in table to web_metadata
+- **Return Flow**: When Save is pressed in web_metadata, return to main window book list
+- **Workflow**: User selects book → Alt+E,G → web_metadata opens with book data → Save → return to main list
+
+**Implementation Details:**
+- Add menu item to Edit menu in main_window.py
+- Create `get_web_info()` function in main.py
+- Pass selected book data to web_metadata window
+- Handle return flow after save to restore main window focus
+- Update shortcuts.py to include Alt+E,G in F1 help
+
 ---
 
 ## 3. Accessibility Foundation ✅ **COMPLETE**

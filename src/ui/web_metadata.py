@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox,
     QWidget, QSizePolicy, QMessageBox
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.accessibility.scaling import UIScaler
@@ -37,6 +37,9 @@ class WebMetadataWindow(QDialog):
     F1, Alt+/, and Escape work out of box.
     Built incrementally from accessible skeleton.
     """
+    
+    # Signal emitted when data is saved
+    data_saved = Signal()
 
     def __init__(self, db, book, scaler, theme_manager, parent=None, refresh_callback=None):
         # Always set parent_window, even if None
@@ -725,6 +728,9 @@ class WebMetadataWindow(QDialog):
 
                 # Save to database
                 self.book_queries.update(self.book)
+                
+                # Emit signal to notify main window of data save
+                self.data_saved.emit()
 
                 # Always call refresh callback to auto-save in book details
                 if self.refresh_callback:

@@ -84,6 +84,7 @@ class ShortcutManager(QObject):
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
         'L': ('Cancel selection', 'cancel_button'),
+        'G': ('Get Web Info', 'get_web_info'),
     }
 
     # Book Details Window

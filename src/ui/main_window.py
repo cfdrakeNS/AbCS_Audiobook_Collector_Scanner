@@ -33,6 +33,7 @@ from src.ui.import_window import ImportWindow
 from src.ui.collection_window import CollectionWindow
 from src.ui.name_list_window import NameListWindow
 from src.ui.backup_restore_window import BackupRestoreWindow
+from src.ui.web_metadata import WebMetadataWindow
 
 # Import version from main module
 
@@ -687,6 +688,16 @@ class MainWindow(QMainWindow):
         self.cancel_action.triggered.connect(self.on_cancel_clicked)
         self.cancel_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.cancel_action)
+        
+        # Separator
+        self.edit_menu.addSeparator()
+        
+        # Get Web Info action
+        self.get_web_info_action = QAction("&Get Web Info\tG", self)
+        self.get_web_info_action.setShortcut(QKeySequence("G"))
+        self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
+        self.get_web_info_action.setEnabled(False)  # Disabled until item selected
+        self.edit_menu.addAction(self.get_web_info_action)
 
         # View menu
         self.view_menu = menubar.addMenu("&View")
@@ -2518,6 +2529,8 @@ class MainWindow(QMainWindow):
             self.update_action.setEnabled(has_selection and not in_duplicate_mode)
         if hasattr(self, 'cancel_action'):
             self.cancel_action.setEnabled(show_action_buttons)
+        if hasattr(self, 'get_web_info_action'):
+            self.get_web_info_action.setEnabled(has_selection and not in_duplicate_mode)
 
         self.sync_selection_indicators()
 
@@ -2662,6 +2675,73 @@ class MainWindow(QMainWindow):
         self.set_default_status(announce=False)
         # mw#25: Return focus to table (use timer to ensure button hiding completes)
         QTimer.singleShot(0, self.table.setFocus)
+
+    def on_get_web_info_clicked(self):
+        """Handle Get Web Info menu click."""
+        if self.duplicate_mode_active:
+            self.set_status(
+                "Get Web Info is disabled in duplicate mode. Use Cancel Dup Mode first.",
+                timeout_ms=3000,
+            )
+            return
+
+        if not self.selected_book_ids:
+            return
+
+        # Get the first selected book
+        book_id = list(self.selected_book_ids)[0]
+        book = None
+        for b in self.books:
+            if b.book_id == book_id:
+                book = b
+                break
+
+        if not book:
+            self.set_status("No book selected for web info lookup", timeout_ms=2000)
+            return
+
+        # Track current row to return focus after web metadata
+        current_row = None
+        for row in range(self.table.rowCount()):
+            if row < len(self.books) and self.books[row].book_id == book_id:
+                current_row = row
+                break
+
+        # Open web metadata window with the selected book
+        try:
+            self.web_metadata_window = WebMetadataWindow(
+                db=self.db,
+                book=book,
+                scaler=self.scaler,
+                theme_manager=self.theme_manager,
+                parent=self,
+                refresh_callback=None  # We handle refresh via signal
+            )
+            
+            # Connect the save signal to handle return to main window
+            self.web_metadata_window.data_saved.connect(
+                lambda: self.on_web_metadata_saved(current_row)
+            )
+            
+            self.web_metadata_window.show()
+            self.set_status(f"Getting web info for: {book.title}", announce=True)
+            
+        except Exception as e:
+            self.set_status(f"Error opening web info: {str(e)}", timeout_ms=3000)
+
+    def on_web_metadata_saved(self, original_row):
+        """Handle web metadata save - return focus to main window."""
+        # Refresh the book data to show any changes
+        self.refresh_books()
+        
+        # Return focus to the original row (or adjusted position)
+        if original_row is not None:
+            target_row = min(original_row, self.table.rowCount() - 1)
+            if target_row >= 0:
+                self.table.setCurrentCell(target_row, 1)  # Title column
+                self.table.setFocus()
+        
+        self.set_status("Web info updated and saved", announce=True)
 
     def on_escape_pressed(self):
         """Handle ESC key at window level - clears selection first, then search, then read filter."""
