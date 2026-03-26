@@ -10,6 +10,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
+from src.accessibility.key_filters import is_unmapped_alt_letter
 import getpass
 
 from PySide6.QtWidgets import (
@@ -226,22 +227,11 @@ class BookDetailsWindow(QDialog):
         if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
-            # Block all Alt+<key> except allowed shortcuts
-            if modifiers & Qt.AltModifier:
-                # Convert Qt key to char (A-Z, 0-9, F1, etc.)
-                if Qt.Key_A <= key <= Qt.Key_Z:
-                    char = chr(key)
-                    if char.upper() not in self.ALLOWED_ALT_KEYS:
-                        QApplication.beep()
-                        return True  # Block event
-                # Block Alt+<other> (non-letter) except allowed
-                elif key == Qt.Key_F1 and 'F1' not in self.ALLOWED_ALT_KEYS:
-                    QApplication.beep()
-                    return True
-                elif key == Qt.Key_Slash and '/' not in self.ALLOWED_ALT_KEYS:
-                    QApplication.beep()
-                    return True
-                # Allow navigation keys, etc. as needed
+            # Block unused Alt+letter keys everywhere
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_KEYS):
+                QApplication.beep()
+                return True
+
         if event.type() == QEvent.FocusIn:
             # Schedule deselection AFTER Qt finishes its default focus handling
             # QTimer.singleShot(0, ...) runs on the next event loop iteration
