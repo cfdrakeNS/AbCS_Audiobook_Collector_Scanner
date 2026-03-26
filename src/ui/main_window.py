@@ -2535,8 +2535,6 @@ class MainWindow(QMainWindow):
             # It will use the currently focused book if no specific selection
             should_enable = not in_duplicate_mode
             self.get_web_info_action.setEnabled(should_enable)
-            # Debug: Remove this line after testing
-            print(f"DEBUG: Get Web Info menu enabled: {should_enable}, has_selection: {has_selection}, in_duplicate_mode: {in_duplicate_mode}")
 
         self.sync_selection_indicators()
 
@@ -2783,9 +2781,6 @@ class MainWindow(QMainWindow):
         # Force the table to be the focus widget
         self.table.setFocusProxy(None)  # Clear any focus proxy
         self.table.setFocus(Qt.ActiveWindowFocusReason)
-        
-        # Debug: Remove after testing
-        print(f"DEBUG: Restored focus to table cell [{row}, {col}]")
 
     def on_escape_pressed(self):
         """Handle ESC key at window level - clears selection first, then search, then read filter."""

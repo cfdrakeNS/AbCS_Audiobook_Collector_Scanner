@@ -46,13 +46,13 @@
 
 ## 2. Next Steps - Web Metadata Integration
 
-### **Option 1: Main App Integration**
-- **Menu Integration**: Add "View > Web Details" menu option
-- **Main Window Integration**: Connect to book selection
-- **Database Integration**: Save web metadata changes back to database
-- **Testing**: Test in full app context with real data
+### **Option 1: Main App Integration** ✅ **COMPLETED**
+- ✅ **Menu Integration**: Add "Get Web Info" to Edit menu
+- ✅ **Main Window Integration**: Connect to book selection/focus
+- ✅ **Database Integration**: Save web metadata changes back to database
+- ✅ **Testing**: Tested in full app context with proper focus management
 
-### **Option 2: Enhanced Web Features**
+### **Option 2: Enhanced Web Features** ⭐ **NEXT PRIORITY**
 - **API Integration**: Connect to Open Library or Google Books APIs
 - **Web Fetching**: Automatically fetch book details from web
 - **Data Comparison**: Show differences between local and web data
@@ -63,29 +63,64 @@
 - **Accessibility Audit**: Review other windows for accessibility issues
 - **Documentation**: Update app-wide accessibility documentation
 
-### **Option 4: Edit Menu Integration - ✅ COMPLETED**
-- **Menu Item**: ✅ Add "Get Web Info" to Edit menu
-- **Shortcut**: ✅ Alt+E, G (Edit menu, then G for Get Web Info)
-- **Main Window Function**: ✅ Create function in main.py to handle menu selection
-- **Book Selection**: ✅ Pass currently selected book in table to web_metadata
-- **Return Flow**: ✅ When Save is pressed in web_metadata, return to main window book list
-- **Workflow**: ✅ User selects book → Alt+E,G → web_metadata opens with book data → Save → return to main list
+### **Option 4: Edit Menu Integration - ✅ **PRODUCTION READY**
+- ✅ **Menu Item**: "Get Web Info" in Edit menu
+- ✅ **Shortcut**: Alt+E, G sequence
+- ✅ **Main Window Function**: Complete implementation in main.py
+- ✅ **Book Selection**: Uses current focus or selection
+- ✅ **Return Flow**: Perfect focus restoration to exact cell
+- ✅ **Workflow**: User selects/focuses book → Alt+E,G → web_metadata → Save → return to exact same cell with working arrow keys
 
-**✅ Implementation Details:**
-- ✅ Add menu item to Edit menu in main_window.py
-- ✅ Create `get_web_info()` function in main.py
-- ✅ Pass selected book data to web_metadata window
-- ✅ Handle return flow after save to restore main window focus
-- ✅ Update shortcuts.py to include Alt+E,G in F1 help
+**✅ Technical Implementation Complete:**
+- ✅ Menu integration with proper enable/disable logic
+- ✅ Signal-based communication between windows
+- ✅ Exact cell focus restoration with keyboard navigation
+- ✅ Accessibility support with screen reader announcements
+- ✅ Error handling and status messages
+- ✅ Clean production code (debug prints removed)
 
-**✅ Technical Changes:**
-- ✅ Added WebMetadataWindow import to main_window.py
-- ✅ Added "Get Web Info" menu item with G shortcut
-- ✅ Implemented on_get_web_info_clicked() handler
-- ✅ Added data_saved signal to WebMetadataWindow
-- ✅ Implemented on_web_metadata_saved() return flow
-- ✅ Added enable/disable logic based on selection
-- ✅ Updated MAIN_WINDOW_SHORTCUTS in shortcuts.py
+**✅ User Experience:**
+- ✅ Intuitive workflow - no need to select rows, just focus
+- ✅ Seamless navigation - arrow keys work immediately after save
+- ✅ Context preservation - returns to exact same cell
+- ✅ Accessibility - full JAWS/NVDA support
+
+---
+
+## 🎯 WHAT'S NEXT - Priority Development Areas
+
+### **IMMEDIATE NEXT: Enhanced Web Features (Option 2)**
+**Why**: The current web metadata window works but needs real API integration for production use.
+
+**Specific Tasks**:
+1. **Implement WebBookAPI Integration**
+   - Replace mock data with real Google Books API calls
+   - Add Open Library API as backup
+   - Implement proper error handling and timeouts
+
+2. **Enhanced Data Fetching**
+   - Auto-fetch when web metadata opens
+   - Show loading indicators during API calls
+   - Cache results to avoid repeated API calls
+
+3. **Data Comparison UI**
+   - Visual indicators for web vs local differences
+   - Checkbox selection for which fields to apply
+   - Preview changes before accepting
+
+### **FUTURE: Accessibility Pattern Application (Option 3)**
+**Why**: Apply the proven accessibility skeleton to other windows for consistency.
+
+**Target Windows**:
+- Import Window
+- Preferences Window  
+- Collection Management
+- Other dialogs that may have accessibility issues
+
+### **LONG TERM: Additional Features**
+- Bulk web metadata updates for multiple books
+- Automatic metadata validation and cleanup
+- Integration with library management systems
 
 ---
 
