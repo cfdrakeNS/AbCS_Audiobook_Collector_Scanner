@@ -24,21 +24,31 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import announce_status_message, announce_dialog_opened, announce_dialog_closed
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
 from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.database import Collection, CollectionQueries, DatabaseManager
 
 
 class CollectionWindow(QDialog):
+    """
+    Collection management window with PROVEN accessibility foundation.
+    
+    F1, Alt+/, and Escape work out of box.
+    Built incrementally from accessible skeleton.
+    """
+    
+    # Alt+letter keys that are allowed to pass through
+    ALLOWED_ALT_LETTERS = {
+        'B', 'E', 'L', 'M', 'N', 'S', 'F', 'A'
+    }
+    
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
         super().keyPressEvent(event)
-    """
-    Window for adding, editing, and deleting collections.
-    """
-    # No longer needed: all Alt+letter shortcuts are now centralized
 
     COL_NAME = 0
     COL_ACTIVE = 1
@@ -641,11 +651,10 @@ class CollectionWindow(QDialog):
 
         dlg.exec()
 
-    # _allowed_alt_letter_keys and eventFilter are no longer needed with centralized shortcuts
-
-    def keyPressEvent(self, event):
-        """Prevent Enter from defaulting to footer button activation."""
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            event.ignore()
-            return
-        super().keyPressEvent(event)
+    def eventFilter(self, source, event):
+        """Filter events for Alt+key handling - PROVEN accessibility pattern."""
+        if event.type() == QEvent.KeyPress:
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                QApplication.beep()
+                return True
+        return super().eventFilter(source, event)

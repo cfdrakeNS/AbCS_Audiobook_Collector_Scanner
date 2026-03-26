@@ -1,4 +1,6 @@
 reminder I use jaws so keep response to the facts; what fixed what changed.
-File: src/ui/main_import 
+all changes are to be made in the web-metadata-integration  only!! do not touch code in main branch  
+
+File: src/ui/main
 Function: save 
 issues: status bar says "error saving name 'web_data" not defined 

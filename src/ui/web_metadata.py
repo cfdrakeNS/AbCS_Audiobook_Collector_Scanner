@@ -400,7 +400,9 @@ class WebMetadataWindow(QDialog):
             self.genre_checkbox.setChecked(False)
         # Plot (no indicator as requested)
         if web_data.get('plot') and web_data['plot'] != self.book.comments:
-            self.plot_edit.setPlainText(web_data['plot'])
+            # Remove leading/trailing blank lines
+            cleaned_plot = web_data['plot'].strip()
+            self.plot_edit.setPlainText(cleaned_plot)
             self.field_differences['plot'] = 'found'
             changes_made = True
         return changes_made
@@ -716,14 +718,11 @@ class WebMetadataWindow(QDialog):
                 if header_line:
                     plot_lines.append(header_line)
                 if plot:
-                    if header_line:
-                        plot_lines.append("")  # blank line before plot if header present
                     plot_lines.append(plot)
                 if publisher_line:
-                    if plot_lines:
-                        plot_lines.append("")  # blank line before publisher if plot or header present
                     plot_lines.append(publisher_line)
-                new_plot = "\n".join(plot_lines).strip()
+                # Remove any blank lines between sections
+                new_plot = "\n".join([line for line in plot_lines if line.strip() != ""]).strip()
                 self.book.comments = new_plot
 
                 # Save to database
@@ -768,6 +767,8 @@ class WebMetadataWindow(QDialog):
     
     def reject(self):
         """Handle close - discard changes as requested."""
+        # Emit data_saved so MainWindow restores focus to table even on Escape
+        self.data_saved.emit()
         announce_dialog_closed(self)
         super().reject()
 

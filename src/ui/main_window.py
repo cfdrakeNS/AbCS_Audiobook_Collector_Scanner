@@ -2695,12 +2695,10 @@ class MainWindow(QMainWindow):
             if not current_index.isValid():
                 self.set_status("No book available for web info lookup", timeout_ms=2000)
                 return
-            
             current_row = current_index.row()
             if current_row < 0 or current_row >= len(self.books):
                 self.set_status("No book available for web info lookup", timeout_ms=2000)
                 return
-            
             book = self.books[current_row]
             book_id = book.book_id
         else:
@@ -2714,6 +2712,26 @@ class MainWindow(QMainWindow):
 
         if not book:
             self.set_status("No book selected for web info lookup", timeout_ms=2000)
+            return
+
+        # Show auto-closing popup dialog (like BookDetails)
+        try:
+            from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+            from PySide6.QtCore import QTimer
+            popup = QDialog(self)
+            popup.setWindowTitle("Please wait")
+            popup.setModal(True)
+            popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
+            layout = QVBoxLayout(popup)
+            label = QLabel(f"Getting web info for: {book.title}")
+            layout.addWidget(label)
+            popup.setLayout(layout)
+            popup.resize(350, 80)
+            QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
+            popup.show()
+            QApplication.processEvents()
+        except Exception as e:
+            self.set_status(f"Error showing web info popup: {str(e)}", timeout_ms=3000)
             return
 
         # Track current cell position to return focus after web metadata
@@ -2739,15 +2757,12 @@ class MainWindow(QMainWindow):
                 parent=self,
                 refresh_callback=None  # We handle refresh via signal
             )
-            
             # Connect the save signal to handle return to main window
             self.web_metadata_window.data_saved.connect(
                 lambda: self.on_web_metadata_saved(current_row, current_col)
             )
-            
             self.web_metadata_window.show()
             self.set_status(f"Getting web info for: {book.title}", announce=True)
-            
         except Exception as e:
             self.set_status(f"Error opening web info: {str(e)}", timeout_ms=3000)
 

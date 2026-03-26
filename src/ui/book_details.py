@@ -240,9 +240,9 @@ class BookDetailsWindow(QDialog):
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(0, lambda w=source: w.deselect())
             elif isinstance(source, QTextEdit):
-                # QTextEdit uses QTextCursor.End to move cursor and clear selection
+                # Move cursor to start for accessibility (better for screen readers)
                 QTimer.singleShot(
-                    0, lambda w=source: w.moveCursor(QTextCursor.End))
+                    0, lambda w=source: w.moveCursor(QTextCursor.Start))
             elif isinstance(source, QComboBox):
                 # QComboBox selects text in its internal lineEdit - deselect it
                 if source.lineEdit():

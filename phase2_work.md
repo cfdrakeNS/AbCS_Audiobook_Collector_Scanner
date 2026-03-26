@@ -1,250 +1,165 @@
-# Phase 2: Web Metadata Implementation ✅ **MAJOR SUCCESS**
 
-## 1. Web Metadata Window ✅ **FULLY IMPLEMENTED WITH ACCESSIBILITY**
-**Current State**: Complete accessible web metadata window with proven accessibility foundation.
+# Phase 2: Web Metadata Implementation — Summary of Completed Items
 
-**✅ What Works**: 
-- ✅ **ALL ACCESSIBILITY**: F1, Alt+/, Escape, all field shortcuts (Alt+T, Alt+A, Alt+P, Alt+Y, Alt+I, Alt+G)
-- ✅ **BUTTON SHORTCUTS**: Alt+S (Save), Alt+L (Launch Tag) - working perfectly
-- ✅ **SCREEN READER SUPPORT**: Full JAWS compatibility with status bar announcements
-- ✅ **PROVEN FOUNDATION**: Built from accessible skeleton - accessibility works out of box
-- ✅ **PROFESSIONAL F1 HELP**: Standard table format matching app-wide patterns
-- ✅ **ALL FIELDS**: Title, Author, Plot, Year, Series, Genre with proper accessibility
-- ✅ **CLEAN UI**: Vertical layout, one field per line, no unnecessary complexity
+## Web Metadata Window (Complete)
+- Fully accessible web metadata window (JAWS/NVDA, F1, Alt+/, Escape, all field shortcuts)
+- All fields: Title, Author, Plot, Year, Series, Genre
+- Clean UI, vertical layout, accessible status bar, and keyboard navigation
+- Save and Escape both restore focus to main window table
+- Professional F1 help and status bar announcements
+- Proven accessibility skeleton used for all new windows
 
-**✅ Implementation Completed**:
-- ✅ **NEW**: `web_metadata.py` - fully accessible web metadata window
-- ✅ **NEW**: `accessible_window_skeleton.py` - proven accessibility template for all future windows
-- ✅ **NEW**: `README_accessible_skeleton.md` - usage instructions and patterns
-- ✅ **UPDATED**: `shortcuts.py` with web metadata context
-- ✅ **DOCUMENTED**: Critical accessibility lessons in best practices guide
-- ✅ **BACKUP**: `web_metadata_old.py` preserved for reference
+## Main App Integration (Complete)
+- "Get Web Info" menu item in Edit menu
+- Shortcut: Alt+E, G sequence
+- Main window integration with book selection/focus
+- Database integration: web metadata changes saved
+- Focus returns to exact cell after Save or Escape
 
-**✅ Technical Features Implemented**:
-- ✅ **PROVEN ACCESSIBILITY PATTERN**: Local shortcuts only, no centralized conflicts
-- ✅ **NO MODALITY**: Removed ApplicationModal that blocked shortcuts
-- ✅ **NO AMPERSAND CONFLICTS**: Button text avoids shortcut conflicts
-- ✅ **STANDARD F1 HELP**: Table format with Alt+/ and F1 properly listed
-- ✅ **STATUS BAR ANNOUNCEMENTS**: Screen reader integration working
-- ✅ **FIELD NAVIGATION**: Alt+letter shortcuts focus all fields
-- ✅ **BUTTON ACTIONS**: Save and Launch Tag buttons functional
-
-**✅ CRITICAL LESSONS LEARNED**:
-- ✅ **START FROM PROVEN BASE**: Use accessible skeleton for all new windows
-- ✅ **LOCAL SHORTCUTS ONLY**: Never mix centralized and local shortcut systems
-- ✅ **NO AMPERSANDS**: Avoid & in button text with custom Alt+ shortcuts
-- ✅ **NO MODALITY**: ApplicationModal blocks accessibility shortcuts
-- ✅ **DOCUMENT PATTERNS**: Save working patterns for future developers
-
-**✅ IMPACT**:
-- ✅ **WEB METADATA**: Fully accessible and ready for production
-- ✅ **FUTURE WINDOWS**: Skeleton prevents accessibility frustration
-- ✅ **DOCUMENTATION**: Complete working example and patterns
-- ✅ **TIME SAVED**: No more hours debugging basic accessibility
-
----
-
-## 2. Next Steps - Web Metadata Integration
-
-### **Option 1: Main App Integration** ✅ **COMPLETED**
-- ✅ **Menu Integration**: Add "Get Web Info" to Edit menu
-- ✅ **Main Window Integration**: Connect to book selection/focus
-- ✅ **Database Integration**: Save web metadata changes back to database
-- ✅ **Testing**: Tested in full app context with proper focus management
-
-### **Option 2: Enhanced Web Features** ✅ **MOSTLY COMPLETE**
-- ✅ **API Integration**: Real Google Books & Open Library APIs implemented
-- ✅ **Web Fetching**: Auto-fetch when window opens with error handling
-- ✅ **Data Comparison**: Visual indicators and checkbox selection for updates
-- ⚠️ **Loading Indicators**: Basic status messages, could enhance with spinners
-
-**✅ What's Working:**
-- Real API calls to Google Books and Open Library
-- Automatic fallback between APIs
-- Series number extraction from web data
-- Error handling for network failures
-- Visual difference indicators (green checkmarks)
+## Enhanced Web Features (Complete)
+- Real Google Books & Open Library API integration
+- Auto-fetch web data on window open
+- Visual indicators and checkbox selection for updates
+- Error/status handling for network failures
+- Series number extraction and display
 - Checkbox selection for field updates
 - Status bar announcements for screen readers
 
-**⚠️ Minor Enhancements Available:**
-- Add loading spinner during API calls
-- Enhance visual contrast for indicators
-- Add undo functionality for applied changes
-- Implement caching to avoid repeated API calls
+## Accessibility Foundation (Complete)
+- All dialogs, popups, and status messages accessible and announced
+- Consistent Alt+key handling and F1 help format
+- Compact layout for low vision users
 
-### **Option 3: Apply Accessibility Pattern**
-- **Fix Other Windows**: Apply skeleton pattern to existing windows
-- **Accessibility Audit**: Review other windows for accessibility issues
-- **Documentation**: Update app-wide accessibility documentation
+## Book Details Integration (Complete)
+- After saving in web metadata window, book_details reloads data and clears dirty flag
+- User is not prompted to save again after web metadata update
+- Improved workflow for JAWS and all users
 
-### **Option 4: Edit Menu Integration - ✅ **PRODUCTION READY**
-- ✅ **Menu Item**: "Get Web Info" in Edit menu
-- ✅ **Shortcut**: Alt+E, G sequence
-- ✅ **Main Window Function**: Complete implementation in main.py
-- ✅ **Book Selection**: Uses current focus or selection
-- ✅ **Return Flow**: Perfect focus restoration to exact cell
-- ✅ **Workflow**: User selects/focuses book → Alt+E,G → web_metadata → Save → return to exact same cell with working arrow keys
-
-**✅ Technical Implementation Complete:**
-- ✅ Menu integration with proper enable/disable logic
-- ✅ Signal-based communication between windows
-- ✅ Exact cell focus restoration with keyboard navigation
-- ✅ Accessibility support with screen reader announcements
-- ✅ Error handling and status messages
-- ✅ Clean production code (debug prints removed)
-
-**✅ User Experience:**
-- ✅ Intuitive workflow - no need to select rows, just focus
-- ✅ Seamless navigation - arrow keys work immediately after save
-- ✅ Context preservation - returns to exact same cell
-- ✅ Accessibility - full JAWS/NVDA support
-
----
-
-## 🎯 WHAT'S NEXT - Updated Priorities
-
-### **IMMEDIATE NEXT: Accessibility Pattern Application (Option 3)**
-**Why**: Most web metadata features are complete, time to improve overall app accessibility.
-
-**Target Windows for Enhancement:**
-- Import Window - Apply skeleton pattern for consistent accessibility
-- Preferences Window - Ensure proper keyboard navigation and screen reader support
-- Collection Management - Audit and fix any accessibility issues
-- Other dialogs that may have accessibility gaps
-
-### **ENHANCEMENTS: Web Metadata Polish (Option 2)**
-**Minor improvements available:**
-1. **Loading Indicators**
-   - Add visual spinner during API calls
-   - Enhance status messages for screen readers
-   - Add cancel button for long requests
-
-2. **Visual Improvements**
-   - Higher contrast indicators for low-vision users
-   - Better hover states for interactive elements
-   - Enhanced focus indicators
-
-3. **Functionality**
-   - Implement caching to reduce API calls
-   - Add undo/redo for applied changes
-   - Bulk web updates for multiple books
-
-### **LONG TERM: System Integration**
-- Bulk web metadata updates for multiple books
-- Automatic metadata validation and cleanup
-- Integration with library management systems
-- Export/import functionality for metadata
-
----
-
-## 3. Accessibility Foundation ✅ **COMPLETE**
-
-## 4. Web Metadata Window - **IN PROGRESS - Several Items Still Need Work**
-
-### ✅ **COMPLETED ITEMS:**
-- ✅ Basic window structure with accessibility foundation
-- ✅ Field layout (title, author, year, series, genre, plot)
-- ✅ Green checkmark indicators for web data differences
-- ✅ Save button functionality with database updates
-- ✅ Escape key handling (discard changes)
-- ✅ Refresh callback to book_details after save
-- ✅ Field styling with borders
-- ✅ Compact layout for low vision users
-- ✅ Removed test data (no more fake plot/genre text)
-
-### ✅ **REMAINING ITEMS TO FIX (as of Mar 2026):**
+## Files Created/Updated
+- accessible_window_skeleton.py (template)
+- README_accessible_skeleton.md (usage instructions)
+- web_metadata.py (current implementation)
+- Screen_Reader_and_PySide6_best_practices.md (lessons learned)
+- phase2_work.md (this summary)
 
 
-#### **WEB DATA FUNCTIONALITY (COMPLETE):**
-- Web data fetching now uses the `WebBookAPI` class (Google Books + Open Library). Query logic fixed to match previous working behavior (title+author, no inpublisher).
-- Indicator system finalized: green checkmark if no difference, red if web data is different; indicator logic fully integrated with field updates.
-- Robust error/status handling for network failures, timeouts, and retries. Status bar updates for all states (fetching, not found, error).
-- Series number handling: (TODO) ensure series number is extracted and displayed if found in web data.
-
-#### File: src/ui/book_detail 
-- change the button that says "Update Metadata" to say "Get web info" change the shortcut to alt+w from alt+u update the f1 shortcut menu in shortcuts.py 
-- check the alt key bocking as alt keys that are not used are being passed thru to text boxes.
-- when Get web info button we need a message either on the status bar or a popup that says "Fetching book info from web, please wait!"
-
-#### **TESTING & VALIDATION:**
-- Tested with real book data and various edge cases (Google Books API returns expected results).
-- Accessibility tested with screen reader (JAWS/NVDA) and keyboard navigation.
-- Error scenarios and user feedback confirmed (status bar and indicators update correctly).
-
-#### **DOCUMENTATION:**
-- Update user and developer documentation to reflect new web integration and accessibility patterns.
+## Next Steps
+- Apply accessibility skeleton to Collection, Preferences, and Import windows
+- Minor enhancements: loading spinner, higher contrast indicators, undo/redo, bulk updates
 
 ---
 
 
-### ✅ **RECENTLY COMPLETED:**
-- Window width, field sizing, and layout (900x600, correct field max widths)
-- Button styling and accessibility (Save button, Alt+S, accessible style)
-- Status bar and all keyboard shortcuts (F1, Alt+/, Escape, Alt+letter for all fields)
-- Field alignment and accessible field styling
-- Auto-fetch web data on window open (Google Books API, to be refactored to use WebBookAPI)
-- Popup for changed fields (shows only changed fields, not full text)
-- Save button updates database and refreshes parent window
-- Accessibility: all dialogs, popups, and status messages are accessible and announced for screen readers
-- **Book Details Integration:** After saving in the web metadata window, book_details now reloads the data and clears the dirty flag. User is no longer prompted to save again after web metadata update. This improves workflow for JAWS and all users.
+## Planned Feature: Get Web Info Window — Accessibility/Usability Redesign
+
+### Problem
+- The current use of checkboxes and checkmarks to indicate differences between DB and web data is not very usable for screen reader users (JAWS/NVDA).
+- Screen readers do not reliably announce visual indicators or checkbox states in a way that makes the differences clear.
+
+### Proposed Solution
+- Replace the checkbox/checkmark UI with a more accessible, text-based summary of changes.
+- For each field (title, author, year, genre, series, plot):
+	- If the web data is different from the DB, show a line like:
+		- "Current Title: [db value] → Web Title: [web value]" with a checkbox to accept the change
+		- Same for Author, Year, Genre, Series
+	- If the DB field is empty (year, genre, series), do not show the current value—just add the web data by default (no checkbox needed)
+- Present the changes as a vertical list (one per line) or as a simple table (field, current value, web value, accept checkbox)
+- Use accessible labels for all checkboxes (e.g., "Accept web title", "Accept web author")
+- If no difference, do not show the field (except for plot, which is always shown if present)
+- Add a summary text box at the top: "The following fields differ from the database. Check the box to accept the web value."
+- All controls must have Alt+letter shortcuts and be fully keyboard accessible.
+- Status bar must announce the number of changes and which field is focused.
+
+### Accessibility Notes
+- Avoid visual-only cues (color, checkmarks) for indicating changes.
+- Use clear, concise text and explicit labels for all controls.
+- Ensure tab order and Alt+letter shortcuts are logical and documented in F1 help.
+- Announce changes and focus in the status bar for screen readers.
 
 ---
 
+## Planned Feature: Multi-Get Web Info (Batch Web Metadata Import)
 
-### **NEXT ACTIONS:**
-1. Series number handling: Implemented. Series number is now extracted from Google Books/Open Library and displayed in the UI.
-2. Final workflow polish and accessibility retest.
-3. Update documentation and user guides to reflect new workflow and accessibility improvements.
+### User Workflow
+1. User selects one or more books in the main window (multi-select supported).
+2. User presses a new button "Get web info" (appears in the footer like Update/Delete/Cancel, only when books are selected).
+3. A popup appears with two buttons:
+	- **Get Plot**: Only fetches plot/description from the web for selected books.
+	- **Get All Info**: Fetches plot and any other metadata that differs from the database (title, author, year, series, genre, etc).
+4. A temporary status message appears (like the current Edit → Get Web Info) indicating that web metadata is being fetched in the background.
+5. A background process retrieves web metadata for all selected books (non-blocking, UI remains responsive).
+6. When the background process completes, a popup message reports:
+	- Number of books with metadata retrieved
+	- Number of books where metadata was not found
+	- Two buttons: **Update All** and **Review**
+
+7. If **Update All** is pressed:
+	- All books with new metadata are updated in the database (can be a background process if many books)
+	- Regardless of field differences, if a DB field is empty (year, genre, series), always add the web data for that field (no checkbox needed)
+8. If **Review** is pressed:
+	- The WebMetadataWindow opens in a paged mode, allowing the user to review each book one by one
+	- For each book, the new accessible UI (see above) is used to present differences and allow field-by-field acceptance
+	- After saving a book, the window moves to the next book (no going back to already saved books)
+	- When all books are reviewed, the window closes and focus returns to the main table
+	- Regardless of field differences, if a DB field is empty (year, genre, series), always add the web data for that field (no checkbox needed)
+
+### Implementation Plan
+
+**Main Window:**
+- Add a "Get web info" button to the footer, visible only when books are selected (same pattern as Update/Delete/Cancel).
+- Button triggers a dialog with "Get Plot" and "Get All Info" options.
+- On selection, start a background task to fetch web metadata for all selected books.
+- Show a temporary status message while fetching.
+
+**Background Fetch Process:**
+- Use QThread or QtConcurrent to run web fetches in parallel (non-blocking for UI).
+- For each book:
+  - Fetch plot or all metadata from web APIs (Google Books, Open Library)
+  - Compare with current DB data; record only fields that differ
+  - Track which books had data found and which did not
+- On completion, emit a signal with results (success/failure per book, diff data)
+
+**Result Popup:**
+- Show a summary popup: "Web info found for X books, not found for Y books."
+- Buttons: **Update All** (apply all changes to DB), **Review** (step through each book)
+
+**Update All:**
+- Apply all metadata changes to the DB in a batch (can be backgrounded if >10 books)
+- Show a completion message and refresh the main table
+
+**Review Mode:**
+- Open WebMetadataWindow in a paged/review mode
+- User reviews each book, presses Save to apply web data and move to next
+- Once a book is saved, it cannot be revisited in this session
+- After last book, close window and return focus to main table
+
+**Accessibility:**
+- All dialogs, popups, and review windows must follow accessibility patterns (Alt+letter shortcuts, F1 help, status bar announcements, focus management)
+- Status messages must be announced for screen readers
+
+**Possible Improvements:**
+- Allow user to filter which fields to update in batch (e.g., only update plot, not title)
+- Add progress bar for long-running fetches/updates
+- Allow canceling the background fetch/update process
+- Log/report any errors or books with ambiguous matches
+
+**Open Questions:**
+- Should "Update All" be a background process for large batches? (Recommended for >10 books)
+- Should there be an undo for batch updates? (Could be complex)
+- Should the review window allow skipping a book (leave unchanged)?
 
 ---
 
-**Summary:**
-The web metadata window is now fully accessible and functionally complete for UI, keyboard, and status bar. Web data fetching works (Google Books API), but should be refactored to use the new `WebBookAPI` for reliability and richer data. Indicator logic and error/status handling need finalization. Most remaining work is integration polish, error handling, and documentation/testing.
-### **📋 REFERENCE:**
-- Working reference: `web_metadata_backup.py` has proper popup and indicator logic
-- Button reference: `book_details.py` for proper button styling
-- API reference: Need to implement real web data fetching
+## Proven Pattern
+- Copy skeleton to new window file
+- Add UI elements in setup_ui()
+- Add field shortcuts in setup_shortcuts()
+- Test F1, Alt+/, Escape
+- Avoid ampersands in button text with Alt+ shortcuts
 
----
+## Remaining Priorities
+- Apply skeleton to Collection Window (start here)
+- Test thoroughly with JAWS
+- Proceed to Preferences and Import Window
 
-## 5. Real API Integration - **PENDING**
-- Implement Google Books API
-- Implement Open Library API  
-- Add error handling for network failures
-- Add timeout handling
-- Add retry logic
-
----
-
-## 6. Testing & Validation - **PENDING**
-- Test with real book data
-- Test accessibility with screen reader
-- Test keyboard navigation
-- Test error scenarios
-
-### **Files Created/Updated**:
-- ✅ `accessible_window_skeleton.py` - Template with proven accessibility
-- ✅ `README_accessible_skeleton.md` - Usage instructions  
-- ✅ `web_metadata.py` - Current implementation (needs fixes above)
-- ✅ Updated `Screen_Reader_and_PySide6_best_practices.md` with lessons learned
-- ✅ `phase2_work.md` - Updated with actual remaining tasks
-
-### **Proven Pattern**:
-1. **Copy skeleton** to new window file
-2. **Add UI elements** in `setup_ui()`
-3. **Add field shortcuts** in `setup_shortcuts()`
-4. **Test F1, Alt+/, Escape** - they work out of box
-5. **Avoid ampersands** in button text with Alt+ shortcuts
-
-### **Result**:
-**Accessibility that just works out of the box!** No more hours debugging basic shortcuts.
-
----
-
-**Status**: **WEB METADATA ACCESSIBILITY COMPLETE**
-**Next**: Choose integration priority and move forward with confidence!
-
----
-
-This document provides detailed implementation guidance for the next development phase, ensuring all enhancements maintain accessibility standards and robust functionality.
+**Status:** Web metadata accessibility and integration complete. All major features and accessibility requirements are implemented.
