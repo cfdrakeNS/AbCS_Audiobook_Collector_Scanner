@@ -361,6 +361,7 @@ class MainWindow(QMainWindow):
         if self.table.model() and self.table.model().rowCount() > 0:
             self.table.setCurrentCell(0, 1)  # Column 1 is Title
             self.table.setFocus()
+            self.update_selection_ui()  # Update menu state after initial selection
         else:
             self.table.setFocus()
 
@@ -2530,7 +2531,10 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'cancel_action'):
             self.cancel_action.setEnabled(show_action_buttons)
         if hasattr(self, 'get_web_info_action'):
-            self.get_web_info_action.setEnabled(has_selection and not in_duplicate_mode)
+            should_enable = has_selection and not in_duplicate_mode
+            self.get_web_info_action.setEnabled(should_enable)
+            # Debug: Remove this line after testing
+            print(f"DEBUG: Get Web Info menu enabled: {should_enable}, has_selection: {has_selection}, in_duplicate_mode: {in_duplicate_mode}")
 
         self.sync_selection_indicators()
 
