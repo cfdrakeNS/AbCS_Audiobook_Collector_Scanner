@@ -1261,16 +1261,21 @@ class MainWindow(QMainWindow):
             self.table.setCurrentCell(0, 1)  # Column 1 is Title
             self.table.setFocus()
 
-    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
+    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True, is_error: bool = False):
         """
         Set status bar message with optional screen reader announcement.
+        Also print errors to the terminal for accessibility/copying.
 
         Args:
             message: Message to display
             timeout_ms: If > 0, message will clear to default after this delay.
                        If 0, message stays until manually changed.
             announce: If True, briefly move focus to status bar so JAWS/NVDA read it
+            is_error: If True, print to stderr
         """
+        if is_error:
+            import sys
+            print(f"ERROR: {message}", file=sys.stderr)
         announce_status_message(self.status_bar, message, move_focus=announce)
 
         if timeout_ms > 0:
@@ -1583,7 +1588,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             self.table.setUpdatesEnabled(True)
-            self.set_status(f"Error loading books: {e}", timeout_ms=3000)
+            self.set_status(f"Error loading books: {e}", timeout_ms=3000, is_error=True)
 
         finally:
             # ALWAYS UNBLOCK SIGNALS - even on error
@@ -2731,7 +2736,7 @@ class MainWindow(QMainWindow):
             popup.show()
             QApplication.processEvents()
         except Exception as e:
-            self.set_status(f"Error showing web info popup: {str(e)}", timeout_ms=3000)
+            self.set_status(f"Error showing web info popup: {str(e)}", timeout_ms=3000, is_error=True)
             return
 
         # Track current cell position to return focus after web metadata
@@ -2764,7 +2769,7 @@ class MainWindow(QMainWindow):
             self.web_metadata_window.show()
             self.set_status(f"Getting web info for: {book.title}", announce=True)
         except Exception as e:
-            self.set_status(f"Error opening web info: {str(e)}", timeout_ms=3000)
+            self.set_status(f"Error opening web info: {str(e)}", timeout_ms=3000, is_error=True)
 
     def on_web_metadata_saved(self, original_row, original_col):
         """Handle web metadata save - return focus to exact same cell."""

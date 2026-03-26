@@ -276,9 +276,6 @@ class WebMetadataWindow(QDialog):
         # Enable buttons
         self.save_button.setEnabled(True)
         
-        # Show discrepancy popup if differences found
-        if self.field_differences:
-            self._show_discrepancy_popup()
         
         # Update status
         source = data.get('source', 'unknown')
@@ -335,37 +332,7 @@ class WebMetadataWindow(QDialog):
                     else:
                         indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Green
 
-    def _show_discrepancy_popup(self):
-        """Show popup with field differences."""
-        if not self.field_differences:
-            return
-            
-        # Build discrepancy message
-        message_lines = ["Discrepancies Found:"]
-        for field, value in self.field_differences.items():
-            if field == 'plot':
-                field_name = 'Plot'
-            elif field == 'series':
-                field_name = 'Series'
-            elif field == 'genre':
-                field_name = 'Genre'
-            elif field == 'author':
-                field_name = 'Author'
-            elif field == 'year':
-                field_name = 'Year'
-            else:
-                field_name = field.capitalize()
-            
-            message_lines.append(f"{field_name}: {value}")
-        
-        # Show popup
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Discrepancies Found",
-            text="\n".join(message_lines)
-        )
+
 
     def _create_field_with_indicator(self, field, web_value):
         """Create a field with web data difference indicator."""
