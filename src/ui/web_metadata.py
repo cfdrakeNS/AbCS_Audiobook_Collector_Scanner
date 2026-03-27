@@ -405,10 +405,22 @@ class WebMetadataWindow(QDialog):
     
     def fetch_web_data(self):
         """Fetch web data from API with status updates."""
-        # Get current book info
-        title = self.book.title
-        author = self.book.author_name
-        year = str(self.book.year) if self.book.year else None
+        # Check if parent is book_details and use current form values if so
+        parent_is_book_details = (self.parent_window and 
+                                hasattr(self.parent_window, '__class__') and 
+                                'book_details' in str(type(self.parent_window).__module__).lower())
+        
+        if parent_is_book_details and hasattr(self.parent_window, 'title_edit'):
+            # Use current values from book_details form (user may have edited them)
+            title = self.parent_window.title_edit.text().strip()
+            author = self.parent_window.author_edit.text().strip()
+            year = self.parent_window.year_edit.text().strip()
+            year = int(year) if year and year.isdigit() else None
+        else:
+            # Use database values (main window or fallback)
+            title = self.book.title
+            author = self.book.author_name
+            year = str(self.book.year) if self.book.year else None
 
         # Use WebBookAPI for fetching with error handling
         api = WebBookAPI()
@@ -429,8 +441,8 @@ class WebMetadataWindow(QDialog):
         else:
             # No web data found - show popup and close window
             from src.accessibility.style_helpers import exec_styled_message_box
-            title_text = self.book.title or "Unknown Title"
-            author_text = self.book.author_name or "Unknown Author"
+            title_text = title or "Unknown Title"
+            author_text = author or "Unknown Author"
             message_text = f"No web data found for:\n\nTitle: {title_text}\nAuthor: {author_text}\n\nBook not matched"
             
             exec_styled_message_box(
