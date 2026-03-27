@@ -427,8 +427,15 @@ class WebMetadataWindow(QDialog):
             msg = f"Web data found{diff_str}"
             self.set_status(msg, announce=True)
         else:
-            self.set_status("No web data found - book not matched", announce=True)
+            # No web data found - close window and update parent status bar
+            if self.parent_window and hasattr(self.parent_window, 'set_status'):
+                self.parent_window.set_status("No web data found - book not matched", announce=True)
+            else:
+                # Fallback to local status if no parent available
+                self.set_status("No web data found - book not matched", announce=True)
             self.clear_web_indicators()
+            # Close the window without showing it
+            QTimer.singleShot(0, self.close)
     
 
     
