@@ -252,64 +252,6 @@ class WebMetadataWindow(QDialog):
         needed_height = int(doc_height + margins.top() + margins.bottom() + frame_width + 5)
         new_height = max(40, min(200, needed_height))
         self.plot_edit.setFixedHeight(new_height)
-
-        # Widen the form for accessibility
-        min_width = int(self.scaler.get_scaled_size(600))
-        self.setMinimumWidth(min_width)
-
-        # Add main layout to the dialog
-        layout.addLayout(self.main_layout)
-
-        # Buttons - match book_details styling
-        button_layout = QHBoxLayout()
-
-        # Save button only - match book_details style
-        self.save_button = QPushButton("Save")
-        self.save_button.setAccessibleName("Save")
-        self.save_button.setAccessibleDescription("Save web metadata changes - Alt+S")
-        self.save_button.setFocusPolicy(Qt.StrongFocus)
-        self.save_button.clicked.connect(self.accept)
-        button_layout.addWidget(self.save_button)
-
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-        # Apply book_details button styling
-        scaled_height = self.scaler.get_scaled_size(22)
-        button_style = f"""
-                    QPushButton {{
-                        padding: 4px 12px;
-                        min-height: {scaled_height - 4}px;
-                        max-height: {scaled_height - 4}px;
-                        border: 1px solid palette(dark);
-                        border-radius: 3px;
-                        background-color: palette(button);
-                    }}
-                    QPushButton:focus {{
-                        background-color: palette(highlight);
-                        color: palette(highlighted-text);
-                        border: 2px solid palette(dark);
-                    }}
-                    QPushButton:hover {{
-                        background-color: palette(alternate-base);
-                    }}
-                """
-        self.save_button.setStyleSheet(button_style)
-    
-    def _adjust_plot_height(self):
-        """Adjust plot QTextEdit height to fit content (modeled after book_details)."""
-        text = self.plot_edit.toPlainText().strip()
-        if not text:
-            self.plot_edit.setFixedHeight(25)
-            return
-        doc = self.plot_edit.document()
-        doc.setTextWidth(self.plot_edit.viewport().width())
-        doc_height = doc.size().height()
-        margins = self.plot_edit.contentsMargins()
-        frame_width = self.plot_edit.frameWidth() * 2
-        needed_height = int(doc_height + margins.top() + margins.bottom() + frame_width + 5)
-        new_height = max(40, min(200, needed_height))
-        self.plot_edit.setFixedHeight(new_height)
     
     # ...existing code...
     def _create_field_with_indicator_and_checkbox(self, field, checkbox):
