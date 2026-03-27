@@ -83,9 +83,9 @@ class WebMetadataWindow(QDialog):
         # Install event filter for Alt-letter hygiene
         self.installEventFilter(self)
         
-        # CRITICAL: Set focus to plot field when window opens for Alt+key compatibility
+        # CRITICAL: Set focus to first field with web differences when window opens
         # JAWS requires focus to be set for Alt+keys to work properly
-        QTimer.singleShot(0, lambda: self.plot_edit.setFocus())
+        QTimer.singleShot(0, self.set_focus_to_first_differing_field)
 
     def eventFilter(self, source, event):
         """Event filter to enforce Alt-letter hygiene and block unmapped Alt keys."""
@@ -382,6 +382,26 @@ class WebMetadataWindow(QDialog):
 
         # Auto-fetch web data when window opens
         self.fetch_web_data()
+    
+    def set_focus_to_first_differing_field(self):
+        """Set focus to first field that has web differences, fallback to plot."""
+        # Check fields in order: title, author, year, series, genre
+        field_order = [
+            (self.title_edit, 'title'),
+            (self.author_edit, 'author'),
+            (self.year_edit, 'year'),
+            (self.series_edit, 'series'),
+            (self.genre_edit, 'genre')
+        ]
+        
+        # Find first field with differences
+        for field, field_name in field_order:
+            if field_name in self.field_differences:
+                field.setFocus()
+                return
+        
+        # No differences found, focus on plot
+        self.plot_edit.setFocus()
     
     def fetch_web_data(self):
         """Fetch web data from API with status updates."""
