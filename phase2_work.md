@@ -1,21 +1,28 @@
-# Phase 2: Web Metadata Implementation — Summary of Completed Items
+# Phase 2: Web Metadata Implementation — Status & Next Steps
 
-## Web Metadata Window (Complete)
+## ✅ Web Metadata Window (COMPLETE)
 - Fully accessible web metadata window (JAWS/NVDA, F1, Alt+/, Escape, all field shortcuts)
 - All fields: Title, Author, Plot, Year, Series, Genre
 - Clean UI, vertical layout, accessible status bar, and keyboard navigation
 - Save and Escape both restore focus to main window table
 - Professional F1 help and status bar announcements
 - Proven accessibility skeleton used for all new windows
+- **Final Fixes Applied:**
+  - Focus return to main window when no data found
+  - Uses book_details form values for retry workflow
+  - Plot field hidden when no data available
+  - Clean UI labels (removed & and Alt+Y text)
+  - No duplicate rating/source/publisher in save
 
-## Main App Integration (Complete)
+## ✅ Main App Integration (COMPLETE)
 - "Get Web Info" menu item in Edit menu
 - Shortcut: Alt+E, G sequence
 - Main window integration with book selection/focus
 - Database integration: web metadata changes saved
 - Focus returns to exact cell after Save or Escape
+- Works from both main window and book_details
 
-## Enhanced Web Features (Complete)
+## ✅ Enhanced Web Features (COMPLETE)
 - Real Google Books & Open Library API integration
 - Auto-fetch web data on window open
 - Visual indicators and checkbox selection for updates
@@ -23,33 +30,49 @@
 - Series number extraction and display
 - Checkbox selection for field updates
 - Status bar announcements for screen readers
+- Rating, source, publisher integrated into plot field
 
-## Accessibility Foundation (Complete)
+## ✅ Accessibility Foundation (COMPLETE)
 - All dialogs, popups, and status messages accessible and announced
 - Consistent Alt+key handling and F1 help format
 - Compact layout for low vision users
+- KISS principle maintained throughout
 
-## Book Details Integration (Complete)
+## ✅ Book Details Integration (COMPLETE)
 - After saving in web metadata window, book_details reloads data and clears dirty flag
 - User is not prompted to save again after web metadata update
+- Uses current form values for retry workflow
 - Improved workflow for JAWS and all users
+
+## 🔄 Multi-Book Selection Update (IN PROGRESS)
+**Current Status:** Planning phase - ready to implement
+
+**Implementation Plan:**
+1. ✅ Add "Get web info" button to main window footer (visible only when books selected)
+2. ⏳ Create dialog with "Get Plot" and "Get All Info" options
+3. ⏳ Implement background fetch process using QThread/QtConcurrent
+4. ⏳ Create result summary popup with X found, Y not found counts
+5. ⏳ Implement "Update All" functionality for batch database updates
+6. ⏳ Add paged review mode to WebMetadataWindow for multi-book review
+7. ⏳ Ensure full accessibility compliance for all new dialogs
+8. ⏳ Add progress indicators and status messages for background processes
+
+**Key Requirements:**
+- Accessibility-first: All dialogs follow AbCS patterns (F1, Alt+/, status bar, focus management)
+- Non-blocking: Background processing with UI responsiveness
+- KISS principle: Simple, clean implementation
+- Screen reader support: All status messages announced
 
 ## Files Created/Updated
 - accessible_window_skeleton.py (template)
 - README_accessible_skeleton.md (usage instructions)
-- web_metadata.py (current implementation)
+- web_metadata.py (✅ COMPLETE - fully functional)
 - Screen_Reader_and_PySide6_best_practices.md (lessons learned)
-- phase2_work.md (this summary)
-
-
-## Next Steps
-- Apply accessibility skeleton to Collection, Preferences, and Import windows
-- Minor enhancements: loading spinner, higher contrast indicators, undo/redo, bulk updates
+- phase2_work.md (this document - updated status)
 
 ---
 
-
-## Planned Feature: Get Web Info Window — Accessibility/Usability Redesign
+## Planned Feature: Multi-Get Web Info (Batch Web Metadata Import)
 
 ### Problem
 - The current use of checkboxes and checkmarks to indicate differences between DB and web data is not very usable for screen reader users (JAWS/NVDA).
