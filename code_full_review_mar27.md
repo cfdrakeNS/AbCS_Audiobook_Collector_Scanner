@@ -45,69 +45,93 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ✅ Proper focus management
 
 ### 5. import_window.py - ✅ VERY GOOD
-**Status:** Strong accessibility with minor notes
+**Status:** Strong accessibility with minor gaps
 - ✅ Status bar with `Alt+/` support
 - ✅ Alt-letter filtering implemented
 - ✅ All widgets properly named
 - ✅ F1 help dialog
 - ✅ Table accessibility with proper headers
-- ⚠️ **Note:** Uses centralized shortcut management (acceptable for this window)
+- ⚠️ **Gap 1:** Uses centralized shortcut management (inconsistent with other windows)
+- ⚠️ **Gap 2:** Missing `announce=True` default for important status messages
+- ⚠️ **Gap 3:** No explicit focus management after table operations
 
 ### 6. update_window.py - ✅ VERY GOOD
-**Status:** Good accessibility implementation
+**Status:** Good accessibility implementation with specific gaps
 - ✅ `Alt+/` status readback
 - ✅ F1 help dialog
 - ✅ Widget naming for key elements
 - ✅ Combo box anti-noise pattern
-- ⚠️ **Note:** Uses hybrid shortcut approach (functional but could be standardized)
+- ⚠️ **Gap 1:** Hybrid shortcut approach (mixes local and centralized patterns)
+- ⚠️ **Gap 2:** Missing accessible names for some table elements
+- ⚠️ **Gap 3:** Inconsistent status announcement pattern
+- ⚠️ **Gap 4:** No explicit focus management after save operations
 
 ### 7. collection_window.py - ✅ VERY GOOD
-**Status:** Solid accessibility implementation
+**Status:** Solid accessibility with minor gaps
 - ✅ Status bar with `Alt+/`
 - ✅ Alt-letter filtering
 - ✅ F1 help dialog
 - ✅ Proper widget naming
 - ✅ Simple, clean interface
+- ⚠️ **Gap 1:** Status message manipulation (adds "Alt+N New" automatically)
+- ⚠️ **Gap 2:** Limited keyboard shortcuts (only basic navigation)
+- ⚠️ **Gap 3:** No explicit focus management after add/delete operations
 
 ### 8. name_list_window.py - ✅ VERY GOOD
-**Status:** Good accessibility for reusable component
+**Status:** Good accessibility for reusable component with gaps
 - ✅ `Alt+/` status support
 - ✅ F1 help dialog
 - ✅ Widget naming
 - ✅ Alt-letter filtering
 - ✅ Generic but accessible design
+- ⚠️ **Gap 1:** Complex status message formatting logic (could be simplified)
+- ⚠️ **Gap 2:** Missing accessible names for some dynamic elements
+- ⚠️ **Gap 3:** Limited keyboard shortcuts for common operations
 
 ### 9. backup_restore_window.py - ✅ VERY GOOD
-**Status:** Good accessibility for utility window
+**Status:** Good accessibility for utility window with gaps
 - ✅ Status bar with announcements
 - ✅ Alt-letter filtering
 - ✅ F1 help dialog
 - ✅ Widget naming
 - ✅ Proper focus management
+- ⚠️ **Gap 1:** Always uses `announce=True` (could be noisy for some messages)
+- ⚠️ **Gap 2:** Missing keyboard shortcuts for backup/restore operations
+- ⚠️ **Gap 3:** No progress announcements for long operations
 
 ### 10. import_progress_window.py - ✅ VERY GOOD
-**Status:** Good accessibility for progress window
+**Status:** Good accessibility for progress window with gaps
 - ✅ Status bar with `Alt+/`
 - ✅ Alt-letter filtering
 - ✅ F1 help dialog
 - ✅ Widget naming
 - ✅ Progress announcements
+- ⚠️ **Gap 1:** Status announcement recursion issue in `on_read_status_bar()`
+- ⚠️ **Gap 2:** Missing keyboard shortcuts for cancel/pause operations
+- ⚠️ **Gap 3:** Limited accessibility for progress indicators
 
 ### 11. reading_history_window.py - ✅ VERY GOOD
-**Status:** Good accessibility for data window
+**Status:** Good accessibility for data window with gaps
 - ✅ Enhanced `Alt+/` with period message
 - ✅ F1 help dialog
 - ✅ Comprehensive widget naming
 - ✅ Table accessibility
 - ✅ Tab widget accessibility
+- ⚠️ **Gap 1:** Complex status message handling (period + status)
+- ⚠️ **Gap 2:** Missing keyboard shortcuts for common operations
+- ⚠️ **Gap 3:** No explicit focus management after date range changes
 
 ### 12. import_detail_window.py - ✅ VERY GOOD
-**Status:** Strong accessibility for complex form
+**Status:** Strong accessibility for complex form with gaps
 - ✅ Status bar with `Alt+/`
 - ✅ Alt-letter filtering
 - ✅ F1 help dialog
 - ✅ Comprehensive widget naming
 - ✅ Complex form handled well
+- ⚠️ **Gap 1:** Complex status mirroring to parent (could be simplified)
+- ⚠️ **Gap 2:** Missing keyboard shortcuts for save/skip operations
+- ⚠️ **Gap 3:** No explicit focus management after save operations
+- ⚠️ **Gap 4:** Limited accessibility for validation error display
 
 ---
 
