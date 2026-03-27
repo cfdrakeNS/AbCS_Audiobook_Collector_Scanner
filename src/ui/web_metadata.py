@@ -41,7 +41,7 @@ class WebMetadataWindow(QDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata
-    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S', '/', '?', 'F1'}
+    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S', 'R', '/', '?', 'F1'}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -274,6 +274,15 @@ class WebMetadataWindow(QDialog):
         self.save_button.clicked.connect(self.on_save_clicked)
         button_layout.addWidget(self.save_button)
         
+        self.retry_button = QPushButton("Retry Search")
+        self.retry_button.setAccessibleName("Retry web search")
+        self.retry_button.setAccessibleDescription("Retry web search with edited title/author - Alt+R")
+        self.retry_button.setFocusPolicy(Qt.StrongFocus)
+        self.retry_button.setDefault(False)
+        self.retry_button.setAutoDefault(False)
+        self.retry_button.clicked.connect(self.on_retry_search)
+        button_layout.addWidget(self.retry_button)
+        
         button_layout.addStretch()
         
         self.main_layout.addLayout(button_layout)
@@ -446,7 +455,73 @@ class WebMetadataWindow(QDialog):
             # Close the window without showing it
             QTimer.singleShot(0, self.close)
     
-
+    def on_retry_search(self):
+        """Retry web search with current title and author from form fields."""
+        # Get current values from form (user may have edited them)
+        title = self.title_edit.text().strip()
+        author = self.author_edit.text().strip()
+        year = self.year_edit.text().strip()
+        
+        if not title and not author:
+            from src.accessibility.style_helpers import exec_styled_message_box
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Search Error",
+                text="Please enter at least a title or author to search.",
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok
+            )
+            return
+        
+        # Clear previous web data and indicators
+        self.clear_web_indicators()
+        self.field_differences = {}
+        
+        # Convert year to int if provided
+        year_int = None
+        if year:
+            try:
+                year_int = int(year)
+            except ValueError:
+                year_int = None
+        
+        # Fetch new web data with updated values
+        self.set_status("Retrying web search...", announce=True)
+        api = WebBookAPI()
+        try:
+            web_data = api.get_book_metadata(title, author, year_int)
+        except Exception as e:
+            self.set_status(f"Error fetching web data: {str(e)}", announce=True)
+            return
+        
+        if web_data:
+            self.update_fields_with_web_data(web_data)
+            # Build status message: Difference - ...
+            diff_fields = [k.capitalize() for k in self.field_differences.keys()]
+            diff_str = f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
+            msg = f"Web data found{diff_str}"
+            self.set_status(msg, announce=True)
+            # Set focus to first differing field after retry
+            QTimer.singleShot(0, self.set_focus_to_first_differing_field)
+        else:
+            # No web data found - show popup
+            from src.accessibility.style_helpers import exec_styled_message_box
+            title_text = title or "Unknown Title"
+            author_text = author or "Unknown Author"
+            message_text = f"No web data found for:\n\nTitle: {title_text}\nAuthor: {author_text}\n\nBook not matched"
+            
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Web Search",
+                text=message_text,
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok
+            )
+            self.set_status("No web data found - book not matched", announce=True)
     
     def generate_realistic_plot(self, title):
         """Generate a more realistic plot based on title keywords."""
@@ -730,6 +805,11 @@ class WebMetadataWindow(QDialog):
         self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.save_shortcut.activated.connect(
             lambda: self.on_save_clicked() if self.save_button.isVisible() else None)
+        
+        self.retry_shortcut = QShortcut(QKeySequence("Alt+R"), self)
+        self.retry_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.retry_shortcut.activated.connect(
+            lambda: self.on_retry_search() if self.retry_button.isVisible() else None)
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""
@@ -765,6 +845,7 @@ class WebMetadataWindow(QDialog):
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+S", "Save"),
+            ("Alt+R", "Retry search"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
