@@ -30,6 +30,7 @@ from src.web.web_book_api import WebBookAPI
 
 
 
+
 class WebMetadataWindow(QDialog):
     """
     Web metadata window with PROVEN accessibility foundation.
@@ -37,7 +38,7 @@ class WebMetadataWindow(QDialog):
     F1, Alt+/, and Escape work out of box.
     Built incrementally from accessible skeleton.
     """
-    
+
     # Signal emitted when data is saved
     data_saved = Signal()
 
@@ -67,39 +68,20 @@ class WebMetadataWindow(QDialog):
         layout = QVBoxLayout(self)
         self.setup_ui(layout)
         self.apply_field_styling()
-        # Add status bar at the bottom
+        # Add status bar at the very bottom (after all layouts)
         layout.addWidget(self.status_bar)
         # Theme is applied globally via ThemeManager; do not call apply_theme (private). If you want to change theme, use set_theme().
         self.setup_shortcuts()
         self.load_book_data()
 
+
     def setup_ui(self, layout):
         # Main layout with two-column structure
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setSpacing(10)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Add column headers
-        headers_layout = QHBoxLayout()
-        headers_layout.setSpacing(20)
-        
-        current_label = QLabel("Current")
-        current_label.setStyleSheet("font-weight: bold; color: #666;")
-        current_label.setAlignment(Qt.AlignLeft)
-        headers_layout.addWidget(current_label)
-        
-        web_label = QLabel("From Web")
-        web_label.setStyleSheet("font-weight: bold; color: #666;")
-        web_label.setAlignment(Qt.AlignLeft)
-        headers_layout.addWidget(web_label)
-        
-        headers_layout.addStretch()  # Space for checkboxes
-        main_layout.addLayout(headers_layout)
-        
-        # Add separator line
-        separator = QLabel()
-        separator.setFrameStyle(QLabel.HLine | QLabel.Sunken)
-        main_layout.addWidget(separator)
+        # Removed header text boxes (Current, From Web) as per user request
 
         # Helper to create a two-column row with checkbox
         def create_two_column_row(label_text, current_edit, web_edit, checkbox):
@@ -107,29 +89,47 @@ class WebMetadataWindow(QDialog):
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(10)
-            
+
             # Left column - Current data
             left_label = QLabel(label_text)
             left_label.setMinimumWidth(80)
             left_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             row_layout.addWidget(left_label)
-            
+
             current_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             row_layout.addWidget(current_edit)
-            
-            # Right column - Web data
-            web_label = QLabel(label_text)
+
+            # Right column - Web data label (initially hidden)
+            web_label = QLabel("Web")
             web_label.setMinimumWidth(80)
             web_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            web_label.setVisible(False)
             row_layout.addWidget(web_label)
-            
+
             web_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            web_edit.setVisible(False)
             row_layout.addWidget(web_edit)
-            
+
             # Checkbox
             checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            checkbox.setVisible(False)
             row_layout.addWidget(checkbox)
-            
+
+            # Indicator (for show_indicator logic)
+            indicator = QLabel("✓")
+            indicator.setAccessibleName("Web data indicator")
+            indicator.setAccessibleDescription("This field contains web-fetched data")
+            indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")
+            indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            indicator.setAlignment(Qt.AlignCenter)
+            indicator.setVisible(False)
+            row_layout.addWidget(indicator)
+
+            # Store reference for toggling
+            row_widget._web_label = web_label
+            row_widget._web_edit = web_edit
+            row_widget._checkbox = checkbox
+            row_widget._indicator = indicator
             return row_widget
 
         # Title fields
@@ -144,8 +144,9 @@ class WebMetadataWindow(QDialog):
         self.title_checkbox.setAccessibleName("Keep Web Title")
         self.title_checkbox.setAccessibleDescription("Apply web title to current book")
         self.title_checkbox.setChecked(False)
-        title_row = create_two_column_row("&Title:", self.title_edit, self.title_web_edit, self.title_checkbox)
-        main_layout.addWidget(title_row)
+        title_row = create_two_column_row("Title:", self.title_edit, self.title_web_edit, self.title_checkbox)
+        self.title_row = title_row
+        self.main_layout.addWidget(title_row)
 
         # Author fields
         self.author_edit = QLineEdit()
@@ -159,14 +160,16 @@ class WebMetadataWindow(QDialog):
         self.author_checkbox.setAccessibleName("Keep Web Author")
         self.author_checkbox.setAccessibleDescription("Apply web author to current book")
         self.author_checkbox.setChecked(False)
-        author_row = create_two_column_row("&Author:", self.author_edit, self.author_web_edit, self.author_checkbox)
-        main_layout.addWidget(author_row)
+        author_row = create_two_column_row("Author:", self.author_edit, self.author_web_edit, self.author_checkbox)
+        self.author_row = author_row
+        self.main_layout.addWidget(author_row)
 
         # Year fields
         self.year_edit = QLineEdit()
         self.year_edit.setAccessibleName("Current Year")
         self.year_edit.setAccessibleDescription("Current publication year")
         self.year_edit.setPlaceholderText("YYYY")
+        self.year_edit.setObjectName("year_edit")
         self.year_web_edit = QLineEdit()
         self.year_web_edit.setAccessibleName("Web Year")
         self.year_web_edit.setAccessibleDescription("Publication year from web source")
@@ -176,8 +179,10 @@ class WebMetadataWindow(QDialog):
         self.year_checkbox.setAccessibleName("Keep Web Year")
         self.year_checkbox.setAccessibleDescription("Apply web year to current book")
         self.year_checkbox.setChecked(False)
-        year_row = create_two_column_row("&Year:", self.year_edit, self.year_web_edit, self.year_checkbox)
-        main_layout.addWidget(year_row)
+        self.year_checkbox.setShortcut("Alt+Y")
+        year_row = create_two_column_row("Year (Alt+Y):", self.year_edit, self.year_web_edit, self.year_checkbox)
+        self.year_row = year_row
+        self.main_layout.addWidget(year_row)
 
         # Series fields
         self.series_edit = QLineEdit()
@@ -191,8 +196,9 @@ class WebMetadataWindow(QDialog):
         self.series_checkbox.setAccessibleName("Keep Web Series")
         self.series_checkbox.setAccessibleDescription("Apply web series to current book")
         self.series_checkbox.setChecked(False)
-        series_row = create_two_column_row("&Series:", self.series_edit, self.series_web_edit, self.series_checkbox)
-        main_layout.addWidget(series_row)
+        series_row = create_two_column_row("Series:", self.series_edit, self.series_web_edit, self.series_checkbox)
+        self.series_row = series_row
+        self.main_layout.addWidget(series_row)
 
 
         # Genre fields
@@ -208,40 +214,60 @@ class WebMetadataWindow(QDialog):
         self.genre_checkbox.setAccessibleDescription("Apply web genre to current book")
         self.genre_checkbox.setChecked(False)
         genre_row = create_two_column_row("&Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox)
-        main_layout.addWidget(genre_row)
+        self.main_layout.addWidget(genre_row)
 
-        # Plot fields (QTextEdit, no checkbox)
+        # Plot field (always present, below two-column layout)
         self.plot_edit = QTextEdit()
-        self.plot_edit.setAccessibleName("Current Plot")
-        self.plot_edit.setAccessibleDescription("Current plot/comments")
-        self.plot_edit.setFixedHeight(self.scaler.get_scaled_size(60))
-        self.plot_web_edit = QTextEdit()
-        self.plot_web_edit.setAccessibleName("Web Plot")
-        self.plot_web_edit.setAccessibleDescription("Plot from web source")
-        self.plot_web_edit.setReadOnly(True)
-        self.plot_web_edit.setFixedHeight(self.scaler.get_scaled_size(60))
-        # No checkbox for plot, just show both fields
+        self.plot_edit.setReadOnly(True)
+        self.plot_edit.setAccessibleName("Plot Summary")
+        self.plot_edit.setAccessibleDescription("Plot summary from web source")
+        self.plot_edit.setMaximumHeight(100)
+        self.plot_edit.setMinimumHeight(60)
+        self.plot_edit.setPlainText("Loading...")
+        self.main_layout.addWidget(QLabel("Plot:"))
+        self.main_layout.addWidget(self.plot_edit)
+
+        # Plot field (QTextEdit, no web field, dynamic height)
+        self.plot_edit_current = QTextEdit()
+        self.plot_edit_current.setAccessibleName("Plot")
+        self.plot_edit_current.setAccessibleDescription("Current plot/comments")
+        self.plot_edit_current.setTabChangesFocus(True)
+        self.plot_edit_current.setMinimumHeight(40)
+        self.plot_edit_current.textChanged.connect(self._adjust_plot_height)
+        self.plot_edit.setTabChangesFocus(True)
+        self.plot_edit.setMinimumHeight(40)
+        self.plot_edit.textChanged.connect(self._adjust_plot_height)
+        plot_label = QLabel("Plot:")
+        plot_label.setMinimumWidth(80)
+        plot_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
         plot_row = QWidget()
         plot_layout = QHBoxLayout(plot_row)
         plot_layout.setContentsMargins(0, 0, 0, 0)
         plot_layout.setSpacing(10)
-        plot_label = QLabel("&Plot:")
-        plot_label.setMinimumWidth(80)
-        plot_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
         plot_layout.addWidget(plot_label)
         plot_layout.addWidget(self.plot_edit)
-        plot_web_label = QLabel("Plot (Web)")
-        plot_web_label.setMinimumWidth(80)
-        plot_web_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
-        plot_layout.addWidget(plot_web_label)
-        plot_layout.addWidget(self.plot_web_edit)
-        main_layout.addWidget(plot_row)
+        self.main_layout.addWidget(plot_row)
+
+    def _adjust_plot_height(self):
+        """Adjust plot QTextEdit height to fit content (modeled after book_details)."""
+        text = self.plot_edit.toPlainText().strip()
+        if not text:
+            self.plot_edit.setFixedHeight(25)
+            return
+        doc = self.plot_edit.document()
+        doc.setTextWidth(self.plot_edit.viewport().width())
+        doc_height = doc.size().height()
+        margins = self.plot_edit.contentsMargins()
+        frame_width = self.plot_edit.frameWidth() * 2
+        needed_height = int(doc_height + margins.top() + margins.bottom() + frame_width + 5)
+        new_height = max(40, min(200, needed_height))
+        self.plot_edit.setFixedHeight(new_height)
 
         # Widen the form for accessibility
         min_width = int(self.scaler.get_scaled_size(600))
         self.setMinimumWidth(min_width)
 
-        layout.addLayout(main_layout)
+        self.layout().addLayout(self.main_layout)
 
         # Buttons - match book_details styling
         button_layout = QHBoxLayout()
@@ -255,7 +281,7 @@ class WebMetadataWindow(QDialog):
         button_layout.addWidget(self.save_button)
 
         button_layout.addStretch()
-        layout.addLayout(button_layout)
+        self.layout().addLayout(button_layout)
 
         # Apply book_details button styling
         scaled_height = self.scaler.get_scaled_size(22)
@@ -357,20 +383,11 @@ class WebMetadataWindow(QDialog):
             self.genre_edit.setText(self.book.genre_name or "")
             self.plot_edit.setPlainText(self.book.comments or "")
 
-            # Initialize web fields as hidden
-            self.title_web_edit.setVisible(False)
-            self.author_web_edit.setVisible(False)
-            self.year_web_edit.setVisible(False)
-            self.series_web_edit.setVisible(False)
-            self.genre_web_edit.setVisible(False)
-            self.plot_web_edit.setVisible(False)
-
-            # Initialize checkboxes as hidden
-            self.title_checkbox.setVisible(False)
-            self.author_checkbox.setVisible(False)
-            self.year_checkbox.setVisible(False)
-            self.series_checkbox.setVisible(False)
-            self.genre_checkbox.setVisible(False)
+            # Initialize web fields and labels as hidden
+            for row in [self.title_row, self.author_row, self.year_row, self.series_row, self.genre_row]:
+                row._web_label.setVisible(False)
+                row._web_edit.setVisible(False)
+                row._checkbox.setVisible(False)
 
         # Auto-fetch web data when window opens
         self.fetch_web_data()
@@ -429,67 +446,20 @@ class WebMetadataWindow(QDialog):
 
         # Helper to handle field comparison and visibility
         def handle_field_comparison(web_value, current_value, web_edit, checkbox, field_name):
-            if web_value and (current_value is None or str(web_value).strip().lower() != str(current_value).strip().lower()):
-                # Data differs - show web column and checkbox
-                web_edit.setText(str(web_value))
-                web_edit.setVisible(True)
-                checkbox.setVisible(True)
-                checkbox.setChecked(True)
-                self.field_differences[field_name] = str(web_value)
-                return True
-            elif current_value is None or str(current_value).strip() == "":
-                # DB field is empty - auto-apply web data
+            # If DB field is empty, auto-apply web data, hide web column and checkbox, but leave current field empty
+            if current_value is None or str(current_value).strip() == "":
                 if web_value:
-                    web_edit.setText(str(web_value))
-                    web_edit.setVisible(False)  # Hide web column
-                    checkbox.setVisible(False)  # Hide checkbox
-                    self.field_differences[field_name] = str(web_value)
-                    return True
-            else:
-                # Data is same - hide web column and checkbox
-                web_edit.setVisible(False)
-                checkbox.setVisible(False)
-                checkbox.setChecked(False)
-                return False
-
-        # Title
-        if handle_field_comparison(
-            web_data.get('title'), 
-            self.book.title, 
-            self.title_web_edit, 
-            self.title_checkbox, 
-            'title'
-        ):
-            changes_made = True
-
-        # Author
-        if handle_field_comparison(
-            web_data.get('author'), 
-            self.book.author_name, 
-            self.author_web_edit, 
-            self.author_checkbox, 
-            'author'
-        ):
-            changes_made = True
-
-        # Year
-        if handle_field_comparison(
-            web_data.get('year'), 
-            self.book.year, 
-            self.year_web_edit, 
-            self.year_checkbox, 
-            'year'
-        ):
-            changes_made = True
-
-        # Series
-        if handle_field_comparison(
-            web_data.get('series'), 
-            self.book.series_name, 
-            self.series_web_edit, 
-            self.series_checkbox, 
+            # Data is same - hide web column and checkbox
+            row_widget._web_label.setVisible(False)
+            row_widget._web_edit.setVisible(False)
+            row_widget._checkbox.setVisible(False)
+            checkbox.setChecked(False)
+            return False
             'series'
         ):
+            self.series_row._web_label.setVisible(True)
+            self.series_row._web_edit.setVisible(True)
+            self.series_row._checkbox.setVisible(True)
             changes_made = True
 
         # Genre
@@ -500,17 +470,32 @@ class WebMetadataWindow(QDialog):
             self.genre_checkbox, 
             'genre'
         ):
+            self.genre_row._web_label.setVisible(True)
+            self.genre_row._web_edit.setVisible(True)
+            self.genre_row._checkbox.setVisible(True)
             changes_made = True
 
-        # Plot (no indicator as requested)
-        if web_data.get('plot'):
-            self.plot_web_edit.setVisible(True)
-            self.plot_web_edit.setPlainText(web_data['plot'])
-            if web_data['plot'] != (self.book.comments or ""):
+        # Plot (no web field, just update current if different)
+        plot_text = web_data.get('plot')
+        # Append rating, source, and publisher if present
+        rating = web_data.get('rating')
+        source = web_data.get('source')
+        publisher = web_data.get('publisher')
+        extra_lines = []
+        if rating:
+            extra_lines.append(f"Rating: {rating}")
+        if source:
+            extra_lines.append(f"Source: {source}")
+        if publisher:
+            extra_lines.append(f"Publisher: {publisher}")
+        if plot_text:
+            plot_full = plot_text
+            if extra_lines:
+                plot_full = plot_full.rstrip() + "\n" + "\n".join(extra_lines)
+            if plot_full != (self.book.comments or ""):
+                self.plot_edit.setPlainText(plot_full)
                 self.field_differences['plot'] = 'found'
                 changes_made = True
-        else:
-            self.plot_web_edit.setVisible(False)
         return changes_made
     
     # Removed: show_changes_popup (was for testing only)
@@ -520,15 +505,15 @@ class WebMetadataWindow(QDialog):
         # Find the indicator label in the field's container
         container = None
         if field is self.title_edit:
-            container = self.title_field_container
+            container = self.title_row
         elif field is self.author_edit:
-            container = self.author_field_container
+            container = self.author_row
         elif field is self.year_edit:
-            container = self.year_field_container
+            container = self.year_row
         elif field is self.series_edit:
-            container = self.series_field_container
+            container = self.series_row
         elif field is self.genre_edit:
-            container = self.genre_field_container
+            container = self.genre_row
         if container:
             # Toggle indicator and checkbox visibility
             if hasattr(container, '_indicator'):
@@ -597,10 +582,10 @@ class WebMetadataWindow(QDialog):
         self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
         
-        # Escape - local shortcut (PROVEN working)
+        # Escape - local shortcut with confirmation if web data present
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.close_shortcut.activated.connect(self.reject)
+        self.close_shortcut.activated.connect(self.on_escape_pressed)
         
         # Alt+/ - local shortcut (PROVEN working)
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
@@ -622,7 +607,7 @@ class WebMetadataWindow(QDialog):
         
         self.year_shortcut = QShortcut(QKeySequence("Alt+Y"), self)
         self.year_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.year_shortcut.activated.connect(lambda: self.year_spin.setFocus())
+        self.year_shortcut.activated.connect(lambda: self.year_edit.setFocus())
         
         self.series_shortcut = QShortcut(QKeySequence("Alt+I"), self)
         self.series_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -715,6 +700,28 @@ class WebMetadataWindow(QDialog):
             from src.accessibility.accessible_events import announce_status_message
             announce_status_message(self.status_bar, message, move_focus=True)
 
+    def on_escape_pressed(self):
+        """Handle escape key with confirmation if web data is present."""
+        if self.web_data:
+            # Web data is present - show confirmation dialog
+            from src.accessibility.style_helpers import exec_styled_message_box
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Exit",
+                text="Web data is present. Are you sure you want to exit without saving?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                announce_dialog_closed(self)
+                super().reject()
+        else:
+            # No web data - exit normally
+            announce_dialog_closed(self)
+            super().reject()
+
     def accept(self):
         """Save and accept - update database with web data based on checkbox selection and auto-apply logic."""
         # Build list of applied fields for status bar
@@ -725,7 +732,7 @@ class WebMetadataWindow(QDialog):
                 # Apply web data based on field differences and checkbox state
                 # Title
                 if 'title' in self.field_differences:
-                    if self.title_checkbox.isVisible():
+                    if self.title_row._checkbox.isVisible():
                         # Field differs - apply if checked
                         if self.title_checkbox.isChecked():
                             self.book.title = self.title_web_edit.text().strip()
@@ -737,7 +744,7 @@ class WebMetadataWindow(QDialog):
                 
                 # Author
                 if 'author' in self.field_differences:
-                    if self.author_checkbox.isVisible():
+                    if self.author_row._checkbox.isVisible():
                         # Field differs - apply if checked
                         if self.author_checkbox.isChecked():
                             author_name = self.author_web_edit.text().strip()
@@ -763,7 +770,7 @@ class WebMetadataWindow(QDialog):
                 
                 # Year
                 if 'year' in self.field_differences:
-                    if self.year_checkbox.isVisible():
+                    if self.year_row._checkbox.isVisible():
                         # Field differs - apply if checked
                         if self.year_checkbox.isChecked():
                             year_text = self.year_web_edit.text().strip()
@@ -783,7 +790,7 @@ class WebMetadataWindow(QDialog):
                 
                 # Series
                 if 'series' in self.field_differences:
-                    if self.series_checkbox.isVisible():
+                    if self.series_row._checkbox.isVisible():
                         # Field differs - apply if checked
                         if self.series_checkbox.isChecked():
                             series_text = self.series_web_edit.text().strip()
@@ -835,7 +842,7 @@ class WebMetadataWindow(QDialog):
                 
                 # Genre
                 if 'genre' in self.field_differences:
-                    if self.genre_checkbox.isVisible():
+                    if self.genre_row._checkbox.isVisible():
                         # Field differs - apply if checked
                         if self.genre_checkbox.isChecked():
                             genre_name = self.genre_web_edit.text().strip()
@@ -858,6 +865,11 @@ class WebMetadataWindow(QDialog):
                                 genre_id = genre.genre_id
                             self.book.genre_id = genre_id
                             applied_fields.append('Genre')
+
+                # Plot
+                if 'plot' in self.field_differences:
+                    self.book.comments = self.plot_edit.toPlainText().strip()
+                    applied_fields.append('Plot')
 
                 # Save to database
                 self.book_queries.update(self.book)
@@ -883,11 +895,7 @@ class WebMetadataWindow(QDialog):
             # No book or database - just close
             announce_dialog_closed(self)
             super().accept()
-    
-    def reject(self):
-        """Handle close - discard changes as requested."""
-        announce_dialog_closed(self)
-        super().reject()
+
 
 
 def test_web_metadata():
