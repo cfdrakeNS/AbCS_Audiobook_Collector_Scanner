@@ -194,6 +194,7 @@ class WebMetadataWindow(QDialog):
         series_row = create_two_column_row("&Series:", self.series_edit, self.series_web_edit, self.series_checkbox)
         main_layout.addWidget(series_row)
 
+
         # Genre fields
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Current Genre")
@@ -208,6 +209,33 @@ class WebMetadataWindow(QDialog):
         self.genre_checkbox.setChecked(False)
         genre_row = create_two_column_row("&Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox)
         main_layout.addWidget(genre_row)
+
+        # Plot fields (QTextEdit, no checkbox)
+        self.plot_edit = QTextEdit()
+        self.plot_edit.setAccessibleName("Current Plot")
+        self.plot_edit.setAccessibleDescription("Current plot/comments")
+        self.plot_edit.setFixedHeight(self.scaler.get_scaled_size(60))
+        self.plot_web_edit = QTextEdit()
+        self.plot_web_edit.setAccessibleName("Web Plot")
+        self.plot_web_edit.setAccessibleDescription("Plot from web source")
+        self.plot_web_edit.setReadOnly(True)
+        self.plot_web_edit.setFixedHeight(self.scaler.get_scaled_size(60))
+        # No checkbox for plot, just show both fields
+        plot_row = QWidget()
+        plot_layout = QHBoxLayout(plot_row)
+        plot_layout.setContentsMargins(0, 0, 0, 0)
+        plot_layout.setSpacing(10)
+        plot_label = QLabel("&Plot:")
+        plot_label.setMinimumWidth(80)
+        plot_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        plot_layout.addWidget(plot_label)
+        plot_layout.addWidget(self.plot_edit)
+        plot_web_label = QLabel("Plot (Web)")
+        plot_web_label.setMinimumWidth(80)
+        plot_web_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        plot_layout.addWidget(plot_web_label)
+        plot_layout.addWidget(self.plot_web_edit)
+        main_layout.addWidget(plot_row)
 
         # Widen the form for accessibility
         min_width = int(self.scaler.get_scaled_size(600))
@@ -327,21 +355,23 @@ class WebMetadataWindow(QDialog):
             self.year_edit.setText(str(self.book.year) if self.book.year else "")
             self.series_edit.setText(self.book.series_name or "")
             self.genre_edit.setText(self.book.genre_name or "")
-            
+            self.plot_edit.setPlainText(self.book.comments or "")
+
             # Initialize web fields as hidden
             self.title_web_edit.setVisible(False)
             self.author_web_edit.setVisible(False)
             self.year_web_edit.setVisible(False)
             self.series_web_edit.setVisible(False)
             self.genre_web_edit.setVisible(False)
-            
+            self.plot_web_edit.setVisible(False)
+
             # Initialize checkboxes as hidden
             self.title_checkbox.setVisible(False)
             self.author_checkbox.setVisible(False)
             self.year_checkbox.setVisible(False)
             self.series_checkbox.setVisible(False)
             self.genre_checkbox.setVisible(False)
-            
+
         # Auto-fetch web data when window opens
         self.fetch_web_data()
     
@@ -395,7 +425,8 @@ class WebMetadataWindow(QDialog):
         """Update UI fields with web data and track differences. Show web columns and checkboxes only for changed fields."""
         self.web_data = web_data
         self.field_differences = {}
-        
+        changes_made = False
+
         # Helper to handle field comparison and visibility
         def handle_field_comparison(web_value, current_value, web_edit, checkbox, field_name):
             if web_value and (current_value is None or str(web_value).strip().lower() != str(current_value).strip().lower()):
@@ -420,56 +451,66 @@ class WebMetadataWindow(QDialog):
                 checkbox.setVisible(False)
                 checkbox.setChecked(False)
                 return False
-        
+
         # Title
-        handle_field_comparison(
+        if handle_field_comparison(
             web_data.get('title'), 
             self.book.title, 
             self.title_web_edit, 
             self.title_checkbox, 
             'title'
-        )
-        
+        ):
+            changes_made = True
+
         # Author
-        handle_field_comparison(
+        if handle_field_comparison(
             web_data.get('author'), 
             self.book.author_name, 
             self.author_web_edit, 
             self.author_checkbox, 
             'author'
-        )
-        
+        ):
+            changes_made = True
+
         # Year
-        handle_field_comparison(
+        if handle_field_comparison(
             web_data.get('year'), 
             self.book.year, 
             self.year_web_edit, 
             self.year_checkbox, 
             'year'
-        )
-        
+        ):
+            changes_made = True
+
         # Series
-        handle_field_comparison(
+        if handle_field_comparison(
             web_data.get('series'), 
             self.book.series_name, 
             self.series_web_edit, 
             self.series_checkbox, 
             'series'
-        )
-        
+        ):
+            changes_made = True
+
         # Genre
-        handle_field_comparison(
+        if handle_field_comparison(
             web_data.get('genre'), 
             self.book.genre_name, 
             self.genre_web_edit, 
             self.genre_checkbox, 
             'genre'
-        )
-        # Plot (no indicator as requested)
-        if web_data.get('plot') and web_data['plot'] != self.book.comments:
-            self.plot_edit.setPlainText(web_data['plot'])
-            self.field_differences['plot'] = 'found'
+        ):
             changes_made = True
+
+        # Plot (no indicator as requested)
+        if web_data.get('plot'):
+            self.plot_web_edit.setVisible(True)
+            self.plot_web_edit.setPlainText(web_data['plot'])
+            if web_data['plot'] != (self.book.comments or ""):
+                self.field_differences['plot'] = 'found'
+                changes_made = True
+        else:
+            self.plot_web_edit.setVisible(False)
         return changes_made
     
     # Removed: show_changes_popup (was for testing only)

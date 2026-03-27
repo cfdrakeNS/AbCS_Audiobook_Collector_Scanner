@@ -1,4 +1,3 @@
-
 # Phase 2: Web Metadata Implementation — Summary of Completed Items
 
 ## Web Metadata Window (Complete)
@@ -163,3 +162,31 @@
 - Proceed to Preferences and Import Window
 
 **Status:** Web metadata accessibility and integration complete. All major features and accessibility requirements are implemented.
+
+## March 26, 2026 — Accessibility/Window Consistency Review
+
+### Issues Discovered
+- WebMetadataWindow layout did not match accessible_window_skeleton.py or other app windows (book_details, import_window, etc.).
+- Excess vertical space and inconsistent field packing due to Expanding size policies and lack of skeleton pattern.
+- Multiple patch attempts (spacing, margins, alignment) did not resolve the root cause.
+- User requested strict adherence to the proven skeleton window pattern for all new/updated windows.
+
+### Action Plan (In Progress)
+- Refactor WebMetadataWindow to use the exact layout, spacing, and size policy pattern from accessible_window_skeleton.py.
+- Remove all custom squeezing, forced alignment, and nonstandard spacing.
+- Set all field containers (QGroupBox, QTextEdit) to QSizePolicy.Minimum for vertical policy.
+- Remove button_layout.addStretch() if not needed for right-alignment.
+- Ensure all widgets are added directly to the main QVBoxLayout, as in the skeleton.
+- Test for no excess vertical space, all content packed at the top, and full accessibility (JAWS/NVDA, keyboard, status bar, F1, Escape).
+
+### Completed Items (as of tonight)
+- Accessibility skeleton and best-practice window template are present and documented.
+- All keyboard shortcuts, status bar, and accessibility events work in WebMetadataWindow.
+- Focus restoration after web data update/error is implemented.
+- All margins and spacing now match the app standard (20, 20, 20, 20 and spacing 12).
+- User feedback: layout still not matching other windows; root cause identified as size policy/container issue, not just spacing.
+
+### Next Steps
+- Refactor WebMetadataWindow to match accessible_window_skeleton.py exactly (pending).
+- Review all other windows for skeleton compliance.
+- Document lessons learned in Screen_Reader_and_PySide6_best_practices.md.

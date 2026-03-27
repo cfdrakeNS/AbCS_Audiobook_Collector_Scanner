@@ -16,7 +16,8 @@ from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, bu
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QPushButton, QLabel, QMessageBox,
-    QWidget, QStatusBar, QFrame, QSizePolicy
+    QWidget, QStatusBar, QFrame, QSizePolicy,
+    QGroupBox, QCheckBox, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
 )
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QThread, Signal
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
@@ -53,6 +54,7 @@ class WebDataFetcher(QThread):
 
 
 class WebMetadataWindow(QDialog):
+    data_saved = Signal()
     """Web Book Details window for reviewing and accepting web-fetched metadata."""
 
     def set_status(self, message: str, announce: bool = False):
@@ -80,7 +82,7 @@ class WebMetadataWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
 
-    def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+    def __init__(self, db: DatabaseManager, book: Book, scaler: UIScaler, theme_manager: ThemeManager, parent=None, refresh_callback=None):
         super().__init__(parent)
         self.db = db
         self.book = book
@@ -91,19 +93,17 @@ class WebMetadataWindow(QDialog):
         self.series_queries = SeriesQueries(db)
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
-        
+        self.refresh_callback = refresh_callback  # For compatibility with main_window.py and JAWS accessibility
         # Web data (will be fetched from API)
         self.web_data = {}
         # Track field differences for red indicators
         self.field_differences = {}
-        
         # Window setup
         self.setWindowTitle("Web Book Details")
         self.setAccessibleName("Web Book Details Window")
         self.setAccessibleDescription("Window for reviewing and accepting web-fetched book metadata")
         self.setMinimumSize(600, 700)
         self.resize(700, 800)
-        
         self._default_status_message = "Ready"
         self._period_message = ""  # Store meaningful message for Alt+/ announcements
         self.setup_ui()
@@ -112,101 +112,78 @@ class WebMetadataWindow(QDialog):
         self.fetch_web_data()  # Start fetching real data
 
     def setup_ui(self):
-        """Setup user interface with vertical layout."""
+        """Setup accessible UI using the proven skeleton window pattern."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
-        
-        # Title
-        title_label = QLabel("Web Book Details")
-        title_label.setStyleSheet(f"font-size: {self.scaler.get_scaled_size(16)}px; font-weight: bold;")
-        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.setSpacing(12)
+
+        # Title label (Alt+T)
+        title_label = QLabel(f"Title: {self.book.title} by {self.book.author_name}")
+        title_label.setAccessibleName("Title")
+        title_label.setAccessibleDescription("Book title and author")
+        title_label.setStyleSheet(f"font-size: {self.scaler.get_scaled_size(14)}px; font-weight: bold;")
+        title_label.setFocusPolicy(Qt.StrongFocus)
         main_layout.addWidget(title_label)
-        
-        # Form layout for book details (vertical alignment)
-        form_layout = QFormLayout()
-        form_layout.setSpacing(3)  # Tighter vertical spacing
-        form_layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Set proper alignment for labels and fields
-        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        
-        # Title field (read-only)
-        self.title_field = QLineEdit()
-        self.title_field.setReadOnly(True)
-        self.title_field.setAccessibleName("Title")
-        self.title_field.setAccessibleDescription("Book title from web source")
-        self.title_field.setText(self.book.title or "Loading...")
-        title_label = QLabel("&Title:")
-        title_label.setBuddy(self.title_field)
-        form_layout.addRow(title_label, self._create_field_with_indicator(self.title_field, ""))
-        
-        # Author field (read-only)
-        self.author_field = QLineEdit()
-        self.author_field.setReadOnly(True)
-        self.author_field.setAccessibleName("Author")
-        self.author_field.setAccessibleDescription("Author name from web source")
-        self.author_field.setText(self.book.author_name or "Loading...")
-        author_label = QLabel("&Author:")
-        author_label.setBuddy(self.author_field)
-        form_layout.addRow(author_label, self._create_field_with_indicator(self.author_field, ""))
-        
-        # Year field
-        self.year_field = QLineEdit()
-        self.year_field.setReadOnly(True)
-        self.year_field.setAccessibleName("Year")
-        self.year_field.setAccessibleDescription("Publication year from web source")
-        self.year_field.setText(str(self.book.year) if self.book.year else "Loading...")
-        year_label = QLabel("&Year:")
-        year_label.setBuddy(self.year_field)
-        form_layout.addRow(year_label, self._create_field_with_indicator(self.year_field, ""))
-        
-        # Series field (read-only)
-        self.series_field = QLineEdit()
-        self.series_field.setReadOnly(True)
-        self.series_field.setAccessibleName("Series")
-        self.series_field.setAccessibleDescription("Series name from web source")
-        self.series_field.setText(self.book.series_name or "Loading...")
-        series_label = QLabel("Ser&ies:")
-        series_label.setBuddy(self.series_field)
-        form_layout.addRow(series_label, self._create_field_with_indicator(self.series_field, ""))
-        
-        # Genre field (read-only)
-        self.genre_field = QLineEdit()
-        self.genre_field.setReadOnly(True)
-        self.genre_field.setAccessibleName("Genre")
-        self.genre_field.setAccessibleDescription("Genre from web source")
-        self.genre_field.setText(self.book.genre_name or "Loading...")
-        genre_label = QLabel("&Genre:")
-        genre_label.setBuddy(self.genre_field)
-        form_layout.addRow(genre_label, self._create_field_with_indicator(self.genre_field, ""))
-        
-        # Plot field (read-only)
+        shortcut_title = QShortcut(QKeySequence("Alt+T"), self)
+        shortcut_title.setContext(Qt.WidgetWithChildrenShortcut)
+        shortcut_title.activated.connect(lambda: title_label.setFocus())
+
+        # Discrepancy message (Alt+D) and checkboxes
+        discrepancies = []
+        diff_fields = [
+            ("title", self.book.title, self.web_data.get('title', '')),
+            ("year", str(self.book.year) if self.book.year else '', str(self.web_data.get('year', ''))),
+            ("series", self.book.series_name, self.web_data.get('series', '')),
+            ("genre", self.book.genre_name, self.web_data.get('genre', ''))
+        ]
+        for field, db_val, web_val in diff_fields:
+            if db_val and db_val.strip() and web_val and db_val.strip() != web_val.strip():
+                discrepancies.append((field, db_val, web_val))
+
+        if discrepancies:
+            msg_label = QLabel("Discrepancies found: Check to apply web changes or leave unchecked to keep current data.")
+            msg_label.setAccessibleName("Discrepancy message")
+            msg_label.setAccessibleDescription("Discrepancy message for web import")
+            msg_label.setStyleSheet(f"font-size: {self.scaler.get_scaled_size(11)}px;")
+            msg_label.setWordWrap(False)
+            main_layout.addWidget(msg_label)
+            shortcut_msg = QShortcut(QKeySequence("Alt+D"), self)
+            shortcut_msg.setContext(Qt.WidgetWithChildrenShortcut)
+            shortcut_msg.activated.connect(lambda: msg_label.setFocus())
+
+            # Discrepancy checkboxes (tight, accessible)
+            group_box = QGroupBox()
+            group_box.setStyleSheet("QGroupBox { border: none; margin: 0; padding: 0; }")
+            group_box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+            group_layout = QVBoxLayout(group_box)
+            group_layout.setSpacing(0)
+            group_layout.setContentsMargins(0, 0, 0, 0)
+            for field, db_val, web_val in discrepancies:
+                cb = QCheckBox(f"{field.capitalize()} from '{db_val}' to '{web_val}'")
+                cb.setAccessibleName(f"Apply web {field}")
+                cb.setChecked(False)
+                cb.setStyleSheet(f"margin:0px;padding:0px;min-height:0px;min-width:0px;font-size:{self.scaler.get_scaled_size(11)}px; line-height:1;")
+                cb.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+                group_layout.addWidget(cb)
+            main_layout.addWidget(group_box)
+
+        # Plot/comments field (always present)
         self.plot_field = QTextEdit()
         self.plot_field.setReadOnly(True)
-        self.plot_field.setAccessibleName("Plot Summary")
+        self.plot_field.setAccessibleName("Plot/Comments")
         self.plot_field.setAccessibleDescription("Plot summary from web source")
-        self.plot_field.setMaximumHeight(120)
+        self.plot_field.setMaximumHeight(80)
+        self.plot_field.setStyleSheet("margin:0px;padding:0px;line-height:1;")
         self.plot_field.setPlainText(self.book.comments or "Loading...")
-        plot_label = QLabel("Pl&ot:")
-        plot_label.setBuddy(self.plot_field)
-        form_layout.addRow(plot_label, self.plot_field)
-        
-        main_layout.addLayout(form_layout)
-        
-        # Separator line
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        main_layout.addWidget(separator)
-        
+        self.plot_field.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        main_layout.addWidget(self.plot_field)
+
         # Action buttons
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-        button_layout.setContentsMargins(0, 5, 0, 5)  # Small margins to prevent overlap
-        
-        self.save_button = QPushButton("&Save")
+        button_layout.setSpacing(2)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.save_button = QPushButton("Save")  # No ampersand to avoid Alt+ conflict
         self.save_button.setAccessibleName("Save all fields")
         self.save_button.setAccessibleDescription("Apply all web data changes to original book record")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
@@ -214,17 +191,17 @@ class WebMetadataWindow(QDialog):
         self.save_button.setDefault(False)
         self.save_button.setAutoDefault(False)
         button_layout.addWidget(self.save_button)
-        
-        button_layout.addStretch()
-        
+        # Only add stretch if right-alignment is required (not needed for single button)
+
         main_layout.addLayout(button_layout)
-        
+
         # Status bar
         self.status_bar = QStatusBar()
         self.status_bar.setAccessibleName("Status bar")
         self.status_bar.setSizeGripEnabled(False)
+        self.status_bar.setStyleSheet("margin:0px;padding:0px;")
         main_layout.addWidget(self.status_bar)
-        
+
         # Apply theme
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.on_theme_changed()
@@ -246,46 +223,21 @@ class WebMetadataWindow(QDialog):
     def on_web_data_ready(self, data):
         """Handle successful web data fetch."""
         self.web_data = data
-        
-        # Track differences for red indicators
-        self.field_differences = {}
-        if self.book.title != data.get('title', ''):
-            self.field_differences['title'] = data.get('title', '')
-        if self.book.author_name != data.get('author', ''):
-            self.field_differences['author'] = data.get('author', '')
-        if str(self.book.year or '') != data.get('year', ''):
-            self.field_differences['year'] = data.get('year', '')
-        if self.book.series_name != data.get('series', ''):
-            self.field_differences['series'] = data.get('series', '')
-        if self.book.genre_name != data.get('genre', ''):
-            self.field_differences['genre'] = data.get('genre', '')
-        if (self.book.comments or '') != data.get('plot', ''):
-            self.field_differences['plot'] = data.get('plot', '')
-        
-        # Update field indicators
-        self._update_field_indicators()
-        
-        # Populate fields with fetched data
-        self.title_field.setText(data.get('title', ''))
-        self.author_field.setText(data.get('author', ''))
-        self.year_field.setText(data.get('year', ''))
-        self.series_field.setText(data.get('series', ''))
-        self.genre_field.setText(data.get('genre', ''))
+        # Only update plot/comments field
         self.plot_field.setPlainText(data.get('plot', ''))
-        
-        # Enable buttons
         self.save_button.setEnabled(True)
-        
-        
-        # Update status
         source = data.get('source', 'unknown')
         status_msg = f"Web data loaded from {source}"
         self._period_message = status_msg  # Store for Alt+/ announcements
         self.set_status(status_msg, announce=True)
+        self.activateWindow()
+        self.setFocus(Qt.ActiveWindowFocusReason)
 
     def on_web_data_error(self, error_message):
         """Handle web data fetch error."""
         self.set_status(f"Error fetching web data: {error_message}", announce=True)
+        self.activateWindow()
+        self.setFocus(Qt.ActiveWindowFocusReason)
         # Keep loading text in fields to show error state
 
     def load_book_data(self):
@@ -304,33 +256,8 @@ class WebMetadataWindow(QDialog):
         self._period_message = f"Loaded book: {self.book.title}"  # Store for Alt+/ announcements
 
     def _update_field_indicators(self):
-        """Update check mark colors based on field differences."""
-        # Update title field indicator
-        title_container = self.title_field.parent()
-        if title_container and hasattr(title_container, 'findChild'):
-            indicator = title_container.findChild(QLabel)
-            if indicator:
-                if 'title' in self.field_differences:
-                    indicator.setStyleSheet("color: #DC143C; font-weight: bold;")  # Red for differences
-                else:
-                    indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Green for same
-        
-        # Update other field indicators similarly
-        for field_name, field in [
-            ('author', self.author_field),
-            ('year', self.year_field),
-            ('series', self.series_field),
-            ('genre', self.genre_field),
-            ('plot', self.plot_field)
-        ]:
-            container = field.parent()
-            if container and hasattr(container, 'findChild'):
-                indicator = container.findChild(QLabel)
-                if indicator:
-                    if field_name in self.field_differences:
-                        indicator.setStyleSheet("color: #DC143C; font-weight: bold;")  # Red
-                    else:
-                        indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Green
+        """No-op: indicators removed in minimal layout."""
+        pass
 
 
 
@@ -377,9 +304,15 @@ class WebMetadataWindow(QDialog):
         
         # Local shortcuts: Alt+/, Escape
         status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         status_shortcut.activated.connect(self.on_read_status_bar)
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        escape_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         escape_shortcut.activated.connect(self.reject)
+    def reject(self):
+        """Handle close with accessibility event."""
+        announce_dialog_closed(self)
+        super().reject()
 
     def on_update_all(self):
         """Update all fields with web data."""
@@ -403,6 +336,7 @@ class WebMetadataWindow(QDialog):
                 text="All fields updated with web data successfully."
             )
             self.set_status("All fields updated", announce=True)
+            self.data_saved.emit()
             self.accept()
 
     def on_show_shortcuts(self):
@@ -480,10 +414,12 @@ class WebMetadataWindow(QDialog):
             field.setStyleSheet(field_style)
 
     def keyPressEvent(self, event):
-        """Handle key press events."""
-        # Prevent Enter from closing dialog
+        """Handle key press events. Escape always closes dialog."""
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             event.ignore()
+            return
+        if event.key() == Qt.Key_Escape:
+            self.reject()
             return
         super().keyPressEvent(event)
 
