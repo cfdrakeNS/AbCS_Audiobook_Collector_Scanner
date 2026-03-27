@@ -429,12 +429,16 @@ class WebMetadataWindow(QDialog):
         else:
             # No web data found - show popup and close window
             from src.accessibility.style_helpers import exec_styled_message_box
+            title_text = self.book.title or "Unknown Title"
+            author_text = self.book.author_name or "Unknown Author"
+            message_text = f"No web data found for:\n\nTitle: {title_text}\nAuthor: {author_text}\n\nBook not matched"
+            
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Web Search",
-                text="No web data found - book not matched",
+                text=message_text,
                 buttons=QMessageBox.Ok,
                 default_button=QMessageBox.Ok
             )
