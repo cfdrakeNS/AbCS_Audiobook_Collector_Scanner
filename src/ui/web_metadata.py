@@ -450,7 +450,7 @@ class WebMetadataWindow(QDialog):
             from src.accessibility.style_helpers import exec_styled_message_box
             title_text = title or "Unknown Title"
             author_text = author or "Unknown Author"
-            message_text = f"No web data found for:\n\nTitle: {title_text}\nAuthor: {author_text}\n\nBook not matched"
+            message_text = f"No web data found for:\n\n{title_text} by {author_text}"
             
             exec_styled_message_box(
                 self,
@@ -1010,53 +1010,11 @@ class WebMetadataWindow(QDialog):
 
                 # Plot
                 if 'plot' in self.field_differences:
+                    # Use the plot field as-is (already contains rating/source/publisher if available)
                     plot = self.plot_edit.toPlainText().strip()
-                    rating_line = ""
-                    source_line = ""
-                    publisher_line = ""
-                    if self.web_data:
-                        rating = self.web_data.get('rating')
-                        ratings_count = self.web_data.get('ratings_count')
-                        source = self.web_data.get('source')
-                        publisher = self.web_data.get('publisher')
-                        if rating:
-                            try:
-                                rating_val = float(rating)
-                                rating_str = f"{rating_val:.1f}"
-                            except (ValueError, TypeError):
-                                rating_str = str(rating)
-                            if ratings_count:
-                                try:
-                                    count_val = int(ratings_count)
-                                    count_str = f"{count_val} reviews"
-                                except (ValueError, TypeError):
-                                    count_str = f"{ratings_count} reviews"
-                                rating_line = f"Rating {rating_str} ({count_str})"
-                            else:
-                                rating_line = f"Rating {rating_str}"
-                        if source:
-                            source_line = f"Plot Source: {source}"
-                        if publisher:
-                            publisher_line = f"Publisher: {publisher}"
-                    # Build the new plot/comments field: rating and source on same line at top, publisher at end
-                    plot_lines = []
-                    header_line = ""
-                    if rating_line and source_line:
-                        header_line = f"{rating_line} | {source_line}"
-                    elif rating_line:
-                        header_line = rating_line
-                    elif source_line:
-                        header_line = source_line
-                    if header_line:
-                        plot_lines.append(header_line)
                     if plot:
-                        plot_lines.append(plot)
-                    if publisher_line:
-                        plot_lines.append(publisher_line)
-                    # Remove any blank lines between sections
-                    new_plot = "\n".join([line for line in plot_lines if line.strip() != ""]).strip()
-                    self.book.comments = new_plot
-                    applied_fields.append('Plot')
+                        self.book.comments = plot
+                        applied_fields.append('Plot')
 
                 # Save to database
                 self.book_queries.update(self.book)
