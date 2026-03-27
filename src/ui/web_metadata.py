@@ -257,6 +257,7 @@ class WebMetadataWindow(QDialog):
         min_width = int(self.scaler.get_scaled_size(600))
         self.setMinimumWidth(min_width)
 
+        # Add main layout to the dialog
         layout.addLayout(self.main_layout)
 
         # Buttons - match book_details styling
@@ -294,6 +295,21 @@ class WebMetadataWindow(QDialog):
                     }}
                 """
         self.save_button.setStyleSheet(button_style)
+    
+    def _adjust_plot_height(self):
+        """Adjust plot QTextEdit height to fit content (modeled after book_details)."""
+        text = self.plot_edit.toPlainText().strip()
+        if not text:
+            self.plot_edit.setFixedHeight(25)
+            return
+        doc = self.plot_edit.document()
+        doc.setTextWidth(self.plot_edit.viewport().width())
+        doc_height = doc.size().height()
+        margins = self.plot_edit.contentsMargins()
+        frame_width = self.plot_edit.frameWidth() * 2
+        needed_height = int(doc_height + margins.top() + margins.bottom() + frame_width + 5)
+        new_height = max(40, min(200, needed_height))
+        self.plot_edit.setFixedHeight(new_height)
     
     # ...existing code...
     def _create_field_with_indicator_and_checkbox(self, field, checkbox):
