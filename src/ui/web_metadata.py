@@ -74,108 +74,141 @@ class WebMetadataWindow(QDialog):
         self.load_book_data()
 
     def setup_ui(self, layout):
-        # Form layout for book details - EXACT backup match
-        form_layout = QFormLayout()
-        form_layout.setSpacing(3)  # Restore readable vertical spacing
-        form_layout.setContentsMargins(20, 20, 20, 20)  # Restore original margins for readability
+        # Main layout with two-column structure
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Set proper alignment for labels and fields
-        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        form_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        # Add column headers
+        headers_layout = QHBoxLayout()
+        headers_layout.setSpacing(20)
+        
+        current_label = QLabel("Current")
+        current_label.setStyleSheet("font-weight: bold; color: #666;")
+        current_label.setAlignment(Qt.AlignLeft)
+        headers_layout.addWidget(current_label)
+        
+        web_label = QLabel("From Web")
+        web_label.setStyleSheet("font-weight: bold; color: #666;")
+        web_label.setAlignment(Qt.AlignLeft)
+        headers_layout.addWidget(web_label)
+        
+        headers_layout.addStretch()  # Space for checkboxes
+        main_layout.addLayout(headers_layout)
+        
+        # Add separator line
+        separator = QLabel()
+        separator.setFrameStyle(QLabel.HLine | QLabel.Sunken)
+        main_layout.addWidget(separator)
 
-
-        # Helper to create a row with [checkbox][label][field][indicator]
-        def add_checkbox_row(field, checkbox, label_text, buddy_field, accessible_name):
+        # Helper to create a two-column row with checkbox
+        def create_two_column_row(label_text, current_edit, web_edit, checkbox):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.setSpacing(3)
+            row_layout.setSpacing(10)
+            
+            # Left column - Current data
+            left_label = QLabel(label_text)
+            left_label.setMinimumWidth(80)
+            left_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            row_layout.addWidget(left_label)
+            
+            current_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            row_layout.addWidget(current_edit)
+            
+            # Right column - Web data
+            web_label = QLabel(label_text)
+            web_label.setMinimumWidth(80)
+            web_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            row_layout.addWidget(web_label)
+            
+            web_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            row_layout.addWidget(web_edit)
+            
+            # Checkbox
             checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            checkbox.setAccessibleName(accessible_name)
             row_layout.addWidget(checkbox)
-            label = QLabel(label_text)
-            label.setBuddy(buddy_field)
-            row_layout.addWidget(label)
-            field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            row_layout.addWidget(field)
-            # Add indicator (if present)
-            indicator = QLabel("✓")
-            # No accessible name for indicator
-            indicator.setAccessibleDescription("This field contains web-fetched data")
-            indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")
-            indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            indicator.setAlignment(Qt.AlignCenter)
-            row_layout.addWidget(indicator)
-            # Store for later toggling
-            row_widget._indicator = indicator
-            row_widget._checkbox = checkbox
+            
             return row_widget
 
-
-        # Title
+        # Title fields
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("Title")
-        self.title_edit.setAccessibleDescription("Book title from web source")
+        self.title_edit.setAccessibleName("Current Title")
+        self.title_edit.setAccessibleDescription("Current book title")
+        self.title_web_edit = QLineEdit()
+        self.title_web_edit.setAccessibleName("Web Title")
+        self.title_web_edit.setAccessibleDescription("Book title from web source")
+        self.title_web_edit.setReadOnly(True)
         self.title_checkbox = QCheckBox()
+        self.title_checkbox.setAccessibleName("Update Title")
         self.title_checkbox.setChecked(False)
-        self.title_field_container = add_checkbox_row(self.title_edit, self.title_checkbox, "&Title:", self.title_edit, "Update Title")
-        form_layout.addRow(self.title_field_container)
-        form_layout.setVerticalSpacing(2)  # Reduce vertical spacing for first rows
+        title_row = create_two_column_row("&Title:", self.title_edit, self.title_web_edit, self.title_checkbox)
+        main_layout.addWidget(title_row)
 
-        # Author
+        # Author fields
         self.author_edit = QLineEdit()
-        self.author_edit.setAccessibleName("Author")
-        self.author_edit.setAccessibleDescription("Author name from web source")
+        self.author_edit.setAccessibleName("Current Author")
+        self.author_edit.setAccessibleDescription("Current author name")
+        self.author_web_edit = QLineEdit()
+        self.author_web_edit.setAccessibleName("Web Author")
+        self.author_web_edit.setAccessibleDescription("Author name from web source")
+        self.author_web_edit.setReadOnly(True)
         self.author_checkbox = QCheckBox()
+        self.author_checkbox.setAccessibleName("Update Author")
         self.author_checkbox.setChecked(False)
-        self.author_field_container = add_checkbox_row(self.author_edit, self.author_checkbox, "&Author:", self.author_edit, "Update Author")
-        form_layout.addRow(self.author_field_container)
-        form_layout.setVerticalSpacing(2)
+        author_row = create_two_column_row("&Author:", self.author_edit, self.author_web_edit, self.author_checkbox)
+        main_layout.addWidget(author_row)
 
-        # Year
+        # Year fields
         self.year_edit = QLineEdit()
-        self.year_edit.setAccessibleName("Publication year")
-        self.year_edit.setAccessibleDescription("Publication year from web source")
+        self.year_edit.setAccessibleName("Current Year")
+        self.year_edit.setAccessibleDescription("Current publication year")
         self.year_edit.setPlaceholderText("YYYY")
+        self.year_web_edit = QLineEdit()
+        self.year_web_edit.setAccessibleName("Web Year")
+        self.year_web_edit.setAccessibleDescription("Publication year from web source")
+        self.year_web_edit.setPlaceholderText("YYYY")
+        self.year_web_edit.setReadOnly(True)
         self.year_checkbox = QCheckBox()
+        self.year_checkbox.setAccessibleName("Update Year")
         self.year_checkbox.setChecked(False)
-        self.year_field_container = add_checkbox_row(self.year_edit, self.year_checkbox, "&Year:", self.year_edit, "Update Year")
-        form_layout.addRow(self.year_field_container)
-        form_layout.setVerticalSpacing(6)  # Restore normal spacing after year
+        year_row = create_two_column_row("&Year:", self.year_edit, self.year_web_edit, self.year_checkbox)
+        main_layout.addWidget(year_row)
 
-        # Series
+        # Series fields
         self.series_edit = QLineEdit()
-        self.series_edit.setAccessibleName("Series")
-        self.series_edit.setAccessibleDescription("Series name from web source")
+        self.series_edit.setAccessibleName("Current Series")
+        self.series_edit.setAccessibleDescription("Current series name")
+        self.series_web_edit = QLineEdit()
+        self.series_web_edit.setAccessibleName("Web Series")
+        self.series_web_edit.setAccessibleDescription("Series name from web source")
+        self.series_web_edit.setReadOnly(True)
         self.series_checkbox = QCheckBox()
-        self.series_checkbox.setChecked(True)
-        self.series_field_container = add_checkbox_row(self.series_edit, self.series_checkbox, "Ser&ies:", self.series_edit, "Update Series")
-        form_layout.addRow(self.series_field_container)
+        self.series_checkbox.setAccessibleName("Update Series")
+        self.series_checkbox.setChecked(False)
+        series_row = create_two_column_row("&Series:", self.series_edit, self.series_web_edit, self.series_checkbox)
+        main_layout.addWidget(series_row)
 
-        # Genre
+        # Genre fields
         self.genre_edit = QLineEdit()
-        self.genre_edit.setAccessibleName("Genre")
-        self.genre_edit.setAccessibleDescription("Genre from web source")
+        self.genre_edit.setAccessibleName("Current Genre")
+        self.genre_edit.setAccessibleDescription("Current genre")
+        self.genre_web_edit = QLineEdit()
+        self.genre_web_edit.setAccessibleName("Web Genre")
+        self.genre_web_edit.setAccessibleDescription("Genre from web source")
+        self.genre_web_edit.setReadOnly(True)
         self.genre_checkbox = QCheckBox()
-        self.genre_checkbox.setChecked(True)
-        self.genre_field_container = add_checkbox_row(self.genre_edit, self.genre_checkbox, "&Genre:", self.genre_edit, "Update Genre")
-        form_layout.addRow(self.genre_field_container)
+        self.genre_checkbox.setAccessibleName("Update Genre")
+        self.genre_checkbox.setChecked(False)
+        genre_row = create_two_column_row("&Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox)
+        main_layout.addWidget(genre_row)
 
-
-        # Plot (no checkbox, only once)
-        self.plot_edit = QTextEdit()
-        self.plot_edit.setAccessibleName("Plot")
-        self.plot_edit.setAccessibleDescription("Book plot/summary from web source")
-        self.plot_edit.setMinimumHeight(self.scaler.get_scaled_size(60))
-        plot_label = QLabel("&Plot:")
-        plot_label.setBuddy(self.plot_edit)
-        form_layout.addRow(plot_label, self.plot_edit)
-
-        # Widen the form by 1/3 for accessibility
-        min_width = int(self.scaler.get_scaled_size(400) * 4 / 3)
+        # Widen the form for accessibility
+        min_width = int(self.scaler.get_scaled_size(600))
         self.setMinimumWidth(min_width)
 
-        layout.addLayout(form_layout)
+        layout.addLayout(main_layout)
 
         # Buttons - match book_details styling
         button_layout = QHBoxLayout()
@@ -282,24 +315,33 @@ class WebMetadataWindow(QDialog):
         return container
     
     def load_book_data(self):
-        # Defensive: Ensure plot_edit exists before using it
-        if not hasattr(self, 'plot_edit'):
-            raise AttributeError("WebMetadataWindow: plot_edit is not initialized. Ensure setup_ui() is called before load_book_data().")
         """Load book data into fields and fetch web data."""
         if self.book:
             self.title_edit.setText(self.book.title or "")
             self.author_edit.setText(self.book.author_name or "")
-            self.plot_edit.setPlainText(self.book.comments or "")
             self.year_edit.setText(str(self.book.year) if self.book.year else "")
             self.series_edit.setText(self.book.series_name or "")
             self.genre_edit.setText(self.book.genre_name or "")
+            
+            # Initialize web fields as hidden
+            self.title_web_edit.setVisible(False)
+            self.author_web_edit.setVisible(False)
+            self.year_web_edit.setVisible(False)
+            self.series_web_edit.setVisible(False)
+            self.genre_web_edit.setVisible(False)
+            
+            # Initialize checkboxes as hidden
+            self.title_checkbox.setVisible(False)
+            self.author_checkbox.setVisible(False)
+            self.year_checkbox.setVisible(False)
+            self.series_checkbox.setVisible(False)
+            self.genre_checkbox.setVisible(False)
+            
         # Auto-fetch web data when window opens
         self.fetch_web_data()
     
     def fetch_web_data(self):
         """Fetch web data from API with status updates."""
-        # No 'ready' or default status message
-
         # Get current book info
         title = self.book.title
         author = self.book.author_name
@@ -316,15 +358,11 @@ class WebMetadataWindow(QDialog):
 
         if web_data:
             self.update_fields_with_web_data(web_data)
-            # Build status message: Plot Found/Not Found - Difference - ...
-            plot_found = 'plot' in self.field_differences
-            plot_status = "Plot Found" if plot_found else "Plot Not Found"
-            diff_fields = [k.capitalize() for k in self.field_differences.keys() if k != 'plot']
+            # Build status message: Difference - ...
+            diff_fields = [k.capitalize() for k in self.field_differences.keys()]
             diff_str = f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
-            msg = f"{plot_status}{diff_str}"
+            msg = f"Web data found{diff_str}"
             self.set_status(msg, announce=True)
-            if plot_found:
-                self.plot_edit.setFocus()
         else:
             self.set_status("No web data found - book not matched", announce=True)
             self.clear_web_indicators()
@@ -349,55 +387,79 @@ class WebMetadataWindow(QDialog):
             return "A compelling story that explores the depths of human nature and the choices we make when faced with impossible situations."
     
     def update_fields_with_web_data(self, web_data):
-        """Update UI fields with web data and track differences. Show checkboxes only for changed fields."""
+        """Update UI fields with web data and track differences. Show web columns and checkboxes only for changed fields."""
         self.web_data = web_data
-        changes_made = False
         self.field_differences = {}
-        # Title (case-insensitive compare)
-        if web_data.get('title') and (self.book.title is None or web_data['title'].strip().lower() != self.book.title.strip().lower()):
-            self.title_edit.setText(web_data['title'])
-            self.field_differences['title'] = web_data['title']
-            self.show_indicator(self.title_edit, True, color='red')
-            self.title_checkbox.setChecked(True)
-        else:
-            self.show_indicator(self.title_edit, False)
-            self.title_checkbox.setChecked(False)
-        # Author (case-insensitive compare)
-        if web_data.get('author') and (self.book.author_name is None or web_data['author'].strip().lower() != self.book.author_name.strip().lower()):
-            self.author_edit.setText(web_data['author'])
-            self.field_differences['author'] = web_data['author']
-            self.show_indicator(self.author_edit, True, color='red')
-            self.author_checkbox.setChecked(True)
-        else:
-            self.show_indicator(self.author_edit, False)
-            self.author_checkbox.setChecked(False)
-        # Year (exact compare)
-        if web_data.get('year') and str(web_data['year']) != self.year_edit.text():
-            self.year_edit.setText(str(web_data['year']))
-            self.field_differences['year'] = str(web_data['year'])
-            self.show_indicator(self.year_edit, True, color='red')
-            self.year_checkbox.setChecked(True)
-        else:
-            self.show_indicator(self.year_edit, False)
-            self.year_checkbox.setChecked(False)
-        # Series (case-insensitive compare)
-        if web_data.get('series') and (self.book.series_name is None or web_data['series'].strip().lower() != self.book.series_name.strip().lower()):
-            self.series_edit.setText(web_data['series'])
-            self.field_differences['series'] = web_data['series']
-            self.show_indicator(self.series_edit, True, color='red')
-            self.series_checkbox.setChecked(True)
-        else:
-            self.show_indicator(self.series_edit, False)
-            self.series_checkbox.setChecked(False)
-        # Genre (case-insensitive compare)
-        if web_data.get('genre') and (self.book.genre_name is None or web_data['genre'].strip().lower() != self.book.genre_name.strip().lower()):
-            self.genre_edit.setText(web_data['genre'])
-            self.field_differences['genre'] = web_data['genre']
-            self.show_indicator(self.genre_edit, True, color='red')
-            self.genre_checkbox.setChecked(True)
-        else:
-            self.show_indicator(self.genre_edit, False)
-            self.genre_checkbox.setChecked(False)
+        
+        # Helper to handle field comparison and visibility
+        def handle_field_comparison(web_value, current_value, web_edit, checkbox, field_name):
+            if web_value and (current_value is None or str(web_value).strip().lower() != str(current_value).strip().lower()):
+                # Data differs - show web column and checkbox
+                web_edit.setText(str(web_value))
+                web_edit.setVisible(True)
+                checkbox.setVisible(True)
+                checkbox.setChecked(True)
+                self.field_differences[field_name] = str(web_value)
+                return True
+            elif current_value is None or str(current_value).strip() == "":
+                # DB field is empty - auto-apply web data
+                if web_value:
+                    web_edit.setText(str(web_value))
+                    web_edit.setVisible(False)  # Hide web column
+                    checkbox.setVisible(False)  # Hide checkbox
+                    self.field_differences[field_name] = str(web_value)
+                    return True
+            else:
+                # Data is same - hide web column and checkbox
+                web_edit.setVisible(False)
+                checkbox.setVisible(False)
+                checkbox.setChecked(False)
+                return False
+        
+        # Title
+        handle_field_comparison(
+            web_data.get('title'), 
+            self.book.title, 
+            self.title_web_edit, 
+            self.title_checkbox, 
+            'title'
+        )
+        
+        # Author
+        handle_field_comparison(
+            web_data.get('author'), 
+            self.book.author_name, 
+            self.author_web_edit, 
+            self.author_checkbox, 
+            'author'
+        )
+        
+        # Year
+        handle_field_comparison(
+            web_data.get('year'), 
+            self.book.year, 
+            self.year_web_edit, 
+            self.year_checkbox, 
+            'year'
+        )
+        
+        # Series
+        handle_field_comparison(
+            web_data.get('series'), 
+            self.book.series_name, 
+            self.series_web_edit, 
+            self.series_checkbox, 
+            'series'
+        )
+        
+        # Genre
+        handle_field_comparison(
+            web_data.get('genre'), 
+            self.book.genre_name, 
+            self.genre_web_edit, 
+            self.genre_checkbox, 
+            'genre'
+        )
         # Plot (no indicator as requested)
         if web_data.get('plot') and web_data['plot'] != self.book.comments:
             self.plot_edit.setPlainText(web_data['plot'])
@@ -606,125 +668,150 @@ class WebMetadataWindow(QDialog):
         if announce:
             from src.accessibility.accessible_events import announce_status_message
             announce_status_message(self.status_bar, message, move_focus=True)
-    
-    def accept(self):
-        """Save and accept - update database and refresh book details, with plot field formatted as requested."""
-        # Build list of differences for status bar
-        diff_fields = [k.capitalize() for k in self.field_differences.keys() if k != 'plot']
-        plot_found = 'plot' in self.field_differences
-        plot_status = "Plot Found" if plot_found else "Plot Not Found"
-        diff_str = f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
-        self.set_status(f"{plot_status}{diff_str}")
 
+    def accept(self):
+        """Save and accept - update database with web data based on checkbox selection and auto-apply logic."""
+        # Build list of applied fields for status bar
+        applied_fields = []
+        
         if self.book and self.db:
             try:
-                # Only apply web data for checked fields
+                # Apply web data based on field differences and checkbox state
                 # Title
-                if self.title_checkbox.isVisible() and self.title_checkbox.isChecked():
-                    self.book.title = self.title_edit.text().strip()
+                if 'title' in self.field_differences:
+                    if self.title_checkbox.isVisible():
+                        # Field differs - apply if checked
+                        if self.title_checkbox.isChecked():
+                            self.book.title = self.title_web_edit.text().strip()
+                            applied_fields.append('Title')
+                    else:
+                        # DB field was empty - auto-apply web data
+                        self.book.title = self.title_web_edit.text().strip()
+                        applied_fields.append('Title')
+                
                 # Author
-                if self.author_checkbox.isVisible() and self.author_checkbox.isChecked():
-                    author_name = self.author_edit.text().strip()
-                    if author_name:
-                        author = self.author_queries.get_by_name(author_name)
-                        if not author:
-                            author_id = self.author_queries.insert(author_name)
-                        else:
-                            author_id = author.author_id
-                        self.book.author_id = author_id
-                # Year
-                if self.year_checkbox.isVisible() and self.year_checkbox.isChecked():
-                    year_text = self.year_edit.text().strip()
-                    try:
-                        self.book.year = int(year_text) if year_text else None
-                    except ValueError:
-                        self.book.year = None
-                # Series
-                if self.series_checkbox.isVisible() and self.series_checkbox.isChecked():
-                    series_text = self.series_edit.text().strip()
-                    series_id = None
-                    series_number = None
-                    if series_text:
-                        if " - " in series_text:
-                            parts = series_text.split(" - ")
-                            series_name = parts[0].strip()
-                            try:
-                                series_number = int(parts[1].strip())
-                            except ValueError:
-                                series_number = None
-                        else:
-                            series_name = series_text
-                        if series_name:
-                            series = self.series_queries.get_by_name(series_name)
-                            if not series:
-                                series_id = self.series_queries.insert(series_name)
+                if 'author' in self.field_differences:
+                    if self.author_checkbox.isVisible():
+                        # Field differs - apply if checked
+                        if self.author_checkbox.isChecked():
+                            author_name = self.author_web_edit.text().strip()
+                            if author_name:
+                                author = self.author_queries.get_by_name(author_name)
+                                if not author:
+                                    author_id = self.author_queries.insert(author_name)
+                                else:
+                                    author_id = author.author_id
+                                self.book.author_id = author_id
+                                applied_fields.append('Author')
+                    else:
+                        # DB field was empty - auto-apply web data
+                        author_name = self.author_web_edit.text().strip()
+                        if author_name:
+                            author = self.author_queries.get_by_name(author_name)
+                            if not author:
+                                author_id = self.author_queries.insert(author_name)
                             else:
-                                series_id = series.series_id
+                                author_id = author.author_id
+                            self.book.author_id = author_id
+                            applied_fields.append('Author')
+                
+                # Year
+                if 'year' in self.field_differences:
+                    if self.year_checkbox.isVisible():
+                        # Field differs - apply if checked
+                        if self.year_checkbox.isChecked():
+                            year_text = self.year_web_edit.text().strip()
+                            try:
+                                self.book.year = int(year_text) if year_text else None
+                                applied_fields.append('Year')
+                            except ValueError:
+                                self.book.year = None
+                    else:
+                        # DB field was empty - auto-apply web data
+                        year_text = self.year_web_edit.text().strip()
+                        try:
+                            self.book.year = int(year_text) if year_text else None
+                            applied_fields.append('Year')
+                        except ValueError:
+                            self.book.year = None
+                
+                # Series
+                if 'series' in self.field_differences:
+                    if self.series_checkbox.isVisible():
+                        # Field differs - apply if checked
+                        if self.series_checkbox.isChecked():
+                            series_text = self.series_web_edit.text().strip()
+                            series_id = None
+                            series_number = None
+                            if series_text:
+                                if " - " in series_text:
+                                    parts = series_text.split(" - ")
+                                    series_name = parts[0].strip()
+                                    try:
+                                        series_number = int(parts[1].strip())
+                                    except ValueError:
+                                        series_number = None
+                                else:
+                                    series_name = series_text
+                                if series_name:
+                                    series = self.series_queries.get_by_name(series_name)
+                                    if not series:
+                                        series_id = self.series_queries.insert(series_name)
+                                    else:
+                                        series_id = series.series_id
+                            self.book.series_id = series_id
+                            self.book.series_number = series_number
+                            applied_fields.append('Series')
+                    else:
+                        # DB field was empty - auto-apply web data
+                        series_text = self.series_web_edit.text().strip()
+                        series_id = None
+                        series_number = None
+                        if series_text:
+                            if " - " in series_text:
+                                parts = series_text.split(" - ")
+                                series_name = parts[0].strip()
+                                try:
+                                    series_number = int(parts[1].strip())
+                                except ValueError:
+                                    series_number = None
+                            else:
+                                series_name = series_text
+                            if series_name:
+                                series = self.series_queries.get_by_name(series_name)
+                                if not series:
+                                    series_id = self.series_queries.insert(series_name)
+                                else:
+                                    series_id = series.series_id
                         self.book.series_id = series_id
                         self.book.series_number = series_number
+                        applied_fields.append('Series')
+                
                 # Genre
-                if self.genre_checkbox.isVisible() and self.genre_checkbox.isChecked():
-                    genre_name = self.genre_edit.text().strip()
-                    genre_id = None
-                    if genre_name:
-                        genre = self.genre_queries.get_by_name(genre_name)
-                        if not genre:
-                            genre_id = self.genre_queries.insert(genre_name)
-                        else:
-                            genre_id = genre.genre_id
-                        self.book.genre_id = genre_id
-
-                # Plot/comments always applied
-                plot = self.plot_edit.toPlainText().strip()
-                rating_line = ""
-                source_line = ""
-                publisher_line = ""
-                web_data = getattr(self, 'web_data', None)
-                if web_data:
-                    rating = web_data.get('rating')
-                    ratings_count = web_data.get('ratings_count')
-                    source = web_data.get('source')
-                    publisher = web_data.get('publisher')
-                    if rating:
-                        try:
-                            rating_val = float(rating)
-                            rating_str = f"{rating_val:.1f}"
-                        except (ValueError, TypeError):
-                            rating_str = str(rating)
-                        if ratings_count:
-                            try:
-                                count_val = int(ratings_count)
-                                count_str = f"{count_val} reviews"
-                            except (ValueError, TypeError):
-                                count_str = f"{ratings_count} reviews"
-                            rating_line = f"Rating {rating_str} ({count_str})"
-                        else:
-                            rating_line = f"Rating {rating_str}"
-                    if source:
-                        source_line = f"Plot Source: {source}"
-                    if publisher:
-                        publisher_line = f"Publisher: {publisher}"
-                # Build the new plot/comments field: rating and source on same line at top, publisher at end
-                plot_lines = []
-                header_line = ""
-                if rating_line and source_line:
-                    header_line = f"{rating_line} | {source_line}"
-                elif rating_line:
-                    header_line = rating_line
-                elif source_line:
-                    header_line = source_line
-                if header_line:
-                    plot_lines.append(header_line)
-                if plot:
-                    if header_line:
-                        plot_lines.append("")  # blank line before plot if header present
-                    plot_lines.append(plot)
-                if publisher_line:
-                    if plot_lines:
-                        plot_lines.append("")  # blank line before publisher if plot or header present
-                    plot_lines.append(publisher_line)
-                new_plot = "\n".join(plot_lines).strip()
-                self.book.comments = new_plot
+                if 'genre' in self.field_differences:
+                    if self.genre_checkbox.isVisible():
+                        # Field differs - apply if checked
+                        if self.genre_checkbox.isChecked():
+                            genre_name = self.genre_web_edit.text().strip()
+                            if genre_name:
+                                genre = self.genre_queries.get_by_name(genre_name)
+                                if not genre:
+                                    genre_id = self.genre_queries.insert(genre_name)
+                                else:
+                                    genre_id = genre.genre_id
+                                self.book.genre_id = genre_id
+                                applied_fields.append('Genre')
+                    else:
+                        # DB field was empty - auto-apply web data
+                        genre_name = self.genre_web_edit.text().strip()
+                        if genre_name:
+                            genre = self.genre_queries.get_by_name(genre_name)
+                            if not genre:
+                                genre_id = self.genre_queries.insert(genre_name)
+                            else:
+                                genre_id = genre.genre_id
+                            self.book.genre_id = genre_id
+                            applied_fields.append('Genre')
 
                 # Save to database
                 self.book_queries.update(self.book)
@@ -732,31 +819,16 @@ class WebMetadataWindow(QDialog):
                 # Emit signal to notify main window of data save
                 self.data_saved.emit()
 
-                # Always call refresh callback to auto-save in book details
-                if self.refresh_callback:
-                    self.refresh_callback()  # This loads the data (may set dirty flag)
-                    
-                    if web_data:
-                        # Also call save to persist changes
-                        if hasattr(self.parent_window, 'on_save'):
-                            self.parent_window.on_save()
-                    
-                    # Clear dirty state using the proper method
-                    if hasattr(self.parent_window, '_clear_dirty'):
-                        self.parent_window._clear_dirty(preserve_status=True)
-                    # Force clear dirty flag one more time
-                    if hasattr(self.parent_window, '_dirty'):
-                        self.parent_window._dirty = False
-                    # Update save button visibility
-                    if hasattr(self.parent_window, '_update_save_button_visibility'):
-                        self.parent_window._update_save_button_visibility()
-                    # Force UI update
-                    if hasattr(self.parent_window, 'repaint'):
-                        self.parent_window.repaint()
-
+                # Status message
+                if applied_fields:
+                    status_msg = f"Updated: {', '.join(applied_fields)}"
+                else:
+                    status_msg = "No changes applied"
+                self.set_status(status_msg, announce=True)
+                
                 announce_dialog_closed(self)
                 super().accept()
-
+                
             except Exception as e:
                 self.set_status(f"Error saving: {str(e)}")
                 # Don't close on error
