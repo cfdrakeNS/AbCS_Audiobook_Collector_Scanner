@@ -462,6 +462,13 @@ class WebMetadataWindow(QDialog):
                 default_button=QMessageBox.Ok
             )
             self.clear_web_indicators()
+            # Return focus to parent window's table if available before closing
+            if self.parent_window and hasattr(self.parent_window, 'table'):
+                # Use QTimer to ensure focus is set after dialog closes
+                QTimer.singleShot(0, lambda: self.parent_window._restore_table_focus(
+                    self.parent_window.table.currentRow(), 
+                    self.parent_window.table.currentColumn()
+                ))
             # Close the window - user can edit in book_details and try again
             QTimer.singleShot(0, self.close)
     
