@@ -427,7 +427,7 @@ class WebMetadataWindow(QDialog):
             msg = f"Web data found{diff_str}"
             self.set_status(msg, announce=True)
         else:
-            # No web data found - behavior depends on calling window
+            # No web data found - show popup and close window
             from src.accessibility.style_helpers import exec_styled_message_box
             title_text = self.book.title or "Unknown Title"
             author_text = self.book.author_name or "Unknown Author"
@@ -443,20 +443,8 @@ class WebMetadataWindow(QDialog):
                 default_button=QMessageBox.Ok
             )
             self.clear_web_indicators()
-            
-            # Check if parent is book_details - if so, keep window open for editing
-            parent_is_book_details = (self.parent_window and 
-                                    hasattr(self.parent_window, '__class__') and 
-                                    'book_details' in str(type(self.parent_window).__module__).lower())
-            
-            if parent_is_book_details:
-                # Keep window open so user can edit title/author and retry via original button
-                self.set_status("Edit title/author and try Get Web Info again", announce=True)
-                # Set focus to title field for easy editing
-                QTimer.singleShot(0, lambda: self.title_edit.setFocus())
-            else:
-                # Main window - close after showing message
-                QTimer.singleShot(0, self.close)
+            # Close the window - user can edit in book_details and try again
+            QTimer.singleShot(0, self.close)
     
     def generate_realistic_plot(self, title):
         """Generate a more realistic plot based on title keywords."""
