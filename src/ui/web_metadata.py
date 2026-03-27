@@ -17,12 +17,13 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox,
     QWidget, QSizePolicy, QMessageBox
 )
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
+from src.accessibility.key_filters import is_unmapped_alt_letter
 
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries
@@ -38,6 +39,9 @@ class WebMetadataWindow(QDialog):
     F1, Alt+/, and Escape work out of box.
     Built incrementally from accessible skeleton.
     """
+
+    # List of allowed Alt+key shortcuts for Web Metadata
+    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S', '/', '?', 'F1'}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -56,6 +60,8 @@ class WebMetadataWindow(QDialog):
         self.refresh_callback = refresh_callback
         self.setWindowTitle("Web Metadata")
         self.setModal(True)
+        # Make window wider for proper plot field letterbox shape
+        self.resize(800, 600)
         self.web_data = None
         self.field_differences = {}
         self.status_bar = QStatusBar()
@@ -73,6 +79,26 @@ class WebMetadataWindow(QDialog):
         # Add status bar at the very bottom (after all layouts)
         layout.addWidget(self.status_bar)
         self.load_book_data()
+        
+        # Install event filter for Alt-letter hygiene
+        self.installEventFilter(self)
+        
+        # CRITICAL: Set focus to plot field when window opens for Alt+key compatibility
+        # JAWS requires focus to be set for Alt+keys to work properly
+        QTimer.singleShot(0, lambda: self.plot_edit.setFocus())
+
+    def eventFilter(self, source, event):
+        """Event filter to enforce Alt-letter hygiene and block unmapped Alt keys."""
+        if event.type() == QEvent.KeyPress:
+            key = event.key()
+            modifiers = event.modifiers()
+            
+            # Block unused Alt+letter keys using the allowlist
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_KEYS):
+                QApplication.beep()
+                return True  # Consume the event
+                
+        return super().eventFilter(source, event)
 
 
     def setup_ui(self, layout):
@@ -222,9 +248,7 @@ class WebMetadataWindow(QDialog):
         self.plot_edit.setReadOnly(True)
         self.plot_edit.setAccessibleName("Plot Summary")
         self.plot_edit.setAccessibleDescription("Plot summary from web source")
-        self.plot_edit.setMaximumHeight(100)
-        self.plot_edit.setMinimumHeight(60)
-        self.plot_edit.setPlainText("Loading...")
+        self.plot_edit.setMinimumHeight(40)  # Like book_details
         self.plot_edit.setTabChangesFocus(True)
         self.plot_edit.textChanged.connect(self._adjust_plot_height)
         plot_label = QLabel("Plot:")
@@ -237,6 +261,25 @@ class WebMetadataWindow(QDialog):
         plot_layout.addWidget(plot_label)
         plot_layout.addWidget(self.plot_edit)
         self.main_layout.addWidget(plot_row)
+        
+        # Add buttons
+        button_layout = QHBoxLayout()
+        
+        self.save_button = QPushButton("Save")
+        self.save_button.setAccessibleName("Save web metadata")
+        self.save_button.setAccessibleDescription("Save changes - Alt+S")
+        self.save_button.setFocusPolicy(Qt.StrongFocus)
+        self.save_button.setDefault(False)
+        self.save_button.setAutoDefault(False)
+        self.save_button.clicked.connect(self.on_save_clicked)
+        button_layout.addWidget(self.save_button)
+        
+        button_layout.addStretch()
+        
+        self.main_layout.addLayout(button_layout)
+        
+        # CRITICAL: Add the main_layout to the window layout
+        layout.addLayout(self.main_layout)
 
     def _adjust_plot_height(self):
         """Adjust plot QTextEdit height to fit content (modeled after book_details)."""
@@ -250,7 +293,7 @@ class WebMetadataWindow(QDialog):
         margins = self.plot_edit.contentsMargins()
         frame_width = self.plot_edit.frameWidth() * 2
         needed_height = int(doc_height + margins.top() + margins.bottom() + frame_width + 5)
-        new_height = max(40, min(200, needed_height))
+        new_height = max(40, min(400, needed_height))  # Increased max height from 200 to 400
         self.plot_edit.setFixedHeight(new_height)
     
     # ...existing code...
@@ -396,8 +439,17 @@ class WebMetadataWindow(QDialog):
             current_str = str(current_value).strip() if current_value is not None else ""
             web_str = str(web_value).strip() if web_value is not None else ""
             
-            if web_value and (current_value is None or web_str.lower() != current_str.lower()):
-                # Data differs - show web column and checkbox
+            if web_value and (current_value is None or current_str == ""):
+                # DB field is empty and web data exists - show web data but hide checkbox (auto-applied)
+                web_edit.setText(web_str)
+                row_widget._web_label.setVisible(True)   # Show web column so user can see the data
+                row_widget._web_edit.setVisible(True)    # Show web data
+                row_widget._checkbox.setVisible(False)   # Hide checkbox (not needed for empty DB fields)
+                checkbox.setVisible(False)               # Also hide checkbox directly
+                self.field_differences[field_name] = web_str
+                return True
+            elif web_value and current_value is not None and current_str != "" and web_str.lower() != current_str.lower():
+                # Data differs and DB field is NOT empty - show web column and checkbox
                 web_edit.setText(web_str)
                 row_widget._web_label.setVisible(True)
                 row_widget._web_edit.setVisible(True)
@@ -405,19 +457,8 @@ class WebMetadataWindow(QDialog):
                 checkbox.setChecked(True)
                 self.field_differences[field_name] = web_str
                 return True
-            elif current_value is None or current_str == "":
-                # DB field is empty - auto-apply web data but keep current field empty for screen readers
-                if web_value:
-                    web_edit.setText(web_str)
-                    row_widget._web_label.setVisible(False)  # Hide web column
-                    row_widget._web_edit.setVisible(False)   # Hide web column
-                    row_widget._checkbox.setVisible(False)   # Hide checkbox
-                    checkbox.setVisible(False)               # Also hide checkbox directly
-                    # Don't update current field - leave empty for screen readers
-                    self.field_differences[field_name] = web_str
-                    return True
             else:
-                # Data is same - hide web column and checkbox
+                # Data is same or no web data - hide web column and checkbox
                 row_widget._web_label.setVisible(False)
                 row_widget._web_edit.setVisible(False)
                 row_widget._checkbox.setVisible(False)
@@ -600,7 +641,8 @@ class WebMetadataWindow(QDialog):
         
         self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
         self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.save_shortcut.activated.connect(lambda: self.save_button.click())
+        self.save_shortcut.activated.connect(
+            lambda: self.on_save_clicked() if self.save_button.isVisible() else None)
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""
@@ -658,6 +700,7 @@ class WebMetadataWindow(QDialog):
 
         QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
         dlg.exec()
+
     
     def on_read_status_bar(self):
         """Alt+/ shortcut - read status."""
@@ -682,26 +725,28 @@ class WebMetadataWindow(QDialog):
             announce_status_message(self.status_bar, message, move_focus=True)
 
     def on_escape_pressed(self):
-        """Handle escape key with confirmation if web data is present."""
-        if self.web_data:
-            # Web data is present - show confirmation dialog
-            from src.accessibility.style_helpers import exec_styled_message_box
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Confirm Exit",
-                text="Web data is present. Are you sure you want to exit without saving?",
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No
-            )
-            if reply == QMessageBox.Yes:
-                announce_dialog_closed(self)
-                super().reject()
-        else:
-            # No web data - exit normally
+        """Handle escape key - show save confirmation before closing."""
+        from src.accessibility.style_helpers import exec_styled_message_box
+        
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Confirm Save",
+            text="Save web data?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.Yes
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.accept()  # Save and close
+        elif reply == QMessageBox.No:
             announce_dialog_closed(self)
-            super().reject()
+            super().reject()  # Close without saving
+
+    def on_save_clicked(self):
+        """Handle save button click - save and close without confirmation."""
+        self.accept()  # Save and close directly
 
     def accept(self):
         """Save and accept - update database with web data based on checkbox selection and auto-apply logic."""
@@ -849,7 +894,52 @@ class WebMetadataWindow(QDialog):
 
                 # Plot
                 if 'plot' in self.field_differences:
-                    self.book.comments = self.plot_edit.toPlainText().strip()
+                    plot = self.plot_edit.toPlainText().strip()
+                    rating_line = ""
+                    source_line = ""
+                    publisher_line = ""
+                    if self.web_data:
+                        rating = self.web_data.get('rating')
+                        ratings_count = self.web_data.get('ratings_count')
+                        source = self.web_data.get('source')
+                        publisher = self.web_data.get('publisher')
+                        if rating:
+                            try:
+                                rating_val = float(rating)
+                                rating_str = f"{rating_val:.1f}"
+                            except (ValueError, TypeError):
+                                rating_str = str(rating)
+                            if ratings_count:
+                                try:
+                                    count_val = int(ratings_count)
+                                    count_str = f"{count_val} reviews"
+                                except (ValueError, TypeError):
+                                    count_str = f"{ratings_count} reviews"
+                                rating_line = f"Rating {rating_str} ({count_str})"
+                            else:
+                                rating_line = f"Rating {rating_str}"
+                        if source:
+                            source_line = f"Plot Source: {source}"
+                        if publisher:
+                            publisher_line = f"Publisher: {publisher}"
+                    # Build the new plot/comments field: rating and source on same line at top, publisher at end
+                    plot_lines = []
+                    header_line = ""
+                    if rating_line and source_line:
+                        header_line = f"{rating_line} | {source_line}"
+                    elif rating_line:
+                        header_line = rating_line
+                    elif source_line:
+                        header_line = source_line
+                    if header_line:
+                        plot_lines.append(header_line)
+                    if plot:
+                        plot_lines.append(plot)
+                    if publisher_line:
+                        plot_lines.append(publisher_line)
+                    # Remove any blank lines between sections
+                    new_plot = "\n".join([line for line in plot_lines if line.strip() != ""]).strip()
+                    self.book.comments = new_plot
                     applied_fields.append('Plot')
 
                 # Save to database
