@@ -442,61 +442,93 @@ class WebMetadataWindow(QDialog):
         """Update UI fields with web data and track differences. Show web columns and checkboxes only for changed fields."""
         self.web_data = web_data
         self.field_differences = {}
-        changes_made = False
-
+        
         # Helper to handle field comparison and visibility
-        def handle_field_comparison(web_value, current_value, web_edit, checkbox, field_name):
-            # If DB field is empty, auto-apply web data, hide web column and checkbox, but leave current field empty
-            if current_value is None or str(current_value).strip() == "":
+        def handle_field_comparison(web_value, current_value, web_edit, checkbox, field_name, row_widget):
+            current_str = str(current_value).strip() if current_value is not None else ""
+            web_str = str(web_value).strip() if web_value is not None else ""
+            
+            if web_value and (current_value is None or web_str.lower() != current_str.lower()):
+                # Data differs - show web column and checkbox
+                web_edit.setText(web_str)
+                row_widget._web_label.setVisible(True)
+                row_widget._web_edit.setVisible(True)
+                row_widget._checkbox.setVisible(True)
+                checkbox.setChecked(True)
+                self.field_differences[field_name] = web_str
+                return True
+            elif current_value is None or current_str == "":
+                # DB field is empty - auto-apply web data but keep current field empty for screen readers
                 if web_value:
-            # Data is same - hide web column and checkbox
-            row_widget._web_label.setVisible(False)
-            row_widget._web_edit.setVisible(False)
-            row_widget._checkbox.setVisible(False)
-            checkbox.setChecked(False)
-            return False
-            'series'
-        ):
-            self.series_row._web_label.setVisible(True)
-            self.series_row._web_edit.setVisible(True)
-            self.series_row._checkbox.setVisible(True)
-            changes_made = True
-
+                    web_edit.setText(web_str)
+                    row_widget._web_label.setVisible(False)  # Hide web column
+                    row_widget._web_edit.setVisible(False)   # Hide web column
+                    row_widget._checkbox.setVisible(False)   # Hide checkbox
+                    # Don't update current field - leave empty for screen readers
+                    self.field_differences[field_name] = web_str
+                    return True
+            else:
+                # Data is same - hide web column and checkbox
+                row_widget._web_label.setVisible(False)
+                row_widget._web_edit.setVisible(False)
+                row_widget._checkbox.setVisible(False)
+                checkbox.setChecked(False)
+                return False
+        
+        # Title
+        handle_field_comparison(
+            web_data.get('title'), 
+            self.book.title, 
+            self.title_web_edit, 
+            self.title_checkbox, 
+            'title',
+            self.title_row
+        )
+        
+        # Author
+        handle_field_comparison(
+            web_data.get('author'), 
+            self.book.author_name, 
+            self.author_web_edit, 
+            self.author_checkbox, 
+            'author',
+            self.author_row
+        )
+        
+        # Year
+        handle_field_comparison(
+            web_data.get('year'), 
+            self.book.year, 
+            self.year_web_edit, 
+            self.year_checkbox, 
+            'year',
+            self.year_row
+        )
+        
+        # Series
+        handle_field_comparison(
+            web_data.get('series'), 
+            self.book.series_name, 
+            self.series_web_edit, 
+            self.series_checkbox, 
+            'series',
+            self.series_row
+        )
+        
         # Genre
-        if handle_field_comparison(
+        handle_field_comparison(
             web_data.get('genre'), 
             self.book.genre_name, 
             self.genre_web_edit, 
             self.genre_checkbox, 
-            'genre'
-        ):
-            self.genre_row._web_label.setVisible(True)
-            self.genre_row._web_edit.setVisible(True)
-            self.genre_row._checkbox.setVisible(True)
-            changes_made = True
-
-        # Plot (no web field, just update current if different)
-        plot_text = web_data.get('plot')
-        # Append rating, source, and publisher if present
-        rating = web_data.get('rating')
-        source = web_data.get('source')
-        publisher = web_data.get('publisher')
-        extra_lines = []
-        if rating:
-            extra_lines.append(f"Rating: {rating}")
-        if source:
-            extra_lines.append(f"Source: {source}")
-        if publisher:
-            extra_lines.append(f"Publisher: {publisher}")
-        if plot_text:
-            plot_full = plot_text
-            if extra_lines:
-                plot_full = plot_full.rstrip() + "\n" + "\n".join(extra_lines)
-            if plot_full != (self.book.comments or ""):
-                self.plot_edit.setPlainText(plot_full)
-                self.field_differences['plot'] = 'found'
-                changes_made = True
-        return changes_made
+            'genre',
+            self.genre_row
+        )
+        
+        # Plot (update plot field with web data)
+        if web_data.get('plot'):
+            self.plot_edit.setPlainText(web_data['plot'])
+            self.field_differences['plot'] = 'found'
     
     # Removed: show_changes_popup (was for testing only)
     
