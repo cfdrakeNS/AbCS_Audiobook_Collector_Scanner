@@ -206,7 +206,7 @@ class WebMetadataWindow(QDialog):
         self.year_checkbox.setAccessibleDescription("Apply web year to current book")
         self.year_checkbox.setChecked(False)
         self.year_checkbox.setShortcut("Alt+Y")
-        year_row = create_two_column_row("Year (Alt+Y):", self.year_edit, self.year_web_edit, self.year_checkbox)
+        year_row = create_two_column_row("Year:", self.year_edit, self.year_web_edit, self.year_checkbox)
         self.year_row = year_row
         self.main_layout.addWidget(year_row)
 
@@ -239,7 +239,7 @@ class WebMetadataWindow(QDialog):
         self.genre_checkbox.setAccessibleName("Keep Web Genre")
         self.genre_checkbox.setAccessibleDescription("Apply web genre to current book")
         self.genre_checkbox.setChecked(False)
-        genre_row = create_two_column_row("&Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox)
+        genre_row = create_two_column_row("Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox)
         self.genre_row = genre_row
         self.main_layout.addWidget(genre_row)
 
