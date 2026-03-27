@@ -214,6 +214,7 @@ class WebMetadataWindow(QDialog):
         self.genre_checkbox.setAccessibleDescription("Apply web genre to current book")
         self.genre_checkbox.setChecked(False)
         genre_row = create_two_column_row("&Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox)
+        self.genre_row = genre_row
         self.main_layout.addWidget(genre_row)
 
         # Plot field (always present, below two-column layout)
