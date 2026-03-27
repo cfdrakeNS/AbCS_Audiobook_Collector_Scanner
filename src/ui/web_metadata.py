@@ -68,10 +68,10 @@ class WebMetadataWindow(QDialog):
         layout = QVBoxLayout(self)
         self.setup_ui(layout)
         self.apply_field_styling()
-        # Add status bar at the very bottom (after all layouts)
-        layout.addWidget(self.status_bar)
         # Theme is applied globally via ThemeManager; do not call apply_theme (private). If you want to change theme, use set_theme().
         self.setup_shortcuts()
+        # Add status bar at the very bottom (after all layouts)
+        layout.addWidget(self.status_bar)
         self.load_book_data()
 
 
@@ -225,18 +225,7 @@ class WebMetadataWindow(QDialog):
         self.plot_edit.setMaximumHeight(100)
         self.plot_edit.setMinimumHeight(60)
         self.plot_edit.setPlainText("Loading...")
-        self.main_layout.addWidget(QLabel("Plot:"))
-        self.main_layout.addWidget(self.plot_edit)
-
-        # Plot field (QTextEdit, no web field, dynamic height)
-        self.plot_edit_current = QTextEdit()
-        self.plot_edit_current.setAccessibleName("Plot")
-        self.plot_edit_current.setAccessibleDescription("Current plot/comments")
-        self.plot_edit_current.setTabChangesFocus(True)
-        self.plot_edit_current.setMinimumHeight(40)
-        self.plot_edit_current.textChanged.connect(self._adjust_plot_height)
         self.plot_edit.setTabChangesFocus(True)
-        self.plot_edit.setMinimumHeight(40)
         self.plot_edit.textChanged.connect(self._adjust_plot_height)
         plot_label = QLabel("Plot:")
         plot_label.setMinimumWidth(80)
@@ -268,7 +257,7 @@ class WebMetadataWindow(QDialog):
         min_width = int(self.scaler.get_scaled_size(600))
         self.setMinimumWidth(min_width)
 
-        self.layout().addLayout(self.main_layout)
+        layout.addLayout(self.main_layout)
 
         # Buttons - match book_details styling
         button_layout = QHBoxLayout()
@@ -282,7 +271,7 @@ class WebMetadataWindow(QDialog):
         button_layout.addWidget(self.save_button)
 
         button_layout.addStretch()
-        self.layout().addLayout(button_layout)
+        layout.addLayout(button_layout)
 
         # Apply book_details button styling
         scaled_height = self.scaler.get_scaled_size(22)
@@ -465,6 +454,7 @@ class WebMetadataWindow(QDialog):
                     row_widget._web_label.setVisible(False)  # Hide web column
                     row_widget._web_edit.setVisible(False)   # Hide web column
                     row_widget._checkbox.setVisible(False)   # Hide checkbox
+                    checkbox.setVisible(False)               # Also hide checkbox directly
                     # Don't update current field - leave empty for screen readers
                     self.field_differences[field_name] = web_str
                     return True
