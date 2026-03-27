@@ -537,7 +537,58 @@ class WebMetadataWindow(QDialog):
         
         # Plot (update plot field with web data)
         if web_data.get('plot'):
-            self.plot_edit.setPlainText(web_data['plot'])
+            plot = web_data['plot']
+            rating_line = ""
+            source_line = ""
+            publisher_line = ""
+            
+            # Extract rating, source, and publisher from web data
+            rating = web_data.get('rating')
+            ratings_count = web_data.get('ratings_count')
+            source = web_data.get('source')
+            publisher = web_data.get('publisher')
+            
+            if rating:
+                try:
+                    rating_val = float(rating)
+                    rating_str = f"{rating_val:.1f}"
+                except (ValueError, TypeError):
+                    rating_str = str(rating)
+                if ratings_count:
+                    try:
+                        count_val = int(ratings_count)
+                        count_str = f"{count_val} reviews"
+                    except (ValueError, TypeError):
+                        count_str = f"{ratings_count} reviews"
+                    rating_line = f"Rating {rating_str} ({count_str})"
+                else:
+                    rating_line = f"Rating {rating_str}"
+            
+            if source:
+                source_line = f"Plot Source: {source}"
+            
+            if publisher:
+                publisher_line = f"Publisher: {publisher}"
+            
+            # Build the plot display: rating and source on same line at top, publisher at end
+            plot_lines = []
+            header_line = ""
+            if rating_line and source_line:
+                header_line = f"{rating_line} | {source_line}"
+            elif rating_line:
+                header_line = rating_line
+            elif source_line:
+                header_line = source_line
+            if header_line:
+                plot_lines.append(header_line)
+            if plot:
+                plot_lines.append(plot)
+            if publisher_line:
+                plot_lines.append(publisher_line)
+            
+            # Remove any blank lines between sections
+            formatted_plot = "\n".join([line for line in plot_lines if line.strip() != ""]).strip()
+            self.plot_edit.setPlainText(formatted_plot)
             self.field_differences['plot'] = 'found'
     
     # Removed: show_changes_popup (was for testing only)
