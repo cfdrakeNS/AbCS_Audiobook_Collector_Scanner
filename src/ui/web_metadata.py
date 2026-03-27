@@ -260,6 +260,7 @@ class WebMetadataWindow(QDialog):
         plot_layout.setSpacing(10)
         plot_layout.addWidget(plot_label)
         plot_layout.addWidget(self.plot_edit)
+        self.plot_row = plot_row  # Store reference for hiding/showing
         self.main_layout.addWidget(plot_row)
         
         # Add buttons
@@ -373,6 +374,12 @@ class WebMetadataWindow(QDialog):
             self.series_edit.setText(self.book.series_name or "")
             self.genre_edit.setText(self.book.genre_name or "")
             self.plot_edit.setPlainText(self.book.comments or "")
+            
+            # Show plot row if book has existing plot data, hide if empty
+            if self.book.comments and self.book.comments.strip():
+                self.plot_row.setVisible(True)
+            else:
+                self.plot_row.setVisible(False)
 
             # Initialize web fields and labels as hidden
             for row in [self.title_row, self.author_row, self.year_row, self.series_row, self.genre_row]:
@@ -616,6 +623,11 @@ class WebMetadataWindow(QDialog):
             formatted_plot = "\n".join([line for line in plot_lines if line.strip() != ""]).strip()
             self.plot_edit.setPlainText(formatted_plot)
             self.field_differences['plot'] = 'found'
+            # Show plot row when data is available
+            self.plot_row.setVisible(True)
+        else:
+            # Hide plot row when no plot data is available
+            self.plot_row.setVisible(False)
     
     # Removed: show_changes_popup (was for testing only)
     
