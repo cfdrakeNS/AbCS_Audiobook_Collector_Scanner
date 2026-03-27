@@ -420,9 +420,9 @@ class WebMetadataWindow(QDialog):
         if parent_is_book_details and hasattr(self.parent_window, 'title_edit'):
             # Use current values from book_details form (user may have edited them)
             title = self.parent_window.title_edit.text().strip()
-            author = self.parent_window.author_edit.text().strip()
-            year = self.parent_window.year_edit.text().strip()
-            year = int(year) if year and year.isdigit() else None
+            author = self.parent_window.author_combo.currentText().strip()
+            year_value = self.parent_window.year_spin.value()
+            year = None if year_value == self.parent_window.year_spin.minimum() else str(year_value)
         else:
             # Use database values (main window or fallback)
             title = self.book.title
