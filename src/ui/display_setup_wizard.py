@@ -1,6 +1,7 @@
 """First-run display setup wizard."""
 
-from PySide6.QtCore import QSettings, Qt, QTimer
+from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -14,17 +15,24 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QPushButton,
     QWidget,
+    QStatusBar,
+    QMessageBox,
 )
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import build_accessible_button_style
 from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.key_filters import is_unmapped_alt_letter
 
 
 class DisplaySetupWizard(QDialog):
     """Simple first-run wizard for selecting theme and zoom."""
 
     SETTINGS_KEY_DONE = "ui/first_run_display_setup_done"
+    
+    # Allowed Alt+letter shortcuts for this window
+    ALLOWED_ALT_LETTERS = {'/', '?', 'F1'}
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -32,6 +40,7 @@ class DisplaySetupWizard(QDialog):
         self.theme_manager = theme_manager
         self.settings = QSettings("AbCS", "AudioBookCollector")
         self._loading = False
+        self._default_status_message = ""
 
         self.setWindowTitle("Display Setup")
         self.setAccessibleName("Display Setup")
@@ -40,6 +49,7 @@ class DisplaySetupWizard(QDialog):
         self._build_ui()
         self._load_values()
         self._connect_signals()
+        self._setup_shortcuts()
         self.disable_hover_highlight()  # Disable mouse hover effects
 
     def _build_ui(self):
@@ -56,6 +66,8 @@ class DisplaySetupWizard(QDialog):
         theme_row = QHBoxLayout()
         theme_label = QLabel("&Theme:")
         self.theme_combo = QComboBox()
+        self.theme_combo.setAccessibleName("Theme selection")
+        self.theme_combo.setAccessibleDescription("Choose visual theme for the application")
         theme_label.setBuddy(self.theme_combo)
         theme_row.addWidget(theme_label)
         theme_row.addWidget(self.theme_combo, 1)
@@ -64,6 +76,8 @@ class DisplaySetupWizard(QDialog):
         preset_row = QHBoxLayout()
         preset_label = QLabel("&Preset:")
         self.preset_combo = QComboBox()
+        self.preset_combo.setAccessibleName("Zoom preset selection")
+        self.preset_combo.setAccessibleDescription("Choose zoom preset or Custom for specific zoom level")
         preset_label.setBuddy(self.preset_combo)
         preset_row.addWidget(preset_label)
         preset_row.addWidget(self.preset_combo, 1)
@@ -72,8 +86,12 @@ class DisplaySetupWizard(QDialog):
         zoom_row = QHBoxLayout()
         zoom_label = QLabel("&Zoom (%):")
         self.zoom_spin = QSpinBox()
-        self.zoom_spin.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
-        self.zoom_spin.setSingleStep(UIScaler.SCALE_STEP)
+        self.zoom_spin.setAccessibleName("Zoom level")
+        self.zoom_spin.setAccessibleDescription("Set zoom percentage for interface scaling")
+        self.zoom_spin.setRange(50, 300)
+        self.zoom_spin.setSingleStep(15)
+        self.zoom_spin.setSuffix("%")
+        self.zoom_spin.setValue(100)
         zoom_label.setBuddy(self.zoom_spin)
         zoom_row.addWidget(zoom_label)
         zoom_row.addWidget(self.zoom_spin)
@@ -124,10 +142,20 @@ class DisplaySetupWizard(QDialog):
             self.shortcuts_help.setCurrentCell(0, 0)
         layout.addWidget(self.shortcuts_help, 1)
 
+        # Status bar
+        self.status_bar = QStatusBar()
+        self.status_bar.setAccessibleName("Status")
+        self.status_bar.showMessage("Ready")
+        layout.addWidget(self.status_bar)
+
         buttons = QHBoxLayout()
         buttons.addStretch(1)
         self.continue_button = QPushButton("&Continue")
+        self.continue_button.setAccessibleName("Continue with current settings")
+        self.continue_button.setAccessibleDescription("Save settings and close the wizard")
         self.skip_button = QPushButton("S&kip")
+        self.skip_button.setAccessibleName("Skip setup")
+        self.skip_button.setAccessibleDescription("Close wizard without changing settings")
         buttons.addWidget(self.continue_button)
         buttons.addWidget(self.skip_button)
         layout.addLayout(buttons)
@@ -183,6 +211,8 @@ class DisplaySetupWizard(QDialog):
         theme_id = self.theme_combo.currentData()
         if theme_id:
             self.theme_manager.set_theme(theme_id)
+            theme_name = self.theme_combo.currentText()
+            self.set_status(f"Theme changed to {theme_name}", announce=True)
 
     def _on_preset_changed(self, preset_name: str):
         if self._loading:
@@ -198,15 +228,18 @@ class DisplaySetupWizard(QDialog):
         self._loading = True
         self.preset_combo.setCurrentText(preset_name)
         self._loading = False
+        self.set_status(f"Zoom set to {value}%", announce=True)
 
     def _mark_done(self):
         self.settings.setValue(self.SETTINGS_KEY_DONE, True)
 
     def _on_continue(self):
+        self.set_status("Settings saved", announce=True)
         self._mark_done()
         self.accept()
 
     def _on_skip(self):
+        self.set_status("Setup skipped", announce=True)
         self._mark_done()
         self.accept()
 
@@ -222,3 +255,79 @@ class DisplaySetupWizard(QDialog):
     def should_show(cls) -> bool:
         settings = QSettings("AbCS", "AudioBookCollector")
         return not settings.value(cls.SETTINGS_KEY_DONE, False, type=bool)
+
+    def set_status(self, message: str, announce: bool = False):
+        """Set status bar message with optional screen reader announcement."""
+        self._default_status_message = message
+        self.status_bar.showMessage(message)
+        if announce:
+            announce_status_message(self.status_bar, message, move_focus=False)
+
+    def _setup_shortcuts(self):
+        """Setup keyboard shortcuts - F1 help, Alt+/ status, event filter."""
+        # F1 - help shortcut
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+        
+        # Alt+/ - status readback
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+        
+        # Install event filter for Alt-letter blocking
+        self.installEventFilter(self)
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        from src.accessibility.style_helpers import exec_styled_message_box
+        
+        shortcuts = [
+            ("F1", "Show keyboard shortcuts"),
+            ("Alt+/", "Read status bar"),
+            ("Tab", "Navigate between controls"),
+            ("Enter", "Activate button or apply setting"),
+            ("Escape", "Close wizard"),
+        ]
+        
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("Keyboard Shortcuts")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.setText("Display Setup Wizard - Keyboard Shortcuts")
+        dlg.setStandardButtons(QMessageBox.Ok)
+        dlg.setDefaultButton(QMessageBox.Ok)
+        
+        # Create shortcuts table
+        table = QTableWidget(len(shortcuts), 2)
+        table.setAccessibleName("Shortcuts list")
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        
+        for row, (shortcut, action) in enumerate(shortcuts):
+            table.setItem(row, 0, QTableWidgetItem(shortcut))
+            table.setItem(row, 1, QTableWidgetItem(action))
+        
+        table.resizeColumnsToContents()
+        
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(table)
+        dlg.setLayout(layout)
+        
+        dlg.exec()
+
+    def on_read_status_bar(self):
+        """Read current status bar message (Alt+/)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
+        if status_text:
+            self.set_status(status_text, announce=True)
+
+    def eventFilter(self, obj, event):
+        """Block unmapped Alt+letter keys to prevent noise in screen readers."""
+        if event.type() == QEvent.KeyPress:
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                event.accept()
+                return True
+        return super().eventFilter(obj, event)
