@@ -43,7 +43,7 @@ class CollectionWindow(QDialog):
     
     # Alt+letter keys that are allowed to pass through
     ALLOWED_ALT_LETTERS = {
-        'B', 'E', 'L', 'M', 'N', 'S', 'F', 'A'
+        'B', 'E', 'N', 'S', 'F', 'A', '/'
     }
     
     def keyPressEvent(self, event):
@@ -166,7 +166,7 @@ class CollectionWindow(QDialog):
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.on_cancel_edit)
         self.cancel_button.setAccessibleDescription(
-            "Cancel current new/edit and return to list - Alt+L")
+            "Cancel current new/edit and return to list")
         footer_layout.addWidget(self.cancel_button)
 
         self.delete_button = QPushButton("Delete")
@@ -613,7 +613,6 @@ class CollectionWindow(QDialog):
             ("Alt+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Alt+S", "Save"),
-            ("Alt+L", "Cancel edit/new"),
             ("Alt+D", "Delete"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
