@@ -220,12 +220,24 @@ class CollectionWindow(QDialog):
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
+        
+        # Additional field shortcuts for better navigation
+        self.name_shortcut = QShortcut(QKeySequence("Alt+N"), self)
+        self.name_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.name_shortcut.activated.connect(lambda: self.name_edit.setFocus())
+        
+        self.active_shortcut = QShortcut(QKeySequence("Alt+A"), self)
+        self.active_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.active_shortcut.activated.connect(lambda: self.active_check.setFocus())
+        
+        # Table navigation shortcuts
+        self.table_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.table_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.table_shortcut.activated.connect(self.focus_list)
 
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
     def set_status(self, message: str, announce: bool = False):
-        if "alt+n new" not in message.lower():
-            message = f"{message}, Alt+N New"
         announce_status_message(self.status_bar, message, move_focus=announce)
 
         parent = self.parent()
@@ -422,81 +434,6 @@ class CollectionWindow(QDialog):
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="Collection",
-                text="Collection name cannot be blank.",
-            )
-            return False
-
-        if self.current_collection_id is None or self._is_new_entry_mode:
-            try:
-                new_id = self.collection_queries.insert(
-                    Collection(name=name, active=active)
-                )
-            except sqlite3.IntegrityError:
-                exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Warning,
-                    title="Collection",
-                    text="A collection with this name already exists.",
-                )
-                self.set_status("Duplicate collection name.", announce=True)
-                return False
-
-            self.current_collection_id = new_id
-            self.load_collections(preserve_id=new_id)
-            self._is_new_entry_mode = False
-            self._set_editor_locked(True)
-            self.set_status(f"Collection created: {name}.", announce=True)
-            return True
-
-        existing = self.collection_queries.get_by_id(
-            self.current_collection_id)
-        if existing is None:
-            self.set_status(
-                "Selected collection no longer exists.", announce=True)
-            self.load_collections()
-            return False
-
-        if existing.active and not active and self._active_collection_count() <= 1:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Warning,
-                title="Collection",
-                text="At least one collection must remain active.",
-            )
-            self.set_status(
-                "Cannot deactivate the last active collection.", announce=True)
-            return False
-
-        try:
-            self.collection_queries.update(
-                Collection(
-                    collection_id=self.current_collection_id,
-                    name=name,
-                    active=active,
-                )
-            )
-        except sqlite3.IntegrityError:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Warning,
-                title="Collection",
-                text="A collection with this name already exists.",
-            )
-            self.set_status("Duplicate collection name.", announce=True)
-            return False
-
-        self.load_collections(preserve_id=self.current_collection_id)
-        self._set_editor_locked(True)
-        self.set_status(f"Collection saved: {name}.", announce=True)
-        return True
-
-    def on_name_edit_enter_pressed(self):
-        """Enter in Name field should act like Save and return focus to updated row."""
-        if self.save_button.isVisible() and self.save_button.isEnabled() and self.on_save():
-            QTimer.singleShot(0, self.focus_list)
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode."""
@@ -517,6 +454,16 @@ class CollectionWindow(QDialog):
                 row = 0
             self.table.setCurrentCell(row, self.COL_NAME)
         self.table.setFocus(Qt.TabFocusReason)
+
+    def focus_and_select_row(self, collection_id: int):
+        """Focus and select a specific row by collection ID."""
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, self.COL_NAME)
+            if item and item.data(Qt.UserRole) == collection_id:
+                self.table.selectRow(row)
+                self.table.setCurrentCell(row, self.COL_NAME)
+                self.table.setFocus(Qt.TabFocusReason)
+                break
 
     def on_delete(self):
         if self.current_collection_id is None:
