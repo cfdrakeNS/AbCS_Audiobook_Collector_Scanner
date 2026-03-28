@@ -1,5 +1,14 @@
 # AbCS User Guide (Draft)
 
+## 2026-03-28 Change Log
+
+- Web Metadata Window implemented: Edit > Get Web Info fetches metadata from Google Books & Open Library APIs.
+- Web metadata fields: Title, Author, Year, Series, Genre, Plot with visual indicators for differences.
+- Accessibility foundation: F1 help, Alt+/ status read, Escape close, all field shortcuts.
+- Cancel button standardization plan: Alt+B removed, Alt+L repurposed for table focus (collection_window.py complete).
+- Comprehensive accessibility documentation updated with new patterns and standardization requirements.
+- Phase 2 work updated: Web metadata window complete except for standardization.
+
 ## 2026-03-03 Change Log
 
 - Main Window standardization completed: Collection/Read/Sort moved from header controls into menus.
@@ -97,7 +106,7 @@ Header filter controls are no longer shown in Main Window.
 
 ### Book list window detail
 
-Press Alt+B to move focus to the book list table.
+Press Alt+L to move focus to the book list table.
 
 Columns are: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added.
 
@@ -119,11 +128,11 @@ Columns are: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Add
 - Sort menu: Alt+S
 - Manage menu: Alt+M
 - Help menu: Alt+H
-- Focus book list: Alt+B
+- Focus book list: Alt+L
 - Find: Ctrl+F
 - Update selected: Alt+U
 - Delete selected: Alt+D
-- Cancel selection: Alt+L
+- Cancel selection: Escape
 - Read status bar: Alt+/
 - Jump table columns: Alt+1 through Alt+0
 - New Book: Ctrl+N
@@ -157,11 +166,58 @@ Open from Main Window by focusing the Title (or another non-manager column) and 
 - New: Alt+N
 - Save: Alt+S
 - Delete: Alt+D
-- Cancel (when shown): Alt+L
+- Cancel edit: Escape
 - Close window: Escape
 - Previous book: Page Up
 - Next book: Page Down
 - Read status bar: Alt+/
+
+## Web Metadata Window
+
+Open from Main Window: Edit (Alt+E) -> Get Web Info, or from Book Details with Alt+W.
+
+Fetches metadata from Google Books & Open Library APIs for the selected book.
+
+### Window layout
+
+The window displays current database values alongside web-fetched values:
+
+| Field | Current Value | Web Value | Accept |
+|-------|---------------|-----------|--------|
+| Title | [database title] | [web title] | [checkbox] |
+| Author | [database author] | [web author] | [checkbox] |
+| Year | [database year] | [web year] | [checkbox] |
+| Series | [database series] | [web series] | [checkbox] |
+| Genre | [database genre] | [web genre] | [checkbox] |
+| Plot | [not displayed] | [web plot] | [checkbox] |
+
+- Check the Accept checkbox to replace database value with web value
+- Green checkmark (✓) indicates web data differs from database
+- Empty database fields show web value by default (no checkbox needed)
+- Plot field only shows if web data is available
+
+### Field shortcuts
+
+- Title: Alt+T
+- Author: Alt+A  
+- Year: Alt+Y
+- Series: Alt+I
+- Genre: Alt+G
+- Plot: Alt+P
+
+### Actions
+
+- Save: Alt+S (accepts checked changes and closes window)
+- Close: Escape (discards changes and closes window)
+- Read status bar: Alt+/
+- Keyboard shortcut help: F1
+
+### Status messages
+
+- "Web data found" when differences exist
+- "No web data found" when search returns nothing
+- "Updated: [fields]" when changes are saved
+- Error messages for network failures
 
 ## Name List Window (Authors / Genre / Series / Collections)
 
@@ -172,14 +228,14 @@ Main Window opens these from the Manage menu, and from table context actions on 
 - Find: Alt+F
 - Name field: Alt+M
 - Active checkbox (Collections only): Alt+A
-- Jump to list: Alt+B
+- Jump to list: Alt+L
 - Enter in Find moves focus to the matched list item.
 
 ### Actions
 
 - Edit: Alt+E
 - Save: Alt+S
-- Cancel edit: Alt+L
+- Cancel edit: Escape
 - Close window: Escape
 - Read status bar: Alt+/
 
@@ -195,8 +251,8 @@ Use this window to apply bulk changes to selected books.
 
 - Series: Alt+S
 - Genre: Alt+G
-- Collection (when shown): Alt+L
-- Focus list: Alt+B
+- Collection (when shown): Alt+C
+- Focus list: Alt+L
 - Read status bar: Alt+/
 - Close window: Escape
 
@@ -252,7 +308,7 @@ Summary/status after scan uses: `Scanned`, `Added`, `Fixed`, `Errors/Warnings`, 
 
 ### Import list window detail
 
-Press Alt+B to move focus to the import list table.
+Press Alt+L to move focus to the import list table.
 
 Columns are: Author, Title, Year, Error Type, File/Folder.
 
@@ -292,7 +348,7 @@ The Import Progress window is shown during scans in compact mode.
 	- Import phase: `Adding x/x`
 - Counters shown: Files scanned, Elapsed time, Books added, Read errors.
 - Alt+/ reads the current progress status message.
-- Cancel scan: Alt+L
+- Cancel scan: Escape
 - Close (after completion): Escape
 
 Note: progress information fields are display-only and are not part of tab focus.
@@ -378,7 +434,7 @@ Auto-correction options include:
 ### Footer actions
 
 - Save: Alt+V
-- Cancel: Alt+C
+- Cancel: Escape
 - Alt+/ reads current status bar message
 - F1 opens keyboard shortcut help
 - Tab/Shift+Tab moves between controls in the current section
