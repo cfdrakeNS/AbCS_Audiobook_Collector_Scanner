@@ -148,32 +148,27 @@ class CollectionWindow(QDialog):
 
         self.new_button = QPushButton("New")
         self.new_button.clicked.connect(self.on_new)
-        self.new_button.setAccessibleDescription(
-            "Create a new collection entry - Alt+N")
+        self.new_button.setAccessibleDescription("Create new collection")
         footer_layout.addWidget(self.new_button)
 
         self.edit_button = QPushButton("Edit")
         self.edit_button.clicked.connect(self.on_edit)
-        self.edit_button.setAccessibleDescription(
-            "Edit highlighted collection - Alt+E")
+        self.edit_button.setAccessibleDescription("Edit highlighted collection")
         footer_layout.addWidget(self.edit_button)
 
         self.save_button = QPushButton("&Save")
         self.save_button.clicked.connect(self.on_save)
-        self.save_button.setAccessibleDescription(
-            "Save current collection - Alt+S")
+        self.save_button.setAccessibleDescription("Save current collection")
         footer_layout.addWidget(self.save_button)
 
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.on_cancel_edit)
-        self.cancel_button.setAccessibleDescription(
-            "Cancel current new/edit and return to list")
+        self.cancel_button.setAccessibleDescription("Cancel current new/edit and return to list")
         footer_layout.addWidget(self.cancel_button)
 
         self.delete_button = QPushButton("Delete")
         self.delete_button.clicked.connect(self.on_delete)
-        self.delete_button.setAccessibleDescription(
-            "Delete selected collection if unused - Alt+D")
+        self.delete_button.setAccessibleDescription("Delete selected collection if unused")
         footer_layout.addWidget(self.delete_button)
 
         button_style = build_accessible_button_style(
