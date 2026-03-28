@@ -153,6 +153,119 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Missing keyboard shortcuts for save/skip operations
 - ⚠️ **Gap 3:** No explicit focus management after save operations
 - ⚠️ **Gap 4:** Limited accessibility for validation error display
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+
+### 14. book_details.py - ⚠️ NEEDS STANDARDIZATION
+**Status:** Good accessibility with cancel button requiring standardization
+- ✅ Status bar with `Alt+/`
+- ✅ Alt-letter filtering
+- ✅ F1 help dialog
+- ✅ Comprehensive widget naming
+- ✅ Complex form handled well
+- ✅ Focus management after operations
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+- ⚠️ **STANDARDIZATION NEEDED:** Change Alt+L from Cancel to table focus
+
+### 15. preferences_window.py - ⚠️ NEEDS STANDARDIZATION
+**Status:** Good accessibility with cancel button requiring standardization
+- ✅ Status bar with `Alt+/`
+- ✅ Alt-letter filtering
+- ✅ F1 help dialog
+- ✅ Comprehensive widget naming
+- ✅ Complex form handled well
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+- ⚠️ **STANDARDIZATION NEEDED:** Change Alt+L from Cancel to table focus
+
+### 16. name_list_window.py - ⚠️ NEEDS STANDARDIZATION
+**Status:** Good accessibility with cancel button requiring standardization
+- ✅ Status bar with `Alt+/`
+- ✅ Alt-letter filtering
+- ✅ F1 help dialog
+- ✅ Comprehensive widget naming
+- ✅ Complex form handled well
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+- ⚠️ **STANDARDIZATION NEEDED:** Change Alt+L from Cancel to table focus
+
+### 17. import_window.py - ⚠️ NEEDS STANDARDIZATION
+**Status:** Good accessibility with cancel button requiring standardization
+- ✅ Status bar with `Alt+/`
+- ✅ Alt-letter filtering
+- ✅ F1 help dialog
+- ✅ Comprehensive widget naming
+- ✅ Complex form handled well
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+- ⚠️ **STANDARDIZATION NEEDED:** Change Alt+L from Cancel to table focus
+
+### 18. import_progress_window.py - ⚠️ NEEDS STANDARDIZATION
+**Status:** Good accessibility with cancel button requiring standardization
+- ✅ Status bar with `Alt+/`
+- ✅ Alt-letter filtering
+- ✅ F1 help dialog
+- ✅ Comprehensive widget naming
+- ✅ Progress indicators handled well
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+- ⚠️ **STANDARDIZATION NEEDED:** Change Alt+L from Cancel to table focus
+
+### 19. main_window.py - ⚠️ NEEDS STANDARDIZATION
+**Status:** Good accessibility with cancel button requiring standardization
+- ✅ Status bar with `Alt+/`
+- ✅ Alt-letter filtering
+- ✅ F1 help dialog
+- ✅ Comprehensive widget naming
+- ✅ Complex interface handled well
+- ⚠️ **STANDARDIZATION NEEDED:** Remove cancel button, use Escape instead
+- ⚠️ **STANDARDIZATION NEEDED:** Change Alt+L from Cancel to table focus
+
+### Windows WITHOUT Cancel Buttons (No Changes Needed):
+- ✅ collection_window.py - Already standardized
+- ✅ web_metadata.py - No cancel button
+- ✅ update_window.py - No cancel button
+- ✅ backup_restore_window.py - No cancel button
+- ✅ reading_history_window.py - No cancel button
+
+---
+
+# Cancel Button Standardization Plan
+
+## **IMPORTANT SHORTCUT IMPROVEMENT**
+
+**Current Issue:** We use Alt+B to set focus on tables because Alt+L is used for Cancel. However, Alt+L for Cancel is non-standard - most Windows applications use Escape for Cancel.
+
+**Proposed Solution:** 
+1. **Remove Cancel buttons** from all windows (except message boxes)
+2. **Use Escape key** for cancel functionality (Windows standard)
+3. **Repurpose Alt+L** for table focus (more intuitive for screen readers)
+
+**Benefits for JAWS Users:**
+- Alt+L for "List" makes sense when JAWS reads tables as lists
+- Escape for Cancel follows Windows standards
+- More intuitive keyboard navigation
+
+## **WINDOWS REQUIRING STANDARDIZATION (7 windows):**
+
+### **Priority Order for Implementation:**
+1. **book_details.py** - High usage window
+2. **preferences_window.py** - Settings window
+3. **name_list_window.py** - Data management window
+4. **import_window.py** - Import functionality
+5. **import_detail_window.py** - Complex form
+6. **import_progress_window.py** - Progress window
+7. **main_window.py** - Main interface
+
+### **Changes Required for Each Window:**
+- ❌ Remove Cancel button and all references
+- ✅ Add Escape key handler for cancel functionality
+- ✅ Change Alt+L from Cancel to table focus
+- ✅ Update F1 help dialog shortcuts
+- ✅ Update ALLOWED_ALT_LETTERS (remove B, add L for table)
+- ✅ Update shortcut manager callback map
+- ✅ Test both Escape and Alt+L functionality
+
+### **Implementation Strategy:**
+- **One window at a time** - test each window completely before next
+- **Combine with other standardization** changes already listed
+- **Verify JAWS compatibility** after each change
+- **Update documentation** as each window is completed
 
 ---
 # Current Status Updates - March 28, 2026
@@ -211,18 +324,19 @@ currently we use alt+b to set focus on a given table this is due to using alt+l 
 ### Compliance Overview (Updated March 28, 2026):
 - **✅ Excellent (90%+ compliant):** 2 windows (collection_window.py, others)
 - **✅ Good (80-89% compliant):** 1 window (web_metadata.py)
-- **✅ Fully Compliant:** 10 windows (75%)
-- **⚠️ Needs Improvement:** 0 windows (0%)
+- **⚠️ Needs Standardization:** 7 windows (cancel button removal + Alt+L table focus)
+- **✅ Fully Compliant:** 5 windows (38%)
 - **❌ Not Reviewed:** 1 window (8%) - *accessibility_window_skeleton.py (template)*
 
 ### Pattern Implementation (Updated):
-- **✅ Status Bar + Alt+:** 13/13 windows (100%)
-- **✅ F1 Help Dialog:** 13/13 windows (100%)
-- **✅ Alt-Letter Filtering:** 13/13 windows (100%)
-- **✅ Widget Naming:** 13/13 windows (100%)
-- **✅ Modal Message Boxes:** 13/13 windows (100%)
-- **✅ Focus Management:** 12/13 windows (92%) - *web_metadata.py gap*
-- **✅ Tab Order Management:** 12/13 windows (92%) - *web_metadata.py gap*
+- **✅ Status Bar + Alt+:** 18/18 windows (100%)
+- **✅ F1 Help Dialog:** 18/18 windows (100%)
+- **✅ Alt-Letter Filtering:** 18/18 windows (100%)
+- **✅ Widget Naming:** 18/18 windows (100%)
+- **✅ Modal Message Boxes:** 18/18 windows (100%)
+- **✅ Focus Management:** 13/18 windows (72%) - *web_metadata.py + 6 standardization windows*
+- **✅ Tab Order Management:** 13/18 windows (72%) - *web_metadata.py + 6 standardization windows*
+- **⚠️ Cancel Button Standardization:** 11/18 windows (61%) - *7 windows need standardization*
 
 ### Key Improvements Completed:
 - ✅ Alt+B removed, Alt+L now table focus (collection_window.py)
@@ -231,6 +345,7 @@ currently we use alt+b to set focus on a given table this is due to using alt+l 
 - ✅ Lambda scope issues resolved (collection_window.py)
 - ✅ 3 new accessibility patterns documented
 - ✅ Reuse checklist expanded with 5 new requirements
+- ✅ Cancel button standardization plan documented for 7 windows
 
 ---
 
