@@ -354,6 +354,8 @@ class CollectionWindow(QDialog):
         self._set_editor_locked(False, clear_name=True)
         self.active_check.setChecked(True)
         self.name_edit.setFocus(Qt.TabFocusReason)
+        # Show save/cancel message in status bar
+        self.set_status("Alt+S to Save, Escape to Cancel")
 
     def on_edit(self):
         collection_id = self._selected_collection_id()
@@ -370,11 +372,13 @@ class CollectionWindow(QDialog):
 
         self.current_collection_id = collection.collection_id
         self._is_new_entry_mode = False
-        self._set_editor_locked(False)
+        self._set_editor_locked(False, clear_name=False)
         self.name_edit.setText(collection.name)
         self.active_check.setChecked(collection.active)
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.setCursorPosition(len(self.name_edit.text()))
+        # Show save/cancel message in status bar
+        self.set_status("Alt+S to Save, Escape to Cancel")
 
     def on_save(self) -> bool:
         name = self._to_proper_case(self.name_edit.text())
