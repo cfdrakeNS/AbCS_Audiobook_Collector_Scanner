@@ -21,31 +21,26 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ✅ Search functionality with accessibility support
 
 ### 2. main.py - ⚠️ NEEDS IMPROVEMENT
-**Status:** Application entry point has significant accessibility gaps in dialogs
+**Status:** Application entry has specific accessibility gaps in startup dialogs
 - ✅ Screen reader support enabled (QAccessible.setActive)
 - ✅ Scaling and theme support initialized
 - ✅ First run dialog has basic accessibility
-- ❌ **Critical Gap 1:** Native message box not accessible to screen readers
-- ❌ **Critical Gap 2:** Splash screens lack focus management and announcements
-- ❌ **Critical Gap 3:** Missing accessible names/descriptions on buttons
-- ❌ **Gap 4:** No status announcements for important events
-- ❌ **Gap 5:** No F1 help in any dialogs
-- ❌ **Gap 6:** No Alt-letter filtering in dialogs
+- ❌ **Issue 1:** Missing accessible names/descriptions on Import/Preferences/Continue buttons
+- ❌ **Issue 2:** Empty database splash QTextEdit lacks accessible properties for screen readers
+- ❌ **Issue 3:** Statistics splash table lacks focus management for keyboard navigation
+- ❌ **Issue 4:** Continue buttons in splash dialogs lack accessible descriptions
 
-**Issues Found:**
-- **Native Messages (lines 29-71):** Windows MessageBox not accessible
-- **Empty DB Splash (lines 190-210):** QTextEdit has no accessible properties, no focus
-- **Statistics Splash (lines 212-256):** Table has no focus, Continue button unnamed
-- **First Run Dialog (lines 344-475):** Buttons missing accessible names/descriptions
-- **Error Handling (lines 321-326):** Console errors not announced to users
+**Specific Controls Needing Fixes:**
+- **First Run Dialog (lines 424-426):** Import, Preferences, Continue buttons need accessible names/descriptions
+- **Empty DB Splash (lines 193-209):** QTextEdit needs accessible name and description for screen reader navigation
+- **Statistics Splash (lines 212-256):** Table needs focus management, Continue button needs accessible description
+- **Native Messages (lines 29-71):** While functional, could use styled message boxes for consistency
 
 **Recommendations:**
-1. Replace native MessageBox with accessible styled message box
-2. Add focus management and accessible names to all splash screens
-3. Add accessible names/descriptions to all buttons
-4. Implement status announcements for important events
-5. Add F1 help dialogs to splash screens
-6. Add Alt-letter filtering to prevent screen reader noise
+1. Add accessible names/descriptions to Import/Preferences/Continue buttons
+2. Add accessible name/description to empty database QTextEdit
+3. Add focus management to statistics table for keyboard navigation
+4. Add accessible description to Continue buttons in splash dialogs
 
 ### 3. book_details.py - ✅ EXCELLENT  
 **Status:** Gold standard for accessibility implementation
@@ -199,7 +194,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 ## 🔍 Detailed Gap Analysis
 
 ### Critical Patterns Missing:
-1. **main.py** - Application entry point has major accessibility gaps in dialogs
+1. **main.py** - Missing accessible names/descriptions on startup dialog buttons
 2. **display_setup_wizard.py** lacks all core accessibility patterns
 3. **Inconsistent shortcut management** across some windows
 4. **Mixed approaches** to status bar implementation
@@ -214,13 +209,11 @@ Comprehensive accessibility review of all AbCS application windows against estab
 ## 🎯 Priority Recommendations
 
 ### High Priority (Fix Immediately):
-1. **main.py** - Fix critical accessibility gaps in application dialogs
-   - Replace native MessageBox with accessible styled message box
-   - Add focus management and accessible names to splash screens
-   - Add accessible names/descriptions to all buttons
-   - Implement status announcements for important events
-   - Add F1 help dialogs to splash screens
-   - Add Alt-letter filtering to prevent screen reader noise
+1. **main.py** - Fix specific accessibility gaps in startup dialogs
+   - Add accessible names/descriptions to Import/Preferences/Continue buttons (lines 424-426)
+   - Add accessible name/description to empty database QTextEdit (lines 193-209)
+   - Add focus management to statistics table for keyboard navigation (lines 212-256)
+   - Add accessible description to Continue buttons in splash dialogs
 
 2. **display_setup_wizard.py** - Complete accessibility implementation
    - Add status bar with `Alt+/`
@@ -298,12 +291,12 @@ def eventFilter(self, obj, event):
 - Strong keyboard navigation support in main windows
 
 **Critical Issues Found:**
-- **main.py** application entry point has major accessibility gaps affecting first-time users
+- **main.py** startup dialogs missing accessible names/descriptions on buttons
 - **display_setup_wizard.py** needs complete accessibility overhaul
-- Splash screens and dialogs lack proper accessibility for JAWS/NVDA users
+- Some splash controls lack proper screen reader navigation
 
 **Areas for Improvement:**
-- main.py dialogs need significant accessibility improvements
+- main.py dialog buttons need accessible descriptions
 - Shortcut management could be more consistent
 - Some windows could benefit from enhanced help content
 
