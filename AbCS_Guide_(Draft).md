@@ -31,7 +31,8 @@ When AbCS starts for the first time, the book list may be empty.
 ### Menu
 
 - File (Alt+F): New Book, Import, Quit
-- View (Alt+V): Open Focused Item (Ctrl+Enter), Find (Ctrl+F), Collections filter menu, Read filter menu, zoom controls
+- Edit (Alt+E): Delete, Update, Get Web Info, Cancel
+- View (Alt+V): Open Focused Item (Ctrl+Enter), Find (Ctrl+F), Collections filter menu, Read filter menu, Reading History, zoom controls
 - Sort (Alt+S): Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added
 - Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
