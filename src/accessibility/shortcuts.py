@@ -27,12 +27,9 @@ class ShortcutContext(Enum):
 class ShortcutManager(QObject):
     # Collection Window (dedicated context)
     COLLECTION_WINDOW_SHORTCUTS = {
-        'B': ('Jump to list', 'table'),
+        'L': ('Jump to list', 'table'),
         'S': ('Save', 'save_button'),
         'E': ('Edit selected row', 'edit_button'),
-        'M': ('Name edit', 'name_edit'),
-        'A': ('Active checkbox', 'active_check'),
-        'L': ('Cancel edit/new', 'cancel_button'),
         'N': ('New', 'new_button'),
         'D': ('Delete', 'delete_button'),
     }
