@@ -44,7 +44,7 @@ class CollectionWindow(QDialog):
     
     # Alt+letter keys that are allowed to pass through
     ALLOWED_ALT_LETTERS = {
-        'B', 'E', 'N', 'S', 'F', 'A', '/'
+        'B', 'E', 'N', 'S', 'F', '/'
     }
     
     def keyPressEvent(self, event):
@@ -105,16 +105,14 @@ class CollectionWindow(QDialog):
         name_label = QLabel("Na&me:")
         self.name_edit = QLineEdit()
         self.name_edit.setAccessibleName("Collection name")
-        self.name_edit.setAccessibleDescription(
-            "Enter collection name - Alt+M")
+        self.name_edit.setAccessibleDescription("Enter collection name")
         name_label.setBuddy(self.name_edit)
         header_layout.addWidget(name_label)
         header_layout.addWidget(self.name_edit, 1)
 
         self.active_check = QCheckBox("&Active")
         self.active_check.setAccessibleName("Collection active")
-        self.active_check.setAccessibleDescription(
-            "Collection active status - Alt+A")
+        self.active_check.setAccessibleDescription("Collection active status")
         self.active_check.setChecked(True)
         header_layout.addWidget(self.active_check)
 
@@ -195,8 +193,6 @@ class CollectionWindow(QDialog):
         mgr = get_shortcut_manager()
         # Map widget IDs to callbacks for Alt+letter shortcuts
         callback_map = {
-            'name_edit': lambda: self.name_edit.setFocus(Qt.ShortcutFocusReason),
-            'active_check': lambda: self.active_check.setFocus(Qt.ShortcutFocusReason),
             'new_button': self.new_button.click,
             'edit_button': self.edit_button.click,
             'save_button': self.save_button.click,
@@ -604,8 +600,6 @@ class CollectionWindow(QDialog):
         from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
             ("Alt+B", "Jump to list"),
-            ("Alt+M", "Name edit"),
-            ("Alt+A", "Active checkbox"),
             ("Alt+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Alt+S", "Save"),
