@@ -535,6 +535,11 @@ class CollectionWindow(QDialog):
                 self.table.setFocus(Qt.TabFocusReason)
                 break
 
+    def on_name_edit_enter_pressed(self):
+        """Enter in Name field should act like Save and return focus to updated row."""
+        if self.save_button.isVisible() and self.save_button.isEnabled() and self.on_save():
+            QTimer.singleShot(0, self.focus_list)
+
     def on_delete(self):
         if self.current_collection_id is None:
             self.set_status("Select a collection to delete.", announce=True)
