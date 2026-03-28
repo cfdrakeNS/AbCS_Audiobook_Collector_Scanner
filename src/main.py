@@ -460,10 +460,17 @@ Use Ctrl+I to import or Alt+M for menu options."""
         def focus_guidance_table() -> None:
             if text.rowCount() > 0:
                 text.setCurrentCell(0, 0)
-            text.setFocus(Qt.ActiveWindowFocusReason)
+                # Ensure table can receive focus
+                text.setFocusPolicy(Qt.StrongFocus)
+                text.setFocus(Qt.ActiveWindowFocusReason)
+                # Activate window to ensure focus takes
+                dlg.activateWindow()
+                dlg.raise_()
 
+        # Multiple attempts to ensure focus is set properly
         QTimer.singleShot(0, focus_guidance_table)
-        QTimer.singleShot(150, focus_guidance_table)
+        QTimer.singleShot(100, focus_guidance_table)
+        QTimer.singleShot(300, focus_guidance_table)
 
         dlg.exec()
 
