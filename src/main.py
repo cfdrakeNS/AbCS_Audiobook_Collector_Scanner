@@ -420,16 +420,14 @@ Use Ctrl+I to import or Alt+M for menu options."""
         if stats.total_books != 0:
             return
 
-        # Use exec_styled_message_box like delete confirmation for JAWS Insert+B compatibility
+        # Use single message box with custom buttons for JAWS Insert+B compatibility
         from PySide6.QtWidgets import QMessageBox
         from src.accessibility.style_helpers import exec_styled_message_box
         
         empty_library_message = """The database is empty.
 
 To get started, import audiobooks from your folders.
-You can also open Preferences to adjust colors and font size.
-
-What would you like to do?"""
+You can also open Preferences to adjust colors and font size."""
         
         reply = exec_styled_message_box(
             self.main_window,
@@ -437,57 +435,21 @@ What would you like to do?"""
             icon=QMessageBox.Information,
             title="Welcome to AbCS - Database Empty",
             text=empty_library_message,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok
+            buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            default_button=QMessageBox.Yes,
+            button_texts={
+                QMessageBox.Yes: "Import",
+                QMessageBox.No: "Preferences", 
+                QMessageBox.Cancel: "Continue"
+            }
         )
         
-        # After user reads message, show action options
-        if reply == QMessageBox.Ok:
-            self._show_action_options()
-
-    def _show_action_options(self):
-        """Show simple action dialog with buttons."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QPushButton, QHBoxLayout
-        
-        dlg = QDialog(self.main_window)
-        dlg.setWindowTitle("AbCS - Choose Action")
-        dlg.resize(400, 150)
-
-        layout = QVBoxLayout(dlg)
-        
-        button_row = QHBoxLayout()
-        
-        import_btn = QPushButton("Import")
-        import_btn.setAccessibleName("Import")
-        import_btn.setAccessibleDescription("Import audiobooks from your computer folders")
-        
-        continue_btn = QPushButton("Continue")
-        continue_btn.setAccessibleName("Continue")
-        continue_btn.setAccessibleDescription("Continue to the main application")
-        continue_btn.setDefault(True)
-
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
-        import_btn.setStyleSheet(button_style)
-        continue_btn.setStyleSheet(button_style)
-
-        button_row.addWidget(import_btn)
-        button_row.addStretch(1)
-        button_row.addWidget(continue_btn)
-        layout.addLayout(button_row)
-
-        def on_import():
-            dlg.accept()
+        # Handle user's choice
+        if reply == QMessageBox.Yes:  # Import
             self.main_window.on_import()
-
-        import_btn.clicked.connect(on_import)
-        continue_btn.clicked.connect(dlg.accept)
-        
-        # Add Ctrl+I shortcut
-        from PySide6.QtGui import QShortcut, QKeySequence
-        import_shortcut = QShortcut(QKeySequence("Ctrl+I"), dlg)
-        import_shortcut.activated.connect(on_import)
-
-        dlg.exec()
+        elif reply == QMessageBox.No:  # Preferences
+            self.main_window.on_preferences()
+        # Cancel (Continue) - do nothing, just continue to main app
 
 
 def main():
