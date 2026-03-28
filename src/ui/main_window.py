@@ -701,8 +701,8 @@ class MainWindow(QMainWindow):
         self.edit_menu.addAction(self.get_web_info_action)
         
         # Cancel action (same as cancel button)
-        self.cancel_action = QAction("&Cancel\tEsc", self)
-        self.cancel_action.setShortcut(QKeySequence("Esc"))
+        self.cancel_action = QAction("&Cancel", self)
+        # Note: Esc shortcut handled at window level by escape_shortcut
         self.cancel_action.triggered.connect(self.on_cancel_clicked)
         self.cancel_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.cancel_action)
