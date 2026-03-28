@@ -1,55 +1,4 @@
-# AbCS User Guide (Draft)
-
-## 2026-03-28 Change Log
-
-- Web Metadata Window implemented: Edit > Get Web Info fetches metadata from Google Books & Open Library APIs.
-- Web metadata fields: Title, Author, Year, Series, Genre, Plot with visual indicators for differences.
-- Accessibility foundation: F1 help, Alt+/ status read, Escape close, all field shortcuts.
-- Cancel button standardization plan: Alt+B removed, Alt+L repurposed for table focus (collection_window.py complete).
-- Comprehensive accessibility documentation updated with new patterns and standardization requirements.
-- Phase 2 work updated: Web metadata window complete except for standardization.
-
-## 2026-03-03 Change Log
-
-- Main Window standardization completed: Collection/Read/Sort moved from header controls into menus.
-- Find workflow standardized: `View > Find...` with `Ctrl+F` replaces inline Search in the header.
-- Main list duration terminology standardized from `Time` to `Length` in user-facing labels.
-- Main Window legacy shortcuts removed: `Alt+C` (Collection), `Alt+R` (Read), `Alt+O` (Order By), `Alt+S` (Search).
-- Sort menu behavior updated: first-letter menu activation and status-bar sort wording now cover non-primary sorts (for example Year).
-- Regression tests expanded for Main Window menu/shortcut behavior; full test suite passing (33 tests).
-- Preferences documentation updated for the reorganized Import Settings layout and section-jump shortcuts (`Alt+D/S/O/F/R/A`) with current footer/help behavior.
-
-## 2026-03-02 Change Log
-
-- Window dismissal behavior simplified: dismiss-only Close buttons were removed from major windows; Escape is now the standard close path.
-- Import Window footer updated: `Add Valid` (Alt+V) available in review mode; Cancel (Alt+N) is shown only while scan/add is running.
-- Import review mode added in Preferences: `Review Clean Books Before Adding` (Alt+Y) keeps clean rows in Import Window for manual review.
-- Import Progress and shortcut help updated for reliable Alt+/ status read flow and post-complete Escape close.
-- Name List status read wording updated to announce edit/close actions as `Alt+E Edit, Escape Close`.
-- Main Window About dialog updated to a line-by-line table format for more reliable JAWS reading.
-- First-run startup guidance and Display Setup shortcut help updated to line-by-line table format for arrow-key reading.
-- Status announcement handling standardized in Main Window, Book Details, and Update Window via shared announcer path.
-- Book Details Cancel shortcut reliability improved (Alt+L conflict removed).
-- Manage menu includes `Preferences Reorg Preview...` for side-by-side validation of the reorganized preferences layout.
-- Startup/version updated to AbCS 1.7.2 (build date 2026-03-02).
-
-## 2026-02-25 Change Log
-
-- Import performance baseline updated with local SSD comparison against USB results.
-- Import Window shortcuts/docs updated: Export is Alt+X; scan-time cancel is Alt+N; `Add All Valid` removed.
-- Import error filter options updated to include Fallback and Corrected.
-- Import Progress behavior documented: status phase messages `Scanning x/x` then `Adding x/x`, with Alt+/ status read verification.
-
-## 2026-02-26 Change Log
-
-- Backup/Restore keyboard flow updated: backup list supports arrow navigation with reliable Alt+/ status read.
-- Backup/Restore actions updated: Browse shortcut is Alt+O, Delete selected backup is Alt+D (shown only when backup list has focus and a selected row).
-- Import summary wording/counts updated: `Fixed` replaces `Valid`; issue count is `Errors/Warnings`.
-- Import review behavior updated: only clean items auto-add; fixed/warning/error/duplicate items remain in the review list for manual `Add Selected`.
-- Name List status read updated to include books count and actions in row format: `Name - books xx, Alt+E Edit, Alt+C Close`.
-- Focus return documented for Main-window-launched dialogs (for example Import, Backup/Restore, Preferences): focus returns to Main list Title cell on close.
-- Main Window safety update: `Ctrl+A` is disabled in the book list to prevent accidental large-batch actions.
-- Large batch reliability update: bulk delete/update operations now run in safe chunks for large libraries.
+# AbCS User Guide
 
 ## Overview
 
@@ -57,10 +6,10 @@ AbCS (Audio Book Collector Scanner) is an audiobook collection manager with sear
 
 AbCS is accessibility-first:
 
-- Keyboard access for major actions (Alt+letter, Ctrl shortcuts, F1 help).
-- Screen reader support through status announcements and accessible labels.
-- Scalable fonts and zoom.
-- Theme and readability preferences.
+- Keyboard access for major actions (Alt+letter, Ctrl shortcuts, F1 help)
+- Screen reader support through status announcements and accessible labels
+- Scalable fonts and zoom
+- Theme and readability preferences
 
 ## Global keyboard shortcuts
 
@@ -73,10 +22,10 @@ AbCS is accessibility-first:
 
 When AbCS starts for the first time, the book list may be empty.
 
-- If the database is empty, a dialog appears with options: Import, Preferences, or Continue.
-- The startup guidance is presented in a line-by-line read-only table; use Up/Down arrows to read each line.
-- Open Import from File menu (Alt+F, then Import), or press Ctrl+I.
-- If books already exist, Main Window opens with the current list.
+- If the database is empty, a dialog appears with options: Import, Preferences, or Continue
+- The startup guidance is presented in a line-by-line read-only table; use Up/Down arrows to read each line
+- Open Import from File menu (Alt+F, then Import), or press Ctrl+I
+- If books already exist, Main Window opens with the current list
 
 ## Main Window (Book List)
 
@@ -85,24 +34,23 @@ When AbCS starts for the first time, the book list may be empty.
 - File (Alt+F): New Book, Import, Quit
 - View (Alt+V): Open Focused Item (Ctrl+Enter), Find (Ctrl+F), Collections filter menu, Read filter menu, zoom controls
 - Sort (Alt+S): Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added
-- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Preferences Reorg Preview, Backup/Restore, Statistics
+- Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
 
 ### About dialog
 
-- About content is presented in a single-column line-by-line table for screen reader reliability.
-- Use Up/Down arrows to read each line.
-- Screen-reader detected/not-detected status text is no longer shown.
+- About content is presented in a single-column line-by-line table for screen reader reliability
+- Use Up/Down arrows to read each line
 
 ### Header controls
 
 Header filter controls are no longer shown in Main Window.
 
-- Collection filtering is available in `View > Collections`.
-- Read filtering is available in `View > Read`.
-- Sorting is available in the top-level `Sort` menu.
-- Finding is available in `View > Find...` and with `Ctrl+F`.
-- Main Window Escape behavior clears active find/search filter state.
+- Collection filtering is available in `View > Collections`
+- Read filtering is available in `View > Read`
+- Sorting is available in the top-level `Sort` menu
+- Finding is available in `View > Find...` and with `Ctrl+F`
+- Main Window Escape behavior clears active find/search filter state
 
 ### Book list window detail
 
@@ -110,16 +58,16 @@ Press Alt+L to move focus to the book list table.
 
 Columns are: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added.
 
-- Open Book Details with Ctrl+Enter or double-click.
+- Open Book Details with Ctrl+Enter or double-click
 - Open focused item with Ctrl+Enter or double-click:
 	- Title/other columns: opens Book Details
 	- Author column: always Authors manager 
 	- Series column: always opens Series manager
 	- Genre column: always opens Genre manager
-- Selection with keyboard: Shift+Space starts selection, Shift+Up/Down/Page keys extends selection.
-- Selection with mouse: Shift+Click range, Ctrl+Click individual.
-- Arrow navigation without Shift clears selection.
-- Status bar reports selection count and focused record; Alt+/ reads status message aloud.
+- Selection with keyboard: Shift+Space starts selection, Shift+Up/Down/Page keys extends selection
+- Selection with mouse: Shift+Click range, Ctrl+Click individual
+- Arrow navigation without Shift clears selection
+- Status bar reports selection count and focused record; Alt+/ reads status message aloud
 
 ### Main Window shortcuts
 
@@ -171,6 +119,7 @@ Open from Main Window by focusing the Title (or another non-manager column) and 
 - Previous book: Page Up
 - Next book: Page Down
 - Read status bar: Alt+/
+- Get Web Info: Alt+W
 
 ## Web Metadata Window
 
@@ -280,11 +229,11 @@ Use this window to create database backups, restore a selected backup, or perfor
 
 ### Notes
 
-- Backup creates a database snapshot in the configured backup folder.
-- Restore replaces current data with the selected backup file.
-- Delete removes the currently selected backup file from disk.
-- Full Reset clears all data and recreates an empty database.
-- Delete action is shown only when the backup list has focus and a row is selected.
+- Backup creates a database snapshot in the configured backup folder
+- Restore replaces current data with the selected backup file
+- Delete removes the currently selected backup file from disk
+- Full Reset clears all data and recreates an empty database
+- Delete action is shown only when the backup list has focus and a row is selected
 
 ## Import Window
 
@@ -294,17 +243,17 @@ If the database is empty at startup, the first-run dialog includes an Import sho
 
 Below the header area, there are five controls left to right:
 
-1. Collection (Alt+C) - target collection for imported books.
-2. Folder (Alt+F) - selected scan path (read-only field).
-3. Browse (Alt+W) - choose folder to scan.
-4. Errors Filter (Alt+E) - All, Warning, Error, Duplicate, Fallback, Corrected.
-5. Scan (Alt+S) - starts scan for supported audio files.
+1. Collection (Alt+C) - target collection for imported books
+2. Folder (Alt+F) - selected scan path (read-only field)
+3. Browse (Alt+W) - choose folder to scan
+4. Errors Filter (Alt+E) - All, Warning, Error, Duplicate, Fallback, Corrected
+5. Scan (Alt+S) - starts scan for supported audio files
 
 Summary/status after scan uses: `Scanned`, `Added`, `Fixed`, `Errors/Warnings`, `Duplicates`, `Elapsed`.
 
-- `Fixed` counts items corrected by auto-correction or fallback.
-- `Errors/Warnings` counts unresolved issues requiring review.
-- Warning filter shows unresolved warnings; fixed/fallback-corrected rows are tracked as `Fixed`.
+- `Fixed` counts items corrected by auto-correction or fallback
+- `Errors/Warnings` counts unresolved issues requiring review
+- Warning filter shows unresolved warnings; fixed/fallback-corrected rows are tracked as `Fixed`
 
 ### Import list window detail
 
@@ -312,11 +261,11 @@ Press Alt+L to move focus to the import list table.
 
 Columns are: Author, Title, Year, Error Type, File/Folder.
 
-- Ctrl+Enter or double-click opens Import Detail for the current row.
-- Keyboard multi-select: Shift+Space starts selection; Shift+Up/Down/Page keys extends range.
-- Mouse multi-select: Shift+Click selects a range.
-- Arrow keys without Shift clear selection and move current row.
-- Alt+1 through Alt+5 jumps focus to Author, Title, Year, Error Type, or File/Folder column.
+- Ctrl+Enter or double-click opens Import Detail for the current row
+- Keyboard multi-select: Shift+Space starts selection; Shift+Up/Down/Page keys extends range
+- Mouse multi-select: Shift+Click selects a range
+- Arrow keys without Shift clear selection and move current row
+- Alt+1 through Alt+5 jumps focus to Author, Title, Year, Error Type, or File/Folder column
 
 ### Footer actions
 
@@ -328,15 +277,15 @@ Columns are: Author, Title, Year, Error Type, File/Folder.
 
 Import behavior notes:
 
-- Clean rows are auto-added during scan.
-- Rows with fixed metadata, warnings, errors, or duplicates remain in the table for review and manual `Add Selected`.
+- Clean rows are auto-added during scan
+- Rows with fixed metadata, warnings, errors, or duplicates remain in the table for review and manual `Add Selected`
 
 ### Import shortcuts summary
 
-- Alt+/, Alt+C, Alt+F, Alt+W, Alt+E, Alt+S, Alt+B
+- Alt+/, Alt+C, Alt+F, Alt+W, Alt+E, Alt+S, Alt+L
 - Alt+1 to Alt+5
 - Ctrl+Enter
-- Alt+I, Alt+V, Alt+X, Alt+N
+- Alt+I, Alt+V, Alt+X
 - F1
 
 ## Import Progress Window
@@ -346,8 +295,8 @@ The Import Progress window is shown during scans in compact mode.
 - Progress status bar reports phase messages:
 	- Scanning phase: `Scanning x/x`
 	- Import phase: `Adding x/x`
-- Counters shown: Files scanned, Elapsed time, Books added, Read errors.
-- Alt+/ reads the current progress status message.
+- Counters shown: Files scanned, Elapsed time, Books added, Read errors
+- Alt+/ reads the current progress status message
 - Cancel scan: Escape
 - Close (after completion): Escape
 
@@ -420,10 +369,10 @@ Validation Rules includes severity/value settings for:
 
 Import scenario behavior:
 
-- Mass Standard Import: mixed author/book/series folder structures under root.
-- Mass Import - Series From Directory: uses book folder as series (Author/Series/Files); ambiguous or mismatched paths skip series with a warning.
-- Mass Import - Series From File Name: parses first `( ... )` block in file name as series; trailing number appends ` - NN` to title.
-- Single Author / Book Import: supports folder or single-file import; file picker uses enabled format filters.
+- Mass Standard Import: mixed author/book/series folder structures under root
+- Mass Import - Series From Directory: uses book folder as series (Author/Series/Files); ambiguous or mismatched paths skip series with a warning
+- Mass Import - Series From File Name: parses first `( ... )` block in file name as series; trailing number appends ` - NN` to title
+- Single Author / Book Import: supports folder or single-file import; file picker uses enabled format filters
 
 Auto-correction options include:
 
@@ -442,7 +391,7 @@ Auto-correction options include:
 
 ## Accessibility notes
 
-- Press F1 in any window for the shortcut list.
-- Use Alt+/ where supported to re-read status messages.
-- For combo boxes, use Alt+Down to open the list where applicable.
-- If a command is unavailable, check focus and selection first.
+- Press F1 in any window for the shortcut list
+- Use Alt+/ where supported to re-read status messages
+- For combo boxes, use Alt+Down to open the list where applicable
+- If a command is unavailable, check focus and selection first
