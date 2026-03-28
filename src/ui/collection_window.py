@@ -426,14 +426,11 @@ class CollectionWindow(QDialog):
             self.load_collections(preserve_id=new_id)
             self._is_new_entry_mode = False
             self._set_editor_locked(True)
-            # Explicitly ensure button visibility is correct
-            self.save_button.setVisible(False)
-            self.new_button.setVisible(True)
-            self.edit_button.setVisible(True)
-            self.delete_button.setVisible(True)
             self.set_status(f"Collection saved: {name}.", announce=True)
             # Focus management: return to the new row
             QTimer.singleShot(100, lambda: self.focus_and_select_row(new_id))
+            # Explicitly ensure button visibility is correct (last operation)
+            QTimer.singleShot(150, self.ensure_normal_buttons_visible)
             return True
 
         existing = self.collection_queries.get_by_id(
@@ -477,14 +474,11 @@ class CollectionWindow(QDialog):
 
         self.load_collections(preserve_id=self.current_collection_id)
         self._set_editor_locked(True)
-        # Explicitly ensure button visibility is correct
-        self.save_button.setVisible(False)
-        self.new_button.setVisible(True)
-        self.edit_button.setVisible(True)
-        self.delete_button.setVisible(True)
         self.set_status(f"Collection saved: {name}.", announce=True)
         # Focus management: return to the updated row
         QTimer.singleShot(100, lambda: self.focus_and_select_row(self.current_collection_id))
+        # Explicitly ensure button visibility is correct (last operation)
+        QTimer.singleShot(150, self.ensure_normal_buttons_visible)
         return True
 
     def on_name_edit_enter_pressed(self):
@@ -534,6 +528,13 @@ class CollectionWindow(QDialog):
             self.table.selectRow(0)
             self.table.setCurrentCell(0, self.COL_NAME)
             self.table.setFocus(Qt.TabFocusReason)
+
+    def ensure_normal_buttons_visible(self):
+        """Ensure normal buttons are visible and save button is hidden."""
+        self.save_button.setVisible(False)
+        self.new_button.setVisible(True)
+        self.edit_button.setVisible(True)
+        self.delete_button.setVisible(True)
 
     def on_delete(self):
         collection_id = self._selected_collection_id()
