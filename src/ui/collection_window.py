@@ -328,6 +328,9 @@ class CollectionWindow(QDialog):
             self.current_collection_id = None
             return
 
+        # Clear status messages when navigating
+        self.set_status("")
+
         collection_id = self._selected_collection_id()
         if collection_id is None:
             return
@@ -510,6 +513,13 @@ class CollectionWindow(QDialog):
                 self.table.setFocus(Qt.TabFocusReason)
                 break
 
+    def focus_first_item(self):
+        """Focus first item in table."""
+        if self.table.rowCount() > 0:
+            self.table.selectRow(0)
+            self.table.setCurrentCell(0, self.COL_NAME)
+            self.table.setFocus(Qt.TabFocusReason)
+
     def on_delete(self):
         collection_id = self._selected_collection_id()
         if collection_id is None:
@@ -567,6 +577,8 @@ class CollectionWindow(QDialog):
         self._set_editor_locked(True)
         self.set_status(
             f"Collection deleted: {collection.name}.", announce=True)
+        # Focus management: focus first item after delete
+        QTimer.singleShot(100, self.focus_first_item)
 
     def on_read_status(self):
         message = self.status_bar.currentMessage().strip() or "Ready"
