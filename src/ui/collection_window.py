@@ -44,7 +44,7 @@ class CollectionWindow(QDialog):
     
     # Alt+letter keys that are allowed to pass through
     ALLOWED_ALT_LETTERS = {
-        'B', 'E', 'N', 'S', 'F', '/'
+        'B', 'E', 'L', 'N', 'S', 'F', '/'
     }
     
     def keyPressEvent(self, event):
@@ -159,11 +159,6 @@ class CollectionWindow(QDialog):
         self.save_button.setAccessibleDescription("Save current collection")
         footer_layout.addWidget(self.save_button)
 
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.on_cancel_edit)
-        self.cancel_button.setAccessibleDescription("Cancel current new/edit and return to list")
-        footer_layout.addWidget(self.cancel_button)
-
         self.delete_button = QPushButton("Delete")
         self.delete_button.clicked.connect(self.on_delete)
         self.delete_button.setAccessibleDescription("Delete selected collection if unused")
@@ -176,7 +171,6 @@ class CollectionWindow(QDialog):
             self.new_button,
             self.edit_button,
             self.save_button,
-            self.cancel_button,
             self.delete_button,
         ):
             button.setStyleSheet(button_style)
@@ -196,7 +190,6 @@ class CollectionWindow(QDialog):
             'new_button': self.new_button.click,
             'edit_button': self.edit_button.click,
             'save_button': self.save_button.click,
-            'cancel_button': self.cancel_button.click,
             'delete_button': self.delete_button.click,
             'table': self.focus_list,
         }
@@ -208,7 +201,7 @@ class CollectionWindow(QDialog):
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        self.escape_shortcut.activated.connect(self.accept)
+        self.escape_shortcut.activated.connect(self.on_escape_pressed)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
@@ -273,13 +266,12 @@ class CollectionWindow(QDialog):
             self.name_edit.setPlaceholderText(
                 "Press Alt+N for New or Alt+E for Edit")
         else:
-            self.name_edit.setPlaceholderText("")
+            self.name_edit.setPlaceholderText("Alt+S to Save, Escape to Cancel")
 
         editing_mode = not locked
         self.new_button.setVisible(not editing_mode)
         self.edit_button.setVisible(not editing_mode)
         self.save_button.setVisible(editing_mode)
-        self.cancel_button.setVisible(editing_mode)
         self.delete_button.setVisible(not editing_mode)
 
         self._apply_tab_order()
@@ -290,7 +282,6 @@ class CollectionWindow(QDialog):
             self.new_button,
             self.edit_button,
             self.save_button,
-            self.cancel_button,
             self.delete_button,
         ]
         visible_footer_buttons = [
@@ -488,6 +479,13 @@ class CollectionWindow(QDialog):
         if self.save_button.isVisible() and self.save_button.isEnabled() and self.on_save():
             QTimer.singleShot(0, self.focus_list)
 
+    def on_escape_pressed(self):
+        """Escape key - cancel edit/new mode or close window if not editing."""
+        if not self._editor_locked:
+            self.on_cancel_edit()
+        else:
+            self.accept()
+
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode."""
         preserve_id = self._selected_collection_id()
@@ -595,12 +593,12 @@ class CollectionWindow(QDialog):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
         from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
-            ("Alt+B", "Jump to list"),
+            ("Alt+L", "Jump to list"),
             ("Alt+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
-            ("Escape", "Close window"),
+            ("Escape", "Cancel edit/new or close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
