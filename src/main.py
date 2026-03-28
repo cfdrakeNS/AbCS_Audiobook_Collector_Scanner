@@ -177,18 +177,8 @@ class AbCSApplication:
         stats_queries = StatisticsQueries(self.db)
         stats = stats_queries.get_statistics()
 
-        # Create dialog
-        dlg = QDialog()
-        dlg.setWindowTitle(f"AbCS v{APP_VERSION} - Audio Book Collector")
-        dlg.resize(500, 500)
-        dlg.setAttribute(Qt.WA_DeleteOnClose)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
         if stats.total_books == 0:
-            # First time use - welcome message using accessible message box
+            # First time use - welcome message using standalone accessible message box
             from PySide6.QtWidgets import QMessageBox
             from src.accessibility.style_helpers import exec_styled_message_box
             
@@ -204,7 +194,7 @@ You can:
 Use Ctrl+I to import or Alt+M for menu options."""
             
             exec_styled_message_box(
-                dlg,
+                self.main_window if self.main_window else self.qt_app.activeWindow(),
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Welcome to AbCS",
@@ -212,54 +202,64 @@ Use Ctrl+I to import or Alt+M for menu options."""
                 buttons=QMessageBox.Ok,
                 default_button=QMessageBox.Ok
             )
-            return  # Skip the rest of splash dialog since we showed message box
-        else:
-            # Show statistics for existing library in a single-column table
-            table = QTableWidget()
-            table.setAccessibleName("Library Statistics")
-            table.setAccessibleDescription(
-                "Library statistics with values right-aligned")
-            table.setColumnCount(1)
-            table.setHorizontalHeaderLabels(["Library Statistics"])
-            table.setSelectionBehavior(QAbstractItemView.SelectRows)
-            table.setSelectionMode(QAbstractItemView.SingleSelection)
-            table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-            table.setAlternatingRowColors(True)
-            table.verticalHeader().setVisible(False)
+            return  # Skip statistics dialog for empty database
 
-            # Data rows with right-aligned values
-            data = [
-                ("Total Books", str(stats.total_books)),
-                ("Total Authors", str(stats.total_authors)),
-                ("Total Series", str(stats.total_series)),
-                ("Total Genres", str(stats.total_genres)),
-                ("Collections", str(stats.total_collections)),
-                ("Books Read", str(stats.books_read)),
-                ("Books Unread", str(stats.books_unread)),
-                ("Total Listening Time", stats.total_time_display),
-            ]
+        # Create statistics dialog for existing library
+        dlg = QDialog()
+        dlg.setWindowTitle(f"AbCS v{APP_VERSION} - Audio Book Collector")
+        dlg.resize(500, 500)
+        dlg.setAttribute(Qt.WA_DeleteOnClose)
 
-            table.setRowCount(len(data))
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
 
-            for row, (label, value) in enumerate(data):
-                # Format with fixed-width label for consistent alignment
-                combined_text = f"{label:<25} {value}"
-                item = QTableWidgetItem(combined_text)
-                item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
-                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                table.setItem(row, 0, item)
+        # Show statistics for existing library in a single-column table
+        table = QTableWidget()
+        table.setAccessibleName("Library Statistics")
+        table.setAccessibleDescription(
+            "Library statistics with values right-aligned")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels(["Library Statistics"])
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
 
-            # Resize column to stretch
-            header = table.horizontalHeader()
-            header.setSectionResizeMode(0, QHeaderView.Stretch)
+        # Data rows with right-aligned values
+        data = [
+            ("Total Books", str(stats.total_books)),
+            ("Total Authors", str(stats.total_authors)),
+            ("Total Series", str(stats.total_series)),
+            ("Total Genres", str(stats.total_genres)),
+            ("Collections", str(stats.total_collections)),
+            ("Books Read", str(stats.books_read)),
+            ("Books Unread", str(stats.books_unread)),
+            ("Total Listening Time", stats.total_time_display),
+        ]
 
-            # Set font size and use monospace for alignment
-            font = table.font()
-            font.setPointSize(self.scaler.get_scaled_size(11))
-            font.setFamily("Courier New")
-            table.setFont(font)
+        table.setRowCount(len(data))
 
-            layout.addWidget(table)
+        for row, (label, value) in enumerate(data):
+            # Format with fixed-width label for consistent alignment
+            combined_text = f"{label:<25} {value}"
+            item = QTableWidgetItem(combined_text)
+            item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            table.setItem(row, 0, item)
+
+        # Resize column to stretch
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        # Set font size and use monospace for alignment
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        font.setFamily("Courier New")
+        table.setFont(font)
+
+        layout.addWidget(table)
 
         ok_btn = QPushButton("Continue")
         ok_btn.setAccessibleName("Continue")
