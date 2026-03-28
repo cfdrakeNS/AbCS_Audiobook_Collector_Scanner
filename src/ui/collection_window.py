@@ -519,12 +519,12 @@ class CollectionWindow(QDialog):
         self.table.setFocus(Qt.TabFocusReason)
 
     def on_delete(self):
-        if self.current_collection_id is None:
+        collection_id = self._selected_collection_id()
+        if collection_id is None:
             self.set_status("Select a collection to delete.", announce=True)
             return
 
-        collection = self.collection_queries.get_by_id(
-            self.current_collection_id)
+        collection = self.collection_queries.get_by_id(collection_id)
         if collection is None:
             self.set_status(
                 "Selected collection no longer exists.", announce=True)
