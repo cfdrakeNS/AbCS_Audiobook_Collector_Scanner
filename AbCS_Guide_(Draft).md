@@ -42,15 +42,13 @@ When AbCS starts for the first time, the book list may be empty.
 - About content is presented in a single-column line-by-line table for screen reader reliability
 - Use Up/Down arrows to read each line
 
-### Header controls
-
-Header filter controls are no longer shown in Main Window.
+### Main Window controls
 
 - Collection filtering is available in `View > Collections`
 - Read filtering is available in `View > Read`
 - Sorting is available in the top-level `Sort` menu
 - Finding is available in `View > Find...` and with `Ctrl+F`
-- Main Window Escape behavior clears active find/search filter state
+- Escape clears active find/search filter state
 
 ### Book list window detail
 
