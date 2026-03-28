@@ -434,6 +434,76 @@ class CollectionWindow(QDialog):
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="Collection",
+                text="Collection name cannot be blank.",
+            )
+            return False
+
+        if self.current_collection_id is None or self._is_new_entry_mode:
+            if self.collection_queries.get_by_name(name):
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Warning,
+                    title="Collection",
+                    text="A collection with this name already exists.",
+                )
+                self.set_status("Duplicate collection name.", announce=True)
+                return False
+
+            self.current_collection_id = new_id
+            self.load_collections(preserve_id=new_id)
+            self._is_new_entry_mode = False
+            self._set_editor_locked(True)
+            self.set_status(f"Collection created: {name}.", announce=True)
+            # Improved focus management: focus the new row
+            QTimer.singleShot(100, lambda: self.focus_and_select_row(new_id))
+            return True
+
+        existing = self.collection_queries.get_by_id(
+            self.current_collection_id)
+        if existing is None:
+            self.set_status(
+                "Selected collection no longer exists.", announce=True)
+            self.load_collections()
+            return False
+
+        if existing.active and not active and self._active_collection_count() <= 1:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Collection",
+                text="At least one collection must remain active.",
+            )
+            self.set_status(
+                "Cannot deactivate the last active collection.", announce=True)
+            return False
+
+        try:
+            self.collection_queries.update(
+                Collection(
+                    collection_id=self.current_collection_id,
+                    name=name,
+                    active=active,
+                )
+            )
+        except sqlite3.IntegrityError:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Collection",
+                text="A collection with this name already exists.",
+            )
+            self.set_status("Duplicate collection name.", announce=True)
+            return False
+
+        self.load_collections(preserve_id=self.current_collection_id)
+        self._set_editor_locked(True)
+        self.set_status(f"Collection saved: {name}.", announce=True)
+        # Improved focus management: focus the updated row
+        QTimer.singleShot(100, lambda: self.focus_and_select_row(self.current_collection_id))
+        return True
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode."""
