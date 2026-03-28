@@ -419,7 +419,6 @@ class CollectionWindow(QDialog):
             self.load_collections(preserve_id=new_id)
             self._is_new_entry_mode = False
             self._set_editor_locked(True)
-            self.set_status(f"Collection created: {name}.", announce=True)
             # Focus management: return to the new row
             QTimer.singleShot(100, lambda: self.focus_and_select_row(new_id))
             return True
