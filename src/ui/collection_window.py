@@ -426,12 +426,13 @@ class CollectionWindow(QDialog):
             self.load_collections(preserve_id=new_id)
             self._is_new_entry_mode = False
             self._set_editor_locked(True)
-            self.set_status(f"Collection saved: {name}.", announce=True)
-            # Focus management: return to the new row
-            QTimer.singleShot(100, lambda: self.focus_and_select_row(new_id))
-            # Explicitly ensure button visibility is correct (last operation)
-            QTimer.singleShot(150, self.ensure_normal_buttons_visible)
-            return True
+        # Show save message with delay to override navigation clearing
+        QTimer.singleShot(50, lambda: self.set_status(f"Collection saved: {name}.", announce=True))
+        # Focus management: return to the new row
+        QTimer.singleShot(100, lambda: self.focus_and_select_row(new_id))
+        # Explicitly ensure button visibility is correct (last operation)
+        QTimer.singleShot(150, self.ensure_normal_buttons_visible)
+        return True
 
         existing = self.collection_queries.get_by_id(
             self.current_collection_id)
@@ -474,7 +475,8 @@ class CollectionWindow(QDialog):
 
         self.load_collections(preserve_id=self.current_collection_id)
         self._set_editor_locked(True)
-        self.set_status(f"Collection saved: {name}.", announce=True)
+        # Show save message with delay to override navigation clearing
+        QTimer.singleShot(50, lambda: self.set_status(f"Collection saved: {name}.", announce=True))
         # Focus management: return to the updated row
         QTimer.singleShot(100, lambda: self.focus_and_select_row(self.current_collection_id))
         # Explicitly ensure button visibility is correct (last operation)
