@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
     Displays list of books with filtering and search.
     """
 
-    FIND_ALLOWED_ALT_LETTERS = {'I', 'T', 'X'}
+    FIND_ALLOWED_ALT_LETTERS = {'I', 'T', 'X', 'G'}
 
     DUPLICATE_MATCH_OPTIONS = [
         ("Title + Author + Collection", "title_author"),
@@ -396,11 +396,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_hint_label = QLabel(
-            "Alt+U Update, Alt+D Delete, Alt+L Cancel")
+            "Alt+U Update, Alt+G Get Web Info, Alt+D Delete, Alt+L Cancel")
         self.status_hint_label.setVisible(False)
         self.status_hint_label.setAccessibleName("Selection shortcuts")
         self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+D Delete, Alt+L Cancel"
+            "Alt+U Update, Alt+G Get Web Info, Alt+D Delete, Alt+L Cancel"
         )
         self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
         self.status_bar.insertWidget(0, self.status_hint_label, 1)
@@ -611,6 +611,16 @@ class MainWindow(QMainWindow):
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
 
+        # Get Web Info button (hidden initially)
+        self.get_web_info_button = QPushButton("Get Web Info")
+        self.get_web_info_button.setAccessibleName("Get web info for selected books")
+        self.get_web_info_button.setAccessibleDescription(
+            "Get web info for selected books - Alt+G")
+        self.get_web_info_button.setFocusPolicy(Qt.StrongFocus)
+        self.get_web_info_button.clicked.connect(self.on_get_web_info_clicked)
+        self.get_web_info_button.setVisible(False)
+        layout.addWidget(self.get_web_info_button)
+
         # Delete button (hidden initially)
         self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete selected books")
@@ -682,6 +692,13 @@ class MainWindow(QMainWindow):
         self.update_action.triggered.connect(self.on_update_clicked)
         self.update_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.update_action)
+        
+        # Get Web Info action (same as get web info button)
+        self.get_web_info_action = QAction("&Get Web Info\tAlt+G", self)
+        self.get_web_info_action.setShortcut("Alt+G")
+        self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
+        self.get_web_info_action.setEnabled(False)  # Disabled until item selected
+        self.edit_menu.addAction(self.get_web_info_action)
         
         # Cancel action (same as cancel button)
         self.cancel_action = QAction("&Cancel\tEsc", self)
@@ -949,7 +966,7 @@ class MainWindow(QMainWindow):
         """Return shortcut hint text based on current action mode."""
         if self.duplicate_mode_active:
             return "Alt+D Delete, Alt+L Cancel Dup Mode"
-        return "Alt+U Update, Alt+D Delete, Alt+L Cancel"
+        return "Alt+U Update, Alt+G Get Web Info, Alt+D Delete, Alt+L Cancel"
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -2519,6 +2536,7 @@ class MainWindow(QMainWindow):
         show_action_buttons = has_selection or in_duplicate_mode
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
+        self.get_web_info_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
         self.cancel_button.setVisible(show_action_buttons)
         self.cancel_button.setText(
@@ -2597,6 +2615,20 @@ class MainWindow(QMainWindow):
                 if target_row >= 0:
                     self.table.setCurrentCell(target_row, 1)  # Title column
                     self.table.setFocus()
+
+    def on_get_web_info_clicked(self):
+        """Handle Get Web Info button click - placeholder for multi-book feature."""
+        from src.accessibility.style_helpers import exec_styled_message_box
+        
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Multi-Book Web Info",
+            text="Multi-book web info feature is coming soon!\n\nThis will allow you to:\n• Get web info for multiple selected books\n• Choose between 'Get Plot' or 'Get All Info'\n• Review and apply changes in batch\n\nFor now, use Edit → Get Web Info for individual books.",
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok
+        )
 
     def on_delete_clicked(self):
         """Handle Delete button click."""
@@ -3321,6 +3353,7 @@ Use Ctrl+I to import or Alt+7 for menu options."""
             ("Alt+2", "Jump to Author column"),
             ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
             ("Alt+U", "Update selected"),
+            ("Alt+G", "Get Web Info for selected"),
             ("Alt+D", "Delete selected"),
             ("Alt+L", "Cancel selection"),
             ("Ctrl+I", "Import"),
