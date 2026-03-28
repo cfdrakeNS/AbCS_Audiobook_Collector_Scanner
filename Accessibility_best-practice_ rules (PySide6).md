@@ -45,6 +45,46 @@ If something fails:
 
 JAWS will not announce background errors reliably.
 
+### ✅ Rule 6: Use standardized message boxes
+
+Always use `exec_styled_message_box(...)` for modal dialogs:
+
+```python
+from src.accessibility.style_helpers import exec_styled_message_box
+
+exec_styled_message_box(
+    self,
+    self.scaler.get_scaled_size(20),
+    icon=QMessageBox.Warning,
+    title="Error",
+    text="Something went wrong",
+    buttons=QMessageBox.Ok,
+    default_button=QMessageBox.Ok
+)
+```
+
+This ensures consistent styling and accessibility behavior.
+
+### ✅ Rule 7: Manage focus after operations
+
+After save/delete/cancel operations:
+
+* Return focus to the updated/created item
+* Or return focus to the first item in list
+* Use `QTimer.singleShot()` for delayed focus when needed
+* Test focus behavior with screen readers
+
+### ✅ Rule 8: Define explicit tab order
+
+JAWS navigation relies on predictable tab order:
+
+```python
+self.setTabOrder(widget1, widget2)
+self.setTabOrder(widget2, widget3)
+```
+
+Update tab order when widget visibility changes.
+
 ## 5. One underrated resource: NVDA
 
 Even if your users are JAWS users, test with **NVDA**.

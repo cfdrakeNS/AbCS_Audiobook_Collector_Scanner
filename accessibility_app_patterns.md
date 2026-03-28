@@ -175,6 +175,11 @@ When building a new window, confirm:
 - [ ] Validation errors use modal dialog + focus return to invalid field.
 - [ ] Has per-window shortcuts help (`F1`) including `Alt+/`.
 - [ ] Any intentional noise-reduction behavior is documented inline and in test docs.
+- [ ] Uses `exec_styled_message_box()` for all modal dialogs.
+- [ ] Implements focus management after all operations (save, delete, cancel).
+- [ ] Defines explicit tab order with `setTabOrder()` calls.
+- [ ] Includes accessible names and descriptions for all widgets.
+- [ ] Tests with both JAWS and NVDA screen readers.
 
 ---
 
@@ -191,7 +196,80 @@ Rule of thumb:
 
 ---
 
-## 10) Suggested extraction for future apps
+## 11) Modal Message Box Best Practices Pattern
+
+### Why this is unique to AbCS
+- Standardized message boxes ensure consistent screen reader behavior
+- Centralized styling maintains accessibility standards across all dialogs
+
+### Standard behavior
+1. Use `exec_styled_message_box(...)` for all modal dialogs
+2. Always include proper icon (Warning, Information, Question, Critical)
+3. Use consistent button text and default button selection
+4. Return focus to relevant field after dialog closes
+5. Include accessible names and descriptions for dialog content
+
+### Reference implementations
+- `src/accessibility/style_helpers.py` → `exec_styled_message_box(...)`
+- `src/ui/collection_window.py` → Error handling with focus return
+- `src/ui/web_metadata.py` → Confirmation dialogs before close
+
+### Implementation notes
+- Always import from `src.accessibility.style_helpers`
+- Use appropriate icons for message type
+- Set default button to safest option (usually No or Cancel)
+- Consider JAWS users when crafting message text
+
+---
+
+## 12) Focus Management After Operations Pattern
+
+### Why this is unique to AbCS
+- Predictable focus behavior is critical for screen reader efficiency
+- Users need to know where focus will be after each action
+
+### Standard behavior
+1. After save operations: return focus to updated/created item
+2. After delete operations: return focus to first item in list
+3. After cancel operations: return focus to list/table
+4. Use `QTimer.singleShot()` for delayed focus when needed
+5. Use helper methods like `focus_and_select_row()` and `focus_first_item()`
+
+### Reference implementations
+- `src/ui/collection_window.py` → Complete focus management after all operations
+- `src/ui/book_details.py` → Focus return after save operations
+
+### Implementation notes
+- Test focus behavior with both JAWS and NVDA
+- Use explicit focus setting rather than relying on default behavior
+- Consider focus timing when UI updates are asynchronous
+
+---
+
+## 13) Tab Order Explicit Management Pattern
+
+### Why this is unique to AbCS
+- JAWS navigation relies heavily on predictable tab order
+- Explicit tab order prevents focus jumping and confusion
+
+### Standard behavior
+1. Define tab order explicitly using `setTabOrder(widget1, widget2)`
+2. Create tab order dynamically based on visible widgets
+3. Handle tab order changes when widgets show/hide
+4. Use helper methods like `_apply_tab_order()` for complex layouts
+
+### Reference implementations
+- `src/ui/collection_window.py` → Dynamic tab order for editing modes
+- `src/ui/import_detail_window.py` → Complex form tab management
+
+### Implementation notes
+- Tab order should match visual layout
+- Update tab order when widget visibility changes
+- Test tab flow with keyboard only
+
+---
+
+## 14) Suggested extraction for future apps
 
 If this pattern set is reused in a new app, extract into shared modules:
 - `accessibility/status_contract.py` (set/read/announce helpers)
@@ -199,5 +277,7 @@ If this pattern set is reused in a new app, extract into shared modules:
 - `accessibility/alt_key_policy.py` (allowlist filter)
 - `accessibility/dialogs.py` (styled modal helpers)
 - `accessibility/shortcut_help.py` (standard help dialog builder)
+- `accessibility/focus_manager.py` (focus management helpers)
+- `accessibility/tab_order.py` (tab order management)
 
 This keeps app behavior consistent while reducing per-window copy/paste drift.
