@@ -10,6 +10,7 @@ from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 import sys
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QDialog,
     QHeaderView,
     QHBoxLayout,
