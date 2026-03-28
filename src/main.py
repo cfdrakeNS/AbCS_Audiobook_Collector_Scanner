@@ -188,13 +188,11 @@ class AbCSApplication:
         layout.setSpacing(10)
 
         if stats.total_books == 0:
-            # First time use - welcome message - use text for simplicity
-            from PySide6.QtWidgets import QTextEdit
-            text_edit = QTextEdit()
-            text_edit.setReadOnly(True)
-            text_edit.setAccessibleName("Welcome message")
-            text_edit.setAccessibleDescription("Read-only welcome message with instructions for getting started")
-            splash_text = f"""Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner!
+            # First time use - welcome message using accessible message box
+            from PySide6.QtWidgets import QMessageBox
+            from src.accessibility.style_helpers import exec_styled_message_box
+            
+            splash_message = f"""Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner!
 Build: {APP_BUILD_DATE}
 
 No audiobooks found in the database yet.
@@ -204,11 +202,17 @@ You can:
 • Manually add a new book
 
 Use Ctrl+I to import or Alt+M for menu options."""
-            text_edit.setPlainText(splash_text)
-            font = text_edit.font()
-            font.setPointSize(self.scaler.get_scaled_size(12))
-            text_edit.setFont(font)
-            layout.addWidget(text_edit)
+            
+            exec_styled_message_box(
+                dlg,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Welcome to AbCS",
+                text=splash_message,
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok
+            )
+            return  # Skip the rest of splash dialog since we showed message box
         else:
             # Show statistics for existing library in a single-column table
             table = QTableWidget()
