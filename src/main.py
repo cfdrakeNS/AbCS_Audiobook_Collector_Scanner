@@ -359,83 +359,59 @@ Use Ctrl+I to import or Alt+M for menu options."""
             close_db()
 
     def _show_empty_library_dialog_if_needed(self):
-        """Show action dialog whenever the database has no books."""
+        """Show action message whenever the database has no books."""
         stats = StatisticsQueries(self.db).get_statistics()
         if stats.total_books != 0:
             return
 
-        from PySide6.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QPushButton,
-            QHBoxLayout,
-            QTableWidget,
-            QTableWidgetItem,
-            QHeaderView,
-            QAbstractItemView,
-        )
-        from PySide6.QtCore import QTimer
+        # Use accessible message box like delete confirmation
+        from PySide6.QtWidgets import QMessageBox
+        from src.accessibility.style_helpers import exec_styled_message_box
+        
+        empty_library_message = """The database is empty.
 
+To get started, import audiobooks from your folders.
+You can also open Preferences to adjust colors and font size.
+
+Choose Import, Preferences, or Continue."""
+        
+        reply = exec_styled_message_box(
+            self.main_window,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Welcome to AbCS - Database Empty",
+            text=empty_library_message,
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok
+        )
+        
+        # After user acknowledges, show the first run dialog with action buttons
+        if reply == QMessageBox.Ok:
+            self._show_first_run_dialog()
+
+    def _show_first_run_dialog(self):
+        """Show first run dialog with Import, Preferences, and Continue buttons."""
+        from PySide6.QtWidgets import (
+            QDialog, QVBoxLayout, QPushButton, QHBoxLayout
+        )
+        
         dlg = QDialog(self.main_window)
         dlg.setWindowTitle(self.main_window.windowTitle())
         dlg.setAccessibleName("First run options")
         dlg.setAccessibleDescription(
             "Database is empty. Choose Import, Preferences, or Continue")
-        dlg.resize(760, 360)
+        dlg.resize(400, 200)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        guidance_lines = [
-            "The database is empty.",
-            "",
-            "To get started, import audiobooks from your folders.",
-            "You can also open Preferences to adjust colors and font size.",
-            "",
-            "Choose Import, Preferences, or Continue.",
-        ]
-
-        text = QTableWidget(dlg)
-        text.setAccessibleName("First run guidance")
-        text.setAccessibleDescription(
-            "Read-only guidance. Use arrow keys to read line by line."
-        )
-        text.setColumnCount(1)
-        text.setHorizontalHeaderLabels([""])
-        text.setRowCount(len(guidance_lines))
-        text.setVerticalHeaderLabels([""] * len(guidance_lines))
-        text.setSelectionBehavior(QAbstractItemView.SelectRows)
-        text.setSelectionMode(QAbstractItemView.SingleSelection)
-        text.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        text.setTabKeyNavigation(False)
-        text.setAlternatingRowColors(True)
-        text.verticalHeader().setVisible(False)
-        text.horizontalHeader().setVisible(False)
-        text.setShowGrid(False)
-        text.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected {"
-            " background-color: transparent;"
-            " color: palette(text);"
-            "}"
-            "QTableWidget::item:focus { outline: none; }"
-        )
-
-        for row, line in enumerate(guidance_lines):
-            item = QTableWidgetItem(line)
-            item.setData(Qt.AccessibleTextRole, line)
-            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            text.setItem(row, 0, item)
-
-        text.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        if text.rowCount() > 0:
-            text.setCurrentCell(0, 0)
-
-        font = text.font()
-        font.setPointSize(self.scaler.get_scaled_size(12))
-        text.setFont(font)
-        layout.addWidget(text)
+        # Add instruction text
+        from PySide6.QtWidgets import QLabel
+        instruction_label = QLabel("What would you like to do next?")
+        instruction_label.setAccessibleName("Instruction")
+        instruction_label.setAccessibleDescription("Choose an action to get started")
+        layout.addWidget(instruction_label)
 
         button_row = QHBoxLayout()
         import_btn = QPushButton("Import")
@@ -479,21 +455,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
         from PySide6.QtGui import QShortcut, QKeySequence
         import_shortcut = QShortcut(QKeySequence("Ctrl+I"), dlg)
         import_shortcut.activated.connect(on_import)
-
-        def focus_guidance_table() -> None:
-            if text.rowCount() > 0:
-                text.setCurrentCell(0, 0)
-                # Ensure table can receive focus
-                text.setFocusPolicy(Qt.StrongFocus)
-                text.setFocus(Qt.ActiveWindowFocusReason)
-                # Activate window to ensure focus takes
-                dlg.activateWindow()
-                dlg.raise_()
-
-        # Multiple attempts to ensure focus is set properly
-        QTimer.singleShot(0, focus_guidance_table)
-        QTimer.singleShot(100, focus_guidance_table)
-        QTimer.singleShot(300, focus_guidance_table)
 
         dlg.exec()
 
