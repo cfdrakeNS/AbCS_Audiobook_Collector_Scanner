@@ -22,9 +22,8 @@ AbCS is accessibility-first:
 
 When AbCS starts for the first time, the book list may be empty.
 
-- If the database is empty, a dialog appears with options: Import, Preferences, or Continue
-- The startup guidance is presented in a line-by-line read-only table; use Up/Down arrows to read each line
-- Open Import from File menu (Alt+F, then Import), or press Ctrl+I
+- If the database is empty, a standard message box appears with three buttons: Import, Preferences, or Continue
+- Use Tab to navigate between the three buttons and press Enter to select
 - If books already exist, Main Window opens with the current list
 
 ## Main Window (Book List)
