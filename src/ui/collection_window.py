@@ -445,6 +445,8 @@ class CollectionWindow(QDialog):
             self._is_new_entry_mode = False
             self._set_editor_locked(True)
             self.set_status(f"Collection created: {name}.", announce=True)
+            # Focus management: return to the new row
+            QTimer.singleShot(100, lambda: self.focus_and_select_row(new_id))
             return True
 
         existing = self.collection_queries.get_by_id(
@@ -489,6 +491,8 @@ class CollectionWindow(QDialog):
         self.load_collections(preserve_id=self.current_collection_id)
         self._set_editor_locked(True)
         self.set_status(f"Collection saved: {name}.", announce=True)
+        # Focus management: return to the updated row
+        QTimer.singleShot(100, lambda: self.focus_and_select_row(self.current_collection_id))
         return True
 
     def on_name_edit_enter_pressed(self):
@@ -515,6 +519,16 @@ class CollectionWindow(QDialog):
                 row = 0
             self.table.setCurrentCell(row, self.COL_NAME)
         self.table.setFocus(Qt.TabFocusReason)
+
+    def focus_and_select_row(self, collection_id: int):
+        """Focus and select a specific row by collection ID."""
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, self.COL_NAME)
+            if item and item.data(Qt.UserRole) == collection_id:
+                self.table.selectRow(row)
+                self.table.setCurrentCell(row, self.COL_NAME)
+                self.table.setFocus(Qt.TabFocusReason)
+                break
 
     def on_delete(self):
         collection_id = self._selected_collection_id()
