@@ -2611,7 +2611,6 @@ class MainWindow(QMainWindow):
 
     def on_get_web_info_clicked(self):
         """Handle Get Web Info button click - placeholder for multi-book feature."""
-        print("DEBUG: Get Web Info clicked")  # Debug line
         from src.accessibility.style_helpers import exec_styled_message_box
         
         exec_styled_message_box(
