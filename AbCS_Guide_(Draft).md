@@ -32,7 +32,7 @@ When AbCS starts for the first time, the book list may be empty.
 
 - File (Alt+F): New Book, Import, Quit
 - Edit (Alt+E): Delete, Update, Get Web Info, Cancel
-- View (Alt+V): Open Focused Item (Ctrl+Enter), Find (Ctrl+F), Collections filter menu, Read filter menu, Reading History, zoom controls
+- View (Alt+V): Open Focused Item (Enter), Find (Ctrl+F), Collections filter menu, Read filter menu, Reading History, zoom controls
 - Sort (Alt+S): Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added
 - Manage (Alt+M): Authors, Collections, Genre, Series, Preferences, Backup/Restore, Statistics
 - Help (Alt+H): About, Keyboard Shortcuts
@@ -56,8 +56,8 @@ Press Alt+L to move focus to the book list table.
 
 Columns are: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Added.
 
-- Open Book Details with Ctrl+Enter or double-click
-- Open focused item with Ctrl+Enter or double-click:
+- Open Book Details with Enter or double-click
+- Open focused item with Enter or double-click:
 	- Title/other columns: opens Book Details
 	- Author column: always Authors manager 
 	- Series column: always opens Series manager
@@ -83,12 +83,12 @@ Columns are: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Add
 - Jump table columns: Alt+1 through Alt+0
 - New Book: Ctrl+N
 - Import: Ctrl+I
-- Open focused item (context-sensitive): Ctrl+Enter
+- Open focused item (context-sensitive): Enter
 - Ctrl+A: disabled in Main Window book list (safety guard)
 
 ## Book Details Window
 
-Open from Main Window by focusing the Title (or another non-manager column) and using Ctrl+Enter or double-click.
+Open from Main Window by focusing the Title (or another non-manager column) and using Enter or double-click.
 
 ### Field focus shortcuts
 
@@ -259,7 +259,7 @@ Press Alt+L to move focus to the import list table.
 
 Columns are: Author, Title, Year, Error Type, File/Folder.
 
-- Ctrl+Enter or double-click opens Import Detail for the current row
+- Enter or double-click opens Import Detail for the current row
 - Keyboard multi-select: Shift+Space starts selection; Shift+Up/Down/Page keys extends range
 - Mouse multi-select: Shift+Click selects a range
 - Arrow keys without Shift clear selection and move current row
@@ -282,7 +282,7 @@ Import behavior notes:
 
 - Alt+/, Alt+C, Alt+F, Alt+W, Alt+E, Alt+S, Alt+L
 - Alt+1 to Alt+5
-- Ctrl+Enter
+- Enter
 - Alt+I, Alt+V, Alt+X
 - F1
 
