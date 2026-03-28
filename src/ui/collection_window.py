@@ -136,7 +136,7 @@ class CollectionWindow(QDialog):
         self.table.horizontalHeader().setMinimumSectionSize(60)
         self.table.setColumnWidth(self.COL_NAME, 520)
         self.table.setColumnWidth(self.COL_ACTIVE, 120)
-        self.table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.table.currentCellChanged.connect(self.on_selection_changed)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -319,17 +319,12 @@ class CollectionWindow(QDialog):
                 self.setTabOrder(first, second)
 
     def _selected_collection_id(self) -> int | None:
-        model = self.table.selectionModel()
-        if not model:
+        # Use currentRow() like backup_restore_window.py
+        current_row = self.table.currentRow()
+        if current_row < 0:
             return None
-
-        selected_rows = model.selectedRows(self.COL_NAME)
-        if not selected_rows:
-            return None
-
-        row = selected_rows[0].row()
-
-        name_item = self.table.item(row, self.COL_NAME)
+            
+        name_item = self.table.item(current_row, self.COL_NAME)
         if name_item is None:
             return None
 
@@ -346,7 +341,12 @@ class CollectionWindow(QDialog):
         )
         return int(row[0]) if row else 0
 
-    def on_selection_changed(self):
+    def on_selection_changed(self, current_row: int, current_col: int, prev_row: int, prev_col: int):
+        """Handle cell selection change like backup_restore_window.py"""
+        if current_row < 0:
+            self.current_collection_id = None
+            return
+
         collection_id = self._selected_collection_id()
         if collection_id is None:
             return
