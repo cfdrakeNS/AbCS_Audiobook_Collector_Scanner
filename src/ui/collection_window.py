@@ -347,15 +347,11 @@ class CollectionWindow(QDialog):
 
         self.current_collection_id = collection.collection_id
         if self._editor_locked:
-            self.set_status(f"To edit {collection.name} press Alt+E")
             return
 
         self._is_new_entry_mode = False
         self.name_edit.setText(collection.name)
         self.active_check.setChecked(collection.active)
-        self.set_status(
-            f"Selected collection: {collection.name}."
-        )
 
     def on_new(self):
         self.current_collection_id = None
