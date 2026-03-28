@@ -421,7 +421,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.addWidget(text)
 
         button_row = QHBoxLayout()
-        import_btn = QPushButton("&Import")
+        import_btn = QPushButton("&Import\tCtrl+I")
         prefs_btn = QPushButton("&Preferences")
         continue_btn = QPushButton("&Continue")
         continue_btn.setDefault(True)
@@ -451,6 +451,11 @@ Use Ctrl+I to import or Alt+M for menu options."""
         import_btn.clicked.connect(on_import)
         prefs_btn.clicked.connect(on_preferences)
         continue_btn.clicked.connect(dlg.accept)
+        
+        # Add Ctrl+I shortcut to Import button
+        from PySide6.QtGui import QShortcut, QKeySequence
+        import_shortcut = QShortcut(QKeySequence("Ctrl+I"), dlg)
+        import_shortcut.activated.connect(on_import)
 
         def focus_guidance_table() -> None:
             if text.rowCount() > 0:
