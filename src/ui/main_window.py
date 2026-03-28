@@ -709,13 +709,6 @@ class MainWindow(QMainWindow):
         
         # Separator
         self.edit_menu.addSeparator()
-        
-        # Get Web Info action
-        self.get_web_info_action = QAction("&Get Web Info\tG", self)
-        self.get_web_info_action.setShortcut(QKeySequence("G"))
-        self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
-        self.get_web_info_action.setEnabled(False)  # Disabled until item selected
-        self.edit_menu.addAction(self.get_web_info_action)
 
         # View menu
         self.view_menu = menubar.addMenu("&View")
@@ -2618,6 +2611,7 @@ class MainWindow(QMainWindow):
 
     def on_get_web_info_clicked(self):
         """Handle Get Web Info button click - placeholder for multi-book feature."""
+        print("DEBUG: Get Web Info clicked")  # Debug line
         from src.accessibility.style_helpers import exec_styled_message_box
         
         exec_styled_message_box(
