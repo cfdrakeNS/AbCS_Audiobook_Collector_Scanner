@@ -2624,8 +2624,8 @@ class MainWindow(QMainWindow):
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Information,
-            title="Multi-Book Web Info",
-            text="Multi-book web info feature is coming soon!\n\nThis will allow you to:\n• Get web info for multiple selected books\n• Choose between 'Get Plot' or 'Get All Info'\n• Review and apply changes in batch\n\nFor now, use Edit → Get Web Info for individual books.",
+            title="Get Web Info",
+            text="Multi-book web info feature is not yet implemented.\n\nUse Edit → Get Web Info for individual books.",
             buttons=QMessageBox.Ok,
             default_button=QMessageBox.Ok
         )
