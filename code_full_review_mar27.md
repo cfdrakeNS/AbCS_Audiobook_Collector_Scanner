@@ -20,7 +20,34 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ✅ Focus management and keyboard navigation
 - ✅ Search functionality with accessibility support
 
-### 2. book_details.py - ✅ EXCELLENT  
+### 2. main.py - ⚠️ NEEDS IMPROVEMENT
+**Status:** Application entry point has significant accessibility gaps in dialogs
+- ✅ Screen reader support enabled (QAccessible.setActive)
+- ✅ Scaling and theme support initialized
+- ✅ First run dialog has basic accessibility
+- ❌ **Critical Gap 1:** Native message box not accessible to screen readers
+- ❌ **Critical Gap 2:** Splash screens lack focus management and announcements
+- ❌ **Critical Gap 3:** Missing accessible names/descriptions on buttons
+- ❌ **Gap 4:** No status announcements for important events
+- ❌ **Gap 5:** No F1 help in any dialogs
+- ❌ **Gap 6:** No Alt-letter filtering in dialogs
+
+**Issues Found:**
+- **Native Messages (lines 29-71):** Windows MessageBox not accessible
+- **Empty DB Splash (lines 190-210):** QTextEdit has no accessible properties, no focus
+- **Statistics Splash (lines 212-256):** Table has no focus, Continue button unnamed
+- **First Run Dialog (lines 344-475):** Buttons missing accessible names/descriptions
+- **Error Handling (lines 321-326):** Console errors not announced to users
+
+**Recommendations:**
+1. Replace native MessageBox with accessible styled message box
+2. Add focus management and accessible names to all splash screens
+3. Add accessible names/descriptions to all buttons
+4. Implement status announcements for important events
+5. Add F1 help dialogs to splash screens
+6. Add Alt-letter filtering to prevent screen reader noise
+
+### 3. book_details.py - ✅ EXCELLENT  
 **Status:** Gold standard for accessibility implementation
 - ✅ Complete status bar implementation
 - ✅ Comprehensive `ALLOWED_ALT_KEYS` (20 shortcuts)
@@ -29,7 +56,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ✅ F1 help with full shortcut documentation
 - ✅ Focus management and error handling
 
-### 3. preferences_window.py - ✅ EXCELLENT
+### 4. preferences_window.py - ✅ EXCELLENT
 **Status:** Model accessibility implementation
 - ✅ Status bar with `Alt+/` support
 - ✅ Alt-letter filtering with `ALLOWED_ALT_LETTERS`
@@ -37,14 +64,14 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ✅ F1 help dialog implementation
 - ✅ Complex form accessibility handled correctly
 
-### 4. web_metadata.py - ✅ EXCELLENT
+### 5. web_metadata.py - ✅ EXCELLENT
 **Status:** Perfect accessibility implementation (see separate detailed review)
 - ✅ All AbCS patterns implemented correctly
 - ✅ Complete screen reader support
 - ✅ Full keyboard navigation
 - ✅ Proper focus management
 
-### 5. import_window.py - ✅ VERY GOOD
+### 6. import_window.py - ✅ VERY GOOD
 **Status:** Strong accessibility with minor gaps
 - ✅ Status bar with `Alt+/` support
 - ✅ Alt-letter filtering implemented
@@ -55,7 +82,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Missing `announce=True` default for important status messages
 - ⚠️ **Gap 3:** No explicit focus management after table operations
 
-### 6. update_window.py - ✅ VERY GOOD
+### 7. update_window.py - ✅ VERY GOOD
 **Status:** Good accessibility implementation with specific gaps
 - ✅ `Alt+/` status readback
 - ✅ F1 help dialog
@@ -66,7 +93,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 3:** Inconsistent status announcement pattern
 - ⚠️ **Gap 4:** No explicit focus management after save operations
 
-### 7. collection_window.py - ✅ VERY GOOD
+### 8. collection_window.py - ✅ VERY GOOD
 **Status:** Solid accessibility with minor gaps
 - ✅ Status bar with `Alt+/`
 - ✅ Alt-letter filtering
@@ -77,7 +104,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Limited keyboard shortcuts (only basic navigation)
 - ⚠️ **Gap 3:** No explicit focus management after add/delete operations
 
-### 8. name_list_window.py - ✅ VERY GOOD
+### 9. name_list_window.py - ✅ VERY GOOD
 **Status:** Good accessibility for reusable component with gaps
 - ✅ `Alt+/` status support
 - ✅ F1 help dialog
@@ -88,7 +115,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Missing accessible names for some dynamic elements
 - ⚠️ **Gap 3:** Limited keyboard shortcuts for common operations
 
-### 9. backup_restore_window.py - ✅ VERY GOOD
+### 10. backup_restore_window.py - ✅ VERY GOOD
 **Status:** Good accessibility for utility window with gaps
 - ✅ Status bar with announcements
 - ✅ Alt-letter filtering
@@ -99,7 +126,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Missing keyboard shortcuts for backup/restore operations
 - ⚠️ **Gap 3:** No progress announcements for long operations
 
-### 10. import_progress_window.py - ✅ VERY GOOD
+### 11. import_progress_window.py - ✅ VERY GOOD
 **Status:** Good accessibility for progress window with gaps
 - ✅ Status bar with `Alt+/`
 - ✅ Alt-letter filtering
@@ -110,7 +137,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Missing keyboard shortcuts for cancel/pause operations
 - ⚠️ **Gap 3:** Limited accessibility for progress indicators
 
-### 11. reading_history_window.py - ✅ VERY GOOD
+### 12. reading_history_window.py - ✅ VERY GOOD
 **Status:** Good accessibility for data window with gaps
 - ✅ Enhanced `Alt+/` with period message
 - ✅ F1 help dialog
@@ -121,7 +148,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 - ⚠️ **Gap 2:** Missing keyboard shortcuts for common operations
 - ⚠️ **Gap 3:** No explicit focus management after date range changes
 
-### 12. import_detail_window.py - ✅ VERY GOOD
+### 13. import_detail_window.py - ✅ VERY GOOD
 **Status:** Strong accessibility for complex form with gaps
 - ✅ Status bar with `Alt+/`
 - ✅ Alt-letter filtering
@@ -137,7 +164,7 @@ Comprehensive accessibility review of all AbCS application windows against estab
 
 ## ⚠️ Windows Needing Attention (Minor Issues)
 
-### 13. display_setup_wizard.py - ⚠️ NEEDS IMPROVEMENT
+### 14. display_setup_wizard.py - ⚠️ NEEDS IMPROVEMENT
 **Issues Found:**
 - ❌ **Missing status bar implementation** - No `set_status()` method
 - ❌ **Missing `Alt+/` support** - No status readback functionality
@@ -157,24 +184,25 @@ Comprehensive accessibility review of all AbCS application windows against estab
 ## 📊 Summary Statistics
 
 ### Compliance Overview:
-- **✅ Fully Compliant:** 12 windows (80%)
-- **⚠️ Needs Improvement:** 1 window (7%)
+- **✅ Fully Compliant:** 11 windows (73%)
+- **⚠️ Needs Improvement:** 2 windows (13%) - *main.py, display_setup_wizard.py*
 - **❌ Not Reviewed:** 2 windows (13%) - *accessibility_window_skeleton.py (template), __init__.py*
 
 ### Pattern Implementation:
-- **✅ Status Bar + Alt+:** 11/13 windows (85%)
-- **✅ F1 Help Dialog:** 11/13 windows (85%)
-- **✅ Alt-Letter Filtering:** 11/13 windows (85%)
-- **✅ Widget Naming:** 13/13 windows (100%)
+- **✅ Status Bar + Alt+:** 11/14 windows (79%)
+- **✅ F1 Help Dialog:** 11/14 windows (79%)
+- **✅ Alt-Letter Filtering:** 11/14 windows (79%)
+- **✅ Widget Naming:** 14/14 windows (100%)
 
 ---
 
 ## 🔍 Detailed Gap Analysis
 
 ### Critical Patterns Missing:
-1. **display_setup_wizard.py** lacks all core accessibility patterns
-2. **Inconsistent shortcut management** across some windows
-3. **Mixed approaches** to status bar implementation
+1. **main.py** - Application entry point has major accessibility gaps in dialogs
+2. **display_setup_wizard.py** lacks all core accessibility patterns
+3. **Inconsistent shortcut management** across some windows
+4. **Mixed approaches** to status bar implementation
 
 ### Minor Inconsistencies:
 1. **Shortcut Management:** Some windows use centralized, others local
@@ -186,7 +214,15 @@ Comprehensive accessibility review of all AbCS application windows against estab
 ## 🎯 Priority Recommendations
 
 ### High Priority (Fix Immediately):
-1. **display_setup_wizard.py** - Complete accessibility implementation
+1. **main.py** - Fix critical accessibility gaps in application dialogs
+   - Replace native MessageBox with accessible styled message box
+   - Add focus management and accessible names to splash screens
+   - Add accessible names/descriptions to all buttons
+   - Implement status announcements for important events
+   - Add F1 help dialogs to splash screens
+   - Add Alt-letter filtering to prevent screen reader noise
+
+2. **display_setup_wizard.py** - Complete accessibility implementation
    - Add status bar with `Alt+/`
    - Add F1 help dialog
    - Add Alt-letter filtering
@@ -252,31 +288,37 @@ def eventFilter(self, obj, event):
 
 ## 🎉 Overall Assessment
 
-### Application Accessibility Grade: B+ (Good)
+### Application Accessibility Grade: B (Good - Downgraded from B+)
 
 **Strengths:**
-- 80% of windows fully compliant with accessibility standards
-- Core accessibility patterns well established
-- Excellent screen reader support in most windows
+- 73% of windows fully compliant with accessibility standards (down from 80%)
+- Core accessibility patterns well established in main application windows
+- Excellent screen reader support in most UI windows
 - Consistent widget naming throughout application
-- Strong keyboard navigation support
+- Strong keyboard navigation support in main windows
+
+**Critical Issues Found:**
+- **main.py** application entry point has major accessibility gaps affecting first-time users
+- **display_setup_wizard.py** needs complete accessibility overhaul
+- Splash screens and dialogs lack proper accessibility for JAWS/NVDA users
 
 **Areas for Improvement:**
-- display_setup_wizard.py needs complete accessibility overhaul
+- main.py dialogs need significant accessibility improvements
 - Shortcut management could be more consistent
 - Some windows could benefit from enhanced help content
 
 **Production Readiness:**
 - ✅ **Core application windows** are fully accessible
 - ✅ **Main user workflows** have excellent accessibility
-- ⚠️ **Setup wizard** needs accessibility improvements
-- ✅ **Overall application** is highly usable for JAWS/NVDA users
+- ❌ **Application startup dialogs** need accessibility fixes
+- ❌ **Setup wizard** needs accessibility improvements
+- ⚠️ **Overall application** needs critical fixes for first-time user experience
 
 ---
 
-**Review Completed:** March 27, 2026
+**Review Completed:** March 27, 2026 (Updated March 28, 2026)
 **Reviewer:** Cascade AI Assistant
-**Scope:** All 15 UI windows in AbCS application
+**Scope:** All 14 UI files in AbCS application (including main.py)
 **Standards:** AbCS Accessibility Patterns, PySide6 Best Practices
 **Focus:** JAWS/NVDA screen reader support
-**Status:** ✅ CORE ACCESSIBILITY EXCELLENT - 1 window needs improvement
+**Status:** ⚠️ CORE ACCESSIBILITY GOOD - 2 windows need CRITICAL fixes
