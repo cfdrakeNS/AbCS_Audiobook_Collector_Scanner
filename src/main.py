@@ -192,6 +192,8 @@ class AbCSApplication:
             from PySide6.QtWidgets import QTextEdit
             text_edit = QTextEdit()
             text_edit.setReadOnly(True)
+            text_edit.setAccessibleName("Welcome message")
+            text_edit.setAccessibleDescription("Read-only welcome message with instructions for getting started")
             splash_text = f"""Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner!
 Build: {APP_BUILD_DATE}
 
@@ -256,8 +258,19 @@ Use Ctrl+I to import or Alt+M for menu options."""
             layout.addWidget(table)
 
         ok_btn = QPushButton("Continue")
+        ok_btn.setAccessibleName("Continue")
+        ok_btn.setAccessibleDescription("Close this statistics dialog and continue to the main application")
         ok_btn.clicked.connect(dlg.close)
         layout.addWidget(ok_btn)
+
+        # Set focus to statistics table for keyboard navigation
+        def focus_statistics_table():
+            table.setFocus()
+            if table.rowCount() > 0:
+                table.setCurrentCell(0, 0)
+
+        # Focus table after dialog is shown
+        QTimer.singleShot(100, focus_statistics_table)
 
         # Store timer as instance variable to prevent garbage collection
         self.splash_timer = QTimer()
@@ -422,8 +435,14 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
         button_row = QHBoxLayout()
         import_btn = QPushButton("Import")
+        import_btn.setAccessibleName("Import")
+        import_btn.setAccessibleDescription("Import audiobooks from your computer folders")
         prefs_btn = QPushButton("&Preferences")
+        prefs_btn.setAccessibleName("Preferences")
+        prefs_btn.setAccessibleDescription("Open preferences to adjust colors and font size")
         continue_btn = QPushButton("&Continue")
+        continue_btn.setAccessibleName("Continue")
+        continue_btn.setAccessibleDescription("Continue to the main application")
         continue_btn.setDefault(True)
         continue_btn.setAutoDefault(True)
 
