@@ -118,3 +118,21 @@
 5. Move to next window
 
 **This ensures no revisiting windows for additional changes later.**
+
+## Cancel Button Standardization Steps (for each window)
+
+1. Remove cancel_button QPushButton and all references
+2. Add Escape key QShortcut connected to cancel functionality
+3. Add Alt+L QShortcut connected to table focus
+4. Update ALLOWED_ALT_LETTERS (remove B, add L)
+5. Update shortcut manager callback map
+6. Update F1 help dialog shortcuts list
+7. Test Escape and Alt+L work correctly
+8. Test with JAWS screen reader
+
+## Benefits of This Standardization
+
+- Alt+L for "List" makes sense for screen readers (JAWS reads tables as lists)
+- Escape for Cancel follows Windows standards
+- More intuitive keyboard navigation
+- Consistent behavior across all windows
