@@ -932,7 +932,7 @@ class ImportWindow(QDialog):
             self.table.scrollTo(self.table.model().index(
                 target_row, self.COL_TITLE))
         self.table.setFocus()
-        self.set_status("Import list focused")
+        self.set_status("Import list focused", announce=True)
 
     def _hide_table_cell_highlight(self):
         """Hide active-cell highlight when focus moves away from table."""
@@ -1166,7 +1166,7 @@ class ImportWindow(QDialog):
         self.settings.setValue("import/collection_id",
                                self.default_collection_id)
         self._update_scan_enabled_state()
-        self.set_status(f"Import collection: {self.current_collection_name}")
+        self.set_status(f"Import collection: {self.current_collection_name}", announce=True)
 
     def _restore_focus_after_scan(self):
         """Return keyboard focus to Import Window after scan/progress window closes."""

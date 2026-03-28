@@ -224,8 +224,6 @@ class CollectionWindow(QDialog):
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
     def set_status(self, message: str, announce: bool = False):
-        if "alt+n new" not in message.lower():
-            message = f"{message}, Alt+N New"
         announce_status_message(self.status_bar, message, move_focus=announce)
 
         parent = self.parent()
