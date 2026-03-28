@@ -347,6 +347,9 @@ class MainWindow(QMainWindow):
         # Load initial data
         self.refresh_collections()
         self.refresh_books()
+        
+        # Check if database is empty and show display setup if needed
+        self._check_and_show_display_setup()
 
         # Window settings
         version_str = get_app_version()
@@ -3361,3 +3364,194 @@ Use Ctrl+I to import or Alt+7 for menu options."""
         for col, weight in self._stretch_columns.items():
             width = int(available * weight / total_weight)
             self.table.setColumnWidth(col, max(width, 60))
+
+    def _check_and_show_display_setup(self):
+        """Check if display setup should be shown and show it as a modal popup."""
+        # Check if we should show the display setup (empty database or first run)
+        try:
+            book_count = self.book_queries.count_all()
+            if book_count == 0:
+                # Show display setup as modal dialog within main window
+                self._show_display_setup_popup()
+        except Exception as e:
+            # If we can't determine book count, don't show setup
+            pass
+
+    def _show_display_setup_popup(self):
+        """Show display setup as a modal popup within the main window."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton
+        from PySide6.QtCore import Qt, QTimer
+        from PySide6.QtGui import QShortcut, QKeySequence
+        from src.accessibility.accessible_events import announce_status_message
+        from src.accessibility.key_filters import is_unmapped_alt_letter
+        
+        # Create modal dialog
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Display Setup")
+        dlg.setAccessibleName("Display Setup")
+        dlg.setModal(True)
+        dlg.resize(500, 350)
+        
+        # Allowed Alt+letter shortcuts for this dialog
+        ALLOWED_ALT_LETTERS = {'/', '?', 'F1'}
+        
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+        
+        # Introduction
+        intro = QLabel(
+            "Choose your preferred display settings. You can change these later in Preferences."
+        )
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        
+        # Theme selection
+        theme_row = QHBoxLayout()
+        theme_label = QLabel("&Theme:")
+        theme_combo = QComboBox()
+        theme_combo.setAccessibleName("Theme selection")
+        theme_combo.setAccessibleDescription("Choose visual theme for the application")
+        theme_label.setBuddy(theme_combo)
+        theme_row.addWidget(theme_label)
+        theme_row.addWidget(theme_combo, 1)
+        layout.addLayout(theme_row)
+        
+        # Zoom selection
+        zoom_row = QHBoxLayout()
+        zoom_label = QLabel("&Zoom (%):")
+        zoom_spin = QSpinBox()
+        zoom_spin.setAccessibleName("Zoom level")
+        zoom_spin.setAccessibleDescription("Set zoom percentage for interface scaling")
+        zoom_spin.setRange(50, 300)
+        zoom_spin.setSingleStep(15)
+        zoom_spin.setSuffix("%")
+        zoom_spin.setValue(100)
+        zoom_label.setBuddy(zoom_spin)
+        zoom_row.addWidget(zoom_label)
+        zoom_row.addWidget(zoom_spin)
+        zoom_row.addStretch(1)
+        layout.addLayout(zoom_row)
+        
+        # Status label
+        status_label = QLabel("Ready")
+        status_label.setAccessibleName("Status")
+        layout.addWidget(status_label)
+        
+        # Buttons
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        continue_button = QPushButton("&Continue")
+        continue_button.setAccessibleName("Continue with current settings")
+        continue_button.setAccessibleDescription("Save settings and close the dialog")
+        skip_button = QPushButton("S&kip")
+        skip_button.setAccessibleName("Skip setup")
+        skip_button.setAccessibleDescription("Close dialog without changing settings")
+        buttons.addWidget(continue_button)
+        buttons.addWidget(skip_button)
+        layout.addLayout(buttons)
+        
+        # Load theme options
+        theme_combo.clear()
+        for display_name, theme_id in self.theme_manager.get_theme_names():
+            theme_combo.addItem(display_name, theme_id)
+        
+        # Set current values
+        current_theme = self.theme_manager.current_theme_name
+        idx = theme_combo.findData(current_theme)
+        if idx >= 0:
+            theme_combo.setCurrentIndex(idx)
+        zoom_spin.setValue(self.scaler.current_scale)
+        
+        # Setup shortcuts
+        help_shortcut = QShortcut(QKeySequence("F1"), dlg)
+        help_shortcut.activated.connect(lambda: self._show_display_setup_help(dlg))
+        
+        status_shortcut = QShortcut(QKeySequence("Alt+/"), dlg)
+        status_shortcut.activated.connect(lambda: announce_status_message(status_label, status_label.text(), move_focus=False))
+        
+        # Event filter for Alt-letter blocking
+        def event_filter(obj, event):
+            if event.type() == QEvent.KeyPress:
+                if is_unmapped_alt_letter(event, ALLOWED_ALT_LETTERS):
+                    event.accept()
+                    return True
+            return dlg.eventFilter(obj, event)
+        dlg.installEventFilter(event_filter)
+        
+        # Connect signals
+        def on_theme_changed():
+            theme_id = theme_combo.currentData()
+            if theme_id:
+                self.theme_manager.set_theme(theme_id)
+                theme_name = theme_combo.currentText()
+                status_label.setText(f"Theme changed to {theme_name}")
+                announce_status_message(status_label, f"Theme changed to {theme_name}", move_focus=False)
+        
+        def on_zoom_changed(value):
+            self.scaler.set_scale(value)
+            status_label.setText(f"Zoom set to {value}%")
+            announce_status_message(status_label, f"Zoom set to {value}%", move_focus=False)
+        
+        theme_combo.currentIndexChanged.connect(on_theme_changed)
+        zoom_spin.valueChanged.connect(on_zoom_changed)
+        
+        # Button handlers
+        def on_continue():
+            status_label.setText("Settings saved")
+            announce_status_message(status_label, "Settings saved", move_focus=False)
+            QTimer.singleShot(500, dlg.accept)
+        
+        def on_skip():
+            status_label.setText("Setup skipped")
+            announce_status_message(status_label, "Setup skipped", move_focus=False)
+            QTimer.singleShot(500, dlg.accept)
+        
+        continue_button.clicked.connect(on_continue)
+        skip_button.clicked.connect(on_skip)
+        
+        # Focus setup
+        QTimer.singleShot(0, lambda: theme_combo.setFocus())
+        
+        # Show dialog
+        dlg.exec()
+    
+    def _show_display_setup_help(self, parent):
+        """Show help dialog for display setup."""
+        from PySide6.QtWidgets import QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QVBoxLayout
+        
+        shortcuts = [
+            ("F1", "Show keyboard shortcuts"),
+            ("Alt+/", "Read status bar"),
+            ("Tab", "Navigate between controls"),
+            ("Enter", "Activate button or apply setting"),
+            ("Escape", "Close wizard"),
+        ]
+        
+        dlg = QMessageBox(parent)
+        dlg.setWindowTitle("Keyboard Shortcuts")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.setText("Display Setup - Keyboard Shortcuts")
+        dlg.setStandardButtons(QMessageBox.Ok)
+        dlg.setDefaultButton(QMessageBox.Ok)
+        
+        # Create shortcuts table
+        table = QTableWidget(len(shortcuts), 2)
+        table.setAccessibleName("Shortcuts list")
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        
+        for row, (shortcut, action) in enumerate(shortcuts):
+            table.setItem(row, 0, QTableWidgetItem(shortcut))
+            table.setItem(row, 1, QTableWidgetItem(action))
+        
+        table.resizeColumnsToContents()
+        
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(table)
+        dlg.setLayout(layout)
+        
+        dlg.exec()
