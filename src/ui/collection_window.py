@@ -351,12 +351,10 @@ class CollectionWindow(QDialog):
         self._set_editor_locked(False, clear_name=True)
         self.active_check.setChecked(True)
         self.name_edit.setFocus(Qt.TabFocusReason)
-        self.set_status("New collection entry.")
 
     def on_edit(self):
         collection_id = self._selected_collection_id()
         if collection_id is None:
-            self.set_status("Select a collection row to edit.", announce=True)
             return
 
         collection = self.collection_queries.get_by_id(collection_id)
@@ -364,6 +362,7 @@ class CollectionWindow(QDialog):
             self.set_status(
                 "Selected collection no longer exists.", announce=True)
             self.load_collections()
+            self._set_editor_locked(True)
             return
 
         self.current_collection_id = collection.collection_id
@@ -493,7 +492,6 @@ class CollectionWindow(QDialog):
         self.load_collections(preserve_id=preserve_id, populate_editor=False)
         self._set_editor_locked(True)
         self.focus_list()
-        self.set_status("Edit canceled.")
 
     def focus_list(self):
         if self.table.rowCount() > 0:
@@ -516,7 +514,6 @@ class CollectionWindow(QDialog):
     def on_delete(self):
         collection_id = self._selected_collection_id()
         if collection_id is None:
-            self.set_status("Select a collection to delete.", announce=True)
             return
 
         collection = self.collection_queries.get_by_id(collection_id)
