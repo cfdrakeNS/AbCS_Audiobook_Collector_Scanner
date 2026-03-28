@@ -373,7 +373,6 @@ class CollectionWindow(QDialog):
         self.active_check.setChecked(collection.active)
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.setCursorPosition(len(self.name_edit.text()))
-        self.set_status(f"Selected collection: {collection.name}.")
 
     def on_save(self) -> bool:
         name = self._to_proper_case(self.name_edit.text())
@@ -381,8 +380,6 @@ class CollectionWindow(QDialog):
         active = self.active_check.isChecked()
 
         if self._editor_locked:
-            self.set_status(
-                "Press Alt+N for New or Alt+E for Edit.", announce=True)
             return False
 
         model = self.table.selectionModel()
