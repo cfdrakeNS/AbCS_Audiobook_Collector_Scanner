@@ -421,7 +421,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.addWidget(text)
 
         button_row = QHBoxLayout()
-        import_btn = QPushButton("Import\tCtrl+I")
+        import_btn = QPushButton("Import")
         prefs_btn = QPushButton("&Preferences")
         continue_btn = QPushButton("&Continue")
         continue_btn.setDefault(True)
