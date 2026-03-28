@@ -1,18 +1,15 @@
 # Phase 2: Web Metadata Implementation — Status & Next Steps
 
-## ✅ Web Metadata Window (COMPLETE)
-- Fully accessible web metadata window (JAWS/NVDA, F1, Alt+/, Escape, all field shortcuts)
-- All fields: Title, Author, Plot, Year, Series, Genre
+## ✅ Web Metadata Window (COMPLETE - Standardization Pending)
+- Fully functional web metadata window with all features implemented
+- All fields: Title, Author, Plot, Year, Series, Genre with web API integration
 - Clean UI, vertical layout, accessible status bar, and keyboard navigation
 - Save and Escape both restore focus to main window table
 - Professional F1 help and status bar announcements
-- Proven accessibility skeleton used for all new windows
-- **Final Fixes Applied:**
-  - Focus return to main window when no data found
-  - Uses book_details form values for retry workflow
-  - Plot field hidden when no data available
-  - Clean UI labels (removed & and Alt+Y text)
-  - No duplicate rating/source/publisher in save
+- Real Google Books & Open Library API integration
+- Visual indicators and checkbox selection for updates
+- Error/status handling for network failures
+- **Standardization Required:** Cancel button removal and Alt+L table focus (see comprehensive_accessibility_changes.md)
 
 ## ✅ Main App Integration (COMPLETE)
 - "Get Web Info" menu item in Edit menu
