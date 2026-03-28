@@ -489,8 +489,8 @@ class CollectionWindow(QDialog):
 
     def on_name_edit_enter_pressed(self):
         """Enter in Name field should act like Save and return focus to updated row."""
-        if self.save_button.isVisible() and self.save_button.isEnabled() and self.on_save():
-            QTimer.singleShot(0, self.focus_list)
+        if self.save_button.isVisible() and self.save_button.isEnabled():
+            self.on_save()
 
     def on_escape_pressed(self):
         """Escape key - cancel edit/new mode or close window if not editing."""
