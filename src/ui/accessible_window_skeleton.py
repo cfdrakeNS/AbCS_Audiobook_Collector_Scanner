@@ -99,8 +99,12 @@ class AccessibleWindowSkeleton(QDialog):
         """Complete event filter with Alt+key hygiene and combo anti-noise patterns."""
         # Alt+letter hygiene (Pattern #3: Alt+letter hygiene)
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
-            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
-                return True  # Block unmapped Alt+letters
+            # Get the key text to check if it's a letter
+            key_text = event.text().upper()
+            if key_text and key_text.isalpha() and key_text not in self.ALLOWED_ALT_LETTERS:
+                # Block unmapped Alt+letters
+                QApplication.beep()  # User feedback
+                return True
         
         # Combo box anti-noise pattern (Pattern #2: Combo anti-noise)
         if isinstance(source, QComboBox) and source.isEditable():
@@ -213,12 +217,7 @@ class AccessibleWindowSkeleton(QDialog):
         self.delete_button.clicked.connect(self.on_delete)
         button_layout.addWidget(self.delete_button)
         
-        # Cancel button
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setAccessibleName("Cancel button")
-        self.cancel_button.setAccessibleDescription("Close window without saving")
-        self.cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(self.cancel_button)
+        # NOTE: AbCS does not use Cancel or Close buttons - removed per user request
         
         button_layout.addStretch()
         layout.addLayout(button_layout)
@@ -229,7 +228,6 @@ class AccessibleWindowSkeleton(QDialog):
         self.setTabOrder(self.year_spin, self.items_table)
         self.setTabOrder(self.items_table, self.save_button)
         self.setTabOrder(self.save_button, self.delete_button)
-        self.setTabOrder(self.delete_button, self.cancel_button)
         
         # Install combo box anti-noise event filter
         self.category_combo.installEventFilter(self)
@@ -330,9 +328,9 @@ ACCESSIBLE WINDOW SKELETON - Keyboard Shortcuts
 BASIC SHORTCUTS (Always work):
 • F1 - Show this help dialog
 • Alt+/ - Read current status message
-• Escape - Close window
+• Escape - Close window with confirmation dialog
 
-FIELD SHORTCUTS (Add your own):
+FIELD SHORTCUTS (Working examples):
 • Alt+T - Focus Title field
 • Alt+C - Focus Category field
 • Alt+Y - Focus Year field
@@ -354,11 +352,18 @@ COMBO BOX BEHAVIOR:
 • Enter - Commit value and move focus
 • Plain Up/Down - Blocked (prevents noise)
 
+BUTTON BEHAVIOR:
+• Save/Delete always enabled (screen reader optimized)
+• Enter key activates focused buttons
+• No Cancel/Close buttons (AbCS standard)
+
 TESTING:
 • Test with JAWS screen reader
 • Verify tab order follows visual layout
 • Check that all buttons work with Enter key
 • Confirm Alt+/ reads status messages
+• Test Alt+letter blocking (unmapped keys should beep)
+• Test Escape confirmation dialog
         """
         
         exec_styled_message_box(
@@ -394,9 +399,19 @@ TESTING:
             announce_status_message(self.status_bar, message, move_focus=True)
     
     def reject(self):
-        """Handle close."""
-        announce_dialog_closed(self)
-        super().reject()
+        """Handle close with confirmation dialog (Escape key)."""
+        # Show confirmation dialog for Escape key
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Close Window",
+            text="Are you sure you want to close this window? Any unsaved changes will be lost."
+        )
+        
+        if reply == QMessageBox.Yes:
+            announce_dialog_closed(self)
+            super().reject()
 
 
 def test_skeleton():
@@ -418,14 +433,16 @@ def test_skeleton():
     print("TESTING INSTRUCTIONS:")
     print("1. Test F1 - should show help with all patterns listed")
     print("2. Test Alt+/ - should read status message")
-    print("3. Test Escape - should close window")
+    print("3. Test Escape - should show confirmation dialog")
     print("4. Test Alt+T, Alt+C, Alt+Y, Alt+I - field focus shortcuts")
     print("5. Test combo box: plain Up/Down blocked, Alt+Down opens dropdown")
     print("6. Test table: no row numbers announced by JAWS")
     print("7. Test buttons: Save/Delete always enabled, show errors")
     print("8. Test tab order: follows visual layout")
     print("9. Test Enter key on buttons: should activate focused button")
-    print("10. Test with JAWS screen reader for full accessibility")
+    print("10. Test Alt+letter blocking: unmapped Alt+keys should beep")
+    print("11. Test with JAWS screen reader for full accessibility")
+    print("12. Confirm no Cancel/Close buttons (AbCS standard)")
     print("=====================================")
     
     window = AccessibleWindowSkeleton(window_title="Complete Accessibility Test")
