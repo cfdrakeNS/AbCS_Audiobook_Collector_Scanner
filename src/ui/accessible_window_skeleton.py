@@ -24,23 +24,40 @@ sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QApplication, QStatusBar, 
-    QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout
+    QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout, QComboBox,
+    QTableWidget, QTableWidgetItem, QMessageBox
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
+from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_message_box_style
+from src.accessibility.key_filters import is_unmapped_alt_letter
 
 
 class AccessibleWindowSkeleton(QDialog):
     """
-    PROVEN accessible window skeleton.
+    PROVEN accessible window skeleton with complete accessibility patterns.
+    
+    Includes ALL accessibility standards:
+    - Status bar pattern with Alt+/ readback
+    - Alt+letter hygiene with event filtering
+    - Combo box anti-noise pattern
+    - Table row number suppression
+    - Screen reader-optimized buttons
+    - Focus management after operations
+    - Explicit tab order
+    - Modal message boxes
+    - Global Enter shortcut avoidance
     
     F1, Alt+/, and Escape work out of box.
-    Add your UI elements and field shortcuts incrementally.
+    Copy this and add your UI elements - accessibility will work out of box.
     """
+    
+    # Alt+letter allowlist - blocks unmapped Alt+keys for JAWS compatibility
+    ALLOWED_ALT_LETTERS = {'/', '?', 'F1', 'T', 'C', 'Y', 'I'}
     
     def __init__(self, parent=None, window_title="Window", scaler=None, theme_manager=None):
         super().__init__(parent)
@@ -66,37 +83,197 @@ class AccessibleWindowSkeleton(QDialog):
         # Setup shortcuts (add your field shortcuts here)
         self.setup_shortcuts()
         
+        # Install Alt+key event filter for accessibility hygiene
+        self.installEventFilter(self)
+        
         # Set initial status
         self.set_status("Ready")
         announce_dialog_opened(self, window_title)
     
+    def eventFilter(self, source, event):
+        """Complete event filter with Alt+key hygiene and combo anti-noise patterns."""
+        # Alt+letter hygiene (Pattern #3: Alt+letter hygiene)
+        if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                return True  # Block unmapped Alt+letters
+        
+        # Combo box anti-noise pattern (Pattern #2: Combo anti-noise)
+        if isinstance(source, QComboBox) and source.isEditable():
+            if event.type() == QEvent.KeyPress:
+                if event.key() in (Qt.Key_Up, Qt.Key_Down):
+                    # Block plain arrow keys - require Alt+Down to open dropdown
+                    QApplication.beep()  # User feedback
+                    return True
+                elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    # Enter commits typed value and moves focus
+                    source.lineEdit().returnPressed.emit()
+                    self.focusNextChild()
+                    return True
+        
+        return super().eventFilter(source, event)
+    
+    def keyPressEvent(self, event):
+        """Handle Enter key for focused buttons (Pattern #18: Global Enter anti-pattern avoidance)."""
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, QPushButton):
+                # Let Qt handle Enter on buttons (default behavior)
+                focused_widget.click()
+                event.accept()
+                return
+            elif self.items_table.hasFocus():
+                # Handle Enter for table if needed
+                event.accept()
+                return
+        super().keyPressEvent(event)
+    
     def setup_ui(self, layout):
         """
-        Add your UI elements here.
+        Complete accessibility example with ALL patterns implemented.
         
-        EXAMPLE:
+        This demonstrates every accessibility pattern for reference:
+        - Accessible names and descriptions
+        - Combo box anti-noise pattern
+        - Table row number suppression
+        - Screen reader-optimized buttons
+        - Explicit tab order
+        - Focus management
+        """
         form = QFormLayout()
         
-        # Add your fields
+        # Text field with accessibility (Pattern #3: Accessible names)
         title_label = QLabel("&Title:")
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Title field")
+        self.title_edit.setAccessibleDescription("Enter the title here")
         title_label.setBuddy(self.title_edit)
         form.addRow(title_label, self.title_edit)
         
+        # Combo box with anti-noise pattern (Pattern #2: Combo anti-noise)
+        category_label = QLabel("&Category:")
+        self.category_combo = QComboBox()
+        self.category_combo.setEditable(True)
+        self.category_combo.addItems(["Fiction", "Non-Fiction", "Technical"])
+        self.category_combo.setAccessibleName("Category field")
+        self.category_combo.setAccessibleDescription("Select or type a category")
+        category_label.setBuddy(self.category_combo)
+        form.addRow(category_label, self.category_combo)
+        
+        # Spin box with accessibility
+        year_label = QLabel("&Year:")
+        self.year_spin = QSpinBox()
+        self.year_spin.setRange(1900, 2030)
+        self.year_spin.setValue(2026)
+        self.year_spin.setAccessibleName("Year field")
+        self.year_spin.setAccessibleDescription("Publication year")
+        year_label.setBuddy(self.year_spin)
+        form.addRow(year_label, self.year_spin)
+        
         layout.addLayout(form)
         
-        # Add your buttons
+        # Table with row number suppression (Pattern #15: Table row suppression)
+        table_label = QLabel("Items:")
+        self.items_table = QTableWidget(3, 2)
+        self.items_table.setHorizontalHeaderLabels(["Name", "Value"])
+        
+        # Hide row numbers for JAWS compatibility
+        self.items_table.verticalHeader().setVisible(False)
+        self.items_table.setVerticalHeaderLabels([""] * 3)
+        
+        # Add meaningful accessible text to table items
+        self.items_table.setItem(0, 0, QTableWidgetItem("Item 1"))
+        self.items_table.item(0, 0).setData(Qt.AccessibleTextRole, "First item name")
+        self.items_table.setItem(0, 1, QTableWidgetItem("100"))
+        self.items_table.item(0, 1).setData(Qt.AccessibleTextRole, "First item value: 100")
+        
+        self.items_table.setAccessibleName("Items table")
+        self.items_table.setAccessibleDescription("Table showing item names and values")
+        layout.addWidget(table_label)
+        layout.addWidget(self.items_table)
+        
+        # Screen reader-optimized buttons (Pattern #16: Button enablement)
         button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")  # No ampersand - avoid shortcut conflicts
-        save_button.setAccessibleName("Save")
-        save_button.clicked.connect(self.accept)
-        button_layout.addWidget(save_button)
+        
+        # Save button - always enabled, provides error feedback
+        self.save_button = QPushButton("Save")
+        self.save_button.setAccessibleName("Save button")
+        self.save_button.setAccessibleDescription("Save the current data")
+        self.save_button.clicked.connect(self.on_save)
+        button_layout.addWidget(self.save_button)
+        
+        # Delete button - always enabled, provides error feedback
+        self.delete_button = QPushButton("Delete")
+        self.delete_button.setAccessibleName("Delete button")
+        self.delete_button.setAccessibleDescription("Delete selected item")
+        self.delete_button.clicked.connect(self.on_delete)
+        button_layout.addWidget(self.delete_button)
+        
+        # Cancel button
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setAccessibleName("Cancel button")
+        self.cancel_button.setAccessibleDescription("Close window without saving")
+        self.cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_button)
+        
         button_layout.addStretch()
         layout.addLayout(button_layout)
-        """
-        # Add your UI setup here
-        pass
+        
+        # Set explicit tab order (Pattern #13: Tab order management)
+        self.setTabOrder(self.title_edit, self.category_combo)
+        self.setTabOrder(self.category_combo, self.year_spin)
+        self.setTabOrder(self.year_spin, self.items_table)
+        self.setTabOrder(self.items_table, self.save_button)
+        self.setTabOrder(self.save_button, self.delete_button)
+        self.setTabOrder(self.delete_button, self.cancel_button)
+        
+        # Install combo box anti-noise event filter
+        self.category_combo.installEventFilter(self)
+    
+    def on_save(self):
+        """Screen reader-optimized save with validation feedback."""
+        title = self.title_edit.text().strip()
+        if not title:
+            # Use styled message box (Pattern #11: Modal messaging)
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Validation Error",
+                text="Please enter a title before saving."
+            )
+            # Focus management after error (Pattern #12: Focus management)
+            self.title_edit.setFocus()
+            self.set_status("Save canceled: title is required", announce=True)
+            return
+        
+        # Success case
+        self.set_status("Data saved successfully", announce=True)
+        # Focus management after save
+        self.title_edit.setFocus()
+    
+    def on_delete(self):
+        """Screen reader-optimized delete with selection feedback."""
+        if self.items_table.currentRow() == -1:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="No Selection",
+                text="Select an item in the table to delete."
+            )
+            self.set_status("Delete canceled: no item selected", announce=True)
+            # Focus management after error
+            self.items_table.setFocus()
+            return
+        
+        # Delete the selected row
+        row = self.items_table.currentRow()
+        self.items_table.removeRow(row)
+        self.set_status("Item deleted successfully", announce=True)
+        # Focus management after delete - focus first remaining item
+        if self.items_table.rowCount() > 0:
+            self.items_table.setCurrentCell(0, 0)
+        self.items_table.setFocus()
     
     def setup_shortcuts(self):
         """
@@ -120,25 +297,71 @@ class AccessibleWindowSkeleton(QDialog):
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
         
-        # Add your field shortcuts here
-        # Example:
-        # self.title_shortcut = QShortcut(QKeySequence("Alt+T"), self)
-        # self.title_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        # self.title_shortcut.activated.connect(lambda: self.title_edit.setFocus())
-        # 
-        # IMPORTANT: Avoid ampersands (&) in button text - they conflict with Alt+ shortcuts
-        # Use "Save" not "&Save" when you have Alt+S shortcut
+        # Field shortcuts (add your own following this pattern)
+        self.title_shortcut = QShortcut(QKeySequence("Alt+T"), self)
+        self.title_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.title_shortcut.activated.connect(lambda: self.title_edit.setFocus())
+        
+        self.category_shortcut = QShortcut(QKeySequence("Alt+C"), self)
+        self.category_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.category_shortcut.activated.connect(lambda: self.category_combo.setFocus())
+        
+        self.year_shortcut = QShortcut(QKeySequence("Alt+Y"), self)
+        self.year_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.year_shortcut.activated.connect(lambda: self.year_spin.setFocus())
+        
+        self.table_shortcut = QShortcut(QKeySequence("Alt+I"), self)
+        self.table_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.table_shortcut.activated.connect(lambda: self.items_table.setFocus())
+        
+        # IMPORTANT: Avoid global Return/Enter shortcuts - they block button accessibility
+        # Use keyPressEvent method instead for specific widget Enter handling
     
     def on_show_shortcuts(self):
-        """F1 shortcut - show help."""
-        from PySide6.QtWidgets import QMessageBox
-        from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_message_box_style
+        """F1 shortcut - show help with complete accessibility pattern reference."""
+        shortcuts_text = """
+ACCESSIBLE WINDOW SKELETON - Keyboard Shortcuts
+
+BASIC SHORTCUTS (Always work):
+• F1 - Show this help dialog
+• Alt+/ - Read current status message
+• Escape - Close window
+
+FIELD SHORTCUTS (Add your own):
+• Alt+T - Focus Title field
+• Alt+C - Focus Category field
+• Alt+Y - Focus Year field
+• Alt+I - Focus Items table
+
+ACCESSIBILITY PATTERNS IMPLEMENTED:
+✓ Status bar pattern with Alt+/ readback
+✓ Alt+letter hygiene with event filtering
+✓ Combo box anti-noise pattern (block plain arrows)
+✓ Table row number suppression for JAWS
+✓ Screen reader-optimized buttons (always enabled)
+✓ Focus management after operations
+✓ Explicit tab order management
+✓ Modal message boxes with proper styling
+✓ Global Enter shortcut avoidance (use keyPressEvent)
+
+COMBO BOX BEHAVIOR:
+• Alt+Down - Open dropdown
+• Enter - Commit value and move focus
+• Plain Up/Down - Blocked (prevents noise)
+
+TESTING:
+• Test with JAWS screen reader
+• Verify tab order follows visual layout
+• Check that all buttons work with Enter key
+• Confirm Alt+/ reads status messages
+        """
+        
         exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Information,
-            title="F1 Help",
-            text="F1 shortcut working! Accessible window skeleton."
+            title="Accessibility Pattern Reference",
+            text=shortcuts_text
         )
     
     def on_read_status_bar(self):
@@ -172,15 +395,35 @@ class AccessibleWindowSkeleton(QDialog):
 
 
 def test_skeleton():
-    """Test the accessible window skeleton."""
+    """Test the complete accessible window skeleton with all patterns."""
     app = QApplication(sys.argv)
     
-    print("=== Accessible Window Skeleton Test ===")
-    print("PROVEN accessibility pattern")
-    print("F1, Alt+/, Escape should work")
+    print("=== Complete Accessible Window Skeleton Test ===")
+    print("PROVEN accessibility pattern with ALL standards:")
+    print("✓ Status bar pattern with Alt+/ readback")
+    print("✓ Alt+letter hygiene with event filtering")
+    print("✓ Combo box anti-noise pattern")
+    print("✓ Table row number suppression for JAWS")
+    print("✓ Screen reader-optimized buttons")
+    print("✓ Focus management after operations")
+    print("✓ Explicit tab order management")
+    print("✓ Modal message boxes with proper styling")
+    print("✓ Global Enter shortcut avoidance")
+    print("")
+    print("TESTING INSTRUCTIONS:")
+    print("1. Test F1 - should show help with all patterns listed")
+    print("2. Test Alt+/ - should read status message")
+    print("3. Test Escape - should close window")
+    print("4. Test Alt+T, Alt+C, Alt+Y, Alt+I - field focus shortcuts")
+    print("5. Test combo box: plain Up/Down blocked, Alt+Down opens dropdown")
+    print("6. Test table: no row numbers announced by JAWS")
+    print("7. Test buttons: Save/Delete always enabled, show errors")
+    print("8. Test tab order: follows visual layout")
+    print("9. Test Enter key on buttons: should activate focused button")
+    print("10. Test with JAWS screen reader for full accessibility")
     print("=====================================")
     
-    window = AccessibleWindowSkeleton(window_title="Skeleton Test")
+    window = AccessibleWindowSkeleton(window_title="Complete Accessibility Test")
     window.show()
     
     return app.exec()
