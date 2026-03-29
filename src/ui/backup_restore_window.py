@@ -37,13 +37,13 @@ class BackupRestoreWindow(QDialog):
     """Manage database backups, restore, and full reset."""
 
     ALLOWED_ALT_LETTERS = {
-        'B', 'D', 'F', 'K', 'R', 'T', 'W'
+        'B', 'D', 'F', 'L', 'R', 'T', 'W'
     }
 
     ALT_SHORTCUT_STATUS = {
-        Qt.Key_K: "Alt+K: Create backup",
-        Qt.Key_B: "Alt+B: Backup list",
+        Qt.Key_B: "Alt+B: Create backup",
         Qt.Key_W: "Alt+W: Browse",
+        Qt.Key_L: "Alt+L: Backup list",
         Qt.Key_D: "Alt+D: Delete",
         Qt.Key_F: "Alt+F: Full reset",
         Qt.Key_R: "Alt+R: Restore",
@@ -133,7 +133,7 @@ class BackupRestoreWindow(QDialog):
         self.backup_button = QPushButton("Backup")
         self.backup_button.setAccessibleName("Backup")
         self.backup_button.setAccessibleDescription(
-            "Create a backup in the default backup folder - Alt+K"
+            "Create a backup in the default backup folder - Alt+B"
         )
 
         self.restore_button = QPushButton("Restore")
@@ -202,7 +202,7 @@ class BackupRestoreWindow(QDialog):
 
         # Local QShortcuts for Alt+/, F1, and Escape only
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        escape_shortcut.activated.connect(self.accept)
+        escape_shortcut.activated.connect(self.close)
 
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
@@ -275,10 +275,10 @@ class BackupRestoreWindow(QDialog):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
         from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
-            ("Alt+B", "Backup list"),
+            ("Alt+L", "Backup list"),
             ("Alt+W", "Browse for restore file"),
             ("Alt+T", "Focus restore file"),
-            ("Alt+K", "Create backup"),
+            ("Alt+B", "Create backup"),
             ("Alt+R", "Run restore from selected backup"),
             ("Alt+D", "Delete selected backup"),
             ("Alt+F", "Full reset"),
@@ -372,6 +372,9 @@ class BackupRestoreWindow(QDialog):
         backups = self.db.list_backups()
         for backup_path in backups:
             self._add_backup_item(backup_path)
+
+        # Set vertical header labels to prevent row number announcements
+        self.backup_list.setVerticalHeaderLabels([""] * self.backup_list.rowCount())
 
         if selected_path and explicit_selected:
             self._select_backup_path(selected_path)
