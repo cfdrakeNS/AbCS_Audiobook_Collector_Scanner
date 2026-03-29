@@ -186,6 +186,13 @@ class ReadDateDialog(QDialog):
         cancel_button = QPushButton("Cancel")
         cancel_button.setAccessibleName("Cancel button")
         
+        # Apply standard button styling to match application
+        if hasattr(self.parent(), 'scaler'):
+            scaler = self.parent().scaler
+            button_style = build_accessible_button_style(scaler.get_scaled_size(20))
+            ok_button.setStyleSheet(button_style)
+            cancel_button.setStyleSheet(button_style)
+        
         buttons_layout.addWidget(ok_button)
         buttons_layout.addWidget(cancel_button)
         layout.addLayout(buttons_layout)
@@ -1070,7 +1077,13 @@ class MainWindow(QMainWindow):
             )
             return
 
+        # Clear selection before refresh to prevent highlighting entire list
+        self.selected_book_ids.clear()
+        self.update_selection_ui()
+        
         self.refresh_books()
+        
+        # After refresh, select only the remaining duplicate books (not entire list)
         self.selected_book_ids = {
             book.book_id for book in self.books if book.book_id in self.duplicate_mode_book_ids
         }
