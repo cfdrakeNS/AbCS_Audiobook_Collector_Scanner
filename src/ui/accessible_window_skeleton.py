@@ -77,7 +77,7 @@ class AccessibleWindowSkeleton(QDialog):
     """
     
     # Alt+letter allowlist - blocks unmapped Alt+keys for JAWS compatibility
-    ALLOWED_ALT_LETTERS = {'/', '?', 'F1', 'T', 'C', 'Y', 'I', 'L'}
+    ALLOWED_ALT_LETTERS = {'/', '?', 'F1', 'T', 'C', 'Y', 'I', 'L', 'D', 'U'}
     
     def __init__(self, parent=None, window_title="Window", scaler=None, theme_manager=None):
         super().__init__(parent)
@@ -121,9 +121,13 @@ class AccessibleWindowSkeleton(QDialog):
         if isinstance(source, QComboBox) and source.isEditable():
             if event.type() == QEvent.KeyPress:
                 if event.key() in (Qt.Key_Up, Qt.Key_Down):
-                    # Block plain arrow keys - require Alt+Down to open dropdown
-                    QApplication.beep()  # User feedback
-                    return True
+                    if bool(event.modifiers() & Qt.AltModifier):
+                        # Allow Alt+Down to open dropdown
+                        return super().eventFilter(source, event)
+                    else:
+                        # Block plain arrow keys - require Alt+Down to open dropdown
+                        QApplication.beep()  # User feedback
+                        return True
                 elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     # Enter commits typed value and moves focus
                     source.lineEdit().returnPressed.emit()
@@ -313,11 +317,13 @@ class AccessibleWindowSkeleton(QDialog):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
         mgr = get_shortcut_manager()
         callback_map = {
-            'title_field': lambda: self.title_edit.setFocus(),
-            'category_field': lambda: self.category_combo.setFocus(),
-            'year_field': lambda: self.year_spin.setFocus(),
-            'items_table': lambda: self.items_table.setFocus(),
-            'items_table_alt_l': lambda: self.items_table.setFocus(),  # Alt+L also focuses table
+            'T': lambda: self.title_edit.setFocus(),  # Alt+T - Title
+            'C': lambda: self.category_combo.setFocus(),  # Alt+C - Category
+            'Y': lambda: self.year_spin.setFocus(),  # Alt+Y - Year
+            'I': lambda: self.items_table.setFocus(),  # Alt+I - Items table
+            'L': lambda: self.items_table.setFocus(),  # Alt+L - Items table
+            'D': lambda: self.delete_button.setFocus(),  # Alt+D - Delete button (matches MAIN_WINDOW_SHORTCUTS)
+            'U': lambda: self.save_button.setFocus(),  # Alt+U - Save button (update)
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.MAIN_WINDOW, callback_map)
         
@@ -346,6 +352,8 @@ FIELD SHORTCUTS (Working examples):
 • Alt+Y - Focus Year field
 • Alt+I - Focus Items table
 • Alt+L - Focus Items table (common AbCS pattern)
+• Alt+D - Focus Delete button (matches MAIN_WINDOW_SHORTCUTS)
+• Alt+U - Focus Save button (Update)
 
 ACCESSIBILITY PATTERNS IMPLEMENTED:
 ✓ Status bar pattern with Alt+/ readback
@@ -450,7 +458,7 @@ def test_skeleton():
     print("1. Test F1 - should show help with all patterns listed")
     print("2. Test Alt+/ - should read status message")
     print("3. Test Escape - should show confirmation dialog")
-    print("4. Test Alt+T, Alt+C, Alt+Y, Alt+I, Alt+L - field focus shortcuts")
+    print("4. Test Alt+T, Alt+C, Alt+Y, Alt+I, Alt+L, Alt+D, Alt+U - field focus shortcuts")
     print("5. Test combo box: plain Up/Down blocked, Alt+Down opens dropdown")
     print("6. Test table: no row numbers announced by JAWS")
     print("7. Test buttons: Save/Delete always enabled, show errors")
