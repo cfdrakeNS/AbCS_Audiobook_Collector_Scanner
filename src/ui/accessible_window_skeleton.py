@@ -114,8 +114,13 @@ class AccessibleWindowSkeleton(QDialog):
         """Complete event filter with Alt+key hygiene and combo anti-noise patterns."""
         # Alt+letter hygiene (Pattern #3: Alt+letter hygiene)
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
+            key_text = event.text().upper()
+            print(f"DEBUG: Alt+key pressed: '{key_text}', allowed: {key_text in self.ALLOWED_ALT_LETTERS}")
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                print(f"DEBUG: Blocking Alt+{key_text}")
                 return True  # Block unmapped Alt+letters
+            else:
+                print(f"DEBUG: Allowing Alt+{key_text}")
         
         # Combo box anti-noise pattern (Pattern #2: Combo anti-noise)
         if isinstance(source, QComboBox) and source.isEditable():
@@ -325,7 +330,13 @@ class AccessibleWindowSkeleton(QDialog):
             'D': lambda: self.delete_button.setFocus(),  # Alt+D - Delete button (matches MAIN_WINDOW_SHORTCUTS)
             'U': lambda: self.save_button.setFocus(),  # Alt+U - Save button (update)
         }
+        
+        # Debug: Print what we're registering
+        print(f"DEBUG: Registering shortcuts with context: {ShortcutContext.MAIN_WINDOW}")
+        print(f"DEBUG: Callback map keys: {list(callback_map.keys())}")
+        
         mgr.register_alt_shortcuts(self, ShortcutContext.MAIN_WINDOW, callback_map)
+        print("DEBUG: Shortcuts registered")
         
         # IMPORTANT: Avoid global Return/Enter shortcuts - they block button accessibility
         # Use keyPressEvent method instead for specific widget Enter handling
