@@ -62,7 +62,7 @@ class AccessibleWindowSkeleton(QDialog):
     """
     
     # Alt+letter allowlist - blocks unmapped Alt+keys for JAWS compatibility
-    ALLOWED_ALT_LETTERS = {'/', '?', 'F1', 'T', 'C', 'Y', 'I'}
+    ALLOWED_ALT_LETTERS = {'/', '?', 'F1', 'T', 'C', 'Y', 'I', 'L'}
     
     def __init__(self, parent=None, window_title="Window", scaler=None, theme_manager=None):
         super().__init__(parent)
@@ -322,6 +322,11 @@ class AccessibleWindowSkeleton(QDialog):
         self.table_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.table_shortcut.activated.connect(lambda: self.items_table.setFocus())
         
+        # Alt+L - Jump to table (common AbCS pattern)
+        self.table_alt_l_shortcut = QShortcut(QKeySequence("Alt+L"), self)
+        self.table_alt_l_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.table_alt_l_shortcut.activated.connect(lambda: self.items_table.setFocus())
+        
         # IMPORTANT: Avoid global Return/Enter shortcuts - they block button accessibility
         # Use keyPressEvent method instead for specific widget Enter handling
     
@@ -340,6 +345,7 @@ FIELD SHORTCUTS (Working examples):
 • Alt+C - Focus Category field
 • Alt+Y - Focus Year field
 • Alt+I - Focus Items table
+• Alt+L - Focus Items table (common AbCS pattern)
 
 ACCESSIBILITY PATTERNS IMPLEMENTED:
 ✓ Status bar pattern with Alt+/ readback
@@ -444,7 +450,7 @@ def test_skeleton():
     print("1. Test F1 - should show help with all patterns listed")
     print("2. Test Alt+/ - should read status message")
     print("3. Test Escape - should show confirmation dialog")
-    print("4. Test Alt+T, Alt+C, Alt+Y, Alt+I - field focus shortcuts")
+    print("4. Test Alt+T, Alt+C, Alt+Y, Alt+I, Alt+L - field focus shortcuts")
     print("5. Test combo box: plain Up/Down blocked, Alt+Down opens dropdown")
     print("6. Test table: no row numbers announced by JAWS")
     print("7. Test buttons: Save/Delete always enabled, show errors")
