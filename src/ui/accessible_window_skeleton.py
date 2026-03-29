@@ -319,7 +319,7 @@ class AccessibleWindowSkeleton(QDialog):
             'items_table': lambda: self.items_table.setFocus(),
             'items_table_alt_l': lambda: self.items_table.setFocus(),  # Alt+L also focuses table
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.GENERIC_WINDOW, callback_map)
+        mgr.register_alt_shortcuts(self, ShortcutContext.MAIN_WINDOW, callback_map)
         
         # IMPORTANT: Avoid global Return/Enter shortcuts - they block button accessibility
         # Use keyPressEvent method instead for specific widget Enter handling
