@@ -46,17 +46,20 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
 from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_message_box_style
+from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from src.accessibility.key_filters import is_unmapped_alt_letter
 
 
 class AccessibleWindowSkeleton(QDialog):
     """
     PROVEN accessible window skeleton with complete accessibility patterns.
     
-    SELF-CONTAINED DESIGN - No external dependencies:
-    - Uses local QShortcut objects (no shortcut manager)
-    - Implements own Alt+key filtering (no external key_filters)
-    - Demonstrates standalone accessibility patterns
-    - Can be used in any PySide6 application
+    FOLLOWS ABCS ACCESSIBILITY STANDARDS EXACTLY:
+    - Uses ShortcutManager for field shortcuts (AbCS standard)
+    - Uses is_unmapped_alt_letter for Alt+key hygiene (AbCS standard)
+    - Implements all patterns from accessibility_app_patterns.md
+    - Uses exec_styled_message_box for modal dialogs (AbCS standard)
+    - Demonstrates proper focus management and tab order
     
     Includes ALL accessibility standards:
     - Status bar pattern with Alt+/ readback
@@ -110,18 +113,9 @@ class AccessibleWindowSkeleton(QDialog):
     def eventFilter(self, source, event):
         """Complete event filter with Alt+key hygiene and combo anti-noise patterns."""
         # Alt+letter hygiene (Pattern #3: Alt+letter hygiene)
-        if event.type() == QEvent.KeyPress and bool(event.modifiers() & Qt.AltModifier):
-            # Get the key text to check if it's a letter
-            key_text = event.text().upper()
-            if key_text and key_text.isalpha():
-                if key_text not in self.ALLOWED_ALT_LETTERS:
-                    # Block unmapped Alt+letters
-                    QApplication.beep()  # User feedback
-                    return True
-                else:
-                    # Allow mapped Alt+letters (T, C, Y, I, /, ?, F1)
-                    # Let them pass through to their respective shortcuts
-                    pass
+        if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                return True  # Block unmapped Alt+letters
         
         # Combo box anti-noise pattern (Pattern #2: Combo anti-noise)
         if isinstance(source, QComboBox) and source.isEditable():
@@ -298,9 +292,7 @@ class AccessibleWindowSkeleton(QDialog):
     def setup_shortcuts(self):
         """
         PROVEN accessibility shortcuts - F1, Alt+/, Escape work out of box.
-        
-        Add your field shortcuts here:
-        'field_name': lambda: self.field_name.setFocus(),
+        Field shortcuts use ShortcutManager (AbCS standard).
         """
         # F1 - local shortcut (PROVEN working)
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -317,27 +309,17 @@ class AccessibleWindowSkeleton(QDialog):
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
         
-        # Field shortcuts (add your own following this pattern)
-        self.title_shortcut = QShortcut(QKeySequence("Alt+T"), self)
-        self.title_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.title_shortcut.activated.connect(lambda: self.title_edit.setFocus())
-        
-        self.category_shortcut = QShortcut(QKeySequence("Alt+C"), self)
-        self.category_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.category_shortcut.activated.connect(lambda: self.category_combo.setFocus())
-        
-        self.year_shortcut = QShortcut(QKeySequence("Alt+Y"), self)
-        self.year_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.year_shortcut.activated.connect(lambda: self.year_spin.setFocus())
-        
-        self.table_shortcut = QShortcut(QKeySequence("Alt+I"), self)
-        self.table_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.table_shortcut.activated.connect(lambda: self.items_table.setFocus())
-        
-        # Alt+L - Jump to table (common AbCS pattern)
-        self.table_alt_l_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.table_alt_l_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.table_alt_l_shortcut.activated.connect(lambda: self.items_table.setFocus())
+        # Field shortcuts using ShortcutManager (AbCS standard pattern)
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        callback_map = {
+            'title_field': lambda: self.title_edit.setFocus(),
+            'category_field': lambda: self.category_combo.setFocus(),
+            'year_field': lambda: self.year_spin.setFocus(),
+            'items_table': lambda: self.items_table.setFocus(),
+            'items_table_alt_l': lambda: self.items_table.setFocus(),  # Alt+L also focuses table
+        }
+        mgr.register_alt_shortcuts(self, ShortcutContext.GENERIC_WINDOW, callback_map)
         
         # IMPORTANT: Avoid global Return/Enter shortcuts - they block button accessibility
         # Use keyPressEvent method instead for specific widget Enter handling
@@ -347,10 +329,11 @@ class AccessibleWindowSkeleton(QDialog):
         shortcuts_text = """
 ACCESSIBLE WINDOW SKELETON - Keyboard Shortcuts
 
-SELF-CONTAINED DESIGN:
-• Uses local QShortcut objects (no shortcut manager dependency)
-• Implements own Alt+key filtering (no external key_filters)
-• Can be used in any PySide6 application
+FOLLOWS ABCS ACCESSIBILITY STANDARDS EXACTLY:
+• Uses ShortcutManager for field shortcuts (AbCS standard)
+• Uses is_unmapped_alt_letter for Alt+key hygiene (AbCS standard)
+• Implements all patterns from accessibility_app_patterns.md
+• Uses exec_styled_message_box for modal dialogs (AbCS standard)
 
 BASIC SHORTCUTS (Always work):
 • F1 - Show this help dialog
@@ -372,7 +355,7 @@ ACCESSIBILITY PATTERNS IMPLEMENTED:
 ✓ Screen reader-optimized buttons (always enabled)
 ✓ Focus management after operations
 ✓ Explicit tab order management
-✓ Modal message with proper styling
+✓ Modal message boxes with proper styling
 ✓ Global Enter shortcut avoidance (use keyPressEvent)
 
 COMBO BOX BEHAVIOR:
