@@ -186,13 +186,7 @@ class ReadDateDialog(QDialog):
         cancel_button = QPushButton("Cancel")
         cancel_button.setAccessibleName("Cancel button")
         
-        # Apply standard button styling to match application
-        if hasattr(self.parent(), 'scaler'):
-            scaler = self.parent().scaler
-            button_style = build_accessible_button_style(scaler.get_scaled_size(20))
-            ok_button.setStyleSheet(button_style)
-            cancel_button.setStyleSheet(button_style)
-        
+        # Use minimal button styling to avoid width issues
         buttons_layout.addWidget(ok_button)
         buttons_layout.addWidget(cancel_button)
         layout.addLayout(buttons_layout)
