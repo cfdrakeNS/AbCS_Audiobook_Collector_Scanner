@@ -155,6 +155,8 @@ def on_delete_clicked(self):
 
 Global Enter shortcuts break accessibility by preventing Enter from activating focused buttons.
 
+**REFERENCE IMPLEMENTATION:** `src/ui/accessible_window_skeleton.py` - Shows correct keyPressEvent pattern without global shortcuts.
+
 ```python
 # BAD: Blocks Enter on ALL buttons
 shortcut = QShortcut(QKeySequence("Return"), self)
@@ -163,7 +165,13 @@ shortcut.activated.connect(self.some_action)
 # GOOD: Handle Enter only for specific widgets in keyPressEvent
 def keyPressEvent(self, event):
     if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-        if self.table.hasFocus():
+        focused_widget = self.focusWidget()
+        if isinstance(focused_widget, QPushButton):
+            # Let Qt handle Enter on buttons (default behavior)
+            focused_widget.click()
+            event.accept()
+            return
+        elif self.table.hasFocus():
             self.on_table_action()
             return
     super().keyPressEvent(event)  # Let Qt handle Enter on buttons

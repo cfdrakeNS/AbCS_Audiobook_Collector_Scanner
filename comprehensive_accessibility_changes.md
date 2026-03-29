@@ -322,7 +322,9 @@
 5. **`src/ui/name_list_window.py`** - Add ALLOWED_ALT_LETTERS + combo anti-noise
 
 ### Phase 3: Template & Examples (Low Priority)
-6. **`src/ui/accessible_window_skeleton.py`** - Add example patterns
+6. **`src/ui/accessible_window_skeleton.py`** - Add example patterns (COMPLETE - now serves as definitive reference)
+
+**NOTE:** The accessible_window_skeleton.py is now COMPLETE and serves as the definitive reference implementation for all accessibility patterns. Use this as the starting point for all new windows.
 
 ### Phase 4: Verification (All Windows)
 7. **All 14 windows** - Final JAWS testing and verification
@@ -427,6 +429,8 @@ Reviewed all 14 UI windows against 3 accessibility standards:
 6. **UPDATE window-specific documentation** for any remaining gaps
 
 ### Files Requiring Updates
+
+**REFERENCE IMPLEMENTATION:** `src/ui/accessible_window_skeleton.py` - Complete accessibility pattern reference with ALL standards implemented. Copy this file and add your UI elements - accessibility works out of box.
 
 **Critical Fixes Needed:**
 - `src/ui/main_window.py` - Remove global Enter shortcuts (lines 201, 203)

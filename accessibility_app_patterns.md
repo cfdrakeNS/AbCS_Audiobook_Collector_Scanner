@@ -51,12 +51,11 @@ Scope: these are implementation conventions already used in this codebase.
 6. Use FocusOut handlers for typed values with skip flags to avoid duplicate processing.
 
 ### Reference implementations
-- `src/ui/book_details.py` → combo arrow blocking rationale and behavior
-- `src/ui/update_window.py` → full pattern (arrow blocking, Enter commit, FocusOut apply, skip flags)
+- `src/ui/accessible_window_skeleton.py` → Complete reference implementation with ALL patterns
+- `src/ui/book_details.py` → Combo arrow blocking rationale and behavior
+- `src/ui/update_window.py` → Full pattern (arrow blocking, Enter commit, FocusOut apply, skip flags)
 - `src/ui/preferences_window.py` → now applies the same plain-arrow block (`Up/Down`) with `Alt+Up/Down` allowed.
-
-### Implementation notes
-- If a combo supports free typing, ensure FocusOut and Enter follow the same validation path.
+- `src/ui/import_detail_window.py` → Combo anti-noise pattern implementation supports free typing, ensure FocusOut and Enter follow the same validation path.
 - Keep tab order explicit around combo groups.
 
 ### Current adoption snapshot (Mar 01, 2026)
@@ -167,7 +166,10 @@ Traceability:
 
 ## 8) Reuse checklist for new windows/features
 
+**REFERENCE IMPLEMENTATION:** `src/ui/accessible_window_skeleton.py` - Complete accessibility pattern reference with ALL standards implemented.
+
 When building a new window, confirm:
+- [ ] Copy `src/ui/accessible_window_skeleton.py` as starting point
 - [ ] Has `set_status(...)` (or equivalent) + `Alt+/` readback.
 - [ ] Uses approved status announcement path with safe focus restore.
 - [ ] Alt-letter allowlist enforced; unmapped Alt letters suppressed.
@@ -180,6 +182,16 @@ When building a new window, confirm:
 - [ ] Defines explicit tab order with `setTabOrder()` calls.
 - [ ] Includes accessible names and descriptions for all widgets.
 - [ ] Tests with both JAWS and NVDA screen readers.
+- [ ] Avoids global Return/Enter shortcuts (see Pattern #18).
+- [ ] Uses screen reader-optimized button enablement (see Pattern #16).
+
+**QUICK START:** 
+1. Copy `accessible_window_skeleton.py` to your new window file
+2. Rename the class and window title
+3. Add your UI elements in `setup_ui()`
+4. Add your field shortcuts in `setup_shortcuts()`
+5. Update `ALLOWED_ALT_LETTERS` if needed
+6. Test F1, Alt+/, Escape - they should work immediately
 
 ---
 

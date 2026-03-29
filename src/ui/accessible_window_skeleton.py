@@ -1,7 +1,8 @@
 """
 Accessible Window Skeleton/Template
-PROVEN working accessibility pattern for all future windows
+COMPLETE accessibility pattern reference implementation
 
+This file demonstrates ALL accessibility standards implemented.
 Copy this skeleton and add your UI elements - accessibility will work out of box.
 
 USAGE:
@@ -12,7 +13,11 @@ USAGE:
 5. Test F1, Alt+/, Escape - they should work
 
 TESTING:
-python src/ui/your_new_window.py
+python src/ui/accessible_window_skeleton.py
+
+REFERENCE IMPLEMENTATION:
+This is the definitive reference for all accessibility patterns.
+See comprehensive_accessibility_changes.md for window-by-window status.
 """
 
 import sys

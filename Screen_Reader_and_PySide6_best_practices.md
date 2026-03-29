@@ -256,6 +256,31 @@ item.setData(Qt.AccessibleTextRole, "42 books")  # Instead of just "42"
 
 ---
 
+## 10. Complete Accessibility Reference Implementation
+
+**REFERENCE:** `src/ui/accessible_window_skeleton.py` - Complete working example with ALL accessibility patterns implemented.
+
+This file demonstrates:
+- ✅ All 9 accessibility patterns working together
+- ✅ Complete UI with text fields, combos, tables, buttons
+- ✅ JAWS-optimized keyboard navigation
+- ✅ Screen reader announcements and feedback
+- ✅ Proper focus management and error handling
+- ✅ Global Enter shortcut avoidance
+- ✅ Combo anti-noise pattern
+- ✅ Table row number suppression
+- ✅ Modal message boxes with styling
+
+**Usage:**
+1. Copy `accessible_window_skeleton.py` to new window file
+2. Rename class and add your UI elements
+3. Test F1, Alt+/, Escape - they work immediately
+4. Add your field shortcuts following the pattern
+
+**This is the definitive reference - copy it and accessibility works out of box!**
+
+---
+
 If you want, tell me:
 
 * Which widgets you're using (`QTextEdit`, `QLineEdit`, `QLabel`, etc.)
