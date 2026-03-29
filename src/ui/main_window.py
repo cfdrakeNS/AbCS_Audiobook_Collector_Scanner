@@ -144,98 +144,106 @@ class BookTableModel(QAbstractTableModel):
         return ""
 
 
+class ReadDateDialog(QDialog):
+    """Custom dialog for setting read date with proper keyPressEvent handling."""
+    
+    def __init__(self, parent, book, initial_date):
+        super().__init__(parent)
+        self.book = book
+        self.date_field = None
+        self.setup_ui(initial_date)
+    
+    def setup_ui(self, initial_date):
+        """Setup the dialog UI."""
+        from PySide6.QtWidgets import QVBoxLayout, QLabel, QHBoxLayout, QPushButton
+        from PySide6.QtCore import Qt, QTimer, QDate
+        from PySide6.QtGui import QKeySequence, QShortcut
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        prompt = QLabel(f"Set read date for: {self.book.title}")
+        layout.addWidget(prompt)
+
+        self.date_field = QDateEdit()
+        self.date_field.setCalendarPopup(True)
+        self.date_field.setDisplayFormat("yyyy-MM-dd")
+        self.date_field.setAccessibleName("Date read")
+        self.date_field.setMinimumDate(QDate(1, 1, 1))
+        self.date_field.setSpecialValueText("")
+        self.date_field.setDate(initial_date)
+        layout.addWidget(self.date_field)
+
+        # Alt+Down to open calendar
+        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self)
+        alt_down_shortcut.activated.connect(self.date_field.calendarPopup)
+
+        buttons_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.setAccessibleName("OK button")
+        ok_button.setDefault(True)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setAccessibleName("Cancel button")
+        
+        buttons_layout.addWidget(ok_button)
+        buttons_layout.addWidget(cancel_button)
+        layout.addLayout(buttons_layout)
+
+        ok_button.clicked.connect(self.accept)
+        cancel_button.clicked.connect(self.reject)
+    
+    def keyPressEvent(self, event):
+        """Handle Enter key for date field (Pattern #18: Global Enter anti-pattern avoidance)."""
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if self.date_field.hasFocus():
+                # Enter on date field accepts and closes
+                self.accept()
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+
 class MainWindow(QMainWindow):
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit, QPushButton
         from PySide6.QtCore import QDate
-        book = self.books[row]
-        dlg = QDialog(self)
-        dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
-        dlg.setModal(True)
-        layout = QVBoxLayout(dlg)
         
-        # Use simple QDateEdit with calendar popup
-        date_field = QDateEdit()
-        date_field.setCalendarPopup(True)
-        date_field.setDisplayFormat("yyyy-MM-dd")
-        date_field.setAccessibleName("Date read")
-        date_field.setMinimumDate(QDate(1, 1, 1))
-        date_field.setSpecialValueText("")
+        book = self.books[row]
         
         # Set initial date
         if book.read_date:
             if isinstance(book.read_date, str):
-                d = QDate.fromString(book.read_date, "yyyy-MM-dd")
+                initial_date = QDate.fromString(book.read_date, "yyyy-MM-dd")
             else:
-                d = QDate(book.read_date.year,
-                          book.read_date.month, book.read_date.day)
-            if d.isValid():
-                date_field.setDate(d)
-            else:
-                date_field.setDate(QDate.currentDate())
+                initial_date = QDate(book.read_date.year,
+                                   book.read_date.month, book.read_date.day)
+            if not initial_date.isValid():
+                initial_date = QDate.currentDate()
         else:
             # Default to today's date for new entries
-            date_field.setDate(QDate.currentDate())
+            initial_date = QDate.currentDate()
         
-        # Set font size
-        font = date_field.font()
-        font.setPointSize(self.scaler.get_scaled_size(14))
-        date_field.setFont(font)
+        # Use custom dialog with proper keyPressEvent handling
+        dlg = ReadDateDialog(self, book, initial_date)
+        dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
         
-        layout.addWidget(date_field)
-        date_field.setFocus()
-        
-        # Add Alt+Down shortcut to open calendar (though it may not work)
-        from PySide6.QtGui import QShortcut, QKeySequence
-        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
-        alt_down_shortcut.activated.connect(date_field.calendarPopup)
-        
-        # Add Enter key shortcut to close dialog and save date
-        def save_and_close():
-            # Make sure the date field has focus so its value is current
-            date_field.setFocus()
-            # Small delay to ensure the value is updated
-            QTimer.singleShot(0, dlg.accept)
-        
-        enter_shortcut = QShortcut(QKeySequence("Return"), dlg)
-        enter_shortcut.activated.connect(save_and_close)
-        enter_shortcut = QShortcut(QKeySequence("Enter"), dlg)
-        enter_shortcut.activated.connect(save_and_close)
-        
-        dlg.setLayout(layout)
         if dlg.exec() == QDialog.Accepted:
             # Check if date is being changed (not just cleared)
-            if date_field.date() == date_field.minimumDate():
+            if dlg.date_field.date() == dlg.date_field.minimumDate():
                 # Clear the date - no confirmation needed for clearing
                 book.read_date = ""
                 self.book_queries.update(book)
                 self.refresh_books()
                 self.set_status(f"Read date cleared for {book.title}", announce=True)
             else:
-                new_date = date_field.date().toString("yyyy-MM-dd")
-                # Check if date is actually changing
-                if book.read_date == new_date:
-                    # No change - don't ask for confirmation
-                    self.set_status(f"Read date unchanged for {book.title}", announce=True)
-                else:
-                    # Date is changing - ask for confirmation
-                    from PySide6.QtWidgets import QMessageBox
-                    reply = QMessageBox.question(
-                        self,
-                        "Confirm Read Date",
-                        f"Mark '{book.title}' as read on {new_date}?",
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.No
-                    )
-                    if reply == QMessageBox.Yes:
-                        book.read_date = new_date
-                        self.book_queries.update(book)
-                        self.refresh_books()
-                        self.set_status(f"Read date set for {book.title}", announce=True)
-                    else:
-                        # User cancelled - don't update
-                        self.set_status(f"Read date update cancelled for {book.title}", announce=True)
+                # Set the date
+                new_date = dlg.date_field.date()
+                book.read_date = new_date.toString("yyyy-MM-dd")
+                self.book_queries.update(book)
+                self.refresh_books()
+                self.set_status(f"Read date set to {book.read_date} for {book.title}", announce=True)
+            
             # Optionally, move focus back to the same cell
             self.table.setCurrentCell(row, 8)
             self.table.setFocus()
