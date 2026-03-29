@@ -22,8 +22,10 @@ from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
-from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
+from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed, announce_status_message
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from src.accessibility.style_helpers import build_accessible_button_style
 
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries
@@ -40,8 +42,8 @@ class WebMetadataWindow(QDialog):
     Built incrementally from accessible skeleton.
     """
 
-    # List of allowed Alt+key shortcuts for Web Metadata
-    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S', '/', '?', 'F1'}
+    # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
+    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S'}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -83,6 +85,10 @@ class WebMetadataWindow(QDialog):
         # Install event filter for Alt-letter hygiene
         self.installEventFilter(self)
         
+        # Install event filter on QPushButton for Enter key handling
+        for widget in self.findChildren(QPushButton):
+            widget.installEventFilter(self)
+        
         # CRITICAL: Set focus to first field with web differences when window opens
         # JAWS requires focus to be set for Alt+keys to work properly
         QTimer.singleShot(0, self.set_focus_to_first_differing_field)
@@ -92,6 +98,12 @@ class WebMetadataWindow(QDialog):
         if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
+            
+            # Handle Enter key on focused buttons
+            if key == Qt.Key_Return or key == Qt.Key_Enter:
+                if isinstance(source, QPushButton) and source.hasFocus():
+                    source.click()
+                    return True
             
             # Block unused Alt+letter keys using the allowlist
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_KEYS):
@@ -162,6 +174,7 @@ class WebMetadataWindow(QDialog):
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Current Title")
         self.title_edit.setAccessibleDescription("Current book title")
+        self.title_edit.setReadOnly(True)  # Make read-only
         self.title_web_edit = QLineEdit()
         self.title_web_edit.setAccessibleName("Web Title")
         self.title_web_edit.setAccessibleDescription("Book title from web source")
@@ -178,6 +191,7 @@ class WebMetadataWindow(QDialog):
         self.author_edit = QLineEdit()
         self.author_edit.setAccessibleName("Current Author")
         self.author_edit.setAccessibleDescription("Current author name")
+        self.author_edit.setReadOnly(True)  # Make read-only
         self.author_web_edit = QLineEdit()
         self.author_web_edit.setAccessibleName("Web Author")
         self.author_web_edit.setAccessibleDescription("Author name from web source")
@@ -195,11 +209,11 @@ class WebMetadataWindow(QDialog):
         self.year_edit.setAccessibleName("Current Year")
         self.year_edit.setAccessibleDescription("Current publication year")
         self.year_edit.setPlaceholderText("YYYY")
+        self.year_edit.setReadOnly(True)  # Make read-only
         self.year_edit.setObjectName("year_edit")
         self.year_web_edit = QLineEdit()
         self.year_web_edit.setAccessibleName("Web Year")
         self.year_web_edit.setAccessibleDescription("Publication year from web source")
-        self.year_web_edit.setPlaceholderText("YYYY")
         self.year_web_edit.setReadOnly(True)
         self.year_checkbox = QCheckBox()
         self.year_checkbox.setAccessibleName("Keep Web Year")
@@ -214,6 +228,7 @@ class WebMetadataWindow(QDialog):
         self.series_edit = QLineEdit()
         self.series_edit.setAccessibleName("Current Series")
         self.series_edit.setAccessibleDescription("Current series name")
+        self.series_edit.setReadOnly(True)  # Make read-only
         self.series_web_edit = QLineEdit()
         self.series_web_edit.setAccessibleName("Web Series")
         self.series_web_edit.setAccessibleDescription("Series name from web source")
@@ -231,6 +246,7 @@ class WebMetadataWindow(QDialog):
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Current Genre")
         self.genre_edit.setAccessibleDescription("Current genre")
+        self.genre_edit.setReadOnly(True)  # Make read-only
         self.genre_web_edit = QLineEdit()
         self.genre_web_edit.setAccessibleName("Web Genre")
         self.genre_web_edit.setAccessibleDescription("Genre from web source")
@@ -266,6 +282,15 @@ class WebMetadataWindow(QDialog):
         # Add buttons
         button_layout = QHBoxLayout()
         
+        self.fetch_button = QPushButton("&Fetch Web Data")
+        self.fetch_button.setAccessibleName("Fetch Web Data")
+        self.fetch_button.setAccessibleDescription("Fetch web data from online sources - Alt+W")
+        self.fetch_button.setFocusPolicy(Qt.StrongFocus)
+        self.fetch_button.setDefault(False)
+        self.fetch_button.setAutoDefault(False)
+        self.fetch_button.clicked.connect(self.fetch_web_data)
+        button_layout.addWidget(self.fetch_button)
+        
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
@@ -281,6 +306,39 @@ class WebMetadataWindow(QDialog):
         
         # CRITICAL: Add the main_layout to the window layout
         layout.addLayout(self.main_layout)
+        
+        # Set explicit tab order for logical keyboard navigation
+        self.set_tab_order()
+
+    def set_tab_order(self):
+        """Set explicit tab order for logical keyboard navigation."""
+        # Define tab order following the actual layout:
+        # Current Title → Web Title → Title Checkbox → Current Author → Web Author → Author Checkbox
+        # → Current Year → Web Year → Year Checkbox → Current Series → Web Series → Series Checkbox
+        # → Current Genre → Web Genre → Genre Checkbox → Plot → Save
+        tab_widgets = [
+            self.title_edit,        # Current title
+            self.title_web_edit,    # Web title
+            self.title_checkbox,    # Title checkbox
+            self.author_edit,       # Current author
+            self.author_web_edit,   # Web author
+            self.author_checkbox,   # Author checkbox
+            self.year_edit,         # Current year
+            self.year_web_edit,     # Web year
+            self.year_checkbox,     # Year checkbox
+            self.series_edit,       # Current series
+            self.series_web_edit,   # Web series
+            self.series_checkbox,   # Series checkbox
+            self.genre_edit,        # Current genre
+            self.genre_web_edit,    # Web genre
+            self.genre_checkbox,    # Genre checkbox
+            self.plot_edit,         # Plot field
+            self.save_button        # Save button
+        ]
+        
+        # Set tab order sequentially
+        for i in range(len(tab_widgets) - 1):
+            self.setTabOrder(tab_widgets[i], tab_widgets[i + 1])
 
     def _adjust_plot_height(self):
         """Adjust plot QTextEdit height to fit content (modeled after book_details)."""
@@ -336,6 +394,11 @@ class WebMetadataWindow(QDialog):
         
         for field in self.findChildren(QTextEdit):
             field.setStyleSheet(field_style)
+        
+        # Apply consistent button styling like other windows
+        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        for button in self.findChildren(QPushButton):
+            button.setStyleSheet(button_style)
     
     def _create_field_with_indicator(self, field):
         """Create a field with web data difference indicator, left-aligned for accessibility."""
@@ -434,8 +497,10 @@ class WebMetadataWindow(QDialog):
         try:
             web_data = api.get_book_metadata(title, author, year)
         except Exception as e:
-            self.set_status(f"Error fetching web data: {str(e)}", announce=True)
+            self.set_status(f"Error fetching web data: {str(e)}", announce=True, timeout_ms=3000)
             self.clear_web_indicators()
+            # Return focus to title field on error
+            self.title_edit.setFocus()
             return
 
         if web_data:
@@ -712,9 +777,26 @@ class WebMetadataWindow(QDialog):
     
     def setup_shortcuts(self):
         """
-        PROVEN accessibility shortcuts + field shortcuts.
+        Setup shortcuts using centralized shortcut manager for consistency.
         F1, Alt+/, Escape work out of box.
         """
+        # Use centralized shortcut manager
+        shortcut_mgr = get_shortcut_manager()
+        
+        # Alt+Key shortcuts (centralized)
+        callback_map = {
+            'title_edit': lambda: self.title_edit.setFocus(),
+            'author_edit': lambda: self.author_edit.setFocus(), 
+            'plot_edit': lambda: self.plot_edit.setFocus(),
+            'year_edit': lambda: self.year_edit.setFocus(),
+            'series_edit': lambda: self.series_edit.setFocus(),
+            'genre_edit': lambda: self.genre_edit.setFocus(),
+            'fetch_web_button': lambda: self.fetch_web_data(),
+            'save_button': lambda: self.on_save_clicked() if self.save_button.isVisible() else None,
+        }
+        shortcut_mgr.register_alt_shortcuts(
+            self, ShortcutContext.WEB_METADATA, callback_map)
+        
         # F1 - local shortcut (PROVEN working)
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -729,36 +811,6 @@ class WebMetadataWindow(QDialog):
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.read_status_shortcut.activated.connect(self.on_read_status_bar)
-        
-        # Field shortcuts
-        self.title_shortcut = QShortcut(QKeySequence("Alt+T"), self)
-        self.title_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.title_shortcut.activated.connect(lambda: self.title_edit.setFocus())
-        
-        self.author_shortcut = QShortcut(QKeySequence("Alt+A"), self)
-        self.author_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.author_shortcut.activated.connect(lambda: self.author_edit.setFocus())
-        
-        self.plot_shortcut = QShortcut(QKeySequence("Alt+P"), self)
-        self.plot_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.plot_shortcut.activated.connect(lambda: self.plot_edit.setFocus())
-        
-        self.year_shortcut = QShortcut(QKeySequence("Alt+Y"), self)
-        self.year_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.year_shortcut.activated.connect(lambda: self.year_edit.setFocus())
-        
-        self.series_shortcut = QShortcut(QKeySequence("Alt+I"), self)
-        self.series_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.series_shortcut.activated.connect(lambda: self.series_edit.setFocus())
-        
-        self.genre_shortcut = QShortcut(QKeySequence("Alt+G"), self)
-        self.genre_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.genre_shortcut.activated.connect(lambda: self.genre_edit.setFocus())
-        
-        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
-        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.save_shortcut.activated.connect(
-            lambda: self.on_save_clicked() if self.save_button.isVisible() else None)
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""
@@ -793,6 +845,7 @@ class WebMetadataWindow(QDialog):
             ("Alt+Y", "Year"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
+            ("Alt+W", "Fetch Web Data"),
             ("Alt+S", "Save"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
@@ -833,12 +886,15 @@ class WebMetadataWindow(QDialog):
                 text=f"Alt+/ working! Status: {status_text}"
             )
     
-    def set_status(self, message: str, announce: bool = False):
-        """Set status message."""
+    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
+        """Set status message with centralized status helper."""
         self.status_bar.showMessage(message)
         if announce:
-            from src.accessibility.accessible_events import announce_status_message
             announce_status_message(self.status_bar, message, move_focus=True)
+        
+        # Auto-clear status after timeout if specified
+        if timeout_ms > 0:
+            QTimer.singleShot(timeout_ms, lambda: self.status_bar.clearMessage())
 
     def on_escape_pressed(self):
         """Handle escape key - show save confirmation before closing."""
@@ -1034,13 +1090,15 @@ class WebMetadataWindow(QDialog):
                     status_msg = f"Updated: {', '.join(applied_fields)}"
                 else:
                     status_msg = "No changes applied"
-                self.set_status(status_msg, announce=True)
+                self.set_status(status_msg, announce=True, timeout_ms=2000)
                 
                 announce_dialog_closed(self)
                 super().accept()
                 
             except Exception as e:
-                self.set_status(f"Error saving: {str(e)}")
+                self.set_status(f"Error saving: {str(e)}", announce=True)
+                # Return focus to first field on error
+                self.set_focus_to_first_differing_field()
                 # Don't close on error
                 return
         else:

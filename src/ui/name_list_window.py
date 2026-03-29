@@ -169,12 +169,12 @@ class NameListWindow(QDialog):
         if not self.is_collection_mode:
             self.find_edit.installEventFilter(self)
         self.name_edit.installEventFilter(self)
-        if not focused_initial_match:
-            if self.is_collection_mode:
-                QTimer.singleShot(0, lambda: self.focus_list())
-            else:
-                QTimer.singleShot(
-                    0, lambda: self.find_edit.setFocus(Qt.TabFocusReason))
+        
+        # Set focus to first item in list on startup (like main window)
+        if self.table.rowCount() > 0:
+            self.table.setCurrentCell(0, self.COL_NAME)
+            self.table.selectRow(0)  # Ensure the row is selected
+        self.table.setFocus()
 
     def _configure_type_metadata(self):
         self.is_collection_mode = False
@@ -308,13 +308,6 @@ class NameListWindow(QDialog):
         )
         footer_layout.addWidget(self.save_button)
 
-        self.cancel_button = QPushButton("Cance&l")
-        self.cancel_button.clicked.connect(self.on_cancel_edit)
-        self.cancel_button.setAccessibleDescription(
-            f"Cancel current {self.entity_singular.lower()} edit - Alt+L"
-        )
-        footer_layout.addWidget(self.cancel_button)
-
         button_style = build_accessible_button_style(
             self.scaler.get_scaled_size(20)
         )
@@ -322,7 +315,6 @@ class NameListWindow(QDialog):
         for button in (
             self.edit_button,
             self.save_button,
-            self.cancel_button,
         ):
             button.setStyleSheet(button_style)
 
@@ -350,7 +342,6 @@ class NameListWindow(QDialog):
         footer_buttons = [
             self.edit_button,
             self.save_button,
-            self.cancel_button,
         ]
 
         chain.extend([
@@ -397,7 +388,6 @@ class NameListWindow(QDialog):
                 for button in (
                     self.edit_button,
                     self.save_button,
-                    self.cancel_button,
                 ):
                     if button is not None and button.isVisible() and button.isEnabled():
                         next_footer_button = button
@@ -418,7 +408,6 @@ class NameListWindow(QDialog):
 
     def _allowed_alt_letter_keys(self) -> set[int]:
         keys = {
-            Qt.Key_B,
             Qt.Key_E,
             Qt.Key_L,
             Qt.Key_M,
@@ -440,24 +429,28 @@ class NameListWindow(QDialog):
             'name_edit': self.focus_name_edit,
             'find_edit': self.on_clear_find if not self.is_collection_mode else self.focus_find_edit,
             'active_check': self.focus_active_check if hasattr(self, 'active_check') else lambda: None,
-            'cancel_button': self.on_cancel_edit,
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.NAMELIST_WINDOW, callback_map)
 
         # Local QShortcuts for Alt+/, F1, and Escape
         se_shortcut = QShortcut(QKeySequence("F1"), self)
+        se_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         se_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.status_shortcut.activated.connect(self.on_read_status)
-
+        
+        # Escape key for cancel functionality
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        self.escape_shortcut.activated.connect(self.accept)
+        self.escape_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.escape_shortcut.activated.connect(self.on_cancel_edit)
 
         # Add direct Alt+F shortcut for clearing find
         if not self.is_collection_mode:
             self.clear_find_shortcut = QShortcut(QKeySequence("Alt+F"), self)
+            self.clear_find_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
             self.clear_find_shortcut.activated.connect(self.on_clear_find)
 
         if not self.is_collection_mode:
@@ -612,7 +605,6 @@ class NameListWindow(QDialog):
         editing_mode = not self._collection_editor_locked
         self.edit_button.setVisible(not editing_mode)
         self.save_button.setVisible(editing_mode)
-        self.cancel_button.setVisible(editing_mode)
         self._apply_tab_order()
 
     def _force_locked_button_state(self):
@@ -620,7 +612,6 @@ class NameListWindow(QDialog):
         self._collection_editor_locked = True
         self.edit_button.setVisible(True)
         self.save_button.setVisible(False)
-        self.cancel_button.setVisible(False)
         self._apply_tab_order()
 
     def _selected_item_id(self) -> int | None:
@@ -665,14 +656,32 @@ class NameListWindow(QDialog):
 
     def on_edit(self):
         """Enable editing for the highlighted row in non-author lists."""
-        item_id = self._selected_item_id()
-        if item_id is None:
+        # Use currentRow() like collection_window.py
+        current_row = self.table.currentRow()
+        if current_row < 0:
+            if self.table.rowCount() > 0:
+                current_row = 0
+                self.table.setCurrentCell(current_row, self.COL_NAME)
+            else:
+                self.set_status(
+                    f"No {self.entity_singular.lower()} available to edit.",
+                    announce=True,
+                )
+                return
+
+        name_item = self.table.item(current_row, self.COL_NAME)
+        if name_item is None:
             self.set_status(
-                f"Select a {self.entity_singular.lower()} row to edit.",
+                f"No {self.entity_singular.lower()} available to edit.",
                 announce=True,
             )
             return
 
+        data = name_item.data(Qt.UserRole)
+        if data is None:
+            return
+
+        item_id = int(data)
         item = self.query.get_by_id(item_id)
         if item is None:
             self.set_status(
@@ -756,7 +765,16 @@ class NameListWindow(QDialog):
                     )
                 )
             else:
-                self.query.update(self.current_item_id, name)
+                # Handle case changes properly by using a temporary name
+                current_item = self.query.get_by_id(self.current_item_id)
+                if current_item and current_item.name.lower() == name.lower() and current_item.name != name:
+                    # This is just a case change - use temporary name to avoid UNIQUE constraint
+                    temp_name = f"temp_{self.current_item_id}_{name}"
+                    self.query.update(self.current_item_id, temp_name)  # Step 1: change to temp
+                    self.query.update(self.current_item_id, name)     # Step 2: change to final case
+                else:
+                    # Normal update
+                    self.query.update(self.current_item_id, name)
         except sqlite3.IntegrityError:
             exec_styled_message_box(
                 self,
@@ -769,7 +787,7 @@ class NameListWindow(QDialog):
                 f"Duplicate {self.entity_singular.lower()} name.", announce=True)
             return False
 
-        self.load_items(preserve_id=self.current_item_id)
+        self.load_items(preserve_id=self.current_item_id, populate_editor=False)
         self._set_collection_editor_locked(True)
         QTimer.singleShot(0, self._force_locked_button_state)
         self.set_status(
@@ -789,11 +807,10 @@ class NameListWindow(QDialog):
         self._force_locked_button_state()
         QTimer.singleShot(0, self._force_locked_button_state)
 
-        QTimer.singleShot(0, self.focus_list)
-
     def _finalize_initial_collection_ui_state(self):
         """Set initial collection mode state: list focused, editor locked."""
         self._set_collection_editor_locked(True)
+        # Note: focus is handled by the main __init__ logic
 
     def on_read_status(self):
         message = self._build_read_status_message()
@@ -808,6 +825,74 @@ class NameListWindow(QDialog):
             title="Status",
             text=f"No screen reader active.\n\nStatus: {message}",
         )
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        shortcuts = [
+            ("Alt+M", "Name edit"),
+            ("Alt+E", "Edit selected row"),
+            ("Alt+L", "Jump to list"),
+            ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
+            ("Alt+F", "Find") if not self.is_collection_mode else None,
+            ("Alt+S", "Save") if self.save_button.isVisible() and self.save_button.isEnabled() else None,
+            ("Escape", "Cancel edit/Close window"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show this help"),
+        ]
+        shortcuts = [item for item in shortcuts if item is not None]
+        
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Keyboard Shortcuts - {self.entity_plural}")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(460, 500)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        
+        # Disable hover highlighting for low-vision comfort
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        
+        table.setStyleSheet(build_accessible_f1_popup_style())
+
+        for row, (key, description) in enumerate(shortcuts):
+            combined_text = f"{description} - {key}"
+            item = QTableWidgetItem(combined_text)
+            item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
+            table.setItem(row, 0, item)
+
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        scale_pct = self.scaler.current_scale
+        base_font_size = int(11 * (scale_pct / 100.0))
+        font = table.font()
+        font.setPointSize(base_font_size)
+        table.setFont(font)
+
+        layout.addWidget(table)
+        dlg.exec()
 
     def _build_read_status_message(self) -> str:
         row = self.table.currentRow()
@@ -824,25 +909,6 @@ class NameListWindow(QDialog):
             return self.status_bar.currentMessage().strip() or "Ready"
 
         return f"{name_text} - books {usage_text}, Alt+E Edit, Escape Close"
-
-    def on_show_shortcuts(self):
-        """Show keyboard shortcuts help dialog (accessible, centralized)."""
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
-        shortcuts = [
-            ("Alt+F", "Find") if not self.is_collection_mode else None,
-            ("Alt+M", "Name edit"),
-            ("Alt+E", "Edit selected row"),
-            ("Alt+B", "Jump to list"),
-            ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
-            ("Alt+S", "Save") if self.save_button.isVisible() and self.save_button.isEnabled() else None,
-            ("Alt+L", "Cancel edit/new") if self.cancel_button.isVisible(
-            ) and self.cancel_button.isEnabled() else None,
-            ("Escape", "Close window"),
-            ("Alt+/", "Read status bar"),
-            ("F1", "Show this help"),
-        ]
-        shortcuts = [item for item in shortcuts if item is not None]
-        filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         dlg = QDialog(self)
         dlg.setWindowTitle(f"Keyboard Shortcuts - {self.entity_plural}")
@@ -896,15 +962,51 @@ class NameListWindow(QDialog):
         dlg.exec()
 
     def on_cancel_edit(self):
-        """Cancel current New/Edit mode and return to locked list mode."""
-        preserve_id = self._selected_item_id()
-        if preserve_id is None:
-            preserve_id = self.current_item_id
-
-        self.load_items(preserve_id=preserve_id, populate_editor=False)
-        self._set_collection_editor_locked(True)
-        self.focus_list()
-        self.set_status("Edit canceled.")
+        """Cancel current New/Edit mode and return to locked list mode, or close window."""
+        if self._collection_editor_locked:
+            # If not editing, close the window
+            self.accept()
+            return
+            
+        # If editing, show save changes dialog like other windows
+        from src.accessibility.style_helpers import build_accessible_message_box_style
+        
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Unsaved Changes")
+        msg.setStyleSheet(
+            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
+        )
+        msg.setText(
+            "You have unsaved changes.\n\n"
+            "Yes = Save and close\n"
+            "No = Continue editing\n"
+            "Cancel = Discard changes and close"
+        )
+        msg.setStandardButtons(
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+        msg.button(QMessageBox.Yes).setText("&Yes")
+        msg.button(QMessageBox.No).setText("&No")
+        msg.button(QMessageBox.Cancel).setText("&Cancel")
+        
+        reply = msg.exec()
+        
+        if reply == QMessageBox.Yes:
+            # Save and close
+            if self.on_save():
+                self.accept()
+            return
+        elif reply == QMessageBox.No:
+            # Continue editing
+            return
+        else:  # Cancel - discard changes and close
+            preserve_id = self._selected_item_id()
+            if preserve_id is None:
+                preserve_id = self.current_item_id
+            self.load_items(preserve_id=preserve_id, populate_editor=False)
+            self._set_collection_editor_locked(True)
+            self.focus_list()
+            self.set_status("Changes discarded.", announce=True)
+            self.accept()
 
     def find_first_match(self, text: str) -> bool:
         search_text = self._normalize_find_value(text)
@@ -1045,8 +1147,9 @@ class NameListWindow(QDialog):
         if row_count > 0:
             row = self.table.currentRow()
             if row < 0 or row >= row_count:
-                row = 0
+                row = 0  # Always focus first row if no valid current row
             self.table.setCurrentCell(row, self.COL_NAME)
+            self.table.selectRow(row)  # Ensure the row is selected
             name_item = self.table.item(row, self.COL_NAME)
             if name_item:
                 self._set_edit_hint_status(name_item.text())

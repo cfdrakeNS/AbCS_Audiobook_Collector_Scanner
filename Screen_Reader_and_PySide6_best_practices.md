@@ -227,6 +227,35 @@ def setup_shortcuts(self):
 
 ---
 
+## 9. Table accessibility - suppress row numbers
+
+### The problem
+JAWS announces "Row 1, Column 1, Value" which is noise when the actual content is meaningful. Row numbers provide no functional value in most data tables.
+
+### The solution
+```python
+# Hide row numbers
+table.verticalHeader().setVisible(False)
+table.setVerticalHeaderLabels([""] * table.rowCount())
+
+# Add meaningful accessible text
+item.setData(Qt.AccessibleTextRole, "42 books")  # Instead of just "42"
+```
+
+### Reference implementations
+- `src/ui/reading_history_window.py` - Statistics tables with meaningful value descriptions
+- `src/ui/backup_restore_window.py` - Backup file list in `refresh_backup_list()`
+- `src/ui/name_list_window.py` - Author/series lists with empty header labels
+- `src/ui/main_window.py` - Book list table with hidden vertical headers
+
+### Implementation notes
+- Apply `setVerticalHeaderLabels()` after populating table data
+- Use `Qt.AccessibleTextRole` for meaningful descriptions instead of raw values
+- Test with JAWS to ensure row numbers are not announced
+- Pattern applies to all data tables where row numbers provide no functional value
+
+---
+
 If you want, tell me:
 
 * Which widgets you're using (`QTextEdit`, `QLineEdit`, `QLabel`, etc.)

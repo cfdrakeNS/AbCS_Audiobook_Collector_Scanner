@@ -32,7 +32,7 @@ from src.accessibility.accessible_events import announce_status_message, announc
 
 class BookDetailsWindow(QDialog):
     # List of allowed Alt+key shortcuts for Book Details
-    ALLOWED_ALT_KEYS = {'N', 'D', 'S', 'L', 'W', 'T', 'A', 'P', 'Y', 'M', 'R', 'E', 'I', 'G', 'C', 'F', 'B', 'Z', 'H', '/', 'F1'}
+    ALLOWED_ALT_KEYS = {'N', 'D', 'S', 'W', 'T', 'A', 'P', 'Y', 'M', 'R', 'E', 'I', 'G', 'C', 'F', 'B', 'Z', 'H', '/', 'F1'}
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -55,19 +55,47 @@ class BookDetailsWindow(QDialog):
 
     def on_cancel_edit(self):
         """
-        Handle Cancel (Alt+L) action: revert changes and close dialog if new, or revert edits if editing.
+        Handle Cancel (Escape) action: show save dialog if dirty, then close.
         """
-        if self.is_new:
-            # For new book, just close the dialog
-            self._clear_dirty()
-            self.set_status("New book entry cancelled.", announce=True)
-            announce_dialog_closed(self)
-            self.reject()  # Close dialog
+        if self._dirty:
+            # Show save changes dialog like preferences
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Unsaved Changes")
+            msg.setStyleSheet(
+                build_accessible_message_box_style(
+                    self.scaler.get_scaled_size(20))
+            )
+            msg.setText(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n"
+                "Cancel = Revert and close"
+            )
+            msg.setStandardButtons(
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            msg.button(QMessageBox.Yes).setText("&Yes")
+            msg.button(QMessageBox.No).setText("&No")
+            msg.button(QMessageBox.Cancel).setText("&Cancel")
+            
+            reply = msg.exec()
+            
+            if reply == QMessageBox.Yes:
+                # Save and close
+                self.on_save()
+                announce_dialog_closed(self)
+                self.reject()
+            elif reply == QMessageBox.No:
+                # Continue editing
+                return
+            else:  # Cancel - revert and close
+                self._revert_changes()
+                self.set_status("Changes discarded.", announce=True)
+                announce_dialog_closed(self)
+                self.reject()
         else:
-            # For existing book, revert changes but keep dialog open
-            self._revert_changes()
-            self.set_status("Edits cancelled. Reverted to saved data.", announce=True)
-            # Do not close dialog, just reset fields
+            # No changes, just close
+            announce_dialog_closed(self)
+            self.reject()
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -216,6 +244,10 @@ class BookDetailsWindow(QDialog):
             widget.installEventFilter(self)
         for widget in self.findChildren(QSpinBox):
             widget.installEventFilter(self)
+        
+        # Filter QPushButton for Enter key handling when focused
+        for widget in self.findChildren(QPushButton):
+            widget.installEventFilter(self)
 
     def eventFilter(self, source, event):
         """
@@ -227,6 +259,13 @@ class BookDetailsWindow(QDialog):
         if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
+            
+            # Handle Enter key on focused buttons
+            if key == Qt.Key_Return or key == Qt.Key_Enter:
+                if isinstance(source, QPushButton) and source.hasFocus():
+                    source.click()
+                    return True
+            
             # Block unused Alt+letter keys everywhere
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_KEYS):
                 QApplication.beep()
@@ -268,7 +307,7 @@ class BookDetailsWindow(QDialog):
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
                 self.set_status(
-                    f"{field_name} changed. Press Alt+S Save or Alt+L Cancel",
+                    f"{field_name} changed. Press Alt+S Save or Escape Cancel",
                     announce=True
                 )
                 self._pending_dirty_widgets.discard(dirty_widget)
@@ -638,12 +677,12 @@ class BookDetailsWindow(QDialog):
         self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
         self.new_button.setAccessibleDescription(
-            "Clear form for new book entry - Alt+N or Ctrl+Enter")
+            "Clear form for new book entry - Alt+N")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
         # self.new_button.setShortcut(QKeySequence("Alt+N"))  # Commented out for accessibility
         self.new_button.clicked.connect(self.on_new)
         self.new_button.setDefault(False)
-        self.new_button.setAutoDefault(False)
+        self.new_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.new_button)
 
         # Save button (Alt+S)
@@ -654,7 +693,7 @@ class BookDetailsWindow(QDialog):
         # self.save_button.setShortcut(QKeySequence("Alt+S"))  # Commented out for accessibility
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setDefault(False)
-        self.save_button.setAutoDefault(False)
+        self.save_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.save_button)
 
         # Delete button (Alt+D)
@@ -668,29 +707,17 @@ class BookDetailsWindow(QDialog):
         # Hide delete for new books (nothing to delete yet)
         self.delete_button.setVisible(not self.is_new)
         self.delete_button.setDefault(False)
-        self.delete_button.setAutoDefault(False)
+        self.delete_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.delete_button)
 
-        # Cancel button (Alt+L) - visible only when save/new is active
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setAccessibleName("Cancel")
-        self.cancel_button.setAccessibleDescription("Cancel editing - Alt+L")
-        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
-        # self.cancel_button.setShortcut(QKeySequence("Alt+L"))  # Commented out for accessibility
-        self.cancel_button.clicked.connect(self.on_cancel_edit)
-        self.cancel_button.setVisible(False)
-        self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(False)
-        button_layout.addWidget(self.cancel_button)
-
         # Get web info button (Alt+W)
-        self.get_web_details_button = QPushButton("Get web info")
+        self.get_web_details_button = QPushButton("Fetch Web Info")
         self.get_web_details_button.setAccessibleName("Get web info")
         self.get_web_details_button.setAccessibleDescription("Fetch book info from web - Alt+W")
         self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
         self.get_web_details_button.clicked.connect(self.on_get_web_details)
         self.get_web_details_button.setDefault(False)
-        self.get_web_details_button.setAutoDefault(False)
+        self.get_web_details_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.get_web_details_button)
 
         button_layout.addStretch()
@@ -700,6 +727,28 @@ class BookDetailsWindow(QDialog):
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         layout.addWidget(self.status_bar)
+
+        # Set explicit tab order for predictable JAWS navigation
+        self.setTabOrder(self.title_edit, self.author_combo)
+        self.setTabOrder(self.author_combo, self.comments_edit)
+        self.setTabOrder(self.comments_edit, self.year_spin)
+        self.setTabOrder(self.year_spin, self.time_edit)
+        self.setTabOrder(self.time_edit, self.reader_edit)
+        self.setTabOrder(self.reader_edit, self.read_date)
+        self.setTabOrder(self.read_date, self.series_combo)
+        self.setTabOrder(self.series_combo, self.genre_combo)
+        self.setTabOrder(self.genre_combo, self.collection_combo)
+        self.setTabOrder(self.collection_combo, self.files_edit)
+        self.setTabOrder(self.files_edit, self.bitrate_edit)
+        self.setTabOrder(self.bitrate_edit, self.size_edit)
+        self.setTabOrder(self.size_edit, self.format_combo)
+        self.setTabOrder(self.format_combo, self.source_edit)
+        self.setTabOrder(self.source_edit, self.path_edit)
+        self.setTabOrder(self.path_edit, self.added_edit)
+        self.setTabOrder(self.added_edit, self.new_button)
+        self.setTabOrder(self.new_button, self.save_button)
+        self.setTabOrder(self.save_button, self.delete_button)
+        self.setTabOrder(self.delete_button, self.get_web_details_button)
 
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
@@ -741,9 +790,10 @@ class BookDetailsWindow(QDialog):
         self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
         self.save_shortcut.activated.connect(
             lambda: self.on_save() if self.save_button.isVisible() else None)
-        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.cancel_shortcut.activated.connect(
-            lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
+        
+        # Escape key for cancel functionality
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.activated.connect(self.on_cancel_edit)
         
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
@@ -760,40 +810,11 @@ class BookDetailsWindow(QDialog):
 
     def reject(self):
         """
-        Override reject to check for unsaved changes before closing.
-        Yes = Save and stay on book, No = Continue editing, Cancel = Revert and close.
+        Override reject to close dialog directly.
+        Escape key handles save changes dialog.
         """
-        if self._dirty:
-            msg = QMessageBox(self)
-            msg.setWindowTitle("Unsaved Changes")
-            msg.setStyleSheet(
-                build_accessible_message_box_style(
-                    self.scaler.get_scaled_size(20))
-            )
-            msg.setText(
-                "You have unsaved changes.\n\n"
-                "Yes = Save and stay\n"
-                "No = Continue editing\n"
-                "Cancel = Revert and close"
-            )
-            msg.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-            msg.button(QMessageBox.Yes).setText("&Yes")
-            msg.button(QMessageBox.No).setText("&No")
-            msg.button(QMessageBox.Cancel).setText("&Cancel")
-            reply = msg.exec()
-
-            if reply == QMessageBox.Yes:
-                self.on_save()  # Save and stay (on_save doesn't close anymore)
-            elif reply == QMessageBox.No:
-                return  # Continue editing, keep dialog open
-            else:  # Cancel - revert all fields and close
-                self._revert_changes()
-                announce_dialog_closed(self)
-                super().reject()
-        else:
-            announce_dialog_closed(self)
-            super().reject()  # No changes, just close
+        announce_dialog_closed(self)
+        super().reject()
 
     def _revert_changes(self):
         """
@@ -914,27 +935,21 @@ class BookDetailsWindow(QDialog):
         """Show default status when form is not in edit/save mode."""
         if self.is_new:
             self.set_status(
-                "New book entry. Press Alt+S Save, Alt+L Cancel, Alt+W Get web info", announce=announce)
+                "New book entry. Press Alt+S Save, Escape Cancel, Alt+W Fetch web info", announce=announce)
         else:
             self.set_status(
-                "Alt+N New, Alt+D Delete, Alt+W Get web info, Escape Close", announce=announce)
+                "Alt+N New, Alt+D Delete, Alt+W Fetch web info, Escape Close", announce=announce)
 
     def _update_save_button_visibility(self):
         """
         bd#6: Show save button only when there are unsaved changes.
         For new books, always show save button.
         """
-        save_active = self.is_new or self._dirty
-        self.save_button.setVisible(save_active)
-
-        # bd#16: Show/hide buttons based on save state
-        # For new books: show New, hide Delete, show Save, hide Cancel, hide Update Metadata
-        # For existing books: show New/Delete when not saving, show Save/Cancel when saving
-        self.new_button.setVisible(self.is_new or (not self.is_new and not save_active))
+        save_active = self._dirty or self.is_new
+        self.new_button.setVisible(not save_active)
         self.delete_button.setVisible(
             (not self.is_new) and (not save_active))
         self.save_button.setVisible(save_active)
-        self.cancel_button.setVisible(save_active)
         # Update Metadata: show for existing books, hide for new books
         self.get_web_details_button.setVisible(not self.is_new)
 
@@ -979,14 +994,13 @@ class BookDetailsWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
-            ("Alt+W", "Get web info"),
+            ("Alt+W", "Fetch web info"),
             ("Alt+N", "New book"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
-            ("Alt+L", "Cancel"),
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
-            ("Escape", "Close window"),
+            ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
@@ -1358,18 +1372,20 @@ class BookDetailsWindow(QDialog):
             )
 
     def on_delete(self):
-        """Delete book, with confirmation dialog."""
+        """Delete book, with confirmation dialog using standardized message box."""
         if not self.book or not self.book.book_id:
             return
-        # Confirm delete
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Confirm Delete")
-        msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
-        msg.setText(f"Are you sure you want to delete this book?\n\nTitle: {self.book.title}")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg.button(QMessageBox.Yes).setText("&Yes - Delete")
-        msg.button(QMessageBox.No).setText("&No - Cancel")
-        reply = msg.exec()
+        
+        # Confirm delete using standardized message box
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Confirm Delete",
+            text=f"Are you sure you want to delete this book?\n\nTitle: {self.book.title}",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No
+        )
         if reply != QMessageBox.Yes:
             self.set_status("Delete canceled.")
             return
@@ -1455,7 +1471,7 @@ class BookDetailsWindow(QDialog):
 
         # Focus title field
         self.title_edit.setFocus()
-        self.set_status("New book entry. Press Alt+S Save or Alt+L Cancel")
+        self.set_status("New book entry. Press Alt+S Save or Escape Cancel")
 
     def _apply_new_defaults(self):
         """Apply defaults for new entries without auto-selecting choices."""
@@ -1545,7 +1561,7 @@ class BookDetailsWindow(QDialog):
         if self._dirty:
             QApplication.beep()
             self.set_status(
-                "Unsaved changes. Press Alt+S Save or Alt+L Cancel")
+                "Unsaved changes. Press Alt+S Save or Escape Cancel")
             return
 
         if not self.books_list or self.current_index <= 0:
@@ -1571,7 +1587,7 @@ class BookDetailsWindow(QDialog):
         if self._dirty:
             QApplication.beep()
             self.set_status(
-                "Unsaved changes. Press Alt+S Save or Alt+L Cancel")
+                "Unsaved changes. Press Alt+S Save or Escape Cancel")
             return
 
         if not self.books_list or self.current_index >= len(self.books_list) - 1:

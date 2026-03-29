@@ -69,33 +69,6 @@
 
 ---
 
-## Planned Feature: Multi-Get Web Info (Batch Web Metadata Import)
-
-### Problem
-- The current use of checkboxes and checkmarks to indicate differences between DB and web data is not very usable for screen reader users (JAWS/NVDA).
-- Screen readers do not reliably announce visual indicators or checkbox states in a way that makes the differences clear.
-
-### Proposed Solution
-- Replace the checkbox/checkmark UI with a more accessible, text-based summary of changes.
-- For each field (title, author, year, genre, series, plot):
-	- If the web data is different from the DB, show a line like:
-		- "Current Title: [db value] → Web Title: [web value]" with a checkbox to accept the change
-		- Same for Author, Year, Genre, Series
-	- If the DB field is empty (year, genre, series), do not show the current value—just add the web data by default (no checkbox needed)
-- Present the changes as a vertical list (one per line) or as a simple table (field, current value, web value, accept checkbox)
-- Use accessible labels for all checkboxes (e.g., "Accept web title", "Accept web author")
-- If no difference, do not show the field (except for plot, which is always shown if present)
-- Add a summary text box at the top: "The following fields differ from the database. Check the box to accept the web value."
-- All controls must have Alt+letter shortcuts and be fully keyboard accessible.
-- Status bar must announce the number of changes and which field is focused.
-
-### Accessibility Notes
-- Avoid visual-only cues (color, checkmarks) for indicating changes.
-- Use clear, concise text and explicit labels for all controls.
-- Ensure tab order and Alt+letter shortcuts are logical and documented in F1 help.
-- Announce changes and focus in the status bar for screen readers.
-
----
 
 ## Planned Feature: Multi-Get Web Info (Batch Web Metadata Import)
 
@@ -210,3 +183,34 @@
 - Refactor WebMetadataWindow to match accessible_window_skeleton.py exactly (pending).
 - Review all other windows for skeleton compliance.
 - Document lessons learned in Screen_Reader_and_PySide6_best_practices.md.
+
+---
+
+## March 29, 2026 — Data Integrity Issues Discovered
+
+### Author/Genre/Series Case Duplication Problem
+**Issue:** Database contains duplicate entries with different casing (e.g., "michael r. stern" and "Michael R. Stern") due to import settings.
+
+**Root Cause:** 
+- "Apply proper case" setting in Preferences → Import Options defaults to `False`
+- Import process preserves original file/folder casing
+- Database has UNIQUE constraint on names (case-sensitive)
+- This creates separate entries for same entity with different cases
+
+**Impact:**
+- User confusion when selecting authors/genres/series
+- Duplicate cleanup required in name_list_window
+- Inconsistent data quality across the database
+
+**Solutions Needed:**
+1. **Immediate:** Enable "Apply proper case" in preferences for future imports
+2. **Code Fix:** Change default value from `False` to `True` in preferences_window.py line 1266
+3. **Data Cleanup:** Create utility to merge existing case-duplicate entries
+4. **Import Enhancement:** Case-insensitive duplicate detection during import
+
+**Files to Review:**
+- `src/ui/preferences_window.py` (line 1266 - default value)
+- `src/ui/import_window.py` (import handling)
+- `src/ui/name_list_window.py` (manual cleanup capability added)
+
+**Priority:** Medium - Data quality issue affecting user experience

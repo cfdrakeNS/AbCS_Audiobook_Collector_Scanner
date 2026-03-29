@@ -31,7 +31,7 @@ class ImportProgressWindow(QDialog):
     """Modeless progress window for long-running import scans."""
 
     ALLOWED_ALT_LETTERS = {
-        'I', 'L'
+        'I'
     }
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
@@ -117,13 +117,6 @@ class ImportProgressWindow(QDialog):
         footer_layout = QHBoxLayout()
         footer_layout.addStretch(1)
 
-        self.cancel_button = QPushButton("Cance&l")
-        self.cancel_button.setAccessibleName("Cancel")
-        self.cancel_button.setAccessibleDescription(
-            "Cancel running scan - Alt+L")
-        self.cancel_button.clicked.connect(self.on_cancel_requested)
-        footer_layout.addWidget(self.cancel_button)
-
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
@@ -155,9 +148,7 @@ class ImportProgressWindow(QDialog):
     def setup_shortcuts(self):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
         mgr = get_shortcut_manager()
-        callback_map = {
-            'cancel_button': lambda: self.cancel_button.click(),  # Alt+L
-        }
+        callback_map = {}  # No Alt+L shortcuts - cancel button removed
         mgr.register_alt_shortcuts(
             self, ShortcutContext.IMPORT_PROGRESS_WINDOW, callback_map)
 
@@ -179,7 +170,6 @@ class ImportProgressWindow(QDialog):
         self.installEventFilter(self)
         for widget in self.findChildren(QLineEdit):
             widget.installEventFilter(self)
-        self.cancel_button.installEventFilter(self)
         self.status_bar.installEventFilter(self)
 
     def eventFilter(self, source, event):
@@ -301,7 +291,6 @@ class ImportProgressWindow(QDialog):
         """Prepare progress display for add phase."""
         safe_total = max(0, int(total_books))
         self._scan_active = True
-        self.cancel_button.setVisible(True)
         self.scan_progress.setValue(0)
         if safe_total > 0:
             self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
@@ -359,32 +348,26 @@ class ImportProgressWindow(QDialog):
     ):
         return
 
-    def on_cancel_requested(self):
-        if not self._scan_active or self._cancel_requested:
-            return
-
-        reply = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title="Cancel Scan",
-            text=(
-                "Cancel the current scan?\n\n"
-                "Yes: stop scanning and keep partial results.\n"
-                "No: continue scanning."
-            ),
-            buttons=QMessageBox.Yes | QMessageBox.No,
-            default_button=QMessageBox.No,
-        )
-        if reply == QMessageBox.Yes:
-            self._cancel_requested = True
-            self.set_status("Canceling scan...")
-        else:
-            self.set_status("Continuing scan")
-
     def on_close_requested(self):
-        if self._scan_active:
-            self.on_cancel_requested()
+        if self._scan_active and not self._cancel_requested:
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Cancel Scan",
+                text=(
+                    "Cancel the current scan?\n\n"
+                    "Yes: stop scanning and keep partial results.\n"
+                    "No: continue scanning."
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self._cancel_requested = True
+                self.set_status("Canceling scan...")
+            else:
+                self.set_status("Continuing scan")
             return
         self.accept()
 
@@ -410,19 +393,18 @@ class ImportProgressWindow(QDialog):
             summary_text=summary_text,
         )
 
-    def mark_add_phase_complete(self, *, books_added: int, elapsed_text: str):
+    def mark_add_complete(self, books_added: int, elapsed_text: str):
         """Mark add phase as complete."""
         self._scan_active = False
         self.scan_progress.setValue(100)
         self.scan_progress.setFormat(
             f"Add complete - {books_added} book(s) added ({elapsed_text})")
-        self.cancel_button.setVisible(False)
         self.setFocusPolicy(Qt.StrongFocus)
         self.raise_()
         self.activateWindow()
         self.setFocus(Qt.TabFocusReason)
         self.set_status(
-            f"Add complete. {books_added} book(s) added. Esc to close.", announce=True)
+            f"Add complete. {books_added} book(s) added. Esc to close", announce=True)
 
     def mark_complete(
         self,
@@ -450,7 +432,6 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setValue(100)
             self.scan_progress.setFormat(f"Scan complete ({elapsed_text})")
 
-        self.cancel_button.setVisible(False)
         self.setFocusPolicy(Qt.StrongFocus)
         self.raise_()
         self.activateWindow()
@@ -481,8 +462,7 @@ class ImportProgressWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+L", "Cancel current scan"),
-            ("Escape", "Close window "),
+            ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
@@ -532,8 +512,8 @@ class ImportProgressWindow(QDialog):
         dlg.exec()
 
     def closeEvent(self, event):
-        if self._scan_active:
-            self.on_cancel_requested()
+        if self._scan_active and not self._cancel_requested:
+            self.on_close_requested()
             event.ignore()
             return
         super().closeEvent(event)

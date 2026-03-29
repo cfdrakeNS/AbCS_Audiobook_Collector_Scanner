@@ -5,8 +5,6 @@ Form for viewing and editing scanned audiobook details before import.
 
 import re
 import os
-import shutil
-import subprocess
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -51,7 +49,6 @@ class ImportDetailWindow(QDialog):
         'G',  # Genre
         'H',  # Path (Pat&h)
         'I',  # Series (Ser&ies)
-        'L',  # Launch Tag
         'M',  # Length (Length (&M))
         'O',  # Comments (C&omments)
         'R',  # Reader
@@ -246,9 +243,52 @@ class ImportDetailWindow(QDialog):
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
-                title="Status",
+                title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
             )
+
+    def on_cancel_edit(self):
+        """
+        Handle Cancel (Escape) action: show save dialog if dirty, then close.
+        """
+        if self._dirty:
+            # Show save changes dialog like book_details
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Unsaved Changes")
+            msg.setStyleSheet(
+                build_accessible_message_box_style(
+                    self.scaler.get_scaled_size(20))
+            )
+            msg.setText(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n"
+                "Cancel = Discard and close"
+            )
+            msg.setStandardButtons(
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            msg.button(QMessageBox.Yes).setText("&Yes")
+            msg.button(QMessageBox.No).setText("&No")
+            msg.button(QMessageBox.Cancel).setText("&Cancel")
+            reply = msg.exec()
+
+            if reply == QMessageBox.Yes:
+                self.accept()
+                return
+
+            if reply == QMessageBox.No:
+                self.set_status("Continue editing")
+                return
+
+            if reply == QMessageBox.Cancel:
+                self._clear_dirty()
+                self.reject()
+                return
+
+            self.set_status("Continue editing")
+            return
+
+        self.reject()
 
     def install_focus_filters(self):
         """
@@ -355,10 +395,10 @@ class ImportDetailWindow(QDialog):
             self.files_edit: "Files",
             self.bitrate_edit: "Bitrate",
             self.size_edit: "Size",
-            self.format_combo: "Format",
+            self.format_edit: "Format",
             self.source_edit: "Source",
             self.path_edit: "Path",
-            self.added_edit: "Added",
+            self.errors_edit: "Errors",
         }
         return mapping.get(widget, "Field")
 
@@ -503,105 +543,13 @@ class ImportDetailWindow(QDialog):
 
         self._clear_dirty()
 
-    def _resolve_tag_target_path(self) -> str:
-        """Return best file/folder path to open in external tag editor."""
-        files = self.book_data.get("files")
-        if isinstance(files, list):
-            for file_path in files:
-                if isinstance(file_path, str) and file_path.strip() and os.path.exists(file_path):
-                    return file_path
-
-        folder_path = str(self.book_data.get("folder") or "").strip()
-        if folder_path and os.path.exists(folder_path):
-            return folder_path
-
-        path_from_form = self.path_edit.text().strip() if hasattr(self, "path_edit") else ""
-        if path_from_form and os.path.exists(path_from_form):
-            return path_from_form
-
-        return ""
-
-    def _discover_tag_editor(self) -> tuple[str, str] | None:
-        """Find supported external tag editor executable and return display name + path."""
-        candidates = []
-
-        for command_name in [
-            "Mp3tag.exe",
-            "Mp3tag",
-            "TagScanner.exe",
-            "TagScanner",
-            "Tagscan.exe",
-            "Tagscan",
-        ]:
-            command_path = shutil.which(command_name)
-            if command_path:
-                display_name = "Mp3tag" if "mp3tag" in command_name.lower() else "TagScanner"
-                candidates.append((display_name, command_path))
-
-        program_files_roots = [
-            os.environ.get("ProgramFiles", ""),
-            os.environ.get("ProgramFiles(x86)", ""),
-            os.environ.get("LOCALAPPDATA", ""),
-        ]
-        known_relative_paths = [
-            ("Mp3tag", os.path.join("Mp3tag", "Mp3tag.exe")),
-            ("TagScanner", os.path.join("TagScanner", "Tagscan.exe")),
-            ("TagScanner", os.path.join("TagScanner", "TagScanner.exe")),
-        ]
-
-        for root in program_files_roots:
-            if not root:
-                continue
-            for display_name, relative_path in known_relative_paths:
-                full_path = os.path.join(root, relative_path)
-                if os.path.isfile(full_path):
-                    candidates.append((display_name, full_path))
-
-        seen = set()
-        for display_name, executable_path in candidates:
-            normalized = os.path.normcase(os.path.abspath(executable_path))
-            if normalized in seen:
-                continue
-            seen.add(normalized)
-            return display_name, executable_path
-
-        return None
-
-    def on_launch_tag_editor(self):
-        """Launch Mp3tag/TagScanner for current item folder/file when available."""
-        target_path = self._resolve_tag_target_path()
-        if not target_path:
-            self.set_status(
-                "Edit Tag unavailable: no valid file or folder path", announce=True)
+    def on_prev(self):
+        """Save edits and request previous import item."""
+        if self._navigate_without_close(self.current_index - 1):
             return
-
-        editor = self._discover_tag_editor()
-        if not editor:
-            self.set_status(
-                "Edit Tag unavailable: install Mp3tag or TagScanner",
-                announce=True,
-            )
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Edit Tag",
-                text=(
-                    "No supported tag editor was detected.\n\n"
-                    "Install Mp3tag or TagScanner, then use Launch Tag again."
-                ),
-            )
-            return
-
-        editor_name, editor_path = editor
-        try:
-            subprocess.Popen([editor_path, target_path])
-        except Exception as exc:
-            self.set_status(f"Edit Tag failed: {str(exc)}", announce=True)
-            return
-
-        self.set_status(
-            f"Opened {editor_name} for current import item", announce=True)
+        QApplication.beep()
+        self._collect_form_data()
+        self.done(self.RESULT_PREV)
 
     def _check_combo_change(self, field_name: str, combo: QComboBox,
                             original_value: str, query_obj):
@@ -1013,7 +961,7 @@ class ImportDetailWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         layout.addWidget(self.status_bar)
 
-        # Buttons
+        # Row 5: Action buttons
         button_layout = QHBoxLayout()
 
         self.save_return_button = QPushButton("&Save")
@@ -1027,16 +975,6 @@ class ImportDetailWindow(QDialog):
         self.save_return_button.setVisible(False)
         button_layout.addWidget(self.save_return_button)
 
-        self.launch_tag_button = QPushButton("&Launch Tag")
-        self.launch_tag_button.setAccessibleName("Launch Tag")
-        self.launch_tag_button.setAccessibleDescription(
-            "Open current item in external tag editor - Alt+L")
-        self.launch_tag_button.setFocusPolicy(Qt.StrongFocus)
-        self.launch_tag_button.clicked.connect(self.on_launch_tag_editor)
-        self.launch_tag_button.setEnabled(False)
-        self.launch_tag_button.setVisible(False)
-        button_layout.addWidget(self.launch_tag_button)
-
         self.skip_button = QPushButton("&Discard")
         self.skip_button.setAccessibleName("Discard")
         self.skip_button.setAccessibleDescription(
@@ -1049,6 +987,25 @@ class ImportDetailWindow(QDialog):
         button_layout.addStretch()
 
         layout.addLayout(button_layout)
+
+        # Set explicit tab order for predictable JAWS navigation
+        self.setTabOrder(self.title_edit, self.author_combo)
+        self.setTabOrder(self.author_combo, self.comments_edit)
+        self.setTabOrder(self.comments_edit, self.year_spin)
+        self.setTabOrder(self.year_spin, self.time_edit)
+        self.setTabOrder(self.time_edit, self.reader_edit)
+        self.setTabOrder(self.reader_edit, self.series_combo)
+        self.setTabOrder(self.series_combo, self.genre_combo)
+        self.setTabOrder(self.genre_combo, self.collection_combo)
+        self.setTabOrder(self.collection_combo, self.files_edit)
+        self.setTabOrder(self.files_edit, self.bitrate_edit)
+        self.setTabOrder(self.bitrate_edit, self.size_edit)
+        self.setTabOrder(self.size_edit, self.format_edit)
+        self.setTabOrder(self.format_edit, self.source_edit)
+        self.setTabOrder(self.source_edit, self.errors_edit)
+        self.setTabOrder(self.errors_edit, self.path_edit)
+        self.setTabOrder(self.path_edit, self.save_return_button)
+        self.setTabOrder(self.save_return_button, self.skip_button)
 
         self.setup_shortcuts()
 
@@ -1073,7 +1030,6 @@ class ImportDetailWindow(QDialog):
             'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
             'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,  # Alt+S
             'skip_button': lambda: self.skip_button.click(),       # Alt+D
-            'launch_tag_button': lambda: self.launch_tag_button.click(),  # Alt+L
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.BOOK_DETAILS, callback_map)
@@ -1085,7 +1041,7 @@ class ImportDetailWindow(QDialog):
 
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.close_shortcut.activated.connect(self.reject)
+        self.close_shortcut.activated.connect(self.on_cancel_edit)
 
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
