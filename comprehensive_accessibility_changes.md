@@ -430,7 +430,7 @@ Reviewed all 14 UI windows against 3 accessibility standards:
 
 ### Files Requiring Updates
 
-**REFERENCE IMPLEMENTATION:** `src/ui/accessible_window_skeleton.py` - Complete accessibility pattern reference with ALL standards implemented. Copy this file and add your UI elements - accessibility works out of box.
+**REFERENCE IMPLEMENTATION:** `accessible_sample/` folder - Complete standalone accessible sample application with ALL standards implemented. Copy this folder and add your UI elements - accessibility works out of box.
 
 **Critical Fixes Needed:**
 - `src/ui/main_window.py` - Remove global Enter shortcuts (lines 201, 203)
