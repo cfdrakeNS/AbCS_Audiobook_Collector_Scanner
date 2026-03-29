@@ -269,7 +269,114 @@ Rule of thumb:
 
 ---
 
-## 14) Suggested extraction for future apps
+## 15) Table Row Number Suppression Pattern
+
+### Why this is unique to AbCS
+- Row numbers are noise for data tables where content is meaningful
+- JAWS announces "Row 1, Row 2" which interferes with data comprehension
+- We optimize for clean screen reader experience by hiding irrelevant structural information
+
+### Standard behavior
+1. Hide vertical headers: `table.verticalHeader().setVisible(False)`
+2. Set empty header labels: `table.setVerticalHeaderLabels([])`
+3. Apply after table population: `setVerticalHeaderLabels([""] * rowCount)`
+4. Add meaningful accessible text to table items using `Qt.AccessibleTextRole`
+
+### Reference implementations
+- `src/ui/reading_history_window.py` → General statistics table with meaningful value descriptions
+- `src/ui/backup_restore_window.py` → Backup list table in `refresh_backup_list()`
+- `src/ui/name_list_window.py` → Name/author lists with empty header labels
+- `src/ui/main_window.py` → Book list table with hidden vertical headers
+
+### Implementation notes
+- Apply `setVerticalHeaderLabels()` after populating table data
+- Use `setData(Qt.AccessibleTextRole, "meaningful text")` for value items
+- Test with JAWS to ensure row numbers are not announced
+- Pattern applies to all data tables where row numbers provide no functional value
+
+---
+
+## 16) Screen Reader-Optimized Button Enablement Pattern
+
+### Why this is unique to AbCS
+- Screen reader users benefit from consistent button behavior and clear feedback
+- Disabled buttons can be confusing when the reason isn't obvious
+- We enable buttons but provide meaningful error messages with context
+
+### Standard behavior
+1. **Keep buttons enabled** for better accessibility and discoverability
+2. **Provide clear error messages** when buttons are clicked without valid prerequisites
+3. **Use status announcements** to inform screen reader users what's happening
+4. **Maintain consistent focus management** after error dialogs
+
+### Reference implementations
+- `src/ui/backup_restore_window.py` → Delete button always enabled, shows "No backup selected" message
+- `src/ui/import_window.py` → Browse and action buttons with validation feedback
+- `src/ui/book_details_window.py` → Save button with field validation messages
+
+### Implementation notes
+- **Delete buttons**: Always enabled, show helpful message when no selection exists
+- **Action buttons**: Enable when prerequisites exist, but provide clear error feedback
+- **Error messages**: Include specific guidance on what the user needs to do
+- **Focus restoration**: Return focus to the relevant field after error dialogs
+- **Status announcements**: Use centralized announce_status_message for consistency
+
+### Example error message patterns
+```python
+# Delete button without selection
+"Delete canceled: no backup row selected in Backup List"
+
+# Restore button without file  
+"Restore canceled: no backup selected"
+
+# Import without folder
+"Scan canceled: no folder selected for import"
+```
+
+---
+
+## 18) Global Enter Shortcut Anti-Pattern
+
+### Why this is unique to AbCS
+- Global Return/Enter shortcuts interfere with button accessibility
+- Screen reader users rely on Enter to activate focused buttons
+- Qt's default button behavior must be preserved for accessibility
+
+### Standard behavior
+1. **NEVER use global Return/Enter shortcuts** in windows with buttons
+2. **Handle Enter in keyPressEvent** instead for specific widgets (like tables)
+3. **Preserve Qt's default button behavior** for Enter key activation
+4. **Use setAutoDefault carefully** - it can block Enter key on buttons
+
+### Reference implementations
+- `src/ui/import_window.py` → keyPressEvent handles Enter for table, preserves button behavior
+- `src/ui/book_details.py` → No global Enter shortcuts, buttons work with Enter
+- `src/ui/main_window.py` → No global Enter shortcuts, default Qt behavior
+
+### Implementation notes
+- **Bad pattern**: `QShortcut(QKeySequence("Return"), self)` - blocks all Enter keys
+- **Good pattern**: Handle Enter in `keyPressEvent` for specific widgets only
+- **Button setup**: Avoid `setAutoDefault(False)` unless absolutely necessary
+- **Testing**: Verify Enter works on all focused buttons after adding shortcuts
+
+### Example correct implementation
+```python
+def keyPressEvent(self, event):
+    if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        focused_widget = self.focusWidget()
+        if isinstance(focused_widget, QPushButton):
+            # Let Qt handle Enter on buttons (default behavior)
+            return super().keyPressEvent(event)
+        elif self.table.hasFocus():
+            # Handle Enter for specific widget
+            self.on_table_action()
+            return
+    super().keyPressEvent(event)
+```
+
+---
+
+## 19) Suggested extraction for future apps
 
 If this pattern set is reused in a new app, extract into shared modules:
 - `accessibility/status_contract.py` (set/read/announce helpers)

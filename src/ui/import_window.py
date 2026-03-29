@@ -33,11 +33,30 @@ from src.ui.import_progress_window import ImportProgressWindow
 
 class ImportWindow(QDialog):
     def keyPressEvent(self, event):
+        """Handle keyboard shortcuts and Enter key properly for buttons."""
         # Accessibility: Alt+W always triggers file dialog
         if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
             self.on_browse()
             event.accept()
             return
+        # Handle Escape key
+        if event.key() == Qt.Key_Escape:
+            self.on_cancel()
+            event.accept()
+            return
+        # Handle Enter key on focused widgets
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, QPushButton):
+                # Click the focused button
+                focused_widget.click()
+                event.accept()
+                return
+            # Enter/Return opens import detail if table has focus
+            elif self.table.hasFocus():
+                self.on_open_detail_selected()
+                event.accept()
+                return
         super().keyPressEvent(event)
 
     def _confirm_cancel_scan(self):
@@ -53,7 +72,6 @@ class ImportWindow(QDialog):
             'collection_combo': lambda: self.collection_combo.setFocus(),
             'folder_field': lambda: self.folder_edit.setFocus(),
             'error_filter': lambda: self.error_filter_combo.setFocus(),
-            # 'browse_button': self.on_browse,  # Alt+W handled locally for accessibility
             'import_selected_button': lambda: self.import_selected_button.click(),
             'add_valid_button': lambda: self.add_valid_button.click(),
             'import_list_table': lambda: self.table.setFocus(),
@@ -64,11 +82,9 @@ class ImportWindow(QDialog):
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
-        # Enter for detail window
-        self.open_detail_shortcut = QShortcut(QKeySequence("Return"), self)
-        self.open_detail_shortcut.activated.connect(self.on_open_detail_selected)
-        self.open_detail_shortcut_num = QShortcut(QKeySequence("Enter"), self)
-        self.open_detail_shortcut_num.activated.connect(self.on_open_detail_selected)
+        # IMPORTANT: Do NOT add global Return/Enter shortcuts here!
+        # They interfere with button Enter key activation (accessibility issue)
+        # Enter key handling is done in keyPressEvent method instead
         # Alt+/ remains local for status bar read
         self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_bar_shortcut.activated.connect(
@@ -89,17 +105,17 @@ class ImportWindow(QDialog):
         """Handle mapped Alt+letter actions reliably across child widgets."""
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
             key = event.key()
-            # Alt+W: let keyPressEvent handle it for accessibility
-            if key == Qt.Key_W:
-                return False  # Do not block Alt+W
-            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {'W'}):
+            # Alt+W and Alt+B: let keyPressEvent handle it for accessibility
+            if key in (Qt.Key_W, Qt.Key_B):
+                return False  # Do not block Alt+W or Alt+B
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {'W', 'B'}):
                 return True
         return super().eventFilter(source, event)
 
     # Import dialog for scanning folders and importing metadata.
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'I', 'N', 'S', 'V', 'W', 'X'
+        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'V', 'W', 'X'
     }
 
     COL_AUTHOR = 0
@@ -311,12 +327,11 @@ class ImportWindow(QDialog):
         header_layout.addWidget(folder_label)
         header_layout.addWidget(self.folder_edit, 1)
 
-        self.browse_button = QPushButton("Bro&wse")
+        self.browse_button = QPushButton("&Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a folder to scan - Alt+W")
+            "Browse for a folder to scan - Alt+B")
         self.browse_button.setDefault(False)
-        self.browse_button.setAutoDefault(True)
         header_layout.addWidget(self.browse_button)
 
         error_filter_label = QLabel("&Errors Filter:")
@@ -430,16 +445,7 @@ class ImportWindow(QDialog):
         self.export_button.setAutoDefault(True)
         footer_layout.addWidget(self.export_button)
 
-        self.cancel_button = QPushButton("Ca&ncel")
-        self.cancel_button.setAccessibleName("Cancel")
-        self.cancel_button.setAccessibleDescription(
-            "Cancel running scan - Alt+N")
-        self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(True)
-        self.cancel_button.setVisible(False)
-        footer_layout.addWidget(self.cancel_button)
-        self._update_cancel_button_state()
-
+        # Cancel button removed - use Escape key instead
         layout.addLayout(footer_layout)
 
         self.setTabOrder(self.collection_combo, self.folder_edit)
@@ -555,10 +561,10 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+W", "Browse"),
+            ("Alt+B", "Browse"),
             ("Alt+E", "Error filter"),
             ("Ctrl+I", "Import"),
-            ("Alt+B", "import Book list"),
+            ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
             ("Alt+3-5", "Jump to Year..."),
@@ -568,6 +574,7 @@ class ImportWindow(QDialog):
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
+            ("F1", "Show this help"),
         ]
         self.current_formats_text = "None"  # Removed undefined 'formats' variable
 
@@ -758,10 +765,10 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+W", "Browse"),
+            ("Alt+B", "Browse"),
             ("Alt+E", "Error filter"),
             ("Ctrl+I", "Import"),
-            ("Alt+B", "import Book list"),
+            ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
             ("Alt+3-5", "Jump to Year..."),
@@ -771,6 +778,7 @@ class ImportWindow(QDialog):
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
+            ("F1", "Show this help"),
         ]
 
         table.setRowCount(len(shortcuts))
@@ -918,7 +926,7 @@ class ImportWindow(QDialog):
             )
 
     def on_focus_list(self):
-        """Move focus to import list table (Alt+B)."""
+        """Move focus to import list table (Alt+L)."""
         if self.table.rowCount() > 0:
             target_row = self.table.currentRow()
             if target_row < 0 or self.table.isRowHidden(target_row):
@@ -1365,6 +1373,11 @@ class ImportWindow(QDialog):
 
     def on_browse(self):
         """Open folder or file browser based on scenario."""
+        # Check if scan is in progress
+        if self._is_scanning:
+            self.set_status("Browse canceled: scan is in progress")
+            return
+            
         current_path = self.folder_edit.text().strip() or ""
 
         # For single-item scenario, allow selecting a single audio file
@@ -1486,7 +1499,7 @@ class ImportWindow(QDialog):
         )
 
         self.scan_button.setEnabled(False)
-        self.browse_button.setEnabled(False)
+        # Keep browse button enabled for accessibility - show message if clicked during scan
         self.set_status("Scan started")
         scan_start = time.perf_counter()
         elapsed_text = "00:00"
@@ -1551,7 +1564,7 @@ class ImportWindow(QDialog):
             self._cancel_scan_requested = False
             self._update_cancel_button_state()
             self.scan_button.setEnabled(True)
-            self.browse_button.setEnabled(True)
+            # Browse button remains enabled (accessibility pattern)
             if self.progress_window and self.progress_window.cancel_requested:
                 scan_was_canceled = True
 
@@ -2719,25 +2732,6 @@ class ImportWindow(QDialog):
             if not self.table.isRowHidden(row)
         }
         # self.announce_selection()  # Removed table row announcements for screen reader
-
-    def keyPressEvent(self, event):
-        """Override to prevent Enter from closing the dialog."""
-        if event.key() == Qt.Key_Escape:
-            self.on_cancel()
-            event.accept()
-            return
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            event.ignore()
-            return
-        # Enter/Return opens import detail if table has focus
-        if (
-            (event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter)
-            and self.table.hasFocus()
-        ):
-            self.on_open_detail_selected()
-            event.accept()
-            return
-        super().keyPressEvent(event)
 
     def resizeEvent(self, event):
         """Keep import table stretch columns proportional on window resize."""

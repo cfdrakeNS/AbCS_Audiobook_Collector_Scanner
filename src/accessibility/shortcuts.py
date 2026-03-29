@@ -35,20 +35,19 @@ class ShortcutManager(QObject):
     }
     # NameList Window
     NAMELIST_WINDOW_SHORTCUTS = {
-        'B': ('Jump to list', 'table'),
+        'L': ('Jump to list', 'table'),
         'S': ('Save', 'save_button'),
         'E': ('Edit selected row', 'edit_button'),
         'M': ('Name edit', 'name_edit'),
         'F': ('Find', 'find_edit'),
         'A': ('Active checkbox', 'active_check'),
-        'L': ('Cancel edit/new', 'cancel_button'),
     }
 
     # Backup/Restore Window
     BACKUP_RESTORE_WINDOW_SHORTCUTS = {
-        'B': ('Backup list', 'backup_list'),
+        'L': ('Backup list', 'backup_list'),
         'W': ('Browse', 'browse_button'),
-        'K': ('Create backup', 'backup_button'),
+        'B': ('Create backup', 'backup_button'),
         'T': ('Focus restore file', 'restore_path_edit'),
         'R': ('Restore', 'restore_button'),
         'D': ('Delete', 'delete_button'),
@@ -74,14 +73,11 @@ class ShortcutManager(QObject):
         'M': ('Focus match type combo', 'mode_combo'),
     }
 
-    # Alt+Key shortcuts (context-specific)
     # Main Window
     MAIN_WINDOW_SHORTCUTS = {
-        'B': ('Book list focus', 'book_list'),
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
-        'L': ('Cancel selection', 'cancel_button'),
-        'G': ('Get Web Info', 'get_web_info'),
+        'W': ('Fetch Web Info', 'get_web_info_button'),
     }
 
     # Book Details Window
@@ -112,6 +108,7 @@ class ShortcutManager(QObject):
         'Y': ('Year', 'year_spin'),
         'I': ('Series', 'series_edit'),
         'G': ('Genre', 'genre_edit'),
+        'W': ('Fetch Web Data', 'fetch_web_button'),
         'S': ('Save', 'save_button'),
         'F1': ('Show help', 'show_help'),
         '/': ('Read status', 'read_status_bar'),
@@ -123,10 +120,9 @@ class ShortcutManager(QObject):
         'C': ('Collection field', 'collection_combo'),
         'F': ('Folder field', 'folder_field'),
         'E': ('Error filter', 'error_filter'),
-        'W': ('Browse', 'browse_button'),
         'S': ('Import Selected', 'import_selected_button'),
         'V': ('Import All Valid', 'import_all_valid_button'),
-        'B': ('Focus import list table', 'import_list_table'),
+        'L': ('Focus import list table', 'import_list_table'),
         'X': ('Export list to CSV', 'export_csv_button'),
     }
 
@@ -142,12 +138,12 @@ class ShortcutManager(QObject):
     PREFERENCES_WINDOW_SHORTCUTS = {
         'D': ('Display section', 'theme_combo'),
         'P': ('Path & Scope section', 'import_dir_edit'),
+        'B': ('Browse', 'browse_button'),
         'O': ('Options section', 'auto_add_clean_books_check'),
         'F': ('Fallback section', 'author_fallback_checkbox'),
         'R': ('Validation Rules section', 'rules_section_text'),
         'A': ('Auto-Correction section', 'autocorrect_section_text'),
         'S': ('Save', 'save_button'),
-        'L': ('Cancel', 'cancel_button'),
         '/': ('Status bar', 'status_bar'),
     }
 
