@@ -3,17 +3,24 @@ Accessible Window Skeleton/Template
 COMPLETE accessibility pattern reference implementation
 
 This file demonstrates ALL accessibility standards implemented.
+It is SELF-CONTAINED and does not depend on AbCS shortcut manager.
 Copy this skeleton and add your UI elements - accessibility will work out of box.
 
 USAGE:
 1. Copy this file to new window_name.py
 2. Rename class to YourWindowName
 3. Add your UI elements in setup_ui()
-4. Add your field shortcuts in setup_shortcuts()
+4. Add your field shortcuts in setup_shortcuts() (local shortcuts only)
 5. Test F1, Alt+/, Escape - they should work
 
 TESTING:
 python src/ui/accessible_window_skeleton.py
+
+SELF-CONTAINED DESIGN:
+- Uses local QShortcut objects (no shortcut manager dependency)
+- Implements own Alt+key filtering (no external key_filters)
+- Demonstrates standalone accessibility patterns
+- Can be used in any PySide6 application
 
 REFERENCE IMPLEMENTATION:
 This is the definitive reference for all accessibility patterns.
@@ -39,12 +46,17 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.accessible_events import announce_dialog_opened, announce_dialog_closed
 from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_message_box_style
-from src.accessibility.key_filters import is_unmapped_alt_letter
 
 
 class AccessibleWindowSkeleton(QDialog):
     """
     PROVEN accessible window skeleton with complete accessibility patterns.
+    
+    SELF-CONTAINED DESIGN - No external dependencies:
+    - Uses local QShortcut objects (no shortcut manager)
+    - Implements own Alt+key filtering (no external key_filters)
+    - Demonstrates standalone accessibility patterns
+    - Can be used in any PySide6 application
     
     Includes ALL accessibility standards:
     - Status bar pattern with Alt+/ readback
@@ -335,6 +347,11 @@ class AccessibleWindowSkeleton(QDialog):
         shortcuts_text = """
 ACCESSIBLE WINDOW SKELETON - Keyboard Shortcuts
 
+SELF-CONTAINED DESIGN:
+• Uses local QShortcut objects (no shortcut manager dependency)
+• Implements own Alt+key filtering (no external key_filters)
+• Can be used in any PySide6 application
+
 BASIC SHORTCUTS (Always work):
 • F1 - Show this help dialog
 • Alt+/ - Read current status message
@@ -355,7 +372,7 @@ ACCESSIBILITY PATTERNS IMPLEMENTED:
 ✓ Screen reader-optimized buttons (always enabled)
 ✓ Focus management after operations
 ✓ Explicit tab order management
-✓ Modal message boxes with proper styling
+✓ Modal message with proper styling
 ✓ Global Enter shortcut avoidance (use keyPressEvent)
 
 COMBO BOX BEHAVIOR:
