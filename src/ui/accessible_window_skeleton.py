@@ -98,13 +98,18 @@ class AccessibleWindowSkeleton(QDialog):
     def eventFilter(self, source, event):
         """Complete event filter with Alt+key hygiene and combo anti-noise patterns."""
         # Alt+letter hygiene (Pattern #3: Alt+letter hygiene)
-        if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
+        if event.type() == QEvent.KeyPress and bool(event.modifiers() & Qt.AltModifier):
             # Get the key text to check if it's a letter
             key_text = event.text().upper()
-            if key_text and key_text.isalpha() and key_text not in self.ALLOWED_ALT_LETTERS:
-                # Block unmapped Alt+letters
-                QApplication.beep()  # User feedback
-                return True
+            if key_text and key_text.isalpha():
+                if key_text not in self.ALLOWED_ALT_LETTERS:
+                    # Block unmapped Alt+letters
+                    QApplication.beep()  # User feedback
+                    return True
+                else:
+                    # Allow mapped Alt+letters (T, C, Y, I, /, ?, F1)
+                    # Let them pass through to their respective shortcuts
+                    pass
         
         # Combo box anti-noise pattern (Pattern #2: Combo anti-noise)
         if isinstance(source, QComboBox) and source.isEditable():
@@ -401,13 +406,18 @@ TESTING:
     def reject(self):
         """Handle close with confirmation dialog (Escape key)."""
         # Show confirmation dialog for Escape key
-        reply = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title="Close Window",
-            text="Are you sure you want to close this window? Any unsaved changes will be lost."
-        )
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Question)
+        msg_box.setWindowTitle("Close Window")
+        msg_box.setText("Are you sure you want to close this window? Any unsaved changes will be lost.")
+        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg_box.setDefaultButton(QMessageBox.No)
+        
+        # Apply styling for accessibility
+        from src.accessibility.style_helpers import build_accessible_message_box_style
+        msg_box.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+        
+        reply = msg_box.exec()
         
         if reply == QMessageBox.Yes:
             announce_dialog_closed(self)
