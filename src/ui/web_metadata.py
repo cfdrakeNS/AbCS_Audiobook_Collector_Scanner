@@ -1100,6 +1100,13 @@ class WebMetadataWindow(QDialog):
                 
                 # Emit signal to notify main window of data save
                 self.data_saved.emit()
+                
+                # Call refresh callback to update parent window
+                if self.refresh_callback:
+                    self.refresh_callback()
+                    # Clear dirty flag in parent window since data was just saved
+                    if hasattr(self.parent(), '_clear_dirty'):
+                        self.parent()._clear_dirty()
 
                 # Status message
                 if applied_fields:

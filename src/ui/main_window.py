@@ -387,12 +387,23 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.setup_shortcuts()
 
+        # Explicitly set palette on main window and key widgets to ensure palette roles work
+        self.setPalette(self.theme_manager.app.palette())
+
         # Connect to scaler changes to update header control heights
         self.scaler.scale_changed.connect(self.on_scale_changed)
         # Refresh control/table styling when theme changes
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
         # Apply initial button styling
         self.on_scale_changed(self.scaler.current_scale)
+
+        # Explicitly set palette on table and buttons after style applied
+        if hasattr(self, 'table'):
+            self.table.setPalette(self.theme_manager.app.palette())
+        if hasattr(self, 'update_button'):
+            self.update_button.setPalette(self.theme_manager.app.palette())
+        if hasattr(self, 'delete_button'):
+            self.delete_button.setPalette(self.theme_manager.app.palette())
 
         # Load initial data
         self.refresh_collections()
@@ -472,33 +483,9 @@ class MainWindow(QMainWindow):
 
     def on_scale_changed(self, scale_percentage: int):
         """Update header control heights when zoom level changes."""
-        # Scale the height proportionally: base is 20px at 100% scale
-        base_height = 20
-        scaled_height = int(base_height * (scale_percentage / 100.0))
-
-        # Button sizing - compact height
-        button_stylesheet = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
-        self.update_button.setStyleSheet(button_stylesheet)
-        self.delete_button.setStyleSheet(button_stylesheet)
-
         # Keep table fixed-content columns scaled without expensive content-size scans.
         if hasattr(self, 'table'):
             self._apply_fixed_content_column_widths()
-            self.update_stretch_columns()
 
     def apply_control_styles(self):
         """Re-apply dynamic styles for controls and table after theme/scale changes."""
@@ -562,8 +549,12 @@ class MainWindow(QMainWindow):
         # Apply centralized F1 popup style to table only
         self.table.setStyleSheet(
             """
-            QTableView::item:hover {
+            QTableView::item {
                 background-color: palette(base);
+                color: palette(text);
+            }
+            QTableView::item:hover {
+                background-color: palette(alternate-base);
                 color: palette(text);
             }
             QTableView::item:selected {
@@ -681,6 +672,12 @@ class MainWindow(QMainWindow):
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
+
+        # Apply standard accessible button style to footer buttons
+        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        self.update_button.setStyleSheet(button_style)
+        self.get_web_info_button.setStyleSheet(button_style)
+        self.delete_button.setStyleSheet(button_style)
 
         # Spacer
         layout.addStretch()
@@ -2720,37 +2717,32 @@ class MainWindow(QMainWindow):
         else:
             move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
         
-        # Try to fetch web data first - be smarter about source selection
+        # Try to fetch web data - let API try all sources in order
         api = WebBookAPI()
         web_data = None
         last_error = None
         
-        # Try Google Books first (usually fastest)
+        print(f"DEBUG: Searching for web data - Title: '{title}', Author: '{author}', Year: '{year}'")
+        print(f"DEBUG: Preferences - move_articles: {move_articles}, flip_author: {flip_author}")
+        
+        # Single API call - it will try Google Books, then Open Library, then WikiData
         try:
+            print("DEBUG: Fetching web data (will try all sources)...")
             web_data = api.get_book_metadata(title, author, year, refresh=0, 
                                            move_articles=move_articles, flip_author=flip_author)
+            if web_data:
+                print(f"DEBUG: Web data fetched from source: {web_data.get('source', 'unknown')}")
+            else:
+                print("DEBUG: No web data returned from any source")
         except Exception as e:
+            print(f"DEBUG: API call failed: {e}")
             last_error = str(e)
         
-        # If Google Books fails, try Open Library
-        if not web_data:
-            try:
-                web_data = api.get_book_metadata(title, author, year, refresh=1, 
-                                               move_articles=move_articles, flip_author=flip_author)
-            except Exception as e:
-                if not last_error:
-                    last_error = str(e)
-        
-        # Only try WikiData as last resort (it's slower)
-        if not web_data:
-            try:
-                web_data = api.get_book_metadata(title, author, year, refresh=2, 
-                                               move_articles=move_articles, flip_author=flip_author)
-            except Exception as e:
-                if not last_error:
-                    last_error = str(e)
-        
         if web_data:
+            # Debug: Print what we got
+            print(f"DEBUG: Web data found for '{title}': {web_data.get('title', 'NO TITLE')} by {web_data.get('author', 'NO AUTHOR')}")
+            print(f"DEBUG: Has plot: {bool(web_data.get('plot'))}")
+            
             # Check if the returned data is actually meaningful (has plot or matches search)
             title_match = web_data.get('title', '').lower()
             search_title_lower = title.lower()
@@ -2762,16 +2754,35 @@ class MainWindow(QMainWindow):
             if web_data.get('plot'):
                 # Has plot content - likely a real match
                 is_real_match = True
+                print("DEBUG: Match because has plot")
             elif search_title_lower and title_match:
-                # Check if title similarity (contains at least part of search title)
-                if (search_title_lower in title_match or 
-                    title_match in search_title_lower or
-                    any(word in title_match for word in search_title_lower.split() if len(word) > 2)):
-                    is_real_match = True
+                # Check if title similarity (must be more strict)
+                # Require at least 50% of words from search title to match
+                search_words = [w for w in search_title_lower.split() if len(w) > 2]
+                title_words = title_match.split()
+                
+                if search_words:
+                    matching_words = sum(1 for word in search_words if word in title_match.lower())
+                    match_ratio = matching_words / len(search_words)
+                    
+                    # Also check if title is contained within the other (for exact matches)
+                    exact_contains = (search_title_lower in title_match or title_match in search_title_lower)
+                    
+                    if match_ratio >= 0.5 or exact_contains:
+                        is_real_match = True
+                        print(f"DEBUG: Match because title similarity (ratio: {match_ratio:.2f})")
+                else:
+                    # Fallback for very short titles
+                    if search_title_lower in title_match or title_match in search_title_lower:
+                        is_real_match = True
+                        print("DEBUG: Match because short title containment")
             elif search_author_lower and author_match:
                 # Check author match
                 if search_author_lower in author_match or author_match in search_author_lower:
                     is_real_match = True
+                    print("DEBUG: Match because author similarity")
+            
+            print(f"DEBUG: Is real match: {is_real_match}")
             
             if is_real_match:
                 # Only open window if real data found
@@ -2799,6 +2810,9 @@ class MainWindow(QMainWindow):
                 msg.setStandardButtons(QMessageBox.Ok)
                 msg.exec()
         else:
+            print(f"DEBUG: No web data found for '{title}' by '{author}'")
+            if last_error:
+                print(f"DEBUG: Last error: {last_error}")
             # Show popup if no data found
             from PySide6.QtWidgets import QMessageBox
             from src.accessibility.style_helpers import build_accessible_message_box_style

@@ -134,6 +134,8 @@ class AbCSApplication:
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
+        # Force Fusion style for consistent palette/stylesheet support
+        self.qt_app.setStyle("Fusion")
 
         # Enable accessibility for screen readers (JAWS, NVDA, etc.)
         from PySide6.QtGui import QAccessible

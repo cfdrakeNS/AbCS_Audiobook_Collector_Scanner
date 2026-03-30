@@ -7,9 +7,9 @@ import json
 import urllib.request
 import urllib.parse
 import re
+import time
 from typing import Optional, Dict, List
 from src.database.models import Book
-from urllib.parse import quote
 
 
 class WebBookAPI:
@@ -22,6 +22,7 @@ class WebBookAPI:
         self.open_library_work_url = "https://openlibrary.org/works"
         # WikiData SPARQL endpoint
         self.wikidata_url = "https://query.wikidata.org/sparql"
+        self._cache = {}  # Initialize cache to avoid hasattr checks
         
     def get_book_metadata(self, title: str, author: str = None, year: str = None, refresh: int = 0, 
                          move_articles: bool = False, flip_author: bool = False) -> Optional[Dict]:
@@ -48,7 +49,10 @@ class WebBookAPI:
         if hasattr(self, '_cache') and cache_key in self._cache:
             cached_time, cached_result = self._cache[cache_key]
             if current_time - cached_time < 30:
+                print(f"DEBUG: Returning cached result from {current_time - cached_time:.1f} seconds ago")
                 return cached_result
+            else:
+                print(f"DEBUG: Cache expired ({current_time - cached_time:.1f} seconds old)")
         
         # Apply search-time transformations (only if explicitly requested)
         if move_articles or flip_author:
@@ -60,26 +64,26 @@ class WebBookAPI:
         
         # Try Google Books first (fast and reliable)
         if refresh == 0:
-            metadata = self._fetch_from_google_books(search_title, search_author, year)
-            if metadata:
-                metadata['source'] = 'google_books'
-                metadata['first_attempt'] = True
-                # Cache the result
-                if not hasattr(self, '_cache'):
-                    self._cache = {}
-                self._cache[cache_key] = (current_time, metadata)
-                return metadata
+            try:
+                metadata = self._fetch_from_google_books(search_title, search_author, year)
+                if metadata:
+                    metadata['source'] = 'google_books'
+                    metadata['first_attempt'] = True
+                    # Cache the result
+                    self._cache[cache_key] = (current_time, metadata)
+                    return metadata
+            except Exception as e:
+                print(f"Google Books error: {e}")
+                # Continue to next source
         
-        # Try Open Library second
-        if refresh <= 1:
+        # Try Open Library second (always try when refresh=0, or when refresh=1 and Google Books failed)
+        if refresh == 0 or refresh == 1:
             try:
                 metadata = self._fetch_from_open_library(search_title, search_author, year)
                 if metadata:
                     metadata['source'] = 'open_library'
                     metadata['first_attempt'] = (refresh == 0)
                     # Cache the result
-                    if not hasattr(self, '_cache'):
-                        self._cache = {}
                     self._cache[cache_key] = (current_time, metadata)
                     return metadata
             except Exception as e:
@@ -93,16 +97,12 @@ class WebBookAPI:
                 metadata['source'] = 'wikidata'
                 metadata['first_attempt'] = False
                 # Cache the result
-                if not hasattr(self, '_cache'):
-                    self._cache = {}
                 self._cache[cache_key] = (current_time, metadata)
                 return metadata
         except Exception as e:
             print(f"WikiData error: {e}")
         
         # Cache the failure too to avoid repeated failed requests
-        if not hasattr(self, '_cache'):
-            self._cache = {}
         self._cache[cache_key] = (current_time, None)
         return None
     
@@ -132,7 +132,7 @@ class WebBookAPI:
             if 'items' in data and data['items']:
                 # Find the best match among returned items
                 best_item = None
-                best_score = 0
+                best_score = -1
                 
                 for item in data['items']:
                     volume_info = item.get('volumeInfo', {})
@@ -230,37 +230,50 @@ class WebBookAPI:
     def _fetch_from_open_library(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
         """Fetch metadata from Open Library API."""
         try:
-            # Build search query - more flexible for "1984"
-            query_parts = []
+            print(f"DEBUG: Open Library searching for - Title: '{title}', Author: '{author}', Year: '{year}'")
+            
+            # Build search query - combine title and author properly
+            queries_to_try = []
             
             # Special handling for "1984" - try exact title first
             if "1984" in title.lower():
-                query_parts.append(title)
+                base_query = title
+                if author:
+                    base_query += f" author:{author}"
+                queries_to_try.append(base_query)
+                
                 # Also try alternative title
                 if "nineteen eighty-four" not in title.lower():
-                    query_parts.append("nineteen eighty-four")
+                    alt_query = "nineteen eighty-four"
+                    if author:
+                        alt_query += f" author:{author}"
+                    queries_to_try.append(alt_query)
             else:
-                query_parts.append(title)
-            
-            if author:
-                query_parts.append(f"author:{author}")
-            if year:
-                query_parts.append(f"first_publish_year:{year}")
+                base_query = title
+                if author:
+                    base_query += f" author:{author}"
+                queries_to_try.append(base_query)
+                # Fallback to title-only if no results
+                queries_to_try.append(title)
             
             # Try multiple queries if first one fails
-            for query in query_parts[:2]:  # Try at most 2 queries
+            for query in queries_to_try[:2]:  # Try at most 2 queries
                 params = {
                     'q': query,
                     'limit': 1,
                     'fields': 'key,title,author_name,first_publish_year,publisher,subject,cover_i,isbn,ratings_average,ratings_count'
                 }
                 
+                # Add year parameter if provided
+                if year:
+                    params['first_publish_year'] = year
+                
                 # Build URL with parameters
                 url = f"{self.open_library_url}?{urllib.parse.urlencode(params)}"
                 
                 # Make request
                 req = urllib.request.Request(url)
-                with urllib.request.urlopen(req, timeout=5) as response:
+                with urllib.request.urlopen(req, timeout=20) as response:
                     data = json.loads(response.read().decode('utf-8'))
                 
                 if data.get('docs'):
@@ -407,12 +420,12 @@ class WebBookAPI:
                 # Claude AI's expert fix - search both label and altLabel, remove restrictive class filter
                 safe_title_escaped = safe_title.replace('"', '\\"')
                 sparql_query = f"""
-                SELECT DISTINCT ?item ?itemLabel ?itemDescription WHERE {{
+                SELECT DISTINCT ?book ?bookLabel ?bookDescription WHERE {{
                   ?author rdfs:label "George Orwell"@en.
-                  ?item wdt:P50 ?author.
-                  {{ ?item rdfs:label ?label. }}
+                  ?book wdt:P50 ?author.
+                  {{ ?book rdfs:label ?label. }}
                   UNION
-                  {{ ?item skos:altLabel ?label. }}
+                  {{ ?book skos:altLabel ?label. }}
                   FILTER(CONTAINS(LCASE(?label), LCASE("{safe_title_escaped}")))
                   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
                 }}
