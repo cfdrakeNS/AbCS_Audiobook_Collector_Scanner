@@ -6,8 +6,9 @@ Fetches book metadata from Google Books, Open Library, and WikiData APIs.
 import json
 import urllib.request
 import urllib.parse
-import urllib.error
-from typing import Dict, Optional, List
+import re
+from typing import Optional, Dict, List
+from src.database.models import Book
 from urllib.parse import quote
 
 
@@ -22,7 +23,8 @@ class WebBookAPI:
         # WikiData SPARQL endpoint
         self.wikidata_url = "https://query.wikidata.org/sparql"
         
-    def get_book_metadata(self, title: str, author: str = None, year: str = None, refresh: int = 0) -> Optional[Dict]:
+    def get_book_metadata(self, title: str, author: str = None, year: str = None, refresh: int = 0, 
+                         move_articles: bool = False, flip_author: bool = False) -> Optional[Dict]:
         """
         Fetch book metadata from multiple web sources.
         
@@ -31,13 +33,19 @@ class WebBookAPI:
             author: Author name (optional)
             year: Publication year (optional)
             refresh: 0=first attempt, 1=skip first source, 2=skip first two sources
+            move_articles: Move 'The', 'A', 'An' to end of title for search
+            flip_author: Flip author name format for search
             
         Returns:
             Dictionary with book metadata and source info, or None if not found
         """
+        # Apply search-time transformations
+        search_title = self._apply_title_transformations(title, move_articles)
+        search_author = self._apply_author_transformations(author, flip_author) if author else None
+        
         # Try Google Books first (fast and reliable)
         if refresh == 0:
-            metadata = self._fetch_from_google_books(title, author, year)
+            metadata = self._fetch_from_google_books(search_title, search_author, year)
             if metadata:
                 metadata['source'] = 'google_books'
                 metadata['first_attempt'] = True
@@ -46,7 +54,7 @@ class WebBookAPI:
         # Try Open Library second
         if refresh <= 1:
             try:
-                metadata = self._fetch_from_open_library(title, author, year)
+                metadata = self._fetch_from_open_library(search_title, search_author, year)
                 if metadata:
                     metadata['source'] = 'open_library'
                     metadata['first_attempt'] = (refresh == 0)
@@ -57,7 +65,7 @@ class WebBookAPI:
         
         # Try WikiData third (great for series and author data)
         try:
-            metadata = self._fetch_from_wikidata(title, author, year)
+            metadata = self._fetch_from_wikidata(search_title, search_author, year)
             if metadata:
                 metadata['source'] = 'wikidata'
                 metadata['first_attempt'] = False
@@ -385,3 +393,132 @@ class WebBookAPI:
         except Exception:
             pass
         return ""
+    
+    def _strip_series_number(self, title: str) -> tuple[str, str]:
+        """Strip series number from title and return (clean_title, series_number)."""
+        if not title:
+            return "", ""
+        
+        # Patterns to match series numbers
+        patterns = [
+            r'^(.*?)\s*-\s*(\d+)$',      # "Title - 09"
+            r'^(.*?)\s*#\s*(\d+)$',       # "Title #09"
+            r'^(.*?)\s*Book\s*(\d+)$',    # "Title Book 09"
+            r'^(.*?)\s*Volume\s*(\d+)$',  # "Title Volume 09"
+            r'^(\d+)\s*(.*?)$',           # "09 Title"
+        ]
+        
+        for pattern in patterns:
+            match = re.match(pattern, title.strip(), re.IGNORECASE)
+            if match:
+                if pattern == r'^(\d+)\s*(.*?)$':
+                    # Number first pattern
+                    series_number = match.group(1)
+                    clean_title = match.group(2)
+                else:
+                    # Title first patterns
+                    clean_title = match.group(1)
+                    series_number = match.group(2)
+                
+                # Clean up the title
+                clean_title = clean_title.strip()
+                if clean_title:
+                    return clean_title, series_number
+        
+        # No series number found
+        return title.strip(), ""
+    
+    def _move_article_to_end(self, title: str) -> str:
+        """Move leading articles 'The', 'A', 'An' to end of title."""
+        if not title:
+            return title
+        
+        articles = ['The ', 'A ', 'An ']
+        for article in articles:
+            if title.startswith(article):
+                # Remove article and any extra spaces
+                title_without_article = title[len(article):].strip()
+                # Add article to end with comma
+                return f"{title_without_article}, {article.strip()}"
+        
+        return title
+    
+    def _clean_text_field(self, text: str) -> str:
+        """Clean text field: remove extra spaces, special chars, capitalize properly."""
+        if not text:
+            return ""
+        
+        # Convert multiple spaces to single space and trim
+        text = re.sub(r'\s+', ' ', text.strip())
+        
+        # Remove non-alphanumeric characters from start
+        text = re.sub(r'^[^a-zA-Z0-9]+', '', text)
+        
+        # Remove special characters (keep basic punctuation)
+        text = re.sub(r'[^\w\s\-\.,:;\'"!?()]', ' ', text)
+        
+        # Clean up any extra spaces again
+        text = re.sub(r'\s+', ' ', text.strip())
+        
+        return text
+    
+    def _apply_title_transformations(self, title: str, move_articles: bool = False) -> str:
+        """Apply title transformations: strip series, move articles, clean."""
+        # Strip series number first
+        clean_title, series_number = self._strip_series_number(title)
+        
+        # Move articles to end if requested
+        if move_articles:
+            clean_title = self._move_article_to_end(clean_title)
+        
+        # Clean the title
+        clean_title = self._clean_text_field(clean_title)
+        
+        # Re-add series number if it existed
+        if series_number:
+            clean_title = f"{clean_title} - {series_number}"
+        
+        return clean_title
+    
+    def _apply_author_transformations(self, author: str, flip_name: bool = False) -> str:
+        """Apply author transformations: flip name if requested, clean."""
+        if not author:
+            return ""
+        
+        # Clean the author name first
+        author = self._clean_text_field(author)
+        
+        # Flip name if requested (John Smith -> Smith, John)
+        if flip_name and ',' not in author:
+            parts = author.split()
+            if len(parts) >= 2:
+                # Last name first, then first name
+                author = f"{parts[-1]}, {' '.join(parts[:-1])}"
+        
+        return author
+    
+    def clean_web_data_for_storage(self, web_data: Dict, move_articles: bool = False, flip_author: bool = False) -> Dict:
+        """Clean web data according to user preferences before storing in database."""
+        if not web_data:
+            return web_data
+        
+        cleaned_data = web_data.copy()
+        
+        # Clean title
+        if 'title' in cleaned_data:
+            cleaned_data['title'] = self._apply_title_transformations(cleaned_data['title'], move_articles)
+        
+        # Clean author
+        if 'author' in cleaned_data:
+            cleaned_data['author'] = self._apply_author_transformations(cleaned_data['author'], flip_author)
+        
+        # Clean other text fields
+        for field in ['publisher', 'genre', 'plot']:
+            if field in cleaned_data:
+                cleaned_data[field] = self._clean_text_field(cleaned_data[field])
+        
+        # Clean series
+        if 'series' in cleaned_data:
+            cleaned_data['series'] = self._clean_text_field(cleaned_data['series'])
+        
+        return cleaned_data

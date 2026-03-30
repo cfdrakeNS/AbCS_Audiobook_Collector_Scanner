@@ -12,13 +12,11 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QPushButton, QApplication, QStatusBar, 
-    QLineEdit, QTextEdit, QSpinBox, QFormLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox,
-    QWidget, QSizePolicy, QMessageBox
+    QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel, 
+    QLineEdit, QTextEdit, QPushButton, QMessageBox, QFrame, QCheckBox, QApplication, QStatusBar
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QEvent
-from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from PySide6.QtCore import Qt, QTimer, Signal, QEvent, QSettings
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible, QAbstractItemView, QSizePolicy
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
@@ -484,8 +482,30 @@ class WebMetadataWindow(QDialog):
         self.title_edit.setFocus()
         return
     
+    def _read_user_preferences(self) -> tuple[bool, bool]:
+        """Read user preferences for title and author formatting."""
+        settings = QSettings("AbCS", "AudioBookCollector")
+        
+        # Check legacy settings if current settings don't exist
+        if not settings.contains("import/flip_author_name"):
+            legacy_settings = QSettings("AbCS", "AbCS")
+            flip_author = legacy_settings.value("import/flip_author_name", False, type=bool)
+        else:
+            flip_author = settings.value("import/flip_author_name", False, type=bool)
+        
+        if not settings.contains("import/autocorrect/move_leading_the_title"):
+            legacy_settings = QSettings("AbCS", "AbCS")
+            move_articles = legacy_settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+        else:
+            move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+        
+        return move_articles, flip_author
+    
     def fetch_web_data(self, is_refresh=False):
         """Fetch web data from API with automatic retry through all sources."""
+        # Read user preferences for search-time transformations
+        move_articles, flip_author = self._read_user_preferences()
+        
         # Don't increment refresh counter for automatic retries - only for manual refresh
         if is_refresh:
             # Cap refresh counter at 2 (we have sources 0, 1, 2)
@@ -497,16 +517,10 @@ class WebMetadataWindow(QDialog):
             start_refresh_count = 0
         
         # Show popup for all requests (initial and refresh)
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
-        from PySide6.QtCore import QTimer
+        source_names = {0: "Primary Web Source", 1: "Secondary Web Source", 2: "Additional Web Source"}
         
-        # Check if parent is book_details and use current form values if so
-        parent_is_book_details = (self.parent_window and 
-                                hasattr(self.parent_window, '__class__') and 
-                                'book_details' in str(type(self.parent_window).__module__).lower())
-        
-        if parent_is_book_details and hasattr(self.parent_window, 'title_edit'):
-            # Use current values from book_details form (user may have edited them)
+        # Get book data for search
+        if self.parent_window and hasattr(self.parent_window, 'title_edit'):
             title = self.parent_window.title_edit.text().strip()
             author = self.parent_window.author_combo.currentText().strip()
             year_value = self.parent_window.year_spin.value()
@@ -517,7 +531,7 @@ class WebMetadataWindow(QDialog):
             author = self.book.author_name
             year = str(self.book.year) if self.book.year else None
 
-        # Use WebBookAPI for fetching with automatic retry
+        # Use WebBookAPI for fetching with automatic retry and preferences
         api = WebBookAPI()
         web_data = None
         last_error = None
@@ -527,7 +541,6 @@ class WebMetadataWindow(QDialog):
             self.refresh_count = current_attempt
             
             # Show popup for each attempt
-            source_names = {0: "Primary Web Source", 1: "Secondary Web Source", 2: "Additional Web Source"}
             current_source = source_names.get(current_attempt, "Primary Web Source")
             
             popup = QDialog(self)
@@ -549,7 +562,8 @@ class WebMetadataWindow(QDialog):
             QApplication.processEvents()
             
             try:
-                web_data = api.get_book_metadata(title, author, year, refresh=current_attempt)
+                web_data = api.get_book_metadata(title, author, year, refresh=current_attempt, 
+                                               move_articles=move_articles, flip_author=flip_author)
                 if web_data:
                     # Found data - break out of loop
                     break
@@ -558,7 +572,9 @@ class WebMetadataWindow(QDialog):
                 continue  # Try next source
         
         if web_data:
-            self.update_fields_with_web_data(web_data)
+            # Clean web data for storage according to preferences
+            cleaned_web_data = api.clean_web_data_for_storage(web_data, move_articles, flip_author)
+            self.update_fields_with_web_data(cleaned_web_data)
             
             # Show refresh button if we haven't checked all sources yet
             source = web_data.get('source', '')
