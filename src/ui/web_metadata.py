@@ -13,10 +13,10 @@ sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel, 
-    QLineEdit, QTextEdit, QPushButton, QMessageBox, QFrame, QCheckBox, QApplication, QStatusBar
+    QLineEdit, QTextEdit, QPushButton, QMessageBox, QFrame, QCheckBox, QApplication, QStatusBar, QAbstractItemView
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QEvent, QSettings
-from PySide6.QtGui import QShortcut, QKeySequence, QAccessible, QAbstractItemView, QSizePolicy
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible, QSizePolicy
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
