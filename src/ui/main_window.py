@@ -509,7 +509,6 @@ class MainWindow(QMainWindow):
         widgets_to_repolish = [
             self.update_button,
             self.delete_button,
-            self.cancel_button,
             self.table,
             self.table.viewport(),
             table_header,
@@ -2697,20 +2696,127 @@ class MainWindow(QMainWindow):
         popup.show()
         QApplication.processEvents()
         
-        # Open web metadata window
+        # Check web data first before opening window
         from src.ui.web_metadata import WebMetadataWindow
+        from src.web.web_book_api import WebBookAPI
+        from PySide6.QtCore import QSettings
         
-        focus_ctx = self._capture_table_focus_context(row, 1)  # Focus title column
-        dialog = WebMetadataWindow(
-            self.db,
-            book,
-            self.scaler,
-            self.theme_manager,
-            parent=self,
-            refresh_callback=self.refresh_books
-        )
-        dialog.exec()
-        self._restore_table_focus_context(focus_ctx)
+        # Get book data for search
+        title = book.title
+        author = book.author_name
+        year = str(book.year) if book.year else None
+        
+        # Read user preferences
+        settings = QSettings("AbCS", "AudioBookCollector")
+        if not settings.contains("import/flip_author_name"):
+            legacy_settings = QSettings("AbCS", "AbCS")
+            flip_author = legacy_settings.value("import/flip_author_name", False, type=bool)
+        else:
+            flip_author = settings.value("import/flip_author_name", False, type=bool)
+        
+        if not settings.contains("import/autocorrect/move_leading_the_title"):
+            legacy_settings = QSettings("AbCS", "AbCS")
+            move_articles = legacy_settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+        else:
+            move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+        
+        # Try to fetch web data first - be smarter about source selection
+        api = WebBookAPI()
+        web_data = None
+        last_error = None
+        
+        # Try Google Books first (usually fastest)
+        try:
+            web_data = api.get_book_metadata(title, author, year, refresh=0, 
+                                           move_articles=move_articles, flip_author=flip_author)
+        except Exception as e:
+            last_error = str(e)
+        
+        # If Google Books fails, try Open Library
+        if not web_data:
+            try:
+                web_data = api.get_book_metadata(title, author, year, refresh=1, 
+                                               move_articles=move_articles, flip_author=flip_author)
+            except Exception as e:
+                if not last_error:
+                    last_error = str(e)
+        
+        # Only try WikiData as last resort (it's slower)
+        if not web_data:
+            try:
+                web_data = api.get_book_metadata(title, author, year, refresh=2, 
+                                               move_articles=move_articles, flip_author=flip_author)
+            except Exception as e:
+                if not last_error:
+                    last_error = str(e)
+        
+        if web_data:
+            # Check if the returned data is actually meaningful (has plot or matches search)
+            title_match = web_data.get('title', '').lower()
+            search_title_lower = title.lower()
+            author_match = web_data.get('author', '').lower()
+            search_author_lower = author.lower() if author else ''
+            
+            # Check if it's a real match (title contains search terms OR has plot)
+            is_real_match = False
+            if web_data.get('plot'):
+                # Has plot content - likely a real match
+                is_real_match = True
+            elif search_title_lower and title_match:
+                # Check if title similarity (contains at least part of search title)
+                if (search_title_lower in title_match or 
+                    title_match in search_title_lower or
+                    any(word in title_match for word in search_title_lower.split() if len(word) > 2)):
+                    is_real_match = True
+            elif search_author_lower and author_match:
+                # Check author match
+                if search_author_lower in author_match or author_match in search_author_lower:
+                    is_real_match = True
+            
+            if is_real_match:
+                # Only open window if real data found
+                focus_ctx = self._capture_table_focus_context(row, 1)  # Focus title column
+                dialog = WebMetadataWindow(
+                    self.db,
+                    book,
+                    self.scaler,
+                    self.theme_manager,
+                    parent=self,
+                    refresh_callback=self.refresh_books,
+                    web_data=web_data
+                )
+                dialog.exec()
+                self._restore_table_focus_context(focus_ctx)
+            else:
+                # Show popup if no meaningful data found
+                from PySide6.QtWidgets import QMessageBox
+                from src.accessibility.style_helpers import build_accessible_message_box_style
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle("No Web Data Found")
+                msg.setText("No information found for this book in any web source.")
+                msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec()
+        else:
+            # Show popup if no data found
+            from PySide6.QtWidgets import QMessageBox
+            from src.accessibility.style_helpers import build_accessible_message_box_style
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("No Web Data Found")
+            
+            # Check if it's a rate limiting issue
+            if last_error and ("429" in last_error or "Too Many Requests" in last_error):
+                msg.setText("Web search temporarily unavailable due to rate limits.\n\nPlease try again in a few minutes.")
+            elif last_error and ("timed out" in last_error.lower()):
+                msg.setText("Web search is currently slow or unavailable.\n\nPlease try again later.")
+            else:
+                msg.setText("No information found for this book in any web source.")
+            
+            msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec()
 
     def on_delete_clicked(self):
         """Handle Delete button click."""

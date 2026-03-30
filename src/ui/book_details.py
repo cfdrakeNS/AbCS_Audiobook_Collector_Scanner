@@ -1553,25 +1553,122 @@ class BookDetailsWindow(QDialog):
             return
         try:
             from src.ui.web_metadata import WebMetadataWindow
-            # Create web details window with refresh callback
-            web_window = WebMetadataWindow(
-                self.db,
-                self.book,
-                self.scaler,
-                self.theme_manager,
-                self,
-                refresh_callback=self.load_book_data  # Refresh book data after save
-            )
-            # Show window modally
-            result = web_window.exec()
-            if result == QDialog.Accepted:
-                # User accepted changes - would implement actual update here
-                self.set_status("Web details applied successfully", announce=True)
-                # Reload book data and clear dirty flag so user is not prompted to save again
-                self.load_book_data()
-                self._clear_dirty()
+            from src.web.web_book_api import WebBookAPI
+            from PySide6.QtCore import QSettings
+            
+            # Get book data for search
+            title = self.book.title
+            author = self.book.author_name
+            year = str(self.book.year) if self.book.year else None
+            
+            # Read user preferences
+            settings = QSettings("AbCS", "AudioBookCollector")
+            if not settings.contains("import/flip_author_name"):
+                legacy_settings = QSettings("AbCS", "AbCS")
+                flip_author = legacy_settings.value("import/flip_author_name", False, type=bool)
             else:
-                self.set_status("Web details cancelled", announce=True)
+                flip_author = settings.value("import/flip_author_name", False, type=bool)
+            
+            if not settings.contains("import/autocorrect/move_leading_the_title"):
+                legacy_settings = QSettings("AbCS", "AbCS")
+                move_articles = legacy_settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+            else:
+                move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+            
+            # Try to fetch web data first - be smarter about source selection
+            api = WebBookAPI()
+            web_data = None
+            last_error = None
+            
+            # Try Google Books first (usually fastest)
+            try:
+                web_data = api.get_book_metadata(title, author, year, refresh=0, 
+                                               move_articles=move_articles, flip_author=flip_author)
+            except Exception as e:
+                last_error = str(e)
+            
+            # If Google Books fails, try Open Library
+            if not web_data:
+                try:
+                    web_data = api.get_book_metadata(title, author, year, refresh=1, 
+                                                   move_articles=move_articles, flip_author=flip_author)
+                except Exception as e:
+                    if not last_error:
+                        last_error = str(e)
+            
+            # Only try WikiData as last resort (it's slower)
+            if not web_data:
+                try:
+                    web_data = api.get_book_metadata(title, author, year, refresh=2, 
+                                                   move_articles=move_articles, flip_author=flip_author)
+                except Exception as e:
+                    if not last_error:
+                        last_error = str(e)
+            
+            if web_data:
+                # Check if the returned data is actually meaningful (has plot or matches search)
+                title_match = web_data.get('title', '').lower()
+                search_title_lower = title.lower()
+                author_match = web_data.get('author', '').lower()
+                search_author_lower = author.lower() if author else ''
+                
+                # Check if it's a real match (title contains search terms OR has plot)
+                is_real_match = False
+                if web_data.get('plot'):
+                    # Has plot content - likely a real match
+                    is_real_match = True
+                elif search_title_lower and title_match:
+                    # Check if title similarity (contains at least part of search title)
+                    if (search_title_lower in title_match or 
+                        title_match in search_title_lower or
+                        any(word in title_match for word in search_title_lower.split() if len(word) > 2)):
+                        is_real_match = True
+                elif search_author_lower and author_match:
+                    # Check author match
+                    if search_author_lower in author_match or author_match in search_author_lower:
+                        is_real_match = True
+                
+                if is_real_match:
+                    # Create web details window with pre-fetched data
+                    web_window = WebMetadataWindow(
+                        self.db,
+                        self.book,
+                        self.scaler,
+                        self.theme_manager,
+                        self,
+                        refresh_callback=self.load_book_data,  # Refresh book data after save
+                        web_data=web_data
+                    )
+                    # Show window modally
+                    result = web_window.exec()
+                    if result == QDialog.Accepted:
+                        # User accepted changes - would implement actual update here
+                        self.set_status("Web details applied successfully", announce=True)
+                else:
+                    # Show popup if no meaningful data found
+                    from PySide6.QtWidgets import QMessageBox
+                    from src.accessibility.style_helpers import build_accessible_message_box_style
+                    msg = QMessageBox(self)
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setWindowTitle("No Web Data Found")
+                    msg.setText("No information found for this book in any web source.")
+                    msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+                    msg.setStandardButtons(QMessageBox.Ok)
+                    msg.exec()
+            else:
+                # Show popup if no data found
+                from PySide6.QtWidgets import QMessageBox
+                from src.accessibility.style_helpers import build_accessible_message_box_style
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle("No Web Data Found")
+                if last_error:
+                    msg.setText(f"No information found for this book in any web source.\n\nLast error: {last_error}")
+                else:
+                    msg.setText("No information found for this book in any web source.")
+                msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec()
         except Exception as e:
             import traceback
             traceback.print_exc()

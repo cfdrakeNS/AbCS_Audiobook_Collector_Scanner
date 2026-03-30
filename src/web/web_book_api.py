@@ -39,9 +39,24 @@ class WebBookAPI:
         Returns:
             Dictionary with book metadata and source info, or None if not found
         """
-        # Apply search-time transformations
-        search_title = self._apply_title_transformations(title, move_articles)
-        search_author = self._apply_author_transformations(author, flip_author) if author else None
+        # Simple cache to avoid duplicate requests within short time
+        import time
+        cache_key = f"{title}|{author}|{year}|{refresh}"
+        current_time = time.time()
+        
+        # Check if we have a recent cache entry (within 30 seconds)
+        if hasattr(self, '_cache') and cache_key in self._cache:
+            cached_time, cached_result = self._cache[cache_key]
+            if current_time - cached_time < 30:
+                return cached_result
+        
+        # Apply search-time transformations (only if explicitly requested)
+        if move_articles or flip_author:
+            search_title = self._apply_title_transformations(title, move_articles)
+            search_author = self._apply_author_transformations(author, flip_author) if author else None
+        else:
+            search_title = title
+            search_author = author
         
         # Try Google Books first (fast and reliable)
         if refresh == 0:
@@ -49,6 +64,10 @@ class WebBookAPI:
             if metadata:
                 metadata['source'] = 'google_books'
                 metadata['first_attempt'] = True
+                # Cache the result
+                if not hasattr(self, '_cache'):
+                    self._cache = {}
+                self._cache[cache_key] = (current_time, metadata)
                 return metadata
         
         # Try Open Library second
@@ -58,6 +77,10 @@ class WebBookAPI:
                 if metadata:
                     metadata['source'] = 'open_library'
                     metadata['first_attempt'] = (refresh == 0)
+                    # Cache the result
+                    if not hasattr(self, '_cache'):
+                        self._cache = {}
+                    self._cache[cache_key] = (current_time, metadata)
                     return metadata
             except Exception as e:
                 print(f"Open Library error: {e}")
@@ -69,65 +92,137 @@ class WebBookAPI:
             if metadata:
                 metadata['source'] = 'wikidata'
                 metadata['first_attempt'] = False
+                # Cache the result
+                if not hasattr(self, '_cache'):
+                    self._cache = {}
+                self._cache[cache_key] = (current_time, metadata)
                 return metadata
         except Exception as e:
             print(f"WikiData error: {e}")
-            # Return None if all sources fail
-            
+        
+        # Cache the failure too to avoid repeated failed requests
+        if not hasattr(self, '_cache'):
+            self._cache = {}
+        self._cache[cache_key] = (current_time, None)
         return None
     
     def _fetch_from_google_books(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
         """Fetch metadata from Google Books API."""
         try:
-            # Build search query (match previous working logic: just title and author)
-            query = title
+            # Build search query - use intitle and inauthor for better results
+            query_parts = []
+            if title:
+                query_parts.append(f'intitle:{title}')
             if author:
-                query += f" {author}"
-            # Do NOT use inpublisher for year, as it restricts results too much
+                query_parts.append(f'inauthor:{author}')
+            query = ' '.join(query_parts)
+            
+            # Include more fields to get series info and subtitle
             params = {
                 'q': query,
-                'maxResults': 1,
-                'fields': 'items(id,volumeInfo(title,authors,publisher,publishedDate,description,industryIdentifiers,categories,averageRating,ratingsCount))'
+                'maxResults': 3,  # Get more results to find better match
+                'fields': 'items(id,volumeInfo(title,subtitle,authors,publisher,publishedDate,description,industryIdentifiers,categories,averageRating,ratingsCount,seriesInfo))'
             }
             url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
             req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'AudiobookCollectorScanner/1.0')
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode('utf-8'))
+            
             if 'items' in data and data['items']:
-                item = data['items'][0]
-                volume_info = item.get('volumeInfo', {})
-                # Extract series and series number if available
-                series = ''
-                series_number = ''
-                # Google Books sometimes puts series info in 'subtitle' or 'seriesInfo' (rare)
-                if 'seriesInfo' in volume_info:
-                    series = volume_info['seriesInfo'].get('bookDisplayNumber', '')
-                    # Sometimes the series name is in 'seriesInfo' as well
-                    if not series:
-                        series = volume_info['seriesInfo'].get('series', '')
-                # Try to parse series/volume from title if possible (e.g., "Book 2", "Volume 3")
-                import re
-                title = volume_info.get('title', '')
-                subtitle = volume_info.get('subtitle', '')
-                # Look for patterns like "Book 2", "Volume 3", "#4"
-                match = re.search(r'(Book|Volume|#)\s*(\d+)', f"{title} {subtitle}")
-                if match:
-                    series_number = match.group(2)
-                return {
-                    'title': title,
-                    'author': self._format_authors(volume_info.get('authors', [])),
-                    'year': self._extract_year(volume_info.get('publishedDate', '')),
-                    'publisher': volume_info.get('publisher', ''),
-                    'plot': volume_info.get('description', ''),
-                    'genre': self._format_categories(volume_info.get('categories', [])),
-                    'isbn': self._extract_isbn(volume_info.get('industryIdentifiers', [])),
-                    'rating': volume_info.get('averageRating', 0),
-                    'ratings_count': volume_info.get('ratingsCount', 0),
-                    'series': series,
-                    'series_number': series_number,
-                    'source': 'Google Books',
-                    'confidence': 0.9
-                }
+                # Find the best match among returned items
+                best_item = None
+                best_score = 0
+                
+                for item in data['items']:
+                    volume_info = item.get('volumeInfo', {})
+                    item_title = volume_info.get('title', '').lower()
+                    item_subtitle = volume_info.get('subtitle', '').lower()
+                    
+                    # Score based on title match
+                    score = 0
+                    if title and title.lower() in item_title:
+                        score += 10
+                    if title and title.lower() in item_subtitle:
+                        score += 5
+                    if author:
+                        item_authors = [a.lower() for a in volume_info.get('authors', [])]
+                        if any(author.lower() in a for a in item_authors):
+                            score += 5
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_item = item
+                
+                if best_item:
+                    volume_info = best_item.get('volumeInfo', {})
+                    
+                    # Extract series and series number from multiple sources
+                    series = ''
+                    series_number = ''
+                    
+                    # 1. Check seriesInfo (primarily for comics/manga)
+                    series_info = volume_info.get('seriesInfo', {})
+                    if series_info:
+                        series_number = series_info.get('bookDisplayNumber', '')
+                        # Try to get series name from volumeSeries
+                        volume_series = series_info.get('volumeSeries', [])
+                        if volume_series:
+                            series = volume_series[0].get('seriesId', '').replace('_', ' ').title()
+                    
+                    # 2. Check subtitle for series info (common for novels)
+                    subtitle = volume_info.get('subtitle', '')
+                    if subtitle and not series_number:
+                        import re
+                        # Look for patterns like "Book 1", "Volume 2", "#3", etc.
+                        patterns = [
+                            r'(?:book|volume|#)\s*(\d+)',
+                            r'(?:part|novel)\s*(\w+)',
+                        ]
+                        for pattern in patterns:
+                            match = re.search(pattern, subtitle, re.IGNORECASE)
+                            if match:
+                                series_number = match.group(1)
+                                # Use subtitle without the book number as series name
+                                series = re.sub(pattern, '', subtitle, flags=re.IGNORECASE).strip(' -')
+                                break
+                    
+                    # 3. Check description for series info
+                    description = volume_info.get('description', '')
+                    if description and not series_number:
+                        import re
+                        # Look for series mentions in description
+                        patterns = [
+                            r'(?:book|volume|#)\s*(\d+)\s+(?:in\s+)?(?:the\s+)?(.+?)(?:\s+series|\s+trilogy|\s+quartet|$)',
+                            r'(.+?)\s+(?:book|volume|#)\s*(\d+)',
+                        ]
+                        for pattern in patterns:
+                            match = re.search(pattern, description, re.IGNORECASE)
+                            if match:
+                                if pattern.startswith(r'(?:book|volume|#)'):
+                                    series_number = match.group(1)
+                                    series = match.group(2).strip()
+                                else:
+                                    series = match.group(1).strip()
+                                    series_number = match.group(2)
+                                break
+                    
+                    # Return the metadata with enhanced series info
+                    return {
+                        'title': volume_info.get('title', ''),
+                        'author': self._format_authors(volume_info.get('authors', [])),
+                        'year': self._extract_year(volume_info.get('publishedDate', '')),
+                        'publisher': volume_info.get('publisher', ''),
+                        'plot': volume_info.get('description', ''),
+                        'genre': self._format_categories(volume_info.get('categories', [])),
+                        'isbn': self._extract_isbn(volume_info.get('industryIdentifiers', [])),
+                        'rating': volume_info.get('averageRating', 0),
+                        'ratings_count': volume_info.get('ratingsCount', 0),
+                        'series': series,
+                        'series_number': series_number,
+                        'source': 'Google Books',
+                        'confidence': 0.9
+                    }
         except Exception as e:
             print(f"Google Books API error: {e}")
         return None

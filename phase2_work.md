@@ -111,6 +111,28 @@
   - Track which books had data found and which did not
 - On completion, emit a signal with results (success/failure per book, diff data)
 
+**Rate Limiting Considerations for Bulk Fetch:**
+Due to API rate limits (especially Google Books HTTP 429 errors), bulk fetching needs special handling:
+
+*Option 1: Rate-Limited Bulk Fetch*
+- Add delays between requests (e.g., 1-2 seconds between each book)
+- Show progress: "Fetching book 1 of 10..."
+- Would be slower but more reliable
+- Risk: May still hit limits if many books
+
+*Option 2: Staggered Fetch Strategy*
+- Try Google Books for first 3 books
+- If rate limited, switch to Open Library for next batch
+- Use WikiData as fallback
+- Rotate sources to avoid hitting limits
+- Most flexible approach
+
+*Option 3: Source-Limited Bulk*
+- Skip Google Books for bulk operations (use Open Library + WikiData)
+- Reserve Google Books for single book searches where it's most valuable
+- Faster but less comprehensive results
+- User option to "Include Google Books (slower, may hit limits)"
+
 **Result Popup:**
 - Show a summary popup: "Web info found for X books, not found for Y books."
 - Buttons: **Update All** (apply all changes to DB), **Review** (step through each book)
