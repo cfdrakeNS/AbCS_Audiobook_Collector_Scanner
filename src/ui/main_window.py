@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTableView, QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
     QPushButton, QLabel, QStatusBar, QMessageBox, QHeaderView, QCheckBox,
-    QAbstractItemView, QDialog, QTextEdit, QDateEdit
+    QAbstractItemView, QDialog, QTextEdit
 )
 from PySide6.QtCore import (
     Qt, QTimer, QItemSelection, QItemSelectionModel, QEvent, QSettings,
@@ -77,7 +77,7 @@ class BookTableModel(QAbstractTableModel):
 
     HEADERS = [
         "Author", "Title", "Year", "Plot", "Series",
-        "Genre", "Time", "Tracks", "Read"
+        "Genre", "Time", "Tracks", "Read", "Added"
     ]
 
     def __init__(self, books: list[Book] | None = None, parent=None):
@@ -127,6 +127,10 @@ class BookTableModel(QAbstractTableModel):
                 if book.read_date:
                     return book.read_date if isinstance(book.read_date, str) else str(book.read_date)
                 return ""
+            if col == 9:
+                if book.date_added:
+                    return book.date_added if isinstance(book.date_added, str) else str(book.date_added)
+                return ""
 
         if role == Qt.TextAlignmentRole and col == 7:
             return Qt.AlignRight | Qt.AlignVCenter
@@ -144,107 +148,98 @@ class BookTableModel(QAbstractTableModel):
         return ""
 
 
-class ReadDateDialog(QDialog):
-    """Custom dialog for setting read date with proper keyPressEvent handling."""
-    
-    def __init__(self, parent, book, initial_date):
-        super().__init__(parent)
-        self.book = book
-        self.date_field = None
-        self.setup_ui(initial_date)
-    
-    def setup_ui(self, initial_date):
-        """Setup the dialog UI."""
-        from PySide6.QtWidgets import QVBoxLayout, QLabel, QHBoxLayout, QPushButton
-        from PySide6.QtCore import Qt, QTimer, QDate
-        from PySide6.QtGui import QKeySequence, QShortcut
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(10)
-
-        prompt = QLabel(f"Set read date for: {self.book.title}")
-        layout.addWidget(prompt)
-
-        self.date_field = QDateEdit()
-        self.date_field.setCalendarPopup(True)
-        self.date_field.setDisplayFormat("yyyy-MM-dd")
-        self.date_field.setAccessibleName("Date read")
-        self.date_field.setMinimumDate(QDate(1, 1, 1))
-        self.date_field.setSpecialValueText("")
-        self.date_field.setDate(initial_date)
-        layout.addWidget(self.date_field)
-
-        # Alt+Down to open calendar
-        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), self)
-        alt_down_shortcut.activated.connect(self.date_field.calendarPopup)
-
-        buttons_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        ok_button.setAccessibleName("OK button")
-        ok_button.setDefault(True)
-        cancel_button = QPushButton("Cancel")
-        cancel_button.setAccessibleName("Cancel button")
-        
-        # Use minimal button styling to avoid width issues
-        buttons_layout.addWidget(ok_button)
-        buttons_layout.addWidget(cancel_button)
-        layout.addLayout(buttons_layout)
-
-        ok_button.clicked.connect(self.accept)
-        cancel_button.clicked.connect(self.reject)
-    
-    def keyPressEvent(self, event):
-        """Handle Enter key for date field (Pattern #18: Global Enter anti-pattern avoidance)."""
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            if self.date_field.hasFocus():
-                # Enter on date field accepts and closes
-                self.accept()
-                event.accept()
-                return
-        super().keyPressEvent(event)
-
-
 class MainWindow(QMainWindow):
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit, QPushButton
         from PySide6.QtCore import QDate
-        
         book = self.books[row]
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
+        dlg.setModal(True)
+        layout = QVBoxLayout(dlg)
+        
+        # Use simple QDateEdit with calendar popup
+        date_field = QDateEdit()
+        date_field.setCalendarPopup(True)
+        date_field.setDisplayFormat("yyyy-MM-dd")
+        date_field.setAccessibleName("Date read")
+        date_field.setMinimumDate(QDate(1, 1, 1))
+        date_field.setSpecialValueText("")
         
         # Set initial date
         if book.read_date:
             if isinstance(book.read_date, str):
-                initial_date = QDate.fromString(book.read_date, "yyyy-MM-dd")
+                d = QDate.fromString(book.read_date, "yyyy-MM-dd")
             else:
-                initial_date = QDate(book.read_date.year,
-                                   book.read_date.month, book.read_date.day)
-            if not initial_date.isValid():
-                initial_date = QDate.currentDate()
+                d = QDate(book.read_date.year,
+                          book.read_date.month, book.read_date.day)
+            if d.isValid():
+                date_field.setDate(d)
+            else:
+                date_field.setDate(QDate.currentDate())
         else:
             # Default to today's date for new entries
-            initial_date = QDate.currentDate()
+            date_field.setDate(QDate.currentDate())
         
-        # Use custom dialog with proper keyPressEvent handling
-        dlg = ReadDateDialog(self, book, initial_date)
-        dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
+        # Set font size
+        font = date_field.font()
+        font.setPointSize(self.scaler.get_scaled_size(14))
+        date_field.setFont(font)
         
+        layout.addWidget(date_field)
+        date_field.setFocus()
+        
+        # Add Alt+Down shortcut to open calendar (though it may not work)
+        from PySide6.QtGui import QShortcut, QKeySequence
+        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
+        alt_down_shortcut.activated.connect(date_field.calendarPopup)
+        
+        # Add Enter key shortcut to close dialog and save date
+        def save_and_close():
+            # Make sure the date field has focus so its value is current
+            date_field.setFocus()
+            # Small delay to ensure the value is updated
+            QTimer.singleShot(0, dlg.accept)
+        
+        enter_shortcut = QShortcut(QKeySequence("Return"), dlg)
+        enter_shortcut.activated.connect(save_and_close)
+        enter_shortcut = QShortcut(QKeySequence("Enter"), dlg)
+        enter_shortcut.activated.connect(save_and_close)
+        
+        dlg.setLayout(layout)
         if dlg.exec() == QDialog.Accepted:
             # Check if date is being changed (not just cleared)
-            if dlg.date_field.date() == dlg.date_field.minimumDate():
+            if date_field.date() == date_field.minimumDate():
                 # Clear the date - no confirmation needed for clearing
                 book.read_date = ""
                 self.book_queries.update(book)
                 self.refresh_books()
                 self.set_status(f"Read date cleared for {book.title}", announce=True)
             else:
-                # Set the date
-                new_date = dlg.date_field.date()
-                book.read_date = new_date.toString("yyyy-MM-dd")
-                self.book_queries.update(book)
-                self.refresh_books()
-                self.set_status(f"Read date set to {book.read_date} for {book.title}", announce=True)
-            
+                new_date = date_field.date().toString("yyyy-MM-dd")
+                # Check if date is actually changing
+                if book.read_date == new_date:
+                    # No change - don't ask for confirmation
+                    self.set_status(f"Read date unchanged for {book.title}", announce=True)
+                else:
+                    # Date is changing - ask for confirmation
+                    from PySide6.QtWidgets import QMessageBox
+                    reply = QMessageBox.question(
+                        self,
+                        "Confirm Read Date",
+                        f"Mark '{book.title}' as read on {new_date}?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        book.read_date = new_date
+                        self.book_queries.update(book)
+                        self.refresh_books()
+                        self.set_status(f"Read date set for {book.title}", announce=True)
+                    else:
+                        # User cancelled - don't update
+                        self.set_status(f"Read date update cancelled for {book.title}", announce=True)
             # Optionally, move focus back to the same cell
             self.table.setCurrentCell(row, 8)
             self.table.setFocus()
@@ -404,11 +399,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_hint_label = QLabel(
-            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel")
+            "Alt+U Update, Alt+G Get Web Info, Alt+D Delete, Alt+L Cancel")
         self.status_hint_label.setVisible(False)
         self.status_hint_label.setAccessibleName("Selection shortcuts")
         self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
+            "Alt+U Update, Alt+G Get Web Info, Alt+D Delete, Alt+L Cancel"
         )
         self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
         self.status_bar.insertWidget(0, self.status_hint_label, 1)
@@ -449,6 +444,7 @@ class MainWindow(QMainWindow):
         """
         self.update_button.setStyleSheet(button_stylesheet)
         self.delete_button.setStyleSheet(button_stylesheet)
+        self.cancel_button.setStyleSheet(button_stylesheet)
 
         # Keep table fixed-content columns scaled without expensive content-size scans.
         if hasattr(self, 'table'):
@@ -464,6 +460,7 @@ class MainWindow(QMainWindow):
         widgets_to_repolish = [
             self.update_button,
             self.delete_button,
+            self.cancel_button,
             self.table,
             self.table.viewport(),
             table_header,
@@ -492,9 +489,9 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read
+        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Date Added
         columns = ["Author", "Title", "Year", "Plot", "Series",
-                   "Genre", "Time", "Tracks", "Read"]
+                   "Genre", "Time", "Tracks", "Read", "Added"]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         # Selection column removed; only text highlighting used
@@ -596,6 +593,7 @@ class MainWindow(QMainWindow):
             6: 82,   # Time
             7: 78,   # Tracks
             8: 116,  # Read
+            9: 116,  # Added
         }
 
         for col, base_width in base_widths.items():
@@ -616,12 +614,11 @@ class MainWindow(QMainWindow):
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
 
-        # Fetch Web Info button (hidden initially)
-        self.get_web_info_button = QPushButton("&Fetch Web Info")
-        self.get_web_info_button.setObjectName("get_web_info_button")  # Ensure object name matches
-        self.get_web_info_button.setAccessibleName("Fetch Web Info")
+        # Get Web Info button (hidden initially)
+        self.get_web_info_button = QPushButton("Get Web Info")
+        self.get_web_info_button.setAccessibleName("Get web info for selected books")
         self.get_web_info_button.setAccessibleDescription(
-            "Fetch web metadata for selected books - Alt+W")
+            "Get web info for selected books - Alt+G")
         self.get_web_info_button.setFocusPolicy(Qt.StrongFocus)
         self.get_web_info_button.clicked.connect(self.on_get_web_info_clicked)
         self.get_web_info_button.setVisible(False)
@@ -636,6 +633,15 @@ class MainWindow(QMainWindow):
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
+
+        # Cancel button (hidden initially)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setAccessibleName("Cancel selection")
+        self.cancel_button.setAccessibleDescription("Cancel selection - Alt+L")
+        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
+        self.cancel_button.clicked.connect(self.on_cancel_clicked)
+        self.cancel_button.setVisible(False)
+        layout.addWidget(self.cancel_button)
 
         # Spacer
         layout.addStretch()
@@ -690,12 +696,19 @@ class MainWindow(QMainWindow):
         self.update_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.update_action)
         
-        # Fetch Web Info action (same as fetch web info button)
-        self.get_web_info_action = QAction("Fetch &Web Info", self)
-        # Note: Alt+W shortcut handled by shortcut manager, not here to avoid conflicts
+        # Get Web Info action (same as get web info button)
+        self.get_web_info_action = QAction("&Get Web Info\tAlt+G", self)
+        self.get_web_info_action.setShortcut("Alt+G")
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
-        self.get_web_info_action.setEnabled(True)  # Always enabled for focused book
+        self.get_web_info_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.get_web_info_action)
+        
+        # Cancel action (same as cancel button)
+        self.cancel_action = QAction("&Cancel", self)
+        # Note: Esc shortcut handled at window level by escape_shortcut
+        self.cancel_action.triggered.connect(self.on_cancel_clicked)
+        self.cancel_action.setEnabled(False)  # Disabled until item selected
+        self.edit_menu.addAction(self.cancel_action)
         
         # Separator
         self.edit_menu.addSeparator()
@@ -814,14 +827,10 @@ class MainWindow(QMainWindow):
         callback_map = {
             'update_button': self.on_update_clicked,     # Alt+U
             'delete_button': self.on_delete_clicked,     # Alt+D
-            'get_web_info_button': self.on_get_web_info_clicked,  # Alt+W
+            'cancel_button': self.on_cancel_clicked,     # Alt+L
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.MAIN_WINDOW, callback_map)
-
-        # Direct QShortcut for Alt+W (shortcut manager wasn't working reliably)
-        self.test_alt_w_shortcut = QShortcut(QKeySequence("Alt+W"), self)
-        self.test_alt_w_shortcut.activated.connect(self.on_get_web_info_clicked)
 
         # Zoom shortcuts - register as proper QShortcut objects
         # Store references to prevent garbage collection
@@ -865,11 +874,12 @@ class MainWindow(QMainWindow):
         self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.on_escape_pressed)
 
-        # mw#23: Alt+1 through Alt+9 to jump to table columns
-        # Columns: 0=Author, 1=Title, 2=Year, 3=Plot, 4=Series, 5=Genre, 6=Time, 7=Tracks, 8=Read
+        # mw#23: Alt+1 through Alt+0 to jump to table columns
+        # Columns: 0=Author, 1=Title, 2=Year, 3=Plot, 4=Series, 5=Genre, 6=Time, 7=Tracks, 8=Read, 9=Added
         self.column_shortcuts = []
-        for i in range(9):
-            shortcut = QShortcut(QKeySequence(f"Alt+{i + 1}"), self)  # Alt+1..9
+        for i in range(10):
+            shortcut = QShortcut(QKeySequence(
+                f"Alt+{(i + 1) % 10}"), self)  # Alt+1..9, Alt+0
             shortcut.activated.connect(lambda col=i: self.jump_to_column(col))
             self.column_shortcuts.append(shortcut)
 
@@ -913,7 +923,7 @@ class MainWindow(QMainWindow):
         if self.duplicate_mode_active:
             return (
                 f"Duplicate mode: {len(self.books)} books shown. "
-                "Use normal selection. Alt+D Delete, Escape Cancel Dup Mode"
+                "Use normal selection. Alt+D Delete, Alt+L Cancel Dup Mode"
             )
 
         # Priority 3: Show search results if search is active
@@ -951,8 +961,8 @@ class MainWindow(QMainWindow):
     def _selection_shortcuts_text(self) -> str:
         """Return shortcut hint text based on current action mode."""
         if self.duplicate_mode_active:
-            return "Alt+D Delete, Escape Cancel Dup Mode"
-        return "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
+            return "Alt+D Delete, Alt+L Cancel Dup Mode"
+        return "Alt+U Update, Alt+G Get Web Info, Alt+D Delete, Alt+L Cancel"
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -1071,13 +1081,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        # Clear selection before refresh to prevent highlighting entire list
-        self.selected_book_ids.clear()
-        self.update_selection_ui()
-        
         self.refresh_books()
-        
-        # After refresh, select only the remaining duplicate books (not entire list)
         self.selected_book_ids = {
             book.book_id for book in self.books if book.book_id in self.duplicate_mode_book_ids
         }
@@ -1426,14 +1430,16 @@ class MainWindow(QMainWindow):
         self.sort_action_group.setExclusive(True)
 
         self._sort_menu_options = [
-            ("Title", "&Title", 1, True),
             ("Author", "&Author", 0, True),
-            ("Year", "&Year", 2, True),
+            ("Title", "&Title", 1, True),
+            ("Year", "&Year", 2, False),
+            ("Plot", "&Plot", 3, False),
             ("Series", "&Series", 4, True),
             ("Genre", "&Genre", 5, True),
             ("Time", "&Time", 6, False),
             ("Tracks", "Trac&ks", 7, False),
             ("Read", "&Read", 8, False),
+            ("Added", "Add&ed", 9, False),
         ]
 
         self._sort_actions_by_key = {}
@@ -1463,6 +1469,7 @@ class MainWindow(QMainWindow):
             6: "Length",
             7: "Tracks",
             8: "Read",
+            9: "Added",
         }
         return mapping.get(column, "Title")
 
@@ -1681,6 +1688,8 @@ class MainWindow(QMainWindow):
                 return (book.tracks or 0)
             if column == 8:  # Read date
                 return book.read_date or ""
+            if column == 9:  # Date added
+                return book.date_added or ""
             return ""
 
         self.books.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
@@ -2437,6 +2446,12 @@ class MainWindow(QMainWindow):
                     book.read_date, str) else str(book.read_date)
             else:
                 value_text = "blank"
+        elif col == 8:  # Date added
+            if book.date_added:
+                value_text = book.date_added if isinstance(
+                    book.date_added, str) else str(book.date_added)
+            else:
+                value_text = "blank"
         else:
             value_text = "blank"
 
@@ -2519,6 +2534,9 @@ class MainWindow(QMainWindow):
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
         self.get_web_info_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
+        self.cancel_button.setVisible(show_action_buttons)
+        self.cancel_button.setText(
+            "Cancel Dup Mode" if in_duplicate_mode else "Cancel")
         self.status_hint_label.setVisible(show_action_buttons)
         self.status_hint_label.setText(self._selection_shortcuts_text())
 
@@ -2595,45 +2613,18 @@ class MainWindow(QMainWindow):
                     self.table.setFocus()
 
     def on_get_web_info_clicked(self):
-        """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
-        # If we have selected books, show the multi-book placeholder
-        if self.selected_book_ids:
-            from src.accessibility.style_helpers import exec_styled_message_box
-            
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Fetch Web Info",
-                text="Multi-book web info feature is not yet implemented.\n\nUse Alt+E then W on a single focused book.",
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok
-            )
-            return
+        """Handle Get Web Info button click - placeholder for multi-book feature."""
+        from src.accessibility.style_helpers import exec_styled_message_box
         
-        # Handle focused book (no selection)
-        row = self.table.currentRow()
-        if row < 0 or row >= len(self.books):
-            self.set_status("No book available for web info fetch", announce=True)
-            return
-            
-        book = self.books[row]
-        self.set_status(f"Opening web metadata for: {book.title or 'Unknown'}", announce=True)
-        
-        # Open web metadata window
-        from src.ui.web_metadata import WebMetadataWindow
-        
-        focus_ctx = self._capture_table_focus_context(row, 1)  # Focus title column
-        dialog = WebMetadataWindow(
-            self.db,
-            book,
-            self.scaler,
-            self.theme_manager,
-            parent=self,
-            refresh_callback=self.refresh_books
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Get Web Info",
+            text="Multi-book web info feature is not yet implemented.\n\nUse Edit → Get Web Info for individual books.",
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok
         )
-        dialog.exec()
-        self._restore_table_focus_context(focus_ctx)
 
     def on_delete_clicked(self):
         """Handle Delete button click."""
@@ -2754,57 +2745,18 @@ class MainWindow(QMainWindow):
         self.table.setFocus(Qt.ActiveWindowFocusReason)
 
     def on_escape_pressed(self):
-        """Handle ESC key at window level - shows confirmation dialogs for selection/duplicate mode, then clears search/read filter."""
-        # If in duplicate mode, ESC should ask to exit duplicate mode
+        """Handle ESC key at window level - clears selection first, then search, then read filter."""
+        # If in duplicate mode, ESC should only clear selection, not exit mode
         if self.duplicate_mode_active:
             if self.selected_book_ids or self.selection_anchor_row is not None:
-                # Ask to clear selection first in duplicate mode
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Clear Selection",
-                    text="Clear selected books in duplicate mode?\n\nYes: Clear selection\nNo: Keep selection",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.Yes,
-                )
-                if reply == QMessageBox.Yes:
-                    self.selected_book_ids.clear()
-                    self.selection_anchor_row = None
-                    self._apply_row_selection_by_book_ids(set())
-                    self.update_selection_ui()
+                self.selected_book_ids.clear()
+                self.selection_anchor_row = None
+                self._apply_row_selection_by_book_ids(set())
+                self.update_selection_ui()
                 return
-            else:
-                # Ask to exit duplicate mode
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Exit Duplicate Mode",
-                    text="Exit duplicate mode?\n\nYes: Exit duplicate mode\nNo: Stay in duplicate mode",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.Yes,
-                )
-                if reply == QMessageBox.Yes:
-                    self.exit_duplicate_mode(
-                        message="Duplicate mode canceled", announce=False)
-                    QTimer.singleShot(0, self.table.setFocus)
-                return
-        
         # First priority: clear selection mode/selected books (normal mode)
         if self.selected_book_ids or self.selection_anchor_row is not None:
-            # Ask to clear selection in normal mode
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Clear Selection",
-                text="Clear selected books?\n\nYes: Clear selection\nNo: Keep selection",
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.Yes,
-            )
-            if reply == QMessageBox.Yes:
-                self.on_cancel_clicked()
+            self.on_cancel_clicked()
             return
         # Second priority: clear search - use book_id to restore position (mw#29)
         if self.current_filter.has_search:
@@ -3306,13 +3258,18 @@ Use Ctrl+I to import or Alt+7 for menu options."""
         layout.setSpacing(10)
 
         shortcuts = [
+            ("Ctrl+F", "Find"),
+            ("Alt+1", "Jump to Title column"),
+            ("Alt+2", "Jump to Author column"),
+            ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
             ("Alt+U", "Update selected"),
-            ("Alt+W", "Fetch Web Info"),
+            ("Alt+G", "Get Web Info for selected"),
             ("Alt+D", "Delete selected"),
+            ("Alt+L", "Cancel selection"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
             ("Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),
-            ("Escape", "Exit from Selection, Duplicate, Search, and Read filters"),
+            ("Escape", "Clear selection/search/read filter"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),

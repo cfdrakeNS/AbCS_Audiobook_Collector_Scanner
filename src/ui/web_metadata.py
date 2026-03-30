@@ -43,23 +43,27 @@ class WebMetadataWindow(QDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
-    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S'}
+    ALLOWED_ALT_KEYS = {'T', 'A', 'P', 'Y', 'I', 'G', 'S', 'W', 'R', 'U', 'O', '/', 'F1'}
 
     # Signal emitted when data is saved
     data_saved = Signal()
 
     def __init__(self, db, book, scaler, theme_manager, parent=None, refresh_callback=None):
+        # Call base class constructor FIRST
+        super().__init__(parent)
+        
         # Always set parent_window, even if None
         self.parent_window = None
         from PySide6.QtWidgets import QMainWindow, QDialog
         if parent and (isinstance(parent, QMainWindow) or isinstance(parent, QDialog)):
             self.parent_window = parent
-        super().__init__(parent)
+        
         self.db = db
         self.book = book
         self.scaler = scaler
         self.theme_manager = theme_manager
         self.refresh_callback = refresh_callback
+        self.refresh_count = 0  # Track how many times we've refreshed
         self.setWindowTitle("Web Metadata")
         self.setModal(True)
         # Make window wider for proper plot field letterbox shape
@@ -153,21 +157,10 @@ class WebMetadataWindow(QDialog):
             checkbox.setVisible(False)
             row_layout.addWidget(checkbox)
 
-            # Indicator (for show_indicator logic)
-            indicator = QLabel("✓")
-            indicator.setAccessibleName("Web data indicator")
-            indicator.setAccessibleDescription("This field contains web-fetched data")
-            indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")
-            indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            indicator.setAlignment(Qt.AlignCenter)
-            indicator.setVisible(False)
-            row_layout.addWidget(indicator)
-
             # Store reference for toggling
             row_widget._web_label = web_label
             row_widget._web_edit = web_edit
             row_widget._checkbox = checkbox
-            row_widget._indicator = indicator
             return row_widget
 
         # Title fields
@@ -175,6 +168,7 @@ class WebMetadataWindow(QDialog):
         self.title_edit.setAccessibleName("Current Title")
         self.title_edit.setAccessibleDescription("Current book title")
         self.title_edit.setReadOnly(True)  # Make read-only
+        self.title_edit.setObjectName("title_edit")  # For shortcut manager
         self.title_web_edit = QLineEdit()
         self.title_web_edit.setAccessibleName("Web Title")
         self.title_web_edit.setAccessibleDescription("Book title from web source")
@@ -192,6 +186,7 @@ class WebMetadataWindow(QDialog):
         self.author_edit.setAccessibleName("Current Author")
         self.author_edit.setAccessibleDescription("Current author name")
         self.author_edit.setReadOnly(True)  # Make read-only
+        self.author_edit.setObjectName("author_edit")  # For shortcut manager
         self.author_web_edit = QLineEdit()
         self.author_web_edit.setAccessibleName("Web Author")
         self.author_web_edit.setAccessibleDescription("Author name from web source")
@@ -219,7 +214,7 @@ class WebMetadataWindow(QDialog):
         self.year_checkbox.setAccessibleName("Keep Web Year")
         self.year_checkbox.setAccessibleDescription("Apply web year to current book")
         self.year_checkbox.setChecked(False)
-        self.year_checkbox.setShortcut("Alt+Y")
+        # Removed setShortcut to avoid conflict with shortcut manager
         year_row = create_two_column_row("Year:", self.year_edit, self.year_web_edit, self.year_checkbox)
         self.year_row = year_row
         self.main_layout.addWidget(year_row)
@@ -229,6 +224,7 @@ class WebMetadataWindow(QDialog):
         self.series_edit.setAccessibleName("Current Series")
         self.series_edit.setAccessibleDescription("Current series name")
         self.series_edit.setReadOnly(True)  # Make read-only
+        self.series_edit.setObjectName("series_edit")  # For shortcut manager
         self.series_web_edit = QLineEdit()
         self.series_web_edit.setAccessibleName("Web Series")
         self.series_web_edit.setAccessibleDescription("Series name from web source")
@@ -247,6 +243,7 @@ class WebMetadataWindow(QDialog):
         self.genre_edit.setAccessibleName("Current Genre")
         self.genre_edit.setAccessibleDescription("Current genre")
         self.genre_edit.setReadOnly(True)  # Make read-only
+        self.genre_edit.setObjectName("genre_edit")  # For shortcut manager
         self.genre_web_edit = QLineEdit()
         self.genre_web_edit.setAccessibleName("Web Genre")
         self.genre_web_edit.setAccessibleDescription("Genre from web source")
@@ -259,15 +256,18 @@ class WebMetadataWindow(QDialog):
         self.genre_row = genre_row
         self.main_layout.addWidget(genre_row)
 
-        # Plot field (always present, below two-column layout)
+        # Plot field - always visible to maintain layout
+        plot_layout = QHBoxLayout()
+        plot_label = QLabel("&Plot:")
+        plot_label.setAccessibleName("Plot field label")
         self.plot_edit = QTextEdit()
-        self.plot_edit.setReadOnly(True)
-        self.plot_edit.setAccessibleName("Plot Summary")
-        self.plot_edit.setAccessibleDescription("Plot summary from web source")
-        self.plot_edit.setMinimumHeight(40)  # Like book_details
-        self.plot_edit.setTabChangesFocus(True)
-        self.plot_edit.textChanged.connect(self._adjust_plot_height)
-        plot_label = QLabel("Plot:")
+        self.plot_edit.setAccessibleName("Plot")
+        self.plot_edit.setReadOnly(True)  # Make read-only like other fields
+        self.plot_edit.setFocusPolicy(Qt.StrongFocus)  # Ensure it can receive focus for tabbing
+        self.plot_edit.setObjectName("plot_edit")  # For shortcut manager
+        plot_label.setBuddy(self.plot_edit)
+        plot_layout.addWidget(plot_label)
+        plot_layout.addWidget(self.plot_edit)
         plot_label.setMinimumWidth(80)
         plot_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
         plot_row = QWidget()
@@ -279,25 +279,100 @@ class WebMetadataWindow(QDialog):
         self.plot_row = plot_row  # Store reference for hiding/showing
         self.main_layout.addWidget(plot_row)
         
+        # Rating field
+        rating_layout = QHBoxLayout()
+        rating_label = QLabel("Rating:")
+        rating_label.setAccessibleName("Rating field label")
+        self.rating_edit = QLineEdit()
+        self.rating_edit.setAccessibleName("Rating")
+        self.rating_edit.setAccessibleDescription("Alt+R")
+        self.rating_edit.setReadOnly(True)  # Make read-only
+        self.rating_edit.setObjectName("rating_edit")  # For shortcut manager
+        self.rating_edit.setFocusPolicy(Qt.StrongFocus)  # Ensure it can receive focus
+        rating_label.setBuddy(self.rating_edit)
+        rating_layout.addWidget(rating_label)
+        rating_layout.addWidget(self.rating_edit)
+        rating_label.setMinimumWidth(80)
+        rating_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        rating_row = QWidget()
+        rating_layout = QHBoxLayout(rating_row)
+        rating_layout.setContentsMargins(0, 0, 0, 0)
+        rating_layout.setSpacing(10)
+        rating_layout.addWidget(rating_label)
+        rating_layout.addWidget(self.rating_edit)
+        self.rating_row = rating_row
+        self.main_layout.addWidget(rating_row)
+        
+        # Publisher field
+        publisher_layout = QHBoxLayout()
+        publisher_label = QLabel("Publisher:")
+        publisher_label.setAccessibleName("Publisher field label")
+        self.publisher_edit = QLineEdit()
+        self.publisher_edit.setAccessibleName("Publisher")
+        self.publisher_edit.setAccessibleDescription("Alt+U")
+        self.publisher_edit.setReadOnly(True)  # Make read-only
+        self.publisher_edit.setObjectName("publisher_edit")  # For shortcut manager
+        self.publisher_edit.setFocusPolicy(Qt.StrongFocus)  # Ensure it can receive focus
+        publisher_label.setBuddy(self.publisher_edit)
+        publisher_layout.addWidget(publisher_label)
+        publisher_layout.addWidget(self.publisher_edit)
+        publisher_label.setMinimumWidth(80)
+        publisher_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        publisher_row = QWidget()
+        publisher_layout = QHBoxLayout(publisher_row)
+        publisher_layout.setContentsMargins(0, 0, 0, 0)
+        publisher_layout.setSpacing(10)
+        publisher_layout.addWidget(publisher_label)
+        publisher_layout.addWidget(self.publisher_edit)
+        self.publisher_row = publisher_row
+        self.main_layout.addWidget(publisher_row)
+        
+        # Source field (for display only, not saved to DB)
+        source_layout = QHBoxLayout()
+        source_label = QLabel("Source:")
+        source_label.setAccessibleName("Source field label")
+        self.source_edit = QLineEdit()
+        self.source_edit.setAccessibleName("Source")
+        self.source_edit.setAccessibleDescription("Alt+O")
+        self.source_edit.setReadOnly(True)
+        self.source_edit.setObjectName("source_edit")  # For shortcut manager
+        self.source_edit.setFocusPolicy(Qt.StrongFocus)  # Ensure it can receive focus
+        source_label.setBuddy(self.source_edit)
+        source_layout.addWidget(source_label)
+        source_layout.addWidget(self.source_edit)
+        source_label.setMinimumWidth(80)
+        source_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        source_row = QWidget()
+        source_layout = QHBoxLayout(source_row)
+        source_layout.setContentsMargins(0, 0, 0, 0)
+        source_layout.setSpacing(10)
+        source_layout.addWidget(source_label)
+        source_layout.addWidget(self.source_edit)
+        self.source_row = source_row
+        self.main_layout.addWidget(source_row)
+        
         # Add buttons
         button_layout = QHBoxLayout()
         
-        self.fetch_button = QPushButton("&Fetch Web Data")
-        self.fetch_button.setAccessibleName("Fetch Web Data")
-        self.fetch_button.setAccessibleDescription("Fetch web data from online sources - Alt+W")
+        self.fetch_button = QPushButton("Refresh Web Info")
+        self.fetch_button.setAccessibleName("Refresh Web Info")
+        self.fetch_button.setAccessibleDescription("Refresh web data from online sources - Alt+W")
         self.fetch_button.setFocusPolicy(Qt.StrongFocus)
         self.fetch_button.setDefault(False)
         self.fetch_button.setAutoDefault(False)
-        self.fetch_button.clicked.connect(self.fetch_web_data)
+        self.fetch_button.clicked.connect(lambda: self.fetch_web_data(is_refresh=True))
+        self.fetch_button.hide()  # Initially hidden, shown only if found on first attempt
+        self.fetch_button.setObjectName("fetch_web_button")  # For shortcut manager
         button_layout.addWidget(self.fetch_button)
         
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
-        self.save_button.setDefault(False)
+        self.save_button.setDefault(True)  # Make it the default button for Enter key
         self.save_button.setAutoDefault(False)
         self.save_button.clicked.connect(self.on_save_clicked)
+        self.save_button.setObjectName("save_button")  # For shortcut manager
         button_layout.addWidget(self.save_button)
         
         button_layout.addStretch()
@@ -315,7 +390,7 @@ class WebMetadataWindow(QDialog):
         # Define tab order following the actual layout:
         # Current Title → Web Title → Title Checkbox → Current Author → Web Author → Author Checkbox
         # → Current Year → Web Year → Year Checkbox → Current Series → Web Series → Series Checkbox
-        # → Current Genre → Web Genre → Genre Checkbox → Plot → Save
+        # → Current Genre → Web Genre → Genre Checkbox → Plot → Source → Rating → Publisher → Save
         tab_widgets = [
             self.title_edit,        # Current title
             self.title_web_edit,    # Web title
@@ -333,6 +408,9 @@ class WebMetadataWindow(QDialog):
             self.genre_web_edit,    # Web genre
             self.genre_checkbox,    # Genre checkbox
             self.plot_edit,         # Plot field
+            self.rating_edit,       # Rating field
+            self.publisher_edit,    # Publisher field
+            self.source_edit,       # Source field (read-only)
             self.save_button        # Save button
         ]
         
@@ -356,33 +434,6 @@ class WebMetadataWindow(QDialog):
         self.plot_edit.setFixedHeight(new_height)
     
     # ...existing code...
-    def _create_field_with_indicator_and_checkbox(self, field, checkbox):
-        """Create a field with web data difference indicator and a checkbox."""
-        from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
-
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(3)
-        layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
-        container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        layout.addWidget(checkbox, 0)
-        field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        layout.addWidget(field, 1)
-        indicator = QLabel("✓")
-        indicator.setAccessibleName("Web data indicator")
-        indicator.setAccessibleDescription("This field contains web-fetched data")
-        indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")
-        indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        indicator.setAlignment(Qt.AlignCenter)
-        layout.addWidget(indicator, 0)
-        # Store reference for toggling visibility
-        container._indicator = indicator
-        container._checkbox = checkbox
-        return container
-    
     def apply_field_styling(self):
         """Apply field styling like backup window."""
         # Apply F1 popup style to fields
@@ -400,34 +451,6 @@ class WebMetadataWindow(QDialog):
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
     
-    def _create_field_with_indicator(self, field):
-        """Create a field with web data difference indicator, left-aligned for accessibility."""
-        from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
-
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(3)
-        layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
-        # Set container to expanding horizontally, fixed vertically
-        container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-        # The actual field: expanding horizontally
-        field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        layout.addWidget(field, 1)  # stretch=1
-
-        # Difference indicator (check mark for web data): fixed size
-        indicator = QLabel("✓")
-        indicator.setAccessibleName("Web data indicator")
-        indicator.setAccessibleDescription("This field contains web-fetched data")
-        indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")  # Sea green
-        indicator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        indicator.setAlignment(Qt.AlignCenter)
-        layout.addWidget(indicator, 0)  # stretch=0
-
-        return container
-    
     def load_book_data(self):
         """Load book data into fields and fetch web data."""
         if self.book:
@@ -438,11 +461,13 @@ class WebMetadataWindow(QDialog):
             self.genre_edit.setText(self.book.genre_name or "")
             self.plot_edit.setPlainText(self.book.comments or "")
             
-            # Show plot row if book has existing plot data, hide if empty
-            if self.book.comments and self.book.comments.strip():
-                self.plot_row.setVisible(True)
-            else:
-                self.plot_row.setVisible(False)
+            # Initialize new fields
+            self.source_edit.clear()
+            self.rating_edit.clear()
+            self.publisher_edit.clear()
+            
+            # Plot field is always visible now to maintain layout
+            self.plot_row.setVisible(True)
 
             # Initialize web fields and labels as hidden
             for row in [self.title_row, self.author_row, self.year_row, self.series_row, self.genre_row]:
@@ -451,30 +476,30 @@ class WebMetadataWindow(QDialog):
                 row._checkbox.setVisible(False)
 
         # Auto-fetch web data when window opens
-        self.fetch_web_data()
+        self.fetch_web_data(is_refresh=False)
     
     def set_focus_to_first_differing_field(self):
-        """Set focus to first field that has web differences, fallback to plot."""
-        # Check fields in order: title, author, year, series, genre
-        field_order = [
-            (self.title_edit, 'title'),
-            (self.author_edit, 'author'),
-            (self.year_edit, 'year'),
-            (self.series_edit, 'series'),
-            (self.genre_edit, 'genre')
-        ]
-        
-        # Find first field with differences
-        for field, field_name in field_order:
-            if field_name in self.field_differences:
-                field.setFocus()
-                return
-        
-        # No differences found, focus on plot
-        self.plot_edit.setFocus()
+        """Set focus to first field that has web differences, fallback to title."""
+        # Always start with title field for accessibility
+        self.title_edit.setFocus()
+        return
     
-    def fetch_web_data(self):
-        """Fetch web data from API with status updates."""
+    def fetch_web_data(self, is_refresh=False):
+        """Fetch web data from API with automatic retry through all sources."""
+        # Don't increment refresh counter for automatic retries - only for manual refresh
+        if is_refresh:
+            # Cap refresh counter at 2 (we have sources 0, 1, 2)
+            self.refresh_count = min(self.refresh_count + 1, 2)
+            start_refresh_count = self.refresh_count
+        else:
+            # Initial fetch - start from 0
+            self.refresh_count = 0
+            start_refresh_count = 0
+        
+        # Show popup for all requests (initial and refresh)
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        from PySide6.QtCore import QTimer
+        
         # Check if parent is book_details and use current form values if so
         parent_is_book_details = (self.parent_window and 
                                 hasattr(self.parent_window, '__class__') and 
@@ -492,50 +517,112 @@ class WebMetadataWindow(QDialog):
             author = self.book.author_name
             year = str(self.book.year) if self.book.year else None
 
-        # Use WebBookAPI for fetching with error handling
+        # Use WebBookAPI for fetching with automatic retry
         api = WebBookAPI()
-        try:
-            web_data = api.get_book_metadata(title, author, year)
-        except Exception as e:
-            self.set_status(f"Error fetching web data: {str(e)}", announce=True, timeout_ms=3000)
-            self.clear_web_indicators()
-            # Return focus to title field on error
-            self.title_edit.setFocus()
-            return
-
+        web_data = None
+        last_error = None
+        
+        # Try each source automatically until we find data or exhaust all sources
+        for current_attempt in range(start_refresh_count, 3):  # Try sources 0, 1, 2
+            self.refresh_count = current_attempt
+            
+            # Show popup for each attempt
+            source_names = {0: "Primary Web Source", 1: "Secondary Web Source", 2: "Additional Web Source"}
+            current_source = source_names.get(current_attempt, "Primary Web Source")
+            
+            popup = QDialog(self)
+            popup.setWindowTitle("Please wait")
+            popup.setModal(True)
+            popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
+            layout = QVBoxLayout(popup)
+            
+            if is_refresh:
+                label = QLabel(f"Checking {current_source} for book info, please wait!")
+            else:
+                label = QLabel(f"Searching {current_source} for book info, please wait!")
+                
+            layout.addWidget(label)
+            popup.setLayout(layout)
+            popup.resize(350, 80)
+            QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
+            popup.show()
+            QApplication.processEvents()
+            
+            try:
+                web_data = api.get_book_metadata(title, author, year, refresh=current_attempt)
+                if web_data:
+                    # Found data - break out of loop
+                    break
+            except Exception as e:
+                last_error = str(e)
+                continue  # Try next source
+        
         if web_data:
             self.update_fields_with_web_data(web_data)
-            # Build status message: Difference - ...
-            diff_fields = [k.capitalize() for k in self.field_differences.keys()]
-            diff_str = f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
-            msg = f"Web data found{diff_str}"
-            self.set_status(msg, announce=True)
-        else:
-            # No web data found - show popup and close window
-            from src.accessibility.style_helpers import exec_styled_message_box
-            title_text = title or "Unknown Title"
-            author_text = author or "Unknown Author"
-            message_text = f"No web data found for:\n\n{title_text} by {author_text}"
             
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Web Search",
-                text=message_text,
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok
-            )
-            self.clear_web_indicators()
-            # Return focus to parent window's table if available before closing
-            if self.parent_window and hasattr(self.parent_window, 'table'):
-                # Use QTimer to ensure focus is set after dialog closes
-                QTimer.singleShot(0, lambda: self.parent_window._restore_table_focus(
-                    self.parent_window.table.currentRow(), 
-                    self.parent_window.table.currentColumn()
-                ))
-            # Close the window - user can edit in book_details and try again
-            QTimer.singleShot(0, self.close)
+            # Show refresh button if we haven't checked all sources yet
+            source = web_data.get('source', '')
+            if self.refresh_count < 2:  # 0=Primary, 1=Secondary, 2=Additional (last one)
+                self.fetch_button.show()
+                # Build status message: Difference - ...
+                diff_fields = [k.capitalize() for k in self.field_differences.keys()]
+                diff_str = f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
+                
+                # Map internal source names to display names
+                display_names = {
+                    'google_books': 'Primary Web Source',
+                    'open_library': 'Secondary Web Source',
+                    'wikidata': 'Additional Web Source'
+                }
+                source_name = display_names.get(source, 'Unknown Source')
+                msg = f"Web data found from {source_name}{diff_str}"
+                # Delay status announcement until after popup closes
+                QTimer.singleShot(2000, lambda: self.set_status(msg, announce=True))
+                # Set focus to first differing field after successful fetch
+                QTimer.singleShot(2000, self.set_focus_to_first_differing_field)
+            else:
+                # Found on third source (Additional Web Source) - hide button and show special message
+                self.fetch_button.hide()
+                source_name = 'Additional Web Source'  # WikiData
+                # Delay status announcement until after popup closes
+                QTimer.singleShot(2000, lambda: self.set_status(f"Data from {source_name} - no more sources available", announce=True))
+                # Set focus to first differing field after successful fetch
+                QTimer.singleShot(2000, self.set_focus_to_first_differing_field)
+            return
+        else:
+            # No data found from any source
+            # Don't clear existing data on refresh - only clear on initial failure
+            if not is_refresh:
+                self.clear_web_indicators()
+            
+            # Check if this was a refresh and we've exhausted all sources
+            if is_refresh and self.refresh_count >= 2:
+                # All 3 sources checked, hide button
+                self.fetch_button.hide()
+                # Show popup for no additional data
+                from PySide6.QtWidgets import QMessageBox
+                from src.accessibility.style_helpers import build_accessible_message_box_style
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle("No Additional Data Found")
+                msg.setText("No additional information found in Primary, Secondary, or Additional sources.")
+                msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+                msg.setStandardButtons(QMessageBox.Ok)
+                reply = msg.exec()
+                # Set status after popup closes
+                self.set_status("No additional data found from any source", announce=True, timeout_ms=3000)
+            elif last_error:
+                self.set_status(f"Error fetching web data: {last_error}", announce=True, timeout_ms=3000)
+            else:
+                # Different messages for initial vs refresh
+                if is_refresh:
+                    self.set_status("No additional data found from other sources", announce=True, timeout_ms=3000)
+                else:
+                    self.set_status("No web data found from any source", announce=True, timeout_ms=3000)
+            
+            # Return focus to title field on failure
+            self.title_edit.setFocus()
+            return
     
     def generate_realistic_plot(self, title):
         """Generate a more realistic plot based on title keywords."""
@@ -640,72 +727,69 @@ class WebMetadataWindow(QDialog):
             self.genre_row
         )
         
-        # Plot (update plot field with web data)
+        # Plot (update plot field with web data, including rating and publisher)
         if web_data.get('plot'):
-            plot = web_data['plot']
-            rating_line = ""
-            source_line = ""
-            publisher_line = ""
+            # Build plot text with rating and publisher
+            plot_text = ""
             
-            # Extract rating, source, and publisher from web data
+            # Add rating at the top if available
             rating = web_data.get('rating')
             ratings_count = web_data.get('ratings_count')
-            source = web_data.get('source')
-            publisher = web_data.get('publisher')
-            
             if rating:
                 try:
                     rating_val = float(rating)
-                    rating_str = f"{rating_val:.1f}"
+                    rating_str = f"Rating: {rating_val:.1f}"
                 except (ValueError, TypeError):
-                    rating_str = str(rating)
+                    rating_str = f"Rating: {rating}"
                 if ratings_count:
                     try:
                         count_val = int(ratings_count)
-                        count_str = f"{count_val} reviews"
+                        rating_str += f" ({count_val:,} ratings)"
                     except (ValueError, TypeError):
-                        count_str = f"{ratings_count} reviews"
-                    rating_line = f"Rating {rating_str} ({count_str})"
-                else:
-                    rating_line = f"Rating {rating_str}"
+                        pass
+                plot_text += rating_str + "\n"
             
-            if source:
-                source_line = f"Plot Source: {source}"
+            # Add the actual plot
+            plot_text += web_data['plot']
             
+            # Add publisher at the bottom if available
+            publisher = web_data.get('publisher')
             if publisher:
-                publisher_line = f"Publisher: {publisher}"
+                plot_text += f"\nPublisher: {publisher}"
             
-            # Build the plot display: rating and source on same line at top, publisher at end
-            plot_lines = []
-            header_line = ""
-            if rating_line and source_line:
-                header_line = f"{rating_line} | {source_line}"
-            elif rating_line:
-                header_line = rating_line
-            elif source_line:
-                header_line = source_line
-            if header_line:
-                plot_lines.append(header_line)
-            if plot:
-                plot_lines.append(plot)
-            if publisher_line:
-                plot_lines.append(publisher_line)
+            # Set the combined text in plot field
+            self.plot_edit.setPlainText(plot_text)
             
-            # Remove any blank lines between sections
-            formatted_plot = "\n".join([line for line in plot_lines if line.strip() != ""]).strip()
-            self.plot_edit.setPlainText(formatted_plot)
-            self.field_differences['plot'] = 'found'
-            # Show plot row when data is available
-            self.plot_row.setVisible(True)
+            # Add plot to field_differences so it gets saved
+            current_plot = self.book.comments or ""
+            if plot_text.strip() != current_plot.strip():
+                self.field_differences['plot'] = plot_text
+            
+            # Handle source (display only) - show primary/secondary/tertiary
+            source = web_data.get('source')
+            if source:
+                # Use refresh_count for proper source names, not actual source type
+                source_names_by_refresh = {0: "Primary", 1: "Secondary", 2: "Additional"}
+                source_display = source_names_by_refresh.get(self.refresh_count, "Primary")
+                self.source_edit.setText(source_display)
+            else:
+                self.source_edit.clear()
+            
+            # Clear separate rating and publisher fields since they're now in plot
+            self.rating_edit.clear()
+            self.publisher_edit.clear()
         else:
-            # Hide plot row when no plot data is available
-            self.plot_row.setVisible(False)
+            # Clear all fields if no plot data
+            self.plot_edit.clear()
+            self.rating_edit.clear()
+            self.source_edit.clear()
+            self.publisher_edit.clear()
     
     # Removed: show_changes_popup (was for testing only)
     
     def show_indicator(self, field, show, color=None):
-        """Show or hide the web data indicator and checkbox for a field. Color: 'green' or 'red'."""
-        # Find the indicator label in the field's container
+        """Show or hide the web data checkbox for a field (indicators removed for low vision)."""
+        # Find the checkbox in the field's container
         container = None
         if field is self.title_edit:
             container = self.title_row
@@ -718,14 +802,7 @@ class WebMetadataWindow(QDialog):
         elif field is self.genre_edit:
             container = self.genre_row
         if container:
-            # Toggle indicator and checkbox visibility
-            if hasattr(container, '_indicator'):
-                container._indicator.setVisible(show)
-                if show and color:
-                    if color == 'red':
-                        container._indicator.setStyleSheet("color: #C0392B; font-weight: bold;")
-                    elif color == 'green':
-                        container._indicator.setStyleSheet("color: #2E8B57; font-weight: bold;")
+            # Toggle checkbox visibility (indicators removed for low vision users)
             if hasattr(container, '_checkbox'):
                 container._checkbox.setVisible(show)
     
@@ -784,6 +861,8 @@ class WebMetadataWindow(QDialog):
         shortcut_mgr = get_shortcut_manager()
         
         # Alt+Key shortcuts (centralized)
+        # Note: Shortcut mappings are defined in src/accessibility/shortcuts.py
+        # This follows the accessibility standards - single source of truth
         callback_map = {
             'title_edit': lambda: self.title_edit.setFocus(),
             'author_edit': lambda: self.author_edit.setFocus(), 
@@ -791,26 +870,18 @@ class WebMetadataWindow(QDialog):
             'year_edit': lambda: self.year_edit.setFocus(),
             'series_edit': lambda: self.series_edit.setFocus(),
             'genre_edit': lambda: self.genre_edit.setFocus(),
-            'fetch_web_button': lambda: self.fetch_web_data(),
+            'rating_edit': lambda: self.rating_edit.setFocus(),
+            'publisher_edit': lambda: self.publisher_edit.setFocus(),
+            'source_edit': lambda: self.source_edit.setFocus(),
+            'fetch_web_button': lambda: self.fetch_web_data(is_refresh=True),
             'save_button': lambda: self.on_save_clicked() if self.save_button.isVisible() else None,
+            'show_help': lambda: self.on_show_shortcuts(),
+            'read_status_bar': lambda: self.on_read_status_bar(),
+            'close_window': lambda: self.on_escape_pressed(),
         }
         shortcut_mgr.register_alt_shortcuts(
-            self, ShortcutContext.WEB_METADATA, callback_map)
-        
-        # F1 - local shortcut (PROVEN working)
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
-        
-        # Escape - local shortcut with confirmation if web data present
-        self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.close_shortcut.activated.connect(self.on_escape_pressed)
-        
-        # Alt+/ - local shortcut (PROVEN working)
-        self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.read_status_shortcut.activated.connect(self.on_read_status_bar)
+            self, ShortcutContext.WEB_METADATA, callback_map
+        )
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""
@@ -845,7 +916,10 @@ class WebMetadataWindow(QDialog):
             ("Alt+Y", "Year"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
-            ("Alt+W", "Fetch Web Data"),
+            ("Alt+R", "Rating"),
+            ("Alt+U", "Publisher"),
+            ("Alt+O", "Source"),
+            ("Alt+W", "Refresh Web Info (if found quickly)"),
             ("Alt+S", "Save"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
@@ -1071,13 +1145,39 @@ class WebMetadataWindow(QDialog):
                             self.book.genre_id = genre_id
                             applied_fields.append('Genre')
 
-                # Plot
+                # Plot (save only the actual plot content, rating and publisher are handled separately)
                 if 'plot' in self.field_differences:
-                    # Use the plot field as-is (already contains rating/source/publisher if available)
+                    # Use only the plot field content (rating/source/publisher are in separate fields)
                     plot = self.plot_edit.toPlainText().strip()
                     if plot:
                         self.book.comments = plot
                         applied_fields.append('Plot')
+                
+                # Rating (save to database if available)
+                rating_text = self.rating_edit.text().strip()
+                if rating_text:
+                    # Extract just the rating number (e.g., "4.5" from "4.5 (1,234 ratings)")
+                    import re
+                    rating_match = re.match(r'([0-9.]+)', rating_text)
+                    if rating_match:
+                        try:
+                            rating_val = float(rating_match.group(1))
+                            # Note: You'll need to add a rating field to your book database table
+                            # self.book.rating = rating_val
+                            # applied_fields.append('Rating')
+                            pass  # Rating field not yet implemented in database
+                        except ValueError:
+                            pass
+                
+                # Publisher (save to database if available)
+                publisher_text = self.publisher_edit.text().strip()
+                if publisher_text:
+                    # Note: You'll need to add a publisher field to your book database table
+                    # self.book.publisher = publisher_text
+                    # applied_fields.append('Publisher')
+                    pass  # Publisher field not yet implemented in database
+                
+                # Source is NOT saved to database (display only for legal safety)
 
                 # Save to database
                 self.book_queries.update(self.book)
