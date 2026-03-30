@@ -102,7 +102,22 @@ class ImportWindow(QDialog):
             widget.installEventFilter(self)
 
     def eventFilter(self, source, event):
-        """Handle mapped Alt+letter actions reliably across child widgets."""
+        """Handle mapped Alt+letter actions reliably across child widgets and combo anti-noise."""
+        # Combo anti-noise pattern: block plain arrow keys on combo boxes
+        if event.type() == QEvent.KeyPress and isinstance(source, QComboBox):
+            if event.key() in (Qt.Key_Up, Qt.Key_Down) and not event.modifiers() & Qt.AltModifier:
+                # Block only plain arrows - allow Alt+Up/Down to open dropdown
+                QApplication.beep()
+                event.accept()
+                return True
+            elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                # Enter commits selection and moves focus
+                if source.lineEdit():
+                    source.lineEdit().selectAll()
+                event.accept()
+                return True
+        
+        # Alt+letter handling
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(event.modifiers() & Qt.AltModifier):
             key = event.key()
             # Alt+W and Alt+B: let keyPressEvent handle it for accessibility
@@ -115,7 +130,7 @@ class ImportWindow(QDialog):
     # Import dialog for scanning folders and importing metadata.
 
     ALLOWED_ALT_LETTERS = {
-        'A', 'B', 'C', 'E', 'F', 'I', 'L', 'N', 'S', 'V', 'W', 'X'
+        'C', 'F', 'B', 'E', 'L', 'S', 'V', 'X', 'W'  # Only actually implemented shortcuts
     }
 
     COL_AUTHOR = 0

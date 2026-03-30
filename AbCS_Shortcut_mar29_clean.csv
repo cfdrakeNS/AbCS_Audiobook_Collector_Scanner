@@ -1,0 +1,36 @@
+Shortcut,main_window,book_details,import_window,import_detail_window,update_window,preferences_window,web_metadata_window,collection_window,backup_restore_window,name_list_window,reading_history_window
+Alt+L,Book list focus,,Focus import list table,Close window,Focus book list,,,Focus list,,,
+Alt+U,Update selected,,,,,,
+Alt+W,Fetch Web Info,Fetch web info,Browse,,,Fetch Web Data,,,,,
+Alt+D,Delete selected,Delete,,Discard,Delete selected,,,,,,
+Alt+T,,Title,,Title,,Theme,Title,,,,
+Alt+A,,Author,,Author,,Author Fallback,Author,,,,
+Alt+Y,,Year,,Year,,Year,Year,,,Year tab,
+Alt+F,,Files,Folder field,Files,,Flip Author,,Clear find,,From date field,
+Alt+I,,Series,Import Selected,Series,,Title Fallback,Series,,,,,
+Alt+R,,Reader,,Reader,,Reader Keywords,Scenario Description,,,,,
+Alt+C,,Collection,Collection,Collection,Collection,,Cancel,,,Collection active,,,
+Alt+M,,Length,,Length,Directory,,,Name edit,,,Month tab,
+Alt+E,,Read date,Error filter,Errors,,Formats,,,,,,
+Alt+Z,,Size,,Size,Zoom (%),,,,,,,
+Alt+H,,Path,,Path,Directory,,,,,,
+Alt+O,,Comments,,Comments,Formats,,,,,,
+Alt+N,,New,,,,,New,,,,,,
+Alt+S,,Save,Scan,Save,Series,Save,Save,,Save,Search,
+Alt+V,,Save,Import All Valid,,Save,Save,,,,,,
+Alt+B,,Browse,Browse,,,Trim whitespace,,,,,,
+Alt+X,,Export list to CSV,Export list to CSV,,,,,,,,,
+Alt+P,,,,,,,,,Plot,,,,,
+Alt+Down,,,,,,,,Open combo dropdown,,,,,
+Ctrl+Plus,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in,Zoom in
+Ctrl+Minus,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out,Zoom out
+Ctrl+0,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom,Reset zoom
+Ctrl+F,Find,,,,,,
+Ctrl+I,Import,,,,,,
+Ctrl+N,New Book,,,,,,
+Ctrl+U,Update selected,,,,,,
+F1,Help,Help,Help,Help,Help,Help,Help,Help,Help,Help,Help
+Escape,Close,Close,Close,Close,Close,Close,Close,Close,Close,Close,Close
+Alt+/,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar
+Enter,Open focused item,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail
+Return,Open focused item,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail,Open detail

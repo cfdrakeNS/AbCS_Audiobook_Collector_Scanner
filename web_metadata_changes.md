@@ -14,10 +14,11 @@ Plan to address web search considerations for author and title in web_metadata s
 
 ### Title Article Movement  
 - **Setting**: `autocorrect_move_the_check`
-- **Location**: Preferences → Options → "Move leading 'The' to end of title"
+- **Location**: Preferences → Options → "Move leading 'The', 'A', 'An' to end of title"
 - **Default**: False
 - **Setting Key**: `import/autocorrect/move_leading_the_title`
 - **Purpose**: User preference for title article format
+- **Articles Handled**: "The", "A", "An" (moved to end as ", The", ", A", ", An")
 
 ## Important Note
 The web metadata system must examine the **actual title and author stored in the database**, not rely on import history. Books may have been added manually or through different methods. User preferences only come into play when storing/updating data, not during the initial web search.
@@ -54,8 +55,8 @@ The web metadata system must examine the **actual title and author stored in the
 **Required Changes**:
 - Apply user preferences and clean data before storing web metadata:
   - If author flip enabled: "John Smith" → "Smith, John"
-  - If title article move enabled: "The Moon" → "Moon, The"
-  - Handle series numbers correctly: "The Moon - 09" → "Moon, The - 09"
+  - If title article move enabled: "The Moon" → "Moon, The", "A Tale" → "Tale, A", "An Adventure" → "Adventure, An"
+  - Handle series numbers correctly: "The Moon - 09" → "Moon, The - 09", "A Story - 03" → "Story, A - 03"
 
 **Implementation**:
 - Read user preferences from settings
@@ -72,7 +73,7 @@ Since we don't have a way of reviewing books like import, we should always clean
 - Removes non-alphanumeric characters from start
 - Capitalizes first letter of each word
 - Remove special characters
-- Follow preferences for Flip author and Moving "the" to end of title
+- Follow preferences for Flip author and Moving "The", "A", "An" to end of title
 
 ### Series, Genre, Plot Cleaning:
 - Converts multiple spaces to single spaces and trims ends

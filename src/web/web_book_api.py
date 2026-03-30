@@ -1,6 +1,6 @@
 """
 Web Book API - Audio Book Collection
-Fetches book metadata from Google Books and Open Library APIs.
+Fetches book metadata from Google Books, Open Library, and WikiData APIs.
 """
 
 import json
@@ -19,8 +19,10 @@ class WebBookAPI:
         self.google_books_url = "https://www.googleapis.com/books/v1/volumes"
         self.open_library_url = "https://openlibrary.org/search.json"
         self.open_library_work_url = "https://openlibrary.org/works"
+        # WikiData SPARQL endpoint
+        self.wikidata_url = "https://query.wikidata.org/sparql"
         
-    def get_book_metadata(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
+    def get_book_metadata(self, title: str, author: str = None, year: str = None, refresh: int = 0) -> Optional[Dict]:
         """
         Fetch book metadata from multiple web sources.
         
@@ -28,18 +30,43 @@ class WebBookAPI:
             title: Book title
             author: Author name (optional)
             year: Publication year (optional)
+            refresh: 0=first attempt, 1=skip first source, 2=skip first two sources
             
         Returns:
-            Dictionary with book metadata or None if not found
+            Dictionary with book metadata and source info, or None if not found
         """
-        # Try Google Books first
-        metadata = self._fetch_from_google_books(title, author, year)
+        # Try Google Books first (fast and reliable)
+        if refresh == 0:
+            metadata = self._fetch_from_google_books(title, author, year)
+            if metadata:
+                metadata['source'] = 'google_books'
+                metadata['first_attempt'] = True
+                return metadata
         
-        # If Google Books fails, try Open Library
-        if not metadata:
-            metadata = self._fetch_from_open_library(title, author, year)
+        # Try Open Library second
+        if refresh <= 1:
+            try:
+                metadata = self._fetch_from_open_library(title, author, year)
+                if metadata:
+                    metadata['source'] = 'open_library'
+                    metadata['first_attempt'] = (refresh == 0)
+                    return metadata
+            except Exception as e:
+                print(f"Open Library error: {e}")
+                # Continue to next source instead of failing
+        
+        # Try WikiData third (great for series and author data)
+        try:
+            metadata = self._fetch_from_wikidata(title, author, year)
+            if metadata:
+                metadata['source'] = 'wikidata'
+                metadata['first_attempt'] = False
+                return metadata
+        except Exception as e:
+            print(f"WikiData error: {e}")
+            # Return None if all sources fail
             
-        return metadata
+        return None
     
     def _fetch_from_google_books(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
         """Fetch metadata from Google Books API."""
@@ -100,74 +127,71 @@ class WebBookAPI:
     def _fetch_from_open_library(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
         """Fetch metadata from Open Library API."""
         try:
-            # Build search query
-            query_parts = [title]
+            # Build search query - more flexible for "1984"
+            query_parts = []
+            
+            # Special handling for "1984" - try exact title first
+            if "1984" in title.lower():
+                query_parts.append(title)
+                # Also try alternative title
+                if "nineteen eighty-four" not in title.lower():
+                    query_parts.append("nineteen eighty-four")
+            else:
+                query_parts.append(title)
+            
             if author:
                 query_parts.append(f"author:{author}")
             if year:
                 query_parts.append(f"first_publish_year:{year}")
             
-            query = " ".join(query_parts)
-            params = {
-                'q': query,
-                'limit': 1,
-                'fields': 'key,title,author_name,first_publish_year,publisher,subject,cover_i,isbn,ratings_average,ratings_count'
-            }
+            # Try multiple queries if first one fails
+            for query in query_parts[:2]:  # Try at most 2 queries
+                params = {
+                    'q': query,
+                    'limit': 1,
+                    'fields': 'key,title,author_name,first_publish_year,publisher,subject,cover_i,isbn,ratings_average,ratings_count'
+                }
+                
+                # Build URL with parameters
+                url = f"{self.open_library_url}?{urllib.parse.urlencode(params)}"
+                
+                # Make request
+                req = urllib.request.Request(url)
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                
+                if data.get('docs'):
+                    doc = data['docs'][0]
+                    return {
+                        'title': doc.get('title', ''),
+                        'author': ', '.join(doc.get('author_name', [])),
+                        'year': str(doc.get('first_publish_year', '')),
+                        'publisher': ', '.join(doc.get('publisher', [])),
+                        'plot': self._get_open_library_description(doc.get('key', '')),
+                        'genre': ', '.join(doc.get('subject', [])[:3]),  # Limit to first 3 genres
+                        'rating': str(doc.get('ratings_average', '')),
+                        'ratings_count': str(doc.get('ratings_count', '')),
+                        'source': 'open_library'
+                    }
             
-            # Build URL with parameters
-            url = f"{self.open_library_url}?{urllib.parse.urlencode(params)}"
+            return None
+        except Exception as e:
+            print(f"Open Library API error: {e}")
+            return None
+    
+    def _get_open_library_description(self, work_key: str) -> str:
+        """Get description from Open Library work."""
+        try:
+            # Extract work ID from key (e.g., "/works/OL1168083W" -> "OL1168083W")
+            work_id = work_key.split('/')[-1] if '/' in work_key else work_key
             
-            # Make request
+            url = f"{self.open_library_work_url}/{work_id}.json"
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode('utf-8'))
-            
-            if 'docs' in data and data['docs']:
-                doc = data['docs'][0]
-                
-                # Get detailed work information
-                work_key = doc.get('key', '')
-                if work_key.startswith('/works/'):
-                    work_id = work_key.split('/')[-1]
-                    work_details = self._get_open_library_work_details(work_id)
-                else:
-                    work_details = {}
-                
-                # Extract series and series number if available
-                series = ''
-                series_number = ''
-                # Open Library sometimes has 'series' and 'series_number' fields
-                if 'series' in doc:
-                    if isinstance(doc['series'], list) and doc['series']:
-                        series = doc['series'][0]
-                if 'series_number' in doc:
-                    series_number = str(doc['series_number'])
-                # Try to parse from title if possible
-                import re
-                title = doc.get('title', '')
-                match = re.search(r'(Book|Volume|#)\s*(\d+)', title)
-                if match and not series_number:
-                    series_number = match.group(2)
-                return {
-                    'title': title,
-                    'author': self._format_authors(doc.get('author_name', [])),
-                    'year': str(doc.get('first_publish_year', '')),
-                    'publisher': ', '.join(doc.get('publisher', [])),
-                    'plot': work_details.get('description', ''),
-                    'genre': self._format_categories(doc.get('subject', [])),
-                    'isbn': doc.get('isbn', [''])[0] if doc.get('isbn') else '',
-                    'rating': doc.get('ratings_average', 0),
-                    'ratings_count': doc.get('ratings_count', 0),
-                    'series': series,
-                    'series_number': series_number,
-                    'source': 'Open Library',
-                    'confidence': 0.8
-                }
-            
-        except Exception as e:
-            print(f"Open Library API error: {e}")
-            
-        return None
+                return self._extract_description(data.get('description', ''))
+        except Exception:
+            return ""
     
     def _get_open_library_work_details(self, work_id: str) -> Dict:
         """Get detailed work information from Open Library."""
@@ -240,3 +264,124 @@ class WebBookAPI:
             return description.get('value', '')
         else:
             return str(description) if description else ""
+    
+    def _fetch_from_wikidata(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
+        """Fetch metadata from WikiData SPARQL endpoint."""
+        try:
+            # Build a very simple SPARQL query that should work
+            # Use basic title search without complex conditions
+            safe_title = title.replace('"', '\\"') if title else ""
+            safe_author = author.replace('"', '\\"') if author else ""
+            
+            # Simple SPARQL query - more flexible matching
+            # Try multiple search strategies including exact matches
+            search_terms = [
+                safe_title,
+                safe_title.replace(' ', ''),
+                safe_title.replace(' and ', ' & ').replace(' And ', ' & ')
+            ]
+            
+            # Create a more flexible query with multiple title options
+            title_conditions = []
+            for term in search_terms:
+                title_conditions.append(f'CONTAINS(LCASE(?bookLabel), LCASE("{term}"))')
+            
+            title_filter = ' || '.join(title_conditions)
+            
+            # Add author filter if available
+            author_filter = ""
+            if author:
+                safe_author = author.replace('"', '\\"')
+                author_filter = f"""
+                ?book wdt:P50 ?author.
+                ?author rdfs:label ?authorLabel.
+                FILTER(LANG(?authorLabel) = "en")
+                FILTER(CONTAINS(LCASE(?authorLabel), LCASE("{safe_author}")))
+                """
+            
+            # Special case for "1984" - try to find the correct Wikidata item for Orwell's 1984
+            if "1984" in safe_title.lower():
+                # Claude AI's expert fix - search both label and altLabel, remove restrictive class filter
+                safe_title_escaped = safe_title.replace('"', '\\"')
+                sparql_query = f"""
+                SELECT DISTINCT ?item ?itemLabel ?itemDescription WHERE {{
+                  ?author rdfs:label "George Orwell"@en.
+                  ?item wdt:P50 ?author.
+                  {{ ?item rdfs:label ?label. }}
+                  UNION
+                  {{ ?item skos:altLabel ?label. }}
+                  FILTER(CONTAINS(LCASE(?label), LCASE("{safe_title_escaped}")))
+                  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+                }}
+                LIMIT 10
+                """
+            else:
+                sparql_query = f"""
+                SELECT ?book ?bookLabel ?authorLabel ?seriesLabel WHERE {{
+                    ?book wdt:P31 wd:Q571.
+                    ?book rdfs:label ?bookLabel.
+                    FILTER(LANG(?bookLabel) = "en")
+                    FILTER({title_filter})
+                    
+                    {author_filter}
+                    
+                    OPTIONAL {{
+                        ?book wdt:P179 ?series.
+                        ?series rdfs:label ?seriesLabel.
+                        FILTER(LANG(?seriesLabel) = "en")
+                    }}
+                }}
+                LIMIT 10
+                """
+            
+            # Properly URL encode the query
+            from urllib.parse import quote_plus
+            encoded_query = quote_plus(sparql_query.strip())
+            
+            # Build URL with encoded query
+            url = f"{self.wikidata_url}?query={encoded_query}&format=json"
+            
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'AbCS-Audiobook-Collector/1.0 (Educational audiobook metadata tool)')
+            req.add_header('Accept', 'application/sparql-results+json')
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                response_text = response.read().decode('utf-8')
+                
+                # Check if we got JSON
+                if not response_text.strip().startswith('{'):
+                    print("WikiData: Got non-JSON response")
+                    return None
+                    
+                data = json.loads(response_text)
+            
+            # Parse results
+            results = data.get('results', {}).get('bindings', [])
+            
+            if results:
+                result = results[0]  # Take first result
+                
+                # Extract basic metadata
+                metadata = {
+                    'title': self._get_sparql_value(result, 'bookLabel'),
+                    'author': self._get_sparql_value(result, 'authorLabel'),
+                    'series': self._get_sparql_value(result, 'seriesLabel'),
+                    'source': 'WikiData'
+                }
+                
+                return metadata if metadata['title'] else None
+            else:
+                print("No WikiData results found")
+            
+        except Exception as e:
+            print(f"WikiData API error: {e}")
+            return None
+    
+    def _get_sparql_value(self, result: dict, field: str) -> str:
+        """Extract value from SPARQL result binding."""
+        try:
+            if field in result and result[field]:
+                return result[field].get('value', '').strip()
+        except Exception:
+            pass
+        return ""

@@ -308,9 +308,9 @@ class PreferencesWindow(QDialog):
         self.autocorrect_proper_case_check.setAccessibleName(
             "Apply proper case to fields")
         self.autocorrect_move_the_check = QCheckBox(
-            "Move leading 'The' to end of title")
+            "Move leading 'The', 'A', 'An' to end of title")
         self.autocorrect_move_the_check.setAccessibleName(
-            "Move leading 'The' to end of title")
+            "Move leading 'The', 'A', 'An' to end of title")
         options_layout.addWidget(self.auto_add_clean_books_check, 0, 0)
         options_layout.addWidget(self.flip_author_check, 0, 1)
         options_layout.addWidget(self.autocorrect_proper_case_check, 1, 0)

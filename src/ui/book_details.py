@@ -543,6 +543,31 @@ class BookDetailsWindow(QDialog):
                 super().__init__(parent)
                 self.date_edit = date_edit
                 
+                # Make calendar larger and more readable
+                if hasattr(parent, 'scaler'):
+                    scaler = parent.scaler
+                    calendar_style = f"""
+                    QCalendarWidget {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                    }}
+                    QCalendarWidget QToolButton {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                        min-height: {scaler.get_scaled_size(24)}px;
+                        min-width: {scaler.get_scaled_size(24)}px;
+                    }}
+                    QCalendarWidget QAbstractItemView:enabled {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                        selection-background-color: palette(highlight);
+                        selection-color: palette(highlighted-text);
+                    }}
+                    QCalendarWidget QAbstractItemView:disabled {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                        color: palette(text);
+                        background-color: palette(base);
+                    }}
+                    """
+                    self.setStyleSheet(calendar_style)
+                
             def showEvent(self, event):
                 # If date is minimum (null), set to today before showing
                 if self.date_edit.date() == self.date_edit.minimumDate():
