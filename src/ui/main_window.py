@@ -2641,23 +2641,10 @@ class MainWindow(QMainWindow):
                     f"{deleted_count} book(s) deleted", timeout_ms=2000)
 
     def _confirm_cancel_web_fetch(self, popup):
-        """Show confirmation dialog for cancelling web fetch."""
-        from src.accessibility.style_helpers import exec_styled_message_box
-        
-        reply = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title="Cancel Web Search",
-            text="Stop searching for web information?",
-            buttons=QMessageBox.Yes | QMessageBox.No,
-            default_button=QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            self._web_fetch_cancelled = True
-            popup.close()
-            self.set_status("Web search cancelled by user", announce=True)
+        """Cancel web fetch immediately without confirmation."""
+        self._web_fetch_cancelled = True
+        popup.close()
+        self.set_status("Web search cancelled by user", announce=True)
 
     def on_get_web_info_clicked(self):
         """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
@@ -2693,22 +2680,18 @@ class MainWindow(QMainWindow):
         # Show auto-closing popup dialog while fetching web info
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
         from PySide6.QtCore import QTimer
-        from PySide6.QtGui import QKeySequence, QShortcut
         popup = QDialog(self)
         popup.setWindowTitle("Please wait")
         popup.setModal(True)
         popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
         layout = QVBoxLayout(popup)
-        label = QLabel("Fetching book info from web, please wait!\n\nPress Escape to cancel...")
+        label = QLabel("Fetching book info from web, please wait...")
         layout.addWidget(label)
         popup.setLayout(layout)
         popup.resize(400, 100)
         
-        # Add escape key handler to popup
-        escape_shortcut = QShortcut(QKeySequence("Escape"), popup)
-        escape_shortcut.activated.connect(lambda: self._confirm_cancel_web_fetch(popup))
-        
-        # Don't auto-close - let user see the message during search
+        # Auto-close after 1 second
+        QTimer.singleShot(1000, popup.accept)
         popup.show()
         QApplication.processEvents()
         
@@ -2751,10 +2734,6 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 last_error = str(e)
             
-            # Check if user cancelled
-            if self._web_fetch_cancelled:
-                return
-            
             # If Google Books fails, try Open Library
             if not web_data:
                 try:
@@ -2763,10 +2742,6 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     if not last_error:
                         last_error = str(e)
-                
-                # Check if user cancelled
-                if self._web_fetch_cancelled:
-                    return
             
             # Only try WikiData as last resort (it's slower)
             if not web_data:
