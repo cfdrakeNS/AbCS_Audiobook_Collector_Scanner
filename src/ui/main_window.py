@@ -34,6 +34,8 @@ from src.ui.collection_window import CollectionWindow
 from src.ui.name_list_window import NameListWindow
 from src.ui.backup_restore_window import BackupRestoreWindow
 
+from src.ui.web_metadata import WebMetadataWindow
+
 # Import version from main module
 
 
@@ -275,26 +277,28 @@ class MainWindow(QMainWindow):
     def __init__(self, db: DatabaseManager, scaler: UIScaler, theme_manager: ThemeManager):
         """
         Initialize main window.
-
-        Args:
-            db: Database manager
-            scaler: UI scaler
-            theme_manager: Theme manager
         """
         super().__init__()
-
-        self.db = db
+        
+        # Store UI managers
         self.scaler = scaler
         self.theme_manager = theme_manager
-
-        # Query objects
+        
+        # Database and queries
+        self.db = db
         self.book_queries = BookQueries(db)
         self.author_queries = AuthorQueries(db)
         self.series_queries = SeriesQueries(db)
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
-
-        # Current filter
+        
+        # Web fetch cancellation flag
+        self._web_fetch_cancelled = False
+        
+        # UI components
+        self.table = QTableWidget()
+        self.books = []
+        self.filtered_books = []
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
         self._read_filter_options = ["Read", "Unread"]
@@ -314,9 +318,6 @@ class MainWindow(QMainWindow):
 
         # Guard for selection indicator updates
         self._updating_selection_ui = False
-
-        # Current books list
-        self.books = []
 
         # Track last focused book in table (for ESC from search to restore focus)
         self._last_table_book_id = None
@@ -394,11 +395,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_hint_label = QLabel(
-            "Alt+U Update, Alt+D Delete, Escape Cancel")
+            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel")
         self.status_hint_label.setVisible(False)
         self.status_hint_label.setAccessibleName("Selection shortcuts")
         self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+D Delete, Escape Cancel"
+            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
         )
         self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
         self.status_bar.insertWidget(0, self.status_hint_label, 1)
@@ -430,7 +431,6 @@ class MainWindow(QMainWindow):
                 border: 1px solid palette(dark);
                 border-radius: 3px;
                 background-color: palette(button);
-                color: palette(button-text);
             }}
             QPushButton:focus {{
                 background-color: palette(highlight);
@@ -439,6 +439,7 @@ class MainWindow(QMainWindow):
             }}
         """
         self.update_button.setStyleSheet(button_stylesheet)
+        self.get_web_info_button.setStyleSheet(button_stylesheet)
         self.delete_button.setStyleSheet(button_stylesheet)
 
         # Keep table fixed-content columns scaled without expensive content-size scans.
@@ -454,6 +455,7 @@ class MainWindow(QMainWindow):
 
         widgets_to_repolish = [
             self.update_button,
+            self.get_web_info_button,
             self.delete_button,
             self.table,
             self.table.viewport(),
@@ -483,9 +485,13 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Date Added
+        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read
+        self.table.setColumnHidden(0, True)  # Author
+        self.table.setColumnHidden(3, True)  # Plot
+        self.table.setColumnHidden(4, True)  # Series
+        self.table.setColumnHidden(6, True)  # Time
         columns = ["Author", "Title", "Year", "Plot", "Series",
-                   "Genre", "Length", "Tracks", "Read", "Added"]
+                   "Genre", "Time", "Tracks", "Read"]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         # Selection column removed; only text highlighting used
@@ -584,10 +590,9 @@ class MainWindow(QMainWindow):
         base_widths = {
             2: 72,   # Year
             3: 62,   # Plot
-            6: 82,   # Length
+            6: 82,   # Time
             7: 78,   # Tracks
             8: 116,  # Read
-            9: 116,  # Added
         }
 
         for col, base_width in base_widths.items():
@@ -607,6 +612,16 @@ class MainWindow(QMainWindow):
         self.update_button.clicked.connect(self.on_update_clicked)
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
+
+        # Fetch Web Info button (hidden initially)
+        self.get_web_info_button = QPushButton("Fetch Web Info")
+        self.get_web_info_button.setAccessibleName("Fetch web info for selected books")
+        self.get_web_info_button.setAccessibleDescription(
+            "Fetch web info for selected books - Alt+W")
+        self.get_web_info_button.setFocusPolicy(Qt.StrongFocus)
+        self.get_web_info_button.clicked.connect(self.on_get_web_info_clicked)
+        self.get_web_info_button.setVisible(False)
+        layout.addWidget(self.get_web_info_button)
 
         # Delete button (hidden initially)
         self.delete_button = QPushButton("Delete")
@@ -671,17 +686,10 @@ class MainWindow(QMainWindow):
         self.update_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.update_action)
         
-        # Fetch Web Info action (same as fetch web info button)
+        # Fetch Web Info action
         self.get_web_info_action = QAction("Fetch &Web Info", self)
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
-        self.get_web_info_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.get_web_info_action)
-        
-        # Cancel action (same as cancel button)
-        self.cancel_action = QAction("&Cancel", self)
-        self.cancel_action.triggered.connect(self.on_cancel_clicked)
-        self.cancel_action.setEnabled(False)  # Disabled until item selected
-        self.edit_menu.addAction(self.cancel_action)
 
         # View menu
         self.view_menu = menubar.addMenu("&View")
@@ -796,6 +804,7 @@ class MainWindow(QMainWindow):
         # Alt+Key shortcuts (centralized)
         callback_map = {
             'update_button': self.on_update_clicked,     # Alt+U
+            'get_web_info_button': self.on_get_web_info_clicked,  # Alt+W
             'delete_button': self.on_delete_clicked,     # Alt+D
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -843,12 +852,12 @@ class MainWindow(QMainWindow):
         self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.on_escape_pressed)
 
-        # mw#23: Alt+1 through Alt+0 to jump to table columns
-        # Columns: 0=Author, 1=Title, 2=Year, 3=Plot, 4=Series, 5=Genre, 6=Time, 7=Tracks, 8=Read, 9=Added
+        # mw#23: Alt+1 through Alt+9 to jump to table columns
+        # Columns: 0=Author, 1=Title, 2=Year, 3=Plot, 4=Series, 5=Genre, 6=Time, 7=Tracks, 8=Read
         self.column_shortcuts = []
-        for i in range(10):
+        for i in range(9):
             shortcut = QShortcut(QKeySequence(
-                f"Alt+{(i + 1) % 10}"), self)  # Alt+1..9, Alt+0
+                f"Alt+{i + 1}"), self)  # Alt+1..9
             shortcut.activated.connect(lambda col=i: self.jump_to_column(col))
             self.column_shortcuts.append(shortcut)
 
@@ -931,7 +940,7 @@ class MainWindow(QMainWindow):
         """Return shortcut hint text based on current action mode."""
         if self.duplicate_mode_active:
             return "Alt+D Delete, Escape Cancel Dup Mode"
-        return "Alt+U Update, Alt+D Delete, Escape Cancel"
+        return "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -1080,76 +1089,13 @@ class MainWindow(QMainWindow):
                 search_text=saved_filter.search_text,
                 is_keyword_search=saved_filter.is_keyword_search,
             )
+
         self._apply_current_filter_to_controls()
         self.refresh_books()
         self.update_selection_ui()
-        self.set_status("Duplicate mode exited", announce=True)
+        self.set_status(message, timeout_ms=3000, announce=announce)
 
-    def _restore_table_focus(self, row, col):
-        """Helper method to restore focus to table with proper keyboard handling."""
-        # Ensure main window is active and has focus
-        self.activateWindow()
-        self.raise_()
-        self.setFocus()
-        
-        # Then set focus to the table
-        self.table.setCurrentCell(row, col)
-        self.table.setFocus()
-        # Ensure the table widget is the active window for keyboard input
-        self.table.activateWindow()
-        # Force the table to be the focus widget
-        self.table.setFocusProxy(None)  # Clear any focus proxy
-        self.table.setFocus(Qt.ActiveWindowFocusReason)
-
-    def on_escape_pressed(self):
-        """Handle ESC key at window level - clears selection, shows confirmation for duplicate mode exit, then clears search/read filter."""
-        # If in duplicate mode, ESC should ask to exit duplicate mode
-        if self.duplicate_mode_active:
-            if self.selected_book_ids or self.selection_anchor_row is not None:
-                # Clear selection without confirmation (status bar shows action)
-                self.selected_book_ids.clear()
-                self.selection_anchor_row = None
-                self._apply_row_selection_by_book_ids(set())
-                self.update_selection_ui()
-                self.set_status("Selection cleared in duplicate mode. Alt+L to exit duplicate mode.")
-                return
-            else:
-                # No selection - ask to exit duplicate mode
-                from src.accessibility.style_helpers import exec_styled_message_box
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Exit Duplicate Mode",
-                    text="Exit duplicate mode and return to normal view?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.Yes
-                )
-                if reply == QMessageBox.Yes:
-                    self.exit_duplicate_mode(announce=True)
-                return
-
-        # Clear selection if we have one
-        if self.selected_book_ids or self.selection_anchor_row is not None:
-            self.selected_book_ids.clear()
-            self.selection_anchor_row = None  # Reset anchor for keyboard selection
-            self._apply_row_selection_by_book_ids(set())
-            self.update_selection_ui()
-            # mw#13: Revert status bar to default after clearing selection
-            self.set_default_status(announce=False)
-            # mw#25: Return focus to table (use timer to ensure button hiding completes)
-            QTimer.singleShot(0, self.table.setFocus)
-            return
-
-        # No selection - check if search or read filter is active
-        if self.current_filter.search_text:
-            self.clear_search()
-        elif self.current_filter.read_filter in ["Read", "Unread"]:
-            self.clear_read_filter()
-        elif self.current_filter.collection_id is not None:
-            self.clear_collection_filter()
-
-    def on_duplicate_check(self, preferred_mode: str = "title_author_year_collection"):
+    def on_duplicate_check(self):
         """Start duplicate mode by prompting for duplicate match type."""
         settings = QSettings("AbCS", "AbCS")
         preferred_mode = self._normalize_duplicate_mode(
@@ -1162,6 +1108,7 @@ class MainWindow(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Duplicate Check")
+        """Start duplicate mode by prompting for duplicate match type."""
         dialog.setAccessibleDescription(
             "Select duplicate match mode and start duplicate checking"
         )
@@ -1944,22 +1891,6 @@ class MainWindow(QMainWindow):
             "book_id": book_id,
         }
 
-    def _restore_table_focus(self, row, col):
-        """Helper method to restore focus to table with proper keyboard handling."""
-        # Ensure main window is active and has focus
-        self.activateWindow()
-        self.raise_()
-        self.setFocus()
-        
-        # Then set focus to the table
-        self.table.setCurrentCell(row, col)
-        self.table.setFocus()
-        # Ensure the table widget is the active window for keyboard input
-        self.table.activateWindow()
-        # Force the table to be the focus widget
-        self.table.setFocusProxy(None)  # Clear any focus proxy
-        self.table.setFocus(Qt.ActiveWindowFocusReason)
-
     def _restore_table_focus_context(self, focus_ctx: dict | None):
         """Restore focus to the same book/cell when possible after refresh."""
         if not focus_ctx or self.table.rowCount() <= 0:
@@ -2478,24 +2409,15 @@ class MainWindow(QMainWindow):
             value_text = book.series_name or "blank"
         elif col == 4:  # Genre
             value_text = book.genre_name or "blank"
-        elif col == 5:  # Length
+        elif col == 5:  # Time
             value_text = book.time_display or "blank"
         elif col == 6:  # Tracks
             value_text = str(book.tracks or 0)
-        elif col == 7:  # Read date
-            if book.read_date:
-                value_text = book.read_date if isinstance(
-                    book.read_date, str) else str(book.read_date)
+        elif col == 7:  # Read
+            if book.is_read:
+                value_text = "Read"
             else:
-                value_text = "blank"
-        elif col == 8:  # Date added
-            if book.date_added:
-                value_text = book.date_added if isinstance(
-                    book.date_added, str) else str(book.date_added)
-            else:
-                value_text = "blank"
-        else:
-            value_text = "blank"
+                value_text = "Unread"
 
         announcement = f"{header_text}: {value_text}"
         self.set_status(announcement, timeout_ms=2000)
@@ -2574,6 +2496,7 @@ class MainWindow(QMainWindow):
         show_action_buttons = has_selection or in_duplicate_mode
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
+        self.get_web_info_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
         self.status_hint_label.setVisible(show_action_buttons)
         self.status_hint_label.setText(self._selection_shortcuts_text())
@@ -2603,8 +2526,7 @@ class MainWindow(QMainWindow):
     def on_update_clicked(self):
         """Handle Update button click."""
         if self.duplicate_mode_active:
-            self.set_status(
-                "Update is disabled in duplicate mode. Use Delete or Cancel Dup Mode.",
+            self.set_status("Selection cleared in duplicate mode. Escape to exit duplicate mode. Use Delete or Cancel Dup Mode.",
                 timeout_ms=3000,
             )
             return
@@ -2647,164 +2569,6 @@ class MainWindow(QMainWindow):
                 if target_row >= 0:
                     self.table.setCurrentCell(target_row, 1)  # Title column
                     self.table.setFocus()
-
-    def on_get_web_info_clicked(self):
-        """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
-        # If we have selected books, show the multi-book placeholder
-        if self.selected_book_ids:
-            from src.accessibility.style_helpers import exec_styled_message_box
-            
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Fetch Web Info",
-                text="Multi-book web info feature is not yet implemented.\n\nUse Alt+E then W on a single focused book.",
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok
-            )
-            return
-        
-        # Handle focused book (no selection)
-        row = self.table.currentRow()
-        if row < 0 or row >= len(self.books):
-            self.set_status("No book available for web info fetch", announce=True)
-            return
-            
-        book = self.books[row]
-        
-        # Show auto-closing popup dialog while fetching web info
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
-        from PySide6.QtCore import QTimer
-        popup = QDialog(self)
-        popup.setWindowTitle("Please wait")
-        popup.setModal(True)
-        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
-        layout = QVBoxLayout(popup)
-        label = QLabel("Fetching book info from web, please wait!")
-        layout.addWidget(label)
-        popup.setLayout(layout)
-        popup.resize(350, 80)
-        QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
-        popup.show()
-        QApplication.processEvents()
-        
-        # Check web data first before opening window
-        from src.ui.web_metadata import WebMetadataWindow
-        from src.web.web_book_api import WebBookAPI
-        from PySide6.QtCore import QSettings
-        
-        # Get book data for search
-        title = book.title
-        author = book.author_name
-        year = str(book.year) if book.year else None
-        
-        # Read user preferences
-        settings = QSettings("AbCS", "AudioBookCollector")
-        if not settings.contains("import/flip_author_name"):
-            legacy_settings = QSettings("AbCS", "AbCS")
-            flip_author = legacy_settings.value("import/flip_author_name", False, type=bool)
-        else:
-            flip_author = settings.value("import/flip_author_name", False, type=bool)
-        
-        if not settings.contains("import/autocorrect/move_leading_the_title"):
-            legacy_settings = QSettings("AbCS", "AbCS")
-            move_articles = legacy_settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
-        else:
-            move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
-        
-        # Try to fetch web data - let API try all sources in order
-        api = WebBookAPI()
-        web_data = None
-        last_error = None
-        
-        # Single API call - it will try Google Books, then Open Library, then WikiData
-        try:
-            web_data = api.get_book_metadata(title, author, year, refresh=0, 
-                                           move_articles=move_articles, flip_author=flip_author)
-        except Exception as e:
-            last_error = str(e)
-        
-        if web_data:
-            # Check if the returned data is actually meaningful (has plot or matches search)
-            title_match = web_data.get('title', '').lower()
-            search_title_lower = title.lower()
-            author_match = web_data.get('author', '').lower()
-            search_author_lower = author.lower() if author else ''
-            
-            # Check if it's a real match (title contains search terms OR has plot)
-            is_real_match = False
-            if web_data.get('plot'):
-                # Has plot content - likely a real match
-                is_real_match = True
-            elif search_title_lower and title_match:
-                # Check if title similarity (must be more strict)
-                # Require at least 50% of words from search title to match
-                search_words = [w for w in search_title_lower.split() if len(w) > 2]
-                title_words = title_match.split()
-                
-                if search_words:
-                    matching_words = sum(1 for word in search_words if word in title_match.lower())
-                    match_ratio = matching_words / len(search_words)
-                    
-                    # Also check if title is contained within the other (for exact matches)
-                    exact_contains = (search_title_lower in title_match or title_match in search_title_lower)
-                    
-                    if match_ratio >= 0.5 or exact_contains:
-                        is_real_match = True
-                else:
-                    # Fallback for very short titles
-                    if search_title_lower in title_match or title_match in search_title_lower:
-                        is_real_match = True
-            elif search_author_lower and author_match:
-                # Check author match
-                if search_author_lower in author_match or author_match in search_author_lower:
-                    is_real_match = True
-            
-            if is_real_match:
-                # Only open window if real data found
-                focus_ctx = self._capture_table_focus_context(row, 1)  # Focus title column
-                dialog = WebMetadataWindow(
-                    self.db,
-                    book,
-                    self.scaler,
-                    self.theme_manager,
-                    parent=self,
-                    refresh_callback=self.refresh_books,
-                    web_data=web_data
-                )
-                dialog.exec()
-                self._restore_table_focus_context(focus_ctx)
-            else:
-                # Show popup if no meaningful data found
-                from PySide6.QtWidgets import QMessageBox
-                from src.accessibility.style_helpers import build_accessible_message_box_style
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Information)
-                msg.setWindowTitle("No Web Data Found")
-                msg.setText("No information found for this book in any web source.")
-                msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
-                msg.setStandardButtons(QMessageBox.Ok)
-                msg.exec()
-        else:
-            # Show popup if no data found
-            from PySide6.QtWidgets import QMessageBox
-            from src.accessibility.style_helpers import build_accessible_message_box_style
-            msg = QMessageBox(self)
-            msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle("No Web Data Found")
-            
-            # Check if it's a rate limiting issue
-            if last_error and ("429" in last_error or "Too Many Requests" in last_error):
-                msg.setText("Web search temporarily unavailable due to rate limits.\n\nPlease try again in a few minutes.")
-            elif last_error and ("timed out" in last_error.lower()):
-                msg.setText("Web search is currently slow or unavailable.\n\nPlease try again later.")
-            else:
-                msg.setText("No information found for this book in any web source.")
-            
-            msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec()
 
     def on_delete_clicked(self):
         """Handle Delete button click."""
@@ -2876,6 +2640,183 @@ class MainWindow(QMainWindow):
                 self.set_status(
                     f"{deleted_count} book(s) deleted", timeout_ms=2000)
 
+    def _confirm_cancel_web_fetch(self, popup):
+        """Show confirmation dialog for cancelling web fetch."""
+        from src.accessibility.style_helpers import exec_styled_message_box
+        
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Cancel Web Search",
+            text="Stop searching for web information?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self._web_fetch_cancelled = True
+            popup.close()
+            self.set_status("Web search cancelled by user", announce=True)
+
+    def on_get_web_info_clicked(self):
+        """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
+        # Handle focused book (no selection) first
+        row = self.table.currentRow()
+        if row >= 0 and row < len(self.books):
+            # We have a focused book, proceed with web fetch
+            pass
+        elif self.selected_book_ids:
+            # If we have selected books, show the multi-book placeholder
+            from src.accessibility.style_helpers import exec_styled_message_box
+            
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Fetch Web Info",
+                text="Multi-book web info feature is not yet implemented.\n\nUse Alt+E then W on a single focused book.",
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok
+            )
+            return
+        else:
+            # No book available
+            self.set_status("No book available for web info fetch", announce=True)
+            return
+            
+        book = self.books[row]
+        
+        # Reset cancellation flag
+        self._web_fetch_cancelled = False
+        
+        # Show auto-closing popup dialog while fetching web info
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        from PySide6.QtCore import QTimer
+        from PySide6.QtGui import QKeySequence, QShortcut
+        popup = QDialog(self)
+        popup.setWindowTitle("Please wait")
+        popup.setModal(True)
+        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
+        layout = QVBoxLayout(popup)
+        label = QLabel("Fetching book info from web, please wait!\n\nPress Escape to cancel...")
+        layout.addWidget(label)
+        popup.setLayout(layout)
+        popup.resize(400, 100)
+        
+        # Add escape key handler to popup
+        escape_shortcut = QShortcut(QKeySequence("Escape"), popup)
+        escape_shortcut.activated.connect(lambda: self._confirm_cancel_web_fetch(popup))
+        
+        # Don't auto-close - let user see the message during search
+        popup.show()
+        QApplication.processEvents()
+        
+        # Check web data first before opening window
+        from src.ui.web_metadata import WebMetadataWindow
+        
+        # Get book data for search
+        title = book.title
+        author = book.author_name
+        year = str(book.year) if book.year else None
+        
+        # Try to fetch web data
+        web_data = None
+        try:
+            from src.web.web_book_api import WebBookAPI
+            from PySide6.QtCore import QSettings
+            
+            # Read user preferences
+            settings = QSettings("AbCS", "AudioBookCollector")
+            if not settings.contains("import/flip_author_name"):
+                legacy_settings = QSettings("AbCS", "AbCS")
+                flip_author = legacy_settings.value("import/flip_author_name", False, type=bool)
+            else:
+                flip_author = settings.value("import/flip_author_name", False, type=bool)
+            
+            if not settings.contains("import/autocorrect/move_leading_the_title"):
+                legacy_settings = QSettings("AbCS", "AbCS")
+                move_articles = legacy_settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+            else:
+                move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+            
+            # Try to fetch web data first - be smarter about source selection
+            api = WebBookAPI()
+            last_error = None
+            
+            # Try Google Books first (usually fastest)
+            try:
+                web_data = api.get_book_metadata(title, author, year, refresh=0, 
+                                               move_articles=move_articles, flip_author=flip_author)
+            except Exception as e:
+                last_error = str(e)
+            
+            # Check if user cancelled
+            if self._web_fetch_cancelled:
+                return
+            
+            # If Google Books fails, try Open Library
+            if not web_data:
+                try:
+                    web_data = api.get_book_metadata(title, author, year, refresh=1, 
+                                                   move_articles=move_articles, flip_author=flip_author)
+                except Exception as e:
+                    if not last_error:
+                        last_error = str(e)
+                
+                # Check if user cancelled
+                if self._web_fetch_cancelled:
+                    return
+            
+            # Only try WikiData as last resort (it's slower)
+            if not web_data:
+                try:
+                    web_data = api.get_book_metadata(title, author, year, refresh=2, 
+                                                   move_articles=move_articles, flip_author=flip_author)
+                except Exception as e:
+                    if not last_error:
+                        last_error = str(e)
+                        
+        except Exception:
+            pass  # Silently fail if web fetch fails
+        
+        # Close the popup after web search is complete
+        popup.close()
+        
+        # Check if we got real data (not just empty placeholders)
+        is_real_match = False
+        if web_data:
+            # Check if any field has meaningful content
+            meaningful_fields = [
+                web_data.get('description'),
+                web_data.get('publisher'),
+                web_data.get('published_year'),
+                web_data.get('isbn'),
+                web_data.get('pages'),
+                web_data.get('language')
+            ]
+            is_real_match = any(field and str(field).strip() and str(field) not in 
+                             ['Unknown', 'N/A', 'None', ''] for field in meaningful_fields)
+            
+            if is_real_match:
+                # Only open window if real data found
+                focus_ctx = self._capture_table_focus_context(row, 1)  # Focus title column
+                dialog = WebMetadataWindow(
+                    self.db,
+                    book,
+                    self.scaler,
+                    self.theme_manager,
+                    parent=self,
+                    refresh_callback=self.refresh_books,
+                    web_data=web_data
+                )
+                dialog.exec()
+                self._restore_table_focus_context(focus_ctx)
+                return
+        
+        # If no real data found, just set status and return (no popup)
+        self.set_status("No additional web information found for this book.", timeout_ms=3000)
+
     def on_cancel_clicked(self):
         """Handle Cancel button click. mw#25: Focus returns to table. mw#26: Leaves focus on current cell."""
         if self.duplicate_mode_active:
@@ -2892,6 +2833,70 @@ class MainWindow(QMainWindow):
         self.set_default_status(announce=False)
         # mw#25: Return focus to table (use timer to ensure button hiding completes)
         QTimer.singleShot(0, self.table.setFocus)
+
+    def on_escape_pressed(self):
+        """Handle ESC key at window level - clears selection, shows confirmation for duplicate mode exit, then clears search/read filter."""
+        # If in duplicate mode, ESC should ask to exit duplicate mode
+        if self.duplicate_mode_active:
+            if self.selected_book_ids or self.selection_anchor_row is not None:
+                # Clear selection without confirmation (status bar shows action)
+                self.selected_book_ids.clear()
+                self.selection_anchor_row = None
+                self._apply_row_selection_by_book_ids(set())
+                self.update_selection_ui()
+                self.set_status("Selection cleared in duplicate mode. Escape to exit duplicate mode.")
+                return
+            else:
+                # No selection - ask to exit duplicate mode
+                from src.accessibility.style_helpers import exec_styled_message_box
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Exit Duplicate Mode",
+                    text="Exit duplicate mode and return to normal view?",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.Yes
+                )
+                if reply == QMessageBox.Yes:
+                    self.exit_duplicate_mode(announce=True)
+                return
+
+        # First priority: clear selection mode/selected books (normal mode)
+        if self.selected_book_ids or self.selection_anchor_row is not None:
+            self.on_cancel_clicked()
+            return
+        # Second priority: clear search - use book_id to restore position (mw#29)
+        if self.current_filter.has_search:
+            # Use tracked book ID (set by on_current_cell_changed)
+            restore_book_id = self._last_table_book_id
+            restore_column = self._last_table_column if self._last_table_column >= 0 else 1
+
+            # Clear filter and refresh
+            self.current_filter.search_text = ""
+            self.current_filter.is_keyword_search = False
+            self.refresh_books()
+
+            # Restore focus to the actual book that was selected
+            def restore_focus():
+                if restore_book_id is not None:
+                    self.focus_book_by_id(restore_book_id, restore_column)
+                else:
+                    if self.table.rowCount() > 0:
+                        self.table.setCurrentCell(0, 1)
+                    self.table.setFocus(Qt.TabFocusReason)
+
+            QTimer.singleShot(150, restore_focus)
+            self.set_status("Search cleared", timeout_ms=2000)
+            return
+        # Third priority: clear read/unread filter
+        if self.current_filter.read_filter in ("Read", "Unread"):
+            # Clear read filter and refresh
+            self.current_filter.read_filter = "All"
+            self._sync_read_menu_selection()
+            self.refresh_books()
+            self.set_status("Read/Unread filter cleared", timeout_ms=2000)
+            return
 
     def clear_status_message(self):
         """Clear temporary status message and restore default status."""
@@ -3307,6 +3312,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
             " color: palette(text);"
             "}"
             "QTableWidget::item:focus { outline: none; }"
+  
         )
 
         for row, line in enumerate(about_lines):
@@ -3359,13 +3365,14 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Ctrl+F", "Find"),
-            ("Alt+1", "Jump to Title column"),
-            ("Alt+2", "Jump to Author column"),
-            ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
+            ("Alt+8", "Jump to Title"),
+            ("Alt+2", "Jump to Author"),
+            ("Alt+1..Alt+9", "Jump to other columns (see table order)"),
             ("Alt+U", "Update selected"),
+            ("Alt+W", "Fetch Web Info"),
             ("Alt+D", "Delete selected"),
             ("Alt+L", "Cancel selection"),
+            ("Ctrl+F", "Find"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
             ("Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),

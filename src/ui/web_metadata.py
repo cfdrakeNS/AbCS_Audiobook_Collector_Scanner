@@ -913,7 +913,7 @@ class WebMetadataWindow(QDialog):
             # Return focus to parent window's table if available
             if self.parent_window and hasattr(self.parent_window, 'table'):
                 # Use QTimer to ensure focus is set after dialog closes
-                QTimer.singleShot(0, lambda: self.parent_window._restore_table_focus(
+                QTimer.singleShot(0, lambda: self.parent_window._restore_table_focus_context(
                     self.parent_window.table.currentRow(), 
                     self.parent_window.table.currentColumn()
                 ))

@@ -45,14 +45,14 @@ class WebBookAPI:
         cache_key = f"{title}|{author}|{year}|{refresh}"
         current_time = time.time()
         
-        # Check if we have a recent cache entry (within 30 seconds)
+        # Check if we have a recent cache entry (within CACHE_DURATION seconds)
         if hasattr(self, '_cache') and cache_key in self._cache:
             cached_time, cached_result = self._cache[cache_key]
-            if current_time - cached_time < 30:
-                print(f"DEBUG: Returning cached result from {current_time - cached_time:.1f} seconds ago")
+            if cached_time and (current_time - cached_time) < self.CACHE_DURATION:
                 return cached_result
-            else:
-                print(f"DEBUG: Cache expired ({current_time - cached_time:.1f} seconds old)")
+            
+            if cached_time:
+                self._cache[cache_key] = None  # Clear expired cache
         
         # Apply search-time transformations (only if explicitly requested)
         if move_articles or flip_author:
@@ -126,7 +126,7 @@ class WebBookAPI:
             url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
             req = urllib.request.Request(url)
             req.add_header('User-Agent', 'AudiobookCollectorScanner/1.0')
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=6) as response:
                 data = json.loads(response.read().decode('utf-8'))
             
             if 'items' in data and data['items']:
@@ -230,8 +230,6 @@ class WebBookAPI:
     def _fetch_from_open_library(self, title: str, author: str = None, year: str = None) -> Optional[Dict]:
         """Fetch metadata from Open Library API."""
         try:
-            print(f"DEBUG: Open Library searching for - Title: '{title}', Author: '{author}', Year: '{year}'")
-            
             # Build search query - combine title and author properly
             queries_to_try = []
             
@@ -273,7 +271,7 @@ class WebBookAPI:
                 
                 # Make request
                 req = urllib.request.Request(url)
-                with urllib.request.urlopen(req, timeout=20) as response:
+                with urllib.request.urlopen(req, timeout=10) as response:
                     data = json.loads(response.read().decode('utf-8'))
                 
                 if data.get('docs'):
@@ -303,7 +301,7 @@ class WebBookAPI:
             
             url = f"{self.open_library_work_url}/{work_id}.json"
             req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=6) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 return self._extract_description(data.get('description', ''))
         except Exception:
@@ -314,7 +312,7 @@ class WebBookAPI:
         try:
             url = f"{self.open_library_work_url}/{work_id}.json"
             req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=6) as response:
                 data = json.loads(response.read().decode('utf-8'))
             
             return {
@@ -461,7 +459,7 @@ class WebBookAPI:
             req.add_header('User-Agent', 'AbCS-Audiobook-Collector/1.0 (Educational audiobook metadata tool)')
             req.add_header('Accept', 'application/sparql-results+json')
             
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=6) as response:
                 response_text = response.read().decode('utf-8')
                 
                 # Check if we got JSON
@@ -481,14 +479,10 @@ class WebBookAPI:
                 metadata = {
                     'title': self._get_sparql_value(result, 'bookLabel'),
                     'author': self._get_sparql_value(result, 'authorLabel'),
-                    'series': self._get_sparql_value(result, 'seriesLabel'),
                     'source': 'WikiData'
                 }
                 
                 return metadata if metadata['title'] else None
-            else:
-                print("No WikiData results found")
-            
         except Exception as e:
             print(f"WikiData API error: {e}")
             return None
