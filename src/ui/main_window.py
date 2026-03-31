@@ -546,27 +546,6 @@ class MainWindow(QMainWindow):
         self.table.viewport().setMouseTracking(False)
         self.table.setAttribute(Qt.WA_Hover, False)
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style to table only
-        self.table.setStyleSheet(
-            """
-            QTableView::item {
-                background-color: palette(base);
-                color: palette(text);
-            }
-            QTableView::item:hover {
-                background-color: palette(alternate-base);
-                color: palette(text);
-            }
-            QTableView::item:selected {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            QTableView::item:selected:focus {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            """
-        )
 
 # Resize columns - mw#22: Author, Title, Series, Genre stretch proportionally
         header = self.table.horizontalHeader()

@@ -395,7 +395,6 @@ class ThemeManager(QObject):
         table_hover_disable = """
             QTableWidget::item:hover, QTableView::item:hover {
                 background: none !important;
-                color: palette(text) !important;
             }
             QTableView:focus { border: none; outline: none; }
             QTableView::item:selected { background-color: palette(highlight); color: palette(highlighted-text); }
