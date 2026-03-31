@@ -77,7 +77,6 @@ class ShortcutManager(QObject):
     MAIN_WINDOW_SHORTCUTS = {
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
-        'W': ('Fetch Web Info', 'get_web_info_button'),
     }
 
     # Book Details Window

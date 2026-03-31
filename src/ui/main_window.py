@@ -395,11 +395,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_hint_label = QLabel(
-            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel")
+            "Alt+U Update, Alt+D Delete, Escape Cancel")
         self.status_hint_label.setVisible(False)
         self.status_hint_label.setAccessibleName("Selection shortcuts")
         self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
+            "Alt+U Update, Alt+D Delete, Escape Cancel"
         )
         self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
         self.status_bar.insertWidget(0, self.status_hint_label, 1)
@@ -439,7 +439,6 @@ class MainWindow(QMainWindow):
             }}
         """
         self.update_button.setStyleSheet(button_stylesheet)
-        self.get_web_info_button.setStyleSheet(button_stylesheet)
         self.delete_button.setStyleSheet(button_stylesheet)
 
         # Keep table fixed-content columns scaled without expensive content-size scans.
@@ -613,16 +612,6 @@ class MainWindow(QMainWindow):
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
 
-        # Fetch Web Info button (hidden initially)
-        self.get_web_info_button = QPushButton("Fetch Web Info")
-        self.get_web_info_button.setAccessibleName("Fetch web info for selected books")
-        self.get_web_info_button.setAccessibleDescription(
-            "Fetch web info for selected books - Alt+W")
-        self.get_web_info_button.setFocusPolicy(Qt.StrongFocus)
-        self.get_web_info_button.clicked.connect(self.on_get_web_info_clicked)
-        self.get_web_info_button.setVisible(False)
-        layout.addWidget(self.get_web_info_button)
-
         # Delete button (hidden initially)
         self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete selected books")
@@ -686,7 +675,7 @@ class MainWindow(QMainWindow):
         self.update_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.update_action)
         
-        # Fetch Web Info action
+        # Fetch Web Info action (for Alt+E then W shortcut)
         self.get_web_info_action = QAction("Fetch &Web Info", self)
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
         self.edit_menu.addAction(self.get_web_info_action)
@@ -696,9 +685,6 @@ class MainWindow(QMainWindow):
 
         # mw#17: Context-sensitive open at top of View menu
         book_details_action = QAction("&Open Focused Item\tEnter", self)
-        book_details_action.setShortcuts(
-            [QKeySequence("Enter"), QKeySequence("Return")]
-        )
         book_details_action.triggered.connect(self.on_open_book_details)
         self.view_menu.addAction(book_details_action)
 
@@ -804,7 +790,6 @@ class MainWindow(QMainWindow):
         # Alt+Key shortcuts (centralized)
         callback_map = {
             'update_button': self.on_update_clicked,     # Alt+U
-            'get_web_info_button': self.on_get_web_info_clicked,  # Alt+W
             'delete_button': self.on_delete_clicked,     # Alt+D
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -940,7 +925,7 @@ class MainWindow(QMainWindow):
         """Return shortcut hint text based on current action mode."""
         if self.duplicate_mode_active:
             return "Alt+D Delete, Escape Cancel Dup Mode"
-        return "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
+        return "Alt+U Update, Alt+D Delete, Escape Cancel"
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -1986,32 +1971,48 @@ class MainWindow(QMainWindow):
 
             # Shift+Click: Range select from anchor to clicked row
             if modifiers & Qt.ShiftModifier:
+                # Shift+Arrow: Start selection OR extend selection (Windows standard)
                 if self.selection_anchor_row is None:
+                    # No anchor set - start selection at current row (like original Shift+Space)
+                    self._updating_selection_ui = True
                     self.selection_anchor_row = row
+                    # Select all cells in this row (for SelectItems mode)
+                    self.table.selectionModel().clearSelection()
+                    for col in range(self.table.columnCount()):
+                        index = self.table.model().index(row, col)
+                        self.table.selectionModel().select(
+                            index, QItemSelectionModel.Select)
+                    self._updating_selection_ui = False
+                    # Manually sync selection (like original Shift+Space)
+                    self.selected_book_ids.clear()
+                    self.selected_book_ids.add(self.books[row].book_id)
+                    self.update_selection_ui()
+                    self.announce_selection()
+                else:
+                    # Anchor exists - extend selection
+                    start_row = min(self.selection_anchor_row, row)
+                    end_row = max(self.selection_anchor_row, row)
 
-                start_row = min(self.selection_anchor_row, row)
-                end_row = max(self.selection_anchor_row, row)
+                    self._updating_selection_ui = True
+                    self.table.selectionModel().clearSelection()
 
-                self._updating_selection_ui = True
-                self.table.selectionModel().clearSelection()
+                    # Select all cells in each row
+                    col_count = self.table.columnCount()
+                    for r in range(start_row, end_row + 1):
+                        for c in range(col_count):
+                            idx = self.table.model().index(r, c)
+                            self.table.selectionModel().select(idx, QItemSelectionModel.Select)
 
-                # Select all cells in each row
-                col_count = self.table.columnCount()
-                for r in range(start_row, end_row + 1):
-                    for c in range(col_count):
-                        idx = self.table.model().index(r, c)
-                        self.table.selectionModel().select(idx, QItemSelectionModel.Select)
+                    self.table.setCurrentCell(row, index.column())
+                    self._updating_selection_ui = False
 
-                self.table.setCurrentCell(row, index.column())
-                self._updating_selection_ui = False
-
-                # Sync selection tracking
-                self.selected_book_ids.clear()
-                for r in range(start_row, end_row + 1):
-                    if 0 <= r < len(self.books):
-                        self.selected_book_ids.add(self.books[r].book_id)
-                self.update_selection_ui()
-                self.announce_selection()
+                    # Sync selection tracking
+                    self.selected_book_ids.clear()
+                    for r in range(start_row, end_row + 1):
+                        if 0 <= r < len(self.books):
+                            self.selected_book_ids.add(self.books[r].book_id)
+                    self.update_selection_ui()
+                    self.announce_selection()
                 event.accept()
                 return
 
@@ -2131,20 +2132,36 @@ class MainWindow(QMainWindow):
                     # All other columns: do nothing, show status
                     else:
                         self.set_status(
-                            "Enter only opens details for Author, Title, Series, Genre, or Read columns.", timeout_ms=2500, announce=True)
-                    event.accept()
-                    return
-        elif event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown, Qt.Key_Home, Qt.Key_End):
+                            "No action available for this column", timeout_ms=2000)
+                event.accept()
+                return
+
+            # Check for Shift+Arrow keys for selection
+        if event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown, Qt.Key_Home, Qt.Key_End):
             modifiers = event.modifiers()
-            # Shift+Arrow: Only extend selection if already in selection mode (anchor set via Shift+Space)
             if modifiers & Qt.ShiftModifier:
-                if self.selection_anchor_row is not None:
-                    # In selection mode - extend selection
-                    self.extend_selection_with_arrow(event.key())
-                    event.accept()
-                    return
-                # Not in selection mode - treat as plain arrow (move without selecting)
-                self.move_current_without_selection(event.key())
+                # Shift+Arrow: Start selection OR extend selection (Windows standard)
+                row = self.table.currentRow()
+                if 0 <= row < len(self.books):
+                    if self.selection_anchor_row is None:
+                        # No anchor set - start selection at current row (like original Shift+Space)
+                        self._updating_selection_ui = True
+                        self.selection_anchor_row = row
+                        # Select all cells in this row (for SelectItems mode)
+                        self.table.selectionModel().clearSelection()
+                        for col in range(self.table.columnCount()):
+                            index = self.table.model().index(row, col)
+                            self.table.selectionModel().select(
+                                index, QItemSelectionModel.Select)
+                        self._updating_selection_ui = False
+                        # Manually sync selection (like original Shift+Space)
+                        self.selected_book_ids.clear()
+                        self.selected_book_ids.add(self.books[row].book_id)
+                        self.update_selection_ui()
+                        self.announce_selection()
+                    else:
+                        # Anchor exists - extend selection
+                        self.extend_selection_with_arrow(event.key())
                 event.accept()
                 return
 
@@ -2162,27 +2179,8 @@ class MainWindow(QMainWindow):
             self.move_column_without_selection(event.key())
             event.accept()
             return
+        # Skip Space key handling - no longer used for selection
         elif event.key() == Qt.Key_Space:
-            modifiers = event.modifiers()
-            # Shift+Space: Enter selection mode - select current row and set anchor
-            if modifiers & Qt.ShiftModifier:
-                row = self.table.currentRow()
-                if 0 <= row < len(self.books):
-                    self._updating_selection_ui = True
-                    self.selection_anchor_row = row
-                    # Select all cells in this row (for SelectItems mode)
-                    self.table.selectionModel().clearSelection()
-                    for col in range(self.table.columnCount()):
-                        index = self.table.model().index(row, col)
-                        self.table.selectionModel().select(
-                            index, QItemSelectionModel.Select)
-                    self._updating_selection_ui = False
-                    # Manually sync selection
-                    self.selected_book_ids.clear()
-                    self.selected_book_ids.add(self.books[row].book_id)
-                    self.update_selection_ui()
-                    self.announce_selection()
-            # Plain space does nothing
             event.accept()
             return
         elif event.key() == Qt.Key_Escape:
@@ -2301,7 +2299,7 @@ class MainWindow(QMainWindow):
         self.table.scrollTo(self.table.model().index(row, col))
 
     def extend_selection_with_arrow(self, key: int):
-        """Extend selection with Shift+Arrow from anchor (set by Shift+Space)."""
+        """Extend selection with Shift+Arrow from anchor (set by Shift+Down/Up)."""
         row_count = self.table.rowCount()
         if row_count == 0:
             return
@@ -2448,25 +2446,8 @@ class MainWindow(QMainWindow):
         # Keep until selection changes
         self.set_status(announcement, timeout_ms=0)
 
-    def toggle_current_row_selection(self):
-        """Toggle selection for current row using Ctrl+Space."""
-        row = self.table.currentRow()
-        if row < 0 or row >= len(self.books):
-            return
-
-        model = self.table.selectionModel()
-        index = self.table.model().index(row, 0)
-
-        if model.isRowSelected(row, self.table.rootIndex()):
-            model.select(index, QItemSelectionModel.Deselect |
-                         QItemSelectionModel.Rows)
-        else:
-            model.select(index, QItemSelectionModel.Select |
-                         QItemSelectionModel.Rows)
-            self.selection_anchor_row = row
-
     def select_range_to_current_row(self):
-        """Select a range from anchor to current row using Shift+Space."""
+        """Select a range from anchor to current row using Shift+Down/Up."""
         row = self.table.currentRow()
         if row < 0 or row >= len(self.books):
             return
@@ -2496,7 +2477,6 @@ class MainWindow(QMainWindow):
         show_action_buttons = has_selection or in_duplicate_mode
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
-        self.get_web_info_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
         self.status_hint_label.setVisible(show_action_buttons)
         self.status_hint_label.setText(self._selection_shortcuts_text())
@@ -2640,32 +2620,19 @@ class MainWindow(QMainWindow):
                 self.set_status(
                     f"{deleted_count} book(s) deleted", timeout_ms=2000)
 
-    def _confirm_cancel_web_fetch(self, popup):
-        """Cancel web fetch immediately without confirmation."""
-        self._web_fetch_cancelled = True
-        popup.close()
-        self.set_status("Web search cancelled by user", announce=True)
-
-    def on_get_web_info_clicked(self):
+    def on_get_web_info_clicked(self, from_button=False):
         """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
+        # Reject button calls since we removed the button
+        if from_button:
+            return
+            
         # Handle focused book (no selection) first
         row = self.table.currentRow()
         if row >= 0 and row < len(self.books):
             # We have a focused book, proceed with web fetch
             pass
         elif self.selected_book_ids:
-            # If we have selected books, show the multi-book placeholder
-            from src.accessibility.style_helpers import exec_styled_message_box
-            
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Fetch Web Info",
-                text="Multi-book web info feature is not yet implemented.\n\nUse Alt+E then W on a single focused book.",
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok
-            )
+            # Multi-book selection - ignore
             return
         else:
             # No book available
@@ -3340,11 +3307,11 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+8", "Jump to Title"),
+            ("Alt+1", "Jump to Title"),
             ("Alt+2", "Jump to Author"),
             ("Alt+1..Alt+9", "Jump to other columns (see table order)"),
+            ("Shift+Down/Up", "Start selection or extend selection"),
             ("Alt+U", "Update selected"),
-            ("Alt+W", "Fetch Web Info"),
             ("Alt+D", "Delete selected"),
             ("Alt+L", "Cancel selection"),
             ("Ctrl+F", "Find"),
