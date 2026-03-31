@@ -153,7 +153,7 @@ class BookDetailsWindow(QDialog):
 
         self.db = db
         self.scaler = scaler
-        self.theme_manager = theme_manager or ThemeManager(scaler)  # Store theme manager
+        self.theme_manager = theme_manager or ThemeManager(QApplication.instance())  # Store theme manager
         self.book = book or Book()
         self.is_new = (book is None)
         self.sort_order = sort_order  # bd#8: Store for header display

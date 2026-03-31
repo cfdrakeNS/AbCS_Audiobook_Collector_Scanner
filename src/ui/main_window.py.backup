@@ -33,6 +33,7 @@ from src.ui.import_window import ImportWindow
 from src.ui.collection_window import CollectionWindow
 from src.ui.name_list_window import NameListWindow
 from src.ui.backup_restore_window import BackupRestoreWindow
+from src.ui.web_metadata import WebMetadataWindow
 
 # Import version from main module
 
@@ -126,10 +127,6 @@ class BookTableModel(QAbstractTableModel):
                 if book.read_date:
                     return book.read_date if isinstance(book.read_date, str) else str(book.read_date)
                 return ""
-            if col == 9:
-                if book.date_added:
-                    return book.date_added if isinstance(book.date_added, str) else str(book.date_added)
-                return ""
 
         if role == Qt.TextAlignmentRole and col == 7:
             return Qt.AlignRight | Qt.AlignVCenter
@@ -181,10 +178,64 @@ class MainWindow(QMainWindow):
             # Default to today's date for new entries
             date_field.setDate(QDate.currentDate())
         
-        # Set font size
+        # Set font size and calendar styling
         font = date_field.font()
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
+        
+        # Make calendar popup larger and more readable
+        # Use 14pt base font, scale only if scaling is active
+        base_font_size = 14
+        if self.scaler.current_scale != 1.0:
+            font_size = self.scaler.get_scaled_size(base_font_size)
+        else:
+            font_size = base_font_size
+            
+        calendar_style = f"""
+        QCalendarWidget {{
+            font-size: {font_size}pt;
+            font-weight: bold;
+        }}
+        QCalendarWidget QToolButton {{
+            font-size: {font_size}pt;
+            font-weight: bold;
+            min-height: {self.scaler.get_scaled_size(32)}px;
+            min-width: {self.scaler.get_scaled_size(32)}px;
+            padding: {self.scaler.get_scaled_size(6)}px;
+        }}
+        QCalendarWidget QAbstractItemView:enabled {{
+            font-size: {font_size}pt;
+            font-weight: bold;
+            selection-background-color: palette(highlight);
+            selection-color: palette(highlighted-text);
+            gridline-color: palette(mid);
+            outline: none;
+        }}
+        QCalendarWidget QAbstractItemView:disabled {{
+            font-size: {font_size}pt;
+            font-weight: bold;
+            color: palette(text);
+            background-color: palette(base);
+        }}
+        QCalendarWidget QAbstractItemView::item {{
+            min-height: {self.scaler.get_scaled_size(35)}px;
+            min-width: {self.scaler.get_scaled_size(35)}px;
+            padding: {self.scaler.get_scaled_size(6)}px;
+            font-weight: bold;
+        }}
+        QCalendarWidget QWidget#qt_calendar_navigationbar {{
+            background-color: palette(window);
+            min-height: {self.scaler.get_scaled_size(40)}px;
+            font-weight: bold;
+        }}
+        QCalendarWidget QSpinBox {{
+            font-size: {font_size}pt;
+            font-weight: bold;
+            min-height: {self.scaler.get_scaled_size(32)}px;
+            min-width: {self.scaler.get_scaled_size(60)}px;
+        }}
+        """
+        date_field.setStyleSheet(calendar_style)
         
         layout.addWidget(date_field)
         date_field.setFocus()
@@ -248,7 +299,7 @@ class MainWindow(QMainWindow):
     Displays list of books with filtering and search.
     """
 
-    FIND_ALLOWED_ALT_LETTERS = {'I', 'T', 'X'}
+    FIND_ALLOWED_ALT_LETTERS = {'I', 'T', 'X', 'G'}
 
     DUPLICATE_MATCH_OPTIONS = [
         ("Title + Author + Collection", "title_author"),
@@ -336,6 +387,9 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.setup_shortcuts()
 
+        # Explicitly set palette on main window and key widgets to ensure palette roles work
+        self.setPalette(self.theme_manager.app.palette())
+
         # Connect to scaler changes to update header control heights
         self.scaler.scale_changed.connect(self.on_scale_changed)
         # Refresh control/table styling when theme changes
@@ -343,9 +397,20 @@ class MainWindow(QMainWindow):
         # Apply initial button styling
         self.on_scale_changed(self.scaler.current_scale)
 
+        # Explicitly set palette on table and buttons after style applied
+        if hasattr(self, 'table'):
+            self.table.setPalette(self.theme_manager.app.palette())
+        if hasattr(self, 'update_button'):
+            self.update_button.setPalette(self.theme_manager.app.palette())
+        if hasattr(self, 'delete_button'):
+            self.delete_button.setPalette(self.theme_manager.app.palette())
+
         # Load initial data
         self.refresh_collections()
         self.refresh_books()
+        
+        # Check if database is empty and show display setup if needed
+        self._check_and_show_display_setup()
 
         # Window settings
         version_str = get_app_version()
@@ -360,6 +425,7 @@ class MainWindow(QMainWindow):
         if self.table.model() and self.table.model().rowCount() > 0:
             self.table.setCurrentCell(0, 1)  # Column 1 is Title
             self.table.setFocus()
+            self.update_selection_ui()  # Update menu state after initial selection
         else:
             self.table.setFocus()
 
@@ -394,11 +460,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_hint_label = QLabel(
-            "Alt+U Update, Alt+D Delete, Escape Cancel")
+            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel")
         self.status_hint_label.setVisible(False)
         self.status_hint_label.setAccessibleName("Selection shortcuts")
         self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+D Delete, Escape Cancel"
+            "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
         )
         self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
         self.status_bar.insertWidget(0, self.status_hint_label, 1)
@@ -417,33 +483,9 @@ class MainWindow(QMainWindow):
 
     def on_scale_changed(self, scale_percentage: int):
         """Update header control heights when zoom level changes."""
-        # Scale the height proportionally: base is 20px at 100% scale
-        base_height = 20
-        scaled_height = int(base_height * (scale_percentage / 100.0))
-
-        # Button sizing - compact height
-        button_stylesheet = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
-        self.update_button.setStyleSheet(button_stylesheet)
-        self.delete_button.setStyleSheet(button_stylesheet)
-
         # Keep table fixed-content columns scaled without expensive content-size scans.
         if hasattr(self, 'table'):
             self._apply_fixed_content_column_widths()
-            self.update_stretch_columns()
 
     def apply_control_styles(self):
         """Re-apply dynamic styles for controls and table after theme/scale changes."""
@@ -482,9 +524,9 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Plot, Series, Genre, Length, Tracks, Read, Date Added
+        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read, Date Added
         columns = ["Author", "Title", "Year", "Plot", "Series",
-                   "Genre", "Length", "Tracks", "Read", "Added"]
+                   "Genre", "Time", "Tracks", "Read", "Added"]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         # Selection column removed; only text highlighting used
@@ -504,20 +546,17 @@ class MainWindow(QMainWindow):
         self.table.viewport().setMouseTracking(False)
         self.table.setAttribute(Qt.WA_Hover, False)
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style to table only
+        
+        # Force visible text color to override any theme issues
         self.table.setStyleSheet(
             """
-            QTableView::item:hover {
-                background-color: palette(base);
-                color: palette(text);
+            QTableView::item {
+                color: black !important;
+                background-color: white !important;
             }
             QTableView::item:selected {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            QTableView::item:selected:focus {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
+                background-color: palette(highlight) !important;
+                color: palette(highlighted-text) !important;
             }
             """
         )
@@ -583,7 +622,7 @@ class MainWindow(QMainWindow):
         base_widths = {
             2: 72,   # Year
             3: 62,   # Plot
-            6: 82,   # Length
+            6: 82,   # Time
             7: 78,   # Tracks
             8: 116,  # Read
             9: 116,  # Added
@@ -607,6 +646,16 @@ class MainWindow(QMainWindow):
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
 
+        # Fetch Web Info button (hidden initially)
+        self.get_web_info_button = QPushButton("Fetch Web Info")
+        self.get_web_info_button.setAccessibleName("Fetch web info for selected books")
+        self.get_web_info_button.setAccessibleDescription(
+            "Fetch web info for selected books - Alt+W")
+        self.get_web_info_button.setFocusPolicy(Qt.StrongFocus)
+        self.get_web_info_button.clicked.connect(self.on_get_web_info_clicked)
+        self.get_web_info_button.setVisible(False)
+        layout.addWidget(self.get_web_info_button)
+
         # Delete button (hidden initially)
         self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete selected books")
@@ -616,6 +665,12 @@ class MainWindow(QMainWindow):
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
+
+        # Apply standard accessible button style to footer buttons
+        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        self.update_button.setStyleSheet(button_style)
+        self.get_web_info_button.setStyleSheet(button_style)
+        self.delete_button.setStyleSheet(button_style)
 
         # Spacer
         layout.addStretch()
@@ -671,16 +726,21 @@ class MainWindow(QMainWindow):
         self.edit_menu.addAction(self.update_action)
         
         # Fetch Web Info action (same as fetch web info button)
-        self.get_web_info_action = QAction("Fetch &Web Info", self)
+        self.get_web_info_action = QAction("&Fetch Web Info", self)
+        # Removed setShortcut("Alt+W") to avoid conflict with shortcut manager
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
         self.get_web_info_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.get_web_info_action)
         
         # Cancel action (same as cancel button)
         self.cancel_action = QAction("&Cancel", self)
+        # Note: Esc shortcut handled at window level by escape_shortcut
         self.cancel_action.triggered.connect(self.on_cancel_clicked)
         self.cancel_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.cancel_action)
+        
+        # Separator
+        self.edit_menu.addSeparator()
 
         # View menu
         self.view_menu = menubar.addMenu("&View")
@@ -795,6 +855,7 @@ class MainWindow(QMainWindow):
         # Alt+Key shortcuts (centralized)
         callback_map = {
             'update_button': self.on_update_clicked,     # Alt+U
+            'get_web_info_button': self.on_get_web_info_clicked,  # Alt+W
             'delete_button': self.on_delete_clicked,     # Alt+D
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -891,7 +952,7 @@ class MainWindow(QMainWindow):
         if self.duplicate_mode_active:
             return (
                 f"Duplicate mode: {len(self.books)} books shown. "
-                "Use normal selection. Alt+D Delete, Escape Cancel Dup Mode"
+                "Use normal selection. Alt+D Delete, Escape Exit Dup Mode"
             )
 
         # Priority 3: Show search results if search is active
@@ -929,8 +990,8 @@ class MainWindow(QMainWindow):
     def _selection_shortcuts_text(self) -> str:
         """Return shortcut hint text based on current action mode."""
         if self.duplicate_mode_active:
-            return "Alt+D Delete, Escape Cancel Dup Mode"
-        return "Alt+U Update, Alt+D Delete, Escape Cancel"
+            return "Alt+D Delete, Escape Exit Dup Mode"
+        return "Alt+U Update, Alt+W Fetch Web Info, Alt+D Delete, Escape Cancel"
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -1049,11 +1110,11 @@ class MainWindow(QMainWindow):
             )
             return
 
+        # Clear selection after delete - don't auto-select remaining duplicates
+        self.selected_book_ids.clear()
+        self.selection_anchor_row = None
         self.refresh_books()
-        self.selected_book_ids = {
-            book.book_id for book in self.books if book.book_id in self.duplicate_mode_book_ids
-        }
-        self._apply_row_selection_by_book_ids(self.selected_book_ids)
+        self._apply_row_selection_by_book_ids(set())
         self.update_selection_ui()
         # Do not set a duplicate mode status here to avoid overlapping/jumbled messages
 
@@ -1079,76 +1140,13 @@ class MainWindow(QMainWindow):
                 search_text=saved_filter.search_text,
                 is_keyword_search=saved_filter.is_keyword_search,
             )
+
         self._apply_current_filter_to_controls()
         self.refresh_books()
         self.update_selection_ui()
-        self.set_status("Duplicate mode exited", announce=True)
+        self.set_status(message, timeout_ms=3000, announce=announce)
 
-    def _restore_table_focus(self, row, col):
-        """Helper method to restore focus to table with proper keyboard handling."""
-        # Ensure main window is active and has focus
-        self.activateWindow()
-        self.raise_()
-        self.setFocus()
-        
-        # Then set focus to the table
-        self.table.setCurrentCell(row, col)
-        self.table.setFocus()
-        # Ensure the table widget is the active window for keyboard input
-        self.table.activateWindow()
-        # Force the table to be the focus widget
-        self.table.setFocusProxy(None)  # Clear any focus proxy
-        self.table.setFocus(Qt.ActiveWindowFocusReason)
-
-    def on_escape_pressed(self):
-        """Handle ESC key at window level - clears selection, shows confirmation for duplicate mode exit, then clears search/read filter."""
-        # If in duplicate mode, ESC should ask to exit duplicate mode
-        if self.duplicate_mode_active:
-            if self.selected_book_ids or self.selection_anchor_row is not None:
-                # Clear selection without confirmation (status bar shows action)
-                self.selected_book_ids.clear()
-                self.selection_anchor_row = None
-                self._apply_row_selection_by_book_ids(set())
-                self.update_selection_ui()
-                self.set_status("Selection cleared in duplicate mode. Alt+L to exit duplicate mode.")
-                return
-            else:
-                # No selection - ask to exit duplicate mode
-                from src.accessibility.style_helpers import exec_styled_message_box
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Exit Duplicate Mode",
-                    text="Exit duplicate mode and return to normal view?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.Yes
-                )
-                if reply == QMessageBox.Yes:
-                    self.exit_duplicate_mode(announce=True)
-                return
-
-        # Clear selection if we have one
-        if self.selected_book_ids or self.selection_anchor_row is not None:
-            self.selected_book_ids.clear()
-            self.selection_anchor_row = None  # Reset anchor for keyboard selection
-            self._apply_row_selection_by_book_ids(set())
-            self.update_selection_ui()
-            # mw#13: Revert status bar to default after clearing selection
-            self.set_default_status(announce=False)
-            # mw#25: Return focus to table (use timer to ensure button hiding completes)
-            QTimer.singleShot(0, self.table.setFocus)
-            return
-
-        # No selection - check if search or read filter is active
-        if self.current_filter.search_text:
-            self.clear_search()
-        elif self.current_filter.read_filter in ["Read", "Unread"]:
-            self.clear_read_filter()
-        elif self.current_filter.collection_id is not None:
-            self.clear_collection_filter()
-
-    def on_duplicate_check(self, preferred_mode: str = "title_author_year_collection"):
+    def on_duplicate_check(self):
         """Start duplicate mode by prompting for duplicate match type."""
         settings = QSettings("AbCS", "AbCS")
         preferred_mode = self._normalize_duplicate_mode(
@@ -1161,6 +1159,7 @@ class MainWindow(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Duplicate Check")
+        """Start duplicate mode by prompting for duplicate match type."""
         dialog.setAccessibleDescription(
             "Select duplicate match mode and start duplicate checking"
         )
@@ -1304,16 +1303,21 @@ class MainWindow(QMainWindow):
             self.table.setCurrentCell(0, 1)  # Column 1 is Title
             self.table.setFocus()
 
-    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
+    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True, is_error: bool = False):
         """
         Set status bar message with optional screen reader announcement.
+        Also print errors to the terminal for accessibility/copying.
 
         Args:
             message: Message to display
             timeout_ms: If > 0, message will clear to default after this delay.
                        If 0, message stays until manually changed.
             announce: If True, briefly move focus to status bar so JAWS/NVDA read it
+            is_error: If True, print to stderr
         """
+        if is_error:
+            import sys
+            print(f"ERROR: {message}", file=sys.stderr)
         announce_status_message(self.status_bar, message, move_focus=announce)
 
         if timeout_ms > 0:
@@ -1461,7 +1465,7 @@ class MainWindow(QMainWindow):
             ("Plot", "&Plot", 3, False),
             ("Series", "&Series", 4, True),
             ("Genre", "&Genre", 5, True),
-            ("Length", "&Length", 6, False),
+            ("Time", "&Time", 6, False),
             ("Tracks", "Trac&ks", 7, False),
             ("Read", "&Read", 8, False),
             ("Added", "Add&ed", 9, False),
@@ -1626,7 +1630,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             self.table.setUpdatesEnabled(True)
-            self.set_status(f"Error loading books: {e}", timeout_ms=3000)
+            self.set_status(f"Error loading books: {e}", timeout_ms=3000, is_error=True)
 
         finally:
             # ALWAYS UNBLOCK SIGNALS - even on error
@@ -1707,14 +1711,12 @@ class MainWindow(QMainWindow):
                 return (book.year is None, book.year or 0)
             if column == 3:  # Plot (comments indicator)
                 return (not book.has_substantial_comment, book.title or "")
-            if column == 6:  # Length
+            if column == 6:  # Time
                 return ((book.time_hours or 0) * 60 + (book.time_minutes or 0))
             if column == 7:  # Tracks
                 return (book.tracks or 0)
             if column == 8:  # Read date
                 return book.read_date or ""
-            if column == 9:  # Date added
-                return book.date_added or ""
             return ""
 
         self.books.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
@@ -1943,22 +1945,6 @@ class MainWindow(QMainWindow):
             "book_id": book_id,
         }
 
-    def _restore_table_focus(self, row, col):
-        """Helper method to restore focus to table with proper keyboard handling."""
-        # Ensure main window is active and has focus
-        self.activateWindow()
-        self.raise_()
-        self.setFocus()
-        
-        # Then set focus to the table
-        self.table.setCurrentCell(row, col)
-        self.table.setFocus()
-        # Ensure the table widget is the active window for keyboard input
-        self.table.activateWindow()
-        # Force the table to be the focus widget
-        self.table.setFocusProxy(None)  # Clear any focus proxy
-        self.table.setFocus(Qt.ActiveWindowFocusReason)
-
     def _restore_table_focus_context(self, focus_ctx: dict | None):
         """Restore focus to the same book/cell when possible after refresh."""
         if not focus_ctx or self.table.rowCount() <= 0:
@@ -2024,15 +2010,30 @@ class MainWindow(QMainWindow):
             self.announce_selection()
 
     def eventFilter(self, source, event):
-        """Filter events for find-dialog Alt-key handling and table mouse behavior."""
+        """Filter events for find-dialog Alt-key handling, combo anti-noise, and table mouse behavior."""
         if (
             event.type() == QEvent.KeyPress
             and hasattr(self, '_find_filter_widgets')
             and source in self._find_filter_widgets
         ):
+            # Block unmapped Alt+letters
             if is_unmapped_alt_letter(event, self.FIND_ALLOWED_ALT_LETTERS):
                 event.accept()
                 return True
+            
+            # Combo anti-noise pattern: block plain arrow keys on combo boxes
+            if isinstance(source, QComboBox):
+                if event.key() in (Qt.Key_Up, Qt.Key_Down) and not event.modifiers() & Qt.AltModifier:
+                    # Block only plain arrows - allow Alt+Up/Down to open dropdown
+                    QApplication.beep()
+                    event.accept()
+                    return True
+                elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    # Enter commits selection and moves focus
+                    if source.lineEdit():
+                        source.lineEdit().selectAll()
+                    event.accept()
+                    return True
 
         if hasattr(self, 'table') and source is self.table.viewport() and event.type() == QEvent.MouseButtonPress:
             # Let mouse press be handled by our custom handler
@@ -2477,7 +2478,7 @@ class MainWindow(QMainWindow):
             value_text = book.series_name or "blank"
         elif col == 4:  # Genre
             value_text = book.genre_name or "blank"
-        elif col == 5:  # Length
+        elif col == 5:  # Time
             value_text = book.time_display or "blank"
         elif col == 6:  # Tracks
             value_text = str(book.tracks or 0)
@@ -2485,12 +2486,6 @@ class MainWindow(QMainWindow):
             if book.read_date:
                 value_text = book.read_date if isinstance(
                     book.read_date, str) else str(book.read_date)
-            else:
-                value_text = "blank"
-        elif col == 8:  # Date added
-            if book.date_added:
-                value_text = book.date_added if isinstance(
-                    book.date_added, str) else str(book.date_added)
             else:
                 value_text = "blank"
         else:
@@ -2573,6 +2568,7 @@ class MainWindow(QMainWindow):
         show_action_buttons = has_selection or in_duplicate_mode
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
+        self.get_web_info_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
         self.status_hint_label.setVisible(show_action_buttons)
         self.status_hint_label.setText(self._selection_shortcuts_text())
@@ -2584,6 +2580,8 @@ class MainWindow(QMainWindow):
             self.delete_action.setEnabled(has_selection)
         if hasattr(self, 'update_action'):
             self.update_action.setEnabled(has_selection and not in_duplicate_mode)
+        if hasattr(self, 'cancel_action'):
+            self.cancel_action.setEnabled(show_action_buttons)
         if hasattr(self, 'get_web_info_action'):
             # Fetch Web Info should always be enabled except in duplicate mode
             # It will use the currently focused book if no specific selection
@@ -2717,14 +2715,27 @@ class MainWindow(QMainWindow):
         web_data = None
         last_error = None
         
+        print(f"DEBUG: Searching for web data - Title: '{title}', Author: '{author}', Year: '{year}'")
+        print(f"DEBUG: Preferences - move_articles: {move_articles}, flip_author: {flip_author}")
+        
         # Single API call - it will try Google Books, then Open Library, then WikiData
         try:
+            print("DEBUG: Fetching web data (will try all sources)...")
             web_data = api.get_book_metadata(title, author, year, refresh=0, 
                                            move_articles=move_articles, flip_author=flip_author)
+            if web_data:
+                print(f"DEBUG: Web data fetched from source: {web_data.get('source', 'unknown')}")
+            else:
+                print("DEBUG: No web data returned from any source")
         except Exception as e:
+            print(f"DEBUG: API call failed: {e}")
             last_error = str(e)
         
         if web_data:
+            # Debug: Print what we got
+            print(f"DEBUG: Web data found for '{title}': {web_data.get('title', 'NO TITLE')} by {web_data.get('author', 'NO AUTHOR')}")
+            print(f"DEBUG: Has plot: {bool(web_data.get('plot'))}")
+            
             # Check if the returned data is actually meaningful (has plot or matches search)
             title_match = web_data.get('title', '').lower()
             search_title_lower = title.lower()
@@ -2736,6 +2747,7 @@ class MainWindow(QMainWindow):
             if web_data.get('plot'):
                 # Has plot content - likely a real match
                 is_real_match = True
+                print("DEBUG: Match because has plot")
             elif search_title_lower and title_match:
                 # Check if title similarity (must be more strict)
                 # Require at least 50% of words from search title to match
@@ -2751,14 +2763,19 @@ class MainWindow(QMainWindow):
                     
                     if match_ratio >= 0.5 or exact_contains:
                         is_real_match = True
+                        print(f"DEBUG: Match because title similarity (ratio: {match_ratio:.2f})")
                 else:
                     # Fallback for very short titles
                     if search_title_lower in title_match or title_match in search_title_lower:
                         is_real_match = True
+                        print("DEBUG: Match because short title containment")
             elif search_author_lower and author_match:
                 # Check author match
                 if search_author_lower in author_match or author_match in search_author_lower:
                     is_real_match = True
+                    print("DEBUG: Match because author similarity")
+            
+            print(f"DEBUG: Is real match: {is_real_match}")
             
             if is_real_match:
                 # Only open window if real data found
@@ -2786,6 +2803,9 @@ class MainWindow(QMainWindow):
                 msg.setStandardButtons(QMessageBox.Ok)
                 msg.exec()
         else:
+            print(f"DEBUG: No web data found for '{title}' by '{author}'")
+            if last_error:
+                print(f"DEBUG: Last error: {last_error}")
             # Show popup if no data found
             from PySide6.QtWidgets import QMessageBox
             from src.accessibility.style_helpers import build_accessible_message_box_style
@@ -2892,6 +2912,102 @@ class MainWindow(QMainWindow):
         # mw#25: Return focus to table (use timer to ensure button hiding completes)
         QTimer.singleShot(0, self.table.setFocus)
 
+    def on_web_metadata_saved(self, original_row, original_col):
+        """Handle web metadata save - return focus to exact same cell."""
+        # Refresh the book data to show any changes
+        self.refresh_books()
+        
+        # Return focus to the exact same cell (or adjusted position)
+        if original_row is not None and original_col is not None:
+            target_row = min(original_row, self.table.rowCount() - 1)
+            target_col = min(original_col, self.table.columnCount() - 1)
+            if target_row >= 0 and target_col >= 0:
+                # Use QTimer to ensure focus is set after UI updates complete
+                QTimer.singleShot(0, lambda: self._restore_table_focus(target_row, target_col))
+        
+        self.set_status("Web info updated and saved", announce=True)
+
+    def _restore_table_focus(self, row, col):
+        """Helper method to restore focus to table with proper keyboard handling."""
+        # Ensure main window is active and has focus
+        self.activateWindow()
+        self.raise_()
+        self.setFocus()
+        
+        # Then set focus to the table
+        self.table.setCurrentCell(row, col)
+        self.table.setFocus()
+        # Ensure the table widget is the active window for keyboard input
+        self.table.activateWindow()
+        # Force the table to be the focus widget
+        self.table.setFocusProxy(None)  # Clear any focus proxy
+        self.table.setFocus(Qt.ActiveWindowFocusReason)
+
+    def on_escape_pressed(self):
+        """Handle ESC key at window level - clears selection, shows confirmation for duplicate mode exit, then clears search/read filter."""
+        # If in duplicate mode, ESC should ask to exit duplicate mode
+        if self.duplicate_mode_active:
+            if self.selected_book_ids or self.selection_anchor_row is not None:
+                # Clear selection without confirmation (status bar shows action)
+                self.selected_book_ids.clear()
+                self.selection_anchor_row = None
+                self._apply_row_selection_by_book_ids(set())
+                self.update_selection_ui()
+                return
+            else:
+                # Ask to exit duplicate mode
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Exit Duplicate Mode",
+                    text="Exit duplicate mode?\n\nYes: Exit duplicate mode\nNo: Stay in duplicate mode",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.Yes,
+                )
+                if reply == QMessageBox.Yes:
+                    self.exit_duplicate_mode(
+                        message="Duplicate mode canceled", announce=False)
+                    QTimer.singleShot(0, self.table.setFocus)
+                return
+        
+        # First priority: clear selection mode/selected books (normal mode)
+        if self.selected_book_ids or self.selection_anchor_row is not None:
+            # Clear selection without confirmation (status bar shows action)
+            self.on_cancel_clicked()
+            return
+        # Second priority: clear search - use book_id to restore position (mw#29)
+        if self.current_filter.has_search:
+            # Use tracked book ID (set by on_current_cell_changed)
+            restore_book_id = self._last_table_book_id
+            restore_column = self._last_table_column if self._last_table_column >= 0 else 1
+
+            # Clear filter and refresh
+            self.current_filter.search_text = ""
+            self.current_filter.is_keyword_search = False
+            self.refresh_books()
+
+            # Restore focus to the actual book that was selected
+            def restore_focus():
+                if restore_book_id is not None:
+                    self.focus_book_by_id(restore_book_id, restore_column)
+                else:
+                    if self.table.rowCount() > 0:
+                        self.table.setCurrentCell(0, 1)
+                    self.table.setFocus(Qt.TabFocusReason)
+
+            QTimer.singleShot(150, restore_focus)
+            self.set_status("Search cleared", timeout_ms=2000)
+            return
+        # Third priority: clear read/unread filter
+        if self.current_filter.read_filter in ("Read", "Unread"):
+            # Clear read filter and refresh
+            self.current_filter.read_filter = "All"
+            self._sync_read_menu_selection()
+            self.refresh_books()
+            self.set_status("Read/Unread filter cleared", timeout_ms=2000)
+            return
+
     def clear_status_message(self):
         """Clear temporary status message and restore default status."""
         self.set_default_status(announce=False)
@@ -2934,7 +3050,8 @@ class MainWindow(QMainWindow):
         # bd#8: Pass current sort order to show in header
         sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
-            self.db, self.scaler, sort_order=sort_order, parent=self)
+            self.db, self.scaler, sort_order=sort_order, 
+            theme_manager=self.theme_manager, parent=self)
         details.exec()
 
         # bd#7: If a new book was saved, get its book_id to focus on it
@@ -3030,7 +3147,8 @@ class MainWindow(QMainWindow):
 
         details = BookDetailsWindow(
             self.db, self.scaler, book=book, sort_order=sort_order,
-            books_list=self.books, current_index=current_index, parent=self)
+            books_list=self.books, current_index=current_index, 
+            theme_manager=self.theme_manager, parent=self)
         details.exec()
 
         # bd#7: After dialog closes, get the last viewed book_id
@@ -3084,7 +3202,7 @@ You can:
 • Import audiobooks from your computer (scan folders)
 • Manually add a new book
 
-Use Ctrl+I to import or Alt+M for menu options."""
+Use Ctrl+I to import or Alt+7 for menu options."""
             text_edit.setPlainText(splash_text)
             font = text_edit.font()
             font.setPointSize(self.scaler.get_scaled_size(12))
@@ -3363,12 +3481,12 @@ Use Ctrl+I to import or Alt+M for menu options."""
             ("Alt+2", "Jump to Author column"),
             ("Alt+1..Alt+0", "Jump to other columns (see table order)"),
             ("Alt+U", "Update selected"),
+            ("Alt+W", "Fetch Web Info"),
             ("Alt+D", "Delete selected"),
-            ("Alt+L", "Cancel selection"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
             ("Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),
-            ("Escape", "Clear selection/search/read filter"),
+            ("Escape", "Exit from Selection, Duplicate, Search, and Read filters"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),
@@ -3463,3 +3581,194 @@ Use Ctrl+I to import or Alt+M for menu options."""
         for col, weight in self._stretch_columns.items():
             width = int(available * weight / total_weight)
             self.table.setColumnWidth(col, max(width, 60))
+
+    def _check_and_show_display_setup(self):
+        """Check if display setup should be shown and show it as a modal popup."""
+        # Check if we should show the display setup (empty database or first run)
+        try:
+            book_count = self.book_queries.count_all()
+            if book_count == 0:
+                # Show display setup as modal dialog within main window
+                self._show_display_setup_popup()
+        except Exception as e:
+            # If we can't determine book count, don't show setup
+            pass
+
+    def _show_display_setup_popup(self):
+        """Show display setup as a modal popup within the main window."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton
+        from PySide6.QtCore import Qt, QTimer
+        from PySide6.QtGui import QShortcut, QKeySequence
+        from src.accessibility.accessible_events import announce_status_message
+        from src.accessibility.key_filters import is_unmapped_alt_letter
+        
+        # Create modal dialog
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Display Setup")
+        dlg.setAccessibleName("Display Setup")
+        dlg.setModal(True)
+        dlg.resize(500, 350)
+        
+        # Allowed Alt+letter shortcuts for this dialog
+        ALLOWED_ALT_LETTERS = {'/', '?', 'F1'}
+        
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+        
+        # Introduction
+        intro = QLabel(
+            "Choose your preferred display settings. You can change these later in Preferences."
+        )
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        
+        # Theme selection
+        theme_row = QHBoxLayout()
+        theme_label = QLabel("&Theme:")
+        theme_combo = QComboBox()
+        theme_combo.setAccessibleName("Theme selection")
+        theme_combo.setAccessibleDescription("Choose visual theme for the application")
+        theme_label.setBuddy(theme_combo)
+        theme_row.addWidget(theme_label)
+        theme_row.addWidget(theme_combo, 1)
+        layout.addLayout(theme_row)
+        
+        # Zoom selection
+        zoom_row = QHBoxLayout()
+        zoom_label = QLabel("&Zoom (%):")
+        zoom_spin = QSpinBox()
+        zoom_spin.setAccessibleName("Zoom level")
+        zoom_spin.setAccessibleDescription("Set zoom percentage for interface scaling")
+        zoom_spin.setRange(50, 300)
+        zoom_spin.setSingleStep(15)
+        zoom_spin.setSuffix("%")
+        zoom_spin.setValue(100)
+        zoom_label.setBuddy(zoom_spin)
+        zoom_row.addWidget(zoom_label)
+        zoom_row.addWidget(zoom_spin)
+        zoom_row.addStretch(1)
+        layout.addLayout(zoom_row)
+        
+        # Status label
+        status_label = QLabel("Ready")
+        status_label.setAccessibleName("Status")
+        layout.addWidget(status_label)
+        
+        # Buttons
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        continue_button = QPushButton("&Continue")
+        continue_button.setAccessibleName("Continue with current settings")
+        continue_button.setAccessibleDescription("Save settings and close the dialog")
+        skip_button = QPushButton("S&kip")
+        skip_button.setAccessibleName("Skip setup")
+        skip_button.setAccessibleDescription("Close dialog without changing settings")
+        buttons.addWidget(continue_button)
+        buttons.addWidget(skip_button)
+        layout.addLayout(buttons)
+        
+        # Load theme options
+        theme_combo.clear()
+        for display_name, theme_id in self.theme_manager.get_theme_names():
+            theme_combo.addItem(display_name, theme_id)
+        
+        # Set current values
+        current_theme = self.theme_manager.current_theme_name
+        idx = theme_combo.findData(current_theme)
+        if idx >= 0:
+            theme_combo.setCurrentIndex(idx)
+        zoom_spin.setValue(self.scaler.current_scale)
+        
+        # Setup shortcuts
+        help_shortcut = QShortcut(QKeySequence("F1"), dlg)
+        help_shortcut.activated.connect(lambda: self._show_display_setup_help(dlg))
+        
+        status_shortcut = QShortcut(QKeySequence("Alt+/"), dlg)
+        status_shortcut.activated.connect(lambda: announce_status_message(status_label, status_label.text(), move_focus=False))
+        
+        # Event filter for Alt-letter blocking
+        def event_filter(obj, event):
+            if event.type() == QEvent.KeyPress:
+                if is_unmapped_alt_letter(event, ALLOWED_ALT_LETTERS):
+                    event.accept()
+                    return True
+            return dlg.eventFilter(obj, event)
+        dlg.installEventFilter(event_filter)
+        
+        # Connect signals
+        def on_theme_changed():
+            theme_id = theme_combo.currentData()
+            if theme_id:
+                self.theme_manager.set_theme(theme_id)
+                theme_name = theme_combo.currentText()
+                status_label.setText(f"Theme changed to {theme_name}")
+                announce_status_message(status_label, f"Theme changed to {theme_name}", move_focus=False)
+        
+        def on_zoom_changed(value):
+            self.scaler.set_scale(value)
+            status_label.setText(f"Zoom set to {value}%")
+            announce_status_message(status_label, f"Zoom set to {value}%", move_focus=False)
+        
+        theme_combo.currentIndexChanged.connect(on_theme_changed)
+        zoom_spin.valueChanged.connect(on_zoom_changed)
+        
+        # Button handlers
+        def on_continue():
+            status_label.setText("Settings saved")
+            announce_status_message(status_label, "Settings saved", move_focus=False)
+            QTimer.singleShot(500, dlg.accept)
+        
+        def on_skip():
+            status_label.setText("Setup skipped")
+            announce_status_message(status_label, "Setup skipped", move_focus=False)
+            QTimer.singleShot(500, dlg.accept)
+        
+        continue_button.clicked.connect(on_continue)
+        skip_button.clicked.connect(on_skip)
+        
+        # Focus setup
+        QTimer.singleShot(0, lambda: theme_combo.setFocus())
+        
+        # Show dialog
+        dlg.exec()
+    
+    def _show_display_setup_help(self, parent):
+        """Show help dialog for display setup."""
+        from PySide6.QtWidgets import QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QVBoxLayout
+        
+        shortcuts = [
+            ("F1", "Show keyboard shortcuts"),
+            ("Alt+/", "Read status bar"),
+            ("Tab", "Navigate between controls"),
+            ("Enter", "Activate button or apply setting"),
+            ("Escape", "Close wizard"),
+        ]
+        
+        dlg = QMessageBox(parent)
+        dlg.setWindowTitle("Keyboard Shortcuts")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.setText("Display Setup - Keyboard Shortcuts")
+        dlg.setStandardButtons(QMessageBox.Ok)
+        dlg.setDefaultButton(QMessageBox.Ok)
+        
+        # Create shortcuts table
+        table = QTableWidget(len(shortcuts), 2)
+        table.setAccessibleName("Shortcuts list")
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        
+        for row, (shortcut, action) in enumerate(shortcuts):
+            table.setItem(row, 0, QTableWidgetItem(shortcut))
+            table.setItem(row, 1, QTableWidgetItem(action))
+        
+        table.resizeColumnsToContents()
+        
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(table)
+        dlg.setLayout(layout)
+        
+        dlg.exec()
