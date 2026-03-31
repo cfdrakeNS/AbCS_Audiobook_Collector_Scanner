@@ -430,6 +430,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid palette(dark);
                 border-radius: 3px;
                 background-color: palette(button);
+                color: palette(button-text);
             }}
             QPushButton:focus {{
                 background-color: palette(highlight);
