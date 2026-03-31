@@ -2690,8 +2690,8 @@ class MainWindow(QMainWindow):
         popup.setLayout(layout)
         popup.resize(400, 100)
         
-        # Auto-close after 1 second
-        QTimer.singleShot(1000, popup.accept)
+        # Auto-close after 1.8 seconds (same as book details)
+        QTimer.singleShot(1800, popup.accept)
         popup.show()
         QApplication.processEvents()
         
