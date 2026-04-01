@@ -2562,11 +2562,17 @@ class ImportWindow(QDialog):
             modifiers = event.modifiers()
 
             if modifiers & Qt.ShiftModifier:
-                if self.selection_anchor_row is not None:
-                    self.extend_selection_with_arrow(event.key())
-                    event.accept()
-                    return
-                self.move_current_without_selection(event.key())
+                # Shift+Arrow: Start selection OR extend selection (Windows standard)
+                row = self.table.currentRow()
+                if row >= 0:
+                    if self.selection_anchor_row is None:
+                        # No anchor set - start selection at current row
+                        self.selection_anchor_row = row
+                        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+                        self._select_row_range(row, row, col)
+                    else:
+                        # Anchor exists - extend selection
+                        self.extend_selection_with_arrow(event.key())
                 event.accept()
                 return
 
@@ -2583,12 +2589,8 @@ class ImportWindow(QDialog):
             event.accept()
             return
 
-        if event.key() == Qt.Key_Space and (event.modifiers() & Qt.ShiftModifier):
-            row = self.table.currentRow()
-            col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
-            if row >= 0:
-                self.selection_anchor_row = row
-                self._select_row_range(row, row, col)
+        # Skip Space key handling - no longer used for selection
+        if event.key() == Qt.Key_Space:
             event.accept()
             return
 
