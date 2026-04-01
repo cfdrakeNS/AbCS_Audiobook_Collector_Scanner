@@ -44,6 +44,7 @@ This index reflects the **current workspace layout**. Several older investigatio
 - [archive/acessibility/accessibility_gaps_mar01.md](archive/acessibility/accessibility_gaps_mar01.md)
 - [archive/acessibility/Accessibility_VALIDATION_REPORT.md](archive/acessibility/Accessibility_VALIDATION_REPORT.md)
 - [archive/acessibility/Accessibility_VISUAL_SUMMARY.md](archive/acessibility/Accessibility_VISUAL_SUMMARY.md)
+- [archive/comprehensive_accessibility_changes_reorganized.md](archive/comprehensive_accessibility_changes_reorganized.md) — Completed accessibility standardization work (Mar 2026)
 
 ### Historical investigation/test bundle
 - [archive/test/ACCESSIBILITY_DOCS_README.md](archive/test/ACCESSIBILITY_DOCS_README.md)

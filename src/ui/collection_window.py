@@ -44,7 +44,7 @@ class CollectionWindow(QDialog):
     
     # Alt+letter keys that are allowed to pass through
     ALLOWED_ALT_LETTERS = {
-        'E', 'L', 'N', 'S', 'F', '/'
+        'E', 'L', 'N', 'S', 'D', '/'
     }
     
     def keyPressEvent(self, event):

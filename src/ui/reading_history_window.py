@@ -28,6 +28,9 @@ from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 class ReadingHistoryWindow(QDialog):
     """Reading History window with statistics and history table."""
 
+    # Alt+Key filtering for accessibility
+    ALLOWED_ALT_LETTERS = "G Y M R F S B T H /"
+
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
         self.db = db
@@ -628,7 +631,15 @@ class ReadingHistoryWindow(QDialog):
         """Handle tab change."""
         tab_names = ["General", "Year", "Month", "Date Range"]
         if index < len(tab_names):
-            self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            # Only show period message on Date Range tab
+            if index == 3:  # Date Range tab
+                if self._period_message:
+                    self.set_status(self._period_message, announce=True)
+                else:
+                    self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            else:
+                self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            
             # Set focus to table when tab changes
             self.focus_current_table()
             
@@ -643,12 +654,20 @@ class ReadingHistoryWindow(QDialog):
     def on_read_status_bar(self):
         """Read period message first, then status bar (Alt+/)."""
         if QAccessible.isActive():
-            # First, read stored period message for screen readers
-            if self._period_message:
-                self.set_status(self._period_message, announce=True)
-            
-            # Then read the current status bar message (with a small delay)
-            QTimer.singleShot(1000, self._announce_status_bar)
+            # Only show period message if we're on Date Range tab
+            current_tab = self.tab_widget.currentIndex()
+            if current_tab == 3:  # Date Range tab
+                # First, read stored period message for screen readers
+                if self._period_message:
+                    self.set_status(self._period_message, announce=True)
+                
+                # Then read the current status bar message (with a small delay)
+                QTimer.singleShot(1000, self._announce_status_bar)
+            else:
+                # For other tabs, just read the current status
+                tab_names = ["General", "Year", "Month", "Date Range"]
+                if current_tab < len(tab_names):
+                    self.set_status(f"Viewing {tab_names[current_tab]} statistics", announce=True)
         # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
 
     def _announce_status_bar(self):

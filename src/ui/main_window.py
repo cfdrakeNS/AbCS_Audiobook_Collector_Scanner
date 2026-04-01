@@ -651,6 +651,13 @@ class MainWindow(QMainWindow):
         new_action.triggered.connect(self.on_import)
         file_menu.addAction(new_action)
 
+        # Book List Import
+        book_list_import_action = QAction("Import Book &List", self)
+        book_list_import_action.setShortcut("Ctrl+Shift+I")
+        book_list_import_action.setShortcutContext(Qt.ApplicationShortcut)
+        book_list_import_action.triggered.connect(self.on_book_list_import)
+        file_menu.addAction(book_list_import_action)
+
         file_menu.addSeparator()
 
         quit_action = QAction("&Quit", self)
@@ -2894,6 +2901,15 @@ class MainWindow(QMainWindow):
         if new_book_id:
             self.focus_book_by_id(new_book_id)
 
+    def on_book_list_import(self):
+        """Open book list import window."""
+        from src.ui.book_list_import_window import BookListImportWindow
+        dialog = BookListImportWindow(self.db, self.scaler,
+                                     self.theme_manager, parent=self)
+        dialog.exec()
+        # Refresh books to show any imported items
+        self.refresh_books()
+
     def on_import(self):
         """Open import window."""
         dialog = ImportWindow(self.db, self.scaler,
@@ -2901,9 +2917,6 @@ class MainWindow(QMainWindow):
         dialog.exec()
         imported_count = getattr(dialog, "total_imported", 0)
         self.refresh_books()
-
-        db_total_row = self.db.fetch_one("SELECT COUNT(*) FROM books")
-        db_total_books = int(db_total_row[0]) if db_total_row else 0
 
         if imported_count > 0 and len(self.books) == 0:
             self.current_filter = SearchFilter(order_by="Title")
