@@ -1,4 +1,4 @@
-read these doc an keep this info in and review the entire code base noncompliance put finding in a doc called  access_review_mar30 
+read these doc a
 accessibility_app_patterns
 Accessibility_best-practice_ rules (PySide6)
 Screen_Reader_and_PySide6_best_practices
