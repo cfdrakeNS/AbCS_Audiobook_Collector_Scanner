@@ -27,6 +27,7 @@ class Author:
     - author_id: Primary key (unique identifier, auto-incremented)
     - name: Author's name (text)
     """
+
     author_id: Optional[int] = None  # SQLite column: author_id (PRIMARY KEY)
     name: str = ""  # SQLite column: author_name
 
@@ -37,6 +38,7 @@ class Author:
 @dataclass
 class Series:
     """Book series model."""
+
     series_id: Optional[int] = None
     name: str = ""
 
@@ -47,6 +49,7 @@ class Series:
 @dataclass
 class Genre:
     """Genre model."""
+
     genre_id: Optional[int] = None
     name: str = ""
 
@@ -57,6 +60,7 @@ class Genre:
 @dataclass
 class Collection:
     """Collection model."""
+
     collection_id: Optional[int] = None
     name: str = ""
     active: bool = True
@@ -82,6 +86,7 @@ class Book:
     - author_name, series_name, genre_name, collection_name: Retrieved via SQL JOINs
       (so we don't have to look up IDs every time)
     """
+
     # Direct SQLite columns from 'books' table:
     book_id: Optional[int] = None
     title: str = ""  # SQLite column: title
@@ -152,6 +157,7 @@ class Book:
 @dataclass
 class ImportRecord:
     """Temporary record during import process."""
+
     title: str = ""
     author: str = ""
     year: Optional[int] = None
@@ -182,6 +188,7 @@ class ImportRecord:
 @dataclass
 class SearchFilter:
     """Search and filter criteria for book list."""
+
     collection_id: Optional[int] = None  # None = All
     read_filter: str = "All"  # All, Read, Unread
     order_by: str = "Title"  # Title, Author, Genre, Series
@@ -197,6 +204,7 @@ class SearchFilter:
 @dataclass
 class Statistics:
     """Application statistics for splash screen."""
+
     total_books: int = 0
     total_authors: int = 0
     total_series: int = 0

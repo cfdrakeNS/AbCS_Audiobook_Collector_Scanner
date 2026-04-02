@@ -1,0 +1,15 @@
+review the below and let me know if you think it is a good improvement. If so create a docs outlining changes and/or areas of the app I missed. 
+
+I wan to add 2 new fields to the db and app 
+User rating test?
+series number integer 
+schema will need updating along with queries 
+windows changes 
+main win replace plot with rating 
+book detail add rating  
+1. Move collection combo from it current row and add a new row below that is above 
+the row with files, bitrate 
+2. add series number to the right of series before genre e.g. Series: ________ #: -- 
+4. add users review to the new row with collection e.g. User Reviews: __________ Collection________ 
+web_metadata 
+already captures these 2 fields add update the 2 fields in db.

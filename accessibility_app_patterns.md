@@ -260,7 +260,82 @@ def setup_shortcuts(self):
 
 ---
 
-## 9) Decision policy: accessibility vs noise tradeoffs
+## 9) QLabel Screen Reader Pattern for Instructions
+
+### Why this is critical for AbCS
+- Static instructional text must read as a single announcement for screen readers
+- QTextEdit promotes widgets to QAccessibleTextInterface (line-by-line reading)
+- QLabel with proper accessible name uses QAccessibleInterface (atomic reading)
+
+### Standard Implementation Pattern
+
+#### For Static Instructions (Screen Reader Optimized)
+```python
+# Instructions text for screen readers (single sentence format)
+instructions_text = (
+    "1. Select an Excel .xlsx or .xls or CSV file using the Browse button. "
+    "2. Map spreadsheet columns to book fields using the dropdown combos. "
+    "3. Use checkboxes in Options column for import settings. "
+    "4. Title and Author fields are required for import. "
+    "5. Click Preview to verify your field mapping. "
+    "6. Click Import to process the file."
+)
+
+# QLabel for visual display (with newlines for readability)
+instructions_label = QLabel(
+    "1. Select an Excel (.xlsx, .xls) or CSV file using the Browse button\n"
+    "2. Map spreadsheet columns to book fields using the dropdown combos\n"
+    "3. Use checkboxes in Options column for import settings\n"
+    "4. Title and Author fields are required for import\n"
+    "5. Click Preview to verify your field mapping\n"
+    "6. Click Import to process the file"
+)
+instructions_label.setWordWrap(True)
+instructions_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+
+# CRITICAL: NO setTextInteractionFlags - keeps QAccessibleInterface
+# instead of promoting to QAccessibleTextInterface (line-by-line)
+instructions_label.setFocusPolicy(Qt.TabFocus)
+
+# Put the full text here - this is what JAWS/NVDA reads on focus
+instructions_label.setAccessibleName(instructions_text)
+instructions_label.setAccessibleDescription(
+    "Step-by-step instructions for using the feature"
+)
+```
+
+### Critical Requirements
+1. **NEVER use setTextInteractionFlags** on instructional QLabel - promotes to text editor interface
+2. **Always use setAccessibleName** with complete instruction text for screen readers
+3. **Format for audio** - use periods and spaces, not newlines in accessible name
+4. **Format for visual** - use newlines in display text for readability
+5. **Keep TabFocus** - ensures keyboard navigation to instructions
+
+### Common Mistakes to Avoid
+- ❌ `setTextInteractionFlags(Qt.TextSelectableByKeyboard)` - Promotes to QAccessibleTextInterface
+- ❌ Putting newlines in `setAccessibleName` - Screen readers pause awkwardly
+- ❌ Forgetting `setAccessibleName` - JAWS reads nothing or just "Instructions"
+- ❌ Using QTextEdit for static instructions - Line-by-line reading behavior
+
+- ✅ Plain QLabel with `setAccessibleName` - Atomic reading of full text
+- ✅ Period-separated sentences in accessible name - Natural speech flow
+- ✅ Newlines in display text only - Visual formatting for sighted users
+- ✅ TabFocus without text interaction flags - Keyboard accessible but not editor
+
+### Qt Accessibility Interface Behavior
+| Widget Type | Accessibility Interface | Screen Reader Behavior |
+|------------|------------------------|----------------------|
+| QLabel (no flags) | QAccessibleInterface | Reads full accessible name atomically |
+| QLabel (with TextSelectableByKeyboard) | QAccessibleTextInterface | Line-by-line navigation like editor |
+| QTextEdit | QAccessibleTextInterface | Line-by-line navigation, cursor aware |
+
+### Reference Implementations
+- `src/ui/book_list_import_window.py` → Instructions label with screen reader optimization
+- `src/ui/backup_restore_window.py` → Status and help text patterns
+
+---
+
+## 10) Decision policy: accessibility vs noise tradeoffs
 
 Use these labels in testing/docs:
 - `Confirmed defect` = user cannot access required info/action reliably.

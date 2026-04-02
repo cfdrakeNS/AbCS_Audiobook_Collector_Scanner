@@ -1066,10 +1066,10 @@ class WebMetadataWindow(QDialog):
 
                 # Plot (save only the actual plot content, rating and publisher are handled separately)
                 if 'plot' in self.field_differences:
-                    # Use only the plot field content (rating/source/publisher are in separate fields)
-                    plot = self.plot_edit.toPlainText().strip()
-                    if plot:
-                        self.book.comments = plot
+                    # Save the combined rating+plot string (from field_differences) to comments
+                    plot_text_for_db = self.field_differences['plot'].strip('\n')
+                    if plot_text_for_db:
+                        self.book.comments = plot_text_for_db
                         applied_fields.append('Plot')
                 
                 # Rating (save to database if available)
