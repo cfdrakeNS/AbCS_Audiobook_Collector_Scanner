@@ -132,8 +132,7 @@ class ShortcutManager(QObject):
     # Book List Import Window
     BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
         "W": ("Browse for file", "browse_button"),
-        "N": ("Import new books", "new_books_check"),
-        "U": ("Update read dates", "read_date_check"),
+        "O": ("Options group", "options_group"),
         "T": ("Title field mapping", "title_mapping"),
         "A": ("Author field mapping", "author_mapping"),
         "Y": ("Year field mapping", "year_mapping"),
@@ -143,8 +142,8 @@ class ShortcutManager(QObject):
         "R": ("Reader field mapping", "reader_mapping"),
         "E": ("Read Date field mapping", "read_date_mapping"),
         "M": ("Time field mapping", "time_mapping"),
-        "B": ("Tracks field mapping", "tracks_mapping"),
-        "C": ("Preview import", "preview_button"),
+        "F": ("Files field mapping", "tracks_mapping"),
+        "X": ("Export errors to CSV", "export_button"),
         "I": ("Import books", "import_button"),
     }
 

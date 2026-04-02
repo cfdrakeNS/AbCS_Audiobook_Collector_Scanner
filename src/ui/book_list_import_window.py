@@ -61,13 +61,25 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QTextEdit,
     QWidget,
+    QScrollArea,
+    QSizePolicy,
 )
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible, QAction
 
-from src.database import BookQueries, CollectionQueries, ReadingQueries
+from src.database import (
+    BookQueries,
+    CollectionQueries,
+    ReadingQueries,
+    AuthorQueries,
+    SeriesQueries,
+    GenreQueries,
+)
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
-from src.accessibility.style_helpers import exec_styled_message_box
+from src.accessibility.style_helpers import (
+    exec_styled_message_box,
+    build_accessible_message_box_style,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -77,7 +89,7 @@ class BookListImportWindow(QDialog):
     """Book List Import window with full accessibility support."""
 
     # Alt+Key filtering for accessibility
-    ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H B C V N U /"
+    ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H F C V O E /"
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -87,6 +99,10 @@ class BookListImportWindow(QDialog):
         self.book_queries = BookQueries(db)
         self.collection_queries = CollectionQueries(db)
         self.reading_queries = ReadingQueries(db)
+        self.author_queries = AuthorQueries(db)
+        self.series_queries = SeriesQueries(db)
+        self.genre_queries = GenreQueries(db)
+        self.import_errors = []  # Track errors for CSV export
 
         # Check for pandas availability
         if not PANDAS_AVAILABLE:
@@ -109,14 +125,15 @@ class BookListImportWindow(QDialog):
         self.import_mode = "new"  # "new" or "read_date"
         self._default_status_message = "Ready"
 
-        # Window setup
+        # Window setup - make wider by 1/4 and shorter by 1/8
         self.setWindowTitle("Book List Import")
         self.setAccessibleName("Book List Import Window")
         self.setAccessibleDescription(
             "Import books from spreadsheet files with field mapping"
         )
-        self.setMinimumSize(900, 700)
-        self.resize(1000, 800)
+        # Original: 900x700, New: 1125x613 (900*1.25=1125, 700*0.875=613)
+        self.setMinimumSize(1125, 613)
+        self.resize(1250, 700)  # Original: 1000x800, New: 1250x700
 
         self.setup_ui()
         self.apply_theme()
@@ -129,6 +146,64 @@ class BookListImportWindow(QDialog):
 
         # Install event filters for combo box anti-noise pattern
         self.install_combo_filters()
+
+        # Setup shortcuts using centralized ShortcutManager
+        self.setup_shortcuts()
+
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts using ShortcutManager (except F1, Escape, Alt+/)."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
+        mgr = get_shortcut_manager()
+        callback_map = {
+            "browse_button": lambda: self.browse_file(),
+            "options_group": self.focus_options_section,
+            "title_mapping": lambda: self.focus_mapping_combo("title"),
+            "author_mapping": lambda: self.focus_mapping_combo("author"),
+            "year_mapping": lambda: self.focus_mapping_combo("year"),
+            "plot_mapping": lambda: self.focus_mapping_combo("plot"),
+            "series_mapping": lambda: self.focus_mapping_combo("series"),
+            "genre_mapping": lambda: self.focus_mapping_combo("genre"),
+            "reader_mapping": lambda: self.focus_mapping_combo("reader"),
+            "read_date_mapping": lambda: self.focus_mapping_combo("read_date"),
+            "time_mapping": lambda: self.focus_mapping_combo("time"),
+            "tracks_mapping": lambda: self.focus_mapping_combo("tracks"),
+            "export_button": lambda: self.export_errors_csv(),
+            "import_button": lambda: self.import_books(),
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.BOOK_LIST_IMPORT_WINDOW, callback_map
+        )
+
+        # F1 help shortcut remains local
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        # Alt+/ remains local for status bar read
+        self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
+
+        # Alt+H local shortcut for instructions focus
+        self.instructions_shortcut = QShortcut(QKeySequence("Alt+H"), self)
+        self.instructions_shortcut.activated.connect(self.focus_instructions_section)
+
+    def focus_mapping_combo(self, field_name):
+        """Focus the combo box for the specified field mapping."""
+        if hasattr(self, "field_mappings") and field_name in self.field_mappings:
+            self.field_mappings[field_name].setFocus()
+            self.field_mappings[field_name].showPopup()
+
+    def focus_options_section(self):
+        """Focus first control in Options section."""
+        if hasattr(self, "load_books_check"):
+            self.load_books_check.setFocus()
+            self.set_status("Options section")
+
+    def focus_instructions_section(self):
+        """Focus instructions section."""
+        if hasattr(self, "instructions_label"):
+            self.instructions_label.setFocus()
+            self.set_status("How to use instructions")
 
     def install_combo_filters(self):
         """Install event filters on combo boxes for anti-noise pattern."""
@@ -176,6 +251,17 @@ class BookListImportWindow(QDialog):
                     return True
 
         return super().eventFilter(source, event)
+
+    def keyPressEvent(self, event):
+        """Handle Enter key for focused buttons (Pattern #18: Global Enter anti-pattern avoidance)."""
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, QPushButton):
+                # Let Qt handle Enter on buttons (default behavior)
+                focused_widget.click()
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def apply_button_styling(self):
         """Apply button styling to match book_details window."""
@@ -231,55 +317,77 @@ class BookListImportWindow(QDialog):
 
         main_layout.addWidget(file_group)
 
-        # Options and controls above mapping table
-        options_layout = QHBoxLayout()
-
-        # Instructions only
-        instructions_group = QGroupBox("Instructions")
-        instructions_group.setAccessibleName("Instructions group")
-        instructions_layout = QVBoxLayout(instructions_group)
-
-        self.instructions_edit = QTextEdit()
-        self.instructions_edit.setReadOnly(True)
-        self.instructions_edit.setAccessibleName("Usage instructions")
-        self.instructions_edit.setAccessibleDescription(
-            "Step-by-step instructions for using the book list import"
-        )
-        self.instructions_edit.setFocusPolicy(Qt.StrongFocus)  # Allow tab focus
-        self.instructions_edit.setText(
-            "1. Select an Excel (.xlsx, .xls) or CSV file using the Browse button\n"
-            "2. Map spreadsheet columns to book fields using the dropdown combos\n"
-            "3. Use checkboxes in Options column for import settings\n"
-            "4. Title and Author fields are required for import\n"
-            "5. Click Preview to verify your field mapping\n"
-            "6. Click Import to process the file"
-        )
-        self.instructions_edit.setStyleSheet(
-            "QTextEdit { background-color: palette(base); border: 1px solid palette(mid); padding: 5px; }"
-        )
-
-        # Set instructions height with scaling
-        min_height = self.scaler.get_scaled_size(80)
-        max_height = self.scaler.get_scaled_size(120)
-        self.instructions_edit.setMinimumHeight(min_height)
-        self.instructions_edit.setMaximumHeight(max_height)
-
-        instructions_layout.addWidget(self.instructions_edit)
-        instructions_group.setLayout(instructions_layout)
-        options_layout.addWidget(instructions_group)
-
-        main_layout.addLayout(options_layout)
-
-        # Field mapping table with instructions and checkboxes on right side
+        # Field mapping container with instructions on left, table on right
         mapping_container = QWidget()
         mapping_layout = QHBoxLayout(mapping_container)
         mapping_layout.setContentsMargins(0, 0, 0, 0)
         mapping_layout.setSpacing(12)
         mapping_layout.setAlignment(Qt.AlignTop)  # Align all panels to top
 
-        # Left side - Field mapping table (takes more space)
+        # Left side - Instructions
+        instructions_group = QGroupBox("Instructions")
+        instructions_group.setAccessibleName("Instructions group")
+        instructions_layout = QVBoxLayout(instructions_group)
+
+        # Instructions text for screen readers (single sentence format)
+        instructions_text = (
+            "How to use: Select an Excel .xlsx or .xls or CSV file using the Browse button. "
+            "Map spreadsheet columns to book fields using the dropdown combos. "
+            "Use checkboxes in Options column for import settings. "
+            "Title and Author fields are required for import. "
+            "Click Preview to verify your field mapping. "
+            "Click Import to process the file. "
+            "Press Alt+H to return focus to these instructions."
+        )
+
+        self.instructions_label = QLabel(
+            "How to use:\n"
+            "1. Select an Excel (.xlsx, .xls) or CSV file using the Browse button\n"
+            "2. Map spreadsheet columns to book fields using the dropdown combos\n"
+            "3. Use checkboxes in Options column for import settings\n"
+            "4. Title and Author fields are required for import\n"
+            "5. Click Preview to verify your field mapping\n"
+            "6. Click Import to process the file\n"
+            "Press Alt+H to return focus to these instructions"
+        )
+        self.instructions_label.setWordWrap(True)
+        self.instructions_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+
+        # NO setTextInteractionFlags — keeps Qt using QAccessibleInterface (name-based)
+        # instead of QAccessibleTextInterface (line-by-line) so JAWS reads the whole text
+        self.instructions_label.setFocusPolicy(Qt.TabFocus)
+
+        # Put the full text here — this is what JAWS reads on focus
+        self.instructions_label.setAccessibleName(instructions_text)
+        self.instructions_label.setAccessibleDescription(
+            "Step-by-step instructions for using the book list import"
+        )
+
+        # Set fixed height to fit all text without scrolling
+        fixed_height = self.scaler.get_scaled_size(200)
+        self.instructions_label.setMinimumHeight(fixed_height)
+        self.instructions_label.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Preferred
+        )
+
+        # Match the visual style
+        self.instructions_label.setStyleSheet(
+            "QLabel {"
+            "  background-color: palette(base);"
+            "  border: 1px solid palette(mid);"
+            "  padding: 5px;"
+            "}"
+        )
+
+        # Set instructions size to be narrower on the left
+        # (instructions_group will be added to left_layout below)
+        instructions_layout.addWidget(self.instructions_label)
+        instructions_group.setLayout(instructions_layout)
+
+        # Right side - Field mapping table (takes more space)
         mapping_group = QGroupBox("Field Mapping")
         mapping_group.setAccessibleName("Field mapping group")
+        mapping_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         mapping_table_layout = QVBoxLayout(mapping_group)
         mapping_table_layout.setAlignment(Qt.AlignTop)  # Align to top
 
@@ -308,11 +416,21 @@ class BookListImportWindow(QDialog):
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
 
-        # Set column widths with scaling
-        field_width = self.scaler.get_scaled_size(150)
-        combo_width = self.scaler.get_scaled_size(120)
+        # Set column widths with scaling - tighter to reduce white space
+        field_width = self.scaler.get_scaled_size(100)
+        combo_width = self.scaler.get_scaled_size(60)
         self.mapping_table.setColumnWidth(0, field_width)  # Field name
         self.mapping_table.setColumnWidth(1, combo_width)  # Column selector
+
+        # Set table size - tight to content
+        table_width = field_width + combo_width + 20
+        self.mapping_table.setMinimumWidth(table_width)
+        self.mapping_table.setMaximumWidth(table_width)
+
+        # Remove fixed size to allow combos to show properly
+
+        # Reduce table height to eliminate empty space below column selectors
+        # We'll set this after the table is set up in setup_mapping_table()
 
         # Add padding to prevent text cutoff
         self.mapping_table.setStyleSheet(
@@ -333,41 +451,65 @@ class BookListImportWindow(QDialog):
         mapping_table_layout.addWidget(self.mapping_table)
         mapping_group.setLayout(mapping_table_layout)
 
-        # Add table to layout with stretch factor (takes more space)
-        mapping_layout.addWidget(mapping_group, 3)  # Stretch factor 3
-
-        # Right side - Options checkboxes (takes less space)
+        # Options group for right side
         options_group = QGroupBox("Options")
         options_group.setAccessibleName("Options group")
         options_layout = QVBoxLayout(options_group)
         options_layout.setAlignment(Qt.AlignTop)  # Align to top
-        options_group.setMaximumWidth(250)  # Limit width of options panel
+
+        # Import Type subgroup
+        import_type_group = QGroupBox("Import Type")
+        import_type_group.setAccessibleName("Import Type group")
+        import_type_layout = QVBoxLayout(import_type_group)
 
         # Load Books checkbox
-        self.load_books_check = QCheckBox("Load Books")
-        self.load_books_check.setAccessibleName("Load Books")
+        self.load_books_check = QCheckBox("Add Book From List")
+        self.load_books_check.setAccessibleName("Add Book From List")
         self.load_books_check.setChecked(True)
         self.load_books_check.toggled.connect(self.on_load_books_toggled)
-        options_layout.addWidget(self.load_books_check)
+        import_type_layout.addWidget(self.load_books_check)
 
         # Add Read Date checkbox
-        self.add_read_date_check = QCheckBox("Add Read Date")
-        self.add_read_date_check.setAccessibleName("Add Read Date")
+        self.add_read_date_check = QCheckBox("Add Read Date from List")
+        self.add_read_date_check.setAccessibleName("Add Read Date from List")
         self.add_read_date_check.toggled.connect(self.on_add_read_date_toggled)
-        options_layout.addWidget(self.add_read_date_check)
+        import_type_layout.addWidget(self.add_read_date_check)
+
+        import_type_group.setLayout(import_type_layout)
+        options_layout.addWidget(import_type_group)
 
         # File has header checkbox
-        self.file_has_header_check = QCheckBox("Does the file have a header row?")
-        self.file_has_header_check.setAccessibleName("Does the file have a header row")
+        self.file_has_header_check = QCheckBox("My file Has Header")
+        self.file_has_header_check.setAccessibleName("My file Has Header")
         self.file_has_header_check.setChecked(True)
         self.file_has_header_check.toggled.connect(self.on_file_has_header_toggled)
         options_layout.addWidget(self.file_has_header_check)
 
-        options_layout.addStretch()
         options_group.setLayout(options_layout)
+        options_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
 
-        # Add options to layout with smaller stretch factor
-        mapping_layout.addWidget(options_group, 1)  # Stretch factor 1
+        # Add left widget first (instructions) - wider by 1/3
+        left_layout = QVBoxLayout()
+        left_layout.addWidget(instructions_group)
+        left_layout.addStretch()
+
+        left_widget = QWidget()
+        left_widget.setLayout(left_layout)
+        left_widget.setMaximumWidth(466)  # 350 * 1.33 ≈ 466
+        mapping_layout.addWidget(left_widget, 1)  # Stretch factor 1
+
+        # Add options second (center)
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(options_group)
+        right_layout.addStretch()
+
+        right_widget = QWidget()
+        right_widget.setLayout(right_layout)
+        right_widget.setMaximumWidth(300)
+        mapping_layout.addWidget(right_widget, 1)  # Stretch factor 1
+
+        # Add table third (far right, fixed size)
+        mapping_layout.addWidget(mapping_group)  # No stretch factor - fixed size
 
         main_layout.addWidget(mapping_container)
 
@@ -386,24 +528,24 @@ class BookListImportWindow(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.preview_button = QPushButton("Preview")
-        self.preview_button.setAccessibleName("Preview button")
-        self.preview_button.setAccessibleDescription(
-            "Preview import mapping and data - Alt+C"
-        )
-        self.preview_button.clicked.connect(self.preview_import)
-        self.preview_button.setEnabled(False)
-
         self.import_button = QPushButton("Import")
         self.import_button.setAccessibleName("Import button")
         self.import_button.setAccessibleDescription(
-            "Import books from spreadsheet - Alt+V"
+            "Import books from spreadsheet - Alt+I"
         )
         self.import_button.clicked.connect(self.import_books)
         self.import_button.setEnabled(False)
 
-        button_layout.addWidget(self.preview_button)
+        self.export_button = QPushButton("Export Errors")
+        self.export_button.setAccessibleName("Export Errors")
+        self.export_button.setAccessibleDescription(
+            "Export import errors to CSV spreadsheet - Alt+X"
+        )
+        self.export_button.clicked.connect(self.export_errors_csv)
+        self.export_button.setEnabled(False)
+
         button_layout.addWidget(self.import_button)
+        button_layout.addWidget(self.export_button)
 
         main_layout.addLayout(button_layout)
 
@@ -434,12 +576,12 @@ class BookListImportWindow(QDialog):
                     if prev_combo:
                         self.setTabOrder(prev_combo, self.field_mappings[field])
                     prev_combo = self.field_mappings[field]
-            # Last combo to preview button
+            # Last combo to import button
             if prev_combo:
-                self.setTabOrder(prev_combo, self.preview_button)
+                self.setTabOrder(prev_combo, self.import_button)
         else:
-            self.setTabOrder(self.instructions_edit, self.preview_button)
-        self.setTabOrder(self.preview_button, self.import_button)
+            self.setTabOrder(self.instructions_label, self.import_button)
+        self.setTabOrder(self.import_button, self.export_button)
 
     def setup_mapping_table(self):
         """Setup the field mapping table rows with checkboxes in options column."""
@@ -453,7 +595,7 @@ class BookListImportWindow(QDialog):
             ("reader", "Reader"),
             ("read_date", "Read Date"),
             ("time_hours", "Time"),
-            ("tracks", "Tracks"),
+            ("tracks", "Files"),
         ]
 
         self.mapping_table.setRowCount(len(fields))
@@ -464,15 +606,16 @@ class BookListImportWindow(QDialog):
             label = QLabel(field_label)
             label.setAccessibleName(field_label)
             label.setFocusPolicy(Qt.NoFocus)  # Remove from tab order
+            label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # Align to right
             self.mapping_table.setCellWidget(row, 0, label)
 
             # Column selection combo
             combo = QComboBox()
             combo.setAccessibleName(f"{field_label}")
             combo.addItem("None")
-            # Set combo width with scaling for proper text display
-            min_width = self.scaler.get_scaled_size(80)
-            max_width = self.scaler.get_scaled_size(150)
+            # Set combo width with scaling for proper text display - narrower for single character values
+            min_width = self.scaler.get_scaled_size(40)
+            max_width = self.scaler.get_scaled_size(60)
             combo.setMinimumWidth(min_width)
             combo.setMaximumWidth(max_width)
 
@@ -492,44 +635,41 @@ class BookListImportWindow(QDialog):
         # Set empty header labels to suppress row numbers
         self.mapping_table.setVerticalHeaderLabels([""] * len(fields))
 
-        # Local shortcuts
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.activated.connect(self.on_read_status_bar)
-
-        # Centralized shortcuts using ShortcutManager (AbCS standard)
-        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-
-        mgr = get_shortcut_manager()
-        callback_map = {
-            "browse_button": lambda: self.browse_file(),
-            "new_books_check": lambda: self.load_books_check.click(),
-            "read_date_check": lambda: self.add_read_date_check.click(),
-            "file_has_header_check": lambda: self.file_has_header_check.click(),
-            "preview_button": lambda: self.preview_import(),
-            "import_button": lambda: self.import_books(),
-        }
-        mgr.register_alt_shortcuts(
-            self, ShortcutContext.BOOK_LIST_IMPORT_WINDOW, callback_map
-        )
+        # Set table height after rows are created to eliminate empty space
+        row_height = self.scaler.get_scaled_size(25)
+        table_height = row_height * len(fields) + 30  # Add header and minimal padding
+        self.mapping_table.setMinimumHeight(table_height)
+        self.mapping_table.setMaximumHeight(table_height)
 
     def on_load_books_toggled(self, checked: bool):
-        """Handle Load Books checkbox toggle."""
+        """Handle Load Books checkbox toggle - mutually exclusive."""
         if checked:
             self.import_mode = "new"
-            self.set_status("Mode changed to: Load Books")
+            self.add_read_date_check.blockSignals(True)
+            self.add_read_date_check.setChecked(False)
+            self.add_read_date_check.blockSignals(False)
+            self.set_status("Mode changed to: Add Books From List")
         else:
-            self.set_status("Load Books disabled")
-
-    def on_add_read_date_toggled(self, checked: bool):
-        """Handle Add Read Date checkbox toggle."""
-        if checked:
+            self.add_read_date_check.blockSignals(True)
+            self.add_read_date_check.setChecked(True)
+            self.add_read_date_check.blockSignals(False)
             self.import_mode = "read_date"
             self.set_status("Mode changed to: Add Read Date")
+
+    def on_add_read_date_toggled(self, checked: bool):
+        """Handle Add Read Date checkbox toggle - mutually exclusive."""
+        if checked:
+            self.import_mode = "read_date"
+            self.load_books_check.blockSignals(True)
+            self.load_books_check.setChecked(False)
+            self.load_books_check.blockSignals(False)
+            self.set_status("Mode changed to: Add Read Date")
         else:
-            self.set_status("Add Read Date disabled")
+            self.load_books_check.blockSignals(True)
+            self.load_books_check.setChecked(True)
+            self.load_books_check.blockSignals(False)
+            self.import_mode = "new"
+            self.set_status("Mode changed to: Add Books From List")
 
     def on_file_has_header_toggled(self, checked: bool):
         """Handle File has header checkbox toggle."""
@@ -566,9 +706,8 @@ class BookListImportWindow(QDialog):
 
         shortcuts = [
             ("Alt+W", "Browse for file"),
-            ("Alt+N", "Import new books"),
-            ("Alt+U", "Update read dates"),
-            ("Alt+H", "File has headers"),
+            ("Alt+O", "Options section"),
+            ("Alt+H", "Instructions"),
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
             ("Alt+Y", "Year"),
@@ -578,9 +717,9 @@ class BookListImportWindow(QDialog):
             ("Alt+R", "Reader"),
             ("Alt+E", "Read Date"),
             ("Alt+M", "Time"),
-            ("Alt+B", "Tracks"),
-            ("Alt+C", "Preview import"),
+            ("Alt+F", "Files"),
             ("Alt+I", "Import books"),
+            ("Alt+X", "Export errors to CSV"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Escape", "Close window"),
@@ -588,7 +727,8 @@ class BookListImportWindow(QDialog):
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book List Import")
-        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.setAccessibleName("")
+        dlg.setAccessibleDescription("")
         dlg.resize(560, 420)
 
         layout = QVBoxLayout(dlg)
@@ -596,7 +736,8 @@ class BookListImportWindow(QDialog):
         layout.setSpacing(10)
 
         table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
+        table.setAccessibleName("")
+        table.setAccessibleDescription("")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
 
@@ -634,6 +775,8 @@ class BookListImportWindow(QDialog):
 
         layout.addWidget(table)
         dlg.setLayout(layout)
+
+        QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
         dlg.exec()
 
     def show_accessible_message(self, title: str, message: str, icon_type=None):
@@ -680,9 +823,19 @@ class BookListImportWindow(QDialog):
         dlg.exec()
 
     def on_read_status_bar(self):
-        """Read status bar message for screen readers."""
+        """Read status bar message for screen readers (matches main window pattern)."""
         if QAccessible.isActive():
-            announce_status_message(self.status_bar, self._default_status_message)
+            announce_status_message(
+                self.status_bar, self._default_status_message, move_focus=True
+            )
+        else:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Status Bar",
+                text=f"No screen reader active.\n\nStatus: {self._default_status_message}",
+            )
 
     def browse_file(self):
         """Browse for spreadsheet file."""
@@ -715,8 +868,10 @@ class BookListImportWindow(QDialog):
             self.update_column_combos()
 
             # Enable buttons
-            self.preview_button.setEnabled(True)
             self.import_button.setEnabled(True)
+
+            # Move focus to first import type checkbox
+            self.load_books_check.setFocus()
 
             self.set_status(
                 f"Loaded {len(self.file_data)} rows with {self.column_count} columns"
@@ -755,19 +910,10 @@ class BookListImportWindow(QDialog):
         self.set_default_mappings()
 
     def set_default_mappings(self):
-        """Set default column mappings for testing - A-J for all 10 fields."""
-        # Default mapping: All fields map to A-J for testing
+        """Set default column mappings - Title=A, Author=B."""
         default_mappings = {
             "title": 0,  # Column A
             "author": 1,  # Column B
-            "year": 2,  # Column C
-            "plot": 3,  # Column D
-            "series": 4,  # Column E
-            "genre": 5,  # Column F
-            "reader": 6,  # Column G
-            "read_date": 7,  # Column H
-            "time_hours": 8,  # Column I
-            "tracks": 9,  # Column J
         }
 
         for field, column_index in default_mappings.items():
@@ -861,41 +1007,6 @@ class BookListImportWindow(QDialog):
 
         return True, "Mapping is valid"
 
-    def preview_import(self):
-        """Preview the import with current settings."""
-        if not self.file_data is not None:
-            self.set_status("No file loaded")
-            return
-
-        # Validate mapping
-        is_valid, message = self.validate_mapping()
-        if not is_valid:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Warning,
-                title="Mapping Error",
-                text=message,
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok,
-            )
-            return
-
-        mapping = self.get_field_mapping()
-
-        # Show preview dialog
-        preview_text = self.generate_preview_text(mapping)
-
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Import Preview",
-            text=preview_text,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok,
-        )
-
     def generate_preview_text(self, mapping: Dict[str, Optional[int]]) -> str:
         """Generate preview text for the import."""
         lines = [f"File: {self.selected_file}"]
@@ -916,7 +1027,7 @@ class BookListImportWindow(QDialog):
             "reader": "Reader",
             "read_date": "Read Date",
             "time_hours": "Time",
-            "tracks": "Tracks",
+            "tracks": "Files",
         }
 
         for field, col_index in mapping.items():
@@ -932,7 +1043,7 @@ class BookListImportWindow(QDialog):
         return "\n".join(lines)
 
     def import_books(self):
-        """Import books from the loaded file."""
+        """Import books from the loaded file with preview confirmation."""
         if not self.file_data is not None:
             self.set_status("No file loaded")
             return
@@ -951,18 +1062,25 @@ class BookListImportWindow(QDialog):
             )
             return
 
-        # Confirm import
-        reply = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title="Confirm Import",
-            text=f"Import {len(self.file_data)} books from {self.selected_file}?",
-            buttons=QMessageBox.Yes | QMessageBox.No,
-            default_button=QMessageBox.No,
+        # Show preview info in confirm dialog with accessible properties
+        mapping = self.get_field_mapping()
+        preview_text = self.generate_preview_text(mapping)
+
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle("Confirm Import")
+        msg.setText(preview_text)
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        msg.setAccessibleName("Confirm Import")
+        msg.setAccessibleDescription(preview_text)
+        msg.setStyleSheet(
+            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
         )
+        reply = msg.exec()
 
         if reply != QMessageBox.Yes:
+            self.set_status("Import cancelled")
             return
 
         # Perform import
@@ -980,6 +1098,9 @@ class BookListImportWindow(QDialog):
             )
             if error_count > 0:
                 result_text += f"\n{error_count} books had errors"
+                result_text += (
+                    "\nUse Export Errors (Alt+X) to save error details to CSV"
+                )
 
             exec_styled_message_box(
                 self,
@@ -995,6 +1116,10 @@ class BookListImportWindow(QDialog):
                 f"Import complete: {success_count} successful, {error_count} errors"
             )
 
+            # Enable export button if there were errors
+            if self.import_errors:
+                self.export_button.setEnabled(True)
+
         except Exception as e:
             exec_styled_message_box(
                 self,
@@ -1009,109 +1134,207 @@ class BookListImportWindow(QDialog):
 
     def import_new_books(self) -> Tuple[int, int]:
         """Import new books from the spreadsheet."""
+        from src.database.models import Book
+        from datetime import datetime, date as date_type
+
         mapping = self.get_field_mapping()
         success_count = 0
         error_count = 0
+        self.import_errors = []  # Reset errors
 
         # Ensure "Book List" collection exists
         book_list_collection = self.get_or_create_book_list_collection()
 
         for index, row in self.file_data.iterrows():
             try:
-                # Extract data
+                # Extract required fields
                 title = str(row.iloc[mapping["title"]]).strip()
                 author = str(row.iloc[mapping["author"]]).strip()
 
                 if not title or not author or title == "nan" or author == "nan":
+                    self.import_errors.append(
+                        {
+                            "row": index + 1,
+                            "title": title,
+                            "author": author,
+                            "reason": "Missing title or author",
+                        }
+                    )
                     error_count += 1
                     continue
 
-                # Check for duplicates
-                existing = self.book_queries.find_by_title_author(title, author)
-                if existing:
+                # Check for duplicates using SQL query
+                dup_row = self.db.fetch_one(
+                    "SELECT b.book_id FROM books b "
+                    "JOIN authors a ON b.author_id = a.author_id "
+                    "WHERE b.title = ? AND a.name = ?",
+                    (title, author),
+                )
+                if dup_row:
+                    self.import_errors.append(
+                        {
+                            "row": index + 1,
+                            "title": title,
+                            "author": author,
+                            "reason": "Duplicate - book already exists",
+                        }
+                    )
                     error_count += 1
                     continue
 
-                # Create book data
-                book_data = {
-                    "title": title,
-                    "author_name": author,
-                    "collection_id": book_list_collection.id,
-                }
+                # Get or create author
+                author_id = self.author_queries.get_or_create(author, commit=False)
+
+                # Build Book object
+                book = Book(
+                    title=title,
+                    author_id=author_id,
+                    collection_id=book_list_collection.collection_id,
+                )
 
                 # Add optional fields
                 if mapping["year"] is not None:
                     year = row.iloc[mapping["year"]]
                     if pd.notna(year):
-                        book_data["year"] = int(year) if str(year).isdigit() else None
+                        try:
+                            book.year = int(year)
+                        except (ValueError, TypeError):
+                            pass
 
                 if mapping["plot"] is not None:
                     plot = row.iloc[mapping["plot"]]
                     if pd.notna(plot) and str(plot) != "nan":
-                        book_data["plot"] = str(plot)
+                        book.comments = str(plot)
 
                 if mapping["series"] is not None:
                     series = row.iloc[mapping["series"]]
                     if pd.notna(series) and str(series) != "nan":
-                        book_data["series_name"] = str(series)
+                        book.series_id = self.series_queries.get_or_create(
+                            str(series), commit=False
+                        )
 
                 if mapping["genre"] is not None:
                     genre = row.iloc[mapping["genre"]]
                     if pd.notna(genre) and str(genre) != "nan":
-                        book_data["genre"] = str(genre)
+                        book.genre_id = self.genre_queries.get_or_create(
+                            str(genre), commit=False
+                        )
 
                 if mapping["reader"] is not None:
                     reader = row.iloc[mapping["reader"]]
                     if pd.notna(reader) and str(reader) != "nan":
-                        book_data["reader"] = str(reader)
+                        book.reader = str(reader)
 
                 if mapping["read_date"] is not None:
                     read_date = row.iloc[mapping["read_date"]]
                     if pd.notna(read_date) and str(read_date) != "nan":
-                        book_data["read_date"] = str(read_date)
+                        try:
+                            if isinstance(read_date, (datetime, date_type)):
+                                book.read_date = (
+                                    read_date.date()
+                                    if isinstance(read_date, datetime)
+                                    else read_date
+                                )
+                            else:
+                                book.read_date = datetime.strptime(
+                                    str(read_date).split(" ")[0], "%Y-%m-%d"
+                                ).date()
+                        except (ValueError, TypeError):
+                            pass
 
                 if mapping["time_hours"] is not None:
                     time_hours = row.iloc[mapping["time_hours"]]
                     if pd.notna(time_hours) and str(time_hours) != "nan":
-                        book_data["time_hours"] = float(time_hours)
+                        try:
+                            book.time_hours = int(float(time_hours))
+                        except (ValueError, TypeError):
+                            pass
 
                 if mapping["tracks"] is not None:
                     tracks = row.iloc[mapping["tracks"]]
                     if pd.notna(tracks) and str(tracks) != "nan":
-                        book_data["tracks"] = (
-                            int(tracks) if str(tracks).isdigit() else None
-                        )
+                        try:
+                            book.tracks = int(tracks)
+                        except (ValueError, TypeError):
+                            pass
 
                 # Insert book
-                self.book_queries.create_book(book_data)
+                self.book_queries.insert(book, commit=False)
                 success_count += 1
 
             except Exception as e:
-                print(f"Error importing row {index}: {e}")
+                self.import_errors.append(
+                    {
+                        "row": index + 1,
+                        "title": title,
+                        "author": author,
+                        "reason": str(e),
+                    }
+                )
                 error_count += 1
                 continue
 
+        # Commit all changes at once
+        self.db.connect().commit()
         return success_count, error_count
 
     def update_read_dates(self) -> Tuple[int, int]:
         """Update read dates for existing books."""
+        from datetime import datetime, date as date_type
+
         mapping = self.get_field_mapping()
         success_count = 0
         error_count = 0
+        self.import_errors = []  # Reset errors
 
         for index, row in self.file_data.iterrows():
             try:
-                # Extract data
+                # Extract required fields
                 title = str(row.iloc[mapping["title"]]).strip()
                 author = str(row.iloc[mapping["author"]]).strip()
 
                 if not title or not author or title == "nan" or author == "nan":
+                    self.import_errors.append(
+                        {
+                            "row": index + 1,
+                            "title": title,
+                            "author": author,
+                            "reason": "Missing title or author",
+                        }
+                    )
                     error_count += 1
                     continue
 
-                # Find existing book
-                existing_book = self.book_queries.find_by_title_author(title, author)
+                # Find existing book by title + author using SQL
+                existing_row = self.db.fetch_one(
+                    "SELECT b.book_id FROM books b "
+                    "JOIN authors a ON b.author_id = a.author_id "
+                    "WHERE b.title = ? AND a.name = ?",
+                    (title, author),
+                )
+                if not existing_row:
+                    self.import_errors.append(
+                        {
+                            "row": index + 1,
+                            "title": title,
+                            "author": author,
+                            "reason": "Book not found in database",
+                        }
+                    )
+                    error_count += 1
+                    continue
+
+                # Get the full book object
+                existing_book = self.book_queries.get_by_id(existing_row["book_id"])
                 if not existing_book:
+                    self.import_errors.append(
+                        {
+                            "row": index + 1,
+                            "title": title,
+                            "author": author,
+                            "reason": "Could not load book record",
+                        }
+                    )
                     error_count += 1
                     continue
 
@@ -1119,41 +1342,127 @@ class BookListImportWindow(QDialog):
                 if mapping["read_date"] is not None:
                     read_date = row.iloc[mapping["read_date"]]
                     if pd.notna(read_date) and str(read_date) != "nan":
-                        self.book_queries.update_book(
-                            existing_book.id, {"read_date": str(read_date)}
-                        )
-                        success_count += 1
+                        try:
+                            if isinstance(read_date, (datetime, date_type)):
+                                existing_book.read_date = (
+                                    read_date.date()
+                                    if isinstance(read_date, datetime)
+                                    else read_date
+                                )
+                            else:
+                                existing_book.read_date = datetime.strptime(
+                                    str(read_date).split(" ")[0], "%Y-%m-%d"
+                                ).date()
+                            self.book_queries.update(existing_book)
+                            success_count += 1
+                        except (ValueError, TypeError) as e:
+                            self.import_errors.append(
+                                {
+                                    "row": index + 1,
+                                    "title": title,
+                                    "author": author,
+                                    "reason": f"Invalid date format: {e}",
+                                }
+                            )
+                            error_count += 1
                     else:
+                        self.import_errors.append(
+                            {
+                                "row": index + 1,
+                                "title": title,
+                                "author": author,
+                                "reason": "Read date is empty",
+                            }
+                        )
                         error_count += 1
                 else:
+                    self.import_errors.append(
+                        {
+                            "row": index + 1,
+                            "title": title,
+                            "author": author,
+                            "reason": "Read Date column not mapped",
+                        }
+                    )
                     error_count += 1
 
             except Exception as e:
-                print(f"Error updating row {index}: {e}")
+                self.import_errors.append(
+                    {
+                        "row": index + 1,
+                        "title": title,
+                        "author": author,
+                        "reason": str(e),
+                    }
+                )
                 error_count += 1
                 continue
 
         return success_count, error_count
 
+    def export_errors_csv(self):
+        """Export import errors to CSV spreadsheet."""
+        import csv
+        import os
+        from datetime import datetime
+        from PySide6.QtWidgets import QFileDialog
+
+        if not self.import_errors:
+            self.set_status("No errors to export")
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_name = f"Import_Book_list_errors_{timestamp}.csv"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Import Errors",
+            default_name,
+            "CSV Files (*.csv);;All Files (*.*)",
+        )
+        if not file_path:
+            self.set_status("Export cancelled")
+            return
+
+        if not file_path.lower().endswith(".csv"):
+            file_path += ".csv"
+
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Row", "Title", "Author", "Error"])
+                for err in self.import_errors:
+                    writer.writerow(
+                        [err["row"], err["title"], err["author"], err["reason"]]
+                    )
+        except Exception as exc:
+            self.set_status(f"Export failed: {str(exc)}", announce=True)
+            return
+
+        self.set_status(
+            f"Exported {len(self.import_errors)} error(s) to CSV: {os.path.basename(file_path)}",
+            announce=True,
+        )
+
     def get_or_create_book_list_collection(self):
         """Get or create the 'Book List' collection."""
-        collection = self.collection_queries.find_by_name("Book List")
-        if not collection:
-            collection = self.collection_queries.create_collection(
-                {
-                    "name": "Book List",
-                    "description": "Books imported from spreadsheet files",
-                }
-            )
-        return collection
+        from src.database.models import Collection
+
+        # Search existing collections by name
+        all_collections = self.collection_queries.get_all(active_only=False)
+        for col in all_collections:
+            if col.name == "Book List":
+                return col
+
+        # Create new collection if not found
+        new_collection = Collection(name="Book List", active=True)
+        new_id = self.collection_queries.insert(new_collection)
+        new_collection.collection_id = new_id
+        return new_collection
 
     def set_status(self, message: str, announce: bool = False):
         """Set status message and optionally announce to screen reader."""
         self._default_status_message = message
-        self.status_bar.showMessage(message)
-
-        if announce:
-            announce_status_message(message)
+        announce_status_message(self.status_bar, message, move_focus=announce)
 
     def apply_theme(self):
         """Apply the current theme."""
