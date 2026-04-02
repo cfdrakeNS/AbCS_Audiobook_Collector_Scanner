@@ -195,6 +195,71 @@ When building a new window, confirm:
 
 ---
 
+## 8) Standardized Shortcut Implementation Pattern
+
+### Why this is critical for AbCS
+- All windows must use the same shortcut pattern for consistency
+- Mixing local and centralized shortcuts causes conflicts
+- Lambda functions are required for proper callback execution
+
+### Standard Implementation Pattern
+
+#### Local Shortcuts (Always Use)
+```python
+def setup_shortcuts(self):
+    # F1 - Help (always local)
+    self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+    self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+    self.help_shortcut.activated.connect(self.on_show_shortcuts)
+    
+    # Escape - Close (always local)
+    self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
+    self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+    self.close_shortcut.activated.connect(self.close)
+    
+    # Alt+/ - Status read (always local)
+    self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+    self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+    self.status_shortcut.activated.connect(self.on_read_status_bar)
+```
+
+#### Centralized Alt+Field Shortcuts (Required Pattern)
+```python
+    # Field shortcuts using ShortcutManager (AbCS standard)
+    from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+    mgr = get_shortcut_manager()
+    callback_map = {
+        'L': lambda: self.focus_backup_list(),      # Alt+L - Backup list
+        'B': lambda: self.on_backup(),              # Alt+B - Backup button
+        'W': lambda: self.on_browse(),              # Alt+W - Browse button
+        'T': lambda: self.focus_restore_file(),     # Alt+T - Restore file
+        'R': lambda: self.on_restore(),             # Alt+R - Restore button
+        'D': lambda: self.on_delete_backup(),       # Alt+D - Delete button
+        'F': lambda: self.on_full_reset(),          # Alt+F - Full reset
+    }
+    mgr.register_alt_shortcuts(self, ShortcutContext.BACKUP_RESTORE_WINDOW, callback_map)
+```
+
+### Critical Requirements
+1. **Always use lambda functions**: `lambda: self.method()` NOT `self.method`
+2. **Local shortcuts only for F1, Escape, Alt+/**
+3. **Centralized shortcuts for all Alt+field keys**
+4. **Match widget IDs to shortcuts.py definitions**
+
+### Common Mistakes to Avoid
+- ❌ `callback_map = {"backup_list": self.focus_backup_list}`  # Method reference
+- ✅ `callback_map = {"backup_list": lambda: self.focus_backup_list()}`  # Lambda function
+
+- ❌ Mixing local Alt+shortcuts with centralized system
+- ✅ Use centralized system for all Alt+field shortcuts
+
+### Reference Implementations
+- `src/ui/accessible_window_skeleton.py` → Complete working example
+- `src/ui/import_window.py` → Centralized shortcuts with lambdas
+- `src/ui/backup_restore_window.py` → Fixed implementation
+
+---
+
 ## 9) Decision policy: accessibility vs noise tradeoffs
 
 Use these labels in testing/docs:

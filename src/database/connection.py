@@ -584,7 +584,7 @@ class DatabaseManager:
         conn = self.connect()
         conn.commit()
 
-        timestamp = datetime.now().strftime("%A_%B_%d_%y")
+        timestamp = datetime.now().strftime("%A_%B_%d_%y_at_%H_%M")
         extension = db_file.suffix or ".db"
         backup_name = f"abcs_backup_{timestamp}{extension}"
         backup_path = self.get_backup_directory() / backup_name

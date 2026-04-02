@@ -77,7 +77,8 @@ class BackupRestoreWindow(QDialog):
         )
         self.resize(860, 520)
         self.set_status("Ready")
-        QTimer.singleShot(0, lambda: self.backup_list.setFocus(Qt.TabFocusReason))
+        # Set initial focus to backup list table with improved timing
+        QTimer.singleShot(100, self.set_initial_focus)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -186,34 +187,21 @@ class BackupRestoreWindow(QDialog):
     def setup_shortcuts(self):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 
-        # Local shortcuts for ALL Alt+keys (PROVEN working pattern)
-        alt_l_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        alt_l_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_l_shortcut.activated.connect(self.focus_backup_list)
+        # Use centralized shortcuts like import window (PROVEN working)
+        mgr = get_shortcut_manager()
+        callback_map = {
+            "backup_list": lambda: self.focus_backup_list(),
+            "browse_button": lambda: self.on_browse(),
+            "backup_button": lambda: self.on_backup(),
+            "restore_path_edit": lambda: self.focus_restore_file(),
+            "restore_button": lambda: self.on_restore(),
+            "delete_button": lambda: self.on_delete_backup(),
+            "full_reset_button": lambda: self.on_full_reset(),
+        }
 
-        alt_b_shortcut = QShortcut(QKeySequence("Alt+B"), self)
-        alt_b_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_b_shortcut.activated.connect(self.on_backup)
-
-        alt_w_shortcut = QShortcut(QKeySequence("Alt+W"), self)
-        alt_w_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_w_shortcut.activated.connect(self.on_browse)
-
-        alt_t_shortcut = QShortcut(QKeySequence("Alt+T"), self)
-        alt_t_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_t_shortcut.activated.connect(self.focus_restore_file)
-
-        alt_r_shortcut = QShortcut(QKeySequence("Alt+R"), self)
-        alt_r_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_r_shortcut.activated.connect(self.on_restore)
-
-        alt_d_shortcut = QShortcut(QKeySequence("Alt+D"), self)
-        alt_d_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_d_shortcut.activated.connect(self.on_delete_backup)
-
-        alt_f_shortcut = QShortcut(QKeySequence("Alt+F"), self)
-        alt_f_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_f_shortcut.activated.connect(self.on_full_reset)
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.BACKUP_RESTORE_WINDOW, callback_map
+        )
 
         # Local QShortcuts for Alt+/, F1, and Escape only
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
@@ -264,6 +252,13 @@ class BackupRestoreWindow(QDialog):
         button_style = build_accessible_button_style(self.scaler.get_scaled_size(34))
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
+
+    def set_initial_focus(self):
+        """Set initial focus to backup list table and select first row if available."""
+        self.backup_list.setFocus(Qt.TabFocusReason)
+        if self.backup_list.rowCount() > 0:
+            self.backup_list.setCurrentCell(0, 0)
+        self._update_delete_button_visibility()
 
     def focus_backup_list(self):
         self.backup_list.setFocus()

@@ -77,7 +77,7 @@ class BookListImportWindow(QDialog):
     """Book List Import window with full accessibility support."""
 
     # Alt+Key filtering for accessibility
-    ALLOWED_ALT_LETTERS = "F M T A Y P S G R I H B C V /"
+    ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H B C V N U /"
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -221,7 +221,7 @@ class BookListImportWindow(QDialog):
         self.browse_button = QPushButton("Browse...")
         self.browse_button.setAccessibleName("Browse for file")
         self.browse_button.setAccessibleDescription(
-            "Browse for spreadsheet file - Alt+F"
+            "Browse for spreadsheet file - Alt+W"
         )
         self.browse_button.clicked.connect(self.browse_file)
 
@@ -499,6 +499,22 @@ class BookListImportWindow(QDialog):
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
+        # Centralized shortcuts using ShortcutManager (AbCS standard)
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
+        mgr = get_shortcut_manager()
+        callback_map = {
+            "browse_button": lambda: self.browse_file(),
+            "new_books_check": lambda: self.load_books_check.click(),
+            "read_date_check": lambda: self.add_read_date_check.click(),
+            "file_has_header_check": lambda: self.file_has_header_check.click(),
+            "preview_button": lambda: self.preview_import(),
+            "import_button": lambda: self.import_books(),
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.BOOK_LIST_IMPORT_WINDOW, callback_map
+        )
+
     def on_load_books_toggled(self, checked: bool):
         """Handle Load Books checkbox toggle."""
         if checked:
@@ -549,7 +565,7 @@ class BookListImportWindow(QDialog):
         )
 
         shortcuts = [
-            ("Alt+F", "Browse for file"),
+            ("Alt+W", "Browse for file"),
             ("Alt+N", "Import new books"),
             ("Alt+U", "Update read dates"),
             ("Alt+H", "File has headers"),

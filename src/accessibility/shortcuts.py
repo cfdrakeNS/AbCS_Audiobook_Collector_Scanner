@@ -121,6 +121,7 @@ class ShortcutManager(QObject):
     IMPORT_WINDOW_SHORTCUTS = {
         "C": ("Collection field", "collection_combo"),
         "F": ("Folder field", "folder_field"),
+        "W": ("Browse", "browse_button"),
         "E": ("Error filter", "error_filter"),
         "S": ("Import Selected", "import_selected_button"),
         "V": ("Import All Valid", "import_all_valid_button"),
@@ -130,7 +131,7 @@ class ShortcutManager(QObject):
 
     # Book List Import Window
     BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
-        "F": ("Browse for file", "browse_button"),
+        "W": ("Browse for file", "browse_button"),
         "N": ("Import new books", "new_books_check"),
         "U": ("Update read dates", "read_date_check"),
         "T": ("Title field mapping", "title_mapping"),
