@@ -10,6 +10,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
+from src.accessibility.key_filters import is_unmapped_alt_letter
 import getpass
 
 from PySide6.QtWidgets import (
@@ -23,13 +24,10 @@ from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
-from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
-from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
-
 
 class BookDetailsWindow(QDialog):
+    # List of allowed Alt+key shortcuts for Book Details
+    ALLOWED_ALT_KEYS = {'N', 'D', 'S', 'W', 'T', 'A', 'P', 'Y', 'M', 'R', 'E', 'I', 'G', 'C', 'F', 'B', 'Z', 'H', '/', 'F1'}
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -52,19 +50,47 @@ class BookDetailsWindow(QDialog):
 
     def on_cancel_edit(self):
         """
-        Handle Cancel (Alt+L) action: revert changes and close dialog if new, or revert edits if editing.
+        Handle Cancel (Escape) action: show save dialog if dirty, then close.
         """
-        if self.is_new:
-            # For new book, just close the dialog
-            self._clear_dirty()
-            self.set_status("New book entry cancelled.", announce=True)
-            announce_dialog_closed(self)
-            self.reject()  # Close dialog
+        if self._dirty:
+            # Show save changes dialog like preferences
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Unsaved Changes")
+            msg.setStyleSheet(
+                build_accessible_message_box_style(
+                    self.scaler.get_scaled_size(20))
+            )
+            msg.setText(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n"
+                "Cancel = Revert and close"
+            )
+            msg.setStandardButtons(
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            msg.button(QMessageBox.Yes).setText("&Yes")
+            msg.button(QMessageBox.No).setText("&No")
+            msg.button(QMessageBox.Cancel).setText("&Cancel")
+            
+            reply = msg.exec()
+            
+            if reply == QMessageBox.Yes:
+                # Save and close
+                self.on_save()
+                announce_dialog_closed(self)
+                self.reject()
+            elif reply == QMessageBox.No:
+                # Continue editing
+                return
+            else:  # Cancel - revert and close
+                self._revert_changes()
+                self.set_status("Changes discarded.", announce=True)
+                announce_dialog_closed(self)
+                self.reject()
         else:
-            # For existing book, revert changes but keep dialog open
-            self._revert_changes()
-            self.set_status("Edits cancelled. Reverted to saved data.", announce=True)
-            # Do not close dialog, just reset fields
+            # No changes, just close
+            announce_dialog_closed(self)
+            self.reject()
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -101,7 +127,7 @@ class BookDetailsWindow(QDialog):
 
     def __init__(self, db: DatabaseManager, scaler: UIScaler, book: Book = None,
                  sort_order: str = "Title", books_list: list = None,
-                 current_index: int = 0, parent=None):
+                 current_index: int = 0, theme_manager: ThemeManager = None, parent=None):
         """
         Initialize book details window.
 
@@ -112,6 +138,7 @@ class BookDetailsWindow(QDialog):
             sort_order: Current sort order from main window (for header display)
             books_list: List of Book objects for Prev/Next navigation
             current_index: Index of current book in books_list
+            theme_manager: Theme manager for styling
             parent: Parent widget
         """
         super().__init__(parent)
@@ -121,6 +148,7 @@ class BookDetailsWindow(QDialog):
 
         self.db = db
         self.scaler = scaler
+        self.theme_manager = theme_manager or ThemeManager(QApplication.instance())  # Store theme manager
         self.book = book or Book()
         self.is_new = (book is None)
         self.sort_order = sort_order  # bd#8: Store for header display
@@ -211,6 +239,10 @@ class BookDetailsWindow(QDialog):
             widget.installEventFilter(self)
         for widget in self.findChildren(QSpinBox):
             widget.installEventFilter(self)
+        
+        # Filter QPushButton for Enter key handling when focused
+        for widget in self.findChildren(QPushButton):
+            widget.installEventFilter(self)
 
     def eventFilter(self, source, event):
         """
@@ -222,7 +254,18 @@ class BookDetailsWindow(QDialog):
         if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
-            # Alt+ key tracking removed - was interfering with screen reader operation
+            
+            # Handle Enter key on focused buttons
+            if key == Qt.Key_Return or key == Qt.Key_Enter:
+                if isinstance(source, QPushButton) and source.hasFocus():
+                    source.click()
+                    return True
+            
+            # Block unused Alt+letter keys everywhere
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_KEYS):
+                QApplication.beep()
+                return True
+
         if event.type() == QEvent.FocusIn:
             # Schedule deselection AFTER Qt finishes its default focus handling
             # QTimer.singleShot(0, ...) runs on the next event loop iteration
@@ -231,9 +274,9 @@ class BookDetailsWindow(QDialog):
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(0, lambda w=source: w.deselect())
             elif isinstance(source, QTextEdit):
-                # QTextEdit uses QTextCursor.End to move cursor and clear selection
+                # Move cursor to start for accessibility (better for screen readers)
                 QTimer.singleShot(
-                    0, lambda w=source: w.moveCursor(QTextCursor.End))
+                    0, lambda w=source: w.moveCursor(QTextCursor.Start))
             elif isinstance(source, QComboBox):
                 # QComboBox selects text in its internal lineEdit - deselect it
                 if source.lineEdit():
@@ -259,7 +302,7 @@ class BookDetailsWindow(QDialog):
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
                 self.set_status(
-                    f"{field_name} changed. Press Alt+S Save or Alt+L Cancel",
+                    f"{field_name} changed. Press Alt+S Save or Escape Cancel",
                     announce=True
                 )
                 self._pending_dirty_widgets.discard(dirty_widget)
@@ -437,10 +480,10 @@ class BookDetailsWindow(QDialog):
         title_label.setBuddy(self.title_edit)
         form.addRow(title_label, row1_layout)
 
-        # bd#3 Row 2: Comments (expand to fit, hide when empty)
-        self.comments_label = QLabel("C&omments:")
+        # bd#3 Row 2: Plot (expand to fit, hide when empty)
+        self.comments_label = QLabel("Pl&ot:")
         self.comments_edit = QTextEdit()
-        self.comments_edit.setAccessibleName("Comments")
+        self.comments_edit.setAccessibleName("Plot")
         # Tab navigates instead of inserting tabs
         self.comments_edit.setTabChangesFocus(True)
         # Dynamic height: start small, grow with content
@@ -460,10 +503,10 @@ class BookDetailsWindow(QDialog):
         self.year_spin.setMaximumWidth(110)
         row3_layout.addWidget(self.year_spin)
 
-        time_label = QLabel("Length (&M):")
+        time_label = QLabel("&Time:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
-        self.time_edit.setAccessibleName("Length")
+        self.time_edit.setAccessibleName("Time")
         self.time_edit.setMaximumWidth(100)
         time_label.setBuddy(self.time_edit)
         row3_layout.addWidget(time_label)
@@ -479,13 +522,14 @@ class BookDetailsWindow(QDialog):
 
         read_label = QLabel("R&ead:")
         self.read_date = QDateEdit()
+        self._null_read_date = QDate(2000, 1, 1)
         self.read_date.setCalendarPopup(True)
         self.read_date.setDisplayFormat("yyyy-MM-dd")
         self.read_date.setAccessibleName("Date read")
-        self.read_date.setMinimumDate(QDate(1, 1, 1))
+        self.read_date.setMinimumDate(QDate(1752, 9, 14))
         self.read_date.setSpecialValueText("")
         self.read_date.setMaximumWidth(150)
-        self.read_date.setDate(self.read_date.minimumDate())
+        self.read_date.setDate(self._null_read_date)
         
         # Override calendar widget to show today's date when opening from minimum date
         from PySide6.QtWidgets import QCalendarWidget
@@ -495,9 +539,34 @@ class BookDetailsWindow(QDialog):
                 super().__init__(parent)
                 self.date_edit = date_edit
                 
+                # Make calendar larger and more readable
+                if hasattr(parent, 'scaler'):
+                    scaler = parent.scaler
+                    calendar_style = f"""
+                    QCalendarWidget {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                    }}
+                    QCalendarWidget QToolButton {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                        min-height: {scaler.get_scaled_size(24)}px;
+                        min-width: {scaler.get_scaled_size(24)}px;
+                    }}
+                    QCalendarWidget QAbstractItemView:enabled {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                        selection-background-color: palette(highlight);
+                        selection-color: palette(highlighted-text);
+                    }}
+                    QCalendarWidget QAbstractItemView:disabled {{
+                        font-size: {scaler.get_scaled_size(12)}pt;
+                        color: palette(text);
+                        background-color: palette(base);
+                    }}
+                    """
+                    self.setStyleSheet(calendar_style)
+                
             def showEvent(self, event):
                 # If date is minimum (null), set to today before showing
-                if self.date_edit.date() == self.date_edit.minimumDate():
+                if self.date_edit.date() == self.date_edit._null_read_date:
                     self.date_edit.setDate(QDate.currentDate())
                 super().showEvent(event)
         
@@ -629,12 +698,12 @@ class BookDetailsWindow(QDialog):
         self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
         self.new_button.setAccessibleDescription(
-            "Clear form for new book entry - Alt+N or Ctrl+Enter")
+            "Clear form for new book entry - Alt+N")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
         # self.new_button.setShortcut(QKeySequence("Alt+N"))  # Commented out for accessibility
         self.new_button.clicked.connect(self.on_new)
         self.new_button.setDefault(False)
-        self.new_button.setAutoDefault(False)
+        self.new_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.new_button)
 
         # Save button (Alt+S)
@@ -645,7 +714,7 @@ class BookDetailsWindow(QDialog):
         # self.save_button.setShortcut(QKeySequence("Alt+S"))  # Commented out for accessibility
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setDefault(False)
-        self.save_button.setAutoDefault(False)
+        self.save_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.save_button)
 
         # Delete button (Alt+D)
@@ -659,20 +728,18 @@ class BookDetailsWindow(QDialog):
         # Hide delete for new books (nothing to delete yet)
         self.delete_button.setVisible(not self.is_new)
         self.delete_button.setDefault(False)
-        self.delete_button.setAutoDefault(False)
+        self.delete_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.delete_button)
 
-        # Cancel button (Alt+L) - visible only when save/new is active
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setAccessibleName("Cancel")
-        self.cancel_button.setAccessibleDescription("Cancel editing - Alt+L")
-        self.cancel_button.setFocusPolicy(Qt.StrongFocus)
-        # self.cancel_button.setShortcut(QKeySequence("Alt+L"))  # Commented out for accessibility
-        self.cancel_button.clicked.connect(self.on_cancel_edit)
-        self.cancel_button.setVisible(False)
-        self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(False)
-        button_layout.addWidget(self.cancel_button)
+        # Get web info button (Alt+W)
+        self.get_web_details_button = QPushButton("Fetch Web Info")
+        self.get_web_details_button.setAccessibleName("Get web info")
+        self.get_web_details_button.setAccessibleDescription("Fetch book info from web - Alt+W")
+        self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
+        self.get_web_details_button.clicked.connect(self.on_get_web_details)
+        self.get_web_details_button.setDefault(False)
+        self.get_web_details_button.setAutoDefault(False)  # Restored to prevent global Enter trigger
+        button_layout.addWidget(self.get_web_details_button)
 
         button_layout.addStretch()
 
@@ -682,64 +749,59 @@ class BookDetailsWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         layout.addWidget(self.status_bar)
 
+        # Set explicit tab order for predictable JAWS navigation
+        self.setTabOrder(self.title_edit, self.author_combo)
+        self.setTabOrder(self.author_combo, self.comments_edit)
+        self.setTabOrder(self.comments_edit, self.year_spin)
+        self.setTabOrder(self.year_spin, self.time_edit)
+        self.setTabOrder(self.time_edit, self.reader_edit)
+        self.setTabOrder(self.reader_edit, self.read_date)
+        self.setTabOrder(self.read_date, self.series_combo)
+        self.setTabOrder(self.series_combo, self.genre_combo)
+        self.setTabOrder(self.genre_combo, self.collection_combo)
+        self.setTabOrder(self.collection_combo, self.files_edit)
+        self.setTabOrder(self.files_edit, self.bitrate_edit)
+        self.setTabOrder(self.bitrate_edit, self.size_edit)
+        self.setTabOrder(self.size_edit, self.format_combo)
+        self.setTabOrder(self.format_combo, self.source_edit)
+        self.setTabOrder(self.source_edit, self.path_edit)
+        self.setTabOrder(self.path_edit, self.added_edit)
+        self.setTabOrder(self.added_edit, self.new_button)
+        self.setTabOrder(self.new_button, self.save_button)
+        self.setTabOrder(self.save_button, self.delete_button)
+        self.setTabOrder(self.delete_button, self.get_web_details_button)
+
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
 
-    def reject(self):
-        """
-        Override reject to check for unsaved changes before closing.
-        Yes = Save and stay on book, No = Continue editing, Cancel = Revert and close.
-        """
-        if self._dirty:
-            msg = QMessageBox(self)
-            msg.setWindowTitle("Unsaved Changes")
-            msg.setStyleSheet(
-                build_accessible_message_box_style(
-                    self.scaler.get_scaled_size(20))
-            )
-            msg.setText(
-                "You have unsaved changes.\n\n"
-                "Yes = Save and stay\n"
-                "No = Continue editing\n"
-                "Cancel = Revert and close"
-            )
-            msg.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-            msg.button(QMessageBox.Yes).setText("&Yes - Save")
-            msg.button(QMessageBox.No).setText("&No - Continue editing")
-            msg.button(QMessageBox.Cancel).setText(
-                "Cance&l - Revert and close")
-            reply = msg.exec()
-
-            if reply == QMessageBox.Yes:
-                self.on_save()  # Save and stay (on_save doesn't close anymore)
-            elif reply == QMessageBox.No:
-                return  # Continue editing, keep dialog open
-            else:  # Cancel - revert all fields and close
-                self._revert_changes()
-                announce_dialog_closed(self)
-                super().reject()
-        else:
-            announce_dialog_closed(self)
-            super().reject()  # No changes, just close
-
-    def _revert_changes(self):
-        """
-        Revert all fields to their original values by reloading the book data.
-        For new books, clear the form.
-        """
-        if self.is_new:
-            # For new book, just clear the form
-            self.on_new()
-        else:
-            # Reload original data
-            self.load_book_data()
-        self._clear_dirty()
-
     def setup_shortcuts(self):
         """bd#4: Setup keyboard shortcuts for buttons."""
-        # Restore explicit QShortcut registration for Alt+N, Alt+D, Alt+S, Alt+L
-        # F1 is handled by centralized shortcut manager
+        # Use centralized shortcuts for fields, local shortcuts for buttons (like import_detail)
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+        mgr = get_shortcut_manager()
+        
+        # Field shortcuts (centralized)
+        callback_map = {
+            'title_edit': lambda: self.title_edit.setFocus(),
+            'author_combo': lambda: self.author_combo.setFocus(),
+            'comments_edit': lambda: self.comments_edit.setFocus(),
+            'year_spin': lambda: self.year_spin.setFocus(),
+            'time_edit': lambda: self.time_edit.setFocus(),
+            'reader_edit': lambda: self.reader_edit.setFocus(),
+            'read_date': lambda: self.read_date.setFocus(),
+            'series_combo': lambda: self.series_combo.setFocus(),
+            'genre_combo': lambda: self.genre_combo.setFocus(),
+            'collection_combo': lambda: self.collection_combo.setFocus(),
+            'files_edit': lambda: self.files_edit.setFocus(),
+            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
+            'size_edit': lambda: self.size_edit.setFocus(),
+            'path_edit': lambda: self.path_edit.setFocus(),
+            'get_web_details_button': self.on_get_web_details,  # Alt+W centralized
+            'show_help': self.on_show_shortcuts,
+        }
+        mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
+        
+        # Button shortcuts (local like import_detail)
         self.new_shortcut = QShortcut(QKeySequence("Alt+N"), self)
         self.new_shortcut.activated.connect(
             lambda: self.on_new() if self.new_button.isVisible() else None)
@@ -749,34 +811,11 @@ class BookDetailsWindow(QDialog):
         self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
         self.save_shortcut.activated.connect(
             lambda: self.on_save() if self.save_button.isVisible() else None)
-        self.cancel_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.cancel_shortcut.activated.connect(
-            lambda: self.on_cancel_edit() if self.cancel_button.isVisible() else None)
-        # F1 handled by centralized shortcut manager
-        # ...existing code...
-        callback_map = {
-            'author_combo': lambda: self.author_combo.setFocus(),
-            'year_spin': lambda: self.year_spin.setFocus(),
-            'files_edit': lambda: self.files_edit.setFocus(),
-            'series_combo': lambda: self.series_combo.setFocus(),
-            'genre_combo': lambda: self.genre_combo.setFocus(),
-            'collection_combo': lambda: self.collection_combo.setFocus(),
-            'reader_edit': lambda: self.reader_edit.setFocus(),
-            'time_edit': lambda: self.time_edit.setFocus(),
-            'read_date': lambda: self.read_date.setFocus(),
-            'size_edit': lambda: self.size_edit.setFocus(),
-            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
-            'path_edit': lambda: self.path_edit.setFocus(),
-            'comments_edit': lambda: self.comments_edit.setFocus(),
-            'format_combo': lambda: self.format_combo.setFocus(),
-            # 'new_button': self.on_new,  # Commented out to avoid conflict
-            # 'save_button': self.on_save,  # Commented out to avoid conflict
-            # 'delete_button': self.on_delete,  # Commented out to avoid conflict
-            # 'cancel_button': self.on_cancel_edit,  # Commented out to avoid conflict
-            'show_help': self.on_show_shortcuts,  # F1 centralized
-        }
-        self.shortcut_manager.register_alt_shortcuts(
-            self, ShortcutContext.BOOK_DETAILS, callback_map)
+        
+        # Escape key for cancel functionality
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.activated.connect(self.on_cancel_edit)
+        
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
@@ -790,6 +829,26 @@ class BookDetailsWindow(QDialog):
         self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.next_shortcut.activated.connect(self.on_next)
 
+    def reject(self):
+        """
+        Override reject to close dialog directly.
+        Escape key handles save changes dialog.
+        """
+        announce_dialog_closed(self)
+        super().reject()
+
+    def _revert_changes(self):
+        """
+        Revert all fields to their original values by reloading the book data.
+        For new books, clear the form.
+        """
+        if self.is_new:
+            # For new book, just clear the form
+            self.on_new()
+        else:
+            # Reload original data
+            self.load_book_data()
+
     def _get_dirty_field_name(self, widget) -> str:
         """Return a user-friendly field name for a dirty widget."""
         mapping = {
@@ -800,14 +859,14 @@ class BookDetailsWindow(QDialog):
             self.genre_combo: "Genre",
             self.collection_combo: "Collection",
             self.reader_edit: "Reader",
-            self.time_edit: "Length",
+            self.time_edit: "Time",
             self.files_edit: "Files",
             self.bitrate_edit: "Bitrate",
             self.size_edit: "Size",
             self.format_combo: "Format",
             self.source_edit: "Source",
             self.path_edit: "Path",
-            self.comments_edit: "Comments",
+            self.comments_edit: "Plot",
             self.read_date: "Read date",
         }
         return mapping.get(widget, "Book details")
@@ -897,43 +956,56 @@ class BookDetailsWindow(QDialog):
         """Show default status when form is not in edit/save mode."""
         if self.is_new:
             self.set_status(
-                "New book entry. Press Alt+S Save or Alt+L Cancel", announce=announce)
+                "New book entry. Press Alt+S Save, Escape Cancel, Alt+W Fetch web info", announce=announce)
         else:
             self.set_status(
-                "Alt+N New, Alt+D Delete, Escape Close", announce=announce)
+                "Alt+N New, Alt+D Delete, Alt+W Fetch web info, Escape Close", announce=announce)
 
     def _update_save_button_visibility(self):
         """
         bd#6: Show save button only when there are unsaved changes.
         For new books, always show save button.
         """
-        save_active = self.is_new or self._dirty
-        self.save_button.setVisible(save_active)
-
-        # bd#16: Hide New and Delete when Save is active
+        save_active = self._dirty or self.is_new
         self.new_button.setVisible(not save_active)
         self.delete_button.setVisible(
             (not self.is_new) and (not save_active))
-        self.cancel_button.setVisible(save_active)
+        self.save_button.setVisible(save_active)
+        # Update Metadata: show for existing books, hide for new books
+        self.get_web_details_button.setVisible(not self.is_new)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(450, 500)
+        dlg.resize(580, 440)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Shortcuts list
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        table.setStyleSheet(build_accessible_f1_popup_style())
+
         shortcuts = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+O", "Comments"),
+            ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
-            ("Alt+M", "Length"),
+            ("Alt+M", "Time"),
             ("Alt+R", "Reader"),
             ("Alt+E", "Read date"),
             ("Alt+I", "Series"),
@@ -943,60 +1015,30 @@ class BookDetailsWindow(QDialog):
             ("Alt+B", "Bitrate"),
             ("Alt+Z", "Size"),
             ("Alt+H", "Path"),
+            ("Alt+W", "Fetch web info"),
             ("Alt+N", "New book"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
-            ("Alt+L", "Cancel"),
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
-            ("Escape", "Close window"),
+            ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
-            ("F1", "Show this help"),
+            ("F1", "Show keyboard shortcuts"),
         ]
+        shortcuts = get_accessible_shortcuts_list(shortcuts)
 
-        # Create table
-        table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(False)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        table.setMouseTracking(False)
-        table.viewport().setMouseTracking(False)
-        table.setAttribute(Qt.WA_Hover, False)
-        table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style
-        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
-        table.setStyleSheet(build_accessible_f1_popup_style())
-
-        # Populate table
-        for row, (key, description) in enumerate(shortcuts):
-            if key:
-                combined_text = f"{description} - {key}"
-            else:
-                combined_text = ""
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole,
-                         f"{description}: {key}" if key else "")
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
             table.setItem(row, 0, item)
 
-        # Resize column to stretch
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
-        # Set font size
         font = table.font()
         font.setPointSize(self.scaler.get_scaled_size(11))
         table.setFont(font)
-
         layout.addWidget(table)
 
         dlg.exec()
@@ -1133,9 +1175,9 @@ class BookDetailsWindow(QDialog):
                               read_date_value.day)
                 self.read_date.setDate(qdate)
             else:
-                self.read_date.setDate(self.read_date.minimumDate())
+                self.read_date.setDate(self._null_read_date)
         else:
-            self.read_date.setDate(self.read_date.minimumDate())
+            self.read_date.setDate(self._null_read_date)
 
         # Store original combo values for focusOut change detection
         self._original_author = self.author_combo.currentText()
@@ -1258,7 +1300,7 @@ class BookDetailsWindow(QDialog):
 
         # Get read date
         read_date = None
-        if self.read_date.date() != self.read_date.minimumDate():
+        if self.read_date.date() != self._null_read_date:
             qdate = self.read_date.date()
             read_date = datetime(
                 qdate.year(), qdate.month(), qdate.day()).date()
@@ -1351,18 +1393,20 @@ class BookDetailsWindow(QDialog):
             )
 
     def on_delete(self):
-        """Delete book, with confirmation dialog."""
+        """Delete book, with confirmation dialog using standardized message box."""
         if not self.book or not self.book.book_id:
             return
-        # Confirm delete
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Confirm Delete")
-        msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
-        msg.setText(f"Are you sure you want to delete this book?\n\nTitle: {self.book.title}")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg.button(QMessageBox.Yes).setText("&Yes - Delete")
-        msg.button(QMessageBox.No).setText("&No - Cancel")
-        reply = msg.exec()
+        
+        # Confirm delete using standardized message box
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Confirm Delete",
+            text=f"Are you sure you want to delete this book?\n\nTitle: {self.book.title}",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No
+        )
         if reply != QMessageBox.Yes:
             self.set_status("Delete canceled.")
             return
@@ -1448,7 +1492,7 @@ class BookDetailsWindow(QDialog):
 
         # Focus title field
         self.title_edit.setFocus()
-        self.set_status("New book entry. Press Alt+S Save or Alt+L Cancel")
+        self.set_status("New book entry. Press Alt+S Save or Escape Cancel")
 
     def _apply_new_defaults(self):
         """Apply defaults for new entries without auto-selecting choices."""
@@ -1479,9 +1523,152 @@ class BookDetailsWindow(QDialog):
         self.source_edit.clear()
         self.added_edit.setText("")
         self.comments_edit.clear()
-        self.read_date.setDate(self.read_date.minimumDate())
+        self.read_date.setDate(self._null_read_date)
         self._apply_new_defaults()
         self.reader_edit.setText("")
+
+    def on_get_web_details(self):
+        """Open web book details window to fetch and review web metadata."""
+        # Show auto-closing popup dialog while fetching web info
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        from PySide6.QtCore import QTimer
+        popup = QDialog(self)
+        popup.setWindowTitle("Please wait")
+        popup.setModal(True)
+        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
+        layout = QVBoxLayout(popup)
+        label = QLabel("Fetching book info from web, please wait!")
+        layout.addWidget(label)
+        popup.setLayout(layout)
+        popup.resize(350, 80)
+        QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
+        popup.show()
+        QApplication.processEvents()
+        if not self.book:
+            self.set_status("No book selected for web lookup")
+            return
+        try:
+            from src.ui.web_metadata import WebMetadataWindow
+            from src.web.web_book_api import WebBookAPI
+            from PySide6.QtCore import QSettings
+            
+            # Get book data for search
+            title = self.book.title
+            author = self.book.author_name
+            year = str(self.book.year) if self.book.year else None
+            
+            # Read user preferences
+            settings = QSettings("AbCS", "AudioBookCollector")
+            if not settings.contains("import/flip_author_name"):
+                legacy_settings = QSettings("AbCS", "AbCS")
+                flip_author = legacy_settings.value("import/flip_author_name", False, type=bool)
+            else:
+                flip_author = settings.value("import/flip_author_name", False, type=bool)
+            
+            if not settings.contains("import/autocorrect/move_leading_the_title"):
+                legacy_settings = QSettings("AbCS", "AbCS")
+                move_articles = legacy_settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+            else:
+                move_articles = settings.value("import/autocorrect/move_leading_the_title", False, type=bool)
+            
+            # Try to fetch web data first - be smarter about source selection
+            api = WebBookAPI()
+            web_data = None
+            last_error = None
+            
+            # Try Google Books first (usually fastest)
+            try:
+                web_data = api.get_book_metadata(title, author, year, refresh=0, 
+                                               move_articles=move_articles, flip_author=flip_author)
+            except Exception as e:
+                last_error = str(e)
+            
+            # If Google Books fails, try Open Library
+            if not web_data:
+                try:
+                    web_data = api.get_book_metadata(title, author, year, refresh=1, 
+                                                   move_articles=move_articles, flip_author=flip_author)
+                except Exception as e:
+                    if not last_error:
+                        last_error = str(e)
+            
+            # Only try WikiData as last resort (it's slower)
+            if not web_data:
+                try:
+                    web_data = api.get_book_metadata(title, author, year, refresh=2, 
+                                                   move_articles=move_articles, flip_author=flip_author)
+                except Exception as e:
+                    if not last_error:
+                        last_error = str(e)
+            
+            if web_data:
+                # Check if the returned data is actually meaningful (has plot or matches search)
+                title_match = web_data.get('title', '').lower()
+                search_title_lower = title.lower()
+                author_match = web_data.get('author', '').lower()
+                search_author_lower = author.lower() if author else ''
+                
+                # Check if it's a real match (title contains search terms OR has plot)
+                is_real_match = False
+                if web_data.get('plot'):
+                    # Has plot content - likely a real match
+                    is_real_match = True
+                elif search_title_lower and title_match:
+                    # Check if title similarity (contains at least part of search title)
+                    if (search_title_lower in title_match or 
+                        title_match in search_title_lower or
+                        any(word in title_match for word in search_title_lower.split() if len(word) > 2)):
+                        is_real_match = True
+                elif search_author_lower and author_match:
+                    # Check author match
+                    if search_author_lower in author_match or author_match in search_author_lower:
+                        is_real_match = True
+                
+                if is_real_match:
+                    # Create web details window with pre-fetched data
+                    web_window = WebMetadataWindow(
+                        self.db,
+                        self.book,
+                        self.scaler,
+                        self.theme_manager,
+                        self,
+                        refresh_callback=self.load_book_data,  # Refresh book data after save
+                        web_data=web_data
+                    )
+                    # Show window modally
+                    result = web_window.exec()
+                    if result == QDialog.Accepted:
+                        # User accepted changes - would implement actual update here
+                        self.set_status("Web details applied successfully", announce=True)
+                else:
+                    # Show popup if no meaningful data found
+                    from PySide6.QtWidgets import QMessageBox
+                    from src.accessibility.style_helpers import build_accessible_message_box_style
+                    msg = QMessageBox(self)
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setWindowTitle("No Web Data Found")
+                    msg.setText("No information found for this book in any web source.")
+                    msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+                    msg.setStandardButtons(QMessageBox.Ok)
+                    msg.exec()
+            else:
+                # Show popup if no data found
+                from PySide6.QtWidgets import QMessageBox
+                from src.accessibility.style_helpers import build_accessible_message_box_style
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle("No Web Data Found")
+                if last_error:
+                    msg.setText(f"No information found for this book in any web source.\n\nLast error: {last_error}")
+                else:
+                    msg.setText("No information found for this book in any web source.")
+                msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.set_status(f"Error opening web details: {str(e)}")
 
     def on_prev(self):
         """
@@ -1492,7 +1679,7 @@ class BookDetailsWindow(QDialog):
         if self._dirty:
             QApplication.beep()
             self.set_status(
-                "Unsaved changes. Press Alt+S Save or Alt+L Cancel")
+                "Unsaved changes. Press Alt+S Save or Escape Cancel")
             return
 
         if not self.books_list or self.current_index <= 0:
@@ -1518,7 +1705,7 @@ class BookDetailsWindow(QDialog):
         if self._dirty:
             QApplication.beep()
             self.set_status(
-                "Unsaved changes. Press Alt+S Save or Alt+L Cancel")
+                "Unsaved changes. Press Alt+S Save or Escape Cancel")
             return
 
         if not self.books_list or self.current_index >= len(self.books_list) - 1:

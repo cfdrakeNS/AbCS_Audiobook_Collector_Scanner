@@ -1,5 +1,3 @@
-
-
 from enum import Enum
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QCheckBox, QGroupBox
@@ -9,10 +7,12 @@ from typing import Dict, Callable, Optional, List, Tuple
 
 class ShortcutContext(Enum):
     """Shortcut context - where shortcuts are active."""
+
     COLLECTION_WINDOW = "collection_window"
     GLOBAL = "global"  # Active everywhere
     MAIN_WINDOW = "main_window"
     BOOK_DETAILS = "book_details"
+    WEB_METADATA = "web_metadata"
     IMPORT_WINDOW = "import_window"
     IMPORT_PROGRESS_WINDOW = "import_progress_window"
     UPDATE_WINDOW = "update_window"
@@ -21,47 +21,44 @@ class ShortcutContext(Enum):
     BACKUP_RESTORE_WINDOW = "backup_restore_window"
     NAMELIST_WINDOW = "namelist_window"
     READING_HISTORY_WINDOW = "reading_history_window"
+    BOOK_LIST_IMPORT_WINDOW = "book_list_import_window"
 
 
 class ShortcutManager(QObject):
     # Collection Window (dedicated context)
     COLLECTION_WINDOW_SHORTCUTS = {
-        'B': ('Jump to list', 'table'),
-        'S': ('Save', 'save_button'),
-        'E': ('Edit selected row', 'edit_button'),
-        'M': ('Name edit', 'name_edit'),
-        'A': ('Active checkbox', 'active_check'),
-        'L': ('Cancel edit/new', 'cancel_button'),
-        'N': ('New', 'new_button'),
-        'D': ('Delete', 'delete_button'),
+        "L": ("Jump to list", "table"),
+        "S": ("Save", "save_button"),
+        "E": ("Edit selected row", "edit_button"),
+        "N": ("New", "new_button"),
+        "D": ("Delete", "delete_button"),
     }
     # NameList Window
     NAMELIST_WINDOW_SHORTCUTS = {
-        'B': ('Jump to list', 'table'),
-        'S': ('Save', 'save_button'),
-        'E': ('Edit selected row', 'edit_button'),
-        'M': ('Name edit', 'name_edit'),
-        'F': ('Find', 'find_edit'),
-        'A': ('Active checkbox', 'active_check'),
-        'L': ('Cancel edit/new', 'cancel_button'),
+        "L": ("Jump to list", "table"),
+        "S": ("Save", "save_button"),
+        "E": ("Edit selected row", "edit_button"),
+        "M": ("Name edit", "name_edit"),
+        "F": ("Find", "find_edit"),
+        "A": ("Active checkbox", "active_check"),
     }
 
     # Backup/Restore Window
     BACKUP_RESTORE_WINDOW_SHORTCUTS = {
-        'B': ('Backup list', 'backup_list'),
-        'W': ('Browse', 'browse_button'),
-        'K': ('Create backup', 'backup_button'),
-        'T': ('Focus restore file', 'restore_path_edit'),
-        'R': ('Restore', 'restore_button'),
-        'D': ('Delete', 'delete_button'),
-        'F': ('Full reset', 'full_reset_button'),
+        "L": ("Backup list", "backup_list"),
+        "W": ("Browse", "browse_button"),
+        "B": ("Create backup", "backup_button"),
+        "T": ("Focus restore file", "restore_path_edit"),
+        "R": ("Restore", "restore_button"),
+        "D": ("Delete", "delete_button"),
+        "F": ("Full reset", "full_reset_button"),
     }
     # Reading History Window
     READING_HISTORY_WINDOW_SHORTCUTS = {
-        'B': ('Jump to list', 'table'),
-        'R': ('Refresh data', 'refresh_button'),
-        'S': ('Search', 'refresh_button'),
-        'F': ('From date', 'start_date_edit'),
+        "B": ("Jump to list", "table"),
+        "R": ("Refresh data", "refresh_button"),
+        "S": ("Search", "refresh_button"),
+        "F": ("From date", "start_date_edit"),
     }
 
     """
@@ -71,81 +68,106 @@ class ShortcutManager(QObject):
 
     # Duplicate Check Dialog
     DUPLICATE_DIALOG_SHORTCUTS = {
-        'R': ('Start duplicate check', 'start_button'),
-        'L': ('Cancel duplicate check', 'cancel_button'),
-        'M': ('Focus match type combo', 'mode_combo'),
+        "R": ("Start duplicate check", "start_button"),
+        "L": ("Cancel duplicate check", "cancel_button"),
+        "M": ("Focus match type combo", "mode_combo"),
     }
 
-    # Alt+Key shortcuts (context-specific)
     # Main Window
     MAIN_WINDOW_SHORTCUTS = {
-        'B': ('Book list focus', 'book_list'),
-        'U': ('Update selected', 'update_button'),
-        'D': ('Delete selected', 'delete_button'),
-        'L': ('Cancel selection', 'cancel_button'),
+        "U": ("Update selected", "update_button"),
+        "D": ("Delete selected", "delete_button"),
     }
 
     # Book Details Window
     BOOK_DETAILS_SHORTCUTS = {
-        'T': ('Title', 'title_edit'),
-        'A': ('Author', 'author_combo'),
-        'Y': ('Year', 'year_spin'),
-        'F': ('Files', 'files_edit'),
-        'I': ('Series', 'series_combo'),
-        'G': ('Genre', 'genre_combo'),
-        'R': ('Reader', 'reader_edit'),
-        'C': ('Collection', 'collection_combo'),
-        'H': ('Length', 'time_edit'),  # Changed from L to H for Length
-        'E': ('Read date', 'read_date'),
-        'Z': ('Size', 'size_edit'),
-        'B': ('Bitrate', 'bitrate_edit'),
-        'P': ('Path', 'path_edit'),    # Changed from H to P for Path
-        'O': ('Comments', 'comments_edit'),
-        'N': ('New', 'new_button'),
-        'S': ('Save', 'save_button'),
-        'D': ('Delete', 'delete_button'),
-        'L': ('Cancel', 'cancel_button'),  # Alt+L now mapped to Cancel
-        'F1': ('Show help', 'show_help'),
+        "T": ("Title", "title_edit"),
+        "A": ("Author", "author_combo"),
+        "P": ("Plot", "comments_edit"),  # From Pl&ot label
+        "Y": ("Year", "year_spin"),
+        "M": ("Time", "time_edit"),  # From &Time label
+        "R": ("Reader", "reader_edit"),
+        "E": ("Read date", "read_date"),
+        "I": ("Series", "series_combo"),
+        "G": ("Genre", "genre_combo"),
+        "C": ("Collection", "collection_combo"),
+        "F": ("Files", "files_edit"),
+        "B": ("Bitrate", "bitrate_edit"),
+        "Z": ("Size", "size_edit"),
+        "H": ("Path", "path_edit"),  # From Pat&h label
+        "W": ("Get web info", "get_web_details_button"),
+        "F1": ("Show help", "show_help"),
+    }
+
+    # Web Metadata Window
+    WEB_METADATA_SHORTCUTS = {
+        "T": ("Title", "title_edit"),
+        "A": ("Author", "author_edit"),
+        "P": ("Plot", "plot_edit"),
+        "Y": ("Year", "year_edit"),
+        "I": ("Series", "series_edit"),
+        "N": ("Series number", "series_number_edit"),
+        "G": ("Genre", "genre_edit"),
+        "R": ("Rating", "rating_edit"),
+        "S": ("Save", "save_button"),
     }
 
     # Import Window
     IMPORT_WINDOW_SHORTCUTS = {
-        'C': ('Collection field', 'collection_combo'),
-        'F': ('Folder field', 'folder_field'),
-        'E': ('Error filter', 'error_filter'),
-        'W': ('Browse', 'browse_button'),
-        'S': ('Import Selected', 'import_selected_button'),
-        'V': ('Import All Valid', 'import_all_valid_button'),
-        'B': ('Focus import list table', 'import_list_table'),
-        'X': ('Export list to CSV', 'export_csv_button'),
+        "C": ("Collection field", "collection_combo"),
+        "F": ("Folder field", "folder_field"),
+        "W": ("Browse", "browse_button"),
+        "E": ("Error filter", "error_filter"),
+        "S": ("Import Selected", "import_selected_button"),
+        "V": ("Import All Valid", "import_all_valid_button"),
+        "L": ("Focus import list table", "import_list_table"),
+        "X": ("Export list to CSV", "export_csv_button"),
+    }
+
+    # Book List Import Window
+    BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
+        "W": ("Browse for file", "browse_button"),
+        "O": ("Options group", "options_group"),
+        "T": ("Title field mapping", "title_mapping"),
+        "A": ("Author field mapping", "author_mapping"),
+        "Y": ("Year field mapping", "year_mapping"),
+        "P": ("Plot field mapping", "plot_mapping"),
+        "S": ("Series field mapping", "series_mapping"),
+        "G": ("Genre field mapping", "genre_mapping"),
+        "R": ("Reader field mapping", "reader_mapping"),
+        "E": ("Read Date field mapping", "read_date_mapping"),
+        "M": ("Time field mapping", "time_mapping"),
+        "F": ("Files field mapping", "tracks_mapping"),
+        "X": ("Export errors to CSV", "export_button"),
+        "I": ("Import books", "import_button"),
     }
 
     # Update Window
     UPDATE_WINDOW_SHORTCUTS = {
-        'S': ('Series', 'series_combo'),
-        'G': ('Genre', 'genre_combo'),
-        'C': ('Collection', 'collection_combo'),
-        'B': ('Focus book list', 'book_list'),
+        "S": ("Series", "series_combo"),
+        "G": ("Genre", "genre_combo"),
+        "C": ("Collection", "collection_combo"),
+        "B": ("Focus book list", "book_list"),
     }
 
     # Preferences Window
     PREFERENCES_WINDOW_SHORTCUTS = {
-        'D': ('Display section', 'theme_combo'),
-        'P': ('Path & Scope section', 'import_dir_edit'),
-        'O': ('Options section', 'auto_add_clean_books_check'),
-        'F': ('Fallback section', 'author_fallback_checkbox'),
-        'R': ('Validation Rules section', 'rules_section_text'),
-        'A': ('Auto-Correction section', 'autocorrect_section_text'),
-        'S': ('Save', 'save_button'),
-        'L': ('Cancel', 'cancel_button'),
-        '/': ('Status bar', 'status_bar'),
+        "D": ("Display section", "theme_combo"),
+        "P": ("Path & Scope section", "import_dir_edit"),
+        "B": ("Browse", "browse_button"),
+        "O": ("Options section", "auto_add_clean_books_check"),
+        "F": ("Fallback section", "author_fallback_checkbox"),
+        "R": ("Validation Rules section", "rules_section_text"),
+        "A": ("Auto-Correction section", "autocorrect_section_text"),
+        "S": ("Save", "save_button"),
+        "/": ("Status bar", "status_bar"),
     }
 
     # Zoom shortcuts (Ctrl/Cmd)
     ZOOM_SHORTCUTS = {
-        'Ctrl+Plus': 'Zoom in',
-        'Ctrl+Minus': 'Zoom out',
-        'Ctrl+0': 'Reset zoom',
+        "Ctrl+Plus": "Zoom in",
+        "Ctrl+Minus": "Zoom out",
+        "Ctrl+0": "Reset zoom",
     }
 
     def __init__(self):
@@ -153,10 +175,12 @@ class ShortcutManager(QObject):
         super().__init__()
         self._shortcuts = {}
 
-    def register_alt_shortcuts(self,
-                               widget: QWidget,
-                               context: ShortcutContext,
-                               callback_map: Dict[str, Callable]):
+    def register_alt_shortcuts(
+        self,
+        widget: QWidget,
+        context: ShortcutContext,
+        callback_map: Dict[str, Callable],
+    ):
         """
         Register Alt+Key shortcuts for a widget.
 
@@ -171,6 +195,8 @@ class ShortcutManager(QObject):
             shortcuts = self.MAIN_WINDOW_SHORTCUTS
         elif context == ShortcutContext.BOOK_DETAILS:
             shortcuts = self.BOOK_DETAILS_SHORTCUTS
+        elif context == ShortcutContext.WEB_METADATA:
+            shortcuts = self.WEB_METADATA_SHORTCUTS
         elif context == ShortcutContext.IMPORT_WINDOW:
             shortcuts = self.IMPORT_WINDOW_SHORTCUTS
         elif context == ShortcutContext.UPDATE_WINDOW:
@@ -187,6 +213,8 @@ class ShortcutManager(QObject):
             shortcuts = self.COLLECTION_WINDOW_SHORTCUTS
         elif context == ShortcutContext.READING_HISTORY_WINDOW:
             shortcuts = self.READING_HISTORY_WINDOW_SHORTCUTS
+        elif context == ShortcutContext.BOOK_LIST_IMPORT_WINDOW:
+            shortcuts = self.BOOK_LIST_IMPORT_WINDOW_SHORTCUTS
         else:
             return
 
@@ -200,6 +228,10 @@ class ShortcutManager(QObject):
                         key_seq = QKeySequence(qt_key)
                     else:
                         key_seq = QKeySequence(key)
+                elif key == "/":
+                    key_seq = QKeySequence("Alt+/")
+                elif key == "Escape":
+                    key_seq = QKeySequence(Qt.Key_Escape)
                 else:
                     key_seq = QKeySequence(f"Alt+{key}")
                 shortcut = QShortcut(key_seq, widget)
@@ -218,17 +250,17 @@ class ShortcutManager(QObject):
         # Zoom in - use = key (same as + without shift)
         zoom_in = QShortcut(QKeySequence("Ctrl++"), widget)
         zoom_in.activated.connect(scaler.increase_scale)
-        self._shortcuts['zoom_in'] = zoom_in
+        self._shortcuts["zoom_in"] = zoom_in
 
         # Zoom out
         zoom_out = QShortcut(QKeySequence("Ctrl+-"), widget)
         zoom_out.activated.connect(scaler.decrease_scale)
-        self._shortcuts['zoom_out'] = zoom_out
+        self._shortcuts["zoom_out"] = zoom_out
 
         # Reset zoom
         zoom_reset = QShortcut(QKeySequence("Ctrl+0"), widget)
         zoom_reset.activated.connect(scaler.reset_scale)
-        self._shortcuts['zoom_reset'] = zoom_reset
+        self._shortcuts["zoom_reset"] = zoom_reset
 
     def get_shortcut_help(self, context: ShortcutContext) -> list:
         """
@@ -253,6 +285,8 @@ class ShortcutManager(QObject):
             shortcuts = self.MAIN_WINDOW_SHORTCUTS
         elif context == ShortcutContext.BOOK_DETAILS:
             shortcuts = self.BOOK_DETAILS_SHORTCUTS
+        elif context == ShortcutContext.WEB_METADATA:
+            shortcuts = self.WEB_METADATA_SHORTCUTS
         elif context == ShortcutContext.IMPORT_WINDOW:
             shortcuts = self.IMPORT_WINDOW_SHORTCUTS
         elif context == ShortcutContext.UPDATE_WINDOW:
@@ -278,19 +312,19 @@ class ShortcutManager(QObject):
             widget: Widget to set hint on
             key: Single character that's the shortcut key
         """
-        if hasattr(widget, 'text'):
+        if hasattr(widget, "text"):
             text = widget.text()
             if key.upper() in text.upper():
                 # Find first occurrence and underline it
                 idx = text.upper().index(key.upper())
-                new_text = text[:idx] + '&' + text[idx:]
+                new_text = text[:idx] + "&" + text[idx:]
                 widget.setText(new_text)
-        elif hasattr(widget, 'setTitle'):
+        elif hasattr(widget, "setTitle"):
             # For group boxes
             text = widget.title()
             if key.upper() in text.upper():
                 idx = text.upper().index(key.upper())
-                new_text = text[:idx] + '&' + text[idx:]
+                new_text = text[:idx] + "&" + text[idx:]
                 widget.setTitle(new_text)
 
 
@@ -318,9 +352,9 @@ def _extract_mnemonic(text: str) -> Optional[str]:
 
     idx = 0
     while idx < len(text) - 1:
-        if text[idx] == '&':
+        if text[idx] == "&":
             nxt = text[idx + 1]
-            if nxt == '&':
+            if nxt == "&":
                 idx += 2
                 continue
             if nxt.isalpha():
@@ -340,14 +374,18 @@ def find_shortcut_conflicts(widget: QWidget) -> List[str]:
             continue
         key = key_text.upper()
         owner_name = shortcut.parent().objectName() if shortcut.parent() else ""
-        owner = owner_name or shortcut.parent(
-        ).__class__.__name__ if shortcut.parent() else "Unknown"
+        owner = (
+            owner_name or shortcut.parent().__class__.__name__
+            if shortcut.parent()
+            else "Unknown"
+        )
         shortcut_map.setdefault(key, []).append(owner)
 
     for key, owners in shortcut_map.items():
         if len(owners) > 1:
             conflicts.append(
-                f"Duplicate QShortcut {key} ({', '.join(sorted(set(owners)))})")
+                f"Duplicate QShortcut {key} ({', '.join(sorted(set(owners)))})"
+            )
 
     mnemonic_map: Dict[str, List[str]] = {}
     controls: List[Tuple[QWidget, str]] = []
@@ -366,6 +404,7 @@ def find_shortcut_conflicts(widget: QWidget) -> List[str]:
     for mnemonic, owners in mnemonic_map.items():
         if len(owners) > 1:
             conflicts.append(
-                f"Duplicate mnemonic Alt+{mnemonic} ({', '.join(sorted(set(owners)))})")
+                f"Duplicate mnemonic Alt+{mnemonic} ({', '.join(sorted(set(owners)))})"
+            )
 
     return conflicts

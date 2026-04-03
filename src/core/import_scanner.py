@@ -356,10 +356,16 @@ class ImportScanner:
 
         if self.move_leading_the_title:
             title = (book.get("title") or "").strip()
-            if title.lower().startswith("the ") and len(title) > 4:
-                title_core = title[4:].strip()
-                if title_core and not title_core.lower().endswith(", the"):
-                    # Move "The" to end but don't flag it
-                    book["title"] = f"{title_core}, The"
+            
+            # Check for leading articles: "The", "A", "An"
+            articles = ["the ", "a ", "an "]
+            for article in articles:
+                if title.lower().startswith(article) and len(title) > len(article):
+                    title_core = title[len(article):].strip()
+                    article_capital = article.title().strip()  # "The", "A", "An"
+                    if title_core and not title_core.lower().endswith(f", {article.lower()}"):
+                        # Move article to end but don't flag it
+                        book["title"] = f"{title_core}, {article_capital}"
+                    break  # Only handle the first matching article
 
         return field_corrections

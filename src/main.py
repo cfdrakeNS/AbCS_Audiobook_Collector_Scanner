@@ -74,8 +74,37 @@ def show_launch_message_if_executable():
 show_launch_message_if_executable()
 
 # Version information - update this with each release
-APP_VERSION = "1.8.6"
-APP_BUILD_DATE = "2026-03-23"
+APP_VERSION = "1.9.4"
+APP_BUILD_DATE = "2026-04-03"
+
+BUILD_EXPIRY_DAYS = 30
+
+
+def check_build_expiry():
+    """Block startup if build age is 30+ days."""
+    try:
+        from datetime import date as _date
+        build = _date.fromisoformat(APP_BUILD_DATE)
+        age_days = (_date.today() - build).days
+        if age_days >= BUILD_EXPIRY_DAYS:
+            title = "AbCS — Build Expired"
+            msg = (
+                f"This copy of AbCS (build {APP_BUILD_DATE}) is {age_days} days old "
+                f"and has expired. "
+                f"Tester builds expire after {BUILD_EXPIRY_DAYS} days to ensure "
+                f"everyone is testing the latest version. "
+                f"Please download a newer build to continue."
+            )
+            if sys.platform == "win32":
+                _show_native_message(title, msg, auto_close_seconds=60.0)
+            else:
+                print(f"\n{title}\n{'='*len(title)}\n{msg}\n", file=sys.stderr)
+            sys.exit(1)
+    except SystemExit:
+        raise
+    except Exception:
+        pass  # Never block startup on a date-parse failure
+
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -135,7 +164,7 @@ class AbCSApplication:
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
 
-        # Enable accessibility for screen readers (JAWS, NVDA, etc.)
+        # Enable accessibility for screen readers
         from PySide6.QtGui import QAccessible
         QAccessible.setActive(True)
 
@@ -177,7 +206,33 @@ class AbCSApplication:
         stats_queries = StatisticsQueries(self.db)
         stats = stats_queries.get_statistics()
 
-        # Create dialog
+        if stats.total_books == 0:
+            # First time use - welcome message using standalone accessible message box
+            from PySide6.QtWidgets import QMessageBox
+            from src.accessibility.style_helpers import exec_styled_message_box
+            
+            splash_message = (
+                f"Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner. "
+                f"Build: {APP_BUILD_DATE}. "
+                "No audiobooks found in the database yet. "
+                "License: Copyright (c) 2025-2026 C.F. Drake & Contributors. "
+                "Non-commercial use only. Selling or fee-based distribution is not allowed without written permission. "
+                "You can import audiobooks from your computer (scan folders) or manually add a new book. "
+                "Use Ctrl+I to import or Alt+M for menu options."
+            )
+            
+            exec_styled_message_box(
+                self.main_window if self.main_window else self.qt_app.activeWindow(),
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Welcome to AbCS",
+                text=splash_message,
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok
+            )
+            return  # Skip statistics dialog for empty database
+
+        # Create statistics dialog for existing library
         dlg = QDialog()
         dlg.setWindowTitle(f"AbCS v{APP_VERSION} - Audio Book Collector")
         dlg.resize(500, 500)
@@ -187,77 +242,67 @@ class AbCSApplication:
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        if stats.total_books == 0:
-            # First time use - welcome message - use text for simplicity
-            from PySide6.QtWidgets import QTextEdit
-            text_edit = QTextEdit()
-            text_edit.setReadOnly(True)
-            splash_text = f"""Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner!
-Build: {APP_BUILD_DATE}
+        # Show statistics for existing library in a single-column table
+        table = QTableWidget()
+        table.setAccessibleName("Library Statistics")
+        table.setAccessibleDescription(
+            "Library statistics with values right-aligned")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels(["Library Statistics"])
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
 
-No audiobooks found in the database yet.
+        # Data rows with right-aligned values
+        data = [
+            ("Total Books", str(stats.total_books)),
+            ("Total Authors", str(stats.total_authors)),
+            ("Total Series", str(stats.total_series)),
+            ("Total Genres", str(stats.total_genres)),
+            ("Collections", str(stats.total_collections)),
+            ("Books Read", str(stats.books_read)),
+            ("Books Unread", str(stats.books_unread)),
+            ("Total Listening Time", stats.total_time_display),
+        ]
 
-You can:
-• Import audiobooks from your computer (scan folders)
-• Manually add a new book
+        table.setRowCount(len(data))
 
-Use Ctrl+I to import or Alt+M for menu options."""
-            text_edit.setPlainText(splash_text)
-            font = text_edit.font()
-            font.setPointSize(self.scaler.get_scaled_size(12))
-            text_edit.setFont(font)
-            layout.addWidget(text_edit)
-        else:
-            # Show statistics for existing library in a single-column table
-            table = QTableWidget()
-            table.setAccessibleName("Library Statistics")
-            table.setAccessibleDescription(
-                "Library statistics with values right-aligned")
-            table.setColumnCount(1)
-            table.setHorizontalHeaderLabels(["Library Statistics"])
-            table.setSelectionBehavior(QAbstractItemView.SelectRows)
-            table.setSelectionMode(QAbstractItemView.SingleSelection)
-            table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-            table.setAlternatingRowColors(True)
-            table.verticalHeader().setVisible(False)
+        for row, (label, value) in enumerate(data):
+            # Format with fixed-width label for consistent alignment
+            combined_text = f"{label:<25} {value}"
+            item = QTableWidgetItem(combined_text)
+            item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            table.setItem(row, 0, item)
 
-            # Data rows with right-aligned values
-            data = [
-                ("Total Books", str(stats.total_books)),
-                ("Total Authors", str(stats.total_authors)),
-                ("Total Series", str(stats.total_series)),
-                ("Total Genres", str(stats.total_genres)),
-                ("Collections", str(stats.total_collections)),
-                ("Books Read", str(stats.books_read)),
-                ("Books Unread", str(stats.books_unread)),
-                ("Total Listening Time", stats.total_time_display),
-            ]
+        # Resize column to stretch
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
 
-            table.setRowCount(len(data))
+        # Set font size and use monospace for alignment
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        font.setFamily("Courier New")
+        table.setFont(font)
 
-            for row, (label, value) in enumerate(data):
-                # Format with fixed-width label for consistent alignment
-                combined_text = f"{label:<25} {value}"
-                item = QTableWidgetItem(combined_text)
-                item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
-                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                table.setItem(row, 0, item)
-
-            # Resize column to stretch
-            header = table.horizontalHeader()
-            header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-            # Set font size and use monospace for alignment
-            font = table.font()
-            font.setPointSize(self.scaler.get_scaled_size(11))
-            font.setFamily("Courier New")
-            table.setFont(font)
-
-            layout.addWidget(table)
+        layout.addWidget(table)
 
         ok_btn = QPushButton("Continue")
+        ok_btn.setAccessibleName("Continue")
+        ok_btn.setAccessibleDescription("Close this statistics dialog and continue to the main application")
         ok_btn.clicked.connect(dlg.close)
         layout.addWidget(ok_btn)
+
+        # Set focus to statistics table for keyboard navigation
+        def focus_statistics_table():
+            table.setFocus()
+            if table.rowCount() > 0:
+                table.setCurrentCell(0, 0)
+
+        # Focus table after dialog is shown
+        QTimer.singleShot(100, focus_statistics_table)
 
         # Store timer as instance variable to prevent garbage collection
         self.splash_timer = QTimer()
@@ -312,8 +357,64 @@ Use Ctrl+I to import or Alt+M for menu options."""
             #     print(f"QApplication name: {a11y_status['app_name']}")
             # print(
             #     "\nTIP: If QAccessible.isActive() is False, no screen reader is attached.")
-            # print("      Start JAWS FIRST, then run this application.")
+            # print("      Start your screen reader FIRST, then run this application.")
             # print("="*60 + "\n")
+
+            # Run event loop - this blocks until user closes the app
+            return self.qt_app.exec()
+
+        except Exception as e:
+            # Print full exception for debugging
+            import traceback
+            print(f"ERROR: {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            raise
+        finally:
+            # Cleanup orphaned lookup records (no associated books)
+            try:
+                AuthorQueries(self.db).cleanup_unused()
+                SeriesQueries(self.db).cleanup_unused()
+                GenreQueries(self.db).cleanup_unused()
+            except Exception:
+                pass  # Don't fail on cleanup errors
+
+            try:
+                self.db.vacuum()
+            except Exception:
+                pass
+        
+        exec_styled_message_box(
+            self.main_window if self.main_window else self.qt_app.activeWindow(),
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Welcome to AbCS",
+            text=splash_message,
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok
+        )
+        return  # Skip statistics dialog for empty database
+
+    def run(self):
+        """Run the application."""
+        try:
+            # Create and show main window
+            self.main_window = MainWindow(
+                self.db, self.scaler, self.theme_manager)
+            self.main_window.show()
+
+            if getattr(self.db, "schema_repair_performed", False):
+                repair_message = getattr(self.db, "schema_repair_message", "")
+                if repair_message:
+                    self.main_window.set_status(
+                        repair_message, timeout_ms=20000, announce=True)
+
+            self._show_empty_library_dialog_if_needed()
+
+            shortcut_conflicts = find_shortcut_conflicts(self.main_window)
+            if shortcut_conflicts:
+                first_issue = shortcut_conflicts[0]
+                self.main_window.status_bar.showMessage(
+                    f"Shortcut conflict detected: {first_issue}")
 
             # Run event loop - this blocks until user closes the app
             return self.qt_app.exec()
@@ -350,58 +451,69 @@ Use Ctrl+I to import or Alt+M for menu options."""
         from PySide6.QtWidgets import (
             QDialog,
             QVBoxLayout,
-            QPushButton,
             QHBoxLayout,
+            QLabel,
+            QPushButton,
             QTableWidget,
             QTableWidgetItem,
             QHeaderView,
             QAbstractItemView,
         )
-        from PySide6.QtCore import QTimer
+
+        guidance_lines = [
+            "Database is empty.",
+            "Use Tab key to move to the option buttons and press Enter to select.",
+            "Import Books: Scan audiobook folders and read tags automatically.",
+            "Import List: Import from spreadsheet files (CSV, XLSX, XLS).",
+            "Preferences: Adjust colors and font size.",
+            "Continue: Stay in the main window.",
+            "Non-commercial use only; fee-based distribution requires written permission from C.F. Drake and Contributors.",
+        ]
+
+        # Mirror working popup pattern by announcing guidance in status bar as well.
+        self.main_window.set_status(
+            "Database empty dialog opened. Choose Import Books, Import List, Preferences, or Continue.",
+            timeout_ms=12000,
+            announce=True,
+        )
 
         dlg = QDialog(self.main_window)
-        dlg.setWindowTitle(self.main_window.windowTitle())
-        dlg.setAccessibleName("First run options")
-        dlg.setAccessibleDescription(
-            "Database is empty. Choose Import, Preferences, or Continue")
-        dlg.resize(760, 360)
+        dlg.setModal(True)
+        dlg.setWindowTitle("Welcome to AbCS - Database Empty")
+        dlg.setAccessibleName("Database Empty - Choose Import Option")
+        dlg.setAccessibleDescription("Choose how to start with an empty database")
+        dlg.resize(self.scaler.get_scaled_size(700), self.scaler.get_scaled_size(300))
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setSpacing(8)
 
-        guidance_lines = [
-            "The database is empty.",
-            "",
-            "To get started, import audiobooks from your folders.",
-            "You can also open Preferences to adjust colors and font size.",
-            "",
-            "Choose Import, Preferences, or Continue.",
-        ]
+        heading = QLabel("Choose one option to get started", dlg)
+        heading.setAccessibleName("Choose one option to get started")
+        heading_font = heading.font()
+        heading_font.setPointSize(self.scaler.get_scaled_size(12))
+        heading.setFont(heading_font)
+        layout.addWidget(heading)
 
-        text = QTableWidget(dlg)
-        text.setAccessibleName("First run guidance")
-        text.setAccessibleDescription(
-            "Read-only guidance. Use arrow keys to read line by line."
+        guidance_table = QTableWidget(dlg)
+        guidance_table.setAccessibleName("Empty database guidance")
+        guidance_table.setAccessibleDescription(
+            "Read-only guidance text for startup options. Use arrow keys to read line by line."
         )
-        text.setColumnCount(1)
-        text.setHorizontalHeaderLabels([""])
-        text.setRowCount(len(guidance_lines))
-        text.setVerticalHeaderLabels([""] * len(guidance_lines))
-        text.setSelectionBehavior(QAbstractItemView.SelectRows)
-        text.setSelectionMode(QAbstractItemView.SingleSelection)
-        text.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        text.setTabKeyNavigation(False)
-        text.setAlternatingRowColors(True)
-        text.verticalHeader().setVisible(False)
-        text.horizontalHeader().setVisible(False)
-        text.setShowGrid(False)
-        text.setStyleSheet(
+        guidance_table.setColumnCount(1)
+        guidance_table.setRowCount(len(guidance_lines))
+        guidance_table.setHorizontalHeaderLabels([""])
+        guidance_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        guidance_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        guidance_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        guidance_table.setTabKeyNavigation(False)
+        guidance_table.setAlternatingRowColors(False)
+        guidance_table.setShowGrid(False)
+        guidance_table.verticalHeader().setVisible(False)
+        guidance_table.horizontalHeader().setVisible(False)
+        guidance_table.setStyleSheet(
             "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected {"
-            " background-color: transparent;"
-            " color: palette(text);"
-            "}"
+            "QTableWidget::item:selected { background-color: transparent; color: palette(text); }"
             "QTableWidget::item:focus { outline: none; }"
         )
 
@@ -409,62 +521,65 @@ Use Ctrl+I to import or Alt+M for menu options."""
             item = QTableWidgetItem(line)
             item.setData(Qt.AccessibleTextRole, line)
             item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            text.setItem(row, 0, item)
+            guidance_table.setItem(row, 0, item)
 
-        text.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        if text.rowCount() > 0:
-            text.setCurrentCell(0, 0)
-
-        font = text.font()
-        font.setPointSize(self.scaler.get_scaled_size(12))
-        text.setFont(font)
-        layout.addWidget(text)
+        guidance_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        guidance_table.setMaximumHeight(self.scaler.get_scaled_size(150))
+        table_font = guidance_table.font()
+        table_font.setPointSize(self.scaler.get_scaled_size(11))
+        guidance_table.setFont(table_font)
+        layout.addWidget(guidance_table)
 
         button_row = QHBoxLayout()
-        import_btn = QPushButton("&Import")
-        prefs_btn = QPushButton("&Preferences")
-        continue_btn = QPushButton("&Continue")
-        continue_btn.setDefault(True)
-        continue_btn.setAutoDefault(True)
+        button_row.setSpacing(8)
 
-        button_style = build_accessible_button_style(
-            self.scaler.get_scaled_size(20)
-        )
-        import_btn.setStyleSheet(button_style)
-        prefs_btn.setStyleSheet(button_style)
-        continue_btn.setStyleSheet(button_style)
+        import_books_btn = QPushButton("Import Books", dlg)
+        import_list_btn = QPushButton("Import List", dlg)
+        preferences_btn = QPushButton("Preferences", dlg)
+        continue_btn = QPushButton("Continue", dlg)
 
-        button_row.addWidget(import_btn)
-        button_row.addWidget(prefs_btn)
-        button_row.addStretch(1)
-        button_row.addWidget(continue_btn)
+        reference_button_style = self.main_window.update_button.styleSheet()
+        for btn in (import_books_btn, import_list_btn, preferences_btn, continue_btn):
+            btn.setStyleSheet(reference_button_style)
+            button_row.addWidget(btn)
+
         layout.addLayout(button_row)
 
-        def on_import():
-            dlg.accept()
-            self.main_window.on_import()
+        choice = {"value": "continue"}
 
-        def on_preferences():
-            dlg.accept()
-            self.main_window.on_preferences()
+        import_books_btn.clicked.connect(lambda: (choice.update(value="import_books"), dlg.accept()))
+        import_list_btn.clicked.connect(lambda: (choice.update(value="import_list"), dlg.accept()))
+        preferences_btn.clicked.connect(lambda: (choice.update(value="preferences"), dlg.accept()))
+        continue_btn.clicked.connect(lambda: (choice.update(value="continue"), dlg.accept()))
 
-        import_btn.clicked.connect(on_import)
-        prefs_btn.clicked.connect(on_preferences)
-        continue_btn.clicked.connect(dlg.accept)
+        dlg.setTabOrder(guidance_table, import_books_btn)
+        dlg.setTabOrder(import_books_btn, import_list_btn)
+        dlg.setTabOrder(import_list_btn, preferences_btn)
+        dlg.setTabOrder(preferences_btn, continue_btn)
 
         def focus_guidance_table() -> None:
-            if text.rowCount() > 0:
-                text.setCurrentCell(0, 0)
-            text.setFocus(Qt.ActiveWindowFocusReason)
+            if guidance_table.rowCount() > 0:
+                guidance_table.setCurrentCell(0, 0)
+            guidance_table.setFocus(Qt.ActiveWindowFocusReason)
 
         QTimer.singleShot(0, focus_guidance_table)
         QTimer.singleShot(150, focus_guidance_table)
-
         dlg.exec()
+
+        # Handle user's choice
+        if choice["value"] == "import_books":
+            self.main_window.on_import()
+        elif choice["value"] == "import_list":
+            self.main_window.on_book_list_import()
+        elif choice["value"] == "preferences":
+            self.main_window.on_preferences()
+        elif choice["value"] == "continue":
+            pass
 
 
 def main():
     """Application entry point."""
+    check_build_expiry()
     app = AbCSApplication()
     sys.exit(app.run())
 

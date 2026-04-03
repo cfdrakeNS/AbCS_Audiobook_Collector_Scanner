@@ -28,6 +28,9 @@ from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 class ReadingHistoryWindow(QDialog):
     """Reading History window with statistics and history table."""
 
+    # Alt+Key filtering for accessibility
+    ALLOWED_ALT_LETTERS = "G Y M R F S B T H /"
+
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
         self.db = db
@@ -120,27 +123,36 @@ class ReadingHistoryWindow(QDialog):
         # Add statistics items to table
         self.total_books_item = QTableWidgetItem("Total Books Read")
         self.total_books_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_books_item.setData(Qt.AccessibleTextRole, "Total Books Read")
         self.general_table.setItem(0, 0, self.total_books_item)
         
         self.total_books_value = QTableWidgetItem("0")
         self.total_books_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_books_value.setData(Qt.AccessibleTextRole, "0 books")
         self.general_table.setItem(0, 1, self.total_books_value)
         
         self.total_hours_item = QTableWidgetItem("Total Hours Read")
         self.total_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_hours_item.setData(Qt.AccessibleTextRole, "Total Hours Read")
         self.general_table.setItem(1, 0, self.total_hours_item)
         
         self.total_hours_value = QTableWidgetItem("0.0")
         self.total_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_hours_value.setData(Qt.AccessibleTextRole, "0.0 hours")
         self.general_table.setItem(1, 1, self.total_hours_value)
         
         self.avg_hours_item = QTableWidgetItem("Average Hours per Book")
         self.avg_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.avg_hours_item.setData(Qt.AccessibleTextRole, "Average Hours per Book")
         self.general_table.setItem(2, 0, self.avg_hours_item)
         
         self.avg_hours_value = QTableWidgetItem("0.0")
         self.avg_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.avg_hours_value.setData(Qt.AccessibleTextRole, "0.0 hours per book")
         self.general_table.setItem(2, 1, self.avg_hours_value)
+        
+        # Set vertical header labels after adding items (like other windows)
+        self.general_table.setVerticalHeaderLabels(["", "", ""])
         
         stats_layout.addWidget(self.general_table)
         
@@ -352,6 +364,10 @@ class ReadingHistoryWindow(QDialog):
         
         self.tab_widget.addTab(range_widget, "Date &Range")
 
+        # Set explicit tab order for predictable JAWS navigation
+        self.setTabOrder(self.start_date_edit, self.end_date_edit)
+        self.setTabOrder(self.end_date_edit, self.refresh_button)
+
     def setup_shortcuts(self):
         """Setup keyboard shortcuts using ShortcutManager."""
         mgr = get_shortcut_manager()
@@ -467,16 +483,22 @@ class ReadingHistoryWindow(QDialog):
     def update_general_stats(self, stats):
         """Update general statistics table."""
         # Total books with thousand separator and right alignment
-        self.total_books_value.setText(f"{stats['total_books']:,}")
+        books_text = f"{stats['total_books']:,}"
+        self.total_books_value.setText(books_text)
         self.total_books_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_books_value.setData(Qt.AccessibleTextRole, f"{books_text} books")
         
         # Total hours with thousand separator and right alignment
-        self.total_hours_value.setText(f"{stats['total_hours']:,.0f}")
+        hours_text = f"{stats['total_hours']:,.0f}"
+        self.total_hours_value.setText(hours_text)
         self.total_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_hours_value.setData(Qt.AccessibleTextRole, f"{hours_text} hours")
         
         # Average hours with thousand separator and right alignment
-        self.avg_hours_value.setText(f"{stats['avg_hours_per_book']:,.0f}")
+        avg_text = f"{stats['avg_hours_per_book']:,.0f}"
+        self.avg_hours_value.setText(avg_text)
         self.avg_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.avg_hours_value.setData(Qt.AccessibleTextRole, f"{avg_text} hours per book")
         
         # Also update hidden labels for backward compatibility
         self.total_books_label.setText(f"Total Books Read: {stats['total_books']:,}")
@@ -609,7 +631,15 @@ class ReadingHistoryWindow(QDialog):
         """Handle tab change."""
         tab_names = ["General", "Year", "Month", "Date Range"]
         if index < len(tab_names):
-            self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            # Only show period message on Date Range tab
+            if index == 3:  # Date Range tab
+                if self._period_message:
+                    self.set_status(self._period_message, announce=True)
+                else:
+                    self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            else:
+                self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+            
             # Set focus to table when tab changes
             self.focus_current_table()
             
@@ -624,12 +654,20 @@ class ReadingHistoryWindow(QDialog):
     def on_read_status_bar(self):
         """Read period message first, then status bar (Alt+/)."""
         if QAccessible.isActive():
-            # First, read stored period message for screen readers
-            if self._period_message:
-                self.set_status(self._period_message, announce=True)
-            
-            # Then read the current status bar message (with a small delay)
-            QTimer.singleShot(1000, self._announce_status_bar)
+            # Only show period message if we're on Date Range tab
+            current_tab = self.tab_widget.currentIndex()
+            if current_tab == 3:  # Date Range tab
+                # First, read stored period message for screen readers
+                if self._period_message:
+                    self.set_status(self._period_message, announce=True)
+                
+                # Then read the current status bar message (with a small delay)
+                QTimer.singleShot(1000, self._announce_status_bar)
+            else:
+                # For other tabs, just read the current status
+                tab_names = ["General", "Year", "Month", "Date Range"]
+                if current_tab < len(tab_names):
+                    self.set_status(f"Viewing {tab_names[current_tab]} statistics", announce=True)
         # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
 
     def _announce_status_bar(self):

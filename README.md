@@ -34,6 +34,12 @@ A cross-platform audiobook collection manager with full accessibility support.
    python src/main.py
    ```
 
+### Tester Build Expiry
+
+- Bundled tester builds expire after 30 days from build date.
+- When expired, AbCS blocks startup and prompts the tester to download a newer build.
+- Source runs currently use the same build-expiry check.
+
 ## Quick Start
 
 1. **First Launch**: The application will create a new database
@@ -129,15 +135,33 @@ If you're migrating from the MS Access prototype:
 - Focus indicators clearly visible
 - Tab order follows logical flow
 
+## Accessibility Documentation
+
+For implementation and contribution work, use these two canonical docs:
+
+- `PySide6_Accessibility_Patterns_and_Implementation_Reference.md` (code patterns and implementation checklist)
+- `PySide6_Screen_Reader_Accessibility_Best_Practices.md` (design principles and review rules)
+
+Legacy accessibility docs are archived under `archive/`.
+
 ## License
 
-[Your chosen license - MIT, GPL, etc.]
+Copyright (c) 2025-2026 C.F. Drake & Contributors.
+
+AbCS is provided under a custom non-commercial license:
+
+- You may use, copy, and share this software for personal, educational, testing, and other non-commercial use.
+- You may modify this software for your own use.
+- If you redistribute copies or modified versions, this copyright and license notice must remain intact.
+- Commercial use is prohibited without prior written permission from the copyright holder.
+- You may not sell this software, bundle it into paid products, or distribute it for a fee without explicit written authorization.
+- The software is provided "as is", without warranty of any kind.
 
 ## Support
 
-[Your contact/support information]
+For support or licensing requests, contact C.F. Drake.
 
 ## Credits
 
-Original MS Access version: [Your name]
-Python version: [Your name]
+Original MS Access version: C.F. Drake
+Python version: C.F. Drake

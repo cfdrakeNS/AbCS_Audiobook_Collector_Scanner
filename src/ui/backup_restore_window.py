@@ -26,7 +26,10 @@ from PySide6.QtWidgets import (
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
-from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
+from src.accessibility.style_helpers import (
+    build_accessible_button_style,
+    exec_styled_message_box,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.database import DatabaseManager
@@ -36,14 +39,12 @@ from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 class BackupRestoreWindow(QDialog):
     """Manage database backups, restore, and full reset."""
 
-    ALLOWED_ALT_LETTERS = {
-        'B', 'D', 'F', 'K', 'R', 'T', 'W'
-    }
+    ALLOWED_ALT_LETTERS = {"B", "D", "F", "L", "R", "T", "W"}
 
     ALT_SHORTCUT_STATUS = {
-        Qt.Key_K: "Alt+K: Create backup",
-        Qt.Key_B: "Alt+B: Backup list",
+        Qt.Key_B: "Alt+B: Create backup",
         Qt.Key_W: "Alt+W: Browse",
+        Qt.Key_L: "Alt+L: Backup list",
         Qt.Key_D: "Alt+D: Delete",
         Qt.Key_F: "Alt+F: Full reset",
         Qt.Key_R: "Alt+R: Restore",
@@ -76,8 +77,8 @@ class BackupRestoreWindow(QDialog):
         )
         self.resize(860, 520)
         self.set_status("Ready")
-        QTimer.singleShot(
-            0, lambda: self.backup_list.setFocus(Qt.TabFocusReason))
+        # Set initial focus to backup list table with improved timing
+        QTimer.singleShot(100, self.set_initial_focus)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -87,9 +88,7 @@ class BackupRestoreWindow(QDialog):
         backups_label = QLabel("Backup &List:")
         self.backup_list = QTableWidget()
         self.backup_list.setAccessibleName("Backup list")
-        self.backup_list.setAccessibleDescription(
-            "List of available backup files"
-        )
+        self.backup_list.setAccessibleDescription("List of available backup files")
         self.backup_list.setColumnCount(1)
         self.backup_list.setHorizontalHeaderLabels(["Backup File"])
         self.backup_list.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -133,7 +132,7 @@ class BackupRestoreWindow(QDialog):
         self.backup_button = QPushButton("Backup")
         self.backup_button.setAccessibleName("Backup")
         self.backup_button.setAccessibleDescription(
-            "Create a backup in the default backup folder - Alt+K"
+            "Create a backup in the default backup folder - Alt+B"
         )
 
         self.restore_button = QPushButton("Restore")
@@ -168,7 +167,8 @@ class BackupRestoreWindow(QDialog):
 
         self.backup_list.currentCellChanged.connect(self.on_backup_selected)
         self.backup_list.itemSelectionChanged.connect(
-            self._update_delete_button_visibility)
+            self._update_delete_button_visibility
+        )
         self.browse_button.clicked.connect(self.on_browse)
         self.backup_button.clicked.connect(self.on_backup)
         self.restore_button.clicked.connect(self.on_restore)
@@ -186,32 +186,32 @@ class BackupRestoreWindow(QDialog):
 
     def setup_shortcuts(self):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
+        # Use centralized shortcuts like import window (PROVEN working)
         mgr = get_shortcut_manager()
-        # Map widget_id to callback
         callback_map = {
-            'backup_list': self.focus_backup_list,
-            'browse_button': self.on_browse,
-            'backup_button': self.on_backup,
-            'restore_path_edit': self.focus_restore_file,
-            'restore_button': self.on_restore,
-            'delete_button': self.on_delete_backup,
-            'full_reset_button': self.on_full_reset,
+            "backup_list": lambda: self.focus_backup_list(),
+            "browse_button": lambda: self.on_browse(),
+            "backup_button": lambda: self.on_backup(),
+            "restore_path_edit": lambda: self.focus_restore_file(),
+            "restore_button": lambda: self.on_restore(),
+            "delete_button": lambda: self.on_delete_backup(),
+            "full_reset_button": lambda: self.on_full_reset(),
         }
+
         mgr.register_alt_shortcuts(
-            self, ShortcutContext.BACKUP_RESTORE_WINDOW, callback_map)
+            self, ShortcutContext.BACKUP_RESTORE_WINDOW, callback_map
+        )
 
         # Local QShortcuts for Alt+/, F1, and Escape only
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        escape_shortcut.activated.connect(self.accept)
+        escape_shortcut.activated.connect(self.close)
 
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
-        self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
     def install_event_filters(self):
         """Install key event filters on dialog and key child controls."""
@@ -225,8 +225,7 @@ class BackupRestoreWindow(QDialog):
         self.full_reset_button.installEventFilter(self)
         self.status_bar.installEventFilter(self)
         # Add Delete key shortcut for backup_list
-        delete_shortcut = QShortcut(
-            QKeySequence(Qt.Key_Delete), self.backup_list)
+        delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self.backup_list)
         delete_shortcut.activated.connect(self.on_delete_backup)
 
     def eventFilter(self, source, event):
@@ -247,10 +246,16 @@ class BackupRestoreWindow(QDialog):
         return super().eventFilter(source, event)
 
     def apply_control_styles(self):
-        button_style = build_accessible_button_style(
-            self.scaler.get_scaled_size(34))
+        button_style = build_accessible_button_style(self.scaler.get_scaled_size(34))
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
+
+    def set_initial_focus(self):
+        """Set initial focus to backup list table and select first row if available."""
+        self.backup_list.setFocus(Qt.TabFocusReason)
+        if self.backup_list.rowCount() > 0:
+            self.backup_list.setCurrentCell(0, 0)
+        self._update_delete_button_visibility()
 
     def focus_backup_list(self):
         self.backup_list.setFocus()
@@ -273,12 +278,16 @@ class BackupRestoreWindow(QDialog):
         layout.setSpacing(10)
 
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         shortcuts = [
-            ("Alt+B", "Backup list"),
+            ("Alt+L", "Backup list"),
             ("Alt+W", "Browse for restore file"),
             ("Alt+T", "Focus restore file"),
-            ("Alt+K", "Create backup"),
+            ("Alt+B", "Create backup"),
             ("Alt+R", "Run restore from selected backup"),
             ("Alt+D", "Delete selected backup"),
             ("Alt+F", "Full reset"),
@@ -373,6 +382,9 @@ class BackupRestoreWindow(QDialog):
         for backup_path in backups:
             self._add_backup_item(backup_path)
 
+        # Set vertical header labels to prevent row number announcements
+        self.backup_list.setVerticalHeaderLabels([""] * self.backup_list.rowCount())
+
         if selected_path and explicit_selected:
             self._select_backup_path(selected_path)
         else:
@@ -400,7 +412,9 @@ class BackupRestoreWindow(QDialog):
         self._restore_file_explicitly_selected = bool(path_text.strip())
         self._update_delete_button_visibility()
 
-    def on_backup_selected(self, current_row: int, _current_col: int, _prev_row: int, _prev_col: int):
+    def on_backup_selected(
+        self, current_row: int, _current_col: int, _prev_row: int, _prev_col: int
+    ):
         if self._suppress_backup_selection_events:
             return
 
@@ -411,8 +425,7 @@ class BackupRestoreWindow(QDialog):
             return
 
         current = self.backup_list.item(current_row, 0)
-        path_text = (current.data(Qt.UserRole)
-                     if current is not None else "") or ""
+        path_text = (current.data(Qt.UserRole) if current is not None else "") or ""
         self._set_restore_path(path_text)
         self._restore_file_explicitly_selected = bool(path_text.strip())
         self._update_delete_button_visibility()
@@ -506,13 +519,13 @@ class BackupRestoreWindow(QDialog):
                 title="No Backup Selected",
                 text="Select a backup file before deleting.",
             )
-            self.set_status(
-                "Delete canceled: no backup row selected in Backup List")
+            self.set_status("Delete canceled: no backup row selected in Backup List")
             return
 
         current_row = self.backup_list.currentRow()
-        current_item = self.backup_list.item(
-            current_row, 0) if current_row >= 0 else None
+        current_item = (
+            self.backup_list.item(current_row, 0) if current_row >= 0 else None
+        )
         backup_path = ""
         if current_item is not None:
             backup_path = (current_item.data(Qt.UserRole) or "").strip()
@@ -524,8 +537,7 @@ class BackupRestoreWindow(QDialog):
                 title="No Backup Selected",
                 text="Focus Backup List and select a backup file before deleting.",
             )
-            self.set_status(
-                "Delete canceled: no backup row selected in Backup List")
+            self.set_status("Delete canceled: no backup row selected in Backup List")
             return
 
         backup_name = Path(backup_path).name
@@ -534,10 +546,7 @@ class BackupRestoreWindow(QDialog):
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
             title="Confirm Delete",
-            text=(
-                "Delete selected backup file?\n\n"
-                f"{backup_name}"
-            ),
+            text=("Delete selected backup file?\n\n" f"{backup_name}"),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
         )
@@ -596,8 +605,7 @@ class BackupRestoreWindow(QDialog):
 
         if backup_path is not None:
             self._select_backup_path(str(backup_path))
-            self.set_status(
-                f"Full reset complete. Backup created: {backup_path.name}")
+            self.set_status(f"Full reset complete. Backup created: {backup_path.name}")
         else:
             self.set_status("Full reset complete")
 

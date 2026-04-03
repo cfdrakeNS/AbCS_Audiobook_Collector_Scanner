@@ -40,17 +40,16 @@ class DatabaseManager:
                      If None, uses default location (data/abcs.db in project root)
         """
         if db_path is None:
-            if getattr(sys, 'frozen', False):
-                local_app_data = os.environ.get(
-                    "LOCALAPPDATA", str(Path.home()))
+            if getattr(sys, "frozen", False):
+                local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home()))
                 data_dir = Path(local_app_data) / "AbCS"
                 data_dir.mkdir(parents=True, exist_ok=True)
-                db_path = str(data_dir / 'abcs.db')
+                db_path = str(data_dir / "abcs.db")
             else:
                 project_root = Path(__file__).parent.parent.parent
-                data_dir = project_root / 'data'
+                data_dir = project_root / "data"
                 data_dir.mkdir(exist_ok=True)
-                db_path = str(data_dir / 'abcs.db')
+                db_path = str(data_dir / "abcs.db")
 
         self.db_path = db_path  # Store the database file path
         # Connection object (initialized as None)
@@ -194,7 +193,7 @@ class DatabaseManager:
         """
         cursor = self.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-            (table_name,)
+            (table_name,),
         )
         return cursor.fetchone() is not None
 
@@ -204,7 +203,7 @@ class DatabaseManager:
         If tables don't exist, create them from the bundled SQL schema file.
         """
         # Check if main tables exist
-        if not self.table_exists('books'):
+        if not self.table_exists("books"):
             self._create_schema()
 
         self.schema_repair_performed = False
@@ -329,7 +328,8 @@ class DatabaseManager:
         }
 
         existing_tables = {
-            row[0] for row in conn.execute(
+            row[0]
+            for row in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             ).fetchall()
         }
@@ -424,13 +424,15 @@ class DatabaseManager:
                 f"Backup: {backup_path.name}."
             )
         else:
-            self.schema_repair_message = "Database rebuilt from schema for compatibility."
+            self.schema_repair_message = (
+                "Database rebuilt from schema for compatibility."
+            )
 
     def _ensure_indexes(self):
         """Ensure critical indexes exist for query performance."""
         conn = self.connect()
 
-        if self.table_exists('books'):
+        if self.table_exists("books"):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_books_author ON books(author_id)"
             )
@@ -443,9 +445,7 @@ class DatabaseManager:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_books_collection ON books(collection_id)"
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_books_collection_title ON books(collection_id, title)"
             )
@@ -456,22 +456,22 @@ class DatabaseManager:
                 "CREATE INDEX IF NOT EXISTS idx_books_read_date ON books(read_date)"
             )
 
-        if self.table_exists('authors'):
+        if self.table_exists("authors"):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_authors_name ON authors(name ASC)"
             )
 
-        if self.table_exists('genres'):
+        if self.table_exists("genres"):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_genres_name ON genres(name ASC)"
             )
 
-        if self.table_exists('series'):
+        if self.table_exists("series"):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_series_name ON series(name ASC)"
             )
 
-        if self.table_exists('collections'):
+        if self.table_exists("collections"):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_collections_active_name ON collections(active, name ASC)"
             )
@@ -480,7 +480,7 @@ class DatabaseManager:
 
     def _ensure_minimum_seed_data(self):
         """Ensure required seed data exists for first-run and repaired databases."""
-        if not self.table_exists('collections'):
+        if not self.table_exists("collections"):
             return
 
         row = self.fetch_one("SELECT COUNT(*) FROM collections")
@@ -503,11 +503,10 @@ class DatabaseManager:
             searched_paths = self._candidate_schema_paths()
             searched_text = "\n".join(str(path) for path in searched_paths)
             raise FileNotFoundError(
-                "Schema file not found. Searched:\n"
-                f"{searched_text}"
+                "Schema file not found. Searched:\n" f"{searched_text}"
             )
 
-        schema = schema_path.read_text(encoding='utf-8')
+        schema = schema_path.read_text(encoding="utf-8")
         conn = self.connect()
         conn.executescript(schema)
         conn.commit()
@@ -525,8 +524,7 @@ class DatabaseManager:
         schema_name = "abcdDB_def.sql"
 
         module_path = Path(__file__).resolve()
-        candidates.append(module_path.parent.parent.parent /
-                          "data" / schema_name)
+        candidates.append(module_path.parent.parent.parent / "data" / schema_name)
 
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
@@ -564,14 +562,18 @@ class DatabaseManager:
             path for path in backup_dir.glob("AbCS_backup_*") if path.is_file()
         )
         candidates.extend(
-            path for path in db_file.parent.glob(f"{db_file.stem}.backup_*") if path.is_file()
+            path
+            for path in db_file.parent.glob(f"{db_file.stem}.backup_*")
+            if path.is_file()
         )
 
         unique: dict[str, Path] = {}
         for path in candidates:
             unique[str(path.resolve())] = path.resolve()
 
-        return sorted(unique.values(), key=lambda item: item.stat().st_mtime, reverse=True)
+        return sorted(
+            unique.values(), key=lambda item: item.stat().st_mtime, reverse=True
+        )
 
     def create_manual_backup(self) -> Path:
         """Create a timestamped manual backup in the backup directory."""
@@ -582,9 +584,9 @@ class DatabaseManager:
         conn = self.connect()
         conn.commit()
 
-        timestamp = datetime.now().strftime("%Y-%b-%d_%a_%H-%M-%S")
+        timestamp = datetime.now().strftime("%A_%B_%d_%y_at_%H_%M")
         extension = db_file.suffix or ".db"
-        backup_name = f"AbCS_backup_{timestamp}{extension}"
+        backup_name = f"abcs_backup_{timestamp}{extension}"
         backup_path = self.get_backup_directory() / backup_name
         shutil.copy2(db_file, backup_path)
         return backup_path

@@ -202,7 +202,6 @@ class UIScaler(QObject):
             /* Disable mouse hover highlighting for all tables */
             QTableWidget::item:hover, QTableView::item:hover {{
                 background: none !important;
-                color: inherit !important;
             }}
 
             QTableView::item {{

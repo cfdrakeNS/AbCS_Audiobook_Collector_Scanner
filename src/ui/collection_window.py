@@ -10,6 +10,7 @@ from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 import sys
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QDialog,
     QHeaderView,
     QHBoxLayout,
@@ -24,21 +25,31 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import announce_status_message, announce_dialog_opened, announce_dialog_closed
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
 from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.database import Collection, CollectionQueries, DatabaseManager
 
 
 class CollectionWindow(QDialog):
+    """
+    Collection management window with PROVEN accessibility foundation.
+    
+    F1, Alt+/, and Escape work out of box.
+    Built incrementally from accessible skeleton.
+    """
+    
+    # Alt+letter keys that are allowed to pass through
+    ALLOWED_ALT_LETTERS = {
+        'E', 'L', 'N', 'S', 'D', '/'
+    }
+    
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
         super().keyPressEvent(event)
-    """
-    Window for adding, editing, and deleting collections.
-    """
-    # No longer needed: all Alt+letter shortcuts are now centralized
 
     COL_NAME = 0
     COL_ACTIVE = 1
@@ -94,16 +105,14 @@ class CollectionWindow(QDialog):
         name_label = QLabel("Na&me:")
         self.name_edit = QLineEdit()
         self.name_edit.setAccessibleName("Collection name")
-        self.name_edit.setAccessibleDescription(
-            "Enter collection name - Alt+M")
+        self.name_edit.setAccessibleDescription("Enter collection name")
         name_label.setBuddy(self.name_edit)
         header_layout.addWidget(name_label)
         header_layout.addWidget(self.name_edit, 1)
 
         self.active_check = QCheckBox("&Active")
         self.active_check.setAccessibleName("Collection active")
-        self.active_check.setAccessibleDescription(
-            "Collection active status - Alt+A")
+        self.active_check.setAccessibleDescription("Collection active status")
         self.active_check.setChecked(True)
         header_layout.addWidget(self.active_check)
 
@@ -126,7 +135,7 @@ class CollectionWindow(QDialog):
         self.table.horizontalHeader().setMinimumSectionSize(60)
         self.table.setColumnWidth(self.COL_NAME, 520)
         self.table.setColumnWidth(self.COL_ACTIVE, 120)
-        self.table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.table.currentCellChanged.connect(self.on_selection_changed)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -137,32 +146,22 @@ class CollectionWindow(QDialog):
 
         self.new_button = QPushButton("New")
         self.new_button.clicked.connect(self.on_new)
-        self.new_button.setAccessibleDescription(
-            "Create a new collection entry - Alt+N")
+        self.new_button.setAccessibleDescription("Create new collection")
         footer_layout.addWidget(self.new_button)
 
         self.edit_button = QPushButton("Edit")
         self.edit_button.clicked.connect(self.on_edit)
-        self.edit_button.setAccessibleDescription(
-            "Edit highlighted collection - Alt+E")
+        self.edit_button.setAccessibleDescription("Edit highlighted collection")
         footer_layout.addWidget(self.edit_button)
 
         self.save_button = QPushButton("&Save")
         self.save_button.clicked.connect(self.on_save)
-        self.save_button.setAccessibleDescription(
-            "Save current collection - Alt+S")
+        self.save_button.setAccessibleDescription("Save current collection")
         footer_layout.addWidget(self.save_button)
-
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.on_cancel_edit)
-        self.cancel_button.setAccessibleDescription(
-            "Cancel current new/edit and return to list - Alt+L")
-        footer_layout.addWidget(self.cancel_button)
 
         self.delete_button = QPushButton("Delete")
         self.delete_button.clicked.connect(self.on_delete)
-        self.delete_button.setAccessibleDescription(
-            "Delete selected collection if unused - Alt+D")
+        self.delete_button.setAccessibleDescription("Delete selected collection if unused")
         footer_layout.addWidget(self.delete_button)
 
         button_style = build_accessible_button_style(
@@ -172,7 +171,6 @@ class CollectionWindow(QDialog):
             self.new_button,
             self.edit_button,
             self.save_button,
-            self.cancel_button,
             self.delete_button,
         ):
             button.setStyleSheet(button_style)
@@ -189,24 +187,21 @@ class CollectionWindow(QDialog):
         mgr = get_shortcut_manager()
         # Map widget IDs to callbacks for Alt+letter shortcuts
         callback_map = {
-            'name_edit': lambda: self.name_edit.setFocus(Qt.ShortcutFocusReason),
-            'active_check': lambda: self.active_check.setFocus(Qt.ShortcutFocusReason),
             'new_button': self.new_button.click,
             'edit_button': self.edit_button.click,
             'save_button': self.save_button.click,
-            'cancel_button': self.cancel_button.click,
             'delete_button': self.delete_button.click,
             'table': self.focus_list,
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.COLLECTION_WINDOW, callback_map)
 
-        # Local QShortcuts for F1, Escape, Alt+/
+        # Local QShortcuts for F1, Escape, and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        self.escape_shortcut.activated.connect(self.accept)
+        self.escape_shortcut.activated.connect(self.on_escape_pressed)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
@@ -214,8 +209,6 @@ class CollectionWindow(QDialog):
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
     def set_status(self, message: str, announce: bool = False):
-        if "alt+n new" not in message.lower():
-            message = f"{message}, Alt+N New"
         announce_status_message(self.status_bar, message, move_focus=announce)
 
         parent = self.parent()
@@ -273,13 +266,12 @@ class CollectionWindow(QDialog):
             self.name_edit.setPlaceholderText(
                 "Press Alt+N for New or Alt+E for Edit")
         else:
-            self.name_edit.setPlaceholderText("")
+            self.name_edit.setPlaceholderText("Alt+S to Save, Escape to Cancel")
 
         editing_mode = not locked
         self.new_button.setVisible(not editing_mode)
         self.edit_button.setVisible(not editing_mode)
         self.save_button.setVisible(editing_mode)
-        self.cancel_button.setVisible(editing_mode)
         self.delete_button.setVisible(not editing_mode)
 
         self._apply_tab_order()
@@ -290,7 +282,6 @@ class CollectionWindow(QDialog):
             self.new_button,
             self.edit_button,
             self.save_button,
-            self.cancel_button,
             self.delete_button,
         ]
         visible_footer_buttons = [
@@ -309,17 +300,12 @@ class CollectionWindow(QDialog):
                 self.setTabOrder(first, second)
 
     def _selected_collection_id(self) -> int | None:
-        model = self.table.selectionModel()
-        if not model:
+        # Use currentRow() like backup_restore_window.py
+        current_row = self.table.currentRow()
+        if current_row < 0:
             return None
-
-        selected_rows = model.selectedRows(self.COL_NAME)
-        if not selected_rows:
-            return None
-
-        row = selected_rows[0].row()
-
-        name_item = self.table.item(row, self.COL_NAME)
+            
+        name_item = self.table.item(current_row, self.COL_NAME)
         if name_item is None:
             return None
 
@@ -336,7 +322,15 @@ class CollectionWindow(QDialog):
         )
         return int(row[0]) if row else 0
 
-    def on_selection_changed(self):
+    def on_selection_changed(self, current_row: int, current_col: int, prev_row: int, prev_col: int):
+        """Handle cell selection change like backup_restore_window.py"""
+        if current_row < 0:
+            self.current_collection_id = None
+            return
+
+        # Clear status messages when navigating
+        self.set_status("")
+
         collection_id = self._selected_collection_id()
         if collection_id is None:
             return
@@ -347,15 +341,11 @@ class CollectionWindow(QDialog):
 
         self.current_collection_id = collection.collection_id
         if self._editor_locked:
-            self.set_status(f"To edit {collection.name} press Alt+E")
             return
 
         self._is_new_entry_mode = False
         self.name_edit.setText(collection.name)
         self.active_check.setChecked(collection.active)
-        self.set_status(
-            f"Selected collection: {collection.name}."
-        )
 
     def on_new(self):
         self.current_collection_id = None
@@ -364,12 +354,12 @@ class CollectionWindow(QDialog):
         self._set_editor_locked(False, clear_name=True)
         self.active_check.setChecked(True)
         self.name_edit.setFocus(Qt.TabFocusReason)
-        self.set_status("New collection entry.")
+        # Show save/cancel message in status bar
+        self.set_status("Alt+S to Save, Escape to Cancel")
 
     def on_edit(self):
         collection_id = self._selected_collection_id()
         if collection_id is None:
-            self.set_status("Select a collection row to edit.", announce=True)
             return
 
         collection = self.collection_queries.get_by_id(collection_id)
@@ -377,16 +367,18 @@ class CollectionWindow(QDialog):
             self.set_status(
                 "Selected collection no longer exists.", announce=True)
             self.load_collections()
+            self._set_editor_locked(True)
             return
 
         self.current_collection_id = collection.collection_id
         self._is_new_entry_mode = False
-        self._set_editor_locked(False)
+        self._set_editor_locked(False, clear_name=False)
         self.name_edit.setText(collection.name)
         self.active_check.setChecked(collection.active)
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.setCursorPosition(len(self.name_edit.text()))
-        self.set_status(f"Selected collection: {collection.name}.")
+        # Show save/cancel message in status bar
+        self.set_status("Alt+S to Save, Escape to Cancel")
 
     def on_save(self) -> bool:
         name = self._to_proper_case(self.name_edit.text())
@@ -394,8 +386,6 @@ class CollectionWindow(QDialog):
         active = self.active_check.isChecked()
 
         if self._editor_locked:
-            self.set_status(
-                "Press Alt+N for New or Alt+E for Edit.", announce=True)
             return False
 
         model = self.table.selectionModel()
@@ -436,7 +426,12 @@ class CollectionWindow(QDialog):
             self.load_collections(preserve_id=new_id)
             self._is_new_entry_mode = False
             self._set_editor_locked(True)
-            self.set_status(f"Collection created: {name}.", announce=True)
+            # Show save message with delay to override navigation clearing
+            QTimer.singleShot(50, lambda: self.set_status(f"Collection saved: {name}.", announce=True))
+            # Focus management: return to the new row
+            QTimer.singleShot(100, lambda nid=new_id: self.focus_and_select_row(nid))
+            # Explicitly ensure button visibility is correct (last operation)
+            QTimer.singleShot(150, self.ensure_normal_buttons_visible)
             return True
 
         existing = self.collection_queries.get_by_id(
@@ -480,13 +475,25 @@ class CollectionWindow(QDialog):
 
         self.load_collections(preserve_id=self.current_collection_id)
         self._set_editor_locked(True)
-        self.set_status(f"Collection saved: {name}.", announce=True)
+        # Show save message with delay to override navigation clearing
+        QTimer.singleShot(50, lambda: self.set_status(f"Collection saved: {name}.", announce=True))
+        # Focus management: return to the updated row
+        QTimer.singleShot(100, lambda cid=self.current_collection_id: self.focus_and_select_row(cid))
+        # Explicitly ensure button visibility is correct (last operation)
+        QTimer.singleShot(150, self.ensure_normal_buttons_visible)
         return True
 
     def on_name_edit_enter_pressed(self):
         """Enter in Name field should act like Save and return focus to updated row."""
-        if self.save_button.isVisible() and self.save_button.isEnabled() and self.on_save():
-            QTimer.singleShot(0, self.focus_list)
+        if self.save_button.isVisible() and self.save_button.isEnabled():
+            self.on_save()
+
+    def on_escape_pressed(self):
+        """Escape key - cancel edit/new mode or close window if not editing."""
+        if not self._editor_locked:
+            self.on_cancel_edit()
+        else:
+            self.accept()
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode."""
@@ -498,7 +505,6 @@ class CollectionWindow(QDialog):
         self.load_collections(preserve_id=preserve_id, populate_editor=False)
         self._set_editor_locked(True)
         self.focus_list()
-        self.set_status("Edit canceled.")
 
     def focus_list(self):
         if self.table.rowCount() > 0:
@@ -508,13 +514,36 @@ class CollectionWindow(QDialog):
             self.table.setCurrentCell(row, self.COL_NAME)
         self.table.setFocus(Qt.TabFocusReason)
 
+    def focus_and_select_row(self, collection_id: int):
+        """Focus and select a specific row by collection ID."""
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, self.COL_NAME)
+            if item and item.data(Qt.UserRole) == collection_id:
+                self.table.selectRow(row)
+                self.table.setCurrentCell(row, self.COL_NAME)
+                self.table.setFocus(Qt.TabFocusReason)
+                break
+
+    def focus_first_item(self):
+        """Focus first item in table."""
+        if self.table.rowCount() > 0:
+            self.table.selectRow(0)
+            self.table.setCurrentCell(0, self.COL_NAME)
+            self.table.setFocus(Qt.TabFocusReason)
+
+    def ensure_normal_buttons_visible(self):
+        """Ensure normal buttons are visible and save button is hidden."""
+        self.save_button.setVisible(False)
+        self.new_button.setVisible(True)
+        self.edit_button.setVisible(True)
+        self.delete_button.setVisible(True)
+
     def on_delete(self):
-        if self.current_collection_id is None:
-            self.set_status("Select a collection to delete.", announce=True)
+        collection_id = self._selected_collection_id()
+        if collection_id is None:
             return
 
-        collection = self.collection_queries.get_by_id(
-            self.current_collection_id)
+        collection = self.collection_queries.get_by_id(collection_id)
         if collection is None:
             self.set_status(
                 "Selected collection no longer exists.", announce=True)
@@ -566,6 +595,8 @@ class CollectionWindow(QDialog):
         self._set_editor_locked(True)
         self.set_status(
             f"Collection deleted: {collection.name}.", announce=True)
+        # Focus management: focus first item after delete
+        QTimer.singleShot(100, self.focus_first_item)
 
     def on_read_status(self):
         message = self.status_bar.currentMessage().strip() or "Ready"
@@ -585,15 +616,12 @@ class CollectionWindow(QDialog):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
         from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
         shortcuts = [
-            ("Alt+B", "Jump to list"),
-            ("Alt+M", "Name edit"),
-            ("Alt+A", "Active checkbox"),
+            ("Alt+L", "Jump to list"),
             ("Alt+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Alt+S", "Save"),
-            ("Alt+L", "Cancel edit/new"),
             ("Alt+D", "Delete"),
-            ("Escape", "Close window"),
+            ("Escape", "Cancel edit/new or close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
@@ -641,11 +669,10 @@ class CollectionWindow(QDialog):
 
         dlg.exec()
 
-    # _allowed_alt_letter_keys and eventFilter are no longer needed with centralized shortcuts
-
-    def keyPressEvent(self, event):
-        """Prevent Enter from defaulting to footer button activation."""
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            event.ignore()
-            return
-        super().keyPressEvent(event)
+    def eventFilter(self, source, event):
+        """Filter events for Alt+key handling - PROVEN accessibility pattern."""
+        if event.type() == QEvent.KeyPress:
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
+                QApplication.beep()
+                return True
+        return super().eventFilter(source, event)

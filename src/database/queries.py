@@ -42,7 +42,7 @@ class BookQueries:
         if not book_ids:
             return
         for index in range(0, len(book_ids), self._book_id_chunk_size):
-            chunk = book_ids[index:index + self._book_id_chunk_size]
+            chunk = book_ids[index : index + self._book_id_chunk_size]
             if chunk:
                 yield chunk
 
@@ -87,12 +87,17 @@ class BookQueries:
 
         # Search/keyword filter
         if filter_criteria.has_search:
-            is_keyword = filter_criteria.search_text.startswith(
-                '?') or filter_criteria.is_keyword_search
+            is_keyword = (
+                filter_criteria.search_text.startswith("?")
+                or filter_criteria.is_keyword_search
+            )
 
             # Remove leading ? if keyword search
-            search_text = filter_criteria.search_text[1:] if filter_criteria.search_text.startswith(
-                '?') else filter_criteria.search_text
+            search_text = (
+                filter_criteria.search_text[1:]
+                if filter_criteria.search_text.startswith("?")
+                else filter_criteria.search_text
+            )
 
             # Keyword search: contains; regular search: starts with
             if is_keyword:
@@ -156,12 +161,24 @@ class BookQueries:
             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            book.title, book.author_id, book.year, book.series_id,
-            book.genre_id, book.collection_id, book.reader,
-            book.time_hours, book.time_minutes, book.tracks,
-            book.size_mb, book.bitrate, book.file_format,
-            book.path, book.comments, read_date_value,
-            date_added_value, book.source
+            book.title,
+            book.author_id,
+            book.year,
+            book.series_id,
+            book.genre_id,
+            book.collection_id,
+            book.reader,
+            book.time_hours,
+            book.time_minutes,
+            book.tracks,
+            book.size_mb,
+            book.bitrate,
+            book.file_format,
+            book.path,
+            book.comments,
+            read_date_value,
+            date_added_value,
+            book.source,
         )
         cursor = self.db.execute(query, params)
         if commit:
@@ -181,12 +198,24 @@ class BookQueries:
             WHERE book_id = ?
         """
         params = (
-            book.title, book.author_id, book.year, book.series_id,
-            book.genre_id, book.collection_id, book.reader,
-            book.time_hours, book.time_minutes, book.tracks,
-            book.size_mb, book.bitrate, book.file_format,
-            book.path, book.comments, read_date_value, book.source,
-            book.book_id
+            book.title,
+            book.author_id,
+            book.year,
+            book.series_id,
+            book.genre_id,
+            book.collection_id,
+            book.reader,
+            book.time_hours,
+            book.time_minutes,
+            book.tracks,
+            book.size_mb,
+            book.bitrate,
+            book.file_format,
+            book.path,
+            book.comments,
+            read_date_value,
+            book.source,
+            book.book_id,
         )
         self.db.execute(query, params)
         self.db.connect().commit()
@@ -202,7 +231,7 @@ class BookQueries:
             return
 
         for chunk in self._book_id_chunks(book_ids):
-            placeholders = ','.join('?' * len(chunk))
+            placeholders = ",".join("?" * len(chunk))
             self.db.execute(
                 f"DELETE FROM books WHERE book_id IN ({placeholders})",
                 tuple(chunk),
@@ -239,11 +268,11 @@ class BookQueries:
             return
 
         for chunk in self._book_id_chunks(book_ids):
-            placeholders = ','.join('?' * len(chunk))
+            placeholders = ",".join("?" * len(chunk))
             params = [series_id] + chunk
             self.db.execute(
                 f"UPDATE books SET series_id = ? WHERE book_id IN ({placeholders})",
-                tuple(params)
+                tuple(params),
             )
         self.db.connect().commit()
 
@@ -253,11 +282,11 @@ class BookQueries:
             return
 
         for chunk in self._book_id_chunks(book_ids):
-            placeholders = ','.join('?' * len(chunk))
+            placeholders = ",".join("?" * len(chunk))
             params = [genre_id] + chunk
             self.db.execute(
                 f"UPDATE books SET genre_id = ? WHERE book_id IN ({placeholders})",
-                tuple(params)
+                tuple(params),
             )
         self.db.connect().commit()
 
@@ -267,11 +296,11 @@ class BookQueries:
             return
 
         for chunk in self._book_id_chunks(book_ids):
-            placeholders = ','.join('?' * len(chunk))
+            placeholders = ",".join("?" * len(chunk))
             params = [collection_id] + chunk
             self.db.execute(
                 f"UPDATE books SET collection_id = ? WHERE book_id IN ({placeholders})",
-                tuple(params)
+                tuple(params),
             )
         self.db.connect().commit()
 
@@ -281,62 +310,69 @@ class BookQueries:
 
         if parse_dates:
             # Convert string dates from SQLite to Python date objects
-            read_date_str = row_dict.get('read_date')
+            read_date_str = row_dict.get("read_date")
             read_date_obj = None
-            if read_date_str and read_date_str.strip() and read_date_str != '2000-01-01':
+            if (
+                read_date_str
+                and read_date_str.strip()
+                and read_date_str != "2000-01-01"
+            ):
                 try:
                     # Try YYYY-MM-DD format (our standard)
-                    read_date_obj = datetime.strptime(
-                        read_date_str, '%Y-%m-%d').date()
+                    read_date_obj = datetime.strptime(read_date_str, "%Y-%m-%d").date()
                 except (ValueError, TypeError):
                     try:
                         # Try M/D/YYYY format (from Access import)
                         read_date_obj = datetime.strptime(
-                            read_date_str, '%m/%d/%Y').date()
+                            read_date_str, "%m/%d/%Y"
+                        ).date()
                     except (ValueError, TypeError):
                         read_date_obj = None
 
-            date_added_str = row_dict.get('date_added')
+            date_added_str = row_dict.get("date_added")
             date_added_obj = None
             if date_added_str:
                 try:
                     # SQLite stores datetime as 'YYYY-MM-DD HH:MM:SS' strings
                     date_added_obj = datetime.strptime(
-                        date_added_str, '%Y-%m-%d %H:%M:%S')
+                        date_added_str, "%Y-%m-%d %H:%M:%S"
+                    )
                 except (ValueError, TypeError):
                     date_added_obj = datetime.now()
             else:
                 date_added_obj = datetime.now()
         else:
             # Fast path for large list hydration: keep date values as strings.
-            read_date_obj = row_dict.get('read_date')
-            date_added_obj = row_dict.get(
-                'date_added') or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            read_date_obj = row_dict.get("read_date")
+            date_added_obj = row_dict.get("date_added") or datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
 
         return Book(
-            book_id=row_dict.get('book_id', 0),
-            title=row_dict.get('title', ''),
-            author_id=row_dict.get('author_id'),
-            author_name=row_dict.get('author_name', ''),
-            series_id=row_dict.get('series_id'),
-            series_name=row_dict.get('series_name', ''),
-            genre_id=row_dict.get('genre_id'),
-            genre_name=row_dict.get('genre_name', ''),
-            collection_id=row_dict.get('collection_id'),
-            collection_name=row_dict.get('collection_name', ''),
-            year=row_dict.get('year'),
-            reader=row_dict.get('reader', ''),
-            time_hours=row_dict.get('time_hours', 0),
-            time_minutes=row_dict.get('time_minutes', 0),
-            tracks=row_dict.get('tracks', 0),
-            size_mb=row_dict.get('size_mb', 0.0),
-            bitrate=row_dict.get('bitrate', 0),
-            file_format=row_dict.get('file_format', ''),
-            path=row_dict.get('path', ''),
-            comments=row_dict.get('comments', ''),
+            book_id=row_dict.get("book_id", 0),
+            title=row_dict.get("title", ""),
+            author_id=row_dict.get("author_id"),
+            author_name=row_dict.get("author_name", ""),
+            series_id=row_dict.get("series_id"),
+            series_name=row_dict.get("series_name", ""),
+            genre_id=row_dict.get("genre_id"),
+            genre_name=row_dict.get("genre_name", ""),
+            collection_id=row_dict.get("collection_id"),
+            collection_name=row_dict.get("collection_name", ""),
+            year=row_dict.get("year"),
+            reader=row_dict.get("reader", ""),
+            time_hours=row_dict.get("time_hours", 0),
+            time_minutes=row_dict.get("time_minutes", 0),
+            tracks=row_dict.get("tracks", 0),
+            size_mb=row_dict.get("size_mb", 0.0),
+            bitrate=row_dict.get("bitrate", 0),
+            file_format=row_dict.get("file_format", ""),
+            path=row_dict.get("path", ""),
+            comments=row_dict.get("comments", ""),
             read_date=read_date_obj,
             date_added=date_added_obj,
-            source=row_dict.get('source', ''),
+            source=row_dict.get("source", ""),
+            # rating and series_number removed
         )
 
     @staticmethod
@@ -345,9 +381,9 @@ class BookQueries:
         if not value:
             return None
         if isinstance(value, datetime):
-            return value.date().strftime('%Y-%m-%d')
+            return value.date().strftime("%Y-%m-%d")
         if isinstance(value, date):
-            return value.strftime('%Y-%m-%d')
+            return value.strftime("%Y-%m-%d")
         if isinstance(value, str):
             return value
         return None
@@ -358,10 +394,11 @@ class BookQueries:
         if not value:
             return None
         if isinstance(value, datetime):
-            return value.strftime('%Y-%m-%d %H:%M:%S')
+            return value.strftime("%Y-%m-%d %H:%M:%S")
         if isinstance(value, date):
             return datetime(value.year, value.month, value.day).strftime(
-                '%Y-%m-%d %H:%M:%S')
+                "%Y-%m-%d %H:%M:%S"
+            )
         if isinstance(value, str):
             return value
         return None
@@ -376,24 +413,23 @@ class AuthorQueries:
     def get_all(self) -> List[Author]:
         """Get all authors."""
         rows = self.db.fetch_all("SELECT * FROM authors ORDER BY name")
-        return [Author(author_id=r['author_id'], name=r['name']) for r in rows]
+        return [Author(author_id=r["author_id"], name=r["name"]) for r in rows]
 
     def get_by_id(self, author_id: int) -> Optional[Author]:
         """Get author by ID."""
-        row = self.db.fetch_one("SELECT * FROM authors WHERE author_id = ?",
-                                (author_id,))
-        return Author(author_id=row['author_id'], name=row['name']) if row else None
+        row = self.db.fetch_one(
+            "SELECT * FROM authors WHERE author_id = ?", (author_id,)
+        )
+        return Author(author_id=row["author_id"], name=row["name"]) if row else None
 
     def get_by_name(self, name: str) -> Optional[Author]:
         """Get author by name."""
-        row = self.db.fetch_one(
-            "SELECT * FROM authors WHERE name = ?", (name,))
-        return Author(author_id=row['author_id'], name=row['name']) if row else None
+        row = self.db.fetch_one("SELECT * FROM authors WHERE name = ?", (name,))
+        return Author(author_id=row["author_id"], name=row["name"]) if row else None
 
     def insert(self, name: str, commit: bool = True) -> int:
         """Insert a new author."""
-        cursor = self.db.execute(
-            "INSERT INTO authors (name) VALUES (?)", (name,))
+        cursor = self.db.execute("INSERT INTO authors (name) VALUES (?)", (name,))
         if commit:
             self.db.connect().commit()
         return cursor.lastrowid
@@ -407,14 +443,14 @@ class AuthorQueries:
 
     def update(self, author_id: int, name: str):
         """Update author name."""
-        self.db.execute("UPDATE authors SET name = ? WHERE author_id = ?",
-                        (name, author_id))
+        self.db.execute(
+            "UPDATE authors SET name = ? WHERE author_id = ?", (name, author_id)
+        )
         self.db.connect().commit()
 
     def delete(self, author_id: int):
         """Delete author if no books reference it."""
-        self.db.execute(
-            "DELETE FROM authors WHERE author_id = ?", (author_id,))
+        self.db.execute("DELETE FROM authors WHERE author_id = ?", (author_id,))
         self.db.connect().commit()
 
     def cleanup_unused(self):
@@ -436,24 +472,23 @@ class SeriesQueries:
     def get_all(self) -> List[Series]:
         """Get all series."""
         rows = self.db.fetch_all("SELECT * FROM series ORDER BY name")
-        return [Series(series_id=r['series_id'], name=r['name']) for r in rows]
+        return [Series(series_id=r["series_id"], name=r["name"]) for r in rows]
 
     def get_by_id(self, series_id: int) -> Optional[Series]:
         """Get series by ID."""
-        row = self.db.fetch_one("SELECT * FROM series WHERE series_id = ?",
-                                (series_id,))
-        return Series(series_id=row['series_id'], name=row['name']) if row else None
+        row = self.db.fetch_one(
+            "SELECT * FROM series WHERE series_id = ?", (series_id,)
+        )
+        return Series(series_id=row["series_id"], name=row["name"]) if row else None
 
     def get_by_name(self, name: str) -> Optional[Series]:
         """Get series by name."""
-        row = self.db.fetch_one(
-            "SELECT * FROM series WHERE name = ?", (name,))
-        return Series(series_id=row['series_id'], name=row['name']) if row else None
+        row = self.db.fetch_one("SELECT * FROM series WHERE name = ?", (name,))
+        return Series(series_id=row["series_id"], name=row["name"]) if row else None
 
     def insert(self, name: str, commit: bool = True) -> int:
         """Insert a new series."""
-        cursor = self.db.execute(
-            "INSERT INTO series (name) VALUES (?)", (name,))
+        cursor = self.db.execute("INSERT INTO series (name) VALUES (?)", (name,))
         if commit:
             self.db.connect().commit()
         return cursor.lastrowid
@@ -467,8 +502,9 @@ class SeriesQueries:
 
     def update(self, series_id: int, name: str):
         """Update series name."""
-        self.db.execute("UPDATE series SET name = ? WHERE series_id = ?",
-                        (name, series_id))
+        self.db.execute(
+            "UPDATE series SET name = ? WHERE series_id = ?", (name, series_id)
+        )
         self.db.connect().commit()
 
     def delete(self, series_id: int):
@@ -495,24 +531,21 @@ class GenreQueries:
     def get_all(self) -> List[Genre]:
         """Get all genres."""
         rows = self.db.fetch_all("SELECT * FROM genres ORDER BY name")
-        return [Genre(genre_id=r['genre_id'], name=r['name']) for r in rows]
+        return [Genre(genre_id=r["genre_id"], name=r["name"]) for r in rows]
 
     def get_by_id(self, genre_id: int) -> Optional[Genre]:
         """Get genre by ID."""
-        row = self.db.fetch_one("SELECT * FROM genres WHERE genre_id = ?",
-                                (genre_id,))
-        return Genre(genre_id=row['genre_id'], name=row['name']) if row else None
+        row = self.db.fetch_one("SELECT * FROM genres WHERE genre_id = ?", (genre_id,))
+        return Genre(genre_id=row["genre_id"], name=row["name"]) if row else None
 
     def get_by_name(self, name: str) -> Optional[Genre]:
         """Get genre by name."""
-        row = self.db.fetch_one(
-            "SELECT * FROM genres WHERE name = ?", (name,))
-        return Genre(genre_id=row['genre_id'], name=row['name']) if row else None
+        row = self.db.fetch_one("SELECT * FROM genres WHERE name = ?", (name,))
+        return Genre(genre_id=row["genre_id"], name=row["name"]) if row else None
 
     def insert(self, name: str, commit: bool = True) -> int:
         """Insert a new genre."""
-        cursor = self.db.execute(
-            "INSERT INTO genres (name) VALUES (?)", (name,))
+        cursor = self.db.execute("INSERT INTO genres (name) VALUES (?)", (name,))
         if commit:
             self.db.connect().commit()
         return cursor.lastrowid
@@ -526,8 +559,9 @@ class GenreQueries:
 
     def update(self, genre_id: int, name: str):
         """Update genre name."""
-        self.db.execute("UPDATE genres SET name = ? WHERE genre_id = ?",
-                        (name, genre_id))
+        self.db.execute(
+            "UPDATE genres SET name = ? WHERE genre_id = ?", (name, genre_id)
+        )
         self.db.connect().commit()
 
     def delete(self, genre_id: int):
@@ -559,23 +593,25 @@ class CollectionQueries:
         query += " ORDER BY name"
 
         rows = self.db.fetch_all(query)
-        return [Collection(
-            collection_id=r['collection_id'],
-            name=r['name'],
-            active=bool(r['active'])
-        ) for r in rows]
+        return [
+            Collection(
+                collection_id=r["collection_id"],
+                name=r["name"],
+                active=bool(r["active"]),
+            )
+            for r in rows
+        ]
 
     def get_by_id(self, collection_id: int) -> Optional[Collection]:
         """Get collection by ID."""
         row = self.db.fetch_one(
-            "SELECT * FROM collections WHERE collection_id = ?",
-            (collection_id,)
+            "SELECT * FROM collections WHERE collection_id = ?", (collection_id,)
         )
         if row:
             return Collection(
-                collection_id=row['collection_id'],
-                name=row['name'],
-                active=bool(row['active'])
+                collection_id=row["collection_id"],
+                name=row["name"],
+                active=bool(row["active"]),
             )
         return None
 
@@ -583,7 +619,7 @@ class CollectionQueries:
         """Insert a new collection."""
         cursor = self.db.execute(
             "INSERT INTO collections (name, active) VALUES (?, ?)",
-            (collection.name, collection.active)
+            (collection.name, collection.active),
         )
         self.db.connect().commit()
         return cursor.lastrowid
@@ -592,14 +628,15 @@ class CollectionQueries:
         """Update a collection."""
         self.db.execute(
             "UPDATE collections SET name = ?, active = ? WHERE collection_id = ?",
-            (collection.name, collection.active, collection.collection_id)
+            (collection.name, collection.active, collection.collection_id),
         )
         self.db.connect().commit()
 
     def delete(self, collection_id: int):
         """Delete collection if no books reference it."""
-        self.db.execute("DELETE FROM collections WHERE collection_id = ?",
-                        (collection_id,))
+        self.db.execute(
+            "DELETE FROM collections WHERE collection_id = ?", (collection_id,)
+        )
         self.db.connect().commit()
 
 
@@ -617,16 +654,13 @@ class StatisticsQueries:
         stats.total_books = self.db.fetch_one("SELECT COUNT(*) FROM books")[0]
 
         # Total authors
-        stats.total_authors = self.db.fetch_one(
-            "SELECT COUNT(*) FROM authors")[0]
+        stats.total_authors = self.db.fetch_one("SELECT COUNT(*) FROM authors")[0]
 
         # Total series
-        stats.total_series = self.db.fetch_one(
-            "SELECT COUNT(*) FROM series")[0]
+        stats.total_series = self.db.fetch_one("SELECT COUNT(*) FROM series")[0]
 
         # Total genres
-        stats.total_genres = self.db.fetch_one(
-            "SELECT COUNT(*) FROM genres")[0]
+        stats.total_genres = self.db.fetch_one("SELECT COUNT(*) FROM genres")[0]
 
         # Total collections
         stats.total_collections = self.db.fetch_one(

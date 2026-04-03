@@ -308,9 +308,9 @@ class PreferencesWindow(QDialog):
         self.autocorrect_proper_case_check.setAccessibleName(
             "Apply proper case to fields")
         self.autocorrect_move_the_check = QCheckBox(
-            "Move leading 'The' to end of title")
+            "Move leading 'The', 'A', 'An' to end of title")
         self.autocorrect_move_the_check.setAccessibleName(
-            "Move leading 'The' to end of title")
+            "Move leading 'The', 'A', 'An' to end of title")
         options_layout.addWidget(self.auto_add_clean_books_check, 0, 0)
         options_layout.addWidget(self.flip_author_check, 0, 1)
         options_layout.addWidget(self.autocorrect_proper_case_check, 1, 0)
@@ -612,14 +612,6 @@ class PreferencesWindow(QDialog):
         self.save_button.setAutoDefault(True)
         footer_layout.addWidget(self.save_button)
 
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setAccessibleName("Cancel")
-        self.cancel_button.setAccessibleDescription(
-            "Discard changes and close - Alt+L")
-        self.cancel_button.setDefault(False)
-        self.cancel_button.setAutoDefault(True)
-        footer_layout.addWidget(self.cancel_button)
-
         layout.addLayout(footer_layout)
 
     def _apply_compact_combo_widths(self):
@@ -722,7 +714,6 @@ class PreferencesWindow(QDialog):
         self.rule_min_title_value.setStyleSheet(combo_style)
         self.browse_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
-        self.cancel_button.setStyleSheet(button_style)
 
         format_checkbox_style = f"""
             QCheckBox {{
@@ -970,24 +961,22 @@ class PreferencesWindow(QDialog):
         return self._capture_state() != self._initial_state
 
     def _confirm_exit_with_changes(self) -> int:
-        """Ask whether to save changes before exit. Returns QMessageBox reply."""
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Unsaved Changes")
-        msg.setStyleSheet(
-            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
+        """Ask whether to save changes before exit using standardized message box."""
+        from src.accessibility.style_helpers import exec_styled_message_box
+        
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Unsaved Changes",
+            text="You have unsaved changes.\n\n"
+                 "Yes = Save and close\n"
+                 "No = Continue editing\n"
+                 "Cancel = Revert and close",
+            buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            default_button=QMessageBox.Yes
         )
-        msg.setText(
-            "You have unsaved changes.\n\n"
-            "Yes = Save and close\n"
-            "No = Continue editing\n"
-            "Cancel = Revert and close"
-        )
-        msg.setStandardButtons(
-            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-        msg.button(QMessageBox.Yes).setText("&Yes - Save")
-        msg.button(QMessageBox.No).setText("&No - Continue editing")
-        msg.button(QMessageBox.Cancel).setText("Cance&l - Revert and close")
-        return msg.exec()
+        return reply
 
     def _discard_and_close(self):
         """Discard transient changes and close dialog."""
@@ -1299,7 +1288,6 @@ class PreferencesWindow(QDialog):
         self.browse_button.clicked.connect(self.on_browse)
 
         self.save_button.clicked.connect(self.on_save)
-        self.cancel_button.clicked.connect(self.on_cancel)
 
     def register_shortcuts(self):
         """Register keyboard shortcuts using ShortcutManager (except Alt+/)."""
@@ -1308,12 +1296,12 @@ class PreferencesWindow(QDialog):
         callback_map = {
             'theme_combo': self.focus_display_section,
             'import_dir_edit': self.focus_source_scope_section,
+            'browse_button': self.on_browse,
             'auto_add_clean_books_check': self.focus_options_section,
             'author_fallback_checkbox': self.focus_fallback_section,
             'rules_section_text': self.focus_validation_section,
             'autocorrect_section_text': self.focus_autocorrect_section,
             'save_button': self.on_save,
-            'cancel_button': self.on_cancel,
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.PREFERENCES_WINDOW, callback_map)
@@ -1323,6 +1311,10 @@ class PreferencesWindow(QDialog):
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
+        
+        # Escape key for cancel functionality
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.activated.connect(self.on_cancel)
 
     def _focus_section_widget(self, widget, section_name: str):
         """Focus first widget in a section and announce context."""
@@ -1384,12 +1376,12 @@ class PreferencesWindow(QDialog):
         shortcuts = [
             ("Alt+D", "Display section"),
             ("Alt+P", "Path & Scope section"),
+            ("Alt+B", "Browse for default import directory"),
             ("Alt+O", "Options section"),
             ("Alt+F", "Fallback and Parsing Behavior section"),
             ("Alt+R", "Validation Rules section"),
             ("Alt+A", "Auto-Correction section"),
             ("Alt+S", "Save"),
-            ("Alt+L", "Cancel"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Tab/Shift+Tab", "Move between controls in the current section"),

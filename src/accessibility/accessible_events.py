@@ -2,7 +2,7 @@
 Accessibility Event Helpers
 Utility functions for emitting accessibility events that screen readers can detect.
 
-This module properly supports screen readers (JAWS, NVDA) by:
+This module properly supports screen readers by:
 1. Setting accessible names/descriptions on widgets
 2. Emitting proper accessibility events when content changes
 3. Only emitting events when accessibility is active (QAccessible.isActive())
@@ -13,15 +13,15 @@ from PySide6.QtWidgets import QWidget, QTableWidget, QStatusBar, QDialog, QAppli
 from PySide6.QtCore import Qt
 
 
-# Global announcement widget for JAWS to read
+# Global announcement widget for screen readers
 _announcement_widget = None
 
 
 def get_announcement_widget(parent=None):
     """
-    Get or create a hidden label widget that JAWS uses for announcements.
+    Get or create a hidden label widget that screen readers use for announcements.
 
-    JAWS can reliably read this widget when its accessible name/description changes.
+    Screen readers can reliably read this widget when its accessible name/description changes.
     This is more reliable than QAccessibleAnnouncementEvent.
 
     Args:
@@ -72,15 +72,15 @@ def check_accessibility_support() -> dict:
 
 def announce_status_message(status_bar: QStatusBar, message: str, announcement_widget=None, move_focus: bool = False) -> None:
     """
-    Update status bar message and notify JAWS/NVDA of the change.
+    Update status bar message and notify screen readers of the change.
 
-    Uses a dedicated announcement widget which JAWS reads more reliably.
+    Uses a dedicated announcement widget which screen readers read more reliably.
 
     Args:
         status_bar: QStatusBar widget to update
         message: Message text to display and announce
         announcement_widget: Optional hidden label for announcements (created if not provided)
-        move_focus: If True, briefly move focus to status bar so JAWS reads it (workaround for event crashes)
+        move_focus: If True, briefly move focus to status bar so screen readers read it (workaround for event crashes)
     """
     try:
         # Update the visible status bar message
@@ -90,7 +90,7 @@ def announce_status_message(status_bar: QStatusBar, message: str, announcement_w
         status_bar.setAccessibleName(message)
         status_bar.setAccessibleDescription(message)
 
-        # Workaround for JAWS: Briefly move focus to status bar so it reads the message
+        # Workaround: Briefly move focus to status bar so screen readers read the message
         # This is more reliable than QAccessibleEvent which can cause crashes
         if move_focus and QAccessible.isActive():
             # Get the currently focused widget to restore focus later
@@ -102,7 +102,7 @@ def announce_status_message(status_bar: QStatusBar, message: str, announcement_w
                 status_bar.setFocusPolicy(Qt.StrongFocus)
                 status_bar.setFocus()
 
-                # Use a timer to restore focus after JAWS reads the message
+                # Use a timer to restore focus after screen reader reads the message
                 def restore_focus():
                     try:
                         active_app = QApplication.instance()
@@ -117,13 +117,13 @@ def announce_status_message(status_bar: QStatusBar, message: str, announcement_w
                         except RuntimeError:
                             pass
 
-                # Restore focus after 300ms (more time for JAWS to read)
+                # Restore focus after 300ms (time for screen reader to read)
                 from PySide6.QtCore import QTimer
                 QTimer.singleShot(300, restore_focus)
 
         # TEMPORARILY DISABLED - QAccessibleEvent may be causing crashes
         # if announcement_widget is not None:
-        #     # Change the accessible text - JAWS will announce this
+        #     # Change the accessible text - screen reader will announce this
         #     announcement_widget.setAccessibleName(message)
         #     announcement_widget.setAccessibleDescription(message)
         #     announcement_widget.setText(message)
