@@ -1,0 +1,52 @@
+Shortcut,main_window,book_details,import_window,import_detail_window,import_progress_window,update_window,preferences_window,web_metadata_window,collection_window,backup_restore_window,name_list_window,reading_history_window,book_list_import_window
+Alt+1,Jump to column 1 (Author),,Jump to column 1 (Author),,,,,,,,,,
+Alt+2,Jump to column 2 (Title),,Jump to column 2 (Title),,,,,,,,,,
+Alt+3,Jump to column 3 (Year),,Jump to column 3 (Year),,,,,,,,,,
+Alt+4,Jump to column 4 (Plot),,Jump to column 4 (Error Type),,,,,,,,,,
+Alt+5,Jump to column 5 (Series),,Jump to column 5 (File/Folder),,,,,,,,,,
+Alt+6,Jump to column 6 (Genre),,,,,,,,,,,,
+Alt+7,Jump to column 7 (Length),,,,,,,,,,,,
+Alt+8,Jump to column 8 (Tracks),,,,,,,,,,,,
+Alt+9,Jump to column 9 (Read),,,,,,,,,,,,
+Alt+A,,Author,,Author,,,Auto-Correction section,Author,,,Active checkbox (Collections only),,Author
+Alt+B,,Bitrate,,Bitrate,,Book list,Browse,,,Create backup,,Focus current table,
+Alt+C,,Collection,Collection,Collection,,Collection,,,,,,,
+Alt+D,Delete selected,Delete,,Discard,,,,,Delete,Delete backup,,,
+Alt+Down,,,,,,Open combo dropdown,,,,,,,
+Alt+E,,Read date,Error filter,Errors,,,,,Edit selected,,Edit selected,,Read Date
+Alt+F,,Files,Folder,Files,,,Fallback section,,,Full reset,Find,From date field,Files
+Alt+G,,Genre,,Genre,,Genre,,Genre,,,,General tab,Genre
+Alt+H,,Path,,Path,,,,,,,,,Instructions
+Alt+I,,Series,,Series,,,,Series,,,,,Import books
+Alt+L,Cancel selection,,Jump to table,,,,,,Jump to list,Backup list,Jump to list,,
+Alt+M,,Time,,Time,,,,,,,Name edit,Month tab,Time
+Alt+N,,New book,,,,,,Series #,New,,,,
+Alt+O,,,,,,,Options section,,,,,,Options section
+Alt+P,,Plot,,Plot,,,Path & Scope section,Plot,,,,,Plot
+Alt+R,,Reader,,Reader,,,Validation Rules section,Rating,,Run restore,,Date Range tab,Reader
+Alt+S,,Save,Add selected,Save,,Series,Save,Save,Save,,Save,Search,Series
+Alt+T,,Title,,Title,,,,Title,,Focus restore file,,,Title
+Alt+U,Update selected,,,,,,,,,,,,
+Alt+V,,,Add valid,,,,,,,,,,
+Alt+W,,Fetch web info,Browse,,,,,,,Browse for restore file,,,Browse
+Alt+X,,,Export list to CSV,,,,,,,,,,Export errors to CSV
+Alt+Y,,Year,,Year,,,,Year,,,,Year tab,Year
+Alt+Z,,Size,,Size,,,,,,,,,
+Alt+/,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar
+Ctrl+A,Disabled (safety),,,,,,,,,,,,
+Ctrl+F,Find,,,,,,,,,,,,
+Ctrl+I,Import,,Import (scan),,,,,,,,,,
+Ctrl+N,New book,,,,,,,,,,,,
+Ctrl+Q,Quit,,,,,,,,,,,,
+Ctrl+Shift+I,Import Book List,,,,,,,,,,,,
+Ctrl+U,Update selected,,,,,,,,,,,,
+Ctrl+Plus,Zoom in,,,,,,,,,,,,
+Ctrl+Minus,Zoom out,,,,,,,,,,,,
+Ctrl+0,Reset zoom,,,,,,,,,,,,
+Del,Delete selected,,,,,,,,,Delete backup,,,
+F1,Help,Help,Help,Help,Help,Help,Help,Help,Help,Help,Help,Help,Help
+Escape,Clear selection/search,Cancel/Close,Cancel/Close,Close,Close,Close,Close,Close,Cancel/Close,Close,Cancel/Close,Close,Close
+Enter,Open focused item,,,,,,,,,,,,
+PageUp,,Previous book,,Previous item,,,,,,,,,
+PageDown,,Next book,,Next item,,,,,,,,,
+Shift+Down/Up,Start/extend selection,,,,,,,,,,,,

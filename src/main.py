@@ -75,7 +75,36 @@ show_launch_message_if_executable()
 
 # Version information - update this with each release
 APP_VERSION = "1.9.4"
-APP_BUILD_DATE = "2026-04-02"
+APP_BUILD_DATE = "2026-04-03"
+
+BUILD_EXPIRY_DAYS = 30
+
+
+def check_build_expiry():
+    """Block startup if build age is 30+ days."""
+    try:
+        from datetime import date as _date
+        build = _date.fromisoformat(APP_BUILD_DATE)
+        age_days = (_date.today() - build).days
+        if age_days >= BUILD_EXPIRY_DAYS:
+            title = "AbCS — Build Expired"
+            msg = (
+                f"This copy of AbCS (build {APP_BUILD_DATE}) is {age_days} days old "
+                f"and has expired. "
+                f"Tester builds expire after {BUILD_EXPIRY_DAYS} days to ensure "
+                f"everyone is testing the latest version. "
+                f"Please download a newer build to continue."
+            )
+            if sys.platform == "win32":
+                _show_native_message(title, msg, auto_close_seconds=60.0)
+            else:
+                print(f"\n{title}\n{'='*len(title)}\n{msg}\n", file=sys.stderr)
+            sys.exit(1)
+    except SystemExit:
+        raise
+    except Exception:
+        pass  # Never block startup on a date-parse failure
+
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -182,16 +211,15 @@ class AbCSApplication:
             from PySide6.QtWidgets import QMessageBox
             from src.accessibility.style_helpers import exec_styled_message_box
             
-            splash_message = f"""Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner!
-Build: {APP_BUILD_DATE}
-
-No audiobooks found in the database yet.
-
-You can:
-• Import audiobooks from your computer (scan folders)
-• Manually add a new book
-
-Use Ctrl+I to import or Alt+M for menu options."""
+            splash_message = (
+                f"Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner. "
+                f"Build: {APP_BUILD_DATE}. "
+                "No audiobooks found in the database yet. "
+                "License: Copyright (c) 2025-2026 C.F. Drake & Contributors. "
+                "Non-commercial use only. Selling or fee-based distribution is not allowed without written permission. "
+                "You can import audiobooks from your computer (scan folders) or manually add a new book. "
+                "Use Ctrl+I to import or Alt+M for menu options."
+            )
             
             exec_styled_message_box(
                 self.main_window if self.main_window else self.qt_app.activeWindow(),
@@ -420,40 +448,138 @@ Use Ctrl+I to import or Alt+M for menu options."""
         if stats.total_books != 0:
             return
 
-        # Use single message box with custom buttons for JAWS Insert+B compatibility
-        from PySide6.QtWidgets import QMessageBox
-        from src.accessibility.style_helpers import exec_styled_message_box
-        
-        empty_library_message = """The database is empty.
-
-To get started, import audiobooks from your folders.
-You can also open Preferences to adjust colors and font size."""
-        
-        reply = exec_styled_message_box(
-            self.main_window,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Welcome to AbCS - Database Empty",
-            text=empty_library_message,
-            buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-            default_button=QMessageBox.Yes,
-            button_texts={
-                QMessageBox.Yes: "Import",
-                QMessageBox.No: "Preferences", 
-                QMessageBox.Cancel: "Continue"
-            }
+        from PySide6.QtWidgets import (
+            QDialog,
+            QVBoxLayout,
+            QHBoxLayout,
+            QLabel,
+            QPushButton,
+            QTableWidget,
+            QTableWidgetItem,
+            QHeaderView,
+            QAbstractItemView,
         )
-        
+
+        guidance_lines = [
+            "Database is empty.",
+            "Use Tab key to move to the option buttons and press Enter to select.",
+            "Import Books: Scan audiobook folders and read tags automatically.",
+            "Import List: Import from spreadsheet files (CSV, XLSX, XLS).",
+            "Preferences: Adjust colors and font size.",
+            "Continue: Stay in the main window.",
+            "Non-commercial use only; fee-based distribution requires written permission from C.F. Drake and Contributors.",
+        ]
+
+        # Mirror working popup pattern by announcing guidance in status bar as well.
+        self.main_window.set_status(
+            "Database empty dialog opened. Choose Import Books, Import List, Preferences, or Continue.",
+            timeout_ms=12000,
+            announce=True,
+        )
+
+        dlg = QDialog(self.main_window)
+        dlg.setModal(True)
+        dlg.setWindowTitle("Welcome to AbCS - Database Empty")
+        dlg.setAccessibleName("Database Empty - Choose Import Option")
+        dlg.setAccessibleDescription("Choose how to start with an empty database")
+        dlg.resize(self.scaler.get_scaled_size(700), self.scaler.get_scaled_size(300))
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(8)
+
+        heading = QLabel("Choose one option to get started", dlg)
+        heading.setAccessibleName("Choose one option to get started")
+        heading_font = heading.font()
+        heading_font.setPointSize(self.scaler.get_scaled_size(12))
+        heading.setFont(heading_font)
+        layout.addWidget(heading)
+
+        guidance_table = QTableWidget(dlg)
+        guidance_table.setAccessibleName("Empty database guidance")
+        guidance_table.setAccessibleDescription(
+            "Read-only guidance text for startup options. Use arrow keys to read line by line."
+        )
+        guidance_table.setColumnCount(1)
+        guidance_table.setRowCount(len(guidance_lines))
+        guidance_table.setHorizontalHeaderLabels([""])
+        guidance_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        guidance_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        guidance_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        guidance_table.setTabKeyNavigation(False)
+        guidance_table.setAlternatingRowColors(False)
+        guidance_table.setShowGrid(False)
+        guidance_table.verticalHeader().setVisible(False)
+        guidance_table.horizontalHeader().setVisible(False)
+        guidance_table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected { background-color: transparent; color: palette(text); }"
+            "QTableWidget::item:focus { outline: none; }"
+        )
+
+        for row, line in enumerate(guidance_lines):
+            item = QTableWidgetItem(line)
+            item.setData(Qt.AccessibleTextRole, line)
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            guidance_table.setItem(row, 0, item)
+
+        guidance_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        guidance_table.setMaximumHeight(self.scaler.get_scaled_size(150))
+        table_font = guidance_table.font()
+        table_font.setPointSize(self.scaler.get_scaled_size(11))
+        guidance_table.setFont(table_font)
+        layout.addWidget(guidance_table)
+
+        button_row = QHBoxLayout()
+        button_row.setSpacing(8)
+
+        import_books_btn = QPushButton("Import Books", dlg)
+        import_list_btn = QPushButton("Import List", dlg)
+        preferences_btn = QPushButton("Preferences", dlg)
+        continue_btn = QPushButton("Continue", dlg)
+
+        reference_button_style = self.main_window.update_button.styleSheet()
+        for btn in (import_books_btn, import_list_btn, preferences_btn, continue_btn):
+            btn.setStyleSheet(reference_button_style)
+            button_row.addWidget(btn)
+
+        layout.addLayout(button_row)
+
+        choice = {"value": "continue"}
+
+        import_books_btn.clicked.connect(lambda: (choice.update(value="import_books"), dlg.accept()))
+        import_list_btn.clicked.connect(lambda: (choice.update(value="import_list"), dlg.accept()))
+        preferences_btn.clicked.connect(lambda: (choice.update(value="preferences"), dlg.accept()))
+        continue_btn.clicked.connect(lambda: (choice.update(value="continue"), dlg.accept()))
+
+        dlg.setTabOrder(guidance_table, import_books_btn)
+        dlg.setTabOrder(import_books_btn, import_list_btn)
+        dlg.setTabOrder(import_list_btn, preferences_btn)
+        dlg.setTabOrder(preferences_btn, continue_btn)
+
+        def focus_guidance_table() -> None:
+            if guidance_table.rowCount() > 0:
+                guidance_table.setCurrentCell(0, 0)
+            guidance_table.setFocus(Qt.ActiveWindowFocusReason)
+
+        QTimer.singleShot(0, focus_guidance_table)
+        QTimer.singleShot(150, focus_guidance_table)
+        dlg.exec()
+
         # Handle user's choice
-        if reply == QMessageBox.Yes:  # Import
+        if choice["value"] == "import_books":
             self.main_window.on_import()
-        elif reply == QMessageBox.No:  # Preferences
+        elif choice["value"] == "import_list":
+            self.main_window.on_book_list_import()
+        elif choice["value"] == "preferences":
             self.main_window.on_preferences()
-        # Cancel (Continue) - do nothing, just continue to main app
+        elif choice["value"] == "continue":
+            pass
 
 
 def main():
     """Application entry point."""
+    check_build_expiry()
     app = AbCSApplication()
     sys.exit(app.run())
 

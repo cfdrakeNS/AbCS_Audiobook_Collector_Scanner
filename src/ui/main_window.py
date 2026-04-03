@@ -119,7 +119,6 @@ class BookTableModel(QAbstractTableModel):
         "Author",
         "Title",
         "Year",
-        "Plot",
         "Series",
         "Genre",
         "Time",
@@ -161,16 +160,14 @@ class BookTableModel(QAbstractTableModel):
             if col == 2:
                 return str(book.year) if book.year else ""
             if col == 3:
-                return "Yes" if book.has_substantial_comment else ""
-            if col == 4:
                 return book.series_name or ""
-            if col == 5:
+            if col == 4:
                 return book.genre_name or ""
-            if col == 6:
+            if col == 5:
                 return book.time_display or ""
-            if col == 7:
+            if col == 6:
                 return str(book.tracks or 0)
-            if col == 8:
+            if col == 7:
                 if book.read_date:
                     return (
                         book.read_date
@@ -178,16 +175,8 @@ class BookTableModel(QAbstractTableModel):
                         else str(book.read_date)
                     )
                 return ""
-            if col == 9:
-                if book.date_added:
-                    return (
-                        book.date_added
-                        if isinstance(book.date_added, str)
-                        else str(book.date_added)
-                    )
-                return ""
 
-        if role == Qt.TextAlignmentRole and col == 7:
+        if role == Qt.TextAlignmentRole and col == 6:
             return Qt.AlignRight | Qt.AlignVCenter
 
         return None
@@ -554,16 +543,14 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Plot, Series, Genre, Time, Tracks, Read
+        # Columns: Author, Title, Year, Series, Genre, Time, Tracks, Read
         self.table.setColumnHidden(0, True)  # Author
-        self.table.setColumnHidden(3, True)  # Plot
-        self.table.setColumnHidden(4, True)  # Series
-        self.table.setColumnHidden(6, True)  # Time
+        self.table.setColumnHidden(3, True)  # Series
+        self.table.setColumnHidden(5, True)  # Time
         columns = [
             "Author",
             "Title",
             "Year",
-            "Plot",
             "Series",
             "Genre",
             "Time",
@@ -617,8 +604,8 @@ class MainWindow(QMainWindow):
         self._stretch_columns = {
             0: 2.5,  # Author
             1: 3.5,  # Title (widest)
-            4: 1.5,  # Series
-            5: 1.5,  # Genre
+            3: 1.5,  # Series
+            4: 1.5,  # Genre
         }
 
         # Fixed content columns - use fixed/scaled widths for large dataset performance
@@ -627,8 +614,8 @@ class MainWindow(QMainWindow):
         # Stretch columns use Interactive mode - we control sizing in resizeEvent
         header.setSectionResizeMode(0, QHeaderView.Interactive)  # Author
         header.setSectionResizeMode(1, QHeaderView.Interactive)  # Title
-        header.setSectionResizeMode(4, QHeaderView.Interactive)  # Series
-        header.setSectionResizeMode(5, QHeaderView.Interactive)  # Genre
+        header.setSectionResizeMode(3, QHeaderView.Interactive)  # Series
+        header.setSectionResizeMode(4, QHeaderView.Interactive)  # Genre
         header.setSortIndicatorShown(True)
         header.setSortIndicator(1, Qt.AscendingOrder)
         header.sectionClicked.connect(self.on_table_header_clicked)
@@ -667,10 +654,9 @@ class MainWindow(QMainWindow):
         # Base widths at 100% scale (pixels)
         base_widths = {
             2: 72,  # Year
-            3: 62,  # Plot
-            6: 82,  # Time
-            7: 78,  # Tracks
-            8: 116,  # Read
+            5: 82,  # Time
+            6: 78,  # Tracks
+            7: 116,  # Read
         }
 
         for col, base_width in base_widths.items():
@@ -863,6 +849,10 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(self.on_about)
         help_menu.addAction(about_action)
 
+        license_action = QAction("&License...", self)
+        license_action.triggered.connect(self.on_show_license)
+        help_menu.addAction(license_action)
+
         shortcuts_action = QAction("&Keyboard Shortcuts", self)
         shortcuts_action.triggered.connect(self.on_show_shortcuts)
         help_menu.addAction(shortcuts_action)
@@ -920,11 +910,11 @@ class MainWindow(QMainWindow):
         self.escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.on_escape_pressed)
 
-        # mw#23: Alt+1 through Alt+9 to jump to table columns
-        # Columns: 0=Author, 1=Title, 2=Year, 3=Plot, 4=Series, 5=Genre, 6=Time, 7=Tracks, 8=Read
+        # mw#23: Alt+1 through Alt+8 to jump to table columns
+        # Columns: 0=Author, 1=Title, 2=Year, 3=Series, 4=Genre, 5=Time, 6=Tracks, 7=Read
         self.column_shortcuts = []
-        for i in range(9):
-            shortcut = QShortcut(QKeySequence(f"Alt+{i + 1}"), self)  # Alt+1..9
+        for i in range(8):
+            shortcut = QShortcut(QKeySequence(f"Alt+{i + 1}"), self)  # Alt+1..8
             shortcut.activated.connect(lambda col=i: self.jump_to_column(col))
             self.column_shortcuts.append(shortcut)
 
@@ -1378,10 +1368,10 @@ class MainWindow(QMainWindow):
             if column < 0:
                 column = 1
             # Author, Series, Genre columns open their manager dialogs
-            if column in (0, 4, 5):
+            if column in (0, 3, 4):
                 self._handle_book_table_double_click(row, column)
             # Read column opens date picker
-            elif column == 8:
+            elif column == 7:
                 self.show_read_date_dialog(row)
             # Title column opens Book Details
             elif column == 1:
@@ -1476,13 +1466,12 @@ class MainWindow(QMainWindow):
             ("Author", "&Author", 0, True),
             ("Title", "&Title", 1, True),
             ("Year", "&Year", 2, False),
-            ("Plot", "&Plot", 3, False),
-            ("Series", "&Series", 4, True),
-            ("Genre", "&Genre", 5, True),
-            ("Length", "&Length", 6, False),
-            ("Tracks", "Trac&ks", 7, False),
-            ("Read", "&Read", 8, False),
-            ("Added", "Add&ed", 9, False),
+            ("Series", "&Series", 3, True),
+            ("Genre", "&Genre", 4, True),
+            ("Length", "&Length", 5, False),
+            ("Tracks", "Trac&ks", 6, False),
+            ("Read", "&Read", 7, False),
+            ("Added", "Add&ed", 8, False),
         ]
 
         self._sort_actions_by_key = {}
@@ -1507,13 +1496,12 @@ class MainWindow(QMainWindow):
             0: "Author",
             1: "Title",
             2: "Year",
-            3: "Plot",
-            4: "Series",
-            5: "Genre",
-            6: "Length",
-            7: "Tracks",
-            8: "Read",
-            9: "Added",
+            3: "Series",
+            4: "Genre",
+            5: "Length",
+            6: "Tracks",
+            7: "Read",
+            8: "Added",
         }
         return mapping.get(column, "Title")
 
@@ -1701,7 +1689,7 @@ class MainWindow(QMainWindow):
         if column == 0:  # Author
             self.on_order_changed("Author")
             return
-        elif column == 4:  # Series
+        elif column == 3:  # Series
             self.on_order_changed("Series")
             return
         # Title and Genre use default logic
@@ -1739,15 +1727,13 @@ class MainWindow(QMainWindow):
         def sort_key(book: Book):
             if column == 2:  # Year
                 return (book.year is None, book.year or 0)
-            if column == 3:  # Plot (comments indicator)
-                return (not book.has_substantial_comment, book.title or "")
-            if column == 6:  # Length
+            if column == 5:  # Length
                 return (book.time_hours or 0) * 60 + (book.time_minutes or 0)
-            if column == 7:  # Tracks
+            if column == 6:  # Tracks
                 return book.tracks or 0
-            if column == 8:  # Read date
+            if column == 7:  # Read date
                 return book.read_date or ""
-            if column == 9:  # Date added
+            if column == 8:  # Date added
                 return book.date_added or ""
             return ""
 
@@ -1760,8 +1746,8 @@ class MainWindow(QMainWindow):
         order_to_column = {
             "Author": 0,
             "Title": 1,
-            "Series": 4,
-            "Genre": 5,
+            "Series": 3,
+            "Genre": 4,
         }
         column = order_to_column.get(order_by)
         if column is None:
@@ -2174,8 +2160,8 @@ class MainWindow(QMainWindow):
             self.open_book_details(self.books[row])
             return
 
-        # Series column (4): Open series manager
-        if column == 4:
+        # Series column (3): Open series manager
+        if column == 3:
             focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
                 self.db,
@@ -2190,8 +2176,8 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
-        # Genre column (5): Open genre manager
-        if column == 5:
+        # Genre column (4): Open genre manager
+        if column == 4:
             focus_ctx = self._capture_table_focus_context(row, column)
             dialog = NameListWindow(
                 self.db,
@@ -2206,8 +2192,8 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
-        # Read column (8): Open date dialog
-        if column == 8:
+        # Read column (7): Open date dialog
+        if column == 7:
             self.show_read_date_dialog(row)
             return
 
@@ -2228,14 +2214,14 @@ class MainWindow(QMainWindow):
             row = self.table.currentRow()
             col = self.table.currentColumn()
             if 0 <= row < len(self.books):
-                if col == 8:  # Read column
+                if col == 7:  # Read column
                     # Enter: open date dialog for specific date
                     self.show_read_date_dialog(row)
                     event.accept()
                     return
                 else:
                     # Enter: Author, Series, Genre columns open their manager dialogs
-                    if col in (0, 4, 5):
+                    if col in (0, 3, 4):
                         self._handle_book_table_double_click(row, col)
                     # Only open Book Details for Title column (1)
                     elif col == 1:
@@ -3083,6 +3069,12 @@ class MainWindow(QMainWindow):
         self.refresh_books()
 
         if imported_count > 0 and len(self.books) == 0:
+            db_total_books = 0
+            try:
+                db_total_books = self.book_queries.get_statistics().total_books
+            except Exception:
+                db_total_books = 0
+
             self.current_filter = SearchFilter(order_by="Title")
             self.clear_all_filters()
             self.on_order_changed("Title")
@@ -3382,6 +3374,11 @@ Use Ctrl+I to import or Alt+M for menu options."""
             "",
             "A cross-platform audiobook collection manager with full accessibility support.",
             "",
+            "LICENSE",
+            "Copyright (c) 2025-2026 C.F. Drake & Contributors",
+            "Custom non-commercial license.",
+            "Commercial sale/distribution requires written permission.",
+            "",
             "FEATURES",
             "Audio Book Management with full metadata",
             "ID3 Tag Import from folders",
@@ -3476,6 +3473,115 @@ Use Ctrl+I to import or Alt+M for menu options."""
         self._restore_table_focus_context(focus_ctx)
         self.restore_main_focus_after_modal()
 
+    def on_show_license(self):
+        """Show custom non-commercial license dialog."""
+        license_lines = [
+            "AbCS - Audio Book Collector Scanner",
+            "Custom Non-Commercial License",
+            "",
+            "License Terms",
+            "",
+            "Copyright (c) 2025-2026 C.F. Drake & Contributors",
+            "",
+            "Permission is granted, free of charge, to use, copy, and share this",
+            "software for personal, educational, testing, and non-commercial use.",
+            "",
+            "You may modify this software for your own use.",
+            "If you redistribute copies or modified versions, this notice and",
+            "copyright attribution must remain intact.",
+            "",
+            "Commercial use is prohibited without prior written permission from",
+            "the copyright holder.",
+            "You may not sell this software, bundle it into paid products, or",
+            "distribute it for a fee without explicit written authorization.",
+            "",
+            'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,',
+            "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF",
+            "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND",
+            "NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS",
+            "BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN",
+            "ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN",
+            "CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE",
+            "SOFTWARE.",
+        ]
+
+        focus_ctx = self._capture_table_focus_context()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("License — AbCS")
+        dlg.setAccessibleName("License information dialog")
+        dlg.setAccessibleDescription(
+            "Read-only license terms. Use arrow keys to read line by line."
+        )
+        dlg.resize(self.scaler.get_scaled_size(680), self.scaler.get_scaled_size(520))
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        lic_table = QTableWidget(dlg)
+        lic_table.setAccessibleName("License text")
+        lic_table.setAccessibleDescription(
+            "Read-only table of license text. Use arrow keys to read line by line."
+        )
+        lic_table.setColumnCount(1)
+        lic_table.setRowCount(len(license_lines))
+        lic_table.setHorizontalHeaderLabels([""])
+        lic_table.setVerticalHeaderLabels([""] * len(license_lines))
+        lic_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        lic_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        lic_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        lic_table.setTabKeyNavigation(False)
+        lic_table.setAlternatingRowColors(False)
+        lic_table.verticalHeader().setVisible(False)
+        lic_table.horizontalHeader().setVisible(False)
+        lic_table.setShowGrid(False)
+        lic_table.setStyleSheet(
+            "QTableWidget:focus { border: none; outline: none; }"
+            "QTableWidget::item:selected {"
+            " background-color: transparent;"
+            " color: palette(text);"
+            "}"
+            "QTableWidget::item:focus { outline: none; }"
+        )
+
+        for row, line in enumerate(license_lines):
+            item = QTableWidgetItem(line)
+            item.setData(Qt.AccessibleTextRole, line if line else " ")
+            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            lic_table.setItem(row, 0, item)
+
+        lic_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = lic_table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        lic_table.setFont(font)
+        layout.addWidget(lic_table)
+
+        close_button = QPushButton("&OK", dlg)
+        close_button.setAccessibleName("Close License dialog")
+        close_button.setAccessibleDescription("Closes License dialog")
+        close_button.setStyleSheet(
+            build_accessible_button_style(self.scaler.get_scaled_size(20))
+        )
+        close_button.clicked.connect(dlg.accept)
+        layout.addWidget(close_button, alignment=Qt.AlignRight)
+
+        dlg.setTabOrder(lic_table, close_button)
+
+        def focus_license_table() -> None:
+            if lic_table.rowCount() > 0:
+                lic_table.setCurrentCell(0, 0)
+            lic_table.setFocus(Qt.ActiveWindowFocusReason)
+
+        self.set_status("License dialog opened. Use arrow keys to read")
+        QTimer.singleShot(0, focus_license_table)
+        QTimer.singleShot(150, focus_license_table)
+        dlg.exec()
+
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
+
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for JAWS accessibility."""
         dlg = QDialog(self)
@@ -3489,9 +3595,9 @@ Use Ctrl+I to import or Alt+M for menu options."""
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+1", "Jump to Title"),
-            ("Alt+2", "Jump to Author"),
-            ("Alt+1..Alt+9", "Jump to other columns (see table order)"),
+            ("Alt+1", "Jump to Author"),
+            ("Alt+2", "Jump to Title"),
+            ("Alt+1..Alt+8", "Jump to other columns (see table order)"),
             ("Shift+Down/Up", "Start selection or extend selection"),
             ("Alt+U", "Update selected"),
             ("Alt+D", "Delete selected"),

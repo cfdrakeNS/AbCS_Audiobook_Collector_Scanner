@@ -173,6 +173,16 @@ These are meaningful patterns in active code not clearly captured in the three s
 - `register_alt_shortcuts` supports more contexts than `get_shortcut_help`, which only handles a subset (`MAIN_WINDOW`, `BOOK_DETAILS`, `WEB_METADATA`, `IMPORT_WINDOW`, `UPDATE_WINDOW`).
 - Result: maintainability and consistency risk for F1/help generation.
 
+5. Unused duplicate screen-reader detector module
+- `src/accessibility/screen_reader_detector.py` duplicated process-detection behavior already covered by `src/accessibility/screen_reader.py`.
+- No active imports referenced the detector variant.
+- Action taken: archived duplicate and kept `screen_reader.py` as the single active implementation.
+
+6. Unused legacy accessibility wrapper module
+- `src/accessibility/accessible_widgets.py` defined custom `QAccessibleInterface` wrappers and `register_accessible_widgets()`.
+- No active startup path or UI module imported or registered it.
+- Action taken: archived module as unused legacy code.
+
 ---
 
 ## Overall Assessment
@@ -255,6 +265,11 @@ Goal: apply all fixes by window/file so each window is edited once, then tested 
 - Accessibility rule pass for button enablement:
   - Replace `setEnabled(False)` gating for `import_button` and `export_button` with enabled actions that provide clear status/dialog guidance when prerequisites are missing.
 - Decision applied: `import_button` and `export_button` remain enabled; handlers now provide explicit status feedback when file/errors prerequisites are not met.
+- Follow-up fixes applied:
+  - In Add Read Date mode, `Read Date` mapping is now required; missing mapping opens a modal and returns focus to the `Read Date` combo.
+  - Missing `Title` / `Author` mapping popups now return focus to the relevant combo after the dialog closes.
+  - "No file selected" popup now returns focus to the Browse button.
+  - Read Date label clipping was corrected by widening the field column and left-aligning field labels.
 
 ### 10) `src/ui/import_detail_window.py`
 - Status: COMPLETE (2026-04-03)
@@ -283,6 +298,51 @@ Goal: apply all fixes by window/file so each window is edited once, then tested 
 - **Finding:** `data/abcs.sql` and `data/abcdDB_def.sql` were byte-for-byte identical.
 - **Decision:** `data/abcdDB_def.sql` is canonical — referenced by `src/database/connection.py` (line 524) and all build scripts (`build.bat`, `build_linux.sh`, `build_db.bat`, `build_linux_debug.sh`, `build_web_exe.bat`). `data/abcs.sql` had zero references.
 - **Action:** Moved `data/abcs.sql` → `archive/abcs.sql`.
+
+### 14) Post-review follow-up cleanup — ✅ COMPLETE
+- Added Help menu license notice and aligned README/About text to the custom non-commercial license.
+- Added 30-day build-expiry startup check in `src/main.py`.
+- Reworked the empty-database startup popup into a custom accessible dialog with:
+  - readable guidance text,
+  - Tab navigation to option buttons,
+  - Import Books / Import List / Preferences / Continue actions.
+- Archived unused accessibility modules:
+  - `src/accessibility/screen_reader_detector.py`
+  - `src/accessibility/accessible_widgets.py`
+- Documented the JAWS-optimized popup/dialog pattern in `accessibility_app_patterns.md`.
+
+---
+
+## Post-Completion Validation Review (2026-04-03)
+
+Scope: targeted re-review of recently changed files against `accessibility_app_patterns.md` and `Accessibility_best-practice_ rules (PySide6).md`.
+
+### Findings (ordered by severity)
+
+#### 1. High: README build-expiry documentation no longer matches runtime behavior
+- Evidence:
+  - `README.md:41` says: "Development runs from source are not blocked."
+  - `src/main.py:83-100` runs `check_build_expiry()` unconditionally and no longer guards on `sys.frozen`.
+- Impact:
+  - Developers/testers following the README get incorrect behavior expectations.
+  - This is especially confusing because source runs now expire the same way bundled builds do.
+- Recommendation:
+  - Either restore the `sys.frozen` guard in code, or update README to document that source runs also expire.
+
+#### 2. Medium: `BookListImportWindow` F1 help dialog clears accessibility metadata instead of providing it
+- Evidence:
+  - `src/ui/book_list_import_window.py:746-747` sets `dlg.setAccessibleName("")` and `dlg.setAccessibleDescription("")`.
+  - `src/ui/book_list_import_window.py:755-756` sets `table.setAccessibleName("")` and `table.setAccessibleDescription("")`.
+  - This conflicts with the checklist requirement that widgets include accessible names/descriptions and with the project's documented keyboard-help dialog pattern.
+- Impact:
+  - Screen-reader users may get reduced or inconsistent identification of the help dialog and its contents.
+  - This undercuts one of the central accessibility affordances in the window.
+- Recommendation:
+  - Replace the empty strings with explicit names/descriptions matching the pattern used in other windows' F1 dialogs.
+
+### Assessment
+
+The follow-up review did not uncover new structural accessibility drift. The remaining issues are localized and straightforward: one documentation mismatch and one help-dialog metadata gap.
 
 ---
 

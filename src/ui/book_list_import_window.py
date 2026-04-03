@@ -416,7 +416,7 @@ class BookListImportWindow(QDialog):
         header.setSectionResizeMode(1, QHeaderView.Fixed)
 
         # Set column widths with scaling - tighter to reduce white space
-        field_width = self.scaler.get_scaled_size(100)
+        field_width = self.scaler.get_scaled_size(120)
         combo_width = self.scaler.get_scaled_size(60)
         self.mapping_table.setColumnWidth(0, field_width)  # Field name
         self.mapping_table.setColumnWidth(1, combo_width)  # Column selector
@@ -585,8 +585,8 @@ class BookListImportWindow(QDialog):
     def setup_mapping_table(self):
         """Setup the field mapping table rows with checkboxes in options column."""
         fields = [
-            ("title", "Title *"),
-            ("author", "Author *"),
+            ("title", "* Title"),
+            ("author", "* Author"),
             ("year", "Year"),
             ("plot", "Plot"),
             ("series", "Series"),
@@ -605,7 +605,7 @@ class BookListImportWindow(QDialog):
             label = QLabel(field_label)
             label.setAccessibleName(field_label)
             label.setFocusPolicy(Qt.NoFocus)  # Remove from tab order
-            label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # Align to right
+            label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             self.mapping_table.setCellWidget(row, 0, label)
 
             # Column selection combo
@@ -743,8 +743,10 @@ class BookListImportWindow(QDialog):
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book List Import")
-        dlg.setAccessibleName("")
-        dlg.setAccessibleDescription("")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.setAccessibleDescription(
+            "Dialog listing keyboard shortcuts for Book List Import. Use arrow keys to read line by line."
+        )
         dlg.resize(560, 420)
 
         layout = QVBoxLayout(dlg)
@@ -752,8 +754,10 @@ class BookListImportWindow(QDialog):
         layout.setSpacing(10)
 
         table = QTableWidget()
-        table.setAccessibleName("")
-        table.setAccessibleDescription("")
+        table.setAccessibleName("Shortcuts list")
+        table.setAccessibleDescription(
+            "Read-only list of keyboard shortcuts for Book List Import."
+        )
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
 
@@ -1003,22 +1007,30 @@ class BookListImportWindow(QDialog):
                 mapping[field] = None
         return mapping
 
-    def validate_mapping(self) -> Tuple[bool, str]:
+    def validate_mapping(self) -> Tuple[bool, str, Optional[str]]:
         """Validate the field mapping."""
         mapping = self.get_field_mapping()
 
         # Check required fields
         if mapping["title"] is None:
-            return False, "Title field is required"
+            return False, "Title field is required", "title"
         if mapping["author"] is None:
-            return False, "Author field is required"
+            return False, "Author field is required", "author"
+
+        # In Add Read Date mode, read date mapping is required.
+        if self.import_mode == "read_date" and mapping["read_date"] is None:
+            return (
+                False,
+                "Read Date field is required when Add Read Date from List is selected",
+                "read_date",
+            )
 
         # Check if any fields are mapped
         mapped_fields = [field for field, col in mapping.items() if col is not None]
         if len(mapped_fields) < 2:  # At least title + author
-            return False, "At least Title and Author must be mapped"
+            return False, "At least Title and Author must be mapped", None
 
-        return True, "Mapping is valid"
+        return True, "Mapping is valid", None
 
     def generate_preview_text(self, mapping: Dict[str, Optional[int]]) -> str:
         """Generate preview text for the import."""
@@ -1069,11 +1081,11 @@ class BookListImportWindow(QDialog):
                 default_button=QMessageBox.Ok,
             )
             self.set_status("No file loaded. Select a spreadsheet file first.")
-            self.file_edit.setFocus(Qt.TabFocusReason)
+            self.browse_button.setFocus(Qt.TabFocusReason)
             return
 
         # Validate mapping
-        is_valid, message = self.validate_mapping()
+        is_valid, message, focus_field = self.validate_mapping()
         if not is_valid:
             exec_styled_message_box(
                 self,
@@ -1084,6 +1096,10 @@ class BookListImportWindow(QDialog):
                 buttons=QMessageBox.Ok,
                 default_button=QMessageBox.Ok,
             )
+            if focus_field and focus_field in self.field_mappings:
+                focus_combo = self.field_mappings[focus_field]
+                focus_combo.setFocus(Qt.TabFocusReason)
+                focus_combo.showPopup()
             return
 
         # Show preview info in confirm dialog with accessible properties

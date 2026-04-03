@@ -48,6 +48,19 @@ if errorlevel 1 (
     )
     echo requests installed successfully
 )
+
+REM Install jinja2 (optional pandas dependency; prevents PyInstaller hidden-import warning)
+echo Checking for jinja2 library...
+python -c "import jinja2" >nul 2>&1
+if errorlevel 1 (
+    echo Installing jinja2 (required to suppress PyInstaller build warning)...
+    python -m pip install jinja2
+    if errorlevel 1 (
+        echo WARNING: Failed to install jinja2 - build will proceed with a warning
+    ) else (
+        echo jinja2 installed successfully
+    )
+)
 echo.
 
 REM Clean previous builds
