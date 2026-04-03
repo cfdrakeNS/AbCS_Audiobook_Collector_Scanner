@@ -522,13 +522,14 @@ class BookDetailsWindow(QDialog):
 
         read_label = QLabel("R&ead:")
         self.read_date = QDateEdit()
+        self._null_read_date = QDate(2000, 1, 1)
         self.read_date.setCalendarPopup(True)
         self.read_date.setDisplayFormat("yyyy-MM-dd")
         self.read_date.setAccessibleName("Date read")
-        self.read_date.setMinimumDate(QDate(1, 1, 1))
+        self.read_date.setMinimumDate(QDate(1752, 9, 14))
         self.read_date.setSpecialValueText("")
         self.read_date.setMaximumWidth(150)
-        self.read_date.setDate(self.read_date.minimumDate())
+        self.read_date.setDate(self._null_read_date)
         
         # Override calendar widget to show today's date when opening from minimum date
         from PySide6.QtWidgets import QCalendarWidget
@@ -565,7 +566,7 @@ class BookDetailsWindow(QDialog):
                 
             def showEvent(self, event):
                 # If date is minimum (null), set to today before showing
-                if self.date_edit.date() == self.date_edit.minimumDate():
+                if self.date_edit.date() == self.date_edit._null_read_date:
                     self.date_edit.setDate(QDate.currentDate())
                 super().showEvent(event)
         
@@ -1174,9 +1175,9 @@ class BookDetailsWindow(QDialog):
                               read_date_value.day)
                 self.read_date.setDate(qdate)
             else:
-                self.read_date.setDate(self.read_date.minimumDate())
+                self.read_date.setDate(self._null_read_date)
         else:
-            self.read_date.setDate(self.read_date.minimumDate())
+            self.read_date.setDate(self._null_read_date)
 
         # Store original combo values for focusOut change detection
         self._original_author = self.author_combo.currentText()
@@ -1299,7 +1300,7 @@ class BookDetailsWindow(QDialog):
 
         # Get read date
         read_date = None
-        if self.read_date.date() != self.read_date.minimumDate():
+        if self.read_date.date() != self._null_read_date:
             qdate = self.read_date.date()
             read_date = datetime(
                 qdate.year(), qdate.month(), qdate.day()).date()
@@ -1522,7 +1523,7 @@ class BookDetailsWindow(QDialog):
         self.source_edit.clear()
         self.added_edit.setText("")
         self.comments_edit.clear()
-        self.read_date.setDate(self.read_date.minimumDate())
+        self.read_date.setDate(self._null_read_date)
         self._apply_new_defaults()
         self.reader_edit.setText("")
 

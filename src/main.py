@@ -164,7 +164,7 @@ class AbCSApplication:
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
 
-        # Enable accessibility for screen readers (JAWS, NVDA, etc.)
+        # Enable accessibility for screen readers
         from PySide6.QtGui import QAccessible
         QAccessible.setActive(True)
 
@@ -357,7 +357,7 @@ class AbCSApplication:
             #     print(f"QApplication name: {a11y_status['app_name']}")
             # print(
             #     "\nTIP: If QAccessible.isActive() is False, no screen reader is attached.")
-            # print("      Start JAWS FIRST, then run this application.")
+            # print("      Start your screen reader FIRST, then run this application.")
             # print("="*60 + "\n")
 
             # Run event loop - this blocks until user closes the app

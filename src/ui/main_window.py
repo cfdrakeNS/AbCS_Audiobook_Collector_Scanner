@@ -3392,7 +3392,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
             "Designed for users with low vision and screen readers.",
             "All features include keyboard shortcuts.",
             "",
-            f"Screen reader active: {'Yes' if sr_active else 'None detected'}",
+            f"Screen reader detected: {'Yes' if sr_active else 'No'}",
             "",
             "Press F1 or use Help menu for Keyboard Shortcuts.",
         ]

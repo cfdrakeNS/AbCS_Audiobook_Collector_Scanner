@@ -1,13 +1,13 @@
 """
 Screen Reader Detection Utility
-Detects if JAWS or NVDA is running on Windows.
+Detects if a screen reader is running on Windows.
 """
 import psutil
 
 
 def is_screen_reader_active():
     """
-    Returns True if JAWS or NVDA is running, otherwise False.
+    Returns True if a screen reader is running, otherwise False.
     """
     for proc in psutil.process_iter(['name']):
         name = proc.info['name']
