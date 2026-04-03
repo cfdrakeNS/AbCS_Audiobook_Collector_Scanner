@@ -17,32 +17,6 @@ from PySide6.QtWidgets import (
 import re
 
 
-def setup_shortcuts(self):
-    from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-    mgr = get_shortcut_manager()
-    callback_map = {
-        'series_combo': self.series_combo.setFocus,
-        'genre_combo': self.genre_combo.setFocus,
-        'collection_combo': self.collection_combo.setFocus,
-        'book_list': self.focus_book_list,
-        'status_bar': self.on_read_status_bar,
-    }
-    mgr.register_alt_shortcuts(
-        self, ShortcutContext.UPDATE_WINDOW, callback_map)
-
-    # Escape to close
-    escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-    escape_shortcut.activated.connect(self.accept)
-
-    # F1 for keyboard shortcuts help
-    help_shortcut = QShortcut(QKeySequence("F1"), self)
-    help_shortcut.activated.connect(self.on_show_shortcuts)
-
-    # Explicit Alt+/ registration as fallback
-    alt_slash_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-    alt_slash_shortcut.activated.connect(self.on_read_status_bar)
-
-
 """
 Update Window - Bulk update for selected books.
 Allows mass updating or removing of Series, Genre, and Collection for selected books.

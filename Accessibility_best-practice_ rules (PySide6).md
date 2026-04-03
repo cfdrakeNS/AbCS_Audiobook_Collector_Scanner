@@ -155,7 +155,7 @@ def on_delete_clicked(self):
 
 Global Enter shortcuts break accessibility by preventing Enter from activating focused buttons.
 
-**REFERENCE IMPLEMENTATION:** `src/ui/accessible_window_skeleton.py` - Shows correct keyPressEvent pattern without global shortcuts.
+**REFERENCE IMPLEMENTATIONS:** `accessible_sample/main.py`, `accessible_sample/accessibility_patterns.py`, and `src/ui/import_window.py` - show correct keyPressEvent patterns without global Enter shortcuts.
 
 ```python
 # BAD: Blocks Enter on ALL buttons

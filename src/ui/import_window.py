@@ -106,9 +106,9 @@ class ImportWindow(QDialog):
             "browse_button": lambda: self.on_browse(),
             "error_filter": lambda: self.error_filter_combo.setFocus(),
             "import_selected_button": lambda: self.import_selected_button.click(),
-            "add_valid_button": lambda: self.add_valid_button.click(),
+            "import_all_valid_button": lambda: self.add_valid_button.click(),
             "import_list_table": lambda: self.table.setFocus(),
-            "export_button": lambda: self.export_button.click(),
+            "export_csv_button": lambda: self.export_button.click(),
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.IMPORT_WINDOW, callback_map)
         # F1 help shortcut remains local
@@ -421,7 +421,7 @@ class ImportWindow(QDialog):
         )
         self.scan_button.setDefault(False)
         self.scan_button.setAutoDefault(True)
-        self.scan_button.setEnabled(False)
+        self.scan_button.setEnabled(True)
         self.scan_button.setShortcut(QKeySequence("Ctrl+I"))
         header_layout.addWidget(self.scan_button)
 
@@ -497,7 +497,7 @@ class ImportWindow(QDialog):
         # Removed setShortcut("Alt+S") to allow ShortcutManager to handle Alt+S
         footer_layout.addWidget(self.import_selected_button)
 
-        self.add_valid_button = QPushButton("Add &Valid")
+        self.add_valid_button = QPushButton("Add Valid")
         self.add_valid_button.setAccessibleName("Add Valid")
         self.add_valid_button.setAccessibleDescription(
             "Add all clean valid rows in the current view - Alt+V"
@@ -506,7 +506,7 @@ class ImportWindow(QDialog):
         self.add_valid_button.setAutoDefault(True)
         footer_layout.addWidget(self.add_valid_button)
 
-        self.export_button = QPushButton("E&xport")
+        self.export_button = QPushButton("Export")
         self.export_button.setAccessibleName("Export")
         self.export_button.setAccessibleDescription(
             "Export current import review list to CSV spreadsheet - Alt+X"
@@ -1208,15 +1208,8 @@ class ImportWindow(QDialog):
         if not self.auto_add_clean_books:
             self.add_valid_button.setEnabled(False)
             return
-
-        visible_valid_rows = 0
-        for row, item in enumerate(self.scanned_items or []):
-            if self.table.rowCount() > row and self.table.isRowHidden(row):
-                continue
-            if self._is_clean_valid_item(item):
-                visible_valid_rows += 1
-
-        self.add_valid_button.setEnabled(visible_valid_rows > 0)
+        # Keep enabled for discoverability; handler provides explicit guidance when none are available.
+        self.add_valid_button.setEnabled(True)
 
     def _get_filtered_count(self) -> int:
         """Return number of scanned items matching the active error filter."""
@@ -1598,7 +1591,6 @@ class ImportWindow(QDialog):
             read_errors=0,
         )
 
-        self.scan_button.setEnabled(False)
         # Keep browse button enabled for accessibility - show message if clicked during scan
         self.set_status("Scan started")
         scan_start = time.perf_counter()
@@ -1663,7 +1655,6 @@ class ImportWindow(QDialog):
             self._is_scanning = False
             self._cancel_scan_requested = False
             self._update_cancel_button_state()
-            self.scan_button.setEnabled(True)
             # Browse button remains enabled (accessibility pattern)
             if self.progress_window and self.progress_window.cancel_requested:
                 scan_was_canceled = True

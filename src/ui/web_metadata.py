@@ -13,7 +13,8 @@ sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel, 
-    QLineEdit, QTextEdit, QPushButton, QMessageBox, QFrame, QCheckBox, QApplication, QStatusBar, QAbstractItemView, QSizePolicy
+    QLineEdit, QTextEdit, QPushButton, QMessageBox, QFrame, QCheckBox, QApplication, QStatusBar, QAbstractItemView, QSizePolicy,
+    QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QEvent, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
@@ -780,8 +781,8 @@ class WebMetadataWindow(QDialog):
     
     def setup_shortcuts(self):
         """
-        Setup shortcuts using centralized shortcut manager for consistency.
-        F1, Alt+/, Escape work out of box.
+        Setup shortcuts with local control keys and centralized field keys.
+        F1, Alt+/, and Escape are local-only by design.
         """
         # Use centralized shortcut manager
         shortcut_mgr = get_shortcut_manager()
@@ -799,13 +800,23 @@ class WebMetadataWindow(QDialog):
             'genre_edit': lambda: self.genre_edit.setFocus(),
             'rating_edit': lambda: self.rating_edit.setFocus(),
             'save_button': lambda: self.on_save_clicked() if self.save_button.isVisible() else None,
-            'show_help': lambda: self.on_show_shortcuts(),
-            'read_status_bar': lambda: self.on_read_status_bar(),
-            'close_window': lambda: self.on_escape_pressed(),
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map
         )
+
+        # Local-only shortcuts for consistency across windows
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.escape_shortcut.activated.connect(self.on_escape_pressed)
     
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""

@@ -196,7 +196,7 @@ class CollectionWindow(QDialog):
         mgr.register_alt_shortcuts(
             self, ShortcutContext.COLLECTION_WINDOW, callback_map)
 
-        # Local QShortcuts for F1, Escape, Alt+/, Alt+L
+        # Local QShortcuts for F1, Escape, and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
@@ -205,9 +205,6 @@ class CollectionWindow(QDialog):
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
-
-        self.table_focus_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.table_focus_shortcut.activated.connect(self.focus_list)
 
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 

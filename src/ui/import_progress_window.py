@@ -30,9 +30,8 @@ from src.accessibility.accessible_events import announce_status_message
 class ImportProgressWindow(QDialog):
     """Modeless progress window for long-running import scans."""
 
-    ALLOWED_ALT_LETTERS = {
-        'I'
-    }
+    # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
+    ALLOWED_ALT_LETTERS = set()
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -146,22 +145,12 @@ class ImportProgressWindow(QDialog):
         self._apply_tab_order()
 
     def setup_shortcuts(self):
-        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-        mgr = get_shortcut_manager()
-        callback_map = {}  # No Alt+L shortcuts - cancel button removed
-        mgr.register_alt_shortcuts(
-            self, ShortcutContext.IMPORT_PROGRESS_WINDOW, callback_map)
-
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.setContext(Qt.ApplicationShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
-
-        self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
-        self.status_shortcut_shift.setContext(Qt.ApplicationShortcut)
-        self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_close_requested)
@@ -177,10 +166,9 @@ class ImportProgressWindow(QDialog):
             is_alt = bool(event.modifiers() & Qt.AltModifier)
             is_status_key = event.key() in (
                 Qt.Key_Slash,
-                Qt.Key_Question,
                 Qt.Key_7,
             )
-            is_status_text = event.text() in ("/", "?")
+            is_status_text = event.text() == "/"
             if is_alt and (is_status_key or is_status_text):
                 self.on_read_status_bar()
                 event.accept()
@@ -194,10 +182,9 @@ class ImportProgressWindow(QDialog):
         is_alt = bool(event.modifiers() & Qt.AltModifier)
         is_status_key = event.key() in (
             Qt.Key_Slash,
-            Qt.Key_Question,
             Qt.Key_7,
         )
-        is_status_text = event.text() in ("/", "?")
+        is_status_text = event.text() == "/"
         if is_alt and (is_status_key or is_status_text):
             self.on_read_status_bar()
             event.accept()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -335,7 +336,6 @@ class BookListImportWindow(QDialog):
             "Map spreadsheet columns to book fields using the dropdown combos. "
             "Use checkboxes in Options column for import settings. "
             "Title and Author fields are required for import. "
-            "Click Preview to verify your field mapping. "
             "Click Import to process the file. "
             "Press Alt+H to return focus to these instructions."
         )
@@ -346,8 +346,7 @@ class BookListImportWindow(QDialog):
             "2. Map spreadsheet columns to book fields using the dropdown combos\n"
             "3. Use checkboxes in Options column for import settings\n"
             "4. Title and Author fields are required for import\n"
-            "5. Click Preview to verify your field mapping\n"
-            "6. Click Import to process the file\n"
+            "5. Click Import to process the file\n"
             "Press Alt+H to return focus to these instructions"
         )
         self.instructions_label.setWordWrap(True)
@@ -534,7 +533,7 @@ class BookListImportWindow(QDialog):
             "Import books from spreadsheet - Alt+I"
         )
         self.import_button.clicked.connect(self.import_books)
-        self.import_button.setEnabled(False)
+        self.import_button.setEnabled(True)
 
         self.export_button = QPushButton("Export Errors")
         self.export_button.setAccessibleName("Export Errors")
@@ -542,7 +541,7 @@ class BookListImportWindow(QDialog):
             "Export import errors to CSV spreadsheet - Alt+X"
         )
         self.export_button.clicked.connect(self.export_errors_csv)
-        self.export_button.setEnabled(False)
+        self.export_button.setEnabled(True)
 
         button_layout.addWidget(self.import_button)
         button_layout.addWidget(self.export_button)
@@ -648,12 +647,14 @@ class BookListImportWindow(QDialog):
             self.add_read_date_check.blockSignals(True)
             self.add_read_date_check.setChecked(False)
             self.add_read_date_check.blockSignals(False)
+            self._apply_mode_field_availability()
             self.set_status("Mode changed to: Add Books From List")
         else:
             self.add_read_date_check.blockSignals(True)
             self.add_read_date_check.setChecked(True)
             self.add_read_date_check.blockSignals(False)
             self.import_mode = "read_date"
+            self._apply_mode_field_availability()
             self.set_status("Mode changed to: Add Read Date")
 
     def on_add_read_date_toggled(self, checked: bool):
@@ -663,13 +664,28 @@ class BookListImportWindow(QDialog):
             self.load_books_check.blockSignals(True)
             self.load_books_check.setChecked(False)
             self.load_books_check.blockSignals(False)
+            self._apply_mode_field_availability()
             self.set_status("Mode changed to: Add Read Date")
         else:
             self.load_books_check.blockSignals(True)
             self.load_books_check.setChecked(True)
             self.load_books_check.blockSignals(False)
             self.import_mode = "new"
+            self._apply_mode_field_availability()
             self.set_status("Mode changed to: Add Books From List")
+
+    def _apply_mode_field_availability(self):
+        """Enable/disable mapping combos based on current import mode."""
+        if not hasattr(self, "field_mappings"):
+            return
+
+        if self.import_mode == "read_date":
+            allowed_fields = {"title", "author", "year", "read_date"}
+            for field, combo in self.field_mappings.items():
+                combo.setEnabled(field in allowed_fields)
+        else:
+            for combo in self.field_mappings.values():
+                combo.setEnabled(True)
 
     def on_file_has_header_toggled(self, checked: bool):
         """Handle File has header checkbox toggle."""
@@ -867,9 +883,6 @@ class BookListImportWindow(QDialog):
             # Update column combos
             self.update_column_combos()
 
-            # Enable buttons
-            self.import_button.setEnabled(True)
-
             # Move focus to first import type checkbox
             self.load_books_check.setFocus()
 
@@ -1009,8 +1022,8 @@ class BookListImportWindow(QDialog):
 
     def generate_preview_text(self, mapping: Dict[str, Optional[int]]) -> str:
         """Generate preview text for the import."""
-        lines = [f"File: {self.selected_file}"]
-        lines.append(f"Rows: {len(self.file_data)}")
+        file_name = os.path.basename(self.selected_file) if self.selected_file else ""
+        lines = [f"Rows: {len(self.file_data)}"]
         lines.append(
             f"Mode: {'Import New Books' if self.import_mode == 'new' else 'Update Read Dates'}"
         )
@@ -1039,13 +1052,24 @@ class BookListImportWindow(QDialog):
 
         lines.append("")
         lines.append("Ready to import?")
+        lines.append(f"File: {file_name}")
 
         return "\n".join(lines)
 
     def import_books(self):
         """Import books from the loaded file with preview confirmation."""
         if not self.file_data is not None:
-            self.set_status("No file loaded")
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="File Required",
+                text="Select a spreadsheet file before importing.",
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok,
+            )
+            self.set_status("No file loaded. Select a spreadsheet file first.")
+            self.file_edit.setFocus(Qt.TabFocusReason)
             return
 
         # Validate mapping
@@ -1115,10 +1139,6 @@ class BookListImportWindow(QDialog):
             self.set_status(
                 f"Import complete: {success_count} successful, {error_count} errors"
             )
-
-            # Enable export button if there were errors
-            if self.import_errors:
-                self.export_button.setEnabled(True)
 
         except Exception as e:
             exec_styled_message_box(

@@ -213,9 +213,6 @@ class BackupRestoreWindow(QDialog):
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
-        self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
-        self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
-
     def install_event_filters(self):
         """Install key event filters on dialog and key child controls."""
         self.installEventFilter(self)

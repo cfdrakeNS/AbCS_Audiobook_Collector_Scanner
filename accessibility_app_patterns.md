@@ -51,7 +51,7 @@ Scope: these are implementation conventions already used in this codebase.
 6. Use FocusOut handlers for typed values with skip flags to avoid duplicate processing.
 
 ### Reference implementations
-- `src/ui/accessible_window_skeleton.py` → Complete reference implementation with ALL patterns
+- `src/ui/import_window.py` → End-to-end shortcut and status/readback pattern
 - `src/ui/book_details.py` → Combo arrow blocking rationale and behavior
 - `src/ui/update_window.py` → Full pattern (arrow blocking, Enter commit, FocusOut apply, skip flags)
 - `src/ui/preferences_window.py` → now applies the same plain-arrow block (`Up/Down`) with `Alt+Up/Down` allowed.
@@ -166,10 +166,10 @@ Traceability:
 
 ## 8) Reuse checklist for new windows/features
 
-**REFERENCE IMPLEMENTATION:** `src/ui/accessible_window_skeleton.py` - Complete accessibility pattern reference with ALL standards implemented.
+**REFERENCE IMPLEMENTATIONS:** `accessible_sample/main.py`, `accessible_sample/accessibility_patterns.py`, `src/ui/import_window.py`, `src/ui/book_details.py`, `src/ui/update_window.py`.
 
 When building a new window, confirm:
-- [ ] Copy `src/ui/accessible_window_skeleton.py` as starting point
+- [ ] Start from an existing accessible window in `src/ui/` that matches your layout needs
 - [ ] Has `set_status(...)` (or equivalent) + `Alt+/` readback.
 - [ ] Uses approved status announcement path with safe focus restore.
 - [ ] Alt-letter allowlist enforced; unmapped Alt letters suppressed.
@@ -186,12 +186,12 @@ When building a new window, confirm:
 - [ ] Uses screen reader-optimized button enablement (see Pattern #16).
 
 **QUICK START:** 
-1. Copy `accessible_window_skeleton.py` to your new window file
+1. Start from `accessible_sample/main.py` + `accessible_sample/accessibility_patterns.py` (or copy a current accessible window from `src/ui/`)
 2. Rename the class and window title
 3. Add your UI elements in `setup_ui()`
 4. Add your field shortcuts in `setup_shortcuts()`
 5. Update `ALLOWED_ALT_LETTERS` if needed
-6. Test F1, Alt+/, Escape - they should work immediately
+6. Test F1, Alt+/, Escape and all Alt+field keys
 
 ---
 
@@ -254,8 +254,7 @@ def setup_shortcuts(self):
 - ✅ Use centralized system for all Alt+field shortcuts
 
 ### Reference Implementations
-- `src/ui/accessible_window_skeleton.py` → Complete working example
-- `src/ui/import_window.py` → Centralized shortcuts with lambdas
+- `src/ui/import_window.py` → Centralized shortcuts with local F1/Escape/Alt+/ and lambda callback mapping
 - `src/ui/backup_restore_window.py` → Fixed implementation
 
 ---

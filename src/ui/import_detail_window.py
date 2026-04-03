@@ -420,8 +420,8 @@ class ImportDetailWindow(QDialog):
         self._first_dirty_widget = None
         self._pending_dirty_widgets.clear()
         if hasattr(self, "save_return_button"):
-            self.save_return_button.setEnabled(False)
-            self.save_return_button.setVisible(False)
+            self.save_return_button.setEnabled(True)
+            self.save_return_button.setVisible(True)
 
     def _setup_dirty_tracking(self):
         """Setup signals to track changes."""
@@ -971,8 +971,8 @@ class ImportDetailWindow(QDialog):
         self.save_return_button.setShortcut(QKeySequence("Alt+S"))
         self.save_return_button.setFocusPolicy(Qt.StrongFocus)
         self.save_return_button.clicked.connect(self.on_save)
-        self.save_return_button.setEnabled(False)
-        self.save_return_button.setVisible(False)
+        self.save_return_button.setEnabled(True)
+        self.save_return_button.setVisible(True)
         button_layout.addWidget(self.save_return_button)
 
         self.skip_button = QPushButton("&Discard")
@@ -1028,7 +1028,7 @@ class ImportDetailWindow(QDialog):
             'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
             'errors_edit': lambda: self.errors_edit.setFocus(),    # Alt+E
             'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
-            'save_return_button': lambda: self.save_return_button.click() if self.save_return_button.isEnabled() else None,  # Alt+S
+            'save_return_button': lambda: self.save_return_button.click(),  # Alt+S
             'skip_button': lambda: self.skip_button.click(),       # Alt+D
         }
         mgr.register_alt_shortcuts(
@@ -1222,6 +1222,15 @@ class ImportDetailWindow(QDialog):
     def on_save(self):
         """Save edits in-place and keep dialog open."""
         if not self._dirty:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="No Changes",
+                text="There are no changes to save.",
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok,
+            )
             self.set_status("No changes to save")
             QApplication.beep()
             return

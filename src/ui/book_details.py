@@ -24,11 +24,6 @@ from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 
-from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
-from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
-
 
 class BookDetailsWindow(QDialog):
     # List of allowed Alt+key shortcuts for Book Details
@@ -792,6 +787,7 @@ class BookDetailsWindow(QDialog):
             'year_spin': lambda: self.year_spin.setFocus(),
             'time_edit': lambda: self.time_edit.setFocus(),
             'reader_edit': lambda: self.reader_edit.setFocus(),
+            'read_date': lambda: self.read_date.setFocus(),
             'series_combo': lambda: self.series_combo.setFocus(),
             'genre_combo': lambda: self.genre_combo.setFocus(),
             'collection_combo': lambda: self.collection_combo.setFocus(),
@@ -799,7 +795,6 @@ class BookDetailsWindow(QDialog):
             'bitrate_edit': lambda: self.bitrate_edit.setFocus(),
             'size_edit': lambda: self.size_edit.setFocus(),
             'path_edit': lambda: self.path_edit.setFocus(),
-            'format_combo': lambda: self.format_combo.setFocus(),
             'get_web_details_button': self.on_get_web_details,  # Alt+W centralized
             'show_help': self.on_show_shortcuts,
         }

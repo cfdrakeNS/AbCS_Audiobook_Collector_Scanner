@@ -208,11 +208,27 @@ class BookTableModel(QAbstractTableModel):
 class MainWindow(QMainWindow):
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit, QPushButton
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit
         from PySide6.QtCore import QDate
 
+        class ReadDateDialog(QDialog):
+            """Scoped Enter handling for the read-date dialog without global shortcuts."""
+
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.date_field = None
+
+            def keyPressEvent(self, event):
+                if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    if self.date_field is not None:
+                        self.date_field.setFocus()
+                    QTimer.singleShot(0, self.accept)
+                    event.accept()
+                    return
+                super().keyPressEvent(event)
+
         book = self.books[row]
-        dlg = QDialog(self)
+        dlg = ReadDateDialog(self)
         dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
         dlg.setModal(True)
         layout = QVBoxLayout(dlg)
@@ -246,24 +262,13 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(date_field)
         date_field.setFocus()
+        dlg.date_field = date_field
 
         # Add Alt+Down shortcut to open calendar (though it may not work)
         from PySide6.QtGui import QShortcut, QKeySequence
 
         alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
         alt_down_shortcut.activated.connect(date_field.calendarPopup)
-
-        # Add Enter key shortcut to close dialog and save date
-        def save_and_close():
-            # Make sure the date field has focus so its value is current
-            date_field.setFocus()
-            # Small delay to ensure the value is updated
-            QTimer.singleShot(0, dlg.accept)
-
-        enter_shortcut = QShortcut(QKeySequence("Return"), dlg)
-        enter_shortcut.activated.connect(save_and_close)
-        enter_shortcut = QShortcut(QKeySequence("Enter"), dlg)
-        enter_shortcut.activated.connect(save_and_close)
 
         dlg.setLayout(layout)
         if dlg.exec() == QDialog.Accepted:

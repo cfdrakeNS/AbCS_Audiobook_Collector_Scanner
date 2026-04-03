@@ -106,15 +106,10 @@ class ShortcutManager(QObject):
         "P": ("Plot", "plot_edit"),
         "Y": ("Year", "year_edit"),
         "I": ("Series", "series_edit"),
+        "N": ("Series number", "series_number_edit"),
         "G": ("Genre", "genre_edit"),
         "R": ("Rating", "rating_edit"),
-        "U": ("Publisher", "publisher_edit"),
-        "O": ("Source", "source_edit"),
-        "W": ("Fetch Web Data", "fetch_web_button"),
         "S": ("Save", "save_button"),
-        "F1": ("Show help", "show_help"),
-        "/": ("Read status", "read_status_bar"),
-        "Escape": ("Close window", "close_window"),
     }
 
     # Import Window
