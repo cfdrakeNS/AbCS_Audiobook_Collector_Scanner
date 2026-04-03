@@ -1,0 +1,108 @@
+; AbCS - Audio Book Collector Scanner
+; Inno Setup 6 Installer Script
+;
+; To compile: run build_installer.bat
+;             or open this file in Inno Setup IDE and press F9
+;
+; WHEN RELEASING A NEW VERSION: update MyAppVersion below only.
+; The output file name, installer title, and Add/Remove Programs entry
+; all update automatically from that one line.
+
+#define MyAppName      "AbCS"
+#define MyAppFullName  "AbCS - Audio Book Collector Scanner"
+#define MyAppVersion   "1.9.4"
+#define MyAppPublisher "AbCS Project"
+#define MyAppURL       "https://github.com/cfdrakeNS/redevelop-AbCS-project"
+#define MyAppExeName   "AbCS.exe"
+
+; ──────────────────────────────────────────────────────────────────
+; [Setup] - Global installer settings
+; ──────────────────────────────────────────────────────────────────
+[Setup]
+; AppId is a permanent GUID that identifies this app in Add/Remove Programs.
+; DO NOT change this after first release or Windows will treat it as a new app.
+AppId={{B3F5E8A2-7D4C-4F1E-9C2B-6A8D0E3F5C7B}
+
+AppName={#MyAppFullName}
+AppVersion={#MyAppVersion}
+AppVerName={#MyAppFullName} {#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+
+; Install to C:\Program Files\AbCS\ by default
+DefaultDirName={autopf}\{#MyAppName}
+
+; Start Menu folder name
+DefaultGroupName={#MyAppName}
+AllowNoIcons=yes
+
+; Output: releases\AbCS-Setup-1.9.4.exe
+OutputDir=releases
+OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
+
+; Uncomment and set icon path once you have an .ico file:
+; SetupIconFile=data\abcs.ico
+; UninstallDisplayIcon={app}\{#MyAppExeName}
+
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+
+; Require Windows 10 or later
+MinVersion=10.0
+
+; Require admin rights (needed to install to Program Files)
+PrivilegesRequired=admin
+
+; 64-bit install
+ArchitecturesInstallIn64BitMode=x64compatible
+
+; ──────────────────────────────────────────────────────────────────
+; [Languages]
+; ──────────────────────────────────────────────────────────────────
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+; ──────────────────────────────────────────────────────────────────
+; [Tasks] - Optional install choices shown to the user
+; ──────────────────────────────────────────────────────────────────
+[Tasks]
+; Desktop shortcut is optional (unchecked by default)
+Name: "desktopicon"; \
+    Description: "{cm:CreateDesktopIcon}"; \
+    GroupDescription: "{cm:AdditionalIcons}"; \
+    Flags: unchecked
+
+; ──────────────────────────────────────────────────────────────────
+; [Files] - Files to install
+; Source: the build output from PyInstaller (onedir mode)
+; DestDir: where they go on the user's machine
+; ──────────────────────────────────────────────────────────────────
+[Files]
+Source: "dist\AbCS\*"; \
+    DestDir: "{app}"; \
+    Flags: ignoreversion recursesubdirs createallsubdirs
+
+; ──────────────────────────────────────────────────────────────────
+; [Icons] - Shortcuts created by the installer
+; ──────────────────────────────────────────────────────────────────
+[Icons]
+; Start Menu
+Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
+
+; Desktop (only if user chose that task above)
+Name: "{commondesktop}\{#MyAppName}"; \
+    Filename: "{app}\{#MyAppExeName}"; \
+    Tasks: desktopicon
+
+; ──────────────────────────────────────────────────────────────────
+; [Run] - Actions run at the end of setup
+; ──────────────────────────────────────────────────────────────────
+[Run]
+; Offer to launch AbCS after install completes
+Filename: "{app}\{#MyAppExeName}"; \
+    Description: "{cm:LaunchProgram,{#MyAppName}}"; \
+    Flags: nowait postinstall skipifsilent

@@ -5,17 +5,13 @@ This document is a step-by-step runbook for creating release binaries on both pl
 ## Goal
 
 Produce:
-- Windows executable: `AbCS.exe`
-- Linux executable: `AbCS`
+- Windows portable test build: `dist\AbCS.exe` (onefile, for testers)
+- Windows release installer: `releases\AbCS-Setup-x.x.x.exe` (standard install, for users)
+- Linux executable: `dist/AbCS`
 
 Recommended build strategy:
-- Build Windows binary on Windows
-- Build Linux binary inside Ubuntu VM (or native Ubuntu)
-
-Testing-phase policy (current):
-- Keep using portable one-file builds (`dist\AbCS.exe` and `dist/AbCS`)
-- Do not create permanent installers during active tester feedback
-- Revisit installer packaging only after tester sign-off
+- Build Windows binary and installer on Windows (Sections 2 and 8)
+- Build Linux binary inside Ubuntu VM (or native Ubuntu) (Section 3)
 
 ---
 
@@ -221,7 +217,7 @@ Use this checklist yourself before sharing artifacts.
 ### 4.1 Windows self-test
 
 1. Launch `dist\AbCS.exe`
-2. Verify app opens to main window without crash.
+2. Verify app opens to main window without crash.cls
 3. Verify keyboard basics:
    - `F1` shows shortcuts
    - `Alt+S` focuses search
@@ -268,14 +264,86 @@ This saves time and lets you release immediately once feedback is complete.
 
 ---
 
-## 7) Installer Decision (After Testing)
+## 7) Build Strategy: Test Builds vs. Release Installer
 
-Current recommendation:
-- Stay on the existing build scripts for test drops.
-- Share zipped portable binaries with testers.
-- Do not switch to Program Files installer flow until feedback is stable.
+| Artifact | Script | Use For |
+|---|---|---|
+| `dist\AbCS.exe` | `build.bat` | Testers — quick portable drop, no install needed |
+| `releases\AbCS-Setup-x.x.x.exe` | `build_installer.bat` | Real users — standard Windows install |
+| `dist/AbCS` | `build_linux.sh` | Linux testers |
 
-Reason:
-- Faster turnaround for test fixes.
-- No uninstall/reinstall friction for each test iteration.
-- Avoids introducing installer-specific issues while still validating core app behavior.
+For active tester feedback cycles, use `build.bat` (faster iteration, no install friction).
+For user-facing releases, use `build_installer.bat` (see Section 8 below).
+
+---
+
+## 8) Windows Installer Build (Inno Setup)
+
+This produces a standard Windows installer (`AbCS-Setup-x.x.x.exe`) that:
+- Installs to `C:\Program Files\AbCS\`
+- Creates a Start Menu entry
+- Registers in Add/Remove Programs with an uninstaller
+- Optionally adds a Desktop shortcut (user chooses during install)
+- User data (database) is stored in `%LOCALAPPDATA%\AbCS\` — separate from the install, survives uninstall
+
+### 8.1 One-Time Setup: Install Inno Setup 6
+
+1. Download from: https://jrsoftware.org/isdl.php
+2. Run the installer and accept defaults.
+3. No configuration needed — the build script finds ISCC.exe automatically.
+
+### 8.2 Build the Installer
+
+1. Open PowerShell or Command Prompt in the project root.
+2. Run:
+   - `build_installer.bat`
+3. Output:
+   - `releases\AbCS-Setup-1.9.4.exe`
+
+The script does two things automatically:
+- Runs PyInstaller in **onedir** mode (creates `dist\AbCS\` folder)
+- Runs Inno Setup Compiler (`ISCC.exe`) on `AbCS_installer.iss`
+
+onedir mode is used here (instead of onefile) because it gives faster app startup and better antivirus compatibility for installed software.
+
+### 8.3 What the Installer Does
+
+When the user runs `AbCS-Setup-x.x.x.exe`:
+1. License / welcome screen (standard Windows wizard)
+2. Destination folder selection (default: `C:\Program Files\AbCS`)
+3. Optional Desktop shortcut (unchecked by default)
+4. Installation progress
+5. Offer to launch AbCS immediately
+
+Uninstall: Control Panel → Add/Remove Programs → AbCS → Uninstall
+
+### 8.4 Updating the Version Number
+
+When releasing a new version:
+1. Update `APP_VERSION` in `src/main.py`
+2. Update `MyAppVersion` in `AbCS_installer.iss` (line 16) to match
+3. Run `build_installer.bat`
+4. New output: `releases\AbCS-Setup-x.x.x.exe`
+
+### 8.5 Adding an App Icon (Optional)
+
+If you have an `.ico` file (32x32 or 256x256 recommended):
+1. Place it at `data\abcs.ico`
+2. In `AbCS_installer.iss`, uncomment these two lines:
+   ```ini
+   SetupIconFile=data\abcs.ico
+   UninstallDisplayIcon={app}\AbCS.exe
+   ```
+3. In `build_installer.bat`, add `--icon=data\abcs.ico` to the PyInstaller command.
+
+### 8.6 Packaging for Distribution
+
+Share the installer directly:
+- `releases\AbCS-Setup-1.9.4.exe`
+
+Or zip it with release notes:
+- `AbCS-windows-x64-1.9.4.zip` containing:
+  - `AbCS-Setup-1.9.4.exe`
+  - `README.md`
+  - `INSTALL.md`
+  - Release notes
