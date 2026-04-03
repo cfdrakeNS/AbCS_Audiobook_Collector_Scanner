@@ -41,6 +41,43 @@ Optional but strongly recommended before packaging:
 
 Run from repository root.
 
+### 2.0 Windows App Setup (First-Time Machine Setup)
+
+Use these steps when setting up a brand-new Windows machine for AbCS builds.
+
+1. Install Python 3.12 (recommended for this project):
+   - Download from https://www.python.org/downloads/windows/
+   - During install, enable: `Add python.exe to PATH`
+
+Alternative (PowerShell with winget):
+- `winget install -e --id Python.Python.3.12`
+
+2. Verify Python and pip:
+   - `python --version`
+   - `python -m pip --version`
+
+3. Create and activate virtual environment:
+   - `python -m venv .venv`
+   - `.venv\Scripts\Activate.ps1`
+
+4. Upgrade packaging tools:
+   - `python -m pip install --upgrade pip setuptools wheel`
+
+5. Install project dependencies:
+   - `python -m pip install -r requirements.txt`
+
+6. Install PyInstaller:
+   - `python -m pip install pyinstaller`
+
+7. Verify PyInstaller install:
+   - `python -m PyInstaller --version`
+
+If script execution is blocked in PowerShell, run:
+- `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
+
+Then activate again:
+- `.venv\Scripts\Activate.ps1`
+
 ### Option A: Standard build (schema only, no bundled user DB)
 
 1. Open PowerShell in project root.

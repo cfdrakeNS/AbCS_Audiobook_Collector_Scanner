@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -123,6 +124,7 @@ class BookListImportWindow(QDialog):
         self.selected_file = None
         self.file_data = None
         self.column_count = 0
+        self._last_csv_encoding = None
         self.import_mode = "new"  # "new" or "read_date"
         self._default_status_message = "Ready"
 
@@ -415,14 +417,14 @@ class BookListImportWindow(QDialog):
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
 
-        # Set column widths with scaling - tighter to reduce white space
-        field_width = self.scaler.get_scaled_size(120)
-        combo_width = self.scaler.get_scaled_size(60)
+        # Set column widths with scaling so labels and selectors are not truncated.
+        field_width = self.scaler.get_scaled_size(170)
+        combo_width = self.scaler.get_scaled_size(190)
         self.mapping_table.setColumnWidth(0, field_width)  # Field name
         self.mapping_table.setColumnWidth(1, combo_width)  # Column selector
 
         # Set table size - tight to content
-        table_width = field_width + combo_width + 20
+        table_width = field_width + combo_width + 30
         self.mapping_table.setMinimumWidth(table_width)
         self.mapping_table.setMaximumWidth(table_width)
 
@@ -612,9 +614,9 @@ class BookListImportWindow(QDialog):
             combo = QComboBox()
             combo.setAccessibleName(f"{field_label}")
             combo.addItem("None")
-            # Set combo width with scaling for proper text display - narrower for single character values
-            min_width = self.scaler.get_scaled_size(40)
-            max_width = self.scaler.get_scaled_size(60)
+            # Keep selector wide enough for labels like AA/AB and long fonts.
+            min_width = self.scaler.get_scaled_size(110)
+            max_width = self.scaler.get_scaled_size(190)
             combo.setMinimumWidth(min_width)
             combo.setMaximumWidth(max_width)
 
@@ -859,7 +861,7 @@ class BookListImportWindow(QDialog):
 
     def browse_file(self):
         """Browse for spreadsheet file."""
-        file_filter = "Spreadsheet Files (*.xlsx *.xls *.csv);;Excel Files (*.xlsx *.xls);;CSV Files (*.csv);;All Files (*.*)"
+        file_filter = "Spreadsheet Files (*.xlsx *.xls *.ods *.csv);;Excel/OpenDocument Files (*.xlsx *.xls *.ods);;CSV Files (*.csv);;All Files (*.*)"
 
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Select Spreadsheet File", "", file_filter
@@ -872,13 +874,25 @@ class BookListImportWindow(QDialog):
         """Load and parse the selected file."""
         try:
             self.set_status("Loading file...")
+            has_headers = self.file_has_header_check.isChecked()
 
             # Load file based on extension
             if file_path.lower().endswith(".csv"):
-                self.file_data = pd.read_csv(file_path)
+                self.file_data = self._read_csv_with_fallback(
+                    file_path, has_headers=has_headers
+                )
+            elif file_path.lower().endswith(".ods"):
+                self.file_data = pd.read_excel(
+                    file_path,
+                    engine="odf",
+                    header=0 if has_headers else None,
+                )
             else:
                 # Excel files
-                self.file_data = pd.read_excel(file_path)
+                self.file_data = pd.read_excel(
+                    file_path,
+                    header=0 if has_headers else None,
+                )
 
             self.selected_file = file_path
             self.file_edit.setText(file_path)
@@ -894,6 +908,20 @@ class BookListImportWindow(QDialog):
                 f"Loaded {len(self.file_data)} rows with {self.column_count} columns"
             )
 
+        except ImportError:
+            if file_path.lower().endswith(".ods"):
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Critical,
+                    title="Missing Dependency",
+                    text="OpenDocument (.ods) support requires odfpy.\n\nInstall with:\npip install odfpy",
+                    buttons=QMessageBox.Ok,
+                    default_button=QMessageBox.Ok,
+                )
+                self.set_status("Missing dependency: odfpy")
+                return
+            raise
         except Exception as e:
             exec_styled_message_box(
                 self,
@@ -906,20 +934,88 @@ class BookListImportWindow(QDialog):
             )
             self.set_status("File loading failed")
 
+    def _read_csv_with_fallback(self, file_path: str, has_headers: bool = True):
+        """Read CSV with fallback encodings used by legacy spreadsheet exports."""
+        encodings = ["utf-8-sig", "utf-8", "cp1252", "latin1"]
+        last_error = None
+        header_value = 0 if has_headers else None
+
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(file_path, encoding=encoding, header=header_value)
+                self._last_csv_encoding = encoding
+                return df
+            except UnicodeDecodeError as e:
+                last_error = e
+
+        if last_error is not None:
+            raise last_error
+        return pd.read_csv(file_path, header=header_value)
+
+    def _excel_column_label(self, index: int) -> str:
+        """Convert zero-based index to Excel-style labels (A..Z, AA..ZZ...)."""
+        index += 1
+        label = ""
+        while index > 0:
+            index, rem = divmod(index - 1, 26)
+            label = chr(65 + rem) + label
+        return label
+
+    def _parse_time_value(self, value) -> Optional[Tuple[int, int]]:
+        """Parse duration values into (hours, minutes)."""
+        if value is None or not pd.notna(value):
+            return None
+
+        text = str(value).strip()
+        if not text or text.lower() == "nan":
+            return None
+
+        if isinstance(value, (int, float)):
+            numeric = float(value)
+            if numeric < 0:
+                return None
+            total_minutes = int(round(numeric * 24 * 60)) if 0 < numeric < 1 else int(round(numeric * 60))
+            return total_minutes // 60, total_minutes % 60
+
+        hh_mm = re.fullmatch(r"(\d{1,3}):(\d{1,2})(?::(\d{1,2}))?", text)
+        if hh_mm:
+            hours = int(hh_mm.group(1))
+            minutes = int(hh_mm.group(2))
+            seconds = int(hh_mm.group(3) or 0)
+            total_minutes = hours * 60 + minutes + (1 if seconds >= 30 else 0)
+            return total_minutes // 60, total_minutes % 60
+
+        h_match = re.search(r"(\d+)\s*h", text.lower())
+        m_match = re.search(r"(\d+)\s*m", text.lower())
+        if h_match or m_match:
+            hours = int(h_match.group(1)) if h_match else 0
+            minutes = int(m_match.group(1)) if m_match else 0
+            total_minutes = hours * 60 + minutes
+            return total_minutes // 60, total_minutes % 60
+
+        try:
+            numeric = float(text.replace(",", ""))
+        except ValueError:
+            return None
+
+        if numeric < 0:
+            return None
+        total_minutes = int(round(numeric * 24 * 60)) if 0 < numeric < 1 else int(round(numeric * 60))
+        return total_minutes // 60, total_minutes % 60
+
     def update_column_combos(self):
-        """Update column selection combos with letters A-Z for spreadsheet compatibility."""
-        # Generate column letters like Excel: A, B, C..., Z (always 26 options)
-        column_letters = []
-        for i in range(26):
-            column_letters.append(chr(65 + i))  # A-Z
+        """Update column combos with Excel-style labels for all detected columns."""
+        column_letters = [
+            self._excel_column_label(i) for i in range(max(0, self.column_count))
+        ]
 
         for combo in self.field_mappings.values():
             combo.clear()
             combo.addItem("None")
             combo.addItems(column_letters)
             # Set combo width with scaling for proper text display
-            min_width = self.scaler.get_scaled_size(80)
-            max_width = self.scaler.get_scaled_size(150)
+            min_width = self.scaler.get_scaled_size(110)
+            max_width = self.scaler.get_scaled_size(190)
             combo.setMinimumWidth(min_width)
             combo.setMaximumWidth(max_width)
 
@@ -961,10 +1057,15 @@ class BookListImportWindow(QDialog):
 
             if file_ext == ".csv":
                 # Load CSV with or without headers
-                if has_headers:
-                    self.file_data = pd.read_csv(self.selected_file)
-                else:
-                    self.file_data = pd.read_csv(self.selected_file, header=None)
+                self.file_data = self._read_csv_with_fallback(
+                    self.selected_file, has_headers=has_headers
+                )
+            elif file_ext == ".ods":
+                self.file_data = pd.read_excel(
+                    self.selected_file,
+                    engine="odf",
+                    header=0 if has_headers else None,
+                )
             else:
                 # Load Excel files with or without headers
                 if has_headers:
@@ -1279,12 +1380,10 @@ class BookListImportWindow(QDialog):
                             pass
 
                 if mapping["time_hours"] is not None:
-                    time_hours = row.iloc[mapping["time_hours"]]
-                    if pd.notna(time_hours) and str(time_hours) != "nan":
-                        try:
-                            book.time_hours = int(float(time_hours))
-                        except (ValueError, TypeError):
-                            pass
+                    time_value = row.iloc[mapping["time_hours"]]
+                    parsed_time = self._parse_time_value(time_value)
+                    if parsed_time is not None:
+                        book.time_hours, book.time_minutes = parsed_time
 
                 if mapping["tracks"] is not None:
                     tracks = row.iloc[mapping["tracks"]]

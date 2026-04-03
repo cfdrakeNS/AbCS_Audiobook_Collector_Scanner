@@ -362,7 +362,7 @@ class MainWindow(QMainWindow):
         self.filtered_books = []
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
-        self._read_filter_options = ["Read", "Unread"]
+        self._read_filter_options = ["All", "Read", "Unread"]
         self._primary_sort_options = ["Title", "Author", "Genre", "Series"]
 
         # Selected books (for bulk operations)
