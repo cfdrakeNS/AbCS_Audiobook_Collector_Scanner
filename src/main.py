@@ -107,13 +107,15 @@ def get_database_path():
         user_data_dir = Path.home() / 'AppData' / 'Local' / 'AbCS'
         user_data_dir.mkdir(parents=True, exist_ok=True)
         user_db = user_data_dir / 'abcs.db'
-        first_run_marker = user_data_dir / '.bundled_first_run_complete'
+        seed_id = f"{APP_VERSION}_{APP_BUILD_DATE}".replace('.', '_').replace('-', '')
+        first_run_marker = user_data_dir / f'.bundled_seed_{seed_id}'
+        legacy_marker = user_data_dir / '.bundled_first_run_complete'
 
         if bundled_db.exists():
             import shutil
 
-            # First run of bundled app: always reset local DB from embedded DB.
-            # This ensures stale local databases don't persist across fresh installs.
+            # First run of each bundled build: always reset local DB from embedded DB.
+            # This ensures stale local databases don't persist across fresh installs/updates.
             if not first_run_marker.exists():
                 if user_db.exists():
                     try:
@@ -123,6 +125,11 @@ def get_database_path():
                         pass
                 shutil.copy2(bundled_db, user_db)
                 first_run_marker.write_text('1', encoding='utf-8')
+                if legacy_marker.exists():
+                    try:
+                        legacy_marker.unlink()
+                    except Exception:
+                        pass
             elif not user_db.exists():
                 # Subsequent runs: recreate local DB only if missing.
                 shutil.copy2(bundled_db, user_db)

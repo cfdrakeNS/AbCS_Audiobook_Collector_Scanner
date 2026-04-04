@@ -104,6 +104,6 @@ echo Bundled files:
 echo   - data\abcdDB_def.sql
 echo   - %DB_SOURCE%
 echo.
-echo On first run, existing local DB (if any) is removed and replaced from bundled DB at:
+echo On first run of this build, existing local DB (if any) is removed and replaced from bundled DB at:
 echo   %%LOCALAPPDATA%%\AbCS\abcs.db
 echo.
