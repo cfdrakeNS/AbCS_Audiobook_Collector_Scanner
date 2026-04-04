@@ -42,6 +42,10 @@ python -m PyInstaller \
   --hidden-import="mutagen.flac" \
   --hidden-import="mutagen.oggvorbis" \
   --hidden-import="mutagen.wave" \
+  --hidden-import="openpyxl" \
+  --hidden-import="odf" \
+  --hidden-import="odf.opendocument" \
+  --collect-submodules="odf" \
   --exclude-module="PySide6.QtSql" \
   --exclude-module="PySide6.QtQml" \
   --exclude-module="PySide6.QtQuick" \

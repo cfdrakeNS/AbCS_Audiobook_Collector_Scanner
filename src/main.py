@@ -21,6 +21,7 @@ from PySide6.QtCore import Qt, QTimer
 import sys
 import ctypes
 import threading
+import importlib
 from pathlib import Path
 import os
 
@@ -116,6 +117,8 @@ class AbCSApplication:
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
 
+        self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
+
         # Enable accessibility for screen readers
         from PySide6.QtGui import QAccessible
         QAccessible.setActive(True)
@@ -148,6 +151,42 @@ class AbCSApplication:
         # Main window (created later)
         self.main_window = None
         main_window = None
+
+    def _check_spreadsheet_dependencies(self) -> dict:
+        """Check spreadsheet import engines at startup so build regressions are obvious."""
+        modules_to_check = [
+            ("pandas", "pandas"),
+            ("openpyxl", "openpyxl"),
+            ("odfpy", "odf"),
+            ("odfpy-opendocument", "odf.opendocument"),
+        ]
+
+        available = []
+        missing = []
+
+        for display_name, module_name in modules_to_check:
+            try:
+                importlib.import_module(module_name)
+                available.append(display_name)
+            except Exception:
+                missing.append(display_name)
+
+        mode = "packaged" if getattr(sys, 'frozen', False) else "development"
+        if missing:
+            print(
+                f"[AbCS Startup Dependency Check] mode={mode}; missing={', '.join(missing)}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"[AbCS Startup Dependency Check] mode={mode}; spreadsheet engines OK",
+                file=sys.stderr,
+            )
+
+        return {
+            "available": available,
+            "missing": missing,
+        }
 
     def show_splash(self):
         """Show splash screen with statistics."""
@@ -284,6 +323,14 @@ class AbCSApplication:
                 if repair_message:
                     self.main_window.set_status(
                         repair_message, timeout_ms=20000, announce=True)
+
+            missing_dependencies = self._spreadsheet_dependency_report.get("missing", [])
+            if missing_dependencies:
+                self.main_window.set_status(
+                    "Startup dependency warning: missing " + ", ".join(missing_dependencies),
+                    timeout_ms=15000,
+                    announce=True,
+                )
 
             self._show_empty_library_dialog_if_needed()
 
