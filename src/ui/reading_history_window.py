@@ -29,7 +29,7 @@ class ReadingHistoryWindow(QDialog):
     """Reading History window with statistics and history table."""
 
     # Alt+Key filtering for accessibility
-    ALLOWED_ALT_LETTERS = "G Y M R F S B T H /"
+    ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -282,7 +282,7 @@ class ReadingHistoryWindow(QDialog):
         self.start_date_edit.setAccessibleName("Start date")
         self.start_date_edit.setCalendarPopup(True)
         self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
-        self.start_date_edit.setDate(QDate.currentDate().addMonths(-12))
+        self.start_date_edit.setDate(QDate.currentDate().addMonths(-3))
         
         # End date
         end_date_label = QLabel("To:")
@@ -734,7 +734,7 @@ class ReadingHistoryWindow(QDialog):
             ("Alt+Y", "Year tab"),
             ("Alt+M", "Month tab"),
             ("Alt+R", "Date Range tab"),
-            ("Alt+B", "Focus current table"),
+            ("Alt+L", "Focus current table"),
             ("Alt+F", "From date field"),
             ("Alt+S", "Search"),
             ("Alt+/", "Read status bar"),

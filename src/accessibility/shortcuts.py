@@ -55,7 +55,7 @@ class ShortcutManager(QObject):
     }
     # Reading History Window
     READING_HISTORY_WINDOW_SHORTCUTS = {
-        "B": ("Jump to list", "table"),
+        "L": ("Jump to list", "table"),
         "R": ("Refresh data", "refresh_button"),
         "S": ("Search", "refresh_button"),
         "F": ("From date", "start_date_edit"),

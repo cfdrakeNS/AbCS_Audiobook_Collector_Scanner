@@ -1,6 +1,6 @@
 # AbCS Dead Code Cleanup - Vulture Findings
 **Created:** April 3, 2026  
-**Last Updated:** April 4, 2026 — Phase 1 + 90% imports complete  
+**Last Updated:** April 4, 2026 — Phase 1 + 90% imports complete and tested  
 **Tool:** vulture (AST-based dead code detection)  
 **Generated:** `python -m vulture src`
 
@@ -14,7 +14,7 @@
 | **90% Confidence - Unused Imports** | 7 | ✅ DONE (April 4, 2026) |
 | **100% Confidence - Unused Local Variables** | 7 | ✅ DONE (April 4, 2026) |
 | **60% Confidence - Unused Methods/Attributes** | ~40+ | Needs manual review |
-| **TOTAL** | ~56+ | Phase 1 complete |
+| **TOTAL** | ~56+ | Phase 1 complete + validated |
 
 **Phase 1 net line reduction: −107 lines** (7 added, 114 deleted across 7 files)  
 **90% imports net reduction: −4 lines** (2 added, 6 deleted across 4 files)
@@ -132,6 +132,52 @@ All 7 unused imports removed (April 4, 2026). Net: −4 lines across 4 files.
 - **Import fixes:** All four issues (time parsing, CSV encoding, label width, ODS support) COMPLETE and not flagged by vulture as problematic
 - **No regression risk:** All changes are dead code removals; no behavior change; lint clean
 - **Running total:** −111 lines removed across Phases 1 and 90% imports
+- **Testing status:** 100% and 90% cleanup changes validated via manual checklist (April 4, 2026)
+
+---
+
+## Testing Checklist for 100% + 90% Changes ✅ COMPLETE (April 4, 2026)
+
+Each area maps to a file that was edited. All checklist items were completed.
+
+### App Startup (src/main.py — unreachable block + 3 imports removed)
+- [x] App launches without crash on a populated database
+- [x] App launches without crash on an empty database (shows the empty-library dialog)
+- [x] Splash/statistics dialog appears and auto-closes or can be dismissed with Continue
+
+### Name List Window — Authors / Series / Genre (src/ui/name_list_window.py — unreachable block removed)
+- [x] Open Authors window; Alt+/ reads the status bar correctly
+- [x] Navigate rows with arrow keys; status bar announces current name and book count
+- [x] F1 shortcut help dialog opens and displays correctly (the dead duplicate block was the shortcut dialog)
+
+### Status Bar Announcements — all windows (src/accessibility/accessible_events.py — param renamed)
+- [x] Status bar messages appear in at least three different windows (main, book details, import)
+- [x] With a screen reader active, messages are announced on status changes
+
+### Collection Window (src/ui/collection_window.py — on_selection_changed signature)
+- [x] Clicking or arrowing between rows loads the correct collection name into the editor
+- [x] Selecting a row does not throw a TypeError
+
+### Import Progress Window (src/ui/import_progress_window.py — issues_text kwarg removed)
+- [x] Start a folder scan; the progress window opens and updates file/book counts
+- [x] No crash or TypeError during the scan cycle
+
+### Book List Import — CSV / XLSX (src/ui/book_list_import_window.py — 3 changes)
+- [x] Browse for a CSV file; column mapping combos populate correctly
+- [x] Browse for an XLSX file; same mapping flow works
+- [x] Any accessible message dialogs in the window display without a TypeError (icon_type param removed)
+
+### Book Details Window (src/ui/book_details.py — announce_form_field import removed)
+- [x] Open a book; all fields are editable and save correctly
+- [x] Tab through all fields; no ImportError or NameError in the console
+
+### Audio Tag Import — MP3 / FLAC / M4A (src/core/tag_reader.py — EasyID3 import removed)
+- [x] Scan a folder containing MP3 files; tags (title, author, year) are read correctly
+- [x] Scan a folder with FLAC or M4A files; no import errors
+
+### Main Window Cell Navigation (src/ui/main_window.py — previous param renamed)
+- [x] Arrow up/down through the book table; last-focused book ID is tracked correctly
+- [x] Press Escape after searching; cursor returns to the previously focused row
 
 ---
 
@@ -140,5 +186,5 @@ All 7 unused imports removed (April 4, 2026). Net: −4 lines across 4 files.
 1. Phase 2: Run `python -m vulture src` and review each 60% item manually
 2. Create `.vultureignore` for confirmed Qt false positives
 3. Archive or delete confirmed orphan methods
-4. Test thoroughly before merging
+4. After Phase 2 removals, run targeted regression checks for impacted windows/workflows
 

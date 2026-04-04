@@ -176,8 +176,11 @@ class BookTableModel(QAbstractTableModel):
                     )
                 return ""
 
-        if role == Qt.TextAlignmentRole and col == 6:
-            return Qt.AlignRight | Qt.AlignVCenter
+        if role == Qt.TextAlignmentRole:
+            if col == 6:
+                return Qt.AlignRight | Qt.AlignVCenter
+            if col == 7:
+                return Qt.AlignHCenter | Qt.AlignVCenter
 
         return None
 
@@ -3058,7 +3061,8 @@ class MainWindow(QMainWindow):
             self.db, self.scaler, self.theme_manager, parent=self
         )
         dialog.exec()
-        # Refresh books to show any imported items
+        # Refresh View > Collections and books to reflect imported data.
+        self.refresh_collections()
         self.refresh_books()
 
     def on_import(self):
@@ -3354,6 +3358,8 @@ Use Ctrl+I to import or Alt+M for menu options."""
         )
         dialog.exec()
         if dialog.data_changed:
+            # Restore operations may change active collections; rebuild View menu.
+            self.refresh_collections()
             self.refresh_books()
             self.set_status("Database updated from backup/restore operation")
         self._restore_table_focus_context(focus_ctx)

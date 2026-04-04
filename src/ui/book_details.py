@@ -1381,6 +1381,7 @@ class BookDetailsWindow(QDialog):
             self._original_genre = self.genre_combo.currentText()
             self.setWindowTitle("Book Details")
             self.setAccessibleName("Book Details")
+            QTimer.singleShot(0, self.title_edit.setFocus)
 
         except Exception as e:
             self.set_status("Error saving book")
@@ -1450,6 +1451,7 @@ class BookDetailsWindow(QDialog):
                     text="Book deleted successfully!"
                 )
                 self.set_status("Book deleted successfully")
+                QTimer.singleShot(0, self.title_edit.setFocus)
             else:
                 exec_styled_message_box(
                     self,
@@ -1640,6 +1642,7 @@ class BookDetailsWindow(QDialog):
                     if result == QDialog.Accepted:
                         # User accepted changes - would implement actual update here
                         self.set_status("Web details applied successfully", announce=True)
+                        QTimer.singleShot(0, self.comments_edit.setFocus)
                 else:
                     # Show popup if no meaningful data found
                     from PySide6.QtWidgets import QMessageBox
@@ -1651,6 +1654,7 @@ class BookDetailsWindow(QDialog):
                     msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
                     msg.setStandardButtons(QMessageBox.Ok)
                     msg.exec()
+                    QTimer.singleShot(0, self.title_edit.setFocus)
             else:
                 # Show popup if no data found
                 from PySide6.QtWidgets import QMessageBox
@@ -1665,6 +1669,7 @@ class BookDetailsWindow(QDialog):
                 msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
                 msg.setStandardButtons(QMessageBox.Ok)
                 msg.exec()
+                QTimer.singleShot(0, self.title_edit.setFocus)
         except Exception as e:
             import traceback
             traceback.print_exc()
