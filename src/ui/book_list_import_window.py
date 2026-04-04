@@ -1001,6 +1001,57 @@ class BookListImportWindow(QDialog):
         total_minutes = int(round(numeric * 24 * 60)) if 0 < numeric < 1 else int(round(numeric * 60))
         return total_minutes // 60, total_minutes % 60
 
+    def _parse_read_date_value(self, value):
+        """Parse spreadsheet read-date values into a date object.
+
+        Supports common list formats such as:
+        - YYYY-MM-DD / YYYY/MM/DD
+        - DD-MM-YYYY / DD/MM/YYYY / DD.MM.YYYY
+        - DD-MM-YY / DD/MM/YY / DD.MM.YY
+        - Month-name forms like 04-Apr-26, 4 April 2026
+        """
+        from datetime import date as date_type
+
+        if value is None or not pd.notna(value):
+            return None
+
+        if isinstance(value, (datetime, date_type)):
+            return value.date() if isinstance(value, datetime) else value
+
+        text = str(value).strip()
+        if not text or text.lower() == "nan":
+            return None
+
+        # Strip time component if present (e.g., "2026-04-04 00:00:00").
+        text = text.split(" ")[0].strip()
+
+        formats = [
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%d-%m-%Y",
+            "%d/%m/%Y",
+            "%d.%m.%Y",
+            "%m/%d/%Y",
+            "%d-%m-%y",
+            "%d/%m/%y",
+            "%d.%m.%y",
+            "%m/%d/%y",
+            "%d-%b-%y",
+            "%d-%b-%Y",
+            "%d %b %Y",
+            "%d %B %Y",
+            "%b %d %Y",
+            "%B %d %Y",
+        ]
+
+        for fmt in formats:
+            try:
+                return datetime.strptime(text, fmt).date()
+            except ValueError:
+                continue
+
+        return None
+
     def update_column_combos(self):
         """Update column combos with Excel-style labels for all detected columns."""
         column_letters = [
@@ -1270,7 +1321,6 @@ class BookListImportWindow(QDialog):
     def import_new_books(self) -> Tuple[int, int]:
         """Import new books from the spreadsheet."""
         from src.database.models import Book
-        from datetime import datetime, date as date_type
 
         mapping = self.get_field_mapping()
         success_count = 0
@@ -1363,19 +1413,9 @@ class BookListImportWindow(QDialog):
                 if mapping["read_date"] is not None:
                     read_date = row.iloc[mapping["read_date"]]
                     if pd.notna(read_date) and str(read_date) != "nan":
-                        try:
-                            if isinstance(read_date, (datetime, date_type)):
-                                book.read_date = (
-                                    read_date.date()
-                                    if isinstance(read_date, datetime)
-                                    else read_date
-                                )
-                            else:
-                                book.read_date = datetime.strptime(
-                                    str(read_date).split(" ")[0], "%Y-%m-%d"
-                                ).date()
-                        except (ValueError, TypeError):
-                            pass
+                        parsed_read_date = self._parse_read_date_value(read_date)
+                        if parsed_read_date is not None:
+                            book.read_date = parsed_read_date
 
                 if mapping["time_hours"] is not None:
                     time_value = row.iloc[mapping["time_hours"]]
@@ -1413,8 +1453,6 @@ class BookListImportWindow(QDialog):
 
     def update_read_dates(self) -> Tuple[int, int]:
         """Update read dates for existing books."""
-        from datetime import datetime, date as date_type
-
         mapping = self.get_field_mapping()
         success_count = 0
         error_count = 0
@@ -1475,26 +1513,18 @@ class BookListImportWindow(QDialog):
                 if mapping["read_date"] is not None:
                     read_date = row.iloc[mapping["read_date"]]
                     if pd.notna(read_date) and str(read_date) != "nan":
-                        try:
-                            if isinstance(read_date, (datetime, date_type)):
-                                existing_book.read_date = (
-                                    read_date.date()
-                                    if isinstance(read_date, datetime)
-                                    else read_date
-                                )
-                            else:
-                                existing_book.read_date = datetime.strptime(
-                                    str(read_date).split(" ")[0], "%Y-%m-%d"
-                                ).date()
+                        parsed_read_date = self._parse_read_date_value(read_date)
+                        if parsed_read_date is not None:
+                            existing_book.read_date = parsed_read_date
                             self.book_queries.update(existing_book)
                             success_count += 1
-                        except (ValueError, TypeError) as e:
+                        else:
                             self.import_errors.append(
                                 {
                                     "row": index + 1,
                                     "title": title,
                                     "author": author,
-                                    "reason": f"Invalid date format: {e}",
+                                    "reason": "Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY",
                                 }
                             )
                             error_count += 1
