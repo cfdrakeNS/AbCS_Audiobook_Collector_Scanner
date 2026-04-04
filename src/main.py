@@ -54,56 +54,9 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
     )
     timer.cancel()
 
-
-def show_launch_message_if_executable():
-    """Show an immediate Windows message when launched from bundled EXE."""
-    if __name__ != '__main__':
-        return
-    if not getattr(sys, 'frozen', False):
-        return
-    if sys.platform != "win32":
-        return
-    if os.environ.get("ABCS_LAUNCH_MSG_SHOWN") == "1":
-        return
-    os.environ["ABCS_LAUNCH_MSG_SHOWN"] = "1"
-    _show_native_message(
-        "AbCS", "AbCS is starting. Please wait while it loads.", auto_close_seconds=4.0)
-
-
-# Show launch message before importing heavier UI modules.
-show_launch_message_if_executable()
-
 # Version information - update this with each release
-APP_VERSION = "1.9.4"
-APP_BUILD_DATE = "2026-04-03"
-
-BUILD_EXPIRY_DAYS = 30
-
-
-def check_build_expiry():
-    """Block startup if build age is 30+ days."""
-    try:
-        from datetime import date as _date
-        build = _date.fromisoformat(APP_BUILD_DATE)
-        age_days = (_date.today() - build).days
-        if age_days >= BUILD_EXPIRY_DAYS:
-            title = "AbCS — Build Expired"
-            msg = (
-                f"This copy of AbCS (build {APP_BUILD_DATE}) is {age_days} days old "
-                f"and has expired. "
-                f"Tester builds expire after {BUILD_EXPIRY_DAYS} days to ensure "
-                f"everyone is testing the latest version. "
-                f"Please download a newer build to continue."
-            )
-            if sys.platform == "win32":
-                _show_native_message(title, msg, auto_close_seconds=60.0)
-            else:
-                print(f"\n{title}\n{'='*len(title)}\n{msg}\n", file=sys.stderr)
-            sys.exit(1)
-    except SystemExit:
-        raise
-    except Exception:
-        pass  # Never block startup on a date-parse failure
+APP_VERSION = "1.9.5"
+APP_BUILD_DATE = "2026-03-03"
 
 
 
@@ -579,7 +532,6 @@ class AbCSApplication:
 
 def main():
     """Application entry point."""
-    check_build_expiry()
     app = AbCSApplication()
     sys.exit(app.run())
 
