@@ -80,9 +80,9 @@ from src.ui.web_metadata import WebMetadataWindow
 def get_app_version():
     """Get app version from main module."""
     try:
-        from main import APP_VERSION, APP_BUILD_DATE
+        from main import APP_VERSION
 
-        return f"v{APP_VERSION} (build {APP_BUILD_DATE})"
+        return f"v{APP_VERSION}"
     except ImportError:
         return "v?.?.?"
 
@@ -1343,7 +1343,7 @@ class MainWindow(QMainWindow):
             # Announce status bar to screen reader
             self.set_status(self.get_default_status(), timeout_ms=0, announce=True)
         else:
-            # No screen reader detected - show message box for testing
+            # No screen reader detected - show fallback message box
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),

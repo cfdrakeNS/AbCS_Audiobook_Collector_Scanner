@@ -54,25 +54,6 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
     )
     timer.cancel()
 
-
-def show_launch_message_if_executable():
-    """Show an immediate Windows message when launched from bundled EXE."""
-    if __name__ != '__main__':
-        return
-    if not getattr(sys, 'frozen', False):
-        return
-    if sys.platform != "win32":
-        return
-    if os.environ.get("ABCS_LAUNCH_MSG_SHOWN") == "1":
-        return
-    os.environ["ABCS_LAUNCH_MSG_SHOWN"] = "1"
-    _show_native_message(
-        "AbCS", "AbCS is starting. Please wait while it loads.", auto_close_seconds=4.0)
-
-
-# Show launch message before importing heavier UI modules.
-show_launch_message_if_executable()
-
 # Version information - update this with each release
 APP_VERSION = "1.9.4"
 APP_BUILD_DATE = "2026-04-03"

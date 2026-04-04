@@ -93,6 +93,10 @@ Source: "dist\AbCS\*"; \
 Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
+; Add an uninstall shortcut in the install folder so testers do not need
+; to rely on Windows Settings / Add or Remove Programs.
+Name: "{app}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
+
 ; Desktop (only if user chose that task above)
 Name: "{commondesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \

@@ -136,9 +136,9 @@ def announce_status_message(status_bar: QStatusBar, message: str, announcement_w
         #             QAccessible.updateAccessibility(event)
         #         except Exception:
         #             pass
-    except Exception as e:
+    except Exception:
         # Silently fail - don't let accessibility break the app
-        print(f"DEBUG: Accessibility error: {e}")
+        pass
 
 
 def announce_table_selection(table: QTableWidget, row: int, col: int, message: str = "") -> None:

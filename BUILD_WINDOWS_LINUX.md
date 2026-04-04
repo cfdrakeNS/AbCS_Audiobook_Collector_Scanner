@@ -315,7 +315,10 @@ When the user runs `AbCS-Setup-x.x.x.exe`:
 4. Installation progress
 5. Offer to launch AbCS immediately
 
-Uninstall: Control Panel → Add/Remove Programs → AbCS → Uninstall
+Uninstall options:
+- Start Menu → AbCS → Uninstall AbCS
+- Install folder → `Uninstall AbCS` shortcut
+- Windows 11 Settings → Apps → Installed apps → AbCS → Uninstall
 
 ### 8.4 Updating the Version Number
 
