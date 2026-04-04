@@ -322,7 +322,7 @@ class CollectionWindow(QDialog):
         )
         return int(row[0]) if row else 0
 
-    def on_selection_changed(self, current_row: int, current_col: int, prev_row: int, prev_col: int):
+    def on_selection_changed(self, current_row: int, current_col: int, _prev_row: int, _prev_col: int):
         """Handle cell selection change like backup_restore_window.py"""
         if current_row < 0:
             self.current_collection_id = None

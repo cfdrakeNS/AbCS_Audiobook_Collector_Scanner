@@ -70,7 +70,7 @@ def check_accessibility_support() -> dict:
     return results
 
 
-def announce_status_message(status_bar: QStatusBar, message: str, announcement_widget=None, move_focus: bool = False) -> None:
+def announce_status_message(status_bar: QStatusBar, message: str, _announcement_widget=None, move_focus: bool = False) -> None:
     """
     Update status bar message and notify screen readers of the change.
 

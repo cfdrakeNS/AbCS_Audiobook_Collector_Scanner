@@ -335,62 +335,6 @@ class AbCSApplication:
                 self.db.vacuum()
             except Exception:
                 pass
-        
-        exec_styled_message_box(
-            self.main_window if self.main_window else self.qt_app.activeWindow(),
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Welcome to AbCS",
-            text=splash_message,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok
-        )
-        return  # Skip statistics dialog for empty database
-
-    def run(self):
-        """Run the application."""
-        try:
-            # Create and show main window
-            self.main_window = MainWindow(
-                self.db, self.scaler, self.theme_manager)
-            self.main_window.show()
-
-            if getattr(self.db, "schema_repair_performed", False):
-                repair_message = getattr(self.db, "schema_repair_message", "")
-                if repair_message:
-                    self.main_window.set_status(
-                        repair_message, timeout_ms=20000, announce=True)
-
-            self._show_empty_library_dialog_if_needed()
-
-            shortcut_conflicts = find_shortcut_conflicts(self.main_window)
-            if shortcut_conflicts:
-                first_issue = shortcut_conflicts[0]
-                self.main_window.status_bar.showMessage(
-                    f"Shortcut conflict detected: {first_issue}")
-
-            # Run event loop - this blocks until user closes the app
-            return self.qt_app.exec()
-
-        except Exception as e:
-            # Print full exception for debugging
-            import traceback
-            print(f"ERROR: {e}", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-            raise
-        finally:
-            # Cleanup orphaned lookup records (no associated books)
-            try:
-                AuthorQueries(self.db).cleanup_unused()
-                SeriesQueries(self.db).cleanup_unused()
-                GenreQueries(self.db).cleanup_unused()
-            except Exception:
-                pass  # Don't fail on cleanup errors
-
-            try:
-                self.db.vacuum()
-            except Exception:
-                pass
 
             # Cleanup database connection
             close_db()

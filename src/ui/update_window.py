@@ -276,7 +276,7 @@ class UpdateWindow(QDialog):
                 modifiers = event.modifiers()
                 if modifiers & Qt.AltModifier:
                     allowed_alt_keys = {
-                        Qt.Key_S, Qt.Key_G, Qt.Key_L, Qt.Key_B,
+                        Qt.Key_S, Qt.Key_G, Qt.Key_L,
                         Qt.Key_Slash, Qt.Key_Question, Qt.Key_Up, Qt.Key_Down
                     }
                     # Block Alt+/ from typing through
@@ -858,7 +858,7 @@ class UpdateWindow(QDialog):
             ("Alt+G", "Genre"),
             ("Alt+C", "Collection"),
             ("Alt+Down", "Open combo dropdown"),
-            ("Alt+B", "Book list"),
+            ("Alt+L", "Book list"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),

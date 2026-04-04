@@ -30,11 +30,11 @@ except ImportError:
                 return self.data
 
         @staticmethod
-        def read_csv(filepath):
+        def read_csv(_filepath):
             raise ImportError("pandas not available - install with: pip install pandas")
 
         @staticmethod
-        def read_excel(filepath):
+        def read_excel(_filepath):
             raise ImportError("pandas not available - install with: pip install pandas")
 
         notna = lambda x: x is not None
@@ -801,7 +801,7 @@ class BookListImportWindow(QDialog):
         QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
         dlg.exec()
 
-    def show_accessible_message(self, title: str, message: str, icon_type=None):
+    def show_accessible_message(self, title: str, message: str):
         """Show accessible message with table format like main window stats."""
         from PySide6.QtWidgets import (
             QDialog,

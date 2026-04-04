@@ -316,7 +316,7 @@ class ImportProgressWindow(QDialog):
 
         self.set_status(status_text)
 
-    def update_current_item(self, *, title: str, author: str, issues_text: str = ""):
+    def update_current_item(self, *, title: str, author: str):
         if self._compact_mode:
             return
 

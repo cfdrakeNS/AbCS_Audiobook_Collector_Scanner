@@ -2472,7 +2472,7 @@ class MainWindow(QMainWindow):
             index = self.table.model().index(row, col)
             self.table.scrollTo(index)
 
-    def on_current_cell_changed(self, current: QModelIndex, previous: QModelIndex):
+    def on_current_cell_changed(self, current: QModelIndex, _previous: QModelIndex):
         """Handle current cell changes - track last focused book for search ESC restore."""
         current_row = current.row()
         current_col = current.column()

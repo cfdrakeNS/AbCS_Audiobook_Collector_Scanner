@@ -62,6 +62,9 @@ class ReadingHistoryWindow(QDialog):
         # Create tab widget
         self.tab_widget = QTabWidget()
         self.tab_widget.setAccessibleName("Reading history tabs")
+        self.tab_widget.setDocumentMode(False)
+        self.tab_widget.tabBar().setExpanding(False)
+        self.tab_widget.tabBar().setUsesScrollButtons(True)
         
         # Create tabs
         self.create_general_tab()
@@ -428,11 +431,58 @@ class ReadingHistoryWindow(QDialog):
 
     def apply_accessible_styling(self):
         """Apply accessible styling following import window pattern."""
-        # Button styling
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
-        
+        # Keep button sizing while honoring active theme palette colors.
+        button_height = max(self.scaler.get_scaled_size(20) - 4, 14)
+        button_style = f"""
+            QPushButton {{
+                padding: 4px 12px;
+                min-height: {button_height}px;
+                max-height: {button_height}px;
+                color: palette(button-text);
+                background-color: palette(button);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                outline: none;
+            }}
+            QPushButton:focus {{
+                color: palette(highlighted-text);
+                background-color: palette(highlight);
+                border: 2px solid palette(dark);
+                outline: none;
+            }}
+        """
+
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
+
+        tab_padding_v = max(self.scaler.get_scaled_size(4), 3)
+        tab_padding_h = max(self.scaler.get_scaled_size(12), 8)
+        self.tab_widget.setStyleSheet(
+            f"""
+            QTabWidget::pane {{
+                border: 1px solid palette(mid);
+                top: -1px;
+                background: palette(window);
+            }}
+            QTabBar::tab {{
+                background: palette(button);
+                color: palette(button-text);
+                border: 1px solid palette(mid);
+                border-bottom: none;
+                padding: {tab_padding_v}px {tab_padding_h}px;
+                margin-right: 2px;
+                min-width: {self.scaler.get_scaled_size(90)}px;
+            }}
+            QTabBar::tab:selected {{
+                background: palette(highlight);
+                color: palette(highlighted-text);
+                border-color: palette(dark);
+            }}
+            QTabBar::tab:!selected {{
+                margin-top: 2px;
+            }}
+            """
+        )
         
         # Table styling - use centralized F1 popup style
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style

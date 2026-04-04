@@ -147,7 +147,7 @@ class ShortcutManager(QObject):
         "S": ("Series", "series_combo"),
         "G": ("Genre", "genre_combo"),
         "C": ("Collection", "collection_combo"),
-        "B": ("Focus book list", "book_list"),
+        "L": ("Focus book list", "book_list"),
     }
 
     # Preferences Window

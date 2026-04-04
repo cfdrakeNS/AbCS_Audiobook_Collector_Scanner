@@ -42,9 +42,9 @@ AllowNoIcons=yes
 OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
-; Uncomment and set icon path once you have an .ico file:
-; SetupIconFile=data\abcs.ico
-; UninstallDisplayIcon={app}\{#MyAppExeName}
+SetupIconFile=AbCS.ico
+UninstallDisplayIcon={app}\AbCS.ico
+LicenseFile=AbCS_License.MD
 
 Compression=lzma2
 SolidCompression=yes
@@ -84,18 +84,25 @@ Name: "desktopicon"; \
 Source: "dist\AbCS\*"; \
     DestDir: "{app}"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "AbCS.ico"; \
+    DestDir: "{app}"; \
+    Flags: ignoreversion
+Source: "AbCS_License.MD"; \
+    DestDir: "{app}"; \
+    Flags: ignoreversion
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
 ; Start Menu
-Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 ; Desktop (only if user chose that task above)
 Name: "{commondesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
+    IconFilename: "{app}\AbCS.ico"; \
     Tasks: desktopicon
 
 ; ──────────────────────────────────────────────────────────────────

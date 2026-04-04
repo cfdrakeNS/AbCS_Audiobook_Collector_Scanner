@@ -910,57 +910,6 @@ class NameListWindow(QDialog):
 
         return f"{name_text} - books {usage_text}, Alt+E Edit, Escape Close"
 
-        dlg = QDialog(self)
-        dlg.setWindowTitle(f"Keyboard Shortcuts - {self.entity_plural}")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(460, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(filtered_shortcuts))
-        table.setVerticalHeaderLabels([""] * len(filtered_shortcuts))
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(False)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        
-        # Disable hover highlighting for low-vision comfort
-        table.setMouseTracking(False)
-        table.viewport().setMouseTracking(False)
-        table.setAttribute(Qt.WA_Hover, False)
-        table.viewport().setAttribute(Qt.WA_Hover, False)
-        
-        table.setStyleSheet(build_accessible_f1_popup_style())
-
-        for row, (key, description) in enumerate(filtered_shortcuts):
-            combined_text = f"{description} - {key}"
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
-            table.setItem(row, 0, item)
-
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-        scale_pct = self.scaler.current_scale
-        base_font_size = int(11 * (scale_pct / 100.0))
-        font = table.font()
-        font.setPointSize(base_font_size)
-        table.setFont(font)
-
-        layout.addWidget(table)
-
-        dlg.exec()
-
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode, or close window."""
         if self._collection_editor_locked:
