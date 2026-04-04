@@ -52,8 +52,6 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QComboBox,
     QGroupBox,
-    QRadioButton,
-    QButtonGroup,
     QLineEdit,
     QStatusBar,
     QMessageBox,

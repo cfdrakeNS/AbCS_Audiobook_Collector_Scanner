@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
 from mutagen import File as MutagenFile
-from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4

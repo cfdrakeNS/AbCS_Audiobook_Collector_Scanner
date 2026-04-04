@@ -1,6 +1,6 @@
 # AbCS Dead Code Cleanup - Vulture Findings
 **Created:** April 3, 2026  
-**Last Updated:** April 4, 2026  
+**Last Updated:** April 4, 2026 — Phase 1 + 90% imports complete  
 **Tool:** vulture (AST-based dead code detection)  
 **Generated:** `python -m vulture src`
 
@@ -11,12 +11,13 @@
 | Category | Count | Status |
 |----------|-------|--------|
 | **100% Confidence - Unreachable Code** | 2 | ✅ DONE (April 4, 2026) |
-| **90% Confidence - Unused Imports** | 7 | Pending (Phase 2) |
+| **90% Confidence - Unused Imports** | 7 | ✅ DONE (April 4, 2026) |
 | **100% Confidence - Unused Local Variables** | 7 | ✅ DONE (April 4, 2026) |
 | **60% Confidence - Unused Methods/Attributes** | ~40+ | Needs manual review |
 | **TOTAL** | ~56+ | Phase 1 complete |
 
-**Phase 1 net line reduction: −107 lines** (7 added, 114 deleted across 7 files)
+**Phase 1 net line reduction: −107 lines** (7 added, 114 deleted across 7 files)  
+**90% imports net reduction: −4 lines** (2 added, 6 deleted across 4 files)
 
 ---
 
@@ -34,43 +35,19 @@
 
 ---
 
-## 90% Confidence - Unused Imports (SAFE TO REMOVE)
+## 90% Confidence - Unused Imports ✅ COMPLETE
 
-These imports are never referenced in their respective files:
+All 7 unused imports removed (April 4, 2026). Net: −4 lines across 4 files.
 
-### 1. EasyID3 - `src/core/tag_reader.py`
-```python
-from mutagen.id3 import EasyID3
-```
-**Usage:** Never called directly (mutagen.ID3 is used instead)  
-**Action:** Remove import
-
-### 2. QSplashScreen - `src/main.py`
-```python
-from PySide6.QtWidgets import QSplashScreen
-```
-**Usage:** Possibly replaced by alternative splash implementation  
-**Action:** Remove import
-
-### 3. QFont - Location TBD
-**Usage:** Never instantiated  
-**Action:** Remove import
-
-### 4. QPixmap - Location TBD
-**Usage:** Never created  
-**Action:** Remove import
-
-### 5. announce_form_field - `src/accessibility/` (likely)
-**Usage:** Never called  
-**Action:** Remove import
-
-### 6. QButtonGroup - `src/ui/` (likely)
-**Usage:** Never used for grouping buttons  
-**Action:** Remove import
-
-### 7. QRadioButton - `src/ui/` (likely)
-**Usage:** Never instantiated  
-**Action:** Remove import
+| # | Symbol | File | Notes |
+|---|--------|------|-------|
+| 1 | `EasyID3` | `src/core/tag_reader.py` | `mutagen.ID3` used instead; easy-id3 import removed |
+| 2 | `QSplashScreen` | `src/main.py` | Replaced by custom dialog splash; entire symbol removed |
+| 3 | `QFont` | `src/main.py` | Never instantiated; inline on same line as QPixmap |
+| 4 | `QPixmap` | `src/main.py` | Never created; entire `from PySide6.QtGui import …` line dropped |
+| 5 | `announce_form_field` | `src/ui/book_details.py` | Never called in this file; removed from import list |
+| 6 | `QButtonGroup` | `src/ui/book_list_import_window.py` | UI uses no radio-group logic; removed |
+| 7 | `QRadioButton` | `src/ui/book_list_import_window.py` | No radio buttons in this window; removed |
 
 ---
 
@@ -126,9 +103,9 @@ from PySide6.QtWidgets import QSplashScreen
 
 ### Phase 1: Quick Wins ✅ COMPLETE (April 4, 2026)
 1. ✅ Removed 2 unreachable code blocks (src/main.py, src/ui/name_list_window.py)
-2. Remove 7 unused imports from respective files ← **next**
+2. ✅ Removed 7 unused imports (4 files) ← **done this session**
 3. ✅ Removed 7 unused local variables (renamed to `_` prefix or removed unused params)
-4. **Net reduction: −107 lines** across 7 files; no behavior change; all lint checks pass
+4. **Net reduction: −111 lines** across 9 files; no behavior change; all lint checks pass
 
 ### Phase 2: Targeted Review (1-2 hours)
 1. Export full vulture output to separate detailed list with line numbers
@@ -153,15 +130,15 @@ from PySide6.QtWidgets import QSplashScreen
 - **odfpy import addition:** Successfully added to requirements.txt (not a removal)
 - **accessible_date_field.py:** Already archived (April 3, 2026)
 - **Import fixes:** All four issues (time parsing, CSV encoding, label width, ODS support) COMPLETE and not flagged by vulture as problematic
-- **No regression risk:** Changes are additive or fixing known bugs; no dead code removal yet
+- **No regression risk:** All changes are dead code removals; no behavior change; lint clean
+- **Running total:** −111 lines removed across Phases 1 and 90% imports
 
 ---
 
 ## Next Steps
 
-When ready to proceed:
-1. Run `python -m vulture src > vulture_detailed_output.txt` for complete line-number details
-2. Review Phase 1 items first (fastest, safest)
-3. Tag removal PRs with label "cleanup/dead-code" for tracking
+1. Phase 2: Run `python -m vulture src` and review each 60% item manually
+2. Create `.vultureignore` for confirmed Qt false positives
+3. Archive or delete confirmed orphan methods
 4. Test thoroughly before merging
 

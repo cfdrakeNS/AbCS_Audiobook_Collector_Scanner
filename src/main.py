@@ -16,9 +16,8 @@ from src.accessibility.theme_manager import get_theme_manager
 from src.accessibility.scaling import get_scaler
 from src.accessibility.style_helpers import build_accessible_button_style
 from src.database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries, AuthorQueries
-from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPixmap, QFont
 import sys
 import ctypes
 import threading
