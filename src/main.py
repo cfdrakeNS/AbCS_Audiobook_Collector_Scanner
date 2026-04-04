@@ -56,7 +56,7 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 
 # Version information - update this with each release
 APP_VERSION = "1.9.4"
-APP_BUILD_DATE = "2026-04-03"
+APP_BUILD_DATE = "2026-04-04"
 
 BUILD_EXPIRY_DAYS = 30
 
