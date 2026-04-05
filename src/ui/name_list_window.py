@@ -994,65 +994,6 @@ class NameListWindow(QDialog):
             f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=False)
         return False
 
-    def find_next_match(self):
-        self._find_direction(forward=True)
-
-    def find_previous_match(self):
-        self._find_direction(forward=False)
-
-    def _find_direction(self, forward: bool):
-        text = self._normalize_find_value(self.find_edit.text())
-        if not text or self.table.rowCount() == 0:
-            return
-
-        # Count total matches for position announcement
-        total_matches = 0
-        matches_positions = []
-        
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, self.COL_NAME)
-            name = item.text() if item else ""
-            if self._is_find_match(name, text, is_author_mode=self.is_author_mode):
-                total_matches += 1
-                matches_positions.append(row)
-
-        if total_matches == 0:
-            suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
-            self.set_status(
-                f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=True)
-            return
-
-        start_row = self._last_find_row if self._last_find_row >= 0 else self.table.currentRow()
-        if start_row < 0:
-            start_row = 0
-
-        step = 1 if forward else -1
-        row_count = self.table.rowCount()
-        row = start_row
-
-        for _ in range(row_count):
-            row = (row + step) % row_count
-            item = self.table.item(row, self.COL_NAME)
-            name = item.text() if item else ""
-            if self._is_find_match(name, text, is_author_mode=self.is_author_mode):
-                self._focus_row(row)
-                self._last_find_row = row
-                
-                # Find current position in matches
-                current_position = matches_positions.index(row) + 1
-                position_text = f"Showing match {current_position} of {total_matches}"
-                
-                suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
-                self.set_status(
-                    f"Found {self.entity_singular.lower()}: {item.text()}. {position_text}.{suffix}",
-                    announce=True
-                )
-                return
-
-        suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
-        self.set_status(
-            f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}", announce=True)
-
     def _focus_row(self, row: int):
         if row < 0 or row >= self.table.rowCount():
             return

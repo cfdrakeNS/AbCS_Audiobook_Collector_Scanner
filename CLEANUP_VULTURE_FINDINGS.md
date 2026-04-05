@@ -1,6 +1,6 @@
 # AbCS Dead Code Cleanup - Vulture Findings
 **Created:** April 3, 2026  
-**Last Updated:** April 5, 2026 — 60% section expanded to window-by-window review + test order  
+**Last Updated:** April 5, 2026 - 100% and 90% phases completed and validated  
 **Tool:** vulture (AST-based dead code detection)  
 **Generated:** `python -m vulture src`
 
@@ -10,66 +10,66 @@
 
 | Category | Count | Status |
 |----------|-------|--------|
-| **100% Confidence - Unreachable Code** | 2 | ✅ DONE (April 4, 2026) |
-| **90% Confidence - Unused Imports** | 7 | ✅ DONE (April 4, 2026) |
-| **100% Confidence - Unused Local Variables** | 7 | ✅ DONE (April 4, 2026) |
-| **60% Confidence - Unused Methods/Attributes** | ~40+ | Needs manual review |
-| **TOTAL** | ~56+ | Phase 1 complete + validated |
+| **100% Confidence - Unreachable Code** | 2 | DONE (April 4, 2026) |
+| **90% Confidence - Unused Imports** | 7 | DONE (April 4, 2026) |
+| **100% Confidence - Unused Local Variables** | 7 | DONE (April 4, 2026) |
+| **60% Confidence - Unused Methods/Attributes** | 80+ (latest scan) | In progress, manual review |
+| **TOTAL** | 90+ | Phase 1 complete; Phase 2 active |
 
-**Phase 1 net line reduction: −107 lines** (7 added, 114 deleted across 7 files)  
-**90% imports net reduction: −4 lines** (2 added, 6 deleted across 4 files)
+**Phase 1 net line reduction: -111 lines** (dead code and imports/locals cleanup)  
+**Validation status:** Completed manual smoke checks for impacted windows and workflows.
 
 ---
 
-## 100% Confidence - Unreachable Code ✅ COMPLETE
+## 100% Confidence - Unreachable Code DONE
 
-### 1. src/main.py:386 ✅
+### 1. src/main.py:386
 **Issue:** Unreachable code block  
-**Context:** Code after `return self.qt_app.exec()` inside `run()` — a dead fragment of the old `show_splash()` / duplicate `run()` body that could never execute.  
-**Removed:** 56 lines deleted, 0 added
+**Context:** Code after `return self.qt_app.exec()` in `run()` that could never execute  
+**Result:** Removed
 
-### 2. src/ui/name_list_window.py:913 ✅
+### 2. src/ui/name_list_window.py:913
 **Issue:** Unreachable code block  
-**Context:** Full `QDialog` shortcut-help build block after the `return` statement in `_build_read_status_message()`. The method already returned on the previous line so this dialog was never shown.  
-**Removed:** 51 lines deleted, 0 added
+**Context:** Dialog/shortcut help build block placed after return in `_build_read_status_message()`  
+**Result:** Removed
 
 ---
 
-## 90% Confidence - Unused Imports ✅ COMPLETE
+## 90% Confidence - Unused Imports DONE
 
-All 7 unused imports removed (April 4, 2026). Net: −4 lines across 4 files.
+All 7 unused imports removed.
 
-| # | Symbol | File | Notes |
-|---|--------|------|-------|
-| 1 | `EasyID3` | `src/core/tag_reader.py` | `mutagen.ID3` used instead; easy-id3 import removed |
-| 2 | `QSplashScreen` | `src/main.py` | Replaced by custom dialog splash; entire symbol removed |
-| 3 | `QFont` | `src/main.py` | Never instantiated; inline on same line as QPixmap |
-| 4 | `QPixmap` | `src/main.py` | Never created; entire `from PySide6.QtGui import …` line dropped |
-| 5 | `announce_form_field` | `src/ui/book_details.py` | Never called in this file; removed from import list |
-| 6 | `QButtonGroup` | `src/ui/book_list_import_window.py` | UI uses no radio-group logic; removed |
-| 7 | `QRadioButton` | `src/ui/book_list_import_window.py` | No radio buttons in this window; removed |
+| # | Symbol | File | Result |
+|---|--------|------|--------|
+| 1 | EasyID3 | src/core/tag_reader.py | Removed |
+| 2 | QSplashScreen | src/main.py | Removed |
+| 3 | QFont | src/main.py | Removed |
+| 4 | QPixmap | src/main.py | Removed |
+| 5 | announce_form_field | src/ui/book_details.py | Removed |
+| 6 | QButtonGroup | src/ui/book_list_import_window.py | Removed |
+| 7 | QRadioButton | src/ui/book_list_import_window.py | Removed |
 
 ---
 
-## 100% Confidence - Unused Local Variables ✅ COMPLETE
+## 100% Confidence - Unused Local Variables DONE
 
-7 confirmed instances addressed (actual vulture count; original estimate was ~15):
+7 confirmed instances addressed.
 
 | File | Line | Variable | Fix |
 |------|------|----------|-----|
-| `src/accessibility/accessible_events.py` | 73 | `announcement_widget` param | Renamed to `_announcement_widget` |
-| `src/ui/book_list_import_window.py` | 33 | `filepath` param in `read_csv` stub | Renamed to `_filepath` |
-| `src/ui/book_list_import_window.py` | 37 | `filepath` param in `read_excel` stub | Renamed to `_filepath` |
-| `src/ui/book_list_import_window.py` | 804 | `icon_type` param in `show_accessible_message` | Removed unused param |
-| `src/ui/collection_window.py` | 325 | `prev_row`, `prev_col` params | Renamed to `_prev_row`, `_prev_col` |
-| `src/ui/import_progress_window.py` | 319 | `issues_text` param in `update_current_item` | Removed unused kwarg |
-| `src/ui/main_window.py` | 2475 | `previous` param in `on_current_cell_changed` | Renamed to `_previous` |
+| src/accessibility/accessible_events.py | 73 | announcement_widget param | Renamed to `_announcement_widget` |
+| src/ui/book_list_import_window.py | 33 | filepath param in read_csv | Renamed to `_filepath` |
+| src/ui/book_list_import_window.py | 37 | filepath param in read_excel | Renamed to `_filepath` |
+| src/ui/book_list_import_window.py | 804 | icon_type param in show_accessible_message | Removed unused param |
+| src/ui/collection_window.py | 325 | prev_row, prev_col params | Renamed to `_prev_row`, `_prev_col` |
+| src/ui/import_progress_window.py | 319 | issues_text kwarg in update_current_item | Removed unused kwarg |
+| src/ui/main_window.py | 2475 | previous param in on_current_cell_changed | Renamed to `_previous` |
 
 ---
 
 ## 60% Confidence - Window-by-Window Review Plan (One Window at a Time)
 
-Updated from current vulture run (April 5, 2026). This section is now organized for sequential testing: complete one window, test it, then move to the next.
+Updated from current vulture run (April 5, 2026). This section is organized for sequential testing: complete one window, test it, then move to the next.
 
 ### Review Rule for Every Window
 
@@ -82,15 +82,21 @@ For each flagged item below:
 ### Window Queue (Test in This Order)
 
 #### Window 1: Main Window (src/ui/main_window.py)
-Flagged items:
-- line 360 and 2762: attribute `_web_fetch_cancelled`
-- line 365: attribute `filtered_books`
-- lines 1633, 1635, 1637: variable `filter_info`
-- lines 1639, 1641: variable `collection_info`
-- line 2304: method `focus_book_title`
-- line 2469: method `move_cursor_to_row`
-- line 2487: method `announce_current_cell`
-- line 2557: method `select_range_to_current_row`
+Status: Code cleanup applied and manual smoke test PASSED on April 5, 2026.
+
+Completed removals:
+- removed attribute `_web_fetch_cancelled`
+- removed attribute `filtered_books`
+- removed unused locals `filter_info` and `collection_info` in `refresh_books`
+- removed method `focus_book_title`
+- removed method `move_cursor_to_row`
+- removed method `announce_current_cell`
+- removed method `select_range_to_current_row`
+- additional cleanup: removed unused `columns` local, unused `QObject` import, unused `ReadingQueries` import, and renamed `previous` to `_previous`
+
+Remaining vulture findings after this pass:
+- `unused class MainWindow` (60%) - expected false positive when scanning single file
+- `unused method on_collection_changed` (60%) - keep for now pending signal/wiring confirmation
 
 Test focus after changes:
 - Table navigation and cell announcements
@@ -98,22 +104,40 @@ Test focus after changes:
 - Multi-select behavior (Shift+Click and Ctrl+Click)
 
 #### Window 2: Book Details (src/ui/book_details.py)
-Flagged items:
-- line 176: attribute `shortcut_manager`
-- line 347: variable `lineedit_style`
+Status: Code cleanup applied and manual smoke test PASSED on April 5, 2026.
+
+Completed removals:
+- removed attribute `shortcut_manager`
+- removed unused local `lineedit_style` in `apply_control_styles`
+- removed now-unused top-level `ShortcutManager`/`ShortcutContext` import
+- fixed Size label alignment to right-justify with vertical center
+
+Remaining vulture findings after this pass:
+- `unused class BookDetailsWindow` (60%) - expected false positive when scanning single file
+- additional 60% candidates remain in this file and will be reviewed only after Window 2 UI test is complete
 
 Test focus after changes:
 - Open, edit, save, and navigate Prev/Next
 - Keyboard shortcuts in form fields
 
 #### Window 3: Name List Window (src/ui/name_list_window.py)
-Flagged items:
-- line 997: method `find_next_match`
-- line 1000: method `find_previous_match`
+Status: Code cleanup completed and syntax validated on April 5, 2026. Ready for manual UI test.
+
+Removals completed:
+- removed unreachable dialog code block after return statement (lines 913-962)
+- removed method `find_next_match` 
+- removed method `find_previous_match`
+- removed helper method `_find_direction` (no longer called)
+
+Remaining vulture findings after this pass:
+- `unused class NameListWindow` (60%) - expected false positive when scanning single file
+- `unused attribute _last_find_row` (60%) - may be retained; verify in UI test
 
 Test focus after changes:
-- Find next/previous behavior
+- Author/Series/Genre/Collection list navigation
 - Arrow-key navigation and status announcements
+- Edit mode behavior (Alt+E)
+- Find/search behavior for remaining functionality
 
 #### Window 4: Import Window (src/ui/import_window.py)
 Flagged items:
@@ -213,90 +237,37 @@ These are important but should be handled outside the window sequence:
 
 ## Cleanup Strategy
 
-### Phase 1: Quick Wins ✅ COMPLETE (April 4, 2026)
-1. ✅ Removed 2 unreachable code blocks (src/main.py, src/ui/name_list_window.py)
-2. ✅ Removed 7 unused imports (4 files) ← **done this session**
-3. ✅ Removed 7 unused local variables (renamed to `_` prefix or removed unused params)
-4. **Net reduction: −111 lines** across 9 files; no behavior change; all lint checks pass
+### Phase 1: Quick Wins DONE (April 4, 2026)
+1. Removed 2 unreachable code blocks.
+2. Removed 7 unused imports.
+3. Removed/renamed 7 unused local variable findings.
+4. Completed smoke testing for touched workflows.
 
-### Phase 2: Targeted Review (1-2 hours)
-1. Export full vulture output to separate detailed list with line numbers
-2. For each 60% confidence item:
-   - Check if it's a Qt slot (`@pyqtSlot` or implicit)
-   - Check if called dynamically in any other file
-   - Check if part of documented API
-3. Create `.vultureignore` file for confirmed false positives
-4. Move confirmed unused methods to archive
-5. **Total risk:** Medium; requires code inspection
+### Phase 2: Targeted 60% Review IN PROGRESS
+1. Use fresh `vulture` output as source of truth.
+2. Process each window/module in isolated cleanup cycles.
+3. Record keep/remove decision and test result for each item.
+4. Maintain `.vultureignore` for verified indirect-use symbols.
 
-### Phase 3: Testing
-1. Run full test suite (if available)
-2. Launch app and test all major workflows
-3. Check screen reader integration (JAWS/NVDA)
-4. Verify accessibility shortcuts still work
+### Phase 3: Final Validation
+1. Run regression smoke tests across major windows.
+2. Re-run `python -m vulture src` and compare trend.
+3. Confirm accessibility and shortcut behavior remains intact.
 
 ---
 
 ## Notes
 
-- **odfpy import addition:** Successfully added to requirements.txt (not a removal)
-- **accessible_date_field.py:** Already archived (April 3, 2026)
-- **Import fixes:** All four issues (time parsing, CSV encoding, label width, ODS support) COMPLETE and not flagged by vulture as problematic
-- **No regression risk:** All changes are dead code removals; no behavior change; lint clean
-- **Running total:** −111 lines removed across Phases 1 and 90% imports
-- **Testing status:** 100% and 90% cleanup changes validated via manual checklist (April 4, 2026)
-
----
-
-## Testing Checklist for 100% + 90% Changes ✅ COMPLETE (April 4, 2026)
-
-Each area maps to a file that was edited. All checklist items were completed.
-
-### App Startup (src/main.py — unreachable block + 3 imports removed)
-- [x] App launches without crash on a populated database
-- [x] App launches without crash on an empty database (shows the empty-library dialog)
-- [x] Splash/statistics dialog appears and auto-closes or can be dismissed with Continue
-
-### Name List Window — Authors / Series / Genre (src/ui/name_list_window.py — unreachable block removed)
-- [x] Open Authors window; Alt+/ reads the status bar correctly
-- [x] Navigate rows with arrow keys; status bar announces current name and book count
-- [x] F1 shortcut help dialog opens and displays correctly (the dead duplicate block was the shortcut dialog)
-
-### Status Bar Announcements — all windows (src/accessibility/accessible_events.py — param renamed)
-- [x] Status bar messages appear in at least three different windows (main, book details, import)
-- [x] With a screen reader active, messages are announced on status changes
-
-### Collection Window (src/ui/collection_window.py — on_selection_changed signature)
-- [x] Clicking or arrowing between rows loads the correct collection name into the editor
-- [x] Selecting a row does not throw a TypeError
-
-### Import Progress Window (src/ui/import_progress_window.py — issues_text kwarg removed)
-- [x] Start a folder scan; the progress window opens and updates file/book counts
-- [x] No crash or TypeError during the scan cycle
-
-### Book List Import — CSV / XLSX (src/ui/book_list_import_window.py — 3 changes)
-- [x] Browse for a CSV file; column mapping combos populate correctly
-- [x] Browse for an XLSX file; same mapping flow works
-- [x] Any accessible message dialogs in the window display without a TypeError (icon_type param removed)
-
-### Book Details Window (src/ui/book_details.py — announce_form_field import removed)
-- [x] Open a book; all fields are editable and save correctly
-- [x] Tab through all fields; no ImportError or NameError in the console
-
-### Audio Tag Import — MP3 / FLAC / M4A (src/core/tag_reader.py — EasyID3 import removed)
-- [x] Scan a folder containing MP3 files; tags (title, author, year) are read correctly
-- [x] Scan a folder with FLAC or M4A files; no import errors
-
-### Main Window Cell Navigation (src/ui/main_window.py — previous param renamed)
-- [x] Arrow up/down through the book table; last-focused book ID is tracked correctly
-- [x] Press Escape after searching; cursor returns to the previously focused row
+- odfpy import addition is complete and not part of dead-code removals.
+- accessible_date_field.py was archived on April 3, 2026.
+- Import fixes (time parsing, CSV encoding, label width, ODS support) are complete and not blocked by vulture findings.
+- 100% and 90% buckets are complete and should be treated as closed.
 
 ---
 
 ## Next Steps
 
-1. Phase 2: Run `python -m vulture src` and review each 60% item manually
-2. Create `.vultureignore` for confirmed Qt false positives
-3. Archive or delete confirmed orphan methods
-4. After Phase 2 removals, run targeted regression checks for impacted windows/workflows
+1. Continue with the 60% window-by-window cleanup sequence.
+2. For each window, commit only after inspect -> cleanup -> test is complete.
+3. Keep this document updated with per-window decisions and outcomes.
 

@@ -7,7 +7,6 @@ import re
 from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.scaling import UIScaler
-from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
 from src.accessibility.accessible_events import announce_status_message, announce_dialog_opened, announce_dialog_closed
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -172,8 +171,6 @@ class BookDetailsWindow(QDialog):
         self.series_queries = SeriesQueries(db)
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
-        # Accessibility: Shortcut manager
-        self.shortcut_manager = ShortcutManager()
 
         # Setup UI
         self.setup_ui()
@@ -342,24 +339,6 @@ class BookDetailsWindow(QDialog):
         base_height = 20
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
-
-        # Stylesheet for QLineEdit controls
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QLineEdit:read-only {{
-                background-color: palette(window);
-            }}
-        """
 
         # Stylesheet for QComboBox controls (scaled height)
         combo_style = f"""
@@ -633,6 +612,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(self.bitrate_edit)
 
         size_label = QLabel("Si&ze:")
+        size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(False)
         self.size_edit.setAccessibleName("File size in megabytes")

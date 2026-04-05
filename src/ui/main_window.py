@@ -26,13 +26,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import (
     Qt,
     QTimer,
-    QItemSelection,
     QItemSelectionModel,
     QEvent,
     QSettings,
     QAbstractTableModel,
     QModelIndex,
-    QObject,
 )
 from PySide6.QtGui import (
     QKeyEvent,
@@ -80,9 +78,9 @@ from src.ui.web_metadata import WebMetadataWindow
 def get_app_version():
     """Get app version from main module."""
     try:
-        from main import APP_VERSION, APP_BUILD_DATE
+        from main import APP_VERSION
 
-        return f"v{APP_VERSION} (build {APP_BUILD_DATE})"
+        return f"v{APP_VERSION}"
     except ImportError:
         return "v?.?.?"
 
@@ -176,11 +174,8 @@ class BookTableModel(QAbstractTableModel):
                     )
                 return ""
 
-        if role == Qt.TextAlignmentRole:
-            if col == 6:
-                return Qt.AlignRight | Qt.AlignVCenter
-            if col == 7:
-                return Qt.AlignHCenter | Qt.AlignVCenter
+        if role == Qt.TextAlignmentRole and col == 6:
+            return Qt.AlignRight | Qt.AlignVCenter
 
         return None
 
@@ -356,13 +351,9 @@ class MainWindow(QMainWindow):
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
 
-        # Web fetch cancellation flag
-        self._web_fetch_cancelled = False
-
         # UI components
         self.table = QTableWidget()
         self.books = []
-        self.filtered_books = []
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
         self._read_filter_options = ["All", "Read", "Unread"]
@@ -550,16 +541,6 @@ class MainWindow(QMainWindow):
         self.table.setColumnHidden(0, True)  # Author
         self.table.setColumnHidden(3, True)  # Series
         self.table.setColumnHidden(5, True)  # Time
-        columns = [
-            "Author",
-            "Title",
-            "Year",
-            "Series",
-            "Genre",
-            "Time",
-            "Tracks",
-            "Read",
-        ]
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         # Selection column removed; only text highlighting used
@@ -1346,7 +1327,7 @@ class MainWindow(QMainWindow):
             # Announce status bar to screen reader
             self.set_status(self.get_default_status(), timeout_ms=0, announce=True)
         else:
-            # No screen reader detected - show message box for testing
+            # No screen reader detected - show fallback message box
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -1628,17 +1609,6 @@ class MainWindow(QMainWindow):
 
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
-
-            # Update status bar with filter info
-            filter_info = ""
-            if self.current_filter.read_filter == "Read":
-                filter_info = " • Read"
-            elif self.current_filter.read_filter == "Unread":
-                filter_info = " • Unread"
-
-            collection_info = ""
-            if self.current_filter.collection_id is not None:
-                collection_info = f" • {self._current_collection_label()}"
 
             self.set_default_status(announce=True)
 
@@ -2301,22 +2271,6 @@ class MainWindow(QMainWindow):
             # Call original key press handler
             QTableView.keyPressEvent(self.table, event)
 
-    def focus_book_title(self):
-        """Focus book table and move to the Title column."""
-        if self.table.rowCount() == 0:
-            self.table.setFocus()
-            return
-
-        row = self.table.currentRow()
-        if row < 0:
-            row = 0
-
-        title_col = 1
-        index = self.table.model().index(row, title_col)
-        self.table.selectionModel().setCurrentIndex(index, QItemSelectionModel.NoUpdate)
-        self.table.scrollTo(index)
-        self.table.setFocus()
-
     def move_current_without_selection(self, key: int):
         """Move current cell and clear selection when navigating with arrows."""
         row_count = self.table.rowCount()
@@ -2466,15 +2420,6 @@ class MainWindow(QMainWindow):
         self.update_selection_ui()
         self.announce_selection()
 
-    def move_cursor_to_row(self, row: int):
-        """Scroll the specified row into view."""
-        if 0 <= row < self.table.rowCount():
-            # Use Title column (column 1) which always has content
-            col = 1
-            # Scroll to make the row visible
-            index = self.table.model().index(row, col)
-            self.table.scrollTo(index)
-
     def on_current_cell_changed(self, current: QModelIndex, _previous: QModelIndex):
         """Handle current cell changes - track last focused book for search ESC restore."""
         current_row = current.row()
@@ -2483,50 +2428,6 @@ class MainWindow(QMainWindow):
         if 0 <= current_row < len(self.books):
             self._last_table_book_id = self.books[current_row].book_id
             self._last_table_column = current_col if current_col >= 0 else 1
-
-    def announce_current_cell(self, force: bool = False):
-        """Announce current cell value to the status bar for screen readers."""
-        # Do not announce during selection operations (unless forced)
-        if not force and hasattr(self, "selected_book_ids") and self.selected_book_ids:
-            return
-
-        row = self.table.currentRow()
-        col = self.table.currentColumn()
-        if row < 0 or col < 0:
-            return
-
-        if row >= len(self.books):
-            return
-
-        book = self.books[row]
-        header_text = (
-            self.book_model.headerData(col, Qt.Horizontal, Qt.DisplayRole) or "Field"
-        )
-
-        # Build announcement with book context
-        value_text = ""
-        if col == 0:  # Author
-            value_text = book.author_name or "blank"
-        elif col == 1:  # Title
-            value_text = book.title or "blank"
-        elif col == 2:  # Year
-            value_text = str(book.year) if book.year else "blank"
-        elif col == 3:  # Series
-            value_text = book.series_name or "blank"
-        elif col == 4:  # Genre
-            value_text = book.genre_name or "blank"
-        elif col == 5:  # Time
-            value_text = book.time_display or "blank"
-        elif col == 6:  # Tracks
-            value_text = str(book.tracks or 0)
-        elif col == 7:  # Read
-            if book.is_read:
-                value_text = "Read"
-            else:
-                value_text = "Unread"
-
-        announcement = f"{header_text}: {value_text}"
-        self.set_status(announcement, timeout_ms=2000)
 
     def announce_selection(self):
         """Announce selected books to status bar - show last selected item."""
@@ -2553,26 +2454,6 @@ class MainWindow(QMainWindow):
 
         # Keep until selection changes
         self.set_status(announcement, timeout_ms=0)
-
-    def select_range_to_current_row(self):
-        """Select a range from anchor to current row using Shift+Down/Up."""
-        row = self.table.currentRow()
-        if row < 0 or row >= len(self.books):
-            return
-
-        if self.selection_anchor_row is None:
-            self.selection_anchor_row = row
-
-        start_row = min(self.selection_anchor_row, row)
-        end_row = max(self.selection_anchor_row, row)
-
-        start_index = self.table.model().index(start_row, 0)
-        end_index = self.table.model().index(end_row, self.table.columnCount() - 1)
-        selection = QItemSelection(start_index, end_index)
-
-        self.table.selectionModel().select(
-            selection, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows
-        )
 
     def update_selection_ui(self):
         """Update UI based on selection."""
@@ -2757,9 +2638,6 @@ class MainWindow(QMainWindow):
             return
 
         book = self.books[row]
-
-        # Reset cancellation flag
-        self._web_fetch_cancelled = False
 
         # Show auto-closing popup dialog while fetching web info
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
@@ -3023,7 +2901,6 @@ class MainWindow(QMainWindow):
     def on_reading_history(self):
         """Handle Alt+H - Show reading history window."""
         from src.ui.reading_history_window import ReadingHistoryWindow
-        from src.database import ReadingQueries
 
         # Create reading history window
         reading_window = ReadingHistoryWindow(
@@ -3061,8 +2938,7 @@ class MainWindow(QMainWindow):
             self.db, self.scaler, self.theme_manager, parent=self
         )
         dialog.exec()
-        # Refresh View > Collections and books to reflect imported data.
-        self.refresh_collections()
+        # Refresh books to show any imported items
         self.refresh_books()
 
     def on_import(self):
@@ -3358,8 +3234,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
         )
         dialog.exec()
         if dialog.data_changed:
-            # Restore operations may change active collections; rebuild View menu.
-            self.refresh_collections()
             self.refresh_books()
             self.set_status("Database updated from backup/restore operation")
         self._restore_table_focus_context(focus_ctx)
