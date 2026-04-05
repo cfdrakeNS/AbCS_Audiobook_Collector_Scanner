@@ -1,6 +1,6 @@
 # AbCS Dead Code Cleanup - Vulture Findings
 **Created:** April 3, 2026  
-**Last Updated:** April 4, 2026 — Phase 1 + 90% imports complete and tested  
+**Last Updated:** April 5, 2026 — 60% section expanded to window-by-window review + test order  
 **Tool:** vulture (AST-based dead code detection)  
 **Generated:** `python -m vulture src`
 
@@ -67,35 +67,147 @@ All 7 unused imports removed (April 4, 2026). Net: −4 lines across 4 files.
 
 ---
 
-## 60% Confidence - Unused Methods/Attributes (~40+ items)
+## 60% Confidence - Window-by-Window Review Plan (One Window at a Time)
 
-**Warning:** These may be:
-- Qt signal callbacks (invoked indirectly by Qt framework)
-- Plugin entry points
-- Dynamic method lookups
-- Base class methods required for subclass contract
-- API methods meant for external use
+Updated from current vulture run (April 5, 2026). This section is now organized for sequential testing: complete one window, test it, then move to the next.
 
-**Common patterns observed:**
-- `on_*_clicked()` - Qt button click handlers (likely needed despite vulture warning)
-- `setup_*()` - Setup methods called dynamically or by framework
-- `__*__()` - Dunder methods (protocol methods)
-- Accessibility callbacks from TextEdit, LineEdit, ComboBox, etc.
+### Review Rule for Every Window
 
-**Action:** Manual review required per item. Flag false positives for future vulture configuration via `.vultureignore`.
+For each flagged item below:
+1. Verify if connected via Qt signal/slot, shortcut registration, menu action, or dynamic call.
+2. Keep and mark as false positive if it is used indirectly.
+3. Remove or refactor only if there are no callers and no framework wiring.
+4. Run the window-specific smoke test before moving to the next window.
 
-### Likely False Positives (Qt Slot Decorators)
-- Button click handlers in UI windows
-- Combo box activation handlers
-- Line edit text changed handlers
-- Table double-click handlers
-- Menu action triggered handlers
+### Window Queue (Test in This Order)
 
-### Candidates for Removal (after manual verification)
-- Orphaned utility methods not called by any other function
-- Old feature methods superseded by new implementations
-- Debug-only methods with no production callers
-- Stub implementations left as placeholders
+#### Window 1: Main Window (src/ui/main_window.py)
+Flagged items:
+- line 360 and 2762: attribute `_web_fetch_cancelled`
+- line 365: attribute `filtered_books`
+- lines 1633, 1635, 1637: variable `filter_info`
+- lines 1639, 1641: variable `collection_info`
+- line 2304: method `focus_book_title`
+- line 2469: method `move_cursor_to_row`
+- line 2487: method `announce_current_cell`
+- line 2557: method `select_range_to_current_row`
+
+Test focus after changes:
+- Table navigation and cell announcements
+- Search, filtering, and returning to previous row
+- Multi-select behavior (Shift+Click and Ctrl+Click)
+
+#### Window 2: Book Details (src/ui/book_details.py)
+Flagged items:
+- line 176: attribute `shortcut_manager`
+- line 347: variable `lineedit_style`
+
+Test focus after changes:
+- Open, edit, save, and navigate Prev/Next
+- Keyboard shortcuts in form fields
+
+#### Window 3: Name List Window (src/ui/name_list_window.py)
+Flagged items:
+- line 997: method `find_next_match`
+- line 1000: method `find_previous_match`
+
+Test focus after changes:
+- Find next/previous behavior
+- Arrow-key navigation and status announcements
+
+#### Window 4: Import Window (src/ui/import_window.py)
+Flagged items:
+- line 236 and 651: attribute `current_formats_text`
+- line 266: attribute `_scan_prompt_open`
+- line 541: variable `lineedit_style`
+- line 1023: method `on_focus_list`
+- line 1039: method `_hide_table_cell_highlight`
+- lines 1524, 1530, 1533, 1538: variable `path_type`
+- lines 1598, 1607: variable `scan_files_processed`
+- lines 1599, 1608: variable `scan_total_files`
+
+Test focus after changes:
+- Scan prompt flow
+- Table focus/highlight behavior
+- Start/stop scan and progress updates
+
+#### Window 5: Book List Import Window (src/ui/book_list_import_window.py)
+Flagged items:
+- line 21: class `DataFrame`
+- line 125 and 944: attribute `_last_csv_encoding`
+- line 696: method `toggle_mode`
+- line 709: method `focus_mapping_row`
+- line 802: method `show_accessible_message`
+- line 1086: method `on_new_books_toggled`
+- line 1093: method `on_headers_toggled`
+- line 1136: method `on_read_date_toggled`
+
+Test focus after changes:
+- CSV/XLSX mapping workflow
+- Toggle options affecting mapping and preview
+- Accessible message dialogs and keyboard flow
+
+#### Window 6: Import Progress Window (src/ui/import_progress_window.py)
+Flagged items:
+- line 198: variable `lineedit_style`
+- line 319: method `update_current_item`
+- line 383: method `mark_add_complete`
+
+Test focus after changes:
+- Progress updates during scan/import
+- Completion state and final status messaging
+
+#### Window 7: Import Detail Window (src/ui/import_detail_window.py)
+Flagged items:
+- line 689: variable `lineedit_style`
+
+Test focus after changes:
+- Open item details, edit fields, save/discard behavior
+
+#### Window 8: Preferences Window (src/ui/preferences_window.py)
+Flagged items:
+- line 622: method `_sync_reader_keywords_width`
+- line 657: variable `lineedit_style`
+- line 1428: method `on_run_display_audit`
+
+Test focus after changes:
+- Theme/scaling controls
+- Reader keywords controls and display-audit action
+
+#### Window 9: Backup/Restore Window (src/ui/backup_restore_window.py)
+Flagged items:
+- line 356: method `_is_backup_list_focused`
+
+Test focus after changes:
+- Backup list keyboard focus
+- Backup/restore action buttons
+
+#### Window 10: Web Metadata Window (src/ui/web_metadata.py)
+Flagged items:
+- line 73: attribute `refresh_count`
+- line 429: method `_adjust_plot_height`
+- line 557: method `generate_realistic_plot`
+- line 758: method `clear_web_indicators`
+- line 766: method `show_changes_popup`
+
+Test focus after changes:
+- Metadata fetch/refresh cycle
+- Any chart/popup behavior tied to scrape results
+
+### Non-Window 60% Items (Track Separately)
+
+These are important but should be handled outside the window sequence:
+- accessibility modules (`accessible_events.py`, `shortcuts.py`, `scaling.py`, `theme_manager.py`)
+- core modules (`import_scanner.py`, `tag_reader.py`, `validator.py`)
+- database modules (`connection.py`, `models.py`, `queries.py`, `reading_queries.py`)
+- app entry (`main.py`), web API (`src/web/web_book_api.py`)
+
+### Execution Mode for This Cleanup
+
+- Only one window per cycle.
+- For each cycle: inspect -> edit -> run smoke test -> record result.
+- Do not batch multiple windows in one edit set.
+- Add confirmed indirect Qt callbacks to `.vultureignore` after verification.
 
 ---
 
