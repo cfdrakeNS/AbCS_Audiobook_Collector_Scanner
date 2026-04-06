@@ -3134,6 +3134,10 @@ Use Ctrl+I to import or Alt+M for menu options."""
                 ("Total Listening Time", stats.total_time_display),
             ]
 
+            if stats.collection_breakdown:
+                for collection_name, book_count in stats.collection_breakdown:
+                    data.append((collection_name, str(book_count)))
+
             table.setRowCount(len(data))
 
             for row, (label, value) in enumerate(data):

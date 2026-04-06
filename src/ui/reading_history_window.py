@@ -523,23 +523,17 @@ class ReadingHistoryWindow(QDialog):
             widget.setStyleSheet("")
 
     def load_reading_data(self):
-        """Load reading history data based on current filters."""
+        """Load all reading-history views.
+
+        Summary tabs (General/Year/Month) are always all-time and are intentionally
+        independent from Date Range tab filters.
+        """
         if self._loading:
             return
 
         self._loading = True
         try:
-            # Get overall statistics
-            stats = self.reading_queries.get_reading_statistics()
-            self.update_general_stats(stats)
-
-            # Get yearly breakdown
-            yearly_data = stats.get("yearly_breakdown", [])
-            self.populate_year_table(yearly_data)
-
-            # Get monthly breakdown
-            monthly_data = stats.get("monthly_breakdown", [])
-            self.populate_month_table(monthly_data)
+            self.load_summary_data()
 
             # Load date range data
             self.load_date_range_data()
@@ -550,6 +544,21 @@ class ReadingHistoryWindow(QDialog):
             )
         finally:
             self._loading = False
+
+    def load_summary_data(self):
+        """Load all-time summary data for General/Year/Month tabs.
+
+        Do not pass date-range filters here; these tabs must not be affected by
+        Date Range tab selections.
+        """
+        stats = self.reading_queries.get_reading_statistics()
+        self.update_general_stats(stats)
+
+        yearly_data = stats.get("yearly_breakdown", [])
+        self.populate_year_table(yearly_data)
+
+        monthly_data = stats.get("monthly_breakdown", [])
+        self.populate_month_table(monthly_data)
 
     def update_general_stats(self, stats):
         """Update general statistics table."""
