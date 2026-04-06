@@ -3,6 +3,8 @@ Main Window - Audio Book Window
 Primary interface for browsing and managing audiobook collection.
 """
 
+import time
+
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -315,6 +317,10 @@ class MainWindow(QMainWindow):
         ("Title + Author + Year + Collection", "title_author_year_collection"),
     ]
 
+    _SETTINGS_ORG = "AbCS"
+    _SETTINGS_APP = "AudioBookCollector"
+    _SETTINGS_KEY_COLLECTION_FILTER_ID = "main/collection_filter_id"
+
     def _set_sort_label(self, order_by=None, direction=None):
         """Set the sort label with custom message for Author, Genre, Series."""
         key = order_by or self.current_filter.order_by
@@ -383,6 +389,10 @@ class MainWindow(QMainWindow):
         self.status_clear_timer.setSingleShot(True)
         self.status_clear_timer.timeout.connect(self.clear_status_message)
 
+        # De-duplicate rapid repeated announcements of the same status text.
+        self._last_announced_message = ""
+        self._last_announce_monotonic = 0.0
+
         # Header sort state for non-primary columns
         self._last_header_sort_column = -1
         self._last_header_sort_order = Qt.AscendingOrder
@@ -401,6 +411,7 @@ class MainWindow(QMainWindow):
 
         # Load initial data
         self.refresh_collections()
+        self._load_saved_collection_filter()
         self.refresh_books()
 
         # Window settings
@@ -1314,7 +1325,15 @@ class MainWindow(QMainWindow):
                        If 0, message stays until manually changed.
             announce: If True, briefly move focus to status bar so JAWS/NVDA read it
         """
+        if announce and message == self._last_announced_message:
+            if (time.monotonic() - self._last_announce_monotonic) < 0.6:
+                announce = False
+
         announce_status_message(self.status_bar, message, move_focus=announce)
+
+        if announce:
+            self._last_announced_message = message
+            self._last_announce_monotonic = time.monotonic()
 
         if timeout_ms > 0:
             self.status_clear_timer.stop()
@@ -1560,6 +1579,37 @@ class MainWindow(QMainWindow):
 
         self._sync_collection_menu_selection()
 
+    def _save_collection_filter_setting(self):
+        """Persist the current collection filter selection for next app launch."""
+        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        collection_id = self.current_filter.collection_id
+        settings.setValue(
+            self._SETTINGS_KEY_COLLECTION_FILTER_ID,
+            int(collection_id) if collection_id is not None else -1,
+        )
+
+    def _load_saved_collection_filter(self):
+        """Restore the last saved collection filter if it is still available."""
+        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        saved_collection_id = settings.value(
+            self._SETTINGS_KEY_COLLECTION_FILTER_ID, -1, type=int
+        )
+
+        if saved_collection_id is None or int(saved_collection_id) < 0:
+            self.current_filter.collection_id = None
+            self._sync_collection_menu_selection()
+            return
+
+        valid_ids = {
+            collection_id
+            for _label, collection_id in self._collection_filter_items
+            if collection_id is not None
+        }
+        self.current_filter.collection_id = (
+            int(saved_collection_id) if int(saved_collection_id) in valid_ids else None
+        )
+        self._sync_collection_menu_selection()
+
     def _sync_collection_menu_selection(self):
         """Keep View > Collections checked item synced with current filter."""
         if not hasattr(self, "collection_filter_group"):
@@ -1579,6 +1629,7 @@ class MainWindow(QMainWindow):
         self.current_filter.collection_id = (
             collection_id if collection_id in valid_ids else None
         )
+        self._save_collection_filter_setting()
         self._sync_collection_menu_selection()
         self.refresh_books()
 
@@ -1643,6 +1694,7 @@ class MainWindow(QMainWindow):
         }
         coll_id = collection_id if collection_id in valid_ids else None
         self.current_filter.collection_id = coll_id
+        self._save_collection_filter_setting()
         self._sync_collection_menu_selection()
         self.refresh_books()
 
@@ -1864,18 +1916,27 @@ class MainWindow(QMainWindow):
                 # Clear filter so new search works
                 self.current_filter.search_text = ""
                 self.refresh_books()
+
+                # Return keyboard focus to the main table after the no-match popup.
+                dialog.reject()
+
+                def restore_table_focus_after_no_match():
+                    if self.table.rowCount() > 0:
+                        row = self.table.currentRow()
+                        if row < 0:
+                            row = 0
+                        target_col = selected_column
+                        if target_col < 0 or target_col >= self.table.columnCount():
+                            target_col = 1
+                        self.table.setCurrentCell(row, target_col)
+                    self.table.setFocus(Qt.TabFocusReason)
+
+                QTimer.singleShot(0, restore_table_focus_after_no_match)
                 return
 
             found_book = self.books[0]
-            title = found_book.title or "Unknown"
-            author = found_book.author_name or "Unknown"
             dialog.accept()
             self.focus_book_by_id(found_book.book_id, selected_column)
-            self.set_status(
-                f"Found: {title} by {author}",
-                timeout_ms=3000,
-                announce=True,
-            )
 
         text_edit.returnPressed.connect(run_find)
         field_combo.activated.connect(lambda _index: text_edit.setFocus())
@@ -2493,8 +2554,12 @@ class MainWindow(QMainWindow):
 
         self.sync_selection_indicators()
 
-        # mw#12: Update status bar and announce to screen reader when selection changes
-        self.set_default_status(announce=has_selection)
+        # Avoid status churn while items are selected.
+        # Selection speech/status is handled by explicit announce_selection() calls.
+        if has_selection:
+            return
+
+        self.set_default_status(announce=False)
 
     def sync_selection_indicators(self):
         # Selection highlight handled by the view; no custom indicator logic needed.

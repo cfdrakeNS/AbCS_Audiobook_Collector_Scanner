@@ -8,9 +8,15 @@ This module properly supports screen readers by:
 3. Only emitting events when accessibility is active (QAccessible.isActive())
 """
 
+import time
+
 from PySide6.QtGui import QAccessible, QAccessibleEvent
 from PySide6.QtWidgets import QStatusBar, QDialog, QApplication
 from PySide6.QtCore import Qt
+
+# Guard repeated focus-based announcements per status bar.
+_LAST_FOCUS_ANNOUNCE: dict[int, tuple[str, float]] = {}
+_FOCUS_ANNOUNCE_DEDUP_SECONDS = 0.9
 
 
 def announce_status_message(
@@ -18,6 +24,7 @@ def announce_status_message(
     message: str,
     _announcement_widget=None,
     move_focus: bool = False,
+    force_focus_announce: bool = False,
 ) -> None:
     """
     Update status bar message and notify screen readers of the change.
@@ -29,18 +36,30 @@ def announce_status_message(
         message: Message text to display and announce
         announcement_widget: Optional hidden label for announcements (created if not provided)
         move_focus: If True, briefly move focus to status bar so screen readers read it (workaround for event crashes)
+        force_focus_announce: If True, bypass duplicate-suppression for focus announcements.
     """
     try:
-        # Update the visible status bar message
-        status_bar.showMessage(message)
+        message = message or ""
 
-        # Set accessible name for when user navigates to status bar
-        status_bar.setAccessibleName(message)
-        status_bar.setAccessibleDescription(message)
+        # Update the visible status bar message
+        if status_bar.currentMessage() != message:
+            status_bar.showMessage(message)
 
         # Workaround: Briefly move focus to status bar so screen readers read the message
         # This is more reliable than QAccessibleEvent which can cause crashes
         if move_focus and QAccessible.isActive():
+            status_key = id(status_bar)
+            now = time.monotonic()
+            last_message, last_ts = _LAST_FOCUS_ANNOUNCE.get(status_key, ("", 0.0))
+            if (
+                not force_focus_announce
+                and message == last_message
+                and (now - last_ts) < _FOCUS_ANNOUNCE_DEDUP_SECONDS
+            ):
+                return
+
+            _LAST_FOCUS_ANNOUNCE[status_key] = (message, now)
+
             # Get the currently focused widget to restore focus later
             app = QApplication.instance()
             if app:

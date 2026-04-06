@@ -735,31 +735,20 @@ class ReadingHistoryWindow(QDialog):
         self.apply_accessible_styling()
 
     def on_read_status_bar(self):
-        """Read period message first, then status bar (Alt+/)."""
+        """Read one status message (Alt+/) without multi-step announcements."""
         if QAccessible.isActive():
-            # Only show period message if we're on Date Range tab
             current_tab = self.tab_widget.currentIndex()
             if current_tab == 3:  # Date Range tab
-                # First, read stored period message for screen readers
-                if self._period_message:
-                    self.set_status(self._period_message, announce=True)
-
-                # Then read the current status bar message (with a small delay)
-                QTimer.singleShot(1000, self._announce_status_bar)
+                status_text = self._period_message or self._default_status_message
+                self.set_status(status_text, announce=True)
             else:
-                # For other tabs, just read the current status
                 tab_names = ["General", "Year", "Month", "Date Range"]
-                if current_tab < len(tab_names):
-                    self.set_status(
-                        f"Viewing {tab_names[current_tab]} statistics", announce=True
-                    )
+                if current_tab < len(tab_names) and not self._default_status_message:
+                    status_text = f"Viewing {tab_names[current_tab]} statistics"
+                else:
+                    status_text = self._default_status_message
+                self.set_status(status_text, announce=True)
         # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
-
-    def _announce_status_bar(self):
-        """Helper method to announce status bar message."""
-        status_text = self._default_status_message
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""

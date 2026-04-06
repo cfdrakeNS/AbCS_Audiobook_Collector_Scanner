@@ -254,6 +254,8 @@ class ImportWindow(QDialog):
             "added": 0,
         }
         self._default_status_message = "Ready"
+        self._last_announced_message = ""
+        self._last_announce_monotonic = 0.0
         self._base_window_title = "Import Audiobooks"
         self._is_adding = False
         self._cancel_add_requested = False
@@ -863,7 +865,16 @@ class ImportWindow(QDialog):
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
         self._default_status_message = message
+
+        if announce and message == self._last_announced_message:
+            if (time.monotonic() - self._last_announce_monotonic) < 0.6:
+                announce = False
+
         announce_status_message(self.status_bar, message, move_focus=announce)
+
+        if announce:
+            self._last_announced_message = message
+            self._last_announce_monotonic = time.monotonic()
 
     def on_table_header_clicked(self, column: int):
         """Handle table header clicks for sorting."""
@@ -958,6 +969,10 @@ class ImportWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
+        if self.progress_window is not None and self.progress_window.isVisible():
+            self.progress_window.on_read_status_bar()
+            return
+
         status_text = self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)

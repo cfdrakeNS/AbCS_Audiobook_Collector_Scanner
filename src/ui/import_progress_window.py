@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from PySide6.QtWidgets import (
@@ -45,6 +47,7 @@ class ImportProgressWindow(QDialog):
         self._cancel_requested = False
         self._scan_active = True
         self._compact_mode = False
+        self._status_read_until = 0.0
 
         self.setup_ui()
         self.setup_shortcuts()
@@ -53,7 +56,6 @@ class ImportProgressWindow(QDialog):
 
         self.setWindowTitle("Import Progress")
         self.setAccessibleName("Import Progress")
-        self.setAccessibleDescription("Shows import scan progress and cancel control")
         self.resize(760, 176)  # Reduced height by about 20% from original 220
         self.set_status("Ready")
 
@@ -118,8 +120,6 @@ class ImportProgressWindow(QDialog):
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("Status")
-        self.status_bar.setAccessibleDescription("Import progress status")
         self.status_bar.setSizeGripEnabled(False)
         self.status_bar.setContentsMargins(0, 10, 0, 0)
         layout.addWidget(self.status_bar)
@@ -220,12 +220,25 @@ class ImportProgressWindow(QDialog):
 
     def set_status(self, message: str, announce: bool = False):
         self._default_status_message = message
+
+        # During explicit Alt+/ reads, hold passive updates briefly so
+        # fast scan progress text does not overwrite the spoken message.
+        if not announce and time.monotonic() < self._status_read_until:
+            return
+
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
         status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
+            self._status_read_until = time.monotonic() + 1.2
+            self._default_status_message = status_text
+            announce_status_message(
+                self.status_bar,
+                status_text,
+                move_focus=True,
+                force_focus_announce=True,
+            )
         else:
             exec_styled_message_box(
                 self,
@@ -265,12 +278,12 @@ class ImportProgressWindow(QDialog):
         if safe_total > 0:
             self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
             self.set_status(
-                f"Adding started. 0/{safe_total}. Press Alt+/ for status.",
+                f"Adding started. 0/{safe_total}.",
                 announce=True,
             )
         else:
             self.scan_progress.setFormat("Adding...")
-            self.set_status("Adding started. Press Alt+/ for status.", announce=True)
+            self.set_status("Adding started.", announce=True)
 
     def update_add_progress(
         self,
