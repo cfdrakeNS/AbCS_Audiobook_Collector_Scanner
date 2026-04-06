@@ -21,7 +21,10 @@ from PySide6.QtWidgets import (
 )
 
 from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import build_accessible_button_style, exec_styled_message_box
+from src.accessibility.style_helpers import (
+    build_accessible_button_style,
+    exec_styled_message_box,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import announce_status_message
@@ -50,9 +53,7 @@ class ImportProgressWindow(QDialog):
 
         self.setWindowTitle("Import Progress")
         self.setAccessibleName("Import Progress")
-        self.setAccessibleDescription(
-            "Shows import scan progress and cancel control"
-        )
+        self.setAccessibleDescription("Shows import scan progress and cancel control")
         self.resize(760, 176)  # Reduced height by about 20% from original 220
         self.set_status("Ready")
 
@@ -71,8 +72,7 @@ class ImportProgressWindow(QDialog):
         self.title_edit.setReadOnly(True)
         self.title_edit.setFocusPolicy(Qt.NoFocus)
         self.title_edit.setAccessibleName("Current title")
-        self.title_edit.setAccessibleDescription(
-            "Current title being processed")
+        self.title_edit.setAccessibleDescription("Current title being processed")
         self.title_label.setBuddy(self.title_edit)
         title_layout.addWidget(self.title_label)
         title_layout.addWidget(self.title_edit, 1)
@@ -84,8 +84,7 @@ class ImportProgressWindow(QDialog):
         self.author_edit.setReadOnly(True)
         self.author_edit.setFocusPolicy(Qt.NoFocus)
         self.author_edit.setAccessibleName("Current author")
-        self.author_edit.setAccessibleDescription(
-            "Current author being processed")
+        self.author_edit.setAccessibleDescription("Current author being processed")
         self.author_label.setBuddy(self.author_edit)
         author_layout.addWidget(self.author_label)
         author_layout.addWidget(self.author_edit, 1)
@@ -192,22 +191,8 @@ class ImportProgressWindow(QDialog):
         super().keyPressEvent(event)
 
     def apply_control_styles(self):
-        scaled_height = max(self.scaler.get_scaled_size(20), 16)
         progress_height = max(self.scaler.get_scaled_size(14), 12)
 
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
         # Use theme manager styling for text boxes
         for widget in self.findChildren(QLineEdit):
             widget.setStyleSheet("")  # Clear local style
@@ -227,13 +212,11 @@ class ImportProgressWindow(QDialog):
         """
         self.scan_progress.setStyleSheet(progress_style)
 
-        button_style = build_accessible_button_style(
-            self.scaler.get_scaled_size(20))
+        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
 
-        self.status_bar.setFixedHeight(
-            max(self.scaler.get_scaled_size(22), 18))
+        self.status_bar.setFixedHeight(max(self.scaler.get_scaled_size(22), 18))
 
     def set_status(self, message: str, announce: bool = False):
         self._default_status_message = message
@@ -282,11 +265,12 @@ class ImportProgressWindow(QDialog):
         if safe_total > 0:
             self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
             self.set_status(
-                f"Adding started. 0/{safe_total}. Press Alt+/ for status.", announce=True)
+                f"Adding started. 0/{safe_total}. Press Alt+/ for status.",
+                announce=True,
+            )
         else:
             self.scan_progress.setFormat("Adding...")
-            self.set_status(
-                "Adding started. Press Alt+/ for status.", announce=True)
+            self.set_status("Adding started. Press Alt+/ for status.", announce=True)
 
     def update_add_progress(
         self,
@@ -303,8 +287,7 @@ class ImportProgressWindow(QDialog):
             safe_processed = min(safe_processed, safe_total)
             percent = int((safe_processed / safe_total) * 100)
             self.scan_progress.setValue(percent)
-            self.scan_progress.setFormat(
-                f"Adding... {safe_processed}/{safe_total}")
+            self.scan_progress.setFormat(f"Adding... {safe_processed}/{safe_total}")
             status_text = f"Adding {safe_processed}/{safe_total}"
         else:
             self.scan_progress.setValue(0)
@@ -315,14 +298,6 @@ class ImportProgressWindow(QDialog):
             status_text = f"{status_text} | Elapsed {elapsed_text}"
 
         self.set_status(status_text)
-
-    def update_current_item(self, *, title: str, author: str):
-        if self._compact_mode:
-            return
-
-        self.title_edit.setText(title or "")
-        self.author_edit.setText(author or "")
-        # Issues controls removed
 
     def update_counters(
         self,
@@ -380,19 +355,6 @@ class ImportProgressWindow(QDialog):
             summary_text=summary_text,
         )
 
-    def mark_add_complete(self, books_added: int, elapsed_text: str):
-        """Mark add phase as complete."""
-        self._scan_active = False
-        self.scan_progress.setValue(100)
-        self.scan_progress.setFormat(
-            f"Add complete - {books_added} book(s) added ({elapsed_text})")
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.raise_()
-        self.activateWindow()
-        self.setFocus(Qt.TabFocusReason)
-        self.set_status(
-            f"Add complete. {books_added} book(s) added. Esc to close", announce=True)
-
     def mark_complete(
         self,
         *,
@@ -433,10 +395,12 @@ class ImportProgressWindow(QDialog):
 
         if canceled:
             self.set_status(
-                f"Scan canceled. Elapsed: {elapsed_text}. Esc to close.", announce=True)
+                f"Scan canceled. Elapsed: {elapsed_text}. Esc to close.", announce=True
+            )
         else:
             self.set_status(
-                f"Scan complete. Elapsed: {elapsed_text}. Esc to close.", announce=True)
+                f"Scan complete. Elapsed: {elapsed_text}. Esc to close.", announce=True
+            )
 
     def on_show_shortcuts(self):
         dlg = QDialog(self)
@@ -453,7 +417,11 @@ class ImportProgressWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         table = QTableWidget()
@@ -470,13 +438,13 @@ class ImportProgressWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        
+
         # Disable hover highlighting for low-vision comfort
         table.setMouseTracking(False)
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
-        
+
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, description) in enumerate(shortcuts):

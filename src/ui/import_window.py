@@ -51,7 +51,6 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
-    announce_dialog_opened,
     announce_dialog_closed,
 )
 from src.ui.import_detail_window import ImportDetailWindow
@@ -233,7 +232,6 @@ class ImportWindow(QDialog):
         self.default_collection_id = None
         self.current_collection_name = ""
         self.import_scenario_mode = "mass_standard"
-        self.current_formats_text = "None"
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
@@ -256,14 +254,12 @@ class ImportWindow(QDialog):
             "valid": 0,
             "added": 0,
         }
-        self.total_imported = 0
         self._default_status_message = "Ready"
         self._base_window_title = "Import Audiobooks"
         self._is_adding = False
         self._cancel_add_requested = False
         self._is_scanning = False
         self._cancel_scan_requested = False
-        self._scan_prompt_open = False
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
@@ -538,33 +534,6 @@ class ImportWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
-
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            """
-
         button_style = f"""
             QPushButton {{
                 padding: 4px 12px;
@@ -593,23 +562,6 @@ class ImportWindow(QDialog):
             self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56)
         )
 
-        table_style = """
-            QTableView::item:selected:active {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            QTableView::item:selected:!active {
-                background-color: palette(base);
-                color: palette(text);
-            }
-            QTableView::item:focus {
-                outline: none;
-                border: none;
-            }
-            QTableView {
-                outline: 0;
-            }
-        """
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
         self.table.setStyleSheet(build_accessible_f1_popup_style())
@@ -648,7 +600,7 @@ class ImportWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        self.current_formats_text = "None"  # Removed undefined 'formats' variable
+
 
         self.import_scenario_mode = self.settings.value(
             "import/scenario/mode", "mass_standard", type=str
@@ -733,7 +685,7 @@ class ImportWindow(QDialog):
 
         require_selection = len(collections) > 1
         if require_selection:
-            self.collection_combo.addItem("None", None)
+            self.collection_combo.addItem("", None)
 
         collections = sorted(
             collections,
@@ -1521,21 +1473,17 @@ class ImportWindow(QDialog):
         # Validate path based on scenario
         is_single_item = self.import_scenario_mode == "single_item"
         is_valid = False
-        path_type = "folder"
 
         if is_single_item:
             # Single item mode: accept either file or folder
             if os.path.isfile(folder_path):
                 is_valid = True
-                path_type = "file"
             elif os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "folder"
         else:
             # Other modes: expect folder only
             if os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "folder"
 
         if not is_valid:
             msg = QMessageBox(self)
@@ -1803,7 +1751,7 @@ class ImportWindow(QDialog):
                         auto_added = True
                         outcomes.add("added")
                         added_count += 1
-                        self.total_imported += 1
+
                         # Update existing_list for future duplicate checks
                         existing_list.append(
                             {
@@ -2318,9 +2266,6 @@ class ImportWindow(QDialog):
             self._refresh_summary_from_items()
             self.restore_summary_status()
 
-            if imported > 0:
-                self.total_imported += imported
-
             remaining = len(self.scanned_items)
 
             # Mark add phase complete in progress window
@@ -2360,6 +2305,8 @@ class ImportWindow(QDialog):
             "series",
             "collection",
             "comment",
+            "time_hours",
+            "time_minutes",
         ]:
             if key in detail_window.book_data:
                 item["book"][key] = detail_window.book_data[key]

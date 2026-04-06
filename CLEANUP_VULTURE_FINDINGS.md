@@ -1,6 +1,6 @@
 # AbCS Dead Code Cleanup - Vulture Findings
 **Created:** April 3, 2026  
-**Last Updated:** April 5, 2026 - 100% and 90% phases completed and validated  
+**Last Updated:** April 5, 2026 - Window 4 fixes applied (detail-save compatibility + blank collection placeholder)  
 **Tool:** vulture (AST-based dead code detection)  
 **Generated:** `python -m vulture src`
 
@@ -82,7 +82,7 @@ For each flagged item below:
 ### Window Queue (Test in This Order)
 
 #### Window 1: Main Window (src/ui/main_window.py)
-Status: Code cleanup applied and manual smoke test PASSED on April 5, 2026.
+**Status: TESTED & PASSED on April 5, 2026** ✅
 
 Completed removals:
 - removed attribute `_web_fetch_cancelled`
@@ -104,7 +104,7 @@ Test focus after changes:
 - Multi-select behavior (Shift+Click and Ctrl+Click)
 
 #### Window 2: Book Details (src/ui/book_details.py)
-Status: Code cleanup applied and manual smoke test PASSED on April 5, 2026.
+**Status: TESTED & PASSED on April 5, 2026** ✅
 
 Completed removals:
 - removed attribute `shortcut_manager`
@@ -121,7 +121,7 @@ Test focus after changes:
 - Keyboard shortcuts in form fields
 
 #### Window 3: Name List Window (src/ui/name_list_window.py)
-Status: Code cleanup completed and syntax validated on April 5, 2026. Ready for manual UI test.
+**Status: TESTED & PASSED on April 5, 2026** ✅
 
 Removals completed:
 - removed unreachable dialog code block after return statement (lines 913-962)
@@ -140,63 +140,94 @@ Test focus after changes:
 - Find/search behavior for remaining functionality
 
 #### Window 4: Import Window (src/ui/import_window.py)
-Flagged items:
-- line 236 and 651: attribute `current_formats_text`
-- line 266: attribute `_scan_prompt_open`
-- line 541: variable `lineedit_style`
-- line 1023: method `on_focus_list`
-- line 1039: method `_hide_table_cell_highlight`
-- lines 1524, 1530, 1533, 1538: variable `path_type`
-- lines 1598, 1607: variable `scan_files_processed`
-- lines 1599, 1608: variable `scan_total_files`
+**Status: TESTED & PASSED on April 5, 2026** ✅
+
+Removals completed:
+- **April 5 fixes:** added `time_hours` and `time_minutes` to `_apply_detail_edits()` key list for time persistence
+- **April 5 fixes:** removed duplicate shortcut `setShortcut()` calls in ImportDetailWindow (ShortcutManager is now sole authority)
+- **April 5 BookDetails update:** added input mask and time normalization methods (matching ImportDetail pattern)
+
+Tests completed (April 5):
+- Time field: type "1234" → normalizes to "12:34" on focus-out ✓
+- Save button only visible when dirty ✓
+- Alt+S save properly triggers without conflicts ✓
+- PgUp/PgDn navigation preserves edits ✓
+
+Remaining vulture findings (60% confidence):
+- unused methods: `on_focus_list`, `_hide_table_cell_highlight`, `jump_to_column`, `announce_selection` (possible slots or future use)
+- unused variables: `scan_files_processed`, `scan_total_files` (appear in scan flow - verify in UI test)
 
 Test focus after changes:
-- Scan prompt flow
-- Table focus/highlight behavior
-- Start/stop scan and progress updates
+- Scan folder/file selection and validation flow
+- Import summary display and progress window
+- Detail editing functionality (click on error items)
+- Button focus and keyboard navigation
 
 #### Window 5: Book List Import Window (src/ui/book_list_import_window.py)
-Flagged items:
-- line 21: class `DataFrame`
-- line 125 and 944: attribute `_last_csv_encoding`
-- line 696: method `toggle_mode`
-- line 709: method `focus_mapping_row`
-- line 802: method `show_accessible_message`
-- line 1086: method `on_new_books_toggled`
-- line 1093: method `on_headers_toggled`
-- line 1136: method `on_read_date_toggled`
+**Status: TESTED & PASSED on April 5, 2026** ✅
 
-Test focus after changes:
-- CSV/XLSX mapping workflow
-- Toggle options affecting mapping and preview
-- Accessible message dialogs and keyboard flow
+Removals completed:
+- line 125: removed attribute `_last_csv_encoding` (initialization, never read)
+- line 944: removed attribute `_last_csv_encoding` (assignment, never read)
+- line 696: removed method `toggle_mode` (never called)
+- line 709: removed method `focus_mapping_row` (never called)
+- line 802: removed method `show_accessible_message` (never called)
+- line 1086: removed method `on_new_books_toggled` (never connected as signal handler)
+- line 1136: removed method `on_read_date_toggled` (never connected as signal handler)
+
+False positives retained:
+- line 21: class `DataFrame` inside DummyPandas (used as fallback when pandas unavailable - confirmed used)
+
+Tests completed:
+- CSV/XLSX mapping workflow functional ✓
+- File reload and column mapping work ✓
+- Import mode toggle handled by on_headers_toggled ✓
+
+Compilation: ✓ Passes py_compile check
 
 #### Window 6: Import Progress Window (src/ui/import_progress_window.py)
-Flagged items:
-- line 198: variable `lineedit_style`
-- line 319: method `update_current_item`
-- line 383: method `mark_add_complete`
+**Status: TESTED & PASSED on April 6, 2026** ✅
 
-Test focus after changes:
-- Progress updates during scan/import
-- Completion state and final status messaging
+Removals completed:
+- removed unused local `lineedit_style` in `apply_control_styles`
+- removed unused method `update_current_item`
+- removed unused method `mark_add_complete`
+
+Validation completed:
+- workspace diagnostics: no errors in `src/ui/import_progress_window.py` ✓
+- symbol search confirms removed items no longer exist ✓
+
+Tests completed (April 6):
+- ImportProgress window flow tested by user: no issues ✓
+- Completion state and status messaging verified ✓
 
 #### Window 7: Import Detail Window (src/ui/import_detail_window.py)
-Flagged items:
-- line 689: variable `lineedit_style`
+**Status: CLEANUP APPLIED on April 6, 2026 (UI smoke test pending)**
 
-Test focus after changes:
+Removals completed:
+- removed unused local `lineedit_style` in `apply_control_styles`
+
+Validation completed:
+- workspace diagnostics: no errors in `src/ui/import_detail_window.py` ✓
+
+Test focus pending:
 - Open item details, edit fields, save/discard behavior
 
 #### Window 8: Preferences Window (src/ui/preferences_window.py)
-Flagged items:
-- line 622: method `_sync_reader_keywords_width`
-- line 657: variable `lineedit_style`
-- line 1428: method `on_run_display_audit`
+**Status: CLEANUP APPLIED on April 6, 2026 (UI smoke test pending)**
 
-Test focus after changes:
+Removals completed:
+- removed unused method `_sync_reader_keywords_width`
+- removed unused local `lineedit_style` in `apply_control_styles`
+- removed unused method `on_run_display_audit`
+- removed unused helper `_collect_display_audit_rows` (only used by removed audit method)
+
+Validation completed:
+- workspace diagnostics: no errors in `src/ui/preferences_window.py` ✓
+
+Test focus pending:
 - Theme/scaling controls
-- Reader keywords controls and display-audit action
+- Reader keywords controls
 
 #### Window 9: Backup/Restore Window (src/ui/backup_restore_window.py)
 Flagged items:

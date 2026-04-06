@@ -122,22 +122,25 @@ class BookListImportWindow(QDialog):
         self.selected_file = None
         self.file_data = None
         self.column_count = 0
-        self._last_csv_encoding = None
         self.import_mode = "new"  # "new" or "read_date"
         self._default_status_message = "Ready"
 
-        # Window setup - make wider by 1/4 and shorter by 1/8
+        # Window setup - match Book Details open size.
         self.setWindowTitle("Book List Import")
         self.setAccessibleName("Book List Import Window")
         self.setAccessibleDescription(
             "Import books from spreadsheet files with field mapping"
         )
-        # Original: 900x700, New: 1125x613 (900*1.25=1125, 700*0.875=613)
-        self.setMinimumSize(1125, 613)
-        self.resize(1250, 700)  # Original: 1000x800, New: 1250x700
+        # Keep the window resizable to narrower widths like ImportWindow.
+        self.setMinimumSize(560, 350)
+        self.resize(350, 200)
 
         self.setup_ui()
         self.apply_theme()
+
+        # Keep this window responsive to runtime zoom changes.
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.on_scale_changed(self.scaler.current_scale)
 
         # Focus on file selector initially
         self.file_edit.setFocus()
@@ -150,6 +153,57 @@ class BookListImportWindow(QDialog):
 
         # Setup shortcuts using centralized ShortcutManager
         self.setup_shortcuts()
+
+    def on_scale_changed(self, _scale_percentage: int):
+        """Recompute fixed metrics so this window scales like the rest of the app."""
+        if not hasattr(self, "mapping_table"):
+            return
+
+        # Recompute panel widths
+        if hasattr(self, "left_widget"):
+            self.left_widget.setMinimumWidth(self.scaler.get_scaled_size(150))
+            self.left_widget.setMaximumWidth(self.scaler.get_scaled_size(2500))
+        if hasattr(self, "right_widget"):
+            self.right_widget.setMaximumWidth(self.scaler.get_scaled_size(220))
+        if hasattr(self, "mapping_group"):
+            self.mapping_group.setMaximumWidth(self.scaler.get_scaled_size(200))
+
+        # Recompute table and combo sizing
+        header = self.mapping_table.horizontalHeader()
+        self._update_mapping_field_column_width()
+        combo_width = max(100, self.scaler.get_scaled_size(130))
+        self.mapping_table.setColumnWidth(1, combo_width)
+        self.mapping_table.setMaximumWidth(self.scaler.get_scaled_size(330))
+        header.resizeSections(QHeaderView.ResizeToContents)
+
+        # Keep mapping combos readable at low scales.
+        min_combo_width = max(90, self.scaler.get_scaled_size(120))
+        max_combo_width = max(130, self.scaler.get_scaled_size(160))
+        for combo in self.field_mappings.values():
+            combo.setMinimumWidth(min_combo_width)
+            combo.setMaximumWidth(max_combo_width)
+
+        # Use a direct scale-based row height.  sizeHint() picks up the global
+        # scaler min-height (44px at 100%) which would make the table huge.
+        row_height = max(22, self.scaler.get_scaled_size(26))
+        for row in range(self.mapping_table.rowCount()):
+            self.mapping_table.setRowHeight(row, row_height)
+
+        header_height = self.mapping_table.horizontalHeader().height()
+        frame = self.mapping_table.frameWidth() * 2
+        table_height = (
+            header_height + (row_height * self.mapping_table.rowCount()) + frame + 4
+        )
+        self.mapping_table.setMinimumHeight(table_height)
+        self.mapping_table.setMaximumHeight(table_height)
+
+        # Scale the window size itself so it grows/shrinks with zoom level.
+        min_w = max(760, self.scaler.get_scaled_size(760))
+        min_h = max(300, self.scaler.get_scaled_size(450))
+        self.setMinimumSize(min_w, min_h)
+        scaled_w = max(min_w, self.scaler.get_scaled_size(850))
+        scaled_h = max(min_h, self.scaler.get_scaled_size(500))
+        self.resize(scaled_w, scaled_h)
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts using ShortcutManager (except F1, Escape, Alt+/)."""
@@ -305,6 +359,8 @@ class BookListImportWindow(QDialog):
         self.file_edit.setReadOnly(True)
         self.file_edit.setAccessibleName("Selected file")
         self.file_edit.setAccessibleDescription("Path to selected spreadsheet file")
+        self.file_edit.setMinimumWidth(0)
+        self.file_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.browse_button = QPushButton("Browse...")
         self.browse_button.setAccessibleName("Browse for file")
         self.browse_button.setAccessibleDescription(
@@ -332,7 +388,7 @@ class BookListImportWindow(QDialog):
 
         # Instructions text for screen readers (single sentence format)
         instructions_text = (
-            "How to use: Select an Excel .xlsx or .xls or CSV file using the Browse button. "
+            "How to use: Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button. "
             "Map spreadsheet columns to book fields using the dropdown combos. "
             "Use checkboxes in Options column for import settings. "
             "Title and Author fields are required for import. "
@@ -342,11 +398,11 @@ class BookListImportWindow(QDialog):
 
         self.instructions_label = QLabel(
             "How to use:\n"
-            "1. Select an Excel (.xlsx, .xls) or CSV file using the Browse button\n"
-            "2. Map spreadsheet columns to book fields using the dropdown combos\n"
-            "3. Use checkboxes in Options column for import settings\n"
-            "4. Title and Author fields are required for import\n"
-            "5. Click Import to process the file\n"
+            "1 Select an Excel (.xlsx, .xls), OpenDocument (.ods), or CSV file using the Browse button\n"
+            "2 Map spreadsheet columns to book fields using the dropdown combos\n"
+            "3 Use checkboxes in Options column for import settings\n"
+            "4 Title and Author fields are required for import\n"
+            "5 Click Import to process the file\n"
             "Press Alt+H to return focus to these instructions"
         )
         self.instructions_label.setWordWrap(True)
@@ -365,6 +421,7 @@ class BookListImportWindow(QDialog):
         # Set fixed height to fit all text without scrolling
         fixed_height = self.scaler.get_scaled_size(200)
         self.instructions_label.setMinimumHeight(fixed_height)
+        self.instructions_label.setMinimumWidth(0)
         self.instructions_label.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.Preferred
         )
@@ -385,9 +442,12 @@ class BookListImportWindow(QDialog):
 
         # Right side - Field mapping table (takes more space)
         mapping_group = QGroupBox("Field Mapping")
+        self.mapping_group = mapping_group
         mapping_group.setAccessibleName("Field mapping group")
-        mapping_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        mapping_group.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
         mapping_table_layout = QVBoxLayout(mapping_group)
+        mapping_table_layout.setContentsMargins(4, 4, 4, 4)
+        mapping_table_layout.setSpacing(0)
         mapping_table_layout.setAlignment(Qt.AlignTop)  # Align to top
 
         # Create table for field mapping
@@ -414,34 +474,32 @@ class BookListImportWindow(QDialog):
         header = self.mapping_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.setStretchLastSection(
+            False
+        )  # Prevent column 1 expanding past combo_width
 
-        # Set column widths with scaling so labels and selectors are not truncated.
-        field_width = self.scaler.get_scaled_size(170)
-        combo_width = self.scaler.get_scaled_size(190)
-        self.mapping_table.setColumnWidth(0, field_width)  # Field name
+        # Combo column fixed; field column auto-sizes to label text.
+        combo_width = self.scaler.get_scaled_size(130)
         self.mapping_table.setColumnWidth(1, combo_width)  # Column selector
 
-        # Set table size - tight to content
-        table_width = field_width + combo_width + 30
-        self.mapping_table.setMinimumWidth(table_width)
-        self.mapping_table.setMaximumWidth(table_width)
+        # Max width: labels auto-size + fixed combo + border/scrollbar overhead
+        self.mapping_table.setMaximumWidth(self.scaler.get_scaled_size(330))
+        mapping_group.setMaximumWidth(self.scaler.get_scaled_size(340))
 
-        # Remove fixed size to allow combos to show properly
-
-        # Reduce table height to eliminate empty space below column selectors
-        # We'll set this after the table is set up in setup_mapping_table()
-
-        # Add padding to prevent text cutoff
-        self.mapping_table.setStyleSheet(
-            """
+        # Suppress the global scaler min-height (44px at 100%) on these small
+        # mapping combos so rows stay compact.  Widget-level stylesheet wins
+        # over app-level stylesheet, so this overrides the global rule.
+        self.mapping_table.setStyleSheet("""
             QTableWidget {
                 gridline-color: palette(mid);
             }
             QTableWidget::item {
-                padding: 5px;
+                padding: 2px 4px;
             }
-        """
-        )
+            QComboBox {
+                min-height: 0px;
+            }
+        """)
 
         # Disable tab navigation on table - we'll handle combo navigation directly
         self.mapping_table.setTabKeyNavigation(False)
@@ -493,8 +551,10 @@ class BookListImportWindow(QDialog):
         left_layout.addStretch()
 
         left_widget = QWidget()
+        self.left_widget = left_widget
         left_widget.setLayout(left_layout)
-        left_widget.setMaximumWidth(466)  # 350 * 1.33 ≈ 466
+        left_widget.setMinimumWidth(170)
+        left_widget.setMaximumWidth(200)
         mapping_layout.addWidget(left_widget, 1)  # Stretch factor 1
 
         # Add options second (center)
@@ -503,12 +563,19 @@ class BookListImportWindow(QDialog):
         right_layout.addStretch()
 
         right_widget = QWidget()
+        self.right_widget = right_widget
         right_widget.setLayout(right_layout)
-        right_widget.setMaximumWidth(300)
+        right_widget.setMaximumWidth(220)
         mapping_layout.addWidget(right_widget, 1)  # Stretch factor 1
 
-        # Add table third (far right, fixed size)
-        mapping_layout.addWidget(mapping_group)  # No stretch factor - fixed size
+        # Add table third (far right) - wrapped same as other panels so AlignTop works
+        table_layout = QVBoxLayout()
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        table_layout.addWidget(mapping_group)
+        table_layout.addStretch()
+        table_widget = QWidget()
+        table_widget.setLayout(table_layout)
+        mapping_layout.addWidget(table_widget)
 
         main_layout.addWidget(mapping_container)
 
@@ -525,7 +592,8 @@ class BookListImportWindow(QDialog):
 
         # Buttons
         button_layout = QHBoxLayout()
-        button_layout.addStretch()
+        button_layout.setAlignment(Qt.AlignLeft)
+        button_layout.setSpacing(8)
 
         self.import_button = QPushButton("Import")
         self.import_button.setAccessibleName("Import button")
@@ -592,7 +660,7 @@ class BookListImportWindow(QDialog):
             ("series", "Series"),
             ("genre", "Genre"),
             ("reader", "Reader"),
-            ("read_date", "Read Date"),
+            ("read_date", "  Read Date"),
             ("time_hours", "Time"),
             ("tracks", "Files"),
         ]
@@ -605,7 +673,11 @@ class BookListImportWindow(QDialog):
             label = QLabel(field_label)
             label.setAccessibleName(field_label)
             label.setFocusPolicy(Qt.NoFocus)  # Remove from tab order
-            label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            # Use a slightly smaller font so labels take less horizontal space
+            lbl_font = label.font()
+            lbl_font.setPointSize(self.scaler.get_scaled_size(9))
+            label.setFont(lbl_font)
             self.mapping_table.setCellWidget(row, 0, label)
 
             # Column selection combo
@@ -613,8 +685,8 @@ class BookListImportWindow(QDialog):
             combo.setAccessibleName(f"{field_label}")
             combo.addItem("None")
             # Keep selector wide enough for labels like AA/AB and long fonts.
-            min_width = self.scaler.get_scaled_size(110)
-            max_width = self.scaler.get_scaled_size(190)
+            min_width = self.scaler.get_scaled_size(90)
+            max_width = self.scaler.get_scaled_size(130)
             combo.setMinimumWidth(min_width)
             combo.setMaximumWidth(max_width)
 
@@ -626,7 +698,14 @@ class BookListImportWindow(QDialog):
             # Install event filter for Alt+Down support
             combo.installEventFilter(self)
 
-            self.mapping_table.setCellWidget(row, 1, combo)
+            # Wrap combo in a container aligned left+vcenter to prevent vertical floating on scale
+            combo_container = QWidget()
+            combo_container.setFocusPolicy(Qt.NoFocus)
+            combo_layout = QHBoxLayout(combo_container)
+            combo_layout.setContentsMargins(0, 0, 0, 0)
+            combo_layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            combo_layout.addWidget(combo)
+            self.mapping_table.setCellWidget(row, 1, combo_container)
             self.field_mappings[field_name] = combo
 
             # Options column - removed (checkboxes moved to right panel)
@@ -634,11 +713,29 @@ class BookListImportWindow(QDialog):
         # Set empty header labels to suppress row numbers
         self.mapping_table.setVerticalHeaderLabels([""] * len(fields))
 
+        # Ensure long field labels like "Read Date" are fully visible.
+        self._update_mapping_field_column_width()
+
         # Set table height after rows are created to eliminate empty space
         row_height = self.scaler.get_scaled_size(25)
         table_height = row_height * len(fields) + 30  # Add header and minimal padding
         self.mapping_table.setMinimumHeight(table_height)
         self.mapping_table.setMaximumHeight(table_height)
+
+    def _update_mapping_field_column_width(self):
+        """Size the Field column based on the widest label widget."""
+        if not hasattr(self, "mapping_table"):
+            return
+
+        widest = 0
+        for row in range(self.mapping_table.rowCount()):
+            widget = self.mapping_table.cellWidget(row, 0)
+            if widget is not None:
+                widest = max(widest, widget.sizeHint().width())
+
+        padding = self.scaler.get_scaled_size(18)
+        min_width = self.scaler.get_scaled_size(95)
+        self.mapping_table.setColumnWidth(0, max(min_width, widest + padding))
 
     def on_load_books_toggled(self, checked: bool):
         """Handle Load Books checkbox toggle - mutually exclusive."""
@@ -692,26 +789,6 @@ class BookListImportWindow(QDialog):
         if self.file_data is not None:
             self.reload_file_with_headers(checked)
         self.set_status(f"File has header: {'Yes' if checked else 'No'}")
-
-    def toggle_mode(self):
-        """Toggle between import modes."""
-        if hasattr(self, "load_books_check") and self.load_books_check.isChecked():
-            self.load_books_check.setChecked(False)
-            if hasattr(self, "add_read_date_check"):
-                self.add_read_date_check.setChecked(True)
-        else:
-            if hasattr(self, "add_read_date_check"):
-                self.add_read_date_check.setChecked(False)
-            if hasattr(self, "load_books_check"):
-                self.load_books_check.setChecked(True)
-        self.on_mode_changed(0 if self.new_books_radio.isChecked() else 1, True)
-
-    def focus_mapping_row(self, row: int):
-        """Focus the combo box in the specified mapping row."""
-        combo = self.mapping_table.cellWidget(row, 1)
-        if combo:
-            combo.setFocus()
-            combo.showPopup()
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
@@ -797,49 +874,6 @@ class BookListImportWindow(QDialog):
         dlg.setLayout(layout)
 
         QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
-        dlg.exec()
-
-    def show_accessible_message(self, title: str, message: str):
-        """Show accessible message with table format like main window stats."""
-        from PySide6.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QTableWidget,
-            QTableWidgetItem,
-            QPushButton,
-        )
-        from PySide6.QtCore import Qt
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle(title)
-        dlg.setAccessibleName(title)
-        dlg.resize(400, 200)
-
-        layout = QVBoxLayout(dlg)
-
-        # Create table for message content
-        table = QTableWidget()
-        table.setRowCount(1)
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels(["Message"])
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-
-        # Add message as table item
-        item = QTableWidgetItem(message)
-        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-        table.setItem(0, 0, item)
-        table.resizeColumnsToContents()
-        table.setFocus()
-
-        layout.addWidget(table)
-
-        # Add OK button
-        button = QPushButton("OK")
-        button.clicked.connect(dlg.accept)
-        button.setDefault(True)
-        layout.addWidget(button)
-
         dlg.exec()
 
     def on_read_status_bar(self):
@@ -941,7 +975,6 @@ class BookListImportWindow(QDialog):
         for encoding in encodings:
             try:
                 df = pd.read_csv(file_path, encoding=encoding, header=header_value)
-                self._last_csv_encoding = encoding
                 return df
             except UnicodeDecodeError as e:
                 last_error = e
@@ -972,7 +1005,11 @@ class BookListImportWindow(QDialog):
             numeric = float(value)
             if numeric < 0:
                 return None
-            total_minutes = int(round(numeric * 24 * 60)) if 0 < numeric < 1 else int(round(numeric * 60))
+            total_minutes = (
+                int(round(numeric * 24 * 60))
+                if 0 < numeric < 1
+                else int(round(numeric * 60))
+            )
             return total_minutes // 60, total_minutes % 60
 
         hh_mm = re.fullmatch(r"(\d{1,3}):(\d{1,2})(?::(\d{1,2}))?", text)
@@ -998,7 +1035,11 @@ class BookListImportWindow(QDialog):
 
         if numeric < 0:
             return None
-        total_minutes = int(round(numeric * 24 * 60)) if 0 < numeric < 1 else int(round(numeric * 60))
+        total_minutes = (
+            int(round(numeric * 24 * 60))
+            if 0 < numeric < 1
+            else int(round(numeric * 60))
+        )
         return total_minutes // 60, total_minutes % 60
 
     def _parse_read_date_value(self, value):
@@ -1063,8 +1104,8 @@ class BookListImportWindow(QDialog):
             combo.addItem("None")
             combo.addItems(column_letters)
             # Set combo width with scaling for proper text display
-            min_width = self.scaler.get_scaled_size(110)
-            max_width = self.scaler.get_scaled_size(190)
+            min_width = self.scaler.get_scaled_size(90)
+            max_width = self.scaler.get_scaled_size(130)
             combo.setMinimumWidth(min_width)
             combo.setMaximumWidth(max_width)
 
@@ -1082,13 +1123,6 @@ class BookListImportWindow(QDialog):
             if field in self.field_mappings and self.column_count > column_index:
                 # Set to column letter (add 1 for "None" option)
                 self.field_mappings[field].setCurrentIndex(column_index + 1)
-
-    def on_new_books_toggled(self, checked: bool):
-        """Handle new books checkbox toggle with mutual exclusivity."""
-        if checked:
-            self.read_date_check.setChecked(False)
-            self.import_mode = "new"
-            self.set_status("Mode changed to: Import New Books")
 
     def on_headers_toggled(self, checked: bool):
         """Handle headers checkbox toggle."""
@@ -1132,13 +1166,6 @@ class BookListImportWindow(QDialog):
 
         except Exception as e:
             self.set_status(f"Error reloading file: {str(e)}")
-
-    def on_read_date_toggled(self, checked: bool):
-        """Handle read date checkbox toggle with mutual exclusivity."""
-        if checked:
-            self.new_books_check.setChecked(False)
-            self.import_mode = "read_date"
-            self.set_status("Mode changed to: Update Read Dates")
 
     def on_mapping_changed(self, row: int, field: str, column_index: int):
         """Handle field mapping change."""
@@ -1630,3 +1657,18 @@ class BookListImportWindow(QDialog):
     def apply_theme(self):
         """Apply the current theme."""
         self.theme_manager._apply_theme()
+        self.setStyleSheet(
+            "QGroupBox {"
+            "  border: 1px solid palette(mid);"
+            "  border-radius: 3px;"
+            "  margin-top: 12px;"
+            "  padding-top: 8px;"
+            "}"
+            "QGroupBox::title {"
+            "  subcontrol-origin: margin;"
+            "  subcontrol-position: top left;"
+            "  left: 8px;"
+            "  padding: 0 4px;"
+            "  background-color: palette(window);"
+            "}"
+        )

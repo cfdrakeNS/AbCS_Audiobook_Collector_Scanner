@@ -507,7 +507,6 @@ class MainWindow(QMainWindow):
 
         widgets_to_repolish = [
             self.update_button,
-            self.get_web_info_button,
             self.delete_button,
             self.table,
             self.table.viewport(),
@@ -517,11 +516,23 @@ class MainWindow(QMainWindow):
             table_vertical_header.viewport(),
         ]
 
+        # Optional controls can vary by build/window mode.
+        if hasattr(self, "get_web_info_button"):
+            widgets_to_repolish.append(self.get_web_info_button)
+
         for widget in widgets_to_repolish:
             style = widget.style()
             style.unpolish(widget)
             style.polish(widget)
-            widget.update()
+            if hasattr(widget, "viewport") and callable(getattr(widget, "viewport")):
+                try:
+                    viewport = widget.viewport()
+                    if viewport is not None:
+                        viewport.update()
+                        continue
+                except Exception:
+                    pass
+            widget.repaint()
 
         table_header.updateGeometry()
         table_header.viewport().update()
@@ -561,8 +572,7 @@ class MainWindow(QMainWindow):
         self.table.setAttribute(Qt.WA_Hover, False)
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
         # Apply centralized F1 popup style to table only
-        self.table.setStyleSheet(
-            """
+        self.table.setStyleSheet("""
             QTableView::item:hover {
                 background-color: palette(base);
                 color: palette(text);
@@ -575,8 +585,7 @@ class MainWindow(QMainWindow):
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
             }
-            """
-        )
+            """)
 
         # Resize columns - mw#22: Author, Title, Series, Genre stretch proportionally
         header = self.table.horizontalHeader()
@@ -871,8 +880,9 @@ class MainWindow(QMainWindow):
         self.zoom_out_numpad_shortcut = QShortcut(QKeySequence("Ctrl+Num+-"), self)
         self.zoom_out_numpad_shortcut.activated.connect(self.on_zoom_out)
 
-        # Zoom Reset: Ctrl+0 (both keyboard and numpad should work)
+        # Zoom Reset: Ctrl+0 — ApplicationShortcut so it works from any dialog too
         self.zoom_reset_shortcut = QShortcut(QKeySequence("Ctrl+0"), self)
+        self.zoom_reset_shortcut.setContext(Qt.ApplicationShortcut)
         self.zoom_reset_shortcut.activated.connect(self.on_zoom_reset)
 
         # Help shortcut: F1 opens keyboard shortcuts help
@@ -1172,8 +1182,7 @@ class MainWindow(QMainWindow):
             "Same duplicate matching options as Preferences"
         )
         combo_height = max(self.scaler.get_scaled_size(24), 18)
-        mode_combo.setStyleSheet(
-            f"""
+        mode_combo.setStyleSheet(f"""
             QComboBox {{
                 min-height: {combo_height}px;
                 max-height: {combo_height}px;
@@ -1189,8 +1198,7 @@ class MainWindow(QMainWindow):
                 outline: none;
                 border: 1px solid palette(dark);
             }}
-            """
-        )
+            """)
         for label, data in self.DUPLICATE_MATCH_OPTIONS:
             mode_combo.addItem(label, data)
         preferred_index = mode_combo.findData(preferred_mode)

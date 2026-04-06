@@ -7,7 +7,7 @@
     "editor.formatOnPaste": true,
     "editor.accessibilitySupport": "on",
     "python.analysis.typeCheckingMode": "off",
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
+    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
     "python.terminal.activateEnvironment": true,
     "terminal.integrated.env.windows": {
         "VIRTUAL_ENV": "${workspaceFolder}\\.venv",
@@ -32,5 +32,18 @@
         "plaintext": false,
         "markdown": false
     },
-    "accessibility.verbosity.notification": false
+    "accessibility.verbosity.notification": false,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.formatOnPaste": true
+    },
+    "black-formatter.importStrategy": "fromEnvironment",
+    "black-formatter.path": [
+        "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black"
+    ],
+    "black-formatter.showNotifications": "onError",
+    "extensions.ignoreRecommendations": false
 }
