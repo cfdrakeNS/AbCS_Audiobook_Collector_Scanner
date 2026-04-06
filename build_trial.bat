@@ -23,7 +23,7 @@ if not defined VENV_DIR (
 set "PYTHON_EXE=%VENV_DIR%\Scripts\python.exe"
 
 REM Get today's date in YYYY-MM-DD format
-for /f "tokens=*" %%D in ('"%PYTHON_EXE%" -c "from datetime import date; print(date.today().isoformat())"') do set "TODAY=%%D"
+for /f "tokens=*" %%D in ('%PYTHON_EXE% -c "import datetime; print(datetime.date.today().isoformat())"') do set "TODAY=%%D"
 if "%TODAY%"=="" (
     echo ERROR: Could not determine today's date.
     pause
