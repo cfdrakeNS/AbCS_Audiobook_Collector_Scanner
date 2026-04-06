@@ -17,6 +17,13 @@ Recommended build strategy:
 
 ## 1) Pre-Build Checklist (Do This First)
 
+Required tools before you begin:
+- Git: **Required** on both Windows and Linux (for `git pull`, cloning, branch checks).
+- Python 3.9+: **Required** (3.12 recommended for this project).
+- pip: **Required** (used to install dependencies).
+- PyInstaller: **Required** for packaging binaries.
+- VS Code: **Optional**. Helpful for editing and integrated terminal use, but builds can be done from PowerShell/Command Prompt (Windows) or terminal (Linux) without VS Code.
+
 1. Pull latest code:
    - `git pull`
 2. Confirm you are on intended branch/tag:
@@ -40,6 +47,14 @@ Run from repository root.
 ### 2.0 Windows App Setup (First-Time Machine Setup)
 
 Use these steps when setting up a brand-new Windows machine for AbCS builds.
+
+Prerequisite notes for Windows:
+- Git is required. If `git --version` fails, install Git for Windows from https://git-scm.com/download/win
+- VS Code is optional. Use it if you prefer, but all build scripts run fine from PowerShell or Command Prompt.
+
+0. Install Git for Windows (if not already installed):
+   - Download from https://git-scm.com/download/win
+   - Verify: `git --version`
 
 1. Install Python 3.12 (recommended for this project):
    - Download from https://www.python.org/downloads/windows/
@@ -74,6 +89,12 @@ If script execution is blocked in PowerShell, run:
 Then activate again:
 - `.venv\Scripts\Activate.ps1`
 
+If you use VS Code (optional):
+- Open the project folder in VS Code.
+- Open integrated terminal (Terminal -> New Terminal).
+- Select PowerShell terminal profile.
+- Run the same commands from this guide unchanged.
+
 ### Option A: Standard build (schema only, no bundled user DB)
 
 1. Open PowerShell in project root.
@@ -99,9 +120,44 @@ Use this only when you intentionally want to ship a pre-populated DB.
 
 ---
 
-## 3) Linux Build (Ubuntu VM)
+## 3) Linux Build (Ubuntu VM / Linux Mint VM)
 
 Build Linux binary inside Ubuntu. Do not build Linux executable on Windows.
+
+Linux Mint note:
+- Linux Mint is fully supported for this build flow.
+- Because Mint is Ubuntu-based, the same commands usually work as-is.
+- If a package install fails, run `sudo apt update` and retry.
+
+### 3.0 Linux Mint quick start (if your VM is Mint)
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip git
+
+python3 --version
+git --version
+
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+python -m pip install pyinstaller
+
+chmod +x build_linux.sh
+./build_linux.sh
+```
+
+Expected output:
+- `dist/AbCS`
+
+If launch fails on Mint after build, run:
+
+```bash
+chmod +x build_linux_debug.sh
+./build_linux_debug.sh
+tail -n 120 abcs_linux_build.log
+```
 
 ### 3.1 Prepare Ubuntu VM
 
@@ -335,7 +391,7 @@ If you have an `.ico` file (32x32 or 256x256 recommended):
 2. In `AbCS_installer.iss`, uncomment these two lines:
    ```ini
    SetupIconFile=data\abcs.ico
-   UninstallDisplayIcon={app}\AbCS.exe
+   UninstallDisplayIcon={app}\AbCS.exe 
    ```
 3. In `build_installer.bat`, add `--icon=data\abcs.ico` to the PyInstaller command.
 

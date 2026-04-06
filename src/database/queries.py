@@ -16,7 +16,7 @@ This approach gives us:
 - Type-safe results (Python objects instead of raw rows)
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from datetime import date, datetime
 from .connection import DatabaseManager
 from .models import Book, Author, Series, Genre, Collection, SearchFilter, Statistics
@@ -237,30 +237,6 @@ class BookQueries:
                 tuple(chunk),
             )
         self.db.connect().commit()
-
-    def find_duplicates(self) -> List[Book]:
-        """Find duplicate books (same title, author, year, collection)."""
-        query = """
-            SELECT b.*,
-                   a.name AS author_name,
-                   s.name AS series_name,
-                   g.name AS genre_name,
-                   c.name AS collection_name
-            FROM books b
-            LEFT JOIN authors a ON b.author_id = a.author_id
-            LEFT JOIN series s ON b.series_id = s.series_id
-            LEFT JOIN genres g ON b.genre_id = g.genre_id
-            LEFT JOIN collections c ON b.collection_id = c.collection_id
-            WHERE (b.title, b.author_id, b.year, b.collection_id) IN(
-                SELECT title, author_id, year, collection_id
-                FROM books
-                GROUP BY title, author_id, year, collection_id
-                HAVING COUNT(*) > 1
-            )
-            ORDER BY b.title, a.name, b.year
-        """
-        rows = self.db.fetch_all(query)
-        return [self._row_to_book(row, parse_dates=False) for row in rows]
 
     def bulk_update_series(self, book_ids: List[int], series_id: Optional[int]):
         """Bulk update series for multiple books."""

@@ -7,24 +7,46 @@ import re
 import os
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLineEdit, QComboBox, QPushButton, QLabel,
-    QSpinBox, QMessageBox, QApplication, QTextEdit, QAbstractSpinBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QStatusBar
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLineEdit,
+    QComboBox,
+    QPushButton,
+    QLabel,
+    QSpinBox,
+    QMessageBox,
+    QApplication,
+    QTextEdit,
+    QAbstractSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QStatusBar,
 )
 from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.database import (
-    DatabaseManager, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
+    DatabaseManager,
+    AuthorQueries,
+    SeriesQueries,
+    GenreQueries,
+    CollectionQueries,
 )
 from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
+from src.accessibility.style_helpers import (
+    build_accessible_message_box_style,
+    exec_styled_message_box,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
-    announce_status_message, announce_dialog_opened, announce_dialog_closed
+    announce_status_message,
+    announce_dialog_opened,
+    announce_dialog_closed,
 )
 
 
@@ -40,22 +62,22 @@ class ImportDetailWindow(QDialog):
     MAX_VALID_YEAR = 2100
     # Centralized Alt+letter shortcut mapping (parity with BookDetailsWindow)
     ALLOWED_ALT_LETTERS = {
-        'A',  # Author
-        'B',  # Bitrate
-        'C',  # Collection
-        'D',  # Discard (Skip)
-        'E',  # Errors
-        'F',  # Files
-        'G',  # Genre
-        'H',  # Path (Pat&h)
-        'I',  # Series (Ser&ies)
-        'M',  # Length (Length (&M))
-        'O',  # Comments (C&omments)
-        'R',  # Reader
-        'S',  # Save
-        'T',  # Title
-        'Y',  # Year
-        'Z',  # Size (Si&ze)
+        "A",  # Author
+        "B",  # Bitrate
+        "C",  # Collection
+        "D",  # Discard (Skip)
+        "E",  # Errors
+        "F",  # Files
+        "G",  # Genre
+        "H",  # Path (Pat&h)
+        "I",  # Series (Ser&ies)
+        "M",  # Length (Length (&M))
+        "O",  # Comments (C&omments)
+        "R",  # Reader
+        "S",  # Save
+        "T",  # Title
+        "Y",  # Year
+        "Z",  # Size (Si&ze)
         # Add any additional used keys here
     }
 
@@ -84,11 +106,18 @@ class ImportDetailWindow(QDialog):
             return cls._to_proper_case(value)
         return value
 
-    def __init__(self, db: DatabaseManager, scaler: UIScaler,
-                 theme_manager: ThemeManager, book_data: dict = None,
-                 errors: list = None, current_index: int = 0,
-                 total_count: int = 0, is_duplicate: bool = False,
-                 parent=None):
+    def __init__(
+        self,
+        db: DatabaseManager,
+        scaler: UIScaler,
+        theme_manager: ThemeManager,
+        book_data: dict = None,
+        errors: list = None,
+        current_index: int = 0,
+        total_count: int = 0,
+        is_duplicate: bool = False,
+        parent=None,
+    ):
         """
         Initialize import detail window.
 
@@ -142,7 +171,8 @@ class ImportDetailWindow(QDialog):
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription(
-            "Form for viewing and editing scanned audiobook details")
+            "Form for viewing and editing scanned audiobook details"
+        )
         self.resize(880, 500)
 
         announce_dialog_opened(self, title)
@@ -166,15 +196,13 @@ class ImportDetailWindow(QDialog):
         self._default_status_message = message
 
         if hasattr(self, "status_bar") and self.status_bar is not None:
-            announce_status_message(
-                self.status_bar, message, move_focus=announce)
+            announce_status_message(self.status_bar, message, move_focus=announce)
 
         parent = self.parent()
         if parent and hasattr(parent, "set_status"):
             parent.set_status(message, announce=False)
         elif parent and hasattr(parent, "status_bar"):
-            announce_status_message(
-                parent.status_bar, message, move_focus=False)
+            announce_status_message(parent.status_bar, message, move_focus=False)
 
     def get_status_summary(self) -> str:
         """Return a concise current-status summary for Alt+/ reading."""
@@ -221,7 +249,8 @@ class ImportDetailWindow(QDialog):
         parent_message = ""
         if parent and hasattr(parent, "_default_status_message"):
             parent_message = str(
-                getattr(parent, "_default_status_message", "") or "").strip()
+                getattr(parent, "_default_status_message", "") or ""
+            ).strip()
 
         current_message = parent_message or self.get_status_summary().strip() or "Ready"
         return (
@@ -256,8 +285,7 @@ class ImportDetailWindow(QDialog):
             msg = QMessageBox(self)
             msg.setWindowTitle("Unsaved Changes")
             msg.setStyleSheet(
-                build_accessible_message_box_style(
-                    self.scaler.get_scaled_size(20))
+                build_accessible_message_box_style(self.scaler.get_scaled_size(20))
             )
             msg.setText(
                 "You have unsaved changes.\n\n"
@@ -266,7 +294,8 @@ class ImportDetailWindow(QDialog):
                 "Cancel = Discard and close"
             )
             msg.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+            )
             msg.button(QMessageBox.Yes).setText("&Yes")
             msg.button(QMessageBox.No).setText("&No")
             msg.button(QMessageBox.Cancel).setText("&Cancel")
@@ -314,6 +343,14 @@ class ImportDetailWindow(QDialog):
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
                 QApplication.beep()
                 return True
+
+            # Prevent mapped Alt+letter shortcuts from typing characters into
+            # focused text controls (e.g., Alt+S should save only, not insert "s").
+            if modifiers & Qt.AltModifier:
+                alt_char = (event.text() or "").upper()
+                if alt_char and alt_char in self.ALLOWED_ALT_LETTERS:
+                    return True
+
             # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
             if isinstance(source, QComboBox):
                 if key in (Qt.Key_Up, Qt.Key_Down):
@@ -326,12 +363,19 @@ class ImportDetailWindow(QDialog):
                 QTimer.singleShot(0, lambda w=source: w.deselect())
             elif isinstance(source, QComboBox):
                 if source.lineEdit():
-                    QTimer.singleShot(0, lambda w=source: w.lineEdit(
-                    ).deselect() if w.lineEdit() else None)
+                    QTimer.singleShot(
+                        0,
+                        lambda w=source: (
+                            w.lineEdit().deselect() if w.lineEdit() else None
+                        ),
+                    )
             elif isinstance(source, QSpinBox):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
         if event.type() == QEvent.FocusOut:
+            if source == self.time_edit:
+                self._normalize_time_on_focus_out()
+
             if source == self.author_combo:
                 self._check_combo_change(
                     "Author",
@@ -357,10 +401,7 @@ class ImportDetailWindow(QDialog):
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
-                self.set_status(
-                    f"{field_name} changed.",
-                    announce=True
-                )
+                self.set_status(f"{field_name} changed.", announce=True)
                 self._pending_dirty_widgets.discard(dirty_widget)
 
         return super().eventFilter(source, event)
@@ -370,7 +411,12 @@ class ImportDetailWindow(QDialog):
         if source in self._pending_dirty_widgets:
             return source
 
-        for combo in [self.author_combo, self.series_combo, self.genre_combo, self.collection_combo]:
+        for combo in [
+            self.author_combo,
+            self.series_combo,
+            self.genre_combo,
+            self.collection_combo,
+        ]:
             if combo in self._pending_dirty_widgets and source == combo.lineEdit():
                 return combo
 
@@ -411,45 +457,53 @@ class ImportDetailWindow(QDialog):
             self._dirty = True
             if widget and not self._first_dirty_widget:
                 self._first_dirty_widget = widget
-            self.save_return_button.setEnabled(True)
-            self.save_return_button.setVisible(True)
+            self._update_save_button_visibility()
 
     def _clear_dirty(self):
         """Clear dirty flag."""
         self._dirty = False
         self._first_dirty_widget = None
         self._pending_dirty_widgets.clear()
+        self._update_save_button_visibility()
+
+    def _update_save_button_visibility(self):
+        """Show Save button only when there are unsaved changes (dirty state)."""
         if hasattr(self, "save_return_button"):
-            self.save_return_button.setEnabled(True)
-            self.save_return_button.setVisible(True)
+            # Only show/enable when actually dirty (not just when a shortcut fires)
+            if self._dirty:
+                self.save_return_button.setEnabled(True)
+                self.save_return_button.setVisible(True)
+            else:
+                self.save_return_button.setEnabled(False)
+                self.save_return_button.setVisible(False)
 
     def _setup_dirty_tracking(self):
         """Setup signals to track changes."""
-        self.title_edit.textChanged.connect(
-            lambda: self._mark_dirty(self.title_edit))
+        self.title_edit.textChanged.connect(lambda: self._mark_dirty(self.title_edit))
         self.author_combo.currentTextChanged.connect(
-            lambda: self._mark_dirty(self.author_combo))
+            lambda: self._mark_dirty(self.author_combo)
+        )
         self.comments_edit.textChanged.connect(
-            lambda: self._mark_dirty(self.comments_edit))
-        self.year_spin.valueChanged.connect(
-            lambda: self._mark_dirty(self.year_spin))
-        self.time_edit.textChanged.connect(
-            lambda: self._mark_dirty(self.time_edit))
-        self.reader_edit.textChanged.connect(
-            lambda: self._mark_dirty(self.reader_edit))
+            lambda: self._mark_dirty(self.comments_edit)
+        )
+        self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
+        self.time_edit.textChanged.connect(lambda: self._mark_dirty(self.time_edit))
+        self.reader_edit.textChanged.connect(lambda: self._mark_dirty(self.reader_edit))
         self.series_combo.currentTextChanged.connect(
-            lambda: self._mark_dirty(self.series_combo))
+            lambda: self._mark_dirty(self.series_combo)
+        )
         self.genre_combo.currentTextChanged.connect(
-            lambda: self._mark_dirty(self.genre_combo))
+            lambda: self._mark_dirty(self.genre_combo)
+        )
         self.collection_combo.currentIndexChanged.connect(
-            lambda: self._mark_dirty(self.collection_combo))
+            lambda: self._mark_dirty(self.collection_combo)
+        )
 
     def _apply_duplicate_read_only_state(self):
         """Keep duplicate entries editable (treated like other errors)."""
         if not self.is_duplicate_item:
             return
-        self.set_status(
-            "Duplicate item loaded. Edit fields to resolve and save.")
+        self.set_status("Duplicate item loaded. Edit fields to resolve and save.")
 
     def load_combos(self):
         """Load author, series, genre, and collection combo boxes."""
@@ -471,8 +525,7 @@ class ImportDetailWindow(QDialog):
         # Collections
         collections = self.collection_queries.get_all()
         for collection in collections:
-            self.collection_combo.addItem(
-                collection.name, collection.collection_id)
+            self.collection_combo.addItem(collection.name, collection.collection_id)
 
     def _format_duration(self) -> str:
         """Format imported time fields as HH:MM."""
@@ -481,6 +534,24 @@ class ImportDetailWindow(QDialog):
         if hours == 0 and minutes == 0:
             return ""
         return f"{hours:02d}:{minutes:02d}"
+
+    @staticmethod
+    def _normalize_time_text(raw_text: str) -> str:
+        """Normalize time text to HH:MM from HHMM or HH:MM input."""
+        digits = "".join(ch for ch in (raw_text or "") if ch.isdigit())
+        if len(digits) != 4:
+            return ""
+        hours = int(digits[:2])
+        minutes = int(digits[2:])
+        if minutes > 59:
+            return ""
+        return f"{hours:02d}:{minutes:02d}"
+
+    def _normalize_time_on_focus_out(self):
+        """Normalize time field quietly when focus leaves the control."""
+        normalized = self._normalize_time_text(self.time_edit.text())
+        if normalized != self.time_edit.text():
+            self.time_edit.setText(normalized)
 
     @classmethod
     def _normalize_year_value(cls, year_value) -> int:
@@ -500,8 +571,7 @@ class ImportDetailWindow(QDialog):
         self.author_combo.setCurrentText(self.book_data.get("author", ""))
         self.comments_edit.setPlainText(self.book_data.get("comment", ""))
 
-        self.year_spin.setValue(self._normalize_year_value(
-            self.book_data.get("year")))
+        self.year_spin.setValue(self._normalize_year_value(self.book_data.get("year")))
 
         self.time_edit.setText(self._format_duration())
         self.reader_edit.setText(self.book_data.get("narrator", ""))
@@ -551,8 +621,9 @@ class ImportDetailWindow(QDialog):
         self._collect_form_data()
         self.done(self.RESULT_PREV)
 
-    def _check_combo_change(self, field_name: str, combo: QComboBox,
-                            original_value: str, query_obj):
+    def _check_combo_change(
+        self, field_name: str, combo: QComboBox, original_value: str, query_obj
+    ):
         """
         Check whether combo changed to a new value and confirm create-on-save.
         """
@@ -611,8 +682,7 @@ class ImportDetailWindow(QDialog):
         errors = list(item.get("errors", []))
         if item.get("is_duplicate"):
             has_duplicate_error = any(
-                str(err).strip().lower() == "duplicate"
-                for err in errors
+                str(err).strip().lower() == "duplicate" for err in errors
             )
             if not has_duplicate_error:
                 errors.append("Duplicate")
@@ -638,12 +708,10 @@ class ImportDetailWindow(QDialog):
         self.current_index = resolved_index
         self.total_count = len(parent.scanned_items)
 
-        self.setWindowTitle(self._detail_window_title(
-            self.book_data, self.errors))
+        self.setWindowTitle(self._detail_window_title(self.book_data, self.errors))
         self.setAccessibleName(self.windowTitle())
         self.load_book_data()
-        self.set_status(
-            f"Viewing item {self.current_index + 1} of {self.total_count}")
+        self.set_status(f"Viewing item {self.current_index + 1} of {self.total_count}")
         return True
 
     def _resolve_target_index_from_filter(self, requested_index: int) -> int | None:
@@ -662,19 +730,23 @@ class ImportDetailWindow(QDialog):
             return None
 
         visible_rows = [
-            row for row in range(row_count)
+            row
+            for row in range(row_count)
             if row < parent.table.rowCount() and not parent.table.isRowHidden(row)
         ]
         if not visible_rows:
             return None
 
         if requested_index == self.current_index:
-            return self.current_index if self.current_index in visible_rows else visible_rows[0]
+            return (
+                self.current_index
+                if self.current_index in visible_rows
+                else visible_rows[0]
+            )
 
         direction = 1 if requested_index > self.current_index else -1
         if direction > 0:
-            candidates = [
-                row for row in visible_rows if row > self.current_index]
+            candidates = [row for row in visible_rows if row > self.current_index]
             return candidates[0] if candidates else None
 
         candidates = [row for row in visible_rows if row < self.current_index]
@@ -685,23 +757,6 @@ class ImportDetailWindow(QDialog):
         base_height = 20
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
-
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QLineEdit:read-only {{
-                background-color: palette(window);
-            }}
-        """
 
         combo_style = f"""
             QComboBox {{
@@ -822,6 +877,7 @@ class ImportDetailWindow(QDialog):
         time_label = QLabel("&Time:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
+        self.time_edit.setInputMask("99:99;_")
         self.time_edit.setAccessibleName("Time")
         self.time_edit.setFixedWidth(100)
         self.time_edit.setReadOnly(False)
@@ -865,9 +921,8 @@ class ImportDetailWindow(QDialog):
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
-        self.collection_combo.setEditable(
-            False)  # Make read-only, not editable
-        self.collection_combo.setEnabled(True)    # Always enabled for focus
+        self.collection_combo.setEditable(False)  # Make read-only, not editable
+        self.collection_combo.setEnabled(True)  # Always enabled for focus
         collection_label.setBuddy(self.collection_combo)
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
@@ -884,7 +939,6 @@ class ImportDetailWindow(QDialog):
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
         self.files_edit.setMaximumWidth(70)
-        self.files_edit.setReadOnly(False)
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
@@ -892,8 +946,6 @@ class ImportDetailWindow(QDialog):
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
-        self.bitrate_edit.setReadOnly(False)
-        collection_label = QLabel("Collection:")
         bitrate_label.setBuddy(self.bitrate_edit)
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
@@ -903,7 +955,6 @@ class ImportDetailWindow(QDialog):
         self.size_edit.setReadOnly(True)
         self.size_edit.setAccessibleName("File size in megabytes")
         self.size_edit.setMaximumWidth(100)
-        self.size_edit.setReadOnly(False)
         size_label.setBuddy(self.size_edit)
         row5_layout.addWidget(size_label)
         row5_layout.addWidget(self.size_edit)
@@ -935,7 +986,8 @@ class ImportDetailWindow(QDialog):
         self.errors_edit.setAccessibleName("Validation errors")
         self.errors_edit.setMinimumHeight(60)
         self.errors_edit.setStyleSheet(
-            "QTextEdit { background-color: palette(base); color: red; }")
+            "QTextEdit { background-color: palette(base); color: red; }"
+        )
         self.errors_label.setBuddy(self.errors_edit)
         row6_layout.addWidget(self.errors_edit)
 
@@ -947,7 +999,6 @@ class ImportDetailWindow(QDialog):
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setAccessibleName("File path")
-        self.path_edit.setReadOnly(False)
         row7_layout.addWidget(self.path_edit, 1)
 
         path_label = QLabel("Pat&h:")
@@ -967,19 +1018,21 @@ class ImportDetailWindow(QDialog):
         self.save_return_button = QPushButton("&Save")
         self.save_return_button.setAccessibleName("Save")
         self.save_return_button.setAccessibleDescription(
-            "Save edits and continue editing - Alt+S")
-        self.save_return_button.setShortcut(QKeySequence("Alt+S"))
+            "Save edits and continue editing - Alt+S"
+        )
+        # self.save_return_button.setShortcut(QKeySequence("Alt+S"))  # Managed by ShortcutManager
         self.save_return_button.setFocusPolicy(Qt.StrongFocus)
         self.save_return_button.clicked.connect(self.on_save)
-        self.save_return_button.setEnabled(True)
-        self.save_return_button.setVisible(True)
+        self.save_return_button.setEnabled(False)
+        self.save_return_button.setVisible(False)
         button_layout.addWidget(self.save_return_button)
 
         self.skip_button = QPushButton("&Discard")
         self.skip_button.setAccessibleName("Discard")
         self.skip_button.setAccessibleDescription(
-            "Discard this import item and advance to next available item - Alt+D")
-        self.skip_button.setShortcut(QKeySequence("Alt+D"))
+            "Discard this import item and advance to next available item - Alt+D"
+        )
+        # self.skip_button.setShortcut(QKeySequence("Alt+D"))  # Managed by ShortcutManager
         self.skip_button.setFocusPolicy(Qt.StrongFocus)
         self.skip_button.clicked.connect(self.on_skip_discard)
         button_layout.addWidget(self.skip_button)
@@ -1012,27 +1065,27 @@ class ImportDetailWindow(QDialog):
     def setup_shortcuts(self):
         """Centralized Alt+letter shortcut registration using ShortcutManager."""
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
         mgr = get_shortcut_manager()
         callback_map = {
-            'title_edit': lambda: self.title_edit.setFocus(),      # Alt+T
-            'author_combo': lambda: self.author_combo.setFocus(),  # Alt+A
-            'comments_edit': lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
-            'year_spin': lambda: self.year_spin.setFocus(),        # Alt+Y
-            'time_edit': lambda: self.time_edit.setFocus(),        # Alt+M
-            'reader_edit': lambda: self.reader_edit.setFocus(),    # Alt+R
-            'series_combo': lambda: self.series_combo.setFocus(),  # Alt+I
-            'genre_combo': lambda: self.genre_combo.setFocus(),    # Alt+G
-            'collection_combo': lambda: self.collection_combo.setFocus(),  # Alt+C
-            'files_edit': lambda: self.files_edit.setFocus(),      # Alt+F
-            'bitrate_edit': lambda: self.bitrate_edit.setFocus(),  # Alt+B
-            'size_edit': lambda: self.size_edit.setFocus(),        # Alt+Z
-            'errors_edit': lambda: self.errors_edit.setFocus(),    # Alt+E
-            'path_edit': lambda: self.path_edit.setFocus(),        # Alt+H
-            'save_return_button': lambda: self.save_return_button.click(),  # Alt+S
-            'skip_button': lambda: self.skip_button.click(),       # Alt+D
+            "title_edit": lambda: self.title_edit.setFocus(),  # Alt+T
+            "author_combo": lambda: self.author_combo.setFocus(),  # Alt+A
+            "comments_edit": lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
+            "year_spin": lambda: self.year_spin.setFocus(),  # Alt+Y
+            "time_edit": lambda: self.time_edit.setFocus(),  # Alt+M
+            "reader_edit": lambda: self.reader_edit.setFocus(),  # Alt+R
+            "series_combo": lambda: self.series_combo.setFocus(),  # Alt+I
+            "genre_combo": lambda: self.genre_combo.setFocus(),  # Alt+G
+            "collection_combo": lambda: self.collection_combo.setFocus(),  # Alt+C
+            "files_edit": lambda: self.files_edit.setFocus(),  # Alt+F
+            "bitrate_edit": lambda: self.bitrate_edit.setFocus(),  # Alt+B
+            "size_edit": lambda: self.size_edit.setFocus(),  # Alt+Z
+            "errors_edit": lambda: self.errors_edit.setFocus(),  # Alt+E
+            "path_edit": lambda: self.path_edit.setFocus(),  # Alt+H
+            "save_return_button": lambda: self.save_return_button.click(),  # Alt+S
+            "skip_button": lambda: self.skip_button.click(),  # Alt+D
         }
-        mgr.register_alt_shortcuts(
-            self, ShortcutContext.BOOK_DETAILS, callback_map)
+        mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
 
         # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -1078,7 +1131,11 @@ class ImportDetailWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         shortcuts = [
@@ -1124,21 +1181,31 @@ class ImportDetailWindow(QDialog):
 
     def _collect_form_data(self):
         """Collect edited values back into book_data."""
-        self.book_data["title"] = self._normalize_name_field(
-            self.title_edit.text())
+        self.book_data["title"] = self._normalize_name_field(self.title_edit.text())
         self.book_data["author"] = self._normalize_name_field(
-            self.author_combo.currentText())
+            self.author_combo.currentText()
+        )
         normalized_year = self._normalize_year_value(self.year_spin.value())
         self.book_data["year"] = normalized_year if normalized_year > 0 else None
         self.book_data["comment"] = self.comments_edit.toPlainText().strip()
-        self.book_data["narrator"] = self._normalize_name_field(
-            self.reader_edit.text())
+        self.book_data["narrator"] = self._normalize_name_field(self.reader_edit.text())
         self.book_data["series"] = self._normalize_name_field(
-            self.series_combo.currentText())
+            self.series_combo.currentText()
+        )
         self.book_data["genre"] = self._normalize_name_field(
-            self.genre_combo.currentText())
+            self.genre_combo.currentText()
+        )
         self.book_data["collection"] = self._normalize_name_field(
-            self.collection_combo.currentText())
+            self.collection_combo.currentText()
+        )
+
+        normalized_time = self._normalize_time_text(self.time_edit.text())
+        if normalized_time:
+            self.book_data["time_hours"] = int(normalized_time[:2])
+            self.book_data["time_minutes"] = int(normalized_time[3:])
+        else:
+            self.book_data["time_hours"] = 0
+            self.book_data["time_minutes"] = 0
 
     def on_prev(self):
         """Save edits and request previous import item."""
@@ -1159,7 +1226,11 @@ class ImportDetailWindow(QDialog):
     def on_skip_discard(self):
         """Discard this import item and return skip result to parent."""
         parent = self.parent()
-        if parent and hasattr(parent, "_discard_scanned_item") and hasattr(parent, "scanned_items"):
+        if (
+            parent
+            and hasattr(parent, "_discard_scanned_item")
+            and hasattr(parent, "scanned_items")
+        ):
             next_row = parent._discard_scanned_item(self.current_index)
             if next_row is not None and 0 <= next_row < len(parent.scanned_items):
                 next_item = parent.scanned_items[next_row]
@@ -1207,7 +1278,7 @@ class ImportDetailWindow(QDialog):
                 self.current_index,
                 self,
                 resolve_errors=resolve_errors,
-                refresh_view=False
+                refresh_view=False,
             )
 
         if resolve_errors:
@@ -1222,18 +1293,11 @@ class ImportDetailWindow(QDialog):
     def on_save(self):
         """Save edits in-place and keep dialog open."""
         if not self._dirty:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="No Changes",
-                text="There are no changes to save.",
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok,
-            )
-            self.set_status("No changes to save")
-            QApplication.beep()
             return
+
+        # Normalize time field before saving (in case user hasn't lost focus from time field)
+        if self.time_edit.hasFocus():
+            self._normalize_time_on_focus_out()
 
         resolve_errors = bool(self.errors)
         self._save_to_parent(resolve_errors=resolve_errors)
@@ -1259,16 +1323,15 @@ class ImportDetailWindow(QDialog):
             msg.setIcon(QMessageBox.Question)
             msg.setWindowTitle("Save Changes")
             msg.setStyleSheet(
-                build_accessible_message_box_style(
-                    self.scaler.get_scaled_size(20))
+                build_accessible_message_box_style(self.scaler.get_scaled_size(20))
             )
             msg.setText(self._build_exit_prompt_text())
             msg.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+            )
             msg.button(QMessageBox.Yes).setText("&Yes - Save")
             msg.button(QMessageBox.No).setText("&No - Continue editing")
-            msg.button(QMessageBox.Cancel).setText(
-                "Cance&l - Discard and close")
+            msg.button(QMessageBox.Cancel).setText("Cance&l - Discard and close")
             reply = msg.exec()
 
             if reply == QMessageBox.Yes:

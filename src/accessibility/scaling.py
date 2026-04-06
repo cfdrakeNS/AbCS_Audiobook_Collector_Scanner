@@ -3,6 +3,8 @@ UI Scaling system for AbCS.
 Manages application-wide font and UI scaling for accessibility.
 """
 
+import re
+
 from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtWidgets import QApplication
 from typing import Optional
@@ -22,13 +24,13 @@ class UIScaler(QObject):
 
     # Scale presets (percentage)
     SCALE_PRESETS = {
-        'Tiny': 75,
-        'Small': 85,
-        'Normal': 100,
-        'Large': 125,
-        'Extra Large': 150,
-        'Huge': 175,
-        'Maximum': 200
+        "Tiny": 75,
+        "Small": 85,
+        "Normal": 100,
+        "Large": 125,
+        "Extra Large": 150,
+        "Huge": 175,
+        "Maximum": 200,
     }
 
     # Min/max scale
@@ -38,6 +40,8 @@ class UIScaler(QObject):
 
     # Default scale - 150% gives ~14pt fonts (9pt base * 1.5 = 13.5pt)
     DEFAULT_SCALE = 150
+    SCALE_STYLE_BEGIN = "/* AbCS Scale Styles:BEGIN */"
+    SCALE_STYLE_END = "/* AbCS Scale Styles:END */"
 
     def __init__(self, app: QApplication):
         """
@@ -48,11 +52,12 @@ class UIScaler(QObject):
         """
         super().__init__()
         self.app = app
-        self.settings = QSettings('AbCS', 'AudioBookCollector')
+        self.settings = QSettings("AbCS", "AudioBookCollector")
 
         # Load saved scale or use default
         self._current_scale = self.settings.value(
-            'ui_scale', self.DEFAULT_SCALE, type=int)
+            "ui_scale", self.DEFAULT_SCALE, type=int
+        )
         self._apply_scale()
 
     @property
@@ -76,7 +81,7 @@ class UIScaler(QObject):
             self.scale_changed.emit(percentage)
 
             # Save to settings
-            self.settings.setValue('ui_scale', percentage)
+            self.settings.setValue("ui_scale", percentage)
 
     def increase_scale(self, step: int = SCALE_STEP):
         """
@@ -122,7 +127,7 @@ class UIScaler(QObject):
         for name, value in self.SCALE_PRESETS.items():
             if value == self._current_scale:
                 return name
-        return 'Custom'
+        return "Custom"
 
     def _apply_scale(self):
         """Apply current scale to application."""
@@ -150,10 +155,16 @@ class UIScaler(QObject):
                 background-color: palette(base);
             }}
 
-            /* Ensure minimum touch target size (44x44 at 100%) */
-            QPushButton, QComboBox, QCheckBox {{
+            /* Ensure minimum touch target size (44x44 at 100%) for buttons/checkboxes */
+            QPushButton, QCheckBox {{
                 min-height: {int(44 * self._current_scale / 100)}px;
                 padding: {int(6 * self._current_scale / 100)}px;
+            }}
+
+            /* Combo boxes scale with zoom but stay compact (not button-sized) */
+            QComboBox {{
+                min-height: {int(20 * self._current_scale / 100)}px;
+                max-height: {int(20 * self._current_scale / 100)}px;
             }}
 
             /* Table row height */
@@ -239,7 +250,22 @@ class UIScaler(QObject):
             selector="QMessageBox QPushButton",
         )
 
-        self.app.setStyleSheet(stylesheet)
+        self._apply_scale_stylesheet(stylesheet)
+
+    def _apply_scale_stylesheet(self, scale_stylesheet: str):
+        """Apply scale stylesheet without overwriting theme-managed styles."""
+        current = self.app.styleSheet() or ""
+        pattern = re.compile(
+            rf"{re.escape(self.SCALE_STYLE_BEGIN)}.*?{re.escape(self.SCALE_STYLE_END)}",
+            re.DOTALL,
+        )
+        base = re.sub(pattern, "", current).strip()
+
+        wrapped_scale = (
+            f"{self.SCALE_STYLE_BEGIN}\n{scale_stylesheet}\n{self.SCALE_STYLE_END}"
+        )
+        merged = f"{base}\n\n{wrapped_scale}" if base else wrapped_scale
+        self.app.setStyleSheet(merged)
 
     def get_scaled_size(self, base_size: int) -> int:
         """
@@ -271,7 +297,6 @@ def get_scaler(app: Optional[QApplication] = None) -> UIScaler:
     global _scaler_instance
     if _scaler_instance is None:
         if app is None:
-            raise ValueError(
-                "QApplication required for first call to get_scaler()")
+            raise ValueError("QApplication required for first call to get_scaler()")
         _scaler_instance = UIScaler(app)
     return _scaler_instance

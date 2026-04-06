@@ -23,7 +23,6 @@ from PySide6.QtCore import (
     QTimer,
     QItemSelectionModel,
     QEvent,
-    QModelIndex,
 )
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
@@ -51,7 +50,6 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
-    announce_dialog_opened,
     announce_dialog_closed,
 )
 from src.ui.import_detail_window import ImportDetailWindow
@@ -233,7 +231,6 @@ class ImportWindow(QDialog):
         self.default_collection_id = None
         self.current_collection_name = ""
         self.import_scenario_mode = "mass_standard"
-        self.current_formats_text = "None"
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
@@ -256,14 +253,12 @@ class ImportWindow(QDialog):
             "valid": 0,
             "added": 0,
         }
-        self.total_imported = 0
         self._default_status_message = "Ready"
         self._base_window_title = "Import Audiobooks"
         self._is_adding = False
         self._cancel_add_requested = False
         self._is_scanning = False
         self._cancel_scan_requested = False
-        self._scan_prompt_open = False
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
@@ -538,33 +533,6 @@ class ImportWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
-
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            """
-
         button_style = f"""
             QPushButton {{
                 padding: 4px 12px;
@@ -593,23 +561,6 @@ class ImportWindow(QDialog):
             self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56)
         )
 
-        table_style = """
-            QTableView::item:selected:active {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            QTableView::item:selected:!active {
-                background-color: palette(base);
-                color: palette(text);
-            }
-            QTableView::item:focus {
-                outline: none;
-                border: none;
-            }
-            QTableView {
-                outline: 0;
-            }
-        """
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
         self.table.setStyleSheet(build_accessible_f1_popup_style())
@@ -648,7 +599,6 @@ class ImportWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        self.current_formats_text = "None"  # Removed undefined 'formats' variable
 
         self.import_scenario_mode = self.settings.value(
             "import/scenario/mode", "mass_standard", type=str
@@ -733,7 +683,7 @@ class ImportWindow(QDialog):
 
         require_selection = len(collections) > 1
         if require_selection:
-            self.collection_combo.addItem("None", None)
+            self.collection_combo.addItem("", None)
 
         collections = sorted(
             collections,
@@ -1020,54 +970,6 @@ class ImportWindow(QDialog):
                 text=f"No screen reader active.\n\nStatus: {status_text}",
             )
 
-    def on_focus_list(self):
-        """Move focus to import list table (Alt+L)."""
-        if self.table.rowCount() > 0:
-            target_row = self.table.currentRow()
-            if target_row < 0 or self.table.isRowHidden(target_row):
-                target_row = self._first_visible_row()
-            if target_row < 0:
-                target_row = 0
-            self.table.setCurrentCell(target_row, self.COL_TITLE)
-            self.table.setCurrentIndex(
-                self.table.model().index(target_row, self.COL_TITLE)
-            )
-            self.table.scrollTo(self.table.model().index(target_row, self.COL_TITLE))
-        self.table.setFocus()
-        self.set_status("Import list focused", announce=True)
-
-    def _hide_table_cell_highlight(self):
-        """Hide active-cell highlight when focus moves away from table."""
-        model = self.table.selectionModel()
-        if model is not None:
-            model.setCurrentIndex(QModelIndex(), QItemSelectionModel.NoUpdate)
-        self.table.viewport().update()
-
-    def jump_to_column(self, column: int):
-        """Jump to a column in the import table for the current row."""
-        if self.table.columnCount() == 0:
-            return
-
-        if self.table.rowCount() == 0:
-            self.table.setFocus()
-            return
-
-        row = self.table.currentRow()
-        if row < 0:
-            first_visible = self._first_visible_row()
-            row = first_visible
-            if row < 0:
-                row = 0
-
-        if column >= self.table.columnCount():
-            column = self.table.columnCount() - 1
-
-        self.table.setCurrentCell(row, column)
-        index = self.table.model().index(row, column)
-        self.table.setCurrentIndex(index)
-        self.table.scrollTo(index)
-        self.table.setFocus()
-
     def _update_header_info_line(self):
         """Keep window title simple for screen-reader clarity."""
         self.setWindowTitle(self._base_window_title)
@@ -1304,38 +1206,6 @@ class ImportWindow(QDialog):
         else:
             self.restore_summary_status()
 
-    def _row_title(self, row: int) -> str:
-        """Return title text for a table row."""
-        if row < 0:
-            return "Unknown"
-        item = self.table.item(row, self.COL_TITLE)
-        if item and item.text().strip():
-            return item.text().strip()
-        if 0 <= row < len(self.scanned_items):
-            return (
-                self.scanned_items[row].get("book", {}).get("title") or "Unknown"
-            ).strip() or "Unknown"
-        return "Unknown"
-
-    def announce_selection(self):
-        """Announce selection with focused title, aligned with Main Window behavior."""
-        if not self.selected_rows:
-            return
-
-        count = len(self.selected_rows)
-        current_row = self.table.currentRow()
-        title = self._row_title(current_row)
-        shortcuts_text = (
-            "Alt+I Add selected, Alt+V Add valid, Alt+X Export, Escape Close"
-        )
-
-        if count == 1:
-            message = f"{title} - selected. {shortcuts_text}"
-        else:
-            message = f"{title} - {count} selected. {shortcuts_text}"
-
-        self.set_status(message, announce=True)
-
     def update_summary(
         self,
         scanned: int = 0,
@@ -1521,21 +1391,17 @@ class ImportWindow(QDialog):
         # Validate path based on scenario
         is_single_item = self.import_scenario_mode == "single_item"
         is_valid = False
-        path_type = "folder"
 
         if is_single_item:
             # Single item mode: accept either file or folder
             if os.path.isfile(folder_path):
                 is_valid = True
-                path_type = "file"
             elif os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "folder"
         else:
             # Other modes: expect folder only
             if os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "folder"
 
         if not is_valid:
             msg = QMessageBox(self)
@@ -1595,17 +1461,13 @@ class ImportWindow(QDialog):
         self.set_status("Scan started")
         scan_start = time.perf_counter()
         elapsed_text = "00:00"
-        scan_files_processed = 0
-        scan_total_files = 0
         progress_update_interval = 0.15
         counters_update_interval = 0.15
         next_progress_ui_update = scan_start
         next_counters_ui_update = scan_start
 
         def on_progress(processed: int, total: int, file_path: str):
-            nonlocal scan_files_processed, scan_total_files, next_progress_ui_update
-            scan_files_processed = int(processed)
-            scan_total_files = int(total)
+            nonlocal next_progress_ui_update
             if self.progress_window and self.progress_window.cancel_requested:
                 self._cancel_scan_requested = True
 
@@ -1803,7 +1665,7 @@ class ImportWindow(QDialog):
                         auto_added = True
                         outcomes.add("added")
                         added_count += 1
-                        self.total_imported += 1
+
                         # Update existing_list for future duplicate checks
                         existing_list.append(
                             {
@@ -1828,6 +1690,14 @@ class ImportWindow(QDialog):
                     status = "Error"
                 elif has_warning:
                     status = "Warning"
+
+                is_clean_valid = not (
+                    is_duplicate
+                    or has_hard_error
+                    or has_warning
+                    or has_fallback
+                    or has_correction
+                )
 
                 # Only add to review table if not auto_added:
                 if not auto_added:
@@ -1874,6 +1744,8 @@ class ImportWindow(QDialog):
                     if not is_duplicate and not has_hard_error:
                         if has_warning:
                             warning_count += 1
+                        elif is_clean_valid:
+                            valid_count += 1
                     elif is_duplicate:
                         pass  # already counted
                     else:
@@ -2318,9 +2190,6 @@ class ImportWindow(QDialog):
             self._refresh_summary_from_items()
             self.restore_summary_status()
 
-            if imported > 0:
-                self.total_imported += imported
-
             remaining = len(self.scanned_items)
 
             # Mark add phase complete in progress window
@@ -2346,7 +2215,6 @@ class ImportWindow(QDialog):
         self,
         row: int,
         detail_window: ImportDetailWindow,
-        resolve_errors: bool = False,
         refresh_view: bool = True,
     ):
         """Apply edits returned from ImportDetailWindow to scanned item + table."""
@@ -2360,6 +2228,8 @@ class ImportWindow(QDialog):
             "series",
             "collection",
             "comment",
+            "time_hours",
+            "time_minutes",
         ]:
             if key in detail_window.book_data:
                 item["book"][key] = detail_window.book_data[key]

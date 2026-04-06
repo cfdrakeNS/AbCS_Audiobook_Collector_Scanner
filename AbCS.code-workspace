@@ -16,7 +16,6 @@
       "**/build": true,
       "**/dist": true
     },
-    "editor.accessibilitySupport": "on",
     "python.analysis.typeCheckingMode": "off",
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
     "python.terminal.activateEnvironment": true,
@@ -41,7 +40,6 @@
       "plaintext": false,
       "markdown": false
     },
-    "accessibility.verbosity.notification": false,
     "extensions.ignoreRecommendations": true,
     "chat.tools.terminal.autoApprove": {
       "/^\\$in = 'AbCS_Guide_\\(Draft\\)\\.md'; \\$out = 'AbCS_Guide_\\(Draft\\)\\.odt'; \\$pandocPath = 'C:\\\\Users\\\\cfran\\\\AppData\\\\Local\\\\Pandoc\\\\pandoc\\.exe'; if \\(-not \\(Test-Path \\$pandocPath\\)\\) \\{ Write-Error \"pandoc not found at \\$pandocPath\"; exit 2 \\}; & \\$pandocPath \\$in -o \\$out; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; Get-Item \\$out \\| Select-Object Name, Length, LastWriteTime \\| Format-Table -AutoSize$/": {

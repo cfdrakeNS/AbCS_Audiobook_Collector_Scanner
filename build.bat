@@ -1,43 +1,55 @@
 @echo off
+setlocal EnableExtensions
 REM Build AbCS executable using PyInstaller
 REM This script creates a standalone .exe for distribution
 
-echo ========================================
-echo Building AbCS Executable
-echo ========================================
-echo.
-echo ACCESSIBILITY: AbCS build script has started.
-echo ACCESSIBILITY: Python add-on checks and installs may begin next.
+set "BUILD_LOG=build.log"
+if exist "%BUILD_LOG%" del "%BUILD_LOG%"
+set "VENV_DIR="
+if exist ".venv\Scripts\python.exe" set "VENV_DIR=.venv"
+if not defined VENV_DIR if exist "venv\Scripts\python.exe" set "VENV_DIR=venv"
+echo AbCS build started.
+echo Detailed log: %BUILD_LOG%
 echo.
 
-REM Activate virtual environment
-call venv\Scripts\activate.bat
-if errorlevel 1 (
-    echo ERROR: Could not activate virtual environment
-    echo Please run setup.bat first
+REM Resolve Python environment
+if not defined VENV_DIR (
+    echo ERROR: No virtual environment found.
+    echo Create .venv or venv and install requirements.
     pause
     exit /b 1
 )
+set "PYTHON_EXE=%VENV_DIR%\Scripts\python.exe"
+echo Using environment: %VENV_DIR%
 
 REM Install PyInstaller if not already installed
-echo Checking for PyInstaller...
-python -m pip show pyinstaller >nul 2>&1
+echo Step 1/3: Checking PyInstaller...
+"%PYTHON_EXE%" -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
-    echo ACCESSIBILITY: Installing required Python add-on PyInstaller.
-    echo Installing PyInstaller...
-    python -m pip install pyinstaller
+    echo Installing PyInstaller. This may take a minute...
+    "%PYTHON_EXE%" -m pip install pyinstaller >>"%BUILD_LOG%" 2>&1
     if errorlevel 1 (
         echo ERROR: Failed to install PyInstaller
+        echo See %BUILD_LOG% for details.
         pause
         exit /b 1
     )
-    echo PyInstaller installed successfully
 )
-echo.
+"%PYTHON_EXE%" -c "import importlib.util, sys; mods=('pandas','openpyxl','odf','jinja2'); missing=[m for m in mods if importlib.util.find_spec(m) is None]; sys.exit(1 if missing else 0)" >nul 2>&1
+if errorlevel 1 (
+    echo Installing required build dependencies...
+    "%PYTHON_EXE%" -m pip install -r requirements.txt jinja2 pyinstaller >>"%BUILD_LOG%" 2>&1
+    if errorlevel 1 (
+        echo ERROR: Failed to install required build dependencies.
+        echo See %BUILD_LOG% for details.
+        pause
+        exit /b 1
+    )
+)
+echo PyInstaller ready.
 
 REM Clean previous builds
-echo Cleaning previous builds...
-echo Stopping running AbCS processes if any...
+echo Step 2/3: Cleaning old build files...
 taskkill /F /IM AbCS.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
@@ -58,13 +70,10 @@ if exist dist rmdir /s /q dist
 if exist AbCS.spec del AbCS.spec
 
 REM Build executable
-echo.
-echo Building executable...
-echo This may take several minutes...
-echo PyInstaller log level: WARN
-echo.
+echo Step 3/3: Building executable...
+echo Please wait...
 
-python -m PyInstaller ^
+"%PYTHON_EXE%" -m PyInstaller ^
     --name="AbCS" ^
     --onefile ^
     --windowed ^
@@ -81,31 +90,26 @@ python -m PyInstaller ^
     --hidden-import="mutagen.flac" ^
     --hidden-import="mutagen.oggvorbis" ^
     --hidden-import="mutagen.wave" ^
+    --hidden-import="openpyxl" ^
+    --hidden-import="odf" ^
+    --hidden-import="odf.opendocument" ^
+    --collect-submodules="odf" ^
     --exclude-module="PySide6.QtSql" ^
     --exclude-module="PySide6.QtQml" ^
     --exclude-module="PySide6.QtQuick" ^
     --exclude-module="PySide6.QtQuickShapes" ^
     --noconsole ^
-    src/main.py
+    src/main.py >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (
-    echo.
-    echo ERROR: Build failed!
+    echo ERROR: Build failed.
+    echo See %BUILD_LOG% for details.
     pause
     exit /b 1
 )
 
-echo.
-echo ====================================w====
-echo Build Complete!
-echo ========================================
-echo.
+echo Build complete.
 echo Executable location: dist\AbCS.exe
-echo Database schema bundled: data\abcdDB_def.sql
-echo.
-echo You can now distribute dist\AbCS.exe to your friend.
-echo.
-echo Note: No database file is bundled; first run creates a new database automatically.
-echo.
+echo Log file: %BUILD_LOG%
 
 pause

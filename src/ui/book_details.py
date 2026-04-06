@@ -7,9 +7,8 @@ import re
 from src.database import DatabaseManager, Book, BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.scaling import UIScaler
-from src.accessibility.shortcuts import ShortcutManager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_message_box_style, exec_styled_message_box
-from src.accessibility.accessible_events import announce_status_message, announce_form_field, announce_dialog_opened, announce_dialog_closed
+from src.accessibility.accessible_events import announce_status_message, announce_dialog_opened, announce_dialog_closed
 from src.accessibility.key_filters import is_unmapped_alt_letter
 import getpass
 
@@ -93,6 +92,24 @@ class BookDetailsWindow(QDialog):
             self.reject()
 
     @staticmethod
+    def _normalize_time_text(raw_text: str) -> str:
+        """Normalize time text to HH:MM from HHMM or HH:MM input."""
+        digits = "".join(ch for ch in (raw_text or "") if ch.isdigit())
+        if len(digits) != 4:
+            return ""
+        hours = int(digits[:2])
+        minutes = int(digits[2:])
+        if minutes > 59:
+            return ""
+        return f"{hours:02d}:{minutes:02d}"
+
+    def _normalize_time_on_focus_out(self):
+        """Normalize time field quietly when focus leaves the control."""
+        normalized = self._normalize_time_text(self.time_edit.text())
+        if normalized and normalized != self.time_edit.text():
+            self.time_edit.setText(normalized)
+
+    @staticmethod
     def _to_proper_case(text: str) -> str:
         value = text.strip().lower()
         if not value:
@@ -172,8 +189,6 @@ class BookDetailsWindow(QDialog):
         self.series_queries = SeriesQueries(db)
         self.genre_queries = GenreQueries(db)
         self.collection_queries = CollectionQueries(db)
-        # Accessibility: Shortcut manager
-        self.shortcut_manager = ShortcutManager()
 
         # Setup UI
         self.setup_ui()
@@ -288,7 +303,9 @@ class BookDetailsWindow(QDialog):
 
         # Check for FocusOut on author/series/genre combos to detect new values
         if event.type() == QEvent.FocusOut:
-            if source == self.author_combo:
+            if source == self.time_edit:
+                self._normalize_time_on_focus_out()
+            elif source == self.author_combo:
                 self._check_combo_change("Author", self.author_combo,
                                          self._original_author, self.author_queries)
             elif source == self.series_combo:
@@ -342,24 +359,6 @@ class BookDetailsWindow(QDialog):
         base_height = 20
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
-
-        # Stylesheet for QLineEdit controls
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-            QLineEdit:read-only {{
-                background-color: palette(window);
-            }}
-        """
 
         # Stylesheet for QComboBox controls (scaled height)
         combo_style = f"""
@@ -505,6 +504,7 @@ class BookDetailsWindow(QDialog):
 
         time_label = QLabel("&Time:")
         self.time_edit = QLineEdit()
+        self.time_edit.setInputMask("99:99;_")  # HH:MM format with underscore placeholder
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setAccessibleName("Time")
         self.time_edit.setMaximumWidth(100)
@@ -633,6 +633,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(self.bitrate_edit)
 
         size_label = QLabel("Si&ze:")
+        size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(False)
         self.size_edit.setAccessibleName("File size in megabytes")
@@ -650,7 +651,7 @@ class BookDetailsWindow(QDialog):
             ("M4A", "m4a"),
             ("M4B", "m4b"),
             ("FLAC", "flac"),
-            ("OGG", "ogg"),
+             ("OGG", "ogg"),
             ("WAV", "wav"),
             ("WMA", "wma"),
         ]
@@ -1233,6 +1234,10 @@ class BookDetailsWindow(QDialog):
 
     def on_save(self):
         """Save book data."""
+        # Normalize time field before saving (in case user hasn't lost focus from time field)
+        if self.time_edit.hasFocus():
+            self._normalize_time_on_focus_out()
+        
         title_text = self._normalize_name_field(self.title_edit.text())
 
         # Validate
@@ -1286,17 +1291,19 @@ class BookDetailsWindow(QDialog):
         if collection_id is None and self.collection_combo.count() == 1:
             collection_id = self.collection_combo.itemData(0)
 
-        # Parse time
+        # Parse time with normalization
         time_text = self.time_edit.text().strip()
         time_hours = 0
         time_minutes = 0
-        if time_text and ':' in time_text:
-            try:
-                parts = time_text.split(':')
-                time_hours = int(parts[0])
-                time_minutes = int(parts[1])
-            except (ValueError, IndexError):
-                pass
+        if time_text:
+            normalized_time = self._normalize_time_text(time_text)
+            if normalized_time:
+                try:
+                    parts = normalized_time.split(':')
+                    time_hours = int(parts[0])
+                    time_minutes = int(parts[1])
+                except (ValueError, IndexError):
+                    pass
 
         # Get read date
         read_date = None
@@ -1381,6 +1388,7 @@ class BookDetailsWindow(QDialog):
             self._original_genre = self.genre_combo.currentText()
             self.setWindowTitle("Book Details")
             self.setAccessibleName("Book Details")
+            QTimer.singleShot(0, self.title_edit.setFocus)
 
         except Exception as e:
             self.set_status("Error saving book")
@@ -1450,6 +1458,7 @@ class BookDetailsWindow(QDialog):
                     text="Book deleted successfully!"
                 )
                 self.set_status("Book deleted successfully")
+                QTimer.singleShot(0, self.title_edit.setFocus)
             else:
                 exec_styled_message_box(
                     self,
@@ -1640,6 +1649,7 @@ class BookDetailsWindow(QDialog):
                     if result == QDialog.Accepted:
                         # User accepted changes - would implement actual update here
                         self.set_status("Web details applied successfully", announce=True)
+                        QTimer.singleShot(0, self.comments_edit.setFocus)
                 else:
                     # Show popup if no meaningful data found
                     from PySide6.QtWidgets import QMessageBox
@@ -1651,6 +1661,7 @@ class BookDetailsWindow(QDialog):
                     msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
                     msg.setStandardButtons(QMessageBox.Ok)
                     msg.exec()
+                    QTimer.singleShot(0, self.title_edit.setFocus)
             else:
                 # Show popup if no data found
                 from PySide6.QtWidgets import QMessageBox
@@ -1665,6 +1676,7 @@ class BookDetailsWindow(QDialog):
                 msg.setStyleSheet(build_accessible_message_box_style(self.scaler.get_scaled_size(20)))
                 msg.setStandardButtons(QMessageBox.Ok)
                 msg.exec()
+                QTimer.singleShot(0, self.title_edit.setFocus)
         except Exception as e:
             import traceback
             traceback.print_exc()

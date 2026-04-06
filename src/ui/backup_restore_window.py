@@ -7,7 +7,6 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from PySide6.QtWidgets import (
-    QApplication,
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -353,13 +352,6 @@ class BackupRestoreWindow(QDialog):
         selected_path = (selected_item.data(Qt.UserRole) or "").strip()
         return bool(selected_path)
 
-    def _is_backup_list_focused(self) -> bool:
-        app = QApplication.instance()
-        if app is None:
-            return False
-        focus_widget = app.focusWidget()
-        return focus_widget in (self.backup_list, self.backup_list.viewport())
-
     def _update_delete_button_visibility(self):
         self.delete_button.setVisible(True)
         self.delete_button.setEnabled(True)
@@ -411,6 +403,14 @@ class BackupRestoreWindow(QDialog):
         self._set_restore_path(path_text)
         self._restore_file_explicitly_selected = bool(path_text.strip())
         self._update_delete_button_visibility()
+
+    @staticmethod
+    def _display_backup_name(path_text: str) -> str:
+        name = Path(path_text).name if path_text else ""
+        for prefix in ("abcs_backup_", "AbCS_Backup_"):
+            if name.startswith(prefix):
+                return name[len(prefix) :]
+        return name
 
     def on_backup_selected(
         self, current_row: int, _current_col: int, _prev_row: int, _prev_col: int
@@ -476,14 +476,17 @@ class BackupRestoreWindow(QDialog):
             self.set_status("Restore canceled: no backup selected")
             return
 
+        restore_name = self._display_backup_name(restore_path)
+
         confirm = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
             title="Confirm Restore",
             text=(
-                "Restore from selected backup?\n\n"
-                "Current data will be replaced by the selected backup."
+                "Restore from backup file?\n\n"
+                f"{restore_name}\n\n"
+                "Current data will be replaced by this backup."
             ),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
@@ -508,7 +511,7 @@ class BackupRestoreWindow(QDialog):
         self.data_changed = True
         self.refresh_backup_list()
         self._select_backup_path(restore_path)
-        self.set_status("Restore completed")
+        self.set_status(f"Restored backup: {restore_name}")
 
     def on_delete_backup(self):
         if not self._has_backup_list_selection():
@@ -540,13 +543,13 @@ class BackupRestoreWindow(QDialog):
             self.set_status("Delete canceled: no backup row selected in Backup List")
             return
 
-        backup_name = Path(backup_path).name
+        backup_name = self._display_backup_name(backup_path)
         confirm = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
             title="Confirm Delete",
-            text=("Delete selected backup file?\n\n" f"{backup_name}"),
+            text=("Delete backup file?\n\n" f"{backup_name}"),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
         )

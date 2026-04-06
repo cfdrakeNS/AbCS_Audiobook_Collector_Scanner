@@ -1,36 +1,34 @@
 @echo off
+setlocal EnableExtensions
 REM Build AbCS executable with bundled database for distribution
 
-echo ========================================
-echo Building AbCS Executable (with DB)
-echo ========================================
-echo.
-echo ACCESSIBILITY: AbCS build_db script has started.
-echo ACCESSIBILITY: Python add-on checks and installs may begin next.
+set "BUILD_LOG=build_db.log"
+if exist "%BUILD_LOG%" del "%BUILD_LOG%"
+echo AbCS build_db started.
+echo Detailed log: %BUILD_LOG%
 echo.
 
 REM Activate virtual environment
 call .venv\Scripts\activate.bat
 if errorlevel 1 (
     echo ERROR: Could not activate virtual environment
-    echo Please run setup.bat first
+    echo Ensure .venv exists and dependencies are installed.
     exit /b 1
 )
 
 REM Install PyInstaller if not already installed
-echo Checking for PyInstaller...
+echo Step 1/3: Checking PyInstaller...
 python -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
-    echo ACCESSIBILITY: Installing required Python add-on PyInstaller.
-    echo Installing PyInstaller...
-    python -m pip install pyinstaller
+    echo Installing PyInstaller. This may take a minute...
+    python -m pip install pyinstaller >>"%BUILD_LOG%" 2>&1
     if errorlevel 1 (
         echo ERROR: Failed to install PyInstaller
+        echo See %BUILD_LOG% for details.
         exit /b 1
     )
-    echo PyInstaller installed successfully
 )
-echo.
+echo PyInstaller ready.
 
 REM Determine DB file to bundle
 set "DB_SOURCE="
@@ -46,8 +44,7 @@ if "%DB_SOURCE%"=="" (
 )
 
 REM Clean previous build_db artifacts
-echo Cleaning previous build_db artifacts...
-echo Stopping running AbCS processes if any...
+echo Step 2/3: Cleaning old build files...
 taskkill /F /IM AbCS.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
@@ -55,11 +52,8 @@ if exist build\build_db rmdir /s /q build\build_db
 if exist dist\build_db rmdir /s /q dist\build_db
 
 REM Build executable into dist\build_db
-echo.
-echo Building executable with bundled database...
-echo This may take several minutes...
-echo PyInstaller log level: WARN
-echo.
+echo Step 3/3: Building executable with bundled DB...
+echo Please wait...
 
 python -m PyInstaller ^
     --name="AbCS" ^
@@ -81,29 +75,23 @@ python -m PyInstaller ^
     --hidden-import="mutagen.flac" ^
     --hidden-import="mutagen.oggvorbis" ^
     --hidden-import="mutagen.wave" ^
+    --hidden-import="openpyxl" ^
+    --hidden-import="odf" ^
+    --hidden-import="odf.opendocument" ^
     --exclude-module="PySide6.QtSql" ^
     --exclude-module="PySide6.QtQml" ^
     --exclude-module="PySide6.QtQuick" ^
     --exclude-module="PySide6.QtQuickShapes" ^
     --noconsole ^
-    src/main.py
+    src/main.py >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (
-    echo.
-    echo ERROR: build_db failed!
+    echo ERROR: build_db failed.
+    echo See %BUILD_LOG% for details.
     exit /b 1
 )
 
-echo.
-echo ========================================
-echo build_db Complete!
-echo ========================================
-echo.
+echo build_db complete.
 echo Executable location: dist\build_db\AbCS.exe
-echo Bundled files:
-echo   - data\abcdDB_def.sql
-echo   - %DB_SOURCE%
-echo.
-echo On first run of this build, existing local DB (if any) is removed and replaced from bundled DB at:
-echo   %%LOCALAPPDATA%%\AbCS\abcs.db
-echo.
+echo Bundled DB source: %DB_SOURCE%
+echo Log file: %BUILD_LOG%

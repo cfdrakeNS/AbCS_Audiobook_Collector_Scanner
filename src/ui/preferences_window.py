@@ -4,11 +4,30 @@ Basic preferences for display and import settings.
 """
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QLabel, QComboBox, QSpinBox, QLineEdit, QTextEdit,
-    QPushButton, QCheckBox, QFileDialog, QStatusBar, QMessageBox, QSizePolicy,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QApplication,
-    QScrollArea, QWidget, QFrame
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QGroupBox,
+    QLabel,
+    QComboBox,
+    QSpinBox,
+    QLineEdit,
+    QTextEdit,
+    QPushButton,
+    QCheckBox,
+    QFileDialog,
+    QStatusBar,
+    QMessageBox,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QApplication,
+    QScrollArea,
+    QWidget,
+    QFrame,
 )
 from PySide6.QtCore import QSettings, Qt, QTimer, QEvent, QPoint
 from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
@@ -20,7 +39,9 @@ from src.accessibility.style_helpers import build_accessible_message_box_style
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
-    announce_status_message, announce_dialog_opened, announce_dialog_closed
+    announce_status_message,
+    announce_dialog_opened,
+    announce_dialog_closed,
 )
 
 
@@ -31,15 +52,16 @@ class PreferencesWindow(QDialog):
 
     def keyPressEvent(self, event):
         # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
-        if self.browse_button.hasFocus() and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        if self.browse_button.hasFocus() and event.key() in (
+            Qt.Key_Return,
+            Qt.Key_Enter,
+        ):
             self.on_browse()
             event.accept()
             return
         super().keyPressEvent(event)
 
-    ALLOWED_ALT_LETTERS = {
-        'A', 'C', 'D', 'F', 'O', 'R', 'S', 'V'
-    }
+    ALLOWED_ALT_LETTERS = {"A", "C", "D", "F", "O", "R", "S", "V"}
 
     IMPORT_SCENARIOS = [
         ("mass_standard", "Mass Standard Import"),
@@ -74,7 +96,7 @@ class PreferencesWindow(QDialog):
 
         self.scaler = scaler
         self.theme_manager = theme_manager
-        self.settings = QSettings('AbCS', 'AudioBookCollector')
+        self.settings = QSettings("AbCS", "AudioBookCollector")
 
         self._loading = False
         self._initial_theme = self.theme_manager.current_theme_name
@@ -91,14 +113,14 @@ class PreferencesWindow(QDialog):
         self.connect_signals()
         self.register_shortcuts()
         self.scaler.scale_changed.connect(self.on_scale_changed)
-        self.theme_manager.theme_changed.connect(
-            self.on_application_theme_changed)
+        self.theme_manager.theme_changed.connect(self.on_application_theme_changed)
 
         title = "Preferences"
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription(
-            "Application preferences for display and import settings")
+            "Application preferences for display and import settings"
+        )
         self.resize(994, 560)
         QTimer.singleShot(0, self.update_scenario_description_height)
 
@@ -135,8 +157,7 @@ class PreferencesWindow(QDialog):
         theme_label.setMinimumWidth(display_label_width)
         self.theme_combo = QComboBox()
         self.theme_combo.setAccessibleName("Theme")
-        self.theme_combo.setAccessibleDescription(
-            "Select application theme")
+        self.theme_combo.setAccessibleDescription("Select application theme")
         theme_label.setBuddy(self.theme_combo)
         display_layout.addWidget(theme_label)
         display_layout.addWidget(self.theme_combo)
@@ -147,8 +168,7 @@ class PreferencesWindow(QDialog):
         preset_label.setMinimumWidth(display_label_width)
         self.preset_combo = QComboBox()
         self.preset_combo.setAccessibleName("Font scaling preset")
-        self.preset_combo.setAccessibleDescription(
-            "Select font scaling preset")
+        self.preset_combo.setAccessibleDescription("Select font scaling preset")
         preset_label.setBuddy(self.preset_combo)
         display_layout.addWidget(preset_label)
         display_layout.addWidget(self.preset_combo)
@@ -158,12 +178,10 @@ class PreferencesWindow(QDialog):
         zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         zoom_label.setMinimumWidth(display_label_width + 10)
         self.zoom_spin = QSpinBox()
-        self.zoom_spin.setRange(
-            UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
+        self.zoom_spin.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
         self.zoom_spin.setSingleStep(UIScaler.SCALE_STEP)
         self.zoom_spin.setAccessibleName("Zoom level")
-        self.zoom_spin.setAccessibleDescription(
-            "Set zoom level percentage")
+        self.zoom_spin.setAccessibleDescription("Set zoom level percentage")
         zoom_label.setBuddy(self.zoom_spin)
         display_layout.addWidget(zoom_label)
         display_layout.addWidget(self.zoom_spin)
@@ -213,7 +231,8 @@ class PreferencesWindow(QDialog):
         self.import_dir_edit = QLineEdit()
         self.import_dir_edit.setAccessibleName("Default import directory")
         self.import_dir_edit.setAccessibleDescription(
-            "Default folder to scan for imports")
+            "Default folder to scan for imports"
+        )
         dir_label.setBuddy(self.import_dir_edit)
         dir_layout.addWidget(dir_label)
         dir_layout.addWidget(self.import_dir_edit, 1)
@@ -221,7 +240,8 @@ class PreferencesWindow(QDialog):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a default import directory")
+            "Browse for a default import directory"
+        )
         self.browse_button.setDefault(False)
         self.browse_button.setAutoDefault(False)
         dir_layout.addWidget(self.browse_button)
@@ -248,8 +268,7 @@ class PreferencesWindow(QDialog):
         for label, key in format_items:
             checkbox = QCheckBox(label)
             checkbox.setAccessibleName(f"{key.upper()} format")
-            checkbox.setAccessibleDescription(
-                f"Include {key.upper()} files in scan")
+            checkbox.setAccessibleDescription(f"Include {key.upper()} files in scan")
             self.format_checks[key] = checkbox
             formats_layout.addWidget(checkbox)
 
@@ -267,7 +286,8 @@ class PreferencesWindow(QDialog):
         self.import_scenario_combo = QComboBox()
         self.import_scenario_combo.setAccessibleName("Import scenario")
         self.import_scenario_combo.setAccessibleDescription(
-            "Select import scenario mode")
+            "Select import scenario mode"
+        )
         scenario_label.setBuddy(self.import_scenario_combo)
         scenario_layout.addWidget(scenario_label)
         scenario_layout.addWidget(self.import_scenario_combo)
@@ -279,10 +299,10 @@ class PreferencesWindow(QDialog):
         scenario_desc_label.setMinimumWidth(import_label_width)
         self.scenario_description_edit = QTextEdit()
         self.scenario_description_edit.setReadOnly(True)
-        self.scenario_description_edit.setAccessibleName(
-            "Scenario description")
+        self.scenario_description_edit.setAccessibleName("Scenario description")
         self.scenario_description_edit.setAccessibleDescription(
-            "Description of selected import scenario")
+            "Description of selected import scenario"
+        )
         self.scenario_description_edit.setMinimumHeight(60)
         scenario_desc_label.setBuddy(self.scenario_description_edit)
         scenario_desc_layout = QHBoxLayout()
@@ -292,25 +312,28 @@ class PreferencesWindow(QDialog):
         scenario_desc_layout.addWidget(self.scenario_description_edit, 1)
         source_scope_layout.addLayout(scenario_desc_layout)
 
-        self.auto_add_clean_books_check = QCheckBox(
-            "Review Clean Books Before Adding")
+        self.auto_add_clean_books_check = QCheckBox("Review Clean Books Before Adding")
         self.auto_add_clean_books_check.setAccessibleName(
-            "Review clean books before adding")
+            "Review clean books before adding"
+        )
         self.auto_add_clean_books_check.setAccessibleDescription(
-            "Keep valid books in Import Window for review and Add Valid when enabled")
+            "Keep valid books in Import Window for review and Add Valid when enabled"
+        )
         self.flip_author_check = QCheckBox("Flip Author Name Last, First")
-        self.flip_author_check.setAccessibleName(
-            "Flip author name Last, First")
+        self.flip_author_check.setAccessibleName("Flip author name Last, First")
         self.flip_author_check.setAccessibleDescription(
-            "Flip author names to Last, First during import")
-        self.autocorrect_proper_case_check = QCheckBox(
-            "Apply proper case")
+            "Flip author names to Last, First during import"
+        )
+        self.autocorrect_proper_case_check = QCheckBox("Apply proper case")
         self.autocorrect_proper_case_check.setAccessibleName(
-            "Apply proper case to fields")
+            "Apply proper case to fields"
+        )
         self.autocorrect_move_the_check = QCheckBox(
-            "Move leading 'The', 'A', 'An' to end of title")
+            "Move leading 'The', 'A', 'An' to end of title"
+        )
         self.autocorrect_move_the_check.setAccessibleName(
-            "Move leading 'The', 'A', 'An' to end of title")
+            "Move leading 'The', 'A', 'An' to end of title"
+        )
         options_layout.addWidget(self.auto_add_clean_books_check, 0, 0)
         options_layout.addWidget(self.flip_author_check, 0, 1)
         options_layout.addWidget(self.autocorrect_proper_case_check, 1, 0)
@@ -328,15 +351,15 @@ class PreferencesWindow(QDialog):
         import_layout.addWidget(options_group)
 
         self.author_fallback_checkbox = QCheckBox("Author fallback to folder?")
-        self.author_fallback_checkbox.setAccessibleName(
-            "Author fallback to folder")
+        self.author_fallback_checkbox.setAccessibleName("Author fallback to folder")
         self.author_fallback_checkbox.setAccessibleDescription(
-            "If checked, missing author will fallback to folder name")
+            "If checked, missing author will fallback to folder name"
+        )
         self.title_fallback_checkbox = QCheckBox("Title fallback to file?")
-        self.title_fallback_checkbox.setAccessibleName(
-            "Title fallback to file")
+        self.title_fallback_checkbox.setAccessibleName("Title fallback to file")
         self.title_fallback_checkbox.setAccessibleDescription(
-            "If checked, missing title will fallback to file name")
+            "If checked, missing title will fallback to file name"
+        )
         fallback_checks_layout.setColumnMinimumWidth(0, options_col0_width)
         self.author_fallback_checkbox.setMinimumWidth(options_col0_width)
         fallback_checks_layout.addWidget(
@@ -364,7 +387,8 @@ class PreferencesWindow(QDialog):
         self.reader_keywords_edit = QLineEdit()
         self.reader_keywords_edit.setAccessibleName("Reader keywords")
         self.reader_keywords_edit.setAccessibleDescription(
-            "Comma-separated keywords for narrator parsing")
+            "Comma-separated keywords for narrator parsing"
+        )
         reader_keywords_label.setBuddy(self.reader_keywords_edit)
         reader_keywords_layout.addWidget(reader_keywords_label)
         self.reader_keywords_edit.setMinimumWidth(320)
@@ -383,10 +407,10 @@ class PreferencesWindow(QDialog):
         # self.rules_section_text.setAccessibleDescription(
         #     "")
         self.rules_section_text.setFocusPolicy(Qt.StrongFocus)
-        self.rules_section_text.setTextInteractionFlags(
-            Qt.TextSelectableByKeyboard)
+        self.rules_section_text.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         self.rules_section_text.setPlainText(
-            "Author/Title Rules: configure severity for metadata consistency checks.")
+            "Author/Title Rules: configure severity for metadata consistency checks."
+        )
         self._fit_readonly_section_text_height(self.rules_section_text)
 
         rules_group = QGroupBox("")
@@ -412,10 +436,10 @@ class PreferencesWindow(QDialog):
         author_in_title_label = QLabel("Author in Title:")
         author_in_title_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rule_author_in_title_severity = QComboBox()
-        self.rule_author_in_title_severity.setAccessibleName(
-            "Author in Title severity")
+        self.rule_author_in_title_severity.setAccessibleName("Author in Title severity")
         self.rule_author_in_title_severity.setAccessibleDescription(
-            "Set severity or None for Author in Title rule")
+            "Set severity or None for Author in Title rule"
+        )
         author_in_title_label.setBuddy(self.rule_author_in_title_severity)
         rules_layout.addWidget(author_in_title_label, 1, 0)
         rules_layout.addWidget(self.rule_author_in_title_severity, 1, 1)
@@ -423,10 +447,10 @@ class PreferencesWindow(QDialog):
         title_in_author_label = QLabel("Title in Author:")
         title_in_author_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rule_title_in_author_severity = QComboBox()
-        self.rule_title_in_author_severity.setAccessibleName(
-            "Title in Author severity")
+        self.rule_title_in_author_severity.setAccessibleName("Title in Author severity")
         self.rule_title_in_author_severity.setAccessibleDescription(
-            "Set severity or None for Title in Author rule")
+            "Set severity or None for Title in Author rule"
+        )
         title_in_author_label.setBuddy(self.rule_title_in_author_severity)
         rules_layout.addWidget(title_in_author_label, 1, 2)
         rules_layout.addWidget(self.rule_title_in_author_severity, 1, 3)
@@ -435,9 +459,11 @@ class PreferencesWindow(QDialog):
         unknown_author_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.rule_unknown_author_severity = QComboBox()
         self.rule_unknown_author_severity.setAccessibleName(
-            "Unknown or various author severity")
+            "Unknown or various author severity"
+        )
         self.rule_unknown_author_severity.setAccessibleDescription(
-            "Set severity or None for unknown or various author rule")
+            "Set severity or None for unknown or various author rule"
+        )
         unknown_author_label.setBuddy(self.rule_unknown_author_severity)
         rules_layout.addWidget(unknown_author_label, 2, 0)
         rules_layout.addWidget(self.rule_unknown_author_severity, 2, 1)
@@ -449,13 +475,12 @@ class PreferencesWindow(QDialog):
         min_title_config_layout.setSpacing(6)
         self.rule_min_title_value = QSpinBox()
         self.rule_min_title_value.setRange(1, 100)
-        self.rule_min_title_value.setAccessibleName(
-            "Minimum title length value")
+        self.rule_min_title_value.setAccessibleName("Minimum title length value")
         self.rule_min_title_severity = QComboBox()
-        self.rule_min_title_severity.setAccessibleName(
-            "Minimum title length severity")
+        self.rule_min_title_severity.setAccessibleName("Minimum title length severity")
         self.rule_min_title_severity.setAccessibleDescription(
-            "Set severity or None for minimum title length rule")
+            "Set severity or None for minimum title length rule"
+        )
         min_title_config_layout.addWidget(self.rule_min_title_value)
         min_title_config_layout.addWidget(self.rule_min_title_severity)
         min_title_label.setBuddy(self.rule_min_title_value)
@@ -467,11 +492,10 @@ class PreferencesWindow(QDialog):
         self.duplicate_match_combo = QComboBox()
         self.duplicate_match_combo.setAccessibleName("Duplicate matching mode")
         self.duplicate_match_combo.setAccessibleDescription(
-            "Choose whether duplicate checks include collection")
-        self.duplicate_match_combo.setSizeAdjustPolicy(
-            QComboBox.AdjustToContents)
-        self.duplicate_match_combo.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
+            "Choose whether duplicate checks include collection"
+        )
+        self.duplicate_match_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self.duplicate_match_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         duplicate_match_label.setBuddy(self.duplicate_match_combo)
         rules_layout.addWidget(duplicate_match_label, 3, 0)
         rules_layout.addWidget(self.duplicate_match_combo, 3, 1)
@@ -482,10 +506,10 @@ class PreferencesWindow(QDialog):
         self.duplicate_fuzzy_spin.setRange(0, 100)
         self.duplicate_fuzzy_spin.setSuffix("%")
         self.duplicate_fuzzy_spin.setSingleStep(5)
-        self.duplicate_fuzzy_spin.setAccessibleName(
-            "Duplicate fuzzy threshold")
+        self.duplicate_fuzzy_spin.setAccessibleName("Duplicate fuzzy threshold")
         self.duplicate_fuzzy_spin.setAccessibleDescription(
-            "Optional fuzzy duplicate threshold percentage. 0 disables fuzzy duplicate matching")
+            "Optional fuzzy duplicate threshold percentage. 0 disables fuzzy duplicate matching"
+        )
         duplicate_fuzzy_label.setBuddy(self.duplicate_fuzzy_spin)
         rules_layout.addWidget(duplicate_fuzzy_label, 3, 2)
         rules_layout.addWidget(self.duplicate_fuzzy_spin, 3, 3)
@@ -497,18 +521,18 @@ class PreferencesWindow(QDialog):
         file_structure_config_layout.setSpacing(6)
         self.rule_file_structure_pattern = QComboBox()
         self.rule_file_structure_pattern.setAccessibleName(
-            "Expected file structure pattern")
+            "Expected file structure pattern"
+        )
         self.rule_file_structure_pattern.setAccessibleDescription(
-            "Select expected folder structure pattern for imports")
+            "Select expected folder structure pattern for imports"
+        )
         self.rule_file_structure_severity = QComboBox()
-        self.rule_file_structure_severity.setAccessibleName(
-            "File structure severity")
+        self.rule_file_structure_severity.setAccessibleName("File structure severity")
         self.rule_file_structure_severity.setAccessibleDescription(
-            "Set severity or None for file structure rule")
-        file_structure_config_layout.addWidget(
-            self.rule_file_structure_pattern)
-        file_structure_config_layout.addWidget(
-            self.rule_file_structure_severity)
+            "Set severity or None for file structure rule"
+        )
+        file_structure_config_layout.addWidget(self.rule_file_structure_pattern)
+        file_structure_config_layout.addWidget(self.rule_file_structure_severity)
         file_structure_label.setBuddy(self.rule_file_structure_pattern)
         rules_layout.addWidget(file_structure_label, 4, 0)
         rules_layout.addLayout(file_structure_config_layout, 4, 1)
@@ -519,10 +543,10 @@ class PreferencesWindow(QDialog):
         year_quality_layout.setContentsMargins(0, 0, 0, 0)
         year_quality_layout.setSpacing(6)
         self.rule_year_quality_severity = QComboBox()
-        self.rule_year_quality_severity.setAccessibleName(
-            "Year range severity")
+        self.rule_year_quality_severity.setAccessibleName("Year range severity")
         self.rule_year_quality_severity.setAccessibleDescription(
-            "Set severity or None for year consistency rule (>1800 and <= current year)")
+            "Set severity or None for year consistency rule (>1800 and <= current year)"
+        )
         year_quality_layout.addWidget(self.rule_year_quality_severity)
         year_quality_label.setBuddy(self.rule_year_quality_severity)
         rules_layout.addWidget(year_quality_label, 4, 2)
@@ -550,48 +574,51 @@ class PreferencesWindow(QDialog):
         self.autocorrect_section_text.setTabChangesFocus(True)
         self.autocorrect_section_text.setFocusPolicy(Qt.StrongFocus)
         self.autocorrect_section_text.setTextInteractionFlags(
-            Qt.TextSelectableByKeyboard)
+            Qt.TextSelectableByKeyboard
+        )
         self.autocorrect_section_text.setPlainText(
-            "Auto-Correction: applies to Author, Series, Genre, and Narrator. Trim whitespace always applies to Title.")
+            "Auto-Correction: applies to Author, Series, Genre, and Narrator. Trim whitespace always applies to Title."
+        )
         self._fit_readonly_section_text_height(self.autocorrect_section_text)
         self._sync_section_label_heights()
 
         self.autocorrect_group = QGroupBox("")
         self.autocorrect_group.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred)
+            QSizePolicy.Preferred, QSizePolicy.Preferred
+        )
         self.autocorrect_layout = QHBoxLayout(self.autocorrect_group)
         self.autocorrect_layout.setContentsMargins(4, 2, 4, 2)
         self.autocorrect_layout.setSpacing(35)
 
         self.autocorrect_trim_check = QCheckBox("Trim whitespace")
         self.autocorrect_trim_check.setAccessibleName("Trim whitespace")
-        self.autocorrect_strip_punct_check = QCheckBox(
-            "Strip leading punctuation")
+        self.autocorrect_strip_punct_check = QCheckBox("Strip leading punctuation")
         self.autocorrect_strip_punct_check.setAccessibleName(
-            "Strip leading punctuation")
-        self.autocorrect_non_alnum_check = QCheckBox(
-            "Remove special characters")
-        self.autocorrect_non_alnum_check.setAccessibleName(
-            "Remove special characters")
+            "Strip leading punctuation"
+        )
+        self.autocorrect_non_alnum_check = QCheckBox("Remove special characters")
+        self.autocorrect_non_alnum_check.setAccessibleName("Remove special characters")
 
-        self.autocorrect_trim_check.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.autocorrect_trim_check.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.autocorrect_strip_punct_check.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
         self.autocorrect_non_alnum_check.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
         self.autocorrect_proper_case_check.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
         self.autocorrect_move_the_check.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
 
         self.autocorrect_layout.addWidget(self.autocorrect_trim_check)
         self.autocorrect_layout.addWidget(self.autocorrect_strip_punct_check)
         self.autocorrect_layout.addWidget(self.autocorrect_non_alnum_check)
         self.autocorrect_layout.addStretch(1)
         autocorrect_block_layout.addWidget(self.autocorrect_section_text)
-        autocorrect_block_layout.addWidget(
-            self.autocorrect_group, 0, Qt.AlignLeft)
+        autocorrect_block_layout.addWidget(self.autocorrect_group, 0, Qt.AlignLeft)
         import_layout.addWidget(autocorrect_block_group)
         self._sync_autocorrect_group_width()
 
@@ -606,8 +633,7 @@ class PreferencesWindow(QDialog):
 
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
-        self.save_button.setAccessibleDescription(
-            "Save preferences and close - Alt+S")
+        self.save_button.setAccessibleDescription("Save preferences and close - Alt+S")
         self.save_button.setDefault(True)
         self.save_button.setAutoDefault(True)
         footer_layout.addWidget(self.save_button)
@@ -618,21 +644,6 @@ class PreferencesWindow(QDialog):
         """Apply content-fit width to all combo boxes in Preferences."""
         # This method is now a no-op because _fit_combo_to_text is missing
         pass
-
-    def _sync_reader_keywords_width(self):
-        """Match Reader Keywords field width to Duplicate Match combo width."""
-        if not hasattr(self, "reader_keywords_edit") or not hasattr(self, "duplicate_match_combo"):
-            return
-
-        target_width = max(
-            self.duplicate_match_combo.minimumWidth(),
-            self.duplicate_match_combo.sizeHint().width(),
-            120,
-        )
-        self.reader_keywords_edit.setSizePolicy(
-            QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.reader_keywords_edit.setMinimumWidth(target_width)
-        self.reader_keywords_edit.setMaximumWidth(target_width)
 
     def apply_control_styles(self):
         """Apply uniform control heights to inputs."""
@@ -649,20 +660,6 @@ class PreferencesWindow(QDialog):
                 border-radius: 3px;
             }}
             QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
-
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
                 border: 2px solid palette(highlight);
                 background-color: palette(base);
             }}
@@ -758,15 +755,16 @@ class PreferencesWindow(QDialog):
         if hasattr(self, "rules_section_text"):
             self._fit_readonly_section_text_height(self.rules_section_text)
         if hasattr(self, "autocorrect_section_text"):
-            self._fit_readonly_section_text_height(
-                self.autocorrect_section_text)
+            self._fit_readonly_section_text_height(self.autocorrect_section_text)
         self._sync_section_label_heights()
         self._sync_autocorrect_group_width()
         self.update_scenario_description_height()
 
     def _sync_autocorrect_group_width(self):
         """Set Auto-Correction frame width so column spacing is visible."""
-        if not hasattr(self, "autocorrect_group") or not hasattr(self, "autocorrect_layout"):
+        if not hasattr(self, "autocorrect_group") or not hasattr(
+            self, "autocorrect_layout"
+        ):
             return
 
         content_width = self.autocorrect_layout.sizeHint().width()
@@ -795,8 +793,7 @@ class PreferencesWindow(QDialog):
         )
         self.options_layout.setColumnMinimumWidth(0, options_col0_width)
         self.autocorrect_proper_case_check.setMinimumWidth(options_col0_width)
-        self.fallback_checks_layout.setColumnMinimumWidth(
-            0, options_col0_width)
+        self.fallback_checks_layout.setColumnMinimumWidth(0, options_col0_width)
         self.author_fallback_checkbox.setMinimumWidth(options_col0_width)
 
         options_spacing = self.options_layout.horizontalSpacing()
@@ -820,20 +817,17 @@ class PreferencesWindow(QDialog):
             return
 
         options_col0_x = self.autocorrect_proper_case_check.mapTo(
-            self, QPoint(0, 0)).x()
-        fallback_col0_x = self.author_fallback_checkbox.mapTo(
-            self, QPoint(0, 0)).x()
+            self, QPoint(0, 0)
+        ).x()
+        fallback_col0_x = self.author_fallback_checkbox.mapTo(self, QPoint(0, 0)).x()
         delta_left = options_col0_x - fallback_col0_x
 
         left, top, right, bottom = self.fallback_checks_layout.getContentsMargins()
         new_left = max(0, left + delta_left)
-        self.fallback_checks_layout.setContentsMargins(
-            new_left, top, right, bottom)
+        self.fallback_checks_layout.setContentsMargins(new_left, top, right, bottom)
 
-        options_col1_x = self.autocorrect_move_the_check.mapTo(
-            self, QPoint(0, 0)).x()
-        fallback_col1_x = self.title_fallback_checkbox.mapTo(
-            self, QPoint(0, 0)).x()
+        options_col1_x = self.autocorrect_move_the_check.mapTo(self, QPoint(0, 0)).x()
+        fallback_col1_x = self.title_fallback_checkbox.mapTo(self, QPoint(0, 0)).x()
         residual_col1 = options_col1_x - (fallback_col1_x + (new_left - left))
 
         current_spacing = self.fallback_checks_layout.horizontalSpacing()
@@ -845,7 +839,9 @@ class PreferencesWindow(QDialog):
 
     def _sync_section_label_heights(self):
         """Keep section label boxes the same height for visual consistency."""
-        if not hasattr(self, "rules_section_text") or not hasattr(self, "autocorrect_section_text"):
+        if not hasattr(self, "rules_section_text") or not hasattr(
+            self, "autocorrect_section_text"
+        ):
             return
 
         target_height = self.rules_section_text.height()
@@ -898,11 +894,13 @@ class PreferencesWindow(QDialog):
         )
 
         document_margin = int(
-            self.scenario_description_edit.document().documentMargin() * 2)
+            self.scenario_description_edit.document().documentMargin() * 2
+        )
         frame_margin = int(self.scenario_description_edit.frameWidth() * 2)
         extra_padding = self.scaler.get_scaled_size(8)
-        target_height = text_rect.height() + document_margin + \
-            frame_margin + extra_padding
+        target_height = (
+            text_rect.height() + document_margin + frame_margin + extra_padding
+        )
 
         min_height = self.scaler.get_scaled_size(52)
         max_height = self.scaler.get_scaled_size(120)
@@ -927,15 +925,9 @@ class PreferencesWindow(QDialog):
             "flip_author_name": self.flip_author_check.isChecked(),
             "auto_add_clean_books": self.auto_add_clean_books_check.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
-            "rule_author_in_title": (
-                self.rule_author_in_title_severity.currentData(),
-            ),
-            "rule_title_in_author": (
-                self.rule_title_in_author_severity.currentData(),
-            ),
-            "rule_unknown_author": (
-                self.rule_unknown_author_severity.currentData(),
-            ),
+            "rule_author_in_title": (self.rule_author_in_title_severity.currentData(),),
+            "rule_title_in_author": (self.rule_title_in_author_severity.currentData(),),
+            "rule_unknown_author": (self.rule_unknown_author_severity.currentData(),),
             "rule_min_title": (
                 self.rule_min_title_value.value(),
                 self.rule_min_title_severity.currentData(),
@@ -963,18 +955,18 @@ class PreferencesWindow(QDialog):
     def _confirm_exit_with_changes(self) -> int:
         """Ask whether to save changes before exit using standardized message box."""
         from src.accessibility.style_helpers import exec_styled_message_box
-        
+
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Question,
             title="Unsaved Changes",
             text="You have unsaved changes.\n\n"
-                 "Yes = Save and close\n"
-                 "No = Continue editing\n"
-                 "Cancel = Revert and close",
+            "Yes = Save and close\n"
+            "No = Continue editing\n"
+            "Cancel = Revert and close",
             buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-            default_button=QMessageBox.Yes
+            default_button=QMessageBox.Yes,
         )
         return reply
 
@@ -1021,15 +1013,15 @@ class PreferencesWindow(QDialog):
         self.zoom_spin.setValue(self.scaler.current_scale)
 
         # Import settings
-        import_dir = self.settings.value(
-            "import/default_directory", "", type=str)
+        import_dir = self.settings.value("import/default_directory", "", type=str)
 
         self.import_dir_edit.setText(import_dir)
 
         for key in self.format_checks:
             default_value = True
             value = self.settings.value(
-                f"import/formats/{key}", default_value, type=bool)
+                f"import/formats/{key}", default_value, type=bool
+            )
             self.format_checks[key].setChecked(value)
         self.settings.setValue("import/include_subfolders", True)
 
@@ -1038,7 +1030,8 @@ class PreferencesWindow(QDialog):
             self.import_scenario_combo.addItem(label, value)
 
         scenario_mode = self.settings.value(
-            "import/scenario/mode", "mass_standard", type=str)
+            "import/scenario/mode", "mass_standard", type=str
+        )
         scenario_index = self.import_scenario_combo.findData(scenario_mode)
         if scenario_index < 0:
             scenario_index = 0
@@ -1046,25 +1039,26 @@ class PreferencesWindow(QDialog):
         self.update_scenario_description()
 
         author_fallback_to_folder = self.settings.value(
-            "import/fallback/author_to_folder", True, type=bool)
+            "import/fallback/author_to_folder", True, type=bool
+        )
         self.author_fallback_checkbox.setChecked(author_fallback_to_folder)
 
         title_fallback_to_file = self.settings.value(
-            "import/fallback/title_to_file", True, type=bool)
+            "import/fallback/title_to_file", True, type=bool
+        )
         self.title_fallback_checkbox.setChecked(title_fallback_to_file)
 
-        flip_author = self.settings.value(
-            "import/flip_author_name", False, type=bool)
+        flip_author = self.settings.value("import/flip_author_name", False, type=bool)
         self.flip_author_check.setChecked(flip_author)
 
         auto_add_clean_books = self.settings.value(
-            "import/auto_add_clean_books", False, type=bool)
+            "import/auto_add_clean_books", False, type=bool
+        )
         self.auto_add_clean_books_check.setChecked(auto_add_clean_books)
 
         reader_keywords = self.settings.value(
-            "import/reader_keywords",
-            "reader, read by, narrator, narrated by",
-            type=str)
+            "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
+        )
         self.reader_keywords_edit.setText(reader_keywords)
 
         for combo in (
@@ -1081,20 +1075,20 @@ class PreferencesWindow(QDialog):
             combo.addItem("Warning", "warning")
 
         self.rule_file_structure_pattern.clear()
+        self.rule_file_structure_pattern.addItem("Author/Title", "author_title")
         self.rule_file_structure_pattern.addItem(
-            "Author/Title", "author_title")
-        self.rule_file_structure_pattern.addItem(
-            "Year/Author/Title", "year_author_title")
-        self.rule_file_structure_pattern.addItem(
-            "Either", "either")
+            "Year/Author/Title", "year_author_title"
+        )
+        self.rule_file_structure_pattern.addItem("Either", "either")
 
         self.duplicate_match_combo.clear()
         self.duplicate_match_combo.addItem(
-            "Title + Author + Collection", "title_author")
+            "Title + Author + Collection", "title_author"
+        )
+        self.duplicate_match_combo.addItem("Title + Author + Year", "title_author_year")
         self.duplicate_match_combo.addItem(
-            "Title + Author + Year", "title_author_year")
-        self.duplicate_match_combo.addItem(
-            "Title + Author + Year + Collection", "title_author_year_collection")
+            "Title + Author + Year + Collection", "title_author_year_collection"
+        )
         duplicate_mode = self.settings.value(
             "import/rules/duplicate/match_mode",
             "title_author_year_collection",
@@ -1110,7 +1104,8 @@ class PreferencesWindow(QDialog):
             duplicate_mode = "title_author_year"
         duplicate_index = self.duplicate_match_combo.findData(duplicate_mode)
         self.duplicate_match_combo.setCurrentIndex(
-            0 if duplicate_index < 0 else duplicate_index)
+            0 if duplicate_index < 0 else duplicate_index
+        )
 
         self.duplicate_fuzzy_spin.setValue(
             self.settings.value(
@@ -1132,10 +1127,8 @@ class PreferencesWindow(QDialog):
         )
         if not author_in_title_enabled:
             author_in_title_severity = "none"
-        index = self.rule_author_in_title_severity.findData(
-            author_in_title_severity)
-        self.rule_author_in_title_severity.setCurrentIndex(
-            0 if index < 0 else index)
+        index = self.rule_author_in_title_severity.findData(author_in_title_severity)
+        self.rule_author_in_title_severity.setCurrentIndex(0 if index < 0 else index)
 
         title_in_author_enabled = self.settings.value(
             "import/rules/title_in_author_name/enabled",
@@ -1149,10 +1142,8 @@ class PreferencesWindow(QDialog):
         )
         if not title_in_author_enabled:
             title_in_author_severity = "none"
-        index = self.rule_title_in_author_severity.findData(
-            title_in_author_severity)
-        self.rule_title_in_author_severity.setCurrentIndex(
-            0 if index < 0 else index)
+        index = self.rule_title_in_author_severity.findData(title_in_author_severity)
+        self.rule_title_in_author_severity.setCurrentIndex(0 if index < 0 else index)
 
         unknown_author_enabled = self.settings.value(
             "import/rules/unknown_or_various_author/enabled",
@@ -1166,10 +1157,8 @@ class PreferencesWindow(QDialog):
         )
         if not unknown_author_enabled:
             unknown_author_severity = "none"
-        index = self.rule_unknown_author_severity.findData(
-            unknown_author_severity)
-        self.rule_unknown_author_severity.setCurrentIndex(
-            0 if index < 0 else index)
+        index = self.rule_unknown_author_severity.findData(unknown_author_severity)
+        self.rule_unknown_author_severity.setCurrentIndex(0 if index < 0 else index)
 
         min_title_enabled = self.settings.value(
             "import/rules/minimum_title_length/enabled",
@@ -1206,9 +1195,11 @@ class PreferencesWindow(QDialog):
         if not file_structure_enabled:
             file_structure_severity = "none"
         file_structure_index = self.rule_file_structure_severity.findData(
-            file_structure_severity)
+            file_structure_severity
+        )
         self.rule_file_structure_severity.setCurrentIndex(
-            0 if file_structure_index < 0 else file_structure_index)
+            0 if file_structure_index < 0 else file_structure_index
+        )
 
         file_structure_pattern = self.settings.value(
             "import/rules/file_structure/pattern",
@@ -1216,9 +1207,11 @@ class PreferencesWindow(QDialog):
             type=str,
         )
         file_structure_pattern_index = self.rule_file_structure_pattern.findData(
-            file_structure_pattern)
+            file_structure_pattern
+        )
         self.rule_file_structure_pattern.setCurrentIndex(
-            0 if file_structure_pattern_index < 0 else file_structure_pattern_index)
+            0 if file_structure_pattern_index < 0 else file_structure_pattern_index
+        )
 
         year_quality_enabled = self.settings.value(
             "import/rules/year_out_of_range/enabled",
@@ -1233,9 +1226,11 @@ class PreferencesWindow(QDialog):
         if not year_quality_enabled:
             year_quality_severity = "none"
         year_quality_index = self.rule_year_quality_severity.findData(
-            year_quality_severity)
+            year_quality_severity
+        )
         self.rule_year_quality_severity.setCurrentIndex(
-            0 if year_quality_index < 0 else year_quality_index)
+            0 if year_quality_index < 0 else year_quality_index
+        )
 
         self.autocorrect_trim_check.setChecked(
             self.settings.value(
@@ -1284,7 +1279,8 @@ class PreferencesWindow(QDialog):
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
         self.zoom_spin.valueChanged.connect(self.on_zoom_changed)
         self.import_scenario_combo.currentIndexChanged.connect(
-            self.on_import_scenario_changed)
+            self.on_import_scenario_changed
+        )
         self.browse_button.clicked.connect(self.on_browse)
 
         self.save_button.clicked.connect(self.on_save)
@@ -1292,26 +1288,28 @@ class PreferencesWindow(QDialog):
     def register_shortcuts(self):
         """Register keyboard shortcuts using ShortcutManager (except Alt+/)."""
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
         mgr = get_shortcut_manager()
         callback_map = {
-            'theme_combo': self.focus_display_section,
-            'import_dir_edit': self.focus_source_scope_section,
-            'browse_button': self.on_browse,
-            'auto_add_clean_books_check': self.focus_options_section,
-            'author_fallback_checkbox': self.focus_fallback_section,
-            'rules_section_text': self.focus_validation_section,
-            'autocorrect_section_text': self.focus_autocorrect_section,
-            'save_button': self.on_save,
+            "theme_combo": self.focus_display_section,
+            "import_dir_edit": self.focus_source_scope_section,
+            "browse_button": self.on_browse,
+            "auto_add_clean_books_check": self.focus_options_section,
+            "author_fallback_checkbox": self.focus_fallback_section,
+            "rules_section_text": self.focus_validation_section,
+            "autocorrect_section_text": self.focus_autocorrect_section,
+            "save_button": self.on_save,
         }
         mgr.register_alt_shortcuts(
-            self, ShortcutContext.PREFERENCES_WINDOW, callback_map)
+            self, ShortcutContext.PREFERENCES_WINDOW, callback_map
+        )
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
-        
+
         # Escape key for cancel functionality
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_cancel)
@@ -1334,23 +1332,21 @@ class PreferencesWindow(QDialog):
 
     def focus_options_section(self):
         """Focus first control in Options section."""
-        self._focus_section_widget(
-            self.auto_add_clean_books_check, "Options")
+        self._focus_section_widget(self.auto_add_clean_books_check, "Options")
 
     def focus_fallback_section(self):
         """Focus first control in Fallback and Parsing section."""
         self._focus_section_widget(
-            self.author_fallback_checkbox, "Fallback and Parsing Behavior")
+            self.author_fallback_checkbox, "Fallback and Parsing Behavior"
+        )
 
     def focus_validation_section(self):
         """Focus first control in Validation Rules section."""
-        self._focus_section_widget(
-            self.rules_section_text, "Validation Rules")
+        self._focus_section_widget(self.rules_section_text, "Validation Rules")
 
     def focus_autocorrect_section(self):
         """Focus first control in Auto-Correction section."""
-        self._focus_section_widget(
-            self.autocorrect_section_text, "Auto-Correction")
+        self._focus_section_widget(self.autocorrect_section_text, "Auto-Correction")
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -1386,7 +1382,11 @@ class PreferencesWindow(QDialog):
             ("F1", "Show this help"),
             ("Tab/Shift+Tab", "Move between controls in the current section"),
         ]
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         shortcuts = get_accessible_shortcuts_list(shortcuts)
 
         table = QTableWidget()
@@ -1403,13 +1403,13 @@ class PreferencesWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        
+
         # Disable hover highlighting for low-vision comfort
         table.setMouseTracking(False)
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
-        
+
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, desc) in enumerate(shortcuts):
@@ -1424,79 +1424,6 @@ class PreferencesWindow(QDialog):
         table.setFont(font)
         layout.addWidget(table)
         dlg.exec()
-
-    def on_run_display_audit(self):
-        """Show current display diagnostics in screen-reader friendly list format."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Display Audit")
-        dlg.setAccessibleName("Display Audit")
-        dlg.resize(620, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        rows = self._collect_display_audit_rows()
-
-        table = QTableWidget()
-        table.setAccessibleName("Display audit table")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(rows))
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(False)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected { border: none; outline: none; }"
-            "QTableWidget::item:selected:focus { border: none; outline: none; }"
-        )
-
-        for row, (area, prop, value) in enumerate(rows):
-            item = QTableWidgetItem(f"{area} - {prop} - {value}")
-            item.setData(Qt.AccessibleTextRole, f"{area}: {prop}: {value}")
-            table.setItem(row, 0, item)
-
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
-
-        layout.addWidget(table, 1)
-
-        dlg.exec()
-        self.set_status("Display audit opened")
-
-    def _collect_display_audit_rows(self):
-        """Collect display settings and effective font values for diagnostics."""
-        app = QApplication.instance()
-        app_font_size = app.font().pointSize() if app else self.font().pointSize()
-        rows = [
-            ("Global", "Theme", self.theme_manager.get_current_theme_display_name()),
-            ("Global", "Scale (%)", self.scaler.current_scale),
-            ("Global", "Preset", self.scaler.get_preset_name()),
-            ("Global", "Application font (pt)", app_font_size),
-            ("Preferences", "Dialog font (pt)", self.font().pointSize()),
-            ("Preferences", "Status bar font (pt)",
-             self.status_bar.font().pointSize()),
-            ("Preferences", "Theme combo font (pt)",
-             self.theme_combo.font().pointSize()),
-            ("Preferences", "Zoom spin font (pt)",
-             self.zoom_spin.font().pointSize()),
-            ("Preferences", "Save button font (pt)",
-             self.save_button.font().pointSize()),
-            ("Import", "Scenario", self.import_scenario_combo.currentText()),
-            ("Import", "Formats enabled", sum(
-                1 for checkbox in self.format_checks.values() if checkbox.isChecked())),
-        ]
-        return rows
 
     def install_alt_key_filters(self):
         """Install key filters to block unmapped Alt+letter input."""
@@ -1525,21 +1452,24 @@ class PreferencesWindow(QDialog):
         if event.type() == QEvent.FocusIn:
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(
-                    0, lambda w=source: (w.setCursorPosition(len(w.text())), w.deselect()) if w is not None and w is not getattr(w, 'deleted', False) else None)
+                    0,
+                    lambda w=source: (
+                        (w.setCursorPosition(len(w.text())), w.deselect())
+                        if w is not None and w is not getattr(w, "deleted", False)
+                        else None
+                    ),
+                )
             elif isinstance(source, QTextEdit):
-                QTimer.singleShot(
-                    0, lambda w=source: self._safe_move_cursor(w))
+                QTimer.singleShot(0, lambda w=source: self._safe_move_cursor(w))
             elif isinstance(source, QComboBox):
                 QTimer.singleShot(
                     0,
-                    lambda w=source: self._safe_move_embedded_lineedit_cursor(
-                        w),
+                    lambda w=source: self._safe_move_embedded_lineedit_cursor(w),
                 )
             elif isinstance(source, QSpinBox):
                 QTimer.singleShot(
                     0,
-                    lambda w=source: self._safe_move_embedded_lineedit_cursor(
-                        w),
+                    lambda w=source: self._safe_move_embedded_lineedit_cursor(w),
                 )
 
         if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
@@ -1592,8 +1522,7 @@ class PreferencesWindow(QDialog):
                 if hasattr(parent, "table") and parent.table:
                     parent.table.viewport().update()
 
-            announce_status_message(
-                self.status_bar, "Theme applied")
+            announce_status_message(self.status_bar, "Theme applied")
 
     def on_application_theme_changed(self, _theme_name: str):
         """Refresh controls immediately when any window changes the app theme."""
@@ -1603,7 +1532,17 @@ class PreferencesWindow(QDialog):
             style = widget.style()
             style.unpolish(widget)
             style.polish(widget)
-            widget.update()
+            # QListView/QAbstractItemView update() overloads can require an argument.
+            # Refresh the viewport directly when available.
+            if hasattr(widget, "viewport") and callable(getattr(widget, "viewport")):
+                try:
+                    viewport = widget.viewport()
+                    if viewport is not None:
+                        viewport.update()
+                        continue
+                except Exception:
+                    pass
+            widget.repaint()
 
     def on_preset_changed(self, preset_name: str):
         """Update zoom value to match preset."""
@@ -1645,13 +1584,15 @@ class PreferencesWindow(QDialog):
         if self._loading:
             return
         self.set_status(
-            f"Scenario selected: {self.import_scenario_combo.currentText()}")
+            f"Scenario selected: {self.import_scenario_combo.currentText()}"
+        )
 
     def on_browse(self):
         """Open folder browser for default import directory."""
         current_dir = self.import_dir_edit.text().strip() or ""
         selected = QFileDialog.getExistingDirectory(
-            self, "Select Import Directory", current_dir)
+            self, "Select Import Directory", current_dir
+        )
         if selected:
             self.import_dir_edit.setText(selected)
             self.set_status("Import directory selected")
@@ -1659,25 +1600,32 @@ class PreferencesWindow(QDialog):
     def on_save(self):
         """Save settings and close dialog."""
         self.settings.setValue(
-            "import/default_directory", self.import_dir_edit.text().strip())
+            "import/default_directory", self.import_dir_edit.text().strip()
+        )
         self.settings.setValue("import/include_subfolders", True)
 
         for key, checkbox in self.format_checks.items():
-            self.settings.setValue(
-                f"import/formats/{key}", checkbox.isChecked())
+            self.settings.setValue(f"import/formats/{key}", checkbox.isChecked())
 
         self.settings.setValue(
-            "import/scenario/mode", self.import_scenario_combo.currentData())
+            "import/scenario/mode", self.import_scenario_combo.currentData()
+        )
         self.settings.setValue(
-            "import/fallback/author_to_folder", self.author_fallback_checkbox.isChecked())
+            "import/fallback/author_to_folder",
+            self.author_fallback_checkbox.isChecked(),
+        )
         self.settings.setValue(
-            "import/fallback/title_to_file", self.title_fallback_checkbox.isChecked())
+            "import/fallback/title_to_file", self.title_fallback_checkbox.isChecked()
+        )
         self.settings.setValue(
-            "import/flip_author_name", self.flip_author_check.isChecked())
+            "import/flip_author_name", self.flip_author_check.isChecked()
+        )
         self.settings.setValue(
-            "import/auto_add_clean_books", self.auto_add_clean_books_check.isChecked())
+            "import/auto_add_clean_books", self.auto_add_clean_books_check.isChecked()
+        )
         self.settings.setValue(
-            "import/reader_keywords", self.reader_keywords_edit.text().strip())
+            "import/reader_keywords", self.reader_keywords_edit.text().strip()
+        )
 
         author_in_title_choice = self.rule_author_in_title_severity.currentData()
         self.settings.setValue(
@@ -1756,8 +1704,7 @@ class PreferencesWindow(QDialog):
         )
 
         self.settings.setValue("import/rules/genre_missing/enabled", False)
-        self.settings.setValue(
-            "import/rules/bitrate_below_minimum/enabled", False)
+        self.settings.setValue("import/rules/bitrate_below_minimum/enabled", False)
 
         self.settings.setValue(
             "import/rules/duplicate/match_mode",

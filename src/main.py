@@ -1,7 +1,7 @@
 """
 AbCS - Audio Book Collector Scanner
-Main application entry point. 
- 
+Main application entry point.
+
 This file is responsible for:
 1. Initializing the Qt application framework
 2. Setting up the database connection
@@ -14,16 +14,21 @@ from src.ui.main_window import MainWindow
 from src.accessibility.shortcuts import find_shortcut_conflicts
 from src.accessibility.theme_manager import get_theme_manager
 from src.accessibility.scaling import get_scaler
-from src.accessibility.style_helpers import build_accessible_button_style
-from src.database import get_db, close_db, StatisticsQueries, SeriesQueries, GenreQueries, AuthorQueries
-from PySide6.QtWidgets import QApplication, QSplashScreen
+from src.database import (
+    get_db,
+    close_db,
+    StatisticsQueries,
+    SeriesQueries,
+    GenreQueries,
+    AuthorQueries,
+)
+from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPixmap, QFont
 import sys
 import ctypes
 import threading
+import importlib
 from pathlib import Path
-import os
 
 
 def _show_native_message(title: str, message: str, auto_close_seconds: float = 3.0):
@@ -54,38 +59,9 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
     )
     timer.cancel()
 
+
 # Version information - update this with each release
-APP_VERSION = "1.9.4"
-APP_BUILD_DATE = "2026-04-04"
-
-BUILD_EXPIRY_DAYS = 30
-
-
-def check_build_expiry():
-    """Block startup if build age is 30+ days."""
-    try:
-        from datetime import date as _date
-        build = _date.fromisoformat(APP_BUILD_DATE)
-        age_days = (_date.today() - build).days
-        if age_days >= BUILD_EXPIRY_DAYS:
-            title = "AbCS — Build Expired"
-            msg = (
-                f"This copy of AbCS (build {APP_BUILD_DATE}) is {age_days} days old "
-                f"and has expired. "
-                f"Tester builds expire after {BUILD_EXPIRY_DAYS} days to ensure "
-                f"everyone is testing the latest version. "
-                f"Please download a newer build to continue."
-            )
-            if sys.platform == "win32":
-                _show_native_message(title, msg, auto_close_seconds=60.0)
-            else:
-                print(f"\n{title}\n{'='*len(title)}\n{msg}\n", file=sys.stderr)
-            sys.exit(1)
-    except SystemExit:
-        raise
-    except Exception:
-        pass  # Never block startup on a date-parse failure
-
+APP_VERSION = "1.9.6"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -96,26 +72,24 @@ if str(src_path) not in sys.path:
 
 def get_database_path():
     """Get the correct database path for both development and bundled executable."""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # Running as compiled executable
         # PyInstaller extracts bundled files to sys._MEIPASS
         base_path = Path(sys._MEIPASS)
-        bundled_db = base_path / 'data' / 'abcs.db'
+        bundled_db = base_path / "data" / "abcs.db"
 
         # Copy bundled database to user directory if it doesn't exist
         # This allows the database to be writable
-        user_data_dir = Path.home() / 'AppData' / 'Local' / 'AbCS'
+        user_data_dir = Path.home() / "AppData" / "Local" / "AbCS"
         user_data_dir.mkdir(parents=True, exist_ok=True)
-        user_db = user_data_dir / 'abcs.db'
-        seed_id = f"{APP_VERSION}_{APP_BUILD_DATE}".replace('.', '_').replace('-', '')
-        first_run_marker = user_data_dir / f'.bundled_seed_{seed_id}'
-        legacy_marker = user_data_dir / '.bundled_first_run_complete'
+        user_db = user_data_dir / "abcs.db"
+        first_run_marker = user_data_dir / ".bundled_first_run_complete"
 
         if bundled_db.exists():
             import shutil
 
-            # First run of each bundled build: always reset local DB from embedded DB.
-            # This ensures stale local databases don't persist across fresh installs/updates.
+            # First run of bundled app: always reset local DB from embedded DB.
+            # This ensures stale local databases don't persist across fresh installs.
             if not first_run_marker.exists():
                 if user_db.exists():
                     try:
@@ -124,12 +98,7 @@ def get_database_path():
                         # If unlink fails, attempt to overwrite on copy below.
                         pass
                 shutil.copy2(bundled_db, user_db)
-                first_run_marker.write_text('1', encoding='utf-8')
-                if legacy_marker.exists():
-                    try:
-                        legacy_marker.unlink()
-                    except Exception:
-                        pass
+                first_run_marker.write_text("1", encoding="utf-8")
             elif not user_db.exists():
                 # Subsequent runs: recreate local DB only if missing.
                 shutil.copy2(bundled_db, user_db)
@@ -152,8 +121,11 @@ class AbCSApplication:
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
 
+        self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
+
         # Enable accessibility for screen readers
         from PySide6.QtGui import QAccessible
+
         QAccessible.setActive(True)
 
         # Explicitly set root object - ensures accessibility tree is properly anchored
@@ -166,160 +138,85 @@ class AbCSApplication:
         self.db = get_db(db_path)  # Uses bundled DB for exe, default for dev
         self.db.initialize_database()
 
-        if getattr(sys, 'frozen', False) and getattr(self.db, "schema_repair_performed", False):
+        if getattr(sys, "frozen", False) and getattr(
+            self.db, "schema_repair_performed", False
+        ):
             repair_message = getattr(
                 self.db,
                 "schema_repair_message",
                 "Database upgraded from legacy format for compatibility.",
             )
-            _show_native_message("AbCS", repair_message,
-                                 auto_close_seconds=5.0)
+            _show_native_message("AbCS", repair_message, auto_close_seconds=5.0)
 
         # Initialize accessibility systems for user preferences
         # Handles font/UI scaling (50-200%+)
         self.scaler = get_scaler(self.qt_app)
-        self.theme_manager = get_theme_manager(
-            self.qt_app)  # Handles color themes
+        self.theme_manager = get_theme_manager(self.qt_app)  # Handles color themes
 
         # Main window (created later)
         self.main_window = None
         main_window = None
 
-    def show_splash(self):
-        """Show splash screen with statistics."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QHeaderView, QAbstractItemView
-        from PySide6.QtCore import Qt, QTimer
-
-        # Get statistics from database
-        stats_queries = StatisticsQueries(self.db)
-        stats = stats_queries.get_statistics()
-
-        if stats.total_books == 0:
-            # First time use - welcome message using standalone accessible message box
-            from PySide6.QtWidgets import QMessageBox
-            from src.accessibility.style_helpers import exec_styled_message_box
-            
-            splash_message = (
-                f"Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner. "
-                f"Build: {APP_BUILD_DATE}. "
-                "No audiobooks found in the database yet. "
-                "License: Copyright (c) 2025-2026 C.F. Drake & Contributors. "
-                "Non-commercial use only. Selling or fee-based distribution is not allowed without written permission. "
-                "You can import audiobooks from your computer (scan folders) or manually add a new book. "
-                "Use Ctrl+I to import or Alt+M for menu options."
-            )
-            
-            exec_styled_message_box(
-                self.main_window if self.main_window else self.qt_app.activeWindow(),
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Welcome to AbCS",
-                text=splash_message,
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok
-            )
-            return  # Skip statistics dialog for empty database
-
-        # Create statistics dialog for existing library
-        dlg = QDialog()
-        dlg.setWindowTitle(f"AbCS v{APP_VERSION} - Audio Book Collector")
-        dlg.resize(500, 500)
-        dlg.setAttribute(Qt.WA_DeleteOnClose)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Show statistics for existing library in a single-column table
-        table = QTableWidget()
-        table.setAccessibleName("Library Statistics")
-        table.setAccessibleDescription(
-            "Library statistics with values right-aligned")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels(["Library Statistics"])
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setAlternatingRowColors(True)
-        table.verticalHeader().setVisible(False)
-
-        # Data rows with right-aligned values
-        data = [
-            ("Total Books", str(stats.total_books)),
-            ("Total Authors", str(stats.total_authors)),
-            ("Total Series", str(stats.total_series)),
-            ("Total Genres", str(stats.total_genres)),
-            ("Collections", str(stats.total_collections)),
-            ("Books Read", str(stats.books_read)),
-            ("Books Unread", str(stats.books_unread)),
-            ("Total Listening Time", stats.total_time_display),
+    def _check_spreadsheet_dependencies(self) -> dict:
+        """Check spreadsheet import engines at startup so build regressions are obvious."""
+        modules_to_check = [
+            ("pandas", "pandas"),
+            ("openpyxl", "openpyxl"),
+            ("odfpy", "odf"),
+            ("odfpy-opendocument", "odf.opendocument"),
         ]
 
-        table.setRowCount(len(data))
+        available = []
+        missing = []
 
-        for row, (label, value) in enumerate(data):
-            # Format with fixed-width label for consistent alignment
-            combined_text = f"{label:<25} {value}"
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
-            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            table.setItem(row, 0, item)
+        for display_name, module_name in modules_to_check:
+            try:
+                importlib.import_module(module_name)
+                available.append(display_name)
+            except Exception:
+                missing.append(display_name)
 
-        # Resize column to stretch
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        mode = "packaged" if getattr(sys, "frozen", False) else "development"
+        if missing:
+            print(
+                f"[AbCS Startup Dependency Check] mode={mode}; missing={', '.join(missing)}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"[AbCS Startup Dependency Check] mode={mode}; spreadsheet engines OK",
+                file=sys.stderr,
+            )
 
-        # Set font size and use monospace for alignment
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        font.setFamily("Courier New")
-        table.setFont(font)
-
-        layout.addWidget(table)
-
-        ok_btn = QPushButton("Continue")
-        ok_btn.setAccessibleName("Continue")
-        ok_btn.setAccessibleDescription("Close this statistics dialog and continue to the main application")
-        ok_btn.clicked.connect(dlg.close)
-        layout.addWidget(ok_btn)
-
-        # Set focus to statistics table for keyboard navigation
-        def focus_statistics_table():
-            table.setFocus()
-            if table.rowCount() > 0:
-                table.setCurrentCell(0, 0)
-
-        # Focus table after dialog is shown
-        QTimer.singleShot(100, focus_statistics_table)
-
-        # Store timer as instance variable to prevent garbage collection
-        self.splash_timer = QTimer()
-        self.splash_timer.setSingleShot(True)
-
-        def auto_close():
-            if dlg.isVisible():
-                dlg.close()
-
-        self.splash_timer.timeout.connect(auto_close)
-        self.splash_timer.start(3000)  # 3 seconds
-
-        dlg.show()
-        # Process events to let the splash screen display
-        self.qt_app.processEvents()
+        return {
+            "available": available,
+            "missing": missing,
+        }
 
     def run(self):
         """Run the application."""
         try:
             # Create and show main window
-            self.main_window = MainWindow(
-                self.db, self.scaler, self.theme_manager)
+            self.main_window = MainWindow(self.db, self.scaler, self.theme_manager)
             self.main_window.show()
 
             if getattr(self.db, "schema_repair_performed", False):
                 repair_message = getattr(self.db, "schema_repair_message", "")
                 if repair_message:
                     self.main_window.set_status(
-                        repair_message, timeout_ms=20000, announce=True)
+                        repair_message, timeout_ms=20000, announce=True
+                    )
+
+            missing_dependencies = self._spreadsheet_dependency_report.get(
+                "missing", []
+            )
+            if missing_dependencies:
+                self.main_window.set_status(
+                    "Startup dependency warning: missing "
+                    + ", ".join(missing_dependencies),
+                    timeout_ms=15000,
+                    announce=True,
+                )
 
             self._show_empty_library_dialog_if_needed()
 
@@ -327,7 +224,8 @@ class AbCSApplication:
             if shortcut_conflicts:
                 first_issue = shortcut_conflicts[0]
                 self.main_window.status_bar.showMessage(
-                    f"Shortcut conflict detected: {first_issue}")
+                    f"Shortcut conflict detected: {first_issue}"
+                )
 
             # Diagnostic: Check accessibility setup (commented out for production)
             # from accessibility.accessible_events import check_accessibility_support
@@ -354,62 +252,7 @@ class AbCSApplication:
         except Exception as e:
             # Print full exception for debugging
             import traceback
-            print(f"ERROR: {e}", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-            raise
-        finally:
-            # Cleanup orphaned lookup records (no associated books)
-            try:
-                AuthorQueries(self.db).cleanup_unused()
-                SeriesQueries(self.db).cleanup_unused()
-                GenreQueries(self.db).cleanup_unused()
-            except Exception:
-                pass  # Don't fail on cleanup errors
 
-            try:
-                self.db.vacuum()
-            except Exception:
-                pass
-        
-        exec_styled_message_box(
-            self.main_window if self.main_window else self.qt_app.activeWindow(),
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Welcome to AbCS",
-            text=splash_message,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok
-        )
-        return  # Skip statistics dialog for empty database
-
-    def run(self):
-        """Run the application."""
-        try:
-            # Create and show main window
-            self.main_window = MainWindow(
-                self.db, self.scaler, self.theme_manager)
-            self.main_window.show()
-
-            if getattr(self.db, "schema_repair_performed", False):
-                repair_message = getattr(self.db, "schema_repair_message", "")
-                if repair_message:
-                    self.main_window.set_status(
-                        repair_message, timeout_ms=20000, announce=True)
-
-            self._show_empty_library_dialog_if_needed()
-
-            shortcut_conflicts = find_shortcut_conflicts(self.main_window)
-            if shortcut_conflicts:
-                first_issue = shortcut_conflicts[0]
-                self.main_window.status_bar.showMessage(
-                    f"Shortcut conflict detected: {first_issue}")
-
-            # Run event loop - this blocks until user closes the app
-            return self.qt_app.exec()
-
-        except Exception as e:
-            # Print full exception for debugging
-            import traceback
             print(f"ERROR: {e}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             raise
@@ -535,10 +378,18 @@ class AbCSApplication:
 
         choice = {"value": "continue"}
 
-        import_books_btn.clicked.connect(lambda: (choice.update(value="import_books"), dlg.accept()))
-        import_list_btn.clicked.connect(lambda: (choice.update(value="import_list"), dlg.accept()))
-        preferences_btn.clicked.connect(lambda: (choice.update(value="preferences"), dlg.accept()))
-        continue_btn.clicked.connect(lambda: (choice.update(value="continue"), dlg.accept()))
+        import_books_btn.clicked.connect(
+            lambda: (choice.update(value="import_books"), dlg.accept())
+        )
+        import_list_btn.clicked.connect(
+            lambda: (choice.update(value="import_list"), dlg.accept())
+        )
+        preferences_btn.clicked.connect(
+            lambda: (choice.update(value="preferences"), dlg.accept())
+        )
+        continue_btn.clicked.connect(
+            lambda: (choice.update(value="continue"), dlg.accept())
+        )
 
         dlg.setTabOrder(guidance_table, import_books_btn)
         dlg.setTabOrder(import_books_btn, import_list_btn)
@@ -567,10 +418,9 @@ class AbCSApplication:
 
 def main():
     """Application entry point."""
-    check_build_expiry()
     app = AbCSApplication()
     sys.exit(app.run())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

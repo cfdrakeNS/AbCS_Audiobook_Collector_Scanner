@@ -122,16 +122,6 @@ class Book:
     source: str = ""  # SQLite column: source (Windows username who imported)
 
     @property
-    def is_read(self) -> bool:
-        """Check if book is marked as read."""
-        return self.read_date is not None
-
-    @property
-    def has_substantial_comment(self) -> bool:
-        """Check if book has comments longer than 100 characters."""
-        return len(self.comments) > 100
-
-    @property
     def time_display(self) -> str:
         """Format time as HH:MM."""
         try:
@@ -152,37 +142,6 @@ class Book:
 
     def __str__(self):
         return f"{self.title} by {self.author_name}"
-
-
-@dataclass
-class ImportRecord:
-    """Temporary record during import process."""
-
-    title: str = ""
-    author: str = ""
-    year: Optional[int] = None
-    reader: str = ""
-    genre: str = ""
-    time_hours: int = 0
-    time_minutes: int = 0
-    tracks: int = 0
-    size_mb: float = 0.0
-    bitrate: int = 0
-    file_format: str = ""
-    path: str = ""
-    comments: str = ""
-    errors: list = field(default_factory=list)
-    file_list: list = field(default_factory=list)
-
-    @property
-    def has_errors(self) -> bool:
-        """Check if record has any errors."""
-        return len(self.errors) > 0
-
-    @property
-    def error_summary(self) -> str:
-        """Get error summary for display."""
-        return "; ".join(self.errors) if self.errors else ""
 
 
 @dataclass
