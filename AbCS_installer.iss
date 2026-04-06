@@ -48,7 +48,8 @@ LicenseFile=AbCS_License.MD
 
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
+; Follow user's Windows light/dark preference automatically.
+WizardStyle=modern dynamic
 
 ; Require Windows 10 or later
 MinVersion=10.0
@@ -64,6 +65,12 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ; ──────────────────────────────────────────────────────────────────
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+
+; ──────────────────────────────────────────────────────────────────
+; [Messages] - Override installer window title text
+; ──────────────────────────────────────────────────────────────────
+[Messages]
+SetupWindowTitle=Setup - {#MyAppFullName} {#MyAppVersion}
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Tasks] - Optional install choices shown to the user
