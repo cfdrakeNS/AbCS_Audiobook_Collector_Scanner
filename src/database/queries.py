@@ -68,6 +68,7 @@ class BookQueries:
             LEFT JOIN genres g ON b.genre_id = g.genre_id
             LEFT JOIN collections c ON b.collection_id = c.collection_id
             WHERE 1=1
+                            AND (b.collection_id IS NULL OR c.active = 1)
         """
         params = []
 
@@ -143,7 +144,8 @@ class BookQueries:
             LEFT JOIN series s ON b.series_id = s.series_id
             LEFT JOIN genres g ON b.genre_id = g.genre_id
             LEFT JOIN collections c ON b.collection_id = c.collection_id
-            WHERE b.book_id = ?
+                        WHERE b.book_id = ?
+                            AND (b.collection_id IS NULL OR c.active = 1)
         """
         row = self.db.fetch_one(query, (book_id,))
         # Detail form benefits from parsed dates.
@@ -432,8 +434,10 @@ class AuthorQueries:
     def cleanup_unused(self):
         """Remove authors with no associated books."""
         query = """
-            DELETE FROM authors 
-            WHERE author_id NOT IN (SELECT DISTINCT author_id FROM books WHERE author_id IS NOT NULL)
+            DELETE FROM authors
+            WHERE author_id NOT IN (
+                SELECT DISTINCT author_id FROM books WHERE author_id IS NOT NULL
+            )
         """
         self.db.execute(query)
         self.db.connect().commit()
@@ -639,13 +643,13 @@ class StatisticsQueries:
         stats.total_genres = self.db.fetch_one("SELECT COUNT(*) FROM genres")[0]
 
         # Total collections
-        stats.total_collections = self.db.fetch_one(
-            "SELECT COUNT(*) FROM collections WHERE active = 1"
-        )[0]
+        stats.total_collections = self.db.fetch_one("SELECT COUNT(*) FROM collections")[
+            0
+        ]
 
         # Books read/unread
         stats.books_read = self.db.fetch_one(
-            "SELECT COUNT(*) FROM books WHERE read_date not null"
+            "SELECT COUNT(*) FROM books WHERE read_date IS NOT NULL"
         )[0]
         stats.books_unread = stats.total_books - stats.books_read
 
@@ -654,5 +658,37 @@ class StatisticsQueries:
             "SELECT SUM(time_hours) + SUM(time_minutes) / 60 FROM books"
         )
         stats.total_time_hours = int(time_row[0] or 0)
+
+        collection_rows = self.db.fetch_all("""
+            SELECT collection_name, book_count
+            FROM (
+                SELECT
+                    'No Collection' AS collection_name,
+                    COUNT(*) AS book_count,
+                    0 AS sort_group,
+                    'No Collection' AS sort_name
+                FROM books
+                WHERE collection_id IS NULL
+
+                UNION ALL
+
+                SELECT
+                    CASE
+                        WHEN c.active = 1 THEN c.name
+                        ELSE c.name || ' (inactive)'
+                    END AS collection_name,
+                    COUNT(b.book_id) AS book_count,
+                    1 AS sort_group,
+                    c.name AS sort_name
+                FROM collections c
+                LEFT JOIN books b ON b.collection_id = c.collection_id
+                GROUP BY c.collection_id, c.name, c.active
+            )
+            WHERE book_count > 0
+            ORDER BY sort_group, sort_name
+            """)
+        stats.collection_breakdown = [
+            (row["collection_name"], int(row["book_count"])) for row in collection_rows
+        ]
 
         return stats

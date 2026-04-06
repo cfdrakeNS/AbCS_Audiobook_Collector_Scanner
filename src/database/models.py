@@ -172,6 +172,7 @@ class Statistics:
     books_read: int = 0
     books_unread: int = 0
     total_time_hours: int = 0
+    collection_breakdown: list[tuple[str, int]] | None = None
 
     @property
     def total_time_display(self) -> str:
