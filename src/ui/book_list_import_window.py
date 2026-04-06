@@ -142,8 +142,7 @@ class BookListImportWindow(QDialog):
         self.scaler.scale_changed.connect(self.on_scale_changed)
         self.on_scale_changed(self.scaler.current_scale)
 
-        # Focus on file selector initially
-        self.file_edit.setFocus()
+        # Initial focus is applied in showEvent so screen readers announce instructions first.
 
         # Apply button styling to match other windows
         self.apply_button_styling()
@@ -259,6 +258,11 @@ class BookListImportWindow(QDialog):
         if hasattr(self, "instructions_label"):
             self.instructions_label.setFocus()
             self.set_status("How to use instructions")
+
+    def showEvent(self, event):
+        """Set initial focus to instructions when window first opens."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self.focus_instructions_section)
 
     def install_combo_filters(self):
         """Install event filters on combo boxes for anti-noise pattern."""
