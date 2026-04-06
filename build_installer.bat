@@ -149,6 +149,21 @@ exit /b 1
 echo Inno Setup found.
 
 REM ------------------------------------------------------------
+REM  Resolve installer version from src\main.py APP_VERSION
+REM ------------------------------------------------------------
+set "VER="
+for /f "usebackq delims=" %%V in (`"%PYTHON_EXE%" -c "import pathlib,re; t=pathlib.Path('src/main.py').read_text(encoding='utf-8'); m=re.search(r'^APP_VERSION\s*=\s*\"([^\"]+)\"', t, re.M); print(m.group(1) if m else '')"`) do (
+    set "VER=%%V"
+)
+if not defined VER (
+    echo ERROR: Could not resolve APP_VERSION from src\main.py
+    echo See %BUILD_LOG% for details.
+    pause
+    exit /b 1
+)
+echo Using APP_VERSION: %VER%
+
+REM ------------------------------------------------------------
 REM  Step 2 (cont): Ensure releases\ output folder exists
 REM ------------------------------------------------------------
 if not exist releases mkdir releases
@@ -156,7 +171,7 @@ if not exist releases mkdir releases
 REM ------------------------------------------------------------
 REM  Step 2 (cont): Compile the installer
 REM ------------------------------------------------------------
-"%ISCC%" /Qp AbCS_installer.iss >>"%BUILD_LOG%" 2>&1
+"%ISCC%" /Qp /DMyAppVersion=%VER% AbCS_installer.iss >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (
     echo ERROR: Installer packaging failed.
@@ -164,14 +179,6 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-
-REM Resolve version from installer preprocessor define
-set "VER="
-for /f "tokens=3" %%V in ('findstr /r /c:"^#define[ ][ ]*MyAppVersion" AbCS_installer.iss') do (
-    set "VER=%%~V"
-)
-if not defined VER set "VER=unknown"
-set "VER=%VER:\"=%"
 
 echo Installer build complete.
 echo Installer: releases\AbCS-Setup-%VER%.exe

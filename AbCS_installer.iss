@@ -4,13 +4,15 @@
 ; To compile: run build_installer.bat
 ;             or open this file in Inno Setup IDE and press F9
 ;
-; WHEN RELEASING A NEW VERSION: update MyAppVersion below only.
-; The output file name, installer title, and Add/Remove Programs entry
-; all update automatically from that one line.
+; Version source of truth is src/main.py APP_VERSION.
+; build_installer.bat passes MyAppVersion from APP_VERSION via /D.
+; The fallback below is used when compiling this .iss directly in ISCC IDE.
 
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audio Book Collector Scanner"
-#define MyAppVersion   "1.9.4"
+#ifndef MyAppVersion
+    #define MyAppVersion "1.9.6"
+#endif
 #define MyAppPublisher "AbCS Project"
 #define MyAppURL       "https://github.com/cfdrakeNS/redevelop-AbCS-project"
 #define MyAppExeName   "AbCS.exe"
