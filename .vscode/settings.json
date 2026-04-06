@@ -5,7 +5,6 @@
         "*.db": true
     },
     "editor.formatOnPaste": true,
-    "editor.accessibilitySupport": "on",
     "python.analysis.typeCheckingMode": "off",
     "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
     "python.terminal.activateEnvironment": true,
@@ -32,7 +31,6 @@
         "plaintext": false,
         "markdown": false
     },
-    "accessibility.verbosity.notification": false,
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,

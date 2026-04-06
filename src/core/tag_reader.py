@@ -17,7 +17,6 @@ class AudioFileInfo:
     """Information extracted from an audio file."""
 
     def __init__(self):
-        self.title: str = ""
         self.album: str = ""  # Book title
         self.artist: str = ""
         self.album_artist: str = ""  # Primary author field
@@ -25,8 +24,6 @@ class AudioFileInfo:
         self.genre: str = ""
         self.comment: str = ""
         self.composer: str = ""  # Sometimes contains narrator
-        self.track_number: Optional[int] = None
-        self.total_tracks: Optional[int] = None
         self.duration_seconds: float = 0.0
         self.bitrate: int = 0
         self.file_size_bytes: int = 0
@@ -43,8 +40,16 @@ class TagReader:
 
     # Supported audio extensions
     SUPPORTED_EXTENSIONS = {
-        '.mp3', '.m4a', '.m4b', '.flac', '.ogg', '.oga',
-        '.wma', '.wav', '.aac', '.opus'
+        ".mp3",
+        ".m4a",
+        ".m4b",
+        ".flac",
+        ".ogg",
+        ".oga",
+        ".wma",
+        ".wav",
+        ".aac",
+        ".opus",
     }
 
     def __init__(self):
@@ -82,7 +87,7 @@ class TagReader:
             info.file_size_bytes = os.path.getsize(file_path)
 
             # Detect file format
-            info.file_format = Path(file_path).suffix.lstrip('.').upper()
+            info.file_format = Path(file_path).suffix.lstrip(".").upper()
 
             # Load file with mutagen
             audio = MutagenFile(file_path)
@@ -92,11 +97,11 @@ class TagReader:
                 return info
 
             # Get duration
-            if hasattr(audio.info, 'length'):
+            if hasattr(audio.info, "length"):
                 info.duration_seconds = audio.info.length
 
             # Get bitrate
-            if hasattr(audio.info, 'bitrate'):
+            if hasattr(audio.info, "bitrate"):
                 info.bitrate = audio.info.bitrate // 1000  # Convert to kbps
 
             # Extract tags based on file type
@@ -121,114 +126,87 @@ class TagReader:
         """Read tags from MP3 file."""
         if audio.tags:
             # Album (book title)
-            if 'TALB' in audio.tags:
-                info.album = str(audio.tags['TALB'])
+            if "TALB" in audio.tags:
+                info.album = str(audio.tags["TALB"])
 
             # Album Artist (primary author)
-            if 'TPE2' in audio.tags:
-                info.album_artist = str(audio.tags['TPE2'])
+            if "TPE2" in audio.tags:
+                info.album_artist = str(audio.tags["TPE2"])
 
             # Artist (fallback author)
-            if 'TPE1' in audio.tags:
-                info.artist = str(audio.tags['TPE1'])
+            if "TPE1" in audio.tags:
+                info.artist = str(audio.tags["TPE1"])
 
             # Title
-            if 'TIT2' in audio.tags:
-                info.title = str(audio.tags['TIT2'])
+            # Parsed title tag is intentionally not stored separately;
+            # import flow uses album/title aggregation at book level.
 
             # Year
-            if 'TDRC' in audio.tags:
+            if "TDRC" in audio.tags:
                 try:
-                    year_str = str(audio.tags['TDRC'])
+                    year_str = str(audio.tags["TDRC"])
                     info.year = int(year_str[:4])
                 except (ValueError, IndexError):
                     pass
 
             # Genre
-            if 'TCON' in audio.tags:
-                info.genre = str(audio.tags['TCON'])
+            if "TCON" in audio.tags:
+                info.genre = str(audio.tags["TCON"])
 
             # Comment
-            if 'COMM' in audio.tags:
+            if "COMM" in audio.tags:
                 # COMM can have multiple values
-                comments = audio.tags.getall('COMM')
+                comments = audio.tags.getall("COMM")
                 if comments:
                     info.comment = str(comments[0])
 
             # Composer (narrator)
-            if 'TCOM' in audio.tags:
-                info.composer = str(audio.tags['TCOM'])
+            if "TCOM" in audio.tags:
+                info.composer = str(audio.tags["TCOM"])
 
-            # Track number
-            if 'TRCK' in audio.tags:
-                try:
-                    track_str = str(audio.tags['TRCK'])
-                    if '/' in track_str:
-                        track, total = track_str.split('/')
-                        info.track_number = int(track)
-                        info.total_tracks = int(total)
-                    else:
-                        info.track_number = int(track_str)
-                except (ValueError, IndexError):
-                    pass
+            # Track number parsing intentionally omitted (not used downstream).
 
     def _read_flac_tags(self, audio: FLAC, info: AudioFileInfo):
         """Read tags from FLAC file."""
         if audio.tags:
-            info.album = self._get_tag(audio, 'album')
-            info.album_artist = self._get_tag(audio, 'albumartist')
-            info.artist = self._get_tag(audio, 'artist')
-            info.title = self._get_tag(audio, 'title')
-            info.genre = self._get_tag(audio, 'genre')
-            info.comment = self._get_tag(audio, 'comment')
-            info.composer = self._get_tag(audio, 'composer')
+            info.album = self._get_tag(audio, "album")
+            info.album_artist = self._get_tag(audio, "albumartist")
+            info.artist = self._get_tag(audio, "artist")
+            # Title tag is not used downstream.
+            info.genre = self._get_tag(audio, "genre")
+            info.comment = self._get_tag(audio, "comment")
+            info.composer = self._get_tag(audio, "composer")
 
             # Year
-            date_str = self._get_tag(audio, 'date')
+            date_str = self._get_tag(audio, "date")
             if date_str:
                 try:
                     info.year = int(date_str[:4])
                 except (ValueError, IndexError):
                     pass
 
-            # Track number
-            track_str = self._get_tag(audio, 'tracknumber')
-            if track_str:
-                try:
-                    if '/' in track_str:
-                        track, total = track_str.split('/')
-                        info.track_number = int(track)
-                        info.total_tracks = int(total)
-                    else:
-                        info.track_number = int(track_str)
-                except (ValueError, IndexError):
-                    pass
+            # Track number parsing intentionally omitted (not used downstream).
 
     def _read_mp4_tags(self, audio: MP4, info: AudioFileInfo):
         """Read tags from M4A/M4B file."""
         if audio.tags:
-            info.album = self._get_mp4_tag(audio, '©alb')
-            info.album_artist = self._get_mp4_tag(audio, 'aART')
-            info.artist = self._get_mp4_tag(audio, '©ART')
-            info.title = self._get_mp4_tag(audio, '©nam')
-            info.genre = self._get_mp4_tag(audio, '©gen')
-            info.comment = self._get_mp4_tag(audio, '©cmt')
-            info.composer = self._get_mp4_tag(audio, '©wrt')
+            info.album = self._get_mp4_tag(audio, "©alb")
+            info.album_artist = self._get_mp4_tag(audio, "aART")
+            info.artist = self._get_mp4_tag(audio, "©ART")
+            # Title tag is not used downstream.
+            info.genre = self._get_mp4_tag(audio, "©gen")
+            info.comment = self._get_mp4_tag(audio, "©cmt")
+            info.composer = self._get_mp4_tag(audio, "©wrt")
 
             # Year
-            year_str = self._get_mp4_tag(audio, '©day')
+            year_str = self._get_mp4_tag(audio, "©day")
             if year_str:
                 try:
                     info.year = int(year_str[:4])
                 except (ValueError, IndexError):
                     pass
 
-            # Track number
-            if 'trkn' in audio.tags:
-                track_info = audio.tags['trkn'][0]
-                if isinstance(track_info, tuple) and len(track_info) >= 2:
-                    info.track_number = track_info[0]
-                    info.total_tracks = track_info[1]
+            # Track number parsing intentionally omitted (not used downstream).
 
     def _read_ogg_tags(self, audio: OggVorbis, info: AudioFileInfo):
         """Read tags from OGG file."""
@@ -237,9 +215,9 @@ class TagReader:
 
     def _read_generic_tags(self, audio, info: AudioFileInfo):
         """Try to read tags generically."""
-        if hasattr(audio, 'tags') and audio.tags:
+        if hasattr(audio, "tags") and audio.tags:
             # Try common tag names
-            for tag_name in ['album', 'title', 'artist', 'genre']:
+            for tag_name in ["album", "title", "artist", "genre"]:
                 if tag_name in audio.tags:
                     value = audio.tags[tag_name]
                     if isinstance(value, list) and value:
@@ -284,16 +262,19 @@ class TagReader:
         if comment:
             comment_lower = comment.lower()
             patterns = [
-                'read by ', 'narrated by ', 'narrator: ',
-                'reader: ', 'performed by '
+                "read by ",
+                "narrated by ",
+                "narrator: ",
+                "reader: ",
+                "performed by ",
             ]
 
             for pattern in patterns:
                 if pattern in comment_lower:
                     idx = comment_lower.index(pattern)
-                    narrator = comment[idx + len(pattern):].strip()
+                    narrator = comment[idx + len(pattern) :].strip()
                     # Get first line/sentence
-                    narrator = narrator.split('\n')[0].split('.')[0]
+                    narrator = narrator.split("\n")[0].split(".")[0]
                     return narrator.strip()
 
         return ""
@@ -308,11 +289,14 @@ class BookScanner:
         """Initialize book scanner."""
         self.tag_reader = TagReader()
 
-    def scan_folder(self, folder_path: str, include_subfolders: bool = True,
-                    allowed_extensions: Optional[set] = None,
-                    progress_callback: Optional[Callable[[
-                        int, int, str], None]] = None,
-                    cancel_check: Optional[Callable[[], bool]] = None) -> List[Dict[str, Any]]:
+    def scan_folder(
+        self,
+        folder_path: str,
+        include_subfolders: bool = True,
+        allowed_extensions: Optional[set] = None,
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Scan folder recursively for audiobooks.
         Groups files by album (book title).
@@ -343,7 +327,7 @@ class BookScanner:
             return self.tag_reader.is_supported_file(file_path)
 
         if include_subfolders:
-            for root, dirs, files in os.walk(folder_path):
+            for root, _dirs, files in os.walk(folder_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     if is_allowed(file_path):
@@ -369,68 +353,72 @@ class BookScanner:
             info = self.tag_reader.read_file(file_path)
 
             # Use album as book identifier
-            book_key = info.album or os.path.basename(
-                os.path.dirname(file_path))
+            book_key = info.album or os.path.basename(os.path.dirname(file_path))
 
             if book_key not in books:
                 books[book_key] = {
-                    'title': info.album,
-                    'author': info.album_artist or info.artist,
-                    'year': info.year,
-                    'genre': info.genre,
-                    'narrator': self.tag_reader.extract_narrator(info.comment, info.composer),
-                    'comments': [],
-                    'files': [],
-                    'total_duration': 0.0,
-                    'total_size': 0,
-                    'bitrate': info.bitrate,
-                    'format': info.file_format,
-                    'folder': os.path.dirname(file_path),
-                    'errors': []
+                    "title": info.album,
+                    "author": info.album_artist or info.artist,
+                    "year": info.year,
+                    "genre": info.genre,
+                    "narrator": self.tag_reader.extract_narrator(
+                        info.comment, info.composer
+                    ),
+                    "comments": [],
+                    "files": [],
+                    "total_duration": 0.0,
+                    "total_size": 0,
+                    "bitrate": info.bitrate,
+                    "format": info.file_format,
+                    "folder": os.path.dirname(file_path),
+                    "errors": [],
                 }
 
             book = books[book_key]
 
             # Accumulate data
-            book['files'].append(file_path)
-            book['total_duration'] += info.duration_seconds
-            book['total_size'] += info.file_size_bytes
+            book["files"].append(file_path)
+            book["total_duration"] += info.duration_seconds
+            book["total_size"] += info.file_size_bytes
 
             # Collect unique comments
-            if info.comment and info.comment not in book['comments']:
-                book['comments'].append(info.comment)
+            if info.comment and info.comment not in book["comments"]:
+                book["comments"].append(info.comment)
 
             # Collect errors
             if info.read_error:
-                book['errors'].append(
-                    f"{os.path.basename(file_path)}: {info.read_error}")
+                book["errors"].append(
+                    f"{os.path.basename(file_path)}: {info.read_error}"
+                )
 
         # Convert to list and finalize
         result = []
         for book in books.values():
             # Combine comments
-            book['comment'] = '\n\n'.join(book['comments'])
-            del book['comments']
+            book["comment"] = "\n\n".join(book["comments"])
+            del book["comments"]
 
             # Convert duration to hours/minutes
-            total_minutes = int(book['total_duration'] / 60)
-            book['time_hours'] = total_minutes // 60
-            book['time_minutes'] = total_minutes % 60
+            total_minutes = int(book["total_duration"] / 60)
+            book["time_hours"] = total_minutes // 60
+            book["time_minutes"] = total_minutes % 60
 
             # Convert size to MB
-            book['size_mb'] = book['total_size'] / (1024 * 1024)
+            book["size_mb"] = book["total_size"] / (1024 * 1024)
 
             # Track count
-            book['tracks'] = len(book['files'])
+            book["tracks"] = len(book["files"])
 
             result.append(book)
 
         return result
 
-    def scan_file(self, file_path: str,
-                  progress_callback: Optional[Callable[[
-                      int, int, str], None]] = None,
-                  cancel_check: Optional[Callable[[], bool]] = None) -> List[Dict[str, Any]]:
+    def scan_file(
+        self,
+        file_path: str,
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Scan a single audio file.
         Used for single-item import mode.
@@ -463,34 +451,34 @@ class BookScanner:
 
         # Build book dictionary
         book = {
-            'title': info.album or book_key,
-            'author': info.album_artist or info.artist,
-            'year': info.year,
-            'genre': info.genre,
-            'narrator': self.tag_reader.extract_narrator(info.comment, info.composer),
-            'comment': info.comment or '',
-            'files': [file_path],
-            'total_duration': info.duration_seconds,
-            'total_size': info.file_size_bytes,
-            'bitrate': info.bitrate,
-            'format': info.file_format,
-            'folder': os.path.dirname(file_path),
-            'errors': []
+            "title": info.album or book_key,
+            "author": info.album_artist or info.artist,
+            "year": info.year,
+            "genre": info.genre,
+            "narrator": self.tag_reader.extract_narrator(info.comment, info.composer),
+            "comment": info.comment or "",
+            "files": [file_path],
+            "total_duration": info.duration_seconds,
+            "total_size": info.file_size_bytes,
+            "bitrate": info.bitrate,
+            "format": info.file_format,
+            "folder": os.path.dirname(file_path),
+            "errors": [],
         }
 
         # Add error if present
         if info.read_error:
-            book['errors'].append(f"{file_name}: {info.read_error}")
+            book["errors"].append(f"{file_name}: {info.read_error}")
 
         # Convert duration to hours/minutes
-        total_minutes = int(book['total_duration'] / 60)
-        book['time_hours'] = total_minutes // 60
-        book['time_minutes'] = total_minutes % 60
+        total_minutes = int(book["total_duration"] / 60)
+        book["time_hours"] = total_minutes // 60
+        book["time_minutes"] = total_minutes % 60
 
         # Convert size to MB
-        book['size_mb'] = book['total_size'] / (1024 * 1024)
+        book["size_mb"] = book["total_size"] / (1024 * 1024)
 
         # Track count (always 1 for single file)
-        book['tracks'] = 1
+        book["tracks"] = 1
 
         return [book]

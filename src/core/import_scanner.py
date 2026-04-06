@@ -1,5 +1,5 @@
-
 """Scenario-aware import preference application for scanned book metadata."""
+
 import re
 import os
 from typing import Dict, List
@@ -57,7 +57,9 @@ class ImportScanner:
         move_leading_the_title: bool = False,
     ):
         self.scenario_mode = scenario_mode or "mass_standard"
-        self.author_fallback_mode = author_fallback_mode if author_fallback_mode else None
+        self.author_fallback_mode = (
+            author_fallback_mode if author_fallback_mode else None
+        )
         self.title_fallback_mode = title_fallback_mode if title_fallback_mode else None
         self.trim_whitespace = bool(trim_whitespace)
         self.strip_leading_punctuation = bool(strip_leading_punctuation)
@@ -66,8 +68,11 @@ class ImportScanner:
         self.move_leading_the_title = bool(move_leading_the_title)
 
         if reader_keywords:
-            cleaned = [keyword.strip().lower()
-                       for keyword in reader_keywords if keyword and keyword.strip()]
+            cleaned = [
+                keyword.strip().lower()
+                for keyword in reader_keywords
+                if keyword and keyword.strip()
+            ]
             if cleaned:
                 self.reader_keywords = cleaned
 
@@ -82,8 +87,7 @@ class ImportScanner:
 
         narrator = (book.get("narrator") or "").strip()
         if not narrator:
-            narrator = self._extract_reader_from_comment(
-                book.get("comment", ""))
+            narrator = self._extract_reader_from_comment(book.get("comment", ""))
             if narrator:
                 book["narrator"] = narrator
 
@@ -91,21 +95,25 @@ class ImportScanner:
         if self._is_placeholder_title(title) and self.title_fallback_mode == "file":
             # Fallback for all scenarios: use file stem only
             if files:
-                fallback_title = os.path.splitext(
-                    os.path.basename(files[0]))[0]
+                fallback_title = os.path.splitext(os.path.basename(files[0]))[0]
                 # Remove leading number and trim
-                fallback_title = re.sub(r'^\d+\s*', '', fallback_title).strip()
+                fallback_title = re.sub(r"^\d+\s*", "", fallback_title).strip()
                 if fallback_title:
                     book["title"] = fallback_title
                     fallback_applied.add("Title")
                     from src.core.validator import ImportValidator
+
                     ImportValidator.append_flag_once(
                         book,
                         "F: Title fallback from file used",
                     )
 
         author = (book.get("author") or "").strip()
-        if self._is_placeholder_author(author) and self.author_fallback_mode == "folder" and folder:
+        if (
+            self._is_placeholder_author(author)
+            and self.author_fallback_mode == "folder"
+            and folder
+        ):
             fallback_author = self._fallback_author_from_path(
                 folder=folder,
                 files=files,
@@ -115,6 +123,7 @@ class ImportScanner:
                 book["author"] = fallback_author
                 fallback_applied.add("Author")
                 from src.core.validator import ImportValidator
+
                 ImportValidator.append_flag_once(
                     book,
                     "F: Author fallback from folder used",
@@ -137,6 +146,7 @@ class ImportScanner:
                 book["series"] = series_name
             elif ambiguous_reason:
                 from src.core.validator import ImportValidator
+
                 ImportValidator.append_flag_once(
                     book,
                     f"W: Series from directory skipped ({ambiguous_reason})",
@@ -144,8 +154,8 @@ class ImportScanner:
         elif self.scenario_mode == "series_from_filename" and files:
             source_text = os.path.splitext(os.path.basename(files[0]))[0]
 
-            parsed_series, parsed_number, _raw_block = self._parse_series_from_filename_text(
-                source_text
+            parsed_series, parsed_number, _raw_block = (
+                self._parse_series_from_filename_text(source_text)
             )
             if parsed_series:
                 book["series"] = parsed_series
@@ -165,6 +175,7 @@ class ImportScanner:
                 # Create specific message for each correction
                 correction_text = ", ".join(corrections)
                 from src.core.validator import ImportValidator
+
                 ImportValidator.append_flag_once(
                     book,
                     f"C: {field} {correction_text}",
@@ -181,22 +192,14 @@ class ImportScanner:
             lowered = line.lower()
             for keyword in self.reader_keywords:
                 match = re.search(
-                    rf"\b{re.escape(keyword)}\b\s*[:\-]?\s*(.+)$", lowered)
+                    rf"\b{re.escape(keyword)}\b\s*[:\-]?\s*(.+)$", lowered
+                )
                 if match:
                     start_idx = match.start(1)
                     value = line[start_idx:].strip(" .:-")
                     if value:
                         return value
         return ""
-    import re
-
-    @staticmethod
-    def _series_from_filename(file_path: str) -> str:
-        if not file_path:
-            return ""
-        stem = os.path.splitext(os.path.basename(file_path))[0]
-        match = re.search(r"\(([^()]+)\)", stem)
-        return match.group(1).strip() if match else ""
 
     @staticmethod
     def _parse_series_from_filename_text(text: str):
@@ -242,8 +245,9 @@ class ImportScanner:
 
         series_candidate = os.path.basename(candidate_folder)
         parent_folder = os.path.dirname(candidate_folder)
-        author_candidate = os.path.basename(
-            parent_folder.rstrip("\\/")) if parent_folder else ""
+        author_candidate = (
+            os.path.basename(parent_folder.rstrip("\\/")) if parent_folder else ""
+        )
 
         if not series_candidate:
             return (None, "missing series folder name")
@@ -259,7 +263,9 @@ class ImportScanner:
 
         return (series_candidate, None)
 
-    def _fallback_author_from_path(self, folder: str, files: List[str], title_hint: str) -> str:
+    def _fallback_author_from_path(
+        self, folder: str, files: List[str], title_hint: str
+    ) -> str:
         folder_name = os.path.basename(folder.rstrip("\\/")) if folder else ""
         parent_name = self._folder_parent_name(folder)
         title_lower = title_hint.lower() if title_hint else ""
@@ -272,7 +278,12 @@ class ImportScanner:
                 return parent_name
             return folder_name
 
-        if title_lower and folder_name and folder_name.lower() == title_lower and parent_name:
+        if (
+            title_lower
+            and folder_name
+            and folder_name.lower() == title_lower
+            and parent_name
+        ):
             return parent_name
 
         if folder_name:
@@ -280,14 +291,18 @@ class ImportScanner:
 
         if files:
             file_dir = os.path.dirname(files[0])
-            file_dir_name = os.path.basename(
-                file_dir.rstrip("\\/")) if file_dir else ""
+            file_dir_name = os.path.basename(file_dir.rstrip("\\/")) if file_dir else ""
             file_parent_name = self._folder_parent_name(file_dir)
 
             if self._is_placeholder_author(file_dir_name) and file_parent_name:
                 return file_parent_name
 
-            if title_lower and file_dir_name and file_dir_name.lower() == title_lower and file_parent_name:
+            if (
+                title_lower
+                and file_dir_name
+                and file_dir_name.lower() == title_lower
+                and file_parent_name
+            ):
                 return file_parent_name
             if file_dir_name:
                 return file_dir_name
@@ -335,15 +350,15 @@ class ImportScanner:
 
             if self.remove_non_alphanumeric:
                 # Remove only non-printable characters, keep punctuation and accent letters
-                cleaned = ''.join(c for c in updated if c.isprintable())
+                cleaned = "".join(c for c in updated if c.isprintable())
                 if cleaned != updated:
-                    corrections_applied.append(
-                        "non-printable characters removed")
+                    corrections_applied.append("non-printable characters removed")
                     updated = cleaned
 
             if self.proper_case_fields:
-                proper_cased = " ".join(word.capitalize()
-                                        for word in updated.split(" "))
+                proper_cased = " ".join(
+                    word.capitalize() for word in updated.split(" ")
+                )
                 if proper_cased != updated:
                     # Apply proper case but don't flag it
                     updated = proper_cased
@@ -356,14 +371,16 @@ class ImportScanner:
 
         if self.move_leading_the_title:
             title = (book.get("title") or "").strip()
-            
+
             # Check for leading articles: "The", "A", "An"
             articles = ["the ", "a ", "an "]
             for article in articles:
                 if title.lower().startswith(article) and len(title) > len(article):
-                    title_core = title[len(article):].strip()
+                    title_core = title[len(article) :].strip()
                     article_capital = article.title().strip()  # "The", "A", "An"
-                    if title_core and not title_core.lower().endswith(f", {article.lower()}"):
+                    if title_core and not title_core.lower().endswith(
+                        f", {article.lower()}"
+                    ):
                         # Move article to end but don't flag it
                         book["title"] = f"{title_core}, {article_capital}"
                     break  # Only handle the first matching article

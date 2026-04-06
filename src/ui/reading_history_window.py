@@ -4,24 +4,32 @@ Shows reading statistics and history with full accessibility support.
 """
 
 from PySide6.QtWidgets import (
-    QDialog, QWidget, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QLabel, QPushButton,
-    QDateEdit, QComboBox, QLineEdit, QGroupBox,
-    QHeaderView, QAbstractItemView, QStatusBar, QMessageBox,
-    QTabWidget, QTextEdit
+    QDialog,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidget,
+    QTableWidgetItem,
+    QLabel,
+    QPushButton,
+    QDateEdit,
+    QComboBox,
+    QGroupBox,
+    QHeaderView,
+    QAbstractItemView,
+    QStatusBar,
+    QMessageBox,
+    QTabWidget,
+    QTextEdit,
 )
-from PySide6.QtCore import (
-    Qt, QDate, QSettings, QTimer, QItemSelection, QItemSelectionModel
-)
-from PySide6.QtGui import QAction, QShortcut, QKeySequence, QAccessible
+from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
-from src.database import BookQueries, ReadingQueries, SearchFilter
+from src.database import BookQueries, ReadingQueries
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
-from src.accessibility.style_helpers import exec_styled_message_box, build_accessible_button_style
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
 
@@ -42,14 +50,16 @@ class ReadingHistoryWindow(QDialog):
         self._loading = False
         self._collections_loaded = False
         self._period_message = ""  # Store period message for Alt+/ announcements
-        
+
         # Window setup
         self.setWindowTitle("Reading History")
         self.setAccessibleName("Reading History Window")
-        self.setAccessibleDescription("Window showing reading statistics and history with tabs for General, Year, Month, and Date Range views")
+        self.setAccessibleDescription(
+            "Window showing reading statistics and history with tabs for General, Year, Month, and Date Range views"
+        )
         self.setMinimumSize(800, 600)
         self.resize(1200, 800)
-        
+
         self.setup_ui()
         self.setup_shortcuts()
         self.load_reading_data()
@@ -58,30 +68,30 @@ class ReadingHistoryWindow(QDialog):
         """Setup user interface with tabs."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
-        
+
         # Create tab widget
         self.tab_widget = QTabWidget()
         self.tab_widget.setAccessibleName("Reading history tabs")
         self.tab_widget.setDocumentMode(False)
         self.tab_widget.tabBar().setExpanding(False)
         self.tab_widget.tabBar().setUsesScrollButtons(True)
-        
+
         # Create tabs
         self.create_general_tab()
         self.create_year_tab()
         self.create_month_tab()
         self.create_date_range_tab()
-        
+
         main_layout.addWidget(self.tab_widget)
-        
+
         # Status bar
         self.status_bar = QStatusBar()
         self.status_bar.setAccessibleName("Status bar")
         main_layout.addWidget(self.status_bar)
-        
+
         # Connect signals
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
-        
+
         # Apply theme
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.on_theme_changed()
@@ -90,19 +100,21 @@ class ReadingHistoryWindow(QDialog):
         """Create General tab with overall statistics."""
         general_widget = QWidget()
         self.general_tab_layout = QVBoxLayout(general_widget)  # Store reference
-        
+
         # Statistics section
         stats_group = QGroupBox("Reading Statistics")
         stats_layout = QVBoxLayout(stats_group)
-        
+
         # Create a table for JAWS accessibility
         self.general_table = QTableWidget()
         self.general_table.setAccessibleName("General reading statistics table")
-        self.general_table.setAccessibleDescription("Table showing total reading statistics")
+        self.general_table.setAccessibleDescription(
+            "Table showing total reading statistics"
+        )
         self.general_table.setColumnCount(2)
         self.general_table.setHorizontalHeaderLabels(["Statistic", "Value"])
         self.general_table.setRowCount(3)
-        
+
         # Table configuration for accessibility
         self.general_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.general_table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -111,7 +123,7 @@ class ReadingHistoryWindow(QDialog):
         self.general_table.setStyleSheet(build_accessible_f1_popup_style())
         self.general_table.verticalHeader().setVisible(False)
         self.general_table.setVerticalHeaderLabels([])
-        
+
         # Configure header
         header = self.general_table.horizontalHeader()
         header.setSectionsClickable(False)
@@ -122,76 +134,76 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Value
         self.general_table.setColumnWidth(0, 200)  # Statistic
         self.general_table.setColumnWidth(1, 100)  # Value (reduced for low vision)
-        
+
         # Add statistics items to table
         self.total_books_item = QTableWidgetItem("Total Books Read")
         self.total_books_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         self.total_books_item.setData(Qt.AccessibleTextRole, "Total Books Read")
         self.general_table.setItem(0, 0, self.total_books_item)
-        
+
         self.total_books_value = QTableWidgetItem("0")
         self.total_books_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         self.total_books_value.setData(Qt.AccessibleTextRole, "0 books")
         self.general_table.setItem(0, 1, self.total_books_value)
-        
+
         self.total_hours_item = QTableWidgetItem("Total Hours Read")
         self.total_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         self.total_hours_item.setData(Qt.AccessibleTextRole, "Total Hours Read")
         self.general_table.setItem(1, 0, self.total_hours_item)
-        
+
         self.total_hours_value = QTableWidgetItem("0.0")
         self.total_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         self.total_hours_value.setData(Qt.AccessibleTextRole, "0.0 hours")
         self.general_table.setItem(1, 1, self.total_hours_value)
-        
+
         self.avg_hours_item = QTableWidgetItem("Average Hours per Book")
         self.avg_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         self.avg_hours_item.setData(Qt.AccessibleTextRole, "Average Hours per Book")
         self.general_table.setItem(2, 0, self.avg_hours_item)
-        
+
         self.avg_hours_value = QTableWidgetItem("0.0")
         self.avg_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         self.avg_hours_value.setData(Qt.AccessibleTextRole, "0.0 hours per book")
         self.general_table.setItem(2, 1, self.avg_hours_value)
-        
+
         # Set vertical header labels after adding items (like other windows)
         self.general_table.setVerticalHeaderLabels(["", "", ""])
-        
+
         stats_layout.addWidget(self.general_table)
-        
+
         # Keep labels for backward compatibility but hide them
         self.total_books_label = QLabel("Total Books Read: 0")
         self.total_books_label.setAccessibleName("Total books read")
         self.total_books_label.hide()
-        
+
         self.total_hours_label = QLabel("Total Hours Read: 0.0")
         self.total_hours_label.setAccessibleName("Total hours read")
         self.total_hours_label.hide()
-        
+
         self.avg_hours_label = QLabel("Average Hours per Book: 0.0")
         self.avg_hours_label.setAccessibleName("Average hours per book")
         self.avg_hours_label.hide()
-        
+
         self.general_tab_layout.addWidget(stats_group)
         self.general_tab_layout.addStretch()
-        
+
         self.tab_widget.addTab(general_widget, "&General")
 
     def create_year_tab(self):
         """Create Year tab with yearly breakdown."""
         year_widget = QWidget()
         year_layout = QVBoxLayout(year_widget)
-        
+
         # Year table
         self.year_table = QTableWidget()
         self.year_table.setAccessibleName("Yearly reading statistics table")
         self.year_table.setAccessibleDescription("Table showing books read per year")
-        
+
         # Setup table columns
         year_headers = ["Year", "Books Read", "Total Hours"]
         self.year_table.setColumnCount(len(year_headers))
         self.year_table.setHorizontalHeaderLabels(year_headers)
-        
+
         # Table configuration
         self.year_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.year_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -200,7 +212,7 @@ class ReadingHistoryWindow(QDialog):
         self.year_table.setStyleSheet(build_accessible_f1_popup_style())
         self.year_table.verticalHeader().setVisible(False)
         self.year_table.setVerticalHeaderLabels([])
-        
+
         # Configure header
         header = self.year_table.horizontalHeader()
         header.setSectionsClickable(True)
@@ -212,10 +224,10 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         header.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.year_table.setColumnWidth(0, 80)   # Year
+        self.year_table.setColumnWidth(0, 80)  # Year
         self.year_table.setColumnWidth(1, 100)  # Books Read
-        self.year_table.setColumnWidth(2, 80)   # Total Hours
-        
+        self.year_table.setColumnWidth(2, 80)  # Total Hours
+
         year_layout.addWidget(self.year_table)
         self.tab_widget.addTab(year_widget, "&Year")
 
@@ -223,17 +235,17 @@ class ReadingHistoryWindow(QDialog):
         """Create Month tab with monthly breakdown."""
         month_widget = QWidget()
         month_layout = QVBoxLayout(month_widget)
-        
+
         # Month table
         self.month_table = QTableWidget()
         self.month_table.setAccessibleName("Monthly reading statistics table")
         self.month_table.setAccessibleDescription("Table showing books read per month")
-        
+
         # Swap month and year columns: Year, Month, Books Read, Total Hours
         month_headers = ["Year", "Month", "Books Read", "Total Hours"]
         self.month_table.setColumnCount(len(month_headers))
         self.month_table.setHorizontalHeaderLabels(month_headers)
-        
+
         # Table configuration
         self.month_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.month_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -242,7 +254,7 @@ class ReadingHistoryWindow(QDialog):
         self.month_table.setStyleSheet(build_accessible_f1_popup_style())
         self.month_table.verticalHeader().setVisible(False)
         self.month_table.setVerticalHeaderLabels([])
-        
+
         # Configure header
         header = self.month_table.horizontalHeader()
         header.setSectionsClickable(True)
@@ -255,11 +267,11 @@ class ReadingHistoryWindow(QDialog):
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Month
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Books Read
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Total Hours
-        self.month_table.setColumnWidth(0, 80)   # Year
+        self.month_table.setColumnWidth(0, 80)  # Year
         self.month_table.setColumnWidth(1, 150)  # Month
         self.month_table.setColumnWidth(2, 100)  # Books Read
-        self.month_table.setColumnWidth(3, 80)   # Total Hours
-        
+        self.month_table.setColumnWidth(3, 80)  # Total Hours
+
         month_layout.addWidget(self.month_table)
         self.tab_widget.addTab(month_widget, "&Month")
 
@@ -269,12 +281,12 @@ class ReadingHistoryWindow(QDialog):
         range_layout = QVBoxLayout(range_widget)
         range_layout.setContentsMargins(0, 0, 0, 0)
         range_layout.setSpacing(2)
-        
+
         # Date range controls - single line, no group box
         date_layout = QHBoxLayout()
         date_layout.setSpacing(4)
         date_layout.setContentsMargins(4, 2, 4, 2)
-        
+
         # Start date
         start_date_label = QLabel("From:")
         start_date_label.setAccessibleName("Start date")
@@ -283,7 +295,7 @@ class ReadingHistoryWindow(QDialog):
         self.start_date_edit.setCalendarPopup(True)
         self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.start_date_edit.setDate(QDate.currentDate().addMonths(-3))
-        
+
         # End date
         end_date_label = QLabel("To:")
         end_date_label.setAccessibleName("End date")
@@ -292,49 +304,57 @@ class ReadingHistoryWindow(QDialog):
         self.end_date_edit.setCalendarPopup(True)
         self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.end_date_edit.setDate(QDate.currentDate())
-        
+
         date_layout.addWidget(start_date_label)
         date_layout.addWidget(self.start_date_edit)
         date_layout.addWidget(end_date_label)
         date_layout.addWidget(self.end_date_edit)
-        
+
         # Search button inline with date fields
         self.refresh_button = QPushButton("Search")
         self.refresh_button.setAccessibleName("Search reading history")
-        self.refresh_button.setAccessibleDescription("Search reading history for selected date range - Alt+S")
+        self.refresh_button.setAccessibleDescription(
+            "Search reading history for selected date range - Alt+S"
+        )
         self.refresh_button.clicked.connect(self.load_date_range_data)
         date_layout.addWidget(self.refresh_button)
-        
+
         date_layout.addStretch()
         range_layout.addLayout(date_layout)
-        
+
         # Period statistics - no extra spacing
         period_layout = QHBoxLayout()
         period_layout.setContentsMargins(4, 0, 4, 2)
         period_layout.setSpacing(2)
-        
+
         self.period_books_label = QTextEdit()
         self.period_books_label.setReadOnly(True)
         self.period_books_label.setAccessibleName("Books read in period")
-        self.period_books_label.setAccessibleDescription("Books read in selected date range")
+        self.period_books_label.setAccessibleDescription(
+            "Books read in selected date range"
+        )
         self.period_books_label.setFocusPolicy(Qt.StrongFocus)
         self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         self.period_books_label.setFixedHeight(22)  # Even shorter
-        self.period_books_label.setPlainText("")  # Empty - period messages shown in status bar only
-        
+        self.period_books_label.setPlainText(
+            ""
+        )  # Empty - period messages shown in status bar only
+
         period_layout.addWidget(self.period_books_label)
         range_layout.addLayout(period_layout)
-        
+
         # History table
         self.range_table = QTableWidget()
         self.range_table.setAccessibleName("Date range reading history table")
-        self.range_table.setAccessibleDescription("Table showing reading history with date, title, author, and length")
-        
+        self.range_table.setAccessibleDescription(
+            "Table showing reading history with date, title, author, and hours"
+        )
+
         # Setup table columns
-        range_headers = ["Date", "Title", "Author", "Length", "Hours"]
+        range_headers = ["Date", "Title", "Author", "Hours"]
         self.range_table.setColumnCount(len(range_headers))
         self.range_table.setHorizontalHeaderLabels(range_headers)
-        
+
         # Table configuration
         self.range_table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.range_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -343,7 +363,7 @@ class ReadingHistoryWindow(QDialog):
         self.range_table.setStyleSheet(build_accessible_f1_popup_style())
         self.range_table.verticalHeader().setVisible(False)
         self.range_table.setVerticalHeaderLabels([])
-        
+
         # Configure header
         header = self.range_table.horizontalHeader()
         header.setSectionsClickable(True)
@@ -351,20 +371,18 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(False)
-        # Set specific column widths: Date=120, Title=443, Author=319, Length=80, Hours=100
+        # Set specific column widths: Date=120, Title=523, Author=319, Hours=100
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
-        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title  
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
-        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Length
-        header.setSectionResizeMode(4, QHeaderView.Fixed)  # Hours
+        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Hours
         self.range_table.setColumnWidth(0, 120)  # Date
-        self.range_table.setColumnWidth(1, 443)  # Title (+33%)
+        self.range_table.setColumnWidth(1, 523)  # Title
         self.range_table.setColumnWidth(2, 319)  # Author (+33%)
-        self.range_table.setColumnWidth(3, 80)   # Length
-        self.range_table.setColumnWidth(4, 100)  # Hours
-        
+        self.range_table.setColumnWidth(3, 100)  # Hours
+
         range_layout.addWidget(self.range_table)
-        
+
         self.tab_widget.addTab(range_widget, "Date &Range")
 
         # Set explicit tab order for predictable JAWS navigation
@@ -375,33 +393,35 @@ class ReadingHistoryWindow(QDialog):
         """Setup keyboard shortcuts using ShortcutManager."""
         mgr = get_shortcut_manager()
         callback_map = {
-            'refresh_button': self.load_date_range_data,
-            'table': self.focus_current_table,
-            'start_date_edit': lambda: self.start_date_edit.setFocus(Qt.TabFocusReason)
+            "refresh_button": self.load_date_range_data,
+            "table": self.focus_current_table,
+            "start_date_edit": lambda: self.start_date_edit.setFocus(Qt.TabFocusReason),
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.READING_HISTORY_WINDOW, callback_map)
-        
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.READING_HISTORY_WINDOW, callback_map
+        )
+
         # Local QShortcuts for F1 and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
-        
+
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
-        
+
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
-        
+
     def focus_current_table(self):
         """Focus on the appropriate table based on current tab."""
         current_tab = self.tab_widget.currentIndex()
-        
+
         if current_tab == 0:  # General tab
             # Focus on general table for screen reader
             if self.general_table.rowCount() > 0:
                 row = 0
                 self.general_table.setCurrentCell(row, 0)
             self.general_table.setFocus(Qt.TabFocusReason)
-            
+
         elif current_tab == 1:  # Year tab
             # Focus on year table
             if self.year_table.rowCount() > 0:
@@ -410,7 +430,7 @@ class ReadingHistoryWindow(QDialog):
                     row = 0
                 self.year_table.setCurrentCell(row, 0)
             self.year_table.setFocus(Qt.TabFocusReason)
-            
+
         elif current_tab == 2:  # Month tab
             # Focus on month table
             if self.month_table.rowCount() > 0:
@@ -419,7 +439,7 @@ class ReadingHistoryWindow(QDialog):
                     row = 0
                 self.month_table.setCurrentCell(row, 0)
             self.month_table.setFocus(Qt.TabFocusReason)
-            
+
         elif current_tab == 3:  # Date Range tab
             # Focus on range table
             if self.range_table.rowCount() > 0:
@@ -457,8 +477,7 @@ class ReadingHistoryWindow(QDialog):
 
         tab_padding_v = max(self.scaler.get_scaled_size(4), 3)
         tab_padding_h = max(self.scaler.get_scaled_size(12), 8)
-        self.tab_widget.setStyleSheet(
-            f"""
+        self.tab_widget.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: 1px solid palette(mid);
                 top: -1px;
@@ -481,13 +500,13 @@ class ReadingHistoryWindow(QDialog):
             QTabBar::tab:!selected {{
                 margin-top: 2px;
             }}
-            """
-        )
-        
+            """)
+
         # Table styling - use centralized F1 popup style
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+
         table_style = build_accessible_f1_popup_style()
-        
+
         for table in [self.year_table, self.month_table, self.range_table]:
             if table:
                 table.setStyleSheet(table_style)
@@ -496,7 +515,7 @@ class ReadingHistoryWindow(QDialog):
                 table.viewport().setMouseTracking(False)
                 table.setAttribute(Qt.WA_Hover, False)
                 table.viewport().setAttribute(Qt.WA_Hover, False)
-        
+
         # Date edit and combo box styling - let theme manager handle it
         for widget in self.findChildren(QDateEdit):
             widget.setStyleSheet("")
@@ -507,26 +526,28 @@ class ReadingHistoryWindow(QDialog):
         """Load reading history data based on current filters."""
         if self._loading:
             return
-            
+
         self._loading = True
         try:
             # Get overall statistics
             stats = self.reading_queries.get_reading_statistics()
             self.update_general_stats(stats)
-            
+
             # Get yearly breakdown
-            yearly_data = stats.get('yearly_breakdown', [])
+            yearly_data = stats.get("yearly_breakdown", [])
             self.populate_year_table(yearly_data)
-            
+
             # Get monthly breakdown
-            monthly_data = stats.get('monthly_breakdown', [])
+            monthly_data = stats.get("monthly_breakdown", [])
             self.populate_month_table(monthly_data)
-            
+
             # Load date range data
             self.load_date_range_data()
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load reading history: {str(e)}")
+            QMessageBox.critical(
+                self, "Error", f"Failed to load reading history: {str(e)}"
+            )
         finally:
             self._loading = False
 
@@ -537,73 +558,77 @@ class ReadingHistoryWindow(QDialog):
         self.total_books_value.setText(books_text)
         self.total_books_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.total_books_value.setData(Qt.AccessibleTextRole, f"{books_text} books")
-        
+
         # Total hours with thousand separator and right alignment
         hours_text = f"{stats['total_hours']:,.0f}"
         self.total_hours_value.setText(hours_text)
         self.total_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.total_hours_value.setData(Qt.AccessibleTextRole, f"{hours_text} hours")
-        
+
         # Average hours with thousand separator and right alignment
         avg_text = f"{stats['avg_hours_per_book']:,.0f}"
         self.avg_hours_value.setText(avg_text)
         self.avg_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.avg_hours_value.setData(Qt.AccessibleTextRole, f"{avg_text} hours per book")
-        
+        self.avg_hours_value.setData(
+            Qt.AccessibleTextRole, f"{avg_text} hours per book"
+        )
+
         # Also update hidden labels for backward compatibility
         self.total_books_label.setText(f"Total Books Read: {stats['total_books']:,}")
         self.total_hours_label.setText(f"Total Hours Read: {stats['total_hours']:.1f}")
-        self.avg_hours_label.setText(f"Average Hours per Book: {stats['avg_hours_per_book']:.1f}")
+        self.avg_hours_label.setText(
+            f"Average Hours per Book: {stats['avg_hours_per_book']:.1f}"
+        )
 
     def populate_year_table(self, yearly_data):
         """Populate year table with yearly breakdown."""
         self.year_table.setRowCount(0)
-        
+
         for row, year_data in enumerate(yearly_data):
             self.year_table.insertRow(row)
-            
+
             # Year
-            year_item = QTableWidgetItem(str(year_data['year']))
+            year_item = QTableWidgetItem(str(year_data["year"]))
             self.year_table.setItem(row, 0, year_item)
-            
+
             # Books read (right-aligned with thousand separator)
             books_item = QTableWidgetItem(f"{year_data['book_count']:,}")
             books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 1, books_item)
-            
+
             # Total hours (right-aligned with thousand separator)
             hours_item = QTableWidgetItem(f"{year_data['total_hours']:,.0f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.year_table.setItem(row, 2, hours_item)
-        
+
         # Set vertical header labels to prevent row announcements (like name_list_window)
         self.year_table.setVerticalHeaderLabels([""] * len(yearly_data))
 
     def populate_month_table(self, monthly_data):
         """Populate month table with monthly breakdown."""
         self.month_table.setRowCount(0)
-        
+
         for row, month_data in enumerate(monthly_data):
             self.month_table.insertRow(row)
-            
+
             # Year
-            year_item = QTableWidgetItem(str(month_data['year']))
+            year_item = QTableWidgetItem(str(month_data["year"]))
             self.month_table.setItem(row, 0, year_item)
-            
+
             # Month name
-            month_item = QTableWidgetItem(month_data['month_name'])
+            month_item = QTableWidgetItem(month_data["month_name"])
             self.month_table.setItem(row, 1, month_item)
-            
+
             # Books read (right-aligned with thousand separator)
             books_item = QTableWidgetItem(f"{month_data['book_count']:,}")
             books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 2, books_item)
-            
+
             # Total hours (right-aligned with thousand separator)
             hours_item = QTableWidgetItem(f"{month_data['total_hours']:,.0f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.month_table.setItem(row, 3, hours_item)
-        
+
         # Set vertical header labels to prevent row announcements (like name_list_window)
         self.month_table.setVerticalHeaderLabels([""] * len(monthly_data))
 
@@ -611,69 +636,66 @@ class ReadingHistoryWindow(QDialog):
         """Load data for date range tab."""
         start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
-        
+
         # Convert string dates to date objects for ReadingQueries
         from datetime import datetime
+
         start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-        
+
         # Use ReadingQueries to get books with proper date objects
         books = self.reading_queries.get_reading_history(
-            start_date=start_date_obj,
-            end_date=end_date_obj
+            start_date=start_date_obj, end_date=end_date_obj
         )
-        
+
         # Update period statistics
         total_books = len(books)
         total_hours = sum(book.time_hours or 0 for book in books)
-        
+
         # Create status message with readable date format
         start_date_str = self.start_date_edit.date().toString("MMMM d, yyyy")
         end_date_str = self.end_date_edit.date().toString("MMMM d, yyyy")
         status_msg = f"Showing {total_books} books read between {start_date_str} and {end_date_str} totaling {total_hours:,.0f} hours"
-        
+
         # Store status message for Alt+/ announcements
         self._period_message = status_msg
-        
+
         # Populate table
         self.populate_range_table(books)
-        
+
         # Focus to first title in table after search
         if books and self.range_table.rowCount() > 0:
             self.range_table.setCurrentCell(0, 1)  # Focus on title column (index 1)
             self.range_table.setFocus(Qt.TabFocusReason)
-        
+
         self.set_status(status_msg)
 
     def populate_range_table(self, books):
         """Populate date range table with reading history data."""
         self.range_table.setRowCount(0)
-        
+
         for row, book in enumerate(books):
             self.range_table.insertRow(row)
-            
+
             # Date - book.read_date is now a proper date object
-            date_item = QTableWidgetItem(book.read_date.strftime("%Y-%m-%d") if book.read_date else "")
+            date_item = QTableWidgetItem(
+                book.read_date.strftime("%Y-%m-%d") if book.read_date else ""
+            )
             self.range_table.setItem(row, 0, date_item)
-            
+
             # Title
             title_item = QTableWidgetItem(book.title or "")
             self.range_table.setItem(row, 1, title_item)
-            
+
             # Author
             author_item = QTableWidgetItem(book.author_name or "")
             self.range_table.setItem(row, 2, author_item)
-            
-            # Length (right-aligned)
-            length_item = QTableWidgetItem(str(book.tracks or 0))
-            length_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.range_table.setItem(row, 3, length_item)
-            
+
             # Hours (right-aligned with thousand separator)
             hours_item = QTableWidgetItem(f"{book.time_hours or 0:,.0f}")
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.range_table.setItem(row, 4, hours_item)
-        
+            self.range_table.setItem(row, 3, hours_item)
+
         # Set vertical header labels to prevent row announcements (like name_list_window)
         self.range_table.setVerticalHeaderLabels([""] * len(books))
 
@@ -686,13 +708,15 @@ class ReadingHistoryWindow(QDialog):
                 if self._period_message:
                     self.set_status(self._period_message, announce=True)
                 else:
-                    self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+                    self.set_status(
+                        f"Viewing {tab_names[index]} statistics", announce=True
+                    )
             else:
                 self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
-            
+
             # Set focus to table when tab changes
             self.focus_current_table()
-            
+
             # Set focus to from date when opening date range tab
             if index == 3:  # Date Range tab
                 self.start_date_edit.setFocus()
@@ -710,14 +734,16 @@ class ReadingHistoryWindow(QDialog):
                 # First, read stored period message for screen readers
                 if self._period_message:
                     self.set_status(self._period_message, announce=True)
-                
+
                 # Then read the current status bar message (with a small delay)
                 QTimer.singleShot(1000, self._announce_status_bar)
             else:
                 # For other tabs, just read the current status
                 tab_names = ["General", "Year", "Month", "Date Range"]
                 if current_tab < len(tab_names):
-                    self.set_status(f"Viewing {tab_names[current_tab]} statistics", announce=True)
+                    self.set_status(
+                        f"Viewing {tab_names[current_tab]} statistics", announce=True
+                    )
         # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
 
     def _announce_status_bar(self):
@@ -728,7 +754,11 @@ class ReadingHistoryWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         shortcuts = [
             ("Alt+G", "General tab"),
             ("Alt+Y", "Year tab"),
@@ -741,7 +771,7 @@ class ReadingHistoryWindow(QDialog):
             ("F1", "Show this help"),
             ("Escape", "Close window"),
         ]
-        
+
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Reading History")
         dlg.setAccessibleName("Keyboard Shortcuts")
@@ -770,7 +800,7 @@ class ReadingHistoryWindow(QDialog):
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
-        
+
         # Centralize Alt+/ visibility and order for screen readers
         shortcuts = get_accessible_shortcuts_list(shortcuts)
         table.setStyleSheet(build_accessible_f1_popup_style())
@@ -802,7 +832,7 @@ class ReadingHistoryWindow(QDialog):
             self.close()
             event.accept()
             return
-        
+
         # Prevent Enter from closing dialog
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             event.ignore()

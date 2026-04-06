@@ -14,7 +14,6 @@ from src.ui.main_window import MainWindow
 from src.accessibility.shortcuts import find_shortcut_conflicts
 from src.accessibility.theme_manager import get_theme_manager
 from src.accessibility.scaling import get_scaler
-from src.accessibility.style_helpers import build_accessible_button_style
 from src.database import (
     get_db,
     close_db,
@@ -30,7 +29,6 @@ import ctypes
 import threading
 import importlib
 from pathlib import Path
-import os
 
 
 def _show_native_message(title: str, message: str, auto_close_seconds: float = 3.0):
@@ -63,8 +61,7 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 
 
 # Version information - update this with each release
-APP_VERSION = "1.9.5"
-APP_BUILD_DATE = "2026-03-03"
+APP_VERSION = "1.9.6"
 
 
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
@@ -195,137 +192,6 @@ class AbCSApplication:
             "available": available,
             "missing": missing,
         }
-
-    def show_splash(self):
-        """Show splash screen with statistics."""
-        from PySide6.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QTableWidget,
-            QTableWidgetItem,
-            QPushButton,
-            QHeaderView,
-            QAbstractItemView,
-        )
-        from PySide6.QtCore import Qt, QTimer
-
-        # Get statistics from database
-        stats_queries = StatisticsQueries(self.db)
-        stats = stats_queries.get_statistics()
-
-        if stats.total_books == 0:
-            # First time use - welcome message using standalone accessible message box
-            from PySide6.QtWidgets import QMessageBox
-            from src.accessibility.style_helpers import exec_styled_message_box
-
-            splash_message = (
-                f"Welcome to AbCS v{APP_VERSION} - Audio Book Collector Scanner. "
-                f"Build: {APP_BUILD_DATE}. "
-                "No audiobooks found in the database yet. "
-                "License: Copyright (c) 2025-2026 C.F. Drake & Contributors. "
-                "Non-commercial use only. Selling or fee-based distribution is not allowed without written permission. "
-                "You can import audiobooks from your computer (scan folders) or manually add a new book. "
-                "Use Ctrl+I to import or Alt+M for menu options."
-            )
-
-            exec_styled_message_box(
-                self.main_window if self.main_window else self.qt_app.activeWindow(),
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Welcome to AbCS",
-                text=splash_message,
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok,
-            )
-            return  # Skip statistics dialog for empty database
-
-        # Create statistics dialog for existing library
-        dlg = QDialog()
-        dlg.setWindowTitle(f"AbCS v{APP_VERSION} - Audio Book Collector")
-        dlg.resize(500, 500)
-        dlg.setAttribute(Qt.WA_DeleteOnClose)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Show statistics for existing library in a single-column table
-        table = QTableWidget()
-        table.setAccessibleName("Library Statistics")
-        table.setAccessibleDescription("Library statistics with values right-aligned")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels(["Library Statistics"])
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setAlternatingRowColors(True)
-        table.verticalHeader().setVisible(False)
-
-        # Data rows with right-aligned values
-        data = [
-            ("Total Books", str(stats.total_books)),
-            ("Total Authors", str(stats.total_authors)),
-            ("Total Series", str(stats.total_series)),
-            ("Total Genres", str(stats.total_genres)),
-            ("Collections", str(stats.total_collections)),
-            ("Books Read", str(stats.books_read)),
-            ("Books Unread", str(stats.books_unread)),
-            ("Total Listening Time", stats.total_time_display),
-        ]
-
-        table.setRowCount(len(data))
-
-        for row, (label, value) in enumerate(data):
-            # Format with fixed-width label for consistent alignment
-            combined_text = f"{label:<25} {value}"
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
-            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            table.setItem(row, 0, item)
-
-        # Resize column to stretch
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-        # Set font size and use monospace for alignment
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        font.setFamily("Courier New")
-        table.setFont(font)
-
-        layout.addWidget(table)
-
-        ok_btn = QPushButton("Continue")
-        ok_btn.setAccessibleName("Continue")
-        ok_btn.setAccessibleDescription(
-            "Close this statistics dialog and continue to the main application"
-        )
-        ok_btn.clicked.connect(dlg.close)
-        layout.addWidget(ok_btn)
-
-        # Set focus to statistics table for keyboard navigation
-        def focus_statistics_table():
-            table.setFocus()
-            if table.rowCount() > 0:
-                table.setCurrentCell(0, 0)
-
-        # Focus table after dialog is shown
-        QTimer.singleShot(100, focus_statistics_table)
-
-        # Store timer as instance variable to prevent garbage collection
-        self.splash_timer = QTimer()
-        self.splash_timer.setSingleShot(True)
-
-        def auto_close():
-            if dlg.isVisible():
-                dlg.close()
-
-        self.splash_timer.timeout.connect(auto_close)
-        self.splash_timer.start(3000)  # 3 seconds
-
-        dlg.show()
-        # Process events to let the splash screen display
-        self.qt_app.processEvents()
 
     def run(self):
         """Run the application."""

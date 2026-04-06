@@ -9,12 +9,10 @@ class ShortcutContext(Enum):
     """Shortcut context - where shortcuts are active."""
 
     COLLECTION_WINDOW = "collection_window"
-    GLOBAL = "global"  # Active everywhere
     MAIN_WINDOW = "main_window"
     BOOK_DETAILS = "book_details"
     WEB_METADATA = "web_metadata"
     IMPORT_WINDOW = "import_window"
-    IMPORT_PROGRESS_WINDOW = "import_progress_window"
     UPDATE_WINDOW = "update_window"
     PREFERENCES_WINDOW = "preferences_window"
     DUPLICATE_DIALOG = "duplicate_dialog"
@@ -163,13 +161,6 @@ class ShortcutManager(QObject):
         "/": ("Status bar", "status_bar"),
     }
 
-    # Zoom shortcuts (Ctrl/Cmd)
-    ZOOM_SHORTCUTS = {
-        "Ctrl+Plus": "Zoom in",
-        "Ctrl+Minus": "Zoom out",
-        "Ctrl+0": "Reset zoom",
-    }
-
     def __init__(self):
         """Initialize shortcut manager."""
         super().__init__()
@@ -238,94 +229,6 @@ class ShortcutManager(QObject):
                 shortcut.activated.connect(callback_map[widget_id])
                 shortcut_id = f"{context.value}_{key}"
                 self._shortcuts[shortcut_id] = shortcut
-
-    def register_zoom_shortcuts(self, widget: QWidget, scaler):
-        """
-        Register zoom shortcuts (Ctrl +/-/0).
-
-        Args:
-            widget: Widget to register shortcuts on
-            scaler: UIScaler instance
-        """
-        # Zoom in - use = key (same as + without shift)
-        zoom_in = QShortcut(QKeySequence("Ctrl++"), widget)
-        zoom_in.activated.connect(scaler.increase_scale)
-        self._shortcuts["zoom_in"] = zoom_in
-
-        # Zoom out
-        zoom_out = QShortcut(QKeySequence("Ctrl+-"), widget)
-        zoom_out.activated.connect(scaler.decrease_scale)
-        self._shortcuts["zoom_out"] = zoom_out
-
-        # Reset zoom
-        zoom_reset = QShortcut(QKeySequence("Ctrl+0"), widget)
-        zoom_reset.activated.connect(scaler.reset_scale)
-        self._shortcuts["zoom_reset"] = zoom_reset
-
-    def get_shortcut_help(self, context: ShortcutContext) -> list:
-        """
-        Get help text for shortcuts in a context.
-
-        Args:
-            context: Shortcut context
-
-        Returns:
-            List of (shortcut, description) tuples
-        """
-        help_text = []
-
-        # Function keys
-        # for key, desc in self.FUNCTION_KEYS.items():
-        #     key_name = f"F{key - Qt.Key_F1 + 1}"
-        #     help_text.append((key_name, desc))
-
-        # Context-specific Alt shortcuts
-        shortcuts = None
-        if context == ShortcutContext.MAIN_WINDOW:
-            shortcuts = self.MAIN_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.BOOK_DETAILS:
-            shortcuts = self.BOOK_DETAILS_SHORTCUTS
-        elif context == ShortcutContext.WEB_METADATA:
-            shortcuts = self.WEB_METADATA_SHORTCUTS
-        elif context == ShortcutContext.IMPORT_WINDOW:
-            shortcuts = self.IMPORT_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.UPDATE_WINDOW:
-            shortcuts = self.UPDATE_WINDOW_SHORTCUTS
-
-        if shortcuts:
-            for key, (desc, _) in shortcuts.items():
-                help_text.append((f"Alt+{key}", desc))
-
-        # Zoom shortcuts
-        for shortcut, desc in self.ZOOM_SHORTCUTS.items():
-            help_text.append((shortcut, desc))
-
-        return help_text
-
-    @staticmethod
-    def set_widget_shortcut_hint(widget: QWidget, key: str):
-        """
-        Set visual hint for keyboard shortcut on widget.
-        Underlines the shortcut key in the widget's text.
-
-        Args:
-            widget: Widget to set hint on
-            key: Single character that's the shortcut key
-        """
-        if hasattr(widget, "text"):
-            text = widget.text()
-            if key.upper() in text.upper():
-                # Find first occurrence and underline it
-                idx = text.upper().index(key.upper())
-                new_text = text[:idx] + "&" + text[idx:]
-                widget.setText(new_text)
-        elif hasattr(widget, "setTitle"):
-            # For group boxes
-            text = widget.title()
-            if key.upper() in text.upper():
-                idx = text.upper().index(key.upper())
-                new_text = text[:idx] + "&" + text[idx:]
-                widget.setTitle(new_text)
 
 
 # Global shortcut manager

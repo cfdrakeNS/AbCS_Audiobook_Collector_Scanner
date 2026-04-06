@@ -339,53 +339,6 @@ class ThemeManager(QObject):
             return theme_name
         return ThemeName.DEFAULT.value
 
-    def _is_system_theme_broken(self) -> bool:
-        """
-        Check if Qt system theme detection is broken.
-
-        Returns:
-            True if system theme appears to be broken (returns default light colors)
-        """
-        # Get current system palette
-        palette = self.app.palette()
-        window_color = palette.color(QPalette.Window)
-
-        # Default Qt light theme color is #F0F0F0
-        # If we see this exact color, system detection might be broken
-        default_light_color = QColor("#F0F0F0")
-
-        # Check if window color matches default light theme exactly
-        # but Windows registry says we're in dark mode
-        if window_color == default_light_color:
-            windows_dark = detect_windows_dark_mode()
-            if windows_dark is True:
-                return True
-
-        return False
-
-    def _apply_system_theme_workaround(self) -> QPalette:
-        """
-        Apply Windows registry-based theme detection workaround.
-
-        Returns:
-            QPalette with correct system colors
-        """
-        windows_dark = detect_windows_dark_mode()
-
-        if windows_dark is True:
-            # Use dark theme colors
-            colors = get_fallback_dark_theme_colors()
-            theme = Theme("Windows Dark (Workaround)", colors)
-        elif windows_dark is False:
-            # Use light theme colors
-            colors = get_fallback_light_theme_colors()
-            theme = Theme("Windows Light (Workaround)", colors)
-        else:
-            # Fallback to original palette if detection fails
-            return QPalette(self.original_palette)
-
-        return theme.apply_to_palette(QPalette(self.original_palette))
-
     def _apply_theme(self):
         """Apply current theme to application."""
         existing_stylesheet = self.app.styleSheet() or ""
@@ -440,6 +393,23 @@ class ThemeManager(QObject):
 
         # Additional stylesheet tweaks for specific themes
         extra_style = ""
+
+        # Group box styling for proper text visibility in all themes
+        groupbox_style = """
+            QGroupBox {
+                color: palette(window-text);
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+                padding-top: 10px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px 0 3px;
+                color: palette(window-text);
+            }
+        """
 
         # Menu styling for better theme consistency
         menu_style = """
@@ -693,6 +663,7 @@ class ThemeManager(QObject):
                     border: 3px solid palette(highlight);
                     outline: none;
                 }}
+                {groupbox_style}
                 {menu_style}
                 {combo_style}
                 {spinbox_style}
@@ -742,6 +713,7 @@ class ThemeManager(QObject):
         else:
             # Apply menu styling for all themes (including default)
             extra_style = f"""
+                {groupbox_style}
                 {menu_style}
                 {combo_style}
                 {spinbox_style}

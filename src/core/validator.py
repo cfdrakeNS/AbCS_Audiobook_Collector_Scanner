@@ -1,11 +1,8 @@
-
 """
 Validator for audiobook import data.
 Detects errors and issues in imported audiobook metadata.
 """
 
-
-import re
 from .import_rules import ImportRulesEngine
 from PySide6.QtCore import QSettings
 from typing import List, Dict, Any
@@ -24,15 +21,14 @@ class ImportValidator:
         if not message:
             return
         errors = book.setdefault("errors", [])
-        existing = {str(err).strip().lower()
-                    for err in errors if str(err).strip()}
+        existing = {str(err).strip().lower() for err in errors if str(err).strip()}
         normalized = message.strip().lower()
         if normalized not in existing:
             errors.append(message)
 
     def __init__(self):
         """Initialize validator."""
-        self.settings = QSettings('AbCS', 'AudioBookCollector')
+        self.settings = QSettings("AbCS", "AudioBookCollector")
         self.duplicate_match_mode = "with_collection"
         self.duplicate_fuzzy_threshold = 0
         self.rules_engine = ImportRulesEngine()
@@ -98,10 +94,10 @@ class ImportValidator:
         Returns:
             True if duplicate found
         """
-        title = book.get('title', '').strip().lower()
-        author = book.get('author', '').strip().lower()
-        year = book.get('year')
-        collection_id = book.get('collection_id', target_collection_id)
+        title = book.get("title", "").strip().lower()
+        author = book.get("author", "").strip().lower()
+        year = book.get("year")
+        collection_id = book.get("collection_id", target_collection_id)
         mode = self.duplicate_match_mode
 
         include_year = mode in (
@@ -116,8 +112,8 @@ class ImportValidator:
         fuzzy_enabled = self.duplicate_fuzzy_threshold > 0
 
         for existing in existing_books:
-            existing_title = existing.get('title', '').strip().lower()
-            existing_author = existing.get('author', '').strip().lower()
+            existing_title = existing.get("title", "").strip().lower()
+            existing_author = existing.get("author", "").strip().lower()
 
             same_title = existing_title == title
             same_author = existing_author == author
@@ -127,21 +123,19 @@ class ImportValidator:
                 if not fuzzy_enabled:
                     continue
 
-                title_similarity = self._similarity_ratio(
-                    existing_title, title)
-                author_similarity = self._similarity_ratio(
-                    existing_author, author)
+                title_similarity = self._similarity_ratio(existing_title, title)
+                author_similarity = self._similarity_ratio(existing_author, author)
                 if (
                     title_similarity < fuzzy_ratio_threshold
                     or author_similarity < fuzzy_ratio_threshold
                 ):
                     continue
 
-            if include_year and existing.get('year') != year:
+            if include_year and existing.get("year") != year:
                 continue
 
             if include_collection:
-                if existing.get('collection_id') == collection_id:
+                if existing.get("collection_id") == collection_id:
                     return True
             else:
                 return True
@@ -158,7 +152,7 @@ class ImportValidator:
         Returns:
             Flipped name
         """
-        if not name or ',' in name:
+        if not name or "," in name:
             # Already in Last, First format or empty
             return name
 
@@ -168,29 +162,8 @@ class ImportValidator:
 
         # Simple flip: last word is last name
         last_name = parts[-1]
-        first_names = ' '.join(parts[:-1])
+        first_names = " ".join(parts[:-1])
         return f"{last_name}, {first_names}"
-
-    def normalize_title(self, title: str) -> str:
-        """
-        Normalize title by removing extra whitespace and special characters.
-
-        Args:
-            title: Book title
-
-        Returns:
-            Normalized title
-        """
-        from src.core.import_scanner import ImportScanner
-        scanner = ImportScanner()
-        book = {"title": title}
-        scanner.trim_whitespace = True
-        scanner.strip_leading_punctuation = True
-        scanner.remove_non_alphanumeric = True
-        scanner.proper_case_fields = False
-        scanner.move_leading_the_title = False
-        scanner._apply_auto_corrections(book)
-        return book["title"].strip()
 
     def categorize_error(self, error: str) -> str:
         """
@@ -205,78 +178,82 @@ class ImportValidator:
         normalized_error = self.normalize_error_message(error)
         normalized_lower = normalized_error.lower()
 
-        if normalized_lower == 'duplicate':
-            return 'duplicate'
+        if normalized_lower == "duplicate":
+            return "duplicate"
 
-        read_errors = ['error reading file', 'file not found', 'corrupted']
+        read_errors = ["error reading file", "file not found", "corrupted"]
         if any(re_err in normalized_lower for re_err in read_errors):
-            return 'read'
+            return "read"
 
-        error_text = str(error or '').strip()
-        if error_text.upper().startswith('W:'):
-            return 'warning'
-        if error_text.upper().startswith('F:'):
-            return 'warning'
-        if error_text.upper().startswith('C:'):
-            return 'warning'
-        if error_text.upper().startswith('E:'):
-            return 'parse'
+        error_text = str(error or "").strip()
+        if error_text.upper().startswith("W:"):
+            return "warning"
+        if error_text.upper().startswith("F:"):
+            return "warning"
+        if error_text.upper().startswith("C:"):
+            return "warning"
+        if error_text.upper().startswith("E:"):
+            return "parse"
 
-        configured_severity = self.rules_engine.message_severity(
-            normalized_error)
-        if configured_severity == 'warning':
-            return 'warning'
+        configured_severity = self.rules_engine.message_severity(normalized_error)
+        if configured_severity == "warning":
+            return "warning"
 
         warning_errors = [
-            'author name in title',
-            'title in author name',
-            'author contains unknown or various',
-            'title below minimum length',
-            'folder path does not match expected structure',
-            'year outside allowed range',
-            'year is not a valid number',
+            "author name in title",
+            "title in author name",
+            "author contains unknown or various",
+            "title below minimum length",
+            "folder path does not match expected structure",
+            "year outside allowed range",
+            "year is not a valid number",
         ]
         if any(warn in normalized_lower for warn in warning_errors):
-            return 'warning'
+            return "warning"
 
-        return 'parse'
+        return "parse"
 
     @staticmethod
     def normalize_error_message(error: str) -> str:
         """Normalize a raw error string for display and severity checks."""
-        text = str(error or '').strip()
+        text = str(error or "").strip()
         if not text:
-            return ''
+            return ""
 
         upper_text = text.upper()
-        if upper_text.startswith('E:') or upper_text.startswith('W:') or upper_text.startswith('F:') or upper_text.startswith('C:'):
+        if (
+            upper_text.startswith("E:")
+            or upper_text.startswith("W:")
+            or upper_text.startswith("F:")
+            or upper_text.startswith("C:")
+        ):
             text = text[2:].strip()
             upper_text = text.upper()
 
-        if upper_text.startswith('WARNING:'):
+        if upper_text.startswith("WARNING:"):
             text = text[8:].strip()
 
         return text
 
     def format_error_message(self, error: str) -> str:
         """Format a single error for display with compact prefixes."""
-        raw_error = str(error or '').strip()
-        is_fallback_flag = raw_error.upper().startswith('F:')
-        is_correction_flag = raw_error.upper().startswith('C:')
+        raw_error = str(error or "").strip()
+        is_fallback_flag = raw_error.upper().startswith("F:")
+        is_correction_flag = raw_error.upper().startswith("C:")
         normalized = self.normalize_error_message(error)
         if not normalized:
-            return ''
+            return ""
 
-        if normalized.lower() == 'duplicate':
-            return 'Duplicate'
+        if normalized.lower() == "duplicate":
+            return "Duplicate"
 
         if is_fallback_flag:
-            return f'F: {normalized}'
+            return f"F: {normalized}"
         if is_correction_flag:
-            return f'C: {normalized}'
+            return f"C: {normalized}"
 
         severity = self.categorize_error(error)
-        prefix = 'W: ' if severity == 'warning' else 'E: '
+        prefix = "W: " if severity == "warning" else "E: "
         return f"{prefix}{normalized}"
 
     def format_error_summary(self, errors: List[str]) -> str:
@@ -288,4 +265,4 @@ class ImportValidator:
                 continue
             formatted_errors.append(formatted)
 
-        return '; '.join(formatted_errors)
+        return "; ".join(formatted_errors)

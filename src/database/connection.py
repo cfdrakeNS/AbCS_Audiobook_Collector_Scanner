@@ -20,7 +20,6 @@ from datetime import datetime
 import shutil
 from pathlib import Path
 from typing import Optional
-from contextlib import contextmanager
 
 
 class DatabaseManager:
@@ -85,23 +84,6 @@ class DatabaseManager:
             self._connection.close()
             self._connection = None
 
-    @contextmanager
-    def transaction(self):
-        """
-        Context manager for database transactions.
-
-        Usage:
-            with db.transaction() as conn:
-                conn.execute("INSERT INTO ...")
-        """
-        conn = self.connect()
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-
     def execute(self, query: str, params: tuple = None) -> sqlite3.Cursor:
         """
         Execute a SQL query (INSERT, UPDATE, DELETE, etc.).
@@ -125,18 +107,6 @@ class DatabaseManager:
             return conn.execute(query, params)
         # If no params, just execute the query as-is
         return conn.execute(query)
-
-    def execute_many(self, query: str, params_list: list):
-        """
-        Execute a query with multiple parameter sets.
-
-        Args:
-            query: SQL query string
-            params_list: List of parameter tuples
-        """
-        conn = self.connect()
-        conn.executemany(query, params_list)
-        conn.commit()
 
     def fetch_one(self, query: str, params: tuple = None) -> Optional[sqlite3.Row]:
         """
@@ -167,19 +137,6 @@ class DatabaseManager:
         """
         cursor = self.execute(query, params)
         return cursor.fetchall()
-
-    def get_table_count(self, table_name: str) -> int:
-        """
-        Get count of records in a table.
-
-        Args:
-            table_name: Name of the table
-
-        Returns:
-            Number of records
-        """
-        cursor = self.execute(f"SELECT COUNT(*) FROM {table_name}")
-        return cursor.fetchone()[0]
 
     def table_exists(self, table_name: str) -> bool:
         """
