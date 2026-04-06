@@ -64,6 +64,38 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 APP_VERSION = "1.9.6"
 
 
+def _check_trial_expiry():
+    """Block startup if this is a trial build that has expired."""
+    try:
+        from build_config import TRIAL_BUILD, TRIAL_DAYS, TRIAL_BUILD_DATE
+    except ImportError:
+        return  # Not a trial build
+
+    if not TRIAL_BUILD:
+        return
+
+    try:
+        from datetime import date as _date
+
+        build = _date.fromisoformat(TRIAL_BUILD_DATE)
+        age_days = (_date.today() - build).days
+        if age_days >= TRIAL_DAYS:
+            title = "AbCS — Tester Build Expired"
+            msg = (
+                f"This tester copy of AbCS (build {TRIAL_BUILD_DATE}) is "
+                f"{age_days} days old and has expired.\n\n"
+                f"Tester builds expire after {TRIAL_DAYS} days to ensure "
+                f"everyone is testing the latest version.\n\n"
+                f"Please ask for a newer build to continue."
+            )
+            _show_native_message(title, msg, auto_close_seconds=60.0)
+            sys.exit(1)
+    except SystemExit:
+        raise
+    except Exception:
+        pass  # Never block startup on a date-parse failure
+
+
 # Add src to path if needed - this allows imports like 'from ui.main_window import MainWindow'
 src_path = Path(__file__).parent
 if str(src_path) not in sys.path:
@@ -418,6 +450,7 @@ class AbCSApplication:
 
 def main():
     """Application entry point."""
+    _check_trial_expiry()
     app = AbCSApplication()
     sys.exit(app.run())
 
