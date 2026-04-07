@@ -1315,7 +1315,7 @@ class MainWindow(QMainWindow):
             self.table.setCurrentCell(0, 1)  # Column 1 is Title
             self.table.setFocus()
 
-    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = True):
+    def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
         """
         Set status bar message with optional screen reader announcement.
 
@@ -1669,7 +1669,7 @@ class MainWindow(QMainWindow):
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
 
-            self.set_default_status(announce=True)
+            self.set_default_status(announce=False)
 
         except Exception as e:
             self.table.setUpdatesEnabled(True)
@@ -2522,7 +2522,7 @@ class MainWindow(QMainWindow):
         announcement = f"{announcement}. {shortcuts_text}"
 
         # Keep until selection changes
-        self.set_status(announcement, timeout_ms=0)
+        self.set_status(announcement, timeout_ms=0, announce=True)
 
     def update_selection_ui(self):
         """Update UI based on selection."""
@@ -2767,11 +2767,11 @@ class MainWindow(QMainWindow):
                     "import/autocorrect/move_leading_the_title", False, type=bool
                 )
 
-            # Try to fetch web data first - be smarter about source selection
+            # Try to fetch web data once. WebBookAPI already cascades through
+            # Google Books -> Open Library -> WikiData for refresh=0.
             api = WebBookAPI()
             last_error = None
 
-            # Try Google Books first (usually fastest)
             try:
                 web_data = api.get_book_metadata(
                     title,
@@ -2783,36 +2783,6 @@ class MainWindow(QMainWindow):
                 )
             except Exception as e:
                 last_error = str(e)
-
-            # If Google Books fails, try Open Library
-            if not web_data:
-                try:
-                    web_data = api.get_book_metadata(
-                        title,
-                        author,
-                        year,
-                        refresh=1,
-                        move_articles=move_articles,
-                        flip_author=flip_author,
-                    )
-                except Exception as e:
-                    if not last_error:
-                        last_error = str(e)
-
-            # Only try WikiData as last resort (it's slower)
-            if not web_data:
-                try:
-                    web_data = api.get_book_metadata(
-                        title,
-                        author,
-                        year,
-                        refresh=2,
-                        move_articles=move_articles,
-                        flip_author=flip_author,
-                    )
-                except Exception as e:
-                    if not last_error:
-                        last_error = str(e)
 
         except Exception:
             pass  # Silently fail if web fetch fails
@@ -2857,7 +2827,19 @@ class MainWindow(QMainWindow):
                 self._restore_table_focus_context(focus_ctx)
                 return
 
-        # If no real data found, just set status and return (no popup)
+        # If no real data found, show popup and status, then return.
+        no_data_text = "No information found for this book in any web source."
+        if last_error:
+            no_data_text = f"{no_data_text}\n\nLast error: {last_error}"
+
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="No Web Data Found",
+            text=no_data_text,
+        )
+
         self.set_status(
             "No additional web information found for this book.", timeout_ms=3000
         )

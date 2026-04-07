@@ -57,7 +57,7 @@ class NameListWindow(QDialog):
                 self.focus_list()
 
     def on_clear_find(self):
-        """Clear find box and reset filter (Alt+F)"""
+        """Clear the current find text and reset the list (Alt+F)."""
         self.find_edit.clear()
         # Show all rows by clearing the filter
         for row in range(self.table.rowCount()):
@@ -114,7 +114,7 @@ class NameListWindow(QDialog):
     COL_NAME = 0
     COL_ACTIVE = 1
     COL_USAGE = 2
-    AUTHOR_FIND_HINT = " enter for next, alt+F new search "
+    AUTHOR_FIND_HINT = " enter for next, alt+F clear and start a new search "
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -226,7 +226,7 @@ class NameListWindow(QDialog):
         self.find_edit = QLineEdit()
         self.find_edit.setAccessibleName(f"Find {self.entity_plural.lower()}")
         self.find_edit.setAccessibleDescription(
-            f"Type to jump to matching {self.entity_singular.lower()} - Alt+F"
+            f"Type to jump to matching {self.entity_singular.lower()}. Alt+F clears the current search and starts a new one"
         )
         find_label.setBuddy(self.find_edit)
         header_layout.addWidget(find_label)
@@ -470,12 +470,6 @@ class NameListWindow(QDialog):
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.escape_shortcut.activated.connect(self.on_cancel_edit)
-
-        # Add direct Alt+F shortcut for clearing find
-        if not self.is_collection_mode:
-            self.clear_find_shortcut = QShortcut(QKeySequence("Alt+F"), self)
-            self.clear_find_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-            self.clear_find_shortcut.activated.connect(self.on_clear_find)
 
         if not self.is_collection_mode:
             self.find_edit.textChanged.connect(self.on_find_text_changed)
@@ -863,7 +857,11 @@ class NameListWindow(QDialog):
             ("Alt+E", "Edit selected row"),
             ("Alt+L", "Jump to list"),
             ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
-            ("Alt+F", "Find") if not self.is_collection_mode else None,
+            (
+                ("Alt+F", "Clear find and start a new search")
+                if not self.is_collection_mode
+                else None
+            ),
             (
                 ("Alt+S", "Save")
                 if self.save_button.isVisible() and self.save_button.isEnabled()

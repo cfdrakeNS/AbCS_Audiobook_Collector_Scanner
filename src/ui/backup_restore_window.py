@@ -160,8 +160,6 @@ class BackupRestoreWindow(QDialog):
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("Status")
-        self.status_bar.setAccessibleDescription("Backup restore status")
         layout.addWidget(self.status_bar)
 
         self.backup_list.currentCellChanged.connect(self.on_backup_selected)
@@ -236,7 +234,12 @@ class BackupRestoreWindow(QDialog):
                 event.modifiers() & (Qt.ControlModifier | Qt.MetaModifier)
             )
             if is_alt_only:
-                status_text = self.ALT_SHORTCUT_STATUS.get(event.key())
+                # Do not overwrite the current status when Alt+/ is being used
+                # to read the status bar.
+                if event.key() in (Qt.Key_Slash, Qt.Key_Question):
+                    status_text = None
+                else:
+                    status_text = self.ALT_SHORTCUT_STATUS.get(event.key())
                 if status_text:
                     self.set_status(status_text, announce=False)
 
@@ -328,9 +331,14 @@ class BackupRestoreWindow(QDialog):
         dlg.exec()
 
     def on_read_status_bar(self):
-        status_text = self.status_bar.currentMessage() or self._default_status_message
+        status_text = self.status_bar.currentMessage()
         if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
+            announce_status_message(
+                self.status_bar,
+                status_text,
+                move_focus=True,
+                force_focus_announce=True,
+            )
         else:
             exec_styled_message_box(
                 self,

@@ -148,7 +148,7 @@ class ImportProgressWindow(QDialog):
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.setContext(Qt.ApplicationShortcut)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
@@ -162,33 +162,17 @@ class ImportProgressWindow(QDialog):
 
     def eventFilter(self, source, event):
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress):
-            is_alt = bool(event.modifiers() & Qt.AltModifier)
-            is_status_key = event.key() in (
+            # Allow Alt+/ status-read shortcut variants to pass through
+            # (some layouts emit Alt+7 for '/').
+            if bool(event.modifiers() & Qt.AltModifier) and event.key() in (
                 Qt.Key_Slash,
                 Qt.Key_7,
-            )
-            is_status_text = event.text() == "/"
-            if is_alt and (is_status_key or is_status_text):
-                self.on_read_status_bar()
-                event.accept()
-                return True
+            ):
+                return False
 
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
                 return True
         return super().eventFilter(source, event)
-
-    def keyPressEvent(self, event):
-        is_alt = bool(event.modifiers() & Qt.AltModifier)
-        is_status_key = event.key() in (
-            Qt.Key_Slash,
-            Qt.Key_7,
-        )
-        is_status_text = event.text() == "/"
-        if is_alt and (is_status_key or is_status_text):
-            self.on_read_status_bar()
-            event.accept()
-            return
-        super().keyPressEvent(event)
 
     def apply_control_styles(self):
         progress_height = max(self.scaler.get_scaled_size(14), 12)

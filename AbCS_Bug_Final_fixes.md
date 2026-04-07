@@ -16,4 +16,6 @@
 14. done collection active mot being applied ?? How it was supposed to work. when active is false the books in the collection to the app they don't exist. However, that not what we have in the code and my bad for not testing prior. 1. what is the rick to implement? how many files would be need changes?
 15. collection win save button not working for alt+s
 16. done this has been happening for a long time but I left it alone as it took a bit of work to get the status bar to be read by jaws. Issue status bar announcing twice same with alt+/ reading status bar twice. Look at the centralized routine this and describe how it is currently implemented. Provide suggestions. Don't make any code changes.
-
+17. done read history win general tab has showing the status bar for date range 
+18. done web_metadata when called from main and no data found now shows popup again (No Web Data Found) and restores focus to table.
+19. done web_metadata source checking optimized: removed redundant refresh retry loop from main/book_details call path. now one call uses WebBookAPI's internal cascade (Google -> Open Library -> WikiData), reducing repeated network waits.

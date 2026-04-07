@@ -46,16 +46,23 @@ class WebBookAPI:
         Returns:
             Dictionary with book metadata and source info, or None if not found
         """
-        # Simple cache to avoid duplicate requests within short time
+
         import time
 
         cache_key = f"{title}|{author}|{year}|{refresh}"
         current_time = time.time()
 
+        print(
+            f"[WebBookAPI] Fetching metadata for: title='{title}', author='{author}', year='{year}', refresh={refresh}"
+        )
+
         # Check if we have a recent cache entry (within CACHE_DURATION seconds)
         if hasattr(self, "_cache") and cache_key in self._cache:
             cached_time, cached_result = self._cache[cache_key]
             if cached_time and (current_time - cached_time) < self.CACHE_DURATION:
+                print(
+                    f"[WebBookAPI] Returning cached result (age={current_time-cached_time:.2f}s)"
+                )
                 return cached_result
 
             if cached_time:
@@ -75,25 +82,71 @@ class WebBookAPI:
 
         # Try Google Books first (fast and reliable)
         if refresh == 0:
+            print("[WebBookAPI] Trying Google Books...")
+            t0 = time.time()
             try:
                 metadata = self._fetch_from_google_books(
                     search_title, search_author, year
                 )
+                t1 = time.time()
+                print(
+                    f"[WebBookAPI] Google Books result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)"
+                )
+                # Only accept if it's a real match (plot or close title/author match)
+                is_real_match = False
                 if metadata:
+                    title_match = metadata.get("title", "").lower()
+                    search_title_lower = (search_title or "").lower()
+                    author_match = metadata.get("author", "").lower()
+                    search_author_lower = (search_author or "").lower()
+                    # Has plot content - likely a real match
+                    if metadata.get("plot"):
+                        is_real_match = True
+                    elif search_title_lower and title_match:
+                        # Check if title similarity (contains at least part of search title)
+                        if (
+                            search_title_lower in title_match
+                            or title_match in search_title_lower
+                            or any(
+                                word in title_match
+                                for word in search_title_lower.split()
+                                if len(word) > 2
+                            )
+                        ):
+                            is_real_match = True
+                    elif search_author_lower and author_match:
+                        if (
+                            search_author_lower in author_match
+                            or author_match in search_author_lower
+                        ):
+                            is_real_match = True
+
+                if metadata and is_real_match:
                     metadata["source"] = "google_books"
                     metadata["first_attempt"] = True
                     # Cache the result
                     self._cache[cache_key] = (current_time, metadata)
                     return metadata
+                elif metadata and not is_real_match:
+                    print(
+                        "[WebBookAPI] Google Books result is weak/irrelevant, continuing to next source."
+                    )
             except Exception as e:
-                print(f"Google Books error: {e}")
+                t1 = time.time()
+                print(f"[WebBookAPI] Google Books error: {e} (elapsed={t1-t0:.2f}s)")
                 # Continue to next source
 
         # Try Open Library second (always try when refresh=0, or when refresh=1 and Google Books failed)
         if refresh == 0 or refresh == 1:
+            print("[WebBookAPI] Trying Open Library...")
+            t0 = time.time()
             try:
                 metadata = self._fetch_from_open_library(
                     search_title, search_author, year
+                )
+                t1 = time.time()
+                print(
+                    f"[WebBookAPI] Open Library result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)"
                 )
                 if metadata:
                     metadata["source"] = "open_library"
@@ -102,12 +155,19 @@ class WebBookAPI:
                     self._cache[cache_key] = (current_time, metadata)
                     return metadata
             except Exception as e:
-                print(f"Open Library error: {e}")
+                t1 = time.time()
+                print(f"[WebBookAPI] Open Library error: {e} (elapsed={t1-t0:.2f}s)")
                 # Continue to next source instead of failing
 
         # Try WikiData third (great for series and author data)
+        print("[WebBookAPI] Trying WikiData...")
+        t0 = time.time()
         try:
             metadata = self._fetch_from_wikidata(search_title, search_author, year)
+            t1 = time.time()
+            print(
+                f"[WebBookAPI] WikiData result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)"
+            )
             if metadata:
                 metadata["source"] = "wikidata"
                 metadata["first_attempt"] = False
@@ -115,8 +175,10 @@ class WebBookAPI:
                 self._cache[cache_key] = (current_time, metadata)
                 return metadata
         except Exception as e:
-            print(f"WikiData error: {e}")
+            t1 = time.time()
+            print(f"[WebBookAPI] WikiData error: {e} (elapsed={t1-t0:.2f}s)")
 
+        print("[WebBookAPI] No data found in any source. Returning None.")
         # Cache the failure too to avoid repeated failed requests
         self._cache[cache_key] = (current_time, None)
         return None

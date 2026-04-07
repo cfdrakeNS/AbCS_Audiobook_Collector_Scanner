@@ -86,7 +86,6 @@ class ReadingHistoryWindow(QDialog):
 
         # Status bar
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("Status bar")
         main_layout.addWidget(self.status_bar)
 
         # Connect signals
@@ -408,8 +407,27 @@ class ReadingHistoryWindow(QDialog):
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
+        # Standard tab navigation shortcuts used by most applications.
+        self.next_tab_shortcut = QShortcut(QKeySequence("Ctrl+Tab"), self)
+        self.next_tab_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.next_tab_shortcut.activated.connect(lambda: self.cycle_tab(+1))
+
+        self.prev_tab_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+        self.prev_tab_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.prev_tab_shortcut.activated.connect(lambda: self.cycle_tab(-1))
+
         # Focus on the appropriate table based on current tab
         self.focus_current_table()
+
+    def cycle_tab(self, step: int):
+        """Move to next/previous tab with wraparound."""
+        count = self.tab_widget.count()
+        if count <= 0:
+            return
+
+        current = self.tab_widget.currentIndex()
+        target = (current + step) % count
+        self.tab_widget.setCurrentIndex(target)
 
     def focus_current_table(self):
         """Focus on the appropriate table based on current tab."""
@@ -677,7 +695,10 @@ class ReadingHistoryWindow(QDialog):
             self.range_table.setCurrentCell(0, 1)  # Focus on title column (index 1)
             self.range_table.setFocus(Qt.TabFocusReason)
 
-        self.set_status(status_msg)
+        # Do not overwrite General/Year/Month status with Date Range text
+        # unless Date Range is the currently visible tab.
+        if self.tab_widget.currentIndex() == 3:
+            self.set_status(status_msg)
 
     def populate_range_table(self, books):
         """Populate date range table with reading history data."""
@@ -735,19 +756,15 @@ class ReadingHistoryWindow(QDialog):
         self.apply_accessible_styling()
 
     def on_read_status_bar(self):
-        """Read one status message (Alt+/) without multi-step announcements."""
+        """Read only the currently visible status bar message (Alt+/)."""
         if QAccessible.isActive():
-            current_tab = self.tab_widget.currentIndex()
-            if current_tab == 3:  # Date Range tab
-                status_text = self._period_message or self._default_status_message
-                self.set_status(status_text, announce=True)
-            else:
-                tab_names = ["General", "Year", "Month", "Date Range"]
-                if current_tab < len(tab_names) and not self._default_status_message:
-                    status_text = f"Viewing {tab_names[current_tab]} statistics"
-                else:
-                    status_text = self._default_status_message
-                self.set_status(status_text, announce=True)
+            status_text = self.status_bar.currentMessage()
+            announce_status_message(
+                self.status_bar,
+                status_text,
+                move_focus=True,
+                force_focus_announce=True,
+            )
         # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
 
     def on_show_shortcuts(self):
@@ -841,6 +858,11 @@ class ReadingHistoryWindow(QDialog):
         """Handle show event."""
         if not self._collections_loaded:
             self._collections_loaded = True
+            # Ensure status matches the initially visible tab when opening.
+            current_tab = self.tab_widget.currentIndex()
+            tab_names = ["General", "Year", "Month", "Date Range"]
+            if 0 <= current_tab < len(tab_names):
+                self.set_status(f"Viewing {tab_names[current_tab]} statistics")
             # Set focus to table when window opens (use timer like name_list_window)
             QTimer.singleShot(0, self.focus_current_table)
         super().showEvent(event)

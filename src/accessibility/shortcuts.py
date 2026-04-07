@@ -37,7 +37,7 @@ class ShortcutManager(QObject):
         "S": ("Save", "save_button"),
         "E": ("Edit selected row", "edit_button"),
         "M": ("Name edit", "name_edit"),
-        "F": ("Find", "find_edit"),
+        "F": ("Clear find / new search", "find_edit"),
         "A": ("Active checkbox", "active_check"),
     }
 
