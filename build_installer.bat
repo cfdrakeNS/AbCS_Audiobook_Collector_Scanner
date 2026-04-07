@@ -151,12 +151,10 @@ echo Inno Setup found.
 REM ------------------------------------------------------------
 REM  Resolve installer version from src\main.py APP_VERSION
 REM ------------------------------------------------------------
-echo Using APP_VERSION: %VER%
-
 set "VER="
-"%PYTHON_EXE%" -c "import pathlib, re; t=pathlib.Path('src/main.py').read_text(encoding='utf-8'); m=re.search(r'^APP_VERSION\s*=\s*\"([^\"]+)\"', t, re.M); print(m.group(1) if m else '', end='')" > version.txt 2>NUL
-set /p VER=<version.txt
-del version.txt
+for /f "usebackq delims=" %%V in (`"%PYTHON_EXE%" -c "import pathlib,re; t=pathlib.Path('src/main.py').read_text(encoding='utf-8'); m=re.search(r'^APP_VERSION\s*=\s*\"([^\"]+)\"', t, re.M); print(m.group(1) if m else '')"`) do (
+    set "VER=%%V"
+)
 if not defined VER (
     echo ERROR: Could not resolve APP_VERSION from src\main.py
     echo See %BUILD_LOG% for details.
