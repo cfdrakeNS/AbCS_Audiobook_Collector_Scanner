@@ -369,6 +369,8 @@ class ImportWindow(QDialog):
         header_layout.setSpacing(10)
 
         collection_label = QLabel("&Collection:")
+        collection_label.setAccessibleName("")
+        collection_label.setAccessibleDescription("")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Import collection")
         self.collection_combo.setAccessibleDescription(
@@ -379,6 +381,8 @@ class ImportWindow(QDialog):
         header_layout.addWidget(self.collection_combo, 1)
 
         folder_label = QLabel("&Folder:")
+        folder_label.setAccessibleName("")
+        folder_label.setAccessibleDescription("")
         self.folder_edit = QLineEdit()
         self.folder_edit.setReadOnly(True)
         self.folder_edit.setAccessibleName("Folder path")
@@ -396,6 +400,8 @@ class ImportWindow(QDialog):
         header_layout.addWidget(self.browse_button)
 
         error_filter_label = QLabel("&Errors Filter:")
+        error_filter_label.setAccessibleName("")
+        error_filter_label.setAccessibleDescription("")
         self.error_filter_combo = QComboBox()
         self.error_filter_combo.setAccessibleName("Import error filter")
         self._base_error_filter_options = [
@@ -482,6 +488,8 @@ class ImportWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        self.status_bar.setAccessibleName("")
+        self.status_bar.setAccessibleDescription("")
         footer_layout.addWidget(self.status_bar, 1)
 
         self.import_selected_button = QPushButton("Add Selected")
@@ -973,7 +981,8 @@ class ImportWindow(QDialog):
             self.progress_window.on_read_status_bar()
             return
 
-        status_text = self._default_status_message
+        # Prefer the actual visible status bar text
+        status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
@@ -1828,7 +1837,7 @@ class ImportWindow(QDialog):
                     f"Duplicates: 0 | Elapsed: {elapsed_text}"
                 )
                 if scan_was_canceled:
-                    summary_text += " | Scan canceled"
+                    summary_text = f"Scan canceled | {summary_text}"
                 else:
                     summary_text = f"No audio files found. Elapsed: {elapsed_text}"
                 self.progress_window.mark_scan_complete(
@@ -1847,19 +1856,21 @@ class ImportWindow(QDialog):
         issues_count = warning_count + error_count
         scanned_total = len(self.scan_outcomes)
         valid_segment = f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
+
+        # Build a single summary message for status bar and announcement
         if scan_was_canceled:
-            self.set_status("Scan canceled", announce=True)
-            self.set_status(
-                f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
+            summary = (
+                f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
                 f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
-                f"Elapsed: {elapsed_text} | Scan canceled"
+                f"Elapsed: {elapsed_text}"
             )
         else:
-            self.set_status(
+            summary = (
                 f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
                 f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
+        self.set_status(summary, announce=True)
 
         if self.progress_window:
             summary_text = (
@@ -1870,7 +1881,7 @@ class ImportWindow(QDialog):
                 f"Elapsed: {elapsed_text}"
             )
             if scan_was_canceled:
-                summary_text += " | Scan canceled"
+                summary_text = f"Scan canceled | {summary_text}"
             self.progress_window.mark_scan_complete(
                 canceled=scan_was_canceled,
                 elapsed_text=elapsed_text,
@@ -1900,7 +1911,7 @@ class ImportWindow(QDialog):
             f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
         )
         if scan_was_canceled:
-            final_status += " | Scan canceled"
+            final_status = f"Scan canceled | {final_status}"
         self.set_status(final_status)
 
     def on_import_selected(self):

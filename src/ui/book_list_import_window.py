@@ -358,7 +358,8 @@ class BookListImportWindow(QDialog):
         file_layout = QHBoxLayout(file_group)
 
         file_label = QLabel("Spreadsheet file:")
-        file_label.setAccessibleName("File label")
+        file_label.setAccessibleName("")
+        file_label.setAccessibleDescription("")
         self.file_edit = QLineEdit()
         self.file_edit.setReadOnly(True)
         self.file_edit.setAccessibleName("Selected file")
@@ -622,7 +623,8 @@ class BookListImportWindow(QDialog):
 
         # Status bar
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("Status bar")
+        self.status_bar.setAccessibleName("")
+        self.status_bar.setAccessibleDescription("")
         main_layout.addWidget(self.status_bar)
 
         # Set initial status
@@ -882,17 +884,16 @@ class BookListImportWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read status bar message for screen readers (matches main window pattern)."""
+        status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
-            announce_status_message(
-                self.status_bar, self._default_status_message, move_focus=True
-            )
+            announce_status_message(self.status_bar, status_text, move_focus=True)
         else:
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {self._default_status_message}",
+                text=f"No screen reader active.\n\nStatus: {status_text}",
             )
 
     def browse_file(self):
