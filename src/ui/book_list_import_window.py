@@ -160,19 +160,19 @@ class BookListImportWindow(QDialog):
 
         # Recompute panel widths
         if hasattr(self, "left_widget"):
-            self.left_widget.setMinimumWidth(self.scaler.get_scaled_size(150))
-            self.left_widget.setMaximumWidth(self.scaler.get_scaled_size(2500))
+            self.left_widget.setMinimumWidth(110)
+            self.left_widget.setMaximumWidth(320)
         if hasattr(self, "right_widget"):
             self.right_widget.setMaximumWidth(self.scaler.get_scaled_size(220))
         if hasattr(self, "mapping_group"):
-            self.mapping_group.setMaximumWidth(self.scaler.get_scaled_size(200))
+            self.mapping_group.setMaximumWidth(16777215)
 
         # Recompute table and combo sizing
         header = self.mapping_table.horizontalHeader()
         self._update_mapping_field_column_width()
         combo_width = max(100, self.scaler.get_scaled_size(130))
         self.mapping_table.setColumnWidth(1, combo_width)
-        self.mapping_table.setMaximumWidth(self.scaler.get_scaled_size(330))
+        self.mapping_table.setMaximumWidth(16777215)
         header.resizeSections(QHeaderView.ResizeToContents)
 
         # Keep mapping combos readable at low scales.
@@ -390,6 +390,8 @@ class BookListImportWindow(QDialog):
         instructions_group = QGroupBox("Instructions")
         instructions_group.setAccessibleName("Instructions group")
         instructions_layout = QVBoxLayout(instructions_group)
+        # Move instructions group down a bit for visual separation
+        instructions_layout.setContentsMargins(0, 16, 0, 0)
 
         # Instructions text for screen readers (single sentence format)
         instructions_text = (
@@ -484,12 +486,13 @@ class BookListImportWindow(QDialog):
         )  # Prevent column 1 expanding past combo_width
 
         # Combo column fixed; field column auto-sizes to label text.
-        combo_width = self.scaler.get_scaled_size(130)
+        # Reduce combo column and table width by 1/3 for better fit at high zoom
+        combo_width = self.scaler.get_scaled_size(90)
         self.mapping_table.setColumnWidth(1, combo_width)  # Column selector
 
         # Max width: labels auto-size + fixed combo + border/scrollbar overhead
-        self.mapping_table.setMaximumWidth(self.scaler.get_scaled_size(330))
-        mapping_group.setMaximumWidth(self.scaler.get_scaled_size(340))
+        self.mapping_table.setMaximumWidth(self.scaler.get_scaled_size(220))
+        mapping_group.setMaximumWidth(self.scaler.get_scaled_size(230))
 
         # Suppress the global scaler min-height (44px at 100%) on these small
         # mapping combos so rows stay compact.  Widget-level stylesheet wins
@@ -518,11 +521,15 @@ class BookListImportWindow(QDialog):
         options_group.setAccessibleName("Options group")
         options_layout = QVBoxLayout(options_group)
         options_layout.setAlignment(Qt.AlignTop)  # Align to top
+        # Move options group down a bit for visual separation
+        options_layout.setContentsMargins(0, 16, 0, 0)
 
         # Import Type subgroup
         import_type_group = QGroupBox("Import Type")
         import_type_group.setAccessibleName("Import Type group")
         import_type_layout = QVBoxLayout(import_type_group)
+        # Move import type group down a bit for visual separation
+        import_type_layout.setContentsMargins(0, 12, 0, 0)
 
         # Load Books checkbox
         self.load_books_check = QCheckBox("Add Book From List")
@@ -558,9 +565,10 @@ class BookListImportWindow(QDialog):
         left_widget = QWidget()
         self.left_widget = left_widget
         left_widget.setLayout(left_layout)
-        left_widget.setMinimumWidth(170)
-        left_widget.setMaximumWidth(200)
-        mapping_layout.addWidget(left_widget, 1)  # Stretch factor 1
+        # Double instructions panel width (was max 320)
+        left_widget.setMinimumWidth(220)
+        left_widget.setMaximumWidth(640)
+        mapping_layout.addWidget(left_widget, 2)  # Give more stretch to instructions
 
         # Add options second (center)
         right_layout = QVBoxLayout()
@@ -570,8 +578,9 @@ class BookListImportWindow(QDialog):
         right_widget = QWidget()
         self.right_widget = right_widget
         right_widget.setLayout(right_layout)
-        right_widget.setMaximumWidth(220)
-        mapping_layout.addWidget(right_widget, 1)  # Stretch factor 1
+        # Reduce options panel width by 1/4 (was 180)
+        right_widget.setMaximumWidth(135)
+        mapping_layout.addWidget(right_widget, 1)  # Less stretch for options
 
         # Add table third (far right) - wrapped same as other panels so AlignTop works
         table_layout = QVBoxLayout()

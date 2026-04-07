@@ -107,16 +107,6 @@ class UIScaler(QObject):
         """Reset to default scale (150% for ~14pt fonts)."""
         self.set_scale(self.DEFAULT_SCALE)
 
-    def set_preset(self, preset_name: str):
-        """
-        Set scale to a named preset.
-
-        Args:
-            preset_name: One of SCALE_PRESETS keys
-        """
-        if preset_name in self.SCALE_PRESETS:
-            self.set_scale(self.SCALE_PRESETS[preset_name])
-
     def get_preset_name(self) -> str:
         """
         Get name of current preset, or 'Custom'.

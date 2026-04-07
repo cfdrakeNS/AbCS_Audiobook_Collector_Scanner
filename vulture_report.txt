@@ -1,0 +1,5 @@
+src\accessibility\scaling.py:110: unused method 'set_preset' (60% confidence)
+src\accessibility\theme_manager.py:328: unused method 'get_current_theme_display_name' (60% confidence)
+src\database\connection.py:75: unused attribute 'row_factory' (60% confidence)
+src\ui\book_list_import_window.py:21: unused class 'DataFrame' (60% confidence)
+src\ui\book_list_import_window.py:1132: unused method 'on_headers_toggled' (60% confidence)

@@ -219,11 +219,11 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(80)
         header.setStretchLastSection(False)
-        # Set specific column widths: Year=80, Books=100, Hours=80
+        # Set specific column widths: Year=140 (wider), Books=100, Hours=80
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         header.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.year_table.setColumnWidth(0, 80)  # Year
+        self.year_table.setColumnWidth(0, 140)  # Year (wider for accessibility)
         self.year_table.setColumnWidth(1, 100)  # Books Read
         self.year_table.setColumnWidth(2, 80)  # Total Hours
 
@@ -261,13 +261,13 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(80)
         header.setStretchLastSection(False)
-        # Set specific column widths: Year=80, Month=150, Books=100, Hours=80
+        # Set specific column widths: Year=140, Month=280 (much wider), Books=100, Hours=80
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Year
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Month
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Books Read
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Total Hours
-        self.month_table.setColumnWidth(0, 80)  # Year
-        self.month_table.setColumnWidth(1, 150)  # Month
+        self.month_table.setColumnWidth(0, 140)  # Year
+        self.month_table.setColumnWidth(1, 280)  # Month (much wider for accessibility)
         self.month_table.setColumnWidth(2, 100)  # Books Read
         self.month_table.setColumnWidth(3, 80)  # Total Hours
 
@@ -370,12 +370,12 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(False)
-        # Set specific column widths: Date=120, Title=523, Author=319, Hours=100
+        # Set specific column widths: Date=260 (much wider), Title=523, Author=319, Hours=100
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Hours
-        self.range_table.setColumnWidth(0, 120)  # Date
+        self.range_table.setColumnWidth(0, 260)  # Date (much wider for accessibility)
         self.range_table.setColumnWidth(1, 523)  # Title
         self.range_table.setColumnWidth(2, 319)  # Author (+33%)
         self.range_table.setColumnWidth(3, 100)  # Hours

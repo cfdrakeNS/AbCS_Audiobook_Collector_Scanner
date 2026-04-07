@@ -148,8 +148,17 @@ class PreferencesWindow(QDialog):
 
         # Header section: Display settings
         display_group = QGroupBox("Display Settings")
+
+        # Apply scaled font to group box title
+        from PySide6.QtGui import QFont
+
+        display_font = QFont()
+        display_font.setPointSize(self.scaler.get_scaled_size(14))
+        display_font.setBold(True)
+        display_group.setFont(display_font)
         display_layout = QHBoxLayout(display_group)
         display_layout.setSpacing(18)
+        display_layout.addSpacing(6)
         display_label_width = 72
 
         theme_label = QLabel("Theme:")
@@ -161,7 +170,6 @@ class PreferencesWindow(QDialog):
         theme_label.setBuddy(self.theme_combo)
         display_layout.addWidget(theme_label)
         display_layout.addWidget(self.theme_combo)
-        display_layout.addSpacing(62)
 
         preset_label = QLabel("Preset:")
         preset_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -172,7 +180,9 @@ class PreferencesWindow(QDialog):
         preset_label.setBuddy(self.preset_combo)
         display_layout.addWidget(preset_label)
         display_layout.addWidget(self.preset_combo)
-        display_layout.addStretch(1)
+
+        # Reduce spacing between preset and zoom by 1/2 (was 18)
+        display_layout.addSpacing(9)
 
         zoom_label = QLabel("Zoom (%):")
         zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -190,15 +200,24 @@ class PreferencesWindow(QDialog):
 
         # Detail section: Import settings
         import_group = QGroupBox("Import Settings")
+
+        import_group.setFont(display_font)
+        import_group.setFont(display_font)
         import_layout = QVBoxLayout(import_group)
         import_layout.setSpacing(11)
         import_label_width = 180
 
         source_scope_group = QGroupBox("Path & Scope")
+
+        source_scope_group.setFont(display_font)
+        source_scope_group.setFont(display_font)
         source_scope_layout = QVBoxLayout(source_scope_group)
         source_scope_layout.setSpacing(8)
 
         options_group = QGroupBox("Options")
+
+        options_group.setFont(display_font)
+        options_group.setFont(display_font)
         options_layout = QGridLayout(options_group)
         self.options_layout = options_layout
         options_layout.setContentsMargins(8, 8, 8, 8)
@@ -206,6 +225,9 @@ class PreferencesWindow(QDialog):
         options_layout.setVerticalSpacing(8)
 
         fallback_group = QGroupBox("Fallback and Parsing Behavior")
+
+        fallback_group.setFont(display_font)
+        fallback_group.setFont(display_font)
         fallback_layout = QVBoxLayout(fallback_group)
         fallback_layout.setContentsMargins(8, 8, 8, 8)
         fallback_layout.setSpacing(8)
@@ -217,10 +239,16 @@ class PreferencesWindow(QDialog):
         fallback_checks_layout.setVerticalSpacing(0)
 
         validation_group = QGroupBox("Validation Rules")
+
+        validation_group.setFont(display_font)
+        validation_group.setFont(display_font)
         validation_layout = QVBoxLayout(validation_group)
         validation_layout.setSpacing(8)
 
         autocorrect_block_group = QGroupBox("Auto-Correction")
+
+        autocorrect_block_group.setFont(display_font)
+        autocorrect_block_group.setFont(display_font)
         autocorrect_block_layout = QVBoxLayout(autocorrect_block_group)
         autocorrect_block_layout.setSpacing(8)
 

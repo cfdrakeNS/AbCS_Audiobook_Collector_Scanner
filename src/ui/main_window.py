@@ -459,11 +459,12 @@ class MainWindow(QMainWindow):
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_hint_label = QLabel("Alt+U Update, Alt+D Delete, Escape Cancel")
+        # Updated: clarify Escape is for Cancel, not Alt+L
+        self.status_hint_label = QLabel("Alt+U Update, Alt+D Delete, Escape to Cancel")
         self.status_hint_label.setVisible(False)
         self.status_hint_label.setAccessibleName("Selection shortcuts")
         self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+D Delete, Escape Cancel"
+            "Alt+U Update, Alt+D Delete, Escape to Cancel"
         )
         self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
         self.status_bar.insertWidget(0, self.status_hint_label, 1)
@@ -3540,7 +3541,6 @@ Use Ctrl+I to import or Alt+M for menu options."""
             ("Shift+Down/Up", "Start selection or extend selection"),
             ("Alt+U", "Update selected"),
             ("Alt+D", "Delete selected"),
-            ("Alt+L", "Cancel selection"),
             ("Ctrl+F", "Find"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),

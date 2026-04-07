@@ -1,8 +1,12 @@
-# AbCS Dead Code Cleanup - Vulture Findings
-**Created:** April 3, 2026  
-**Last Updated:** April 6, 2026 - Import Window additional cleanup applied  
-**Tool:** vulture (AST-based dead code detection)  
-**Generated:** `python -m vulture src`
+# stuff the AI deleted without asking 
+#### Database Module 1b: src/database/connection.py — row_factory
+**Status: FALSE POSITIVE (Required SQLite idiom)**
+
+- `row_factory` is set on the SQLite connection to allow dictionary-like access to query results (row['column']).
+- This is a standard and required pattern for readable database code in Python/Qt apps.
+- **Do not remove.**
+
+> Note for future reviewers: Removing or altering this will break named column access throughout the database layer.
 
 ---
 
@@ -273,6 +277,7 @@ Tests completed (April 6):
 - Plot field Tab and Alt+P focus now land on the field instead of the label ✓
 - Any chart/popup behavior tied to scrape results ✓
 
+
 ### Non-Window 60% Items (Track Separately)
 
 These are important but should be handled outside the window sequence:
@@ -280,6 +285,15 @@ These are important but should be handled outside the window sequence:
 - core modules (`import_scanner.py`, `tag_reader.py`, `validator.py`)
 - database modules (`connection.py`, `models.py`, `queries.py`, `reading_queries.py`)
 - app entry (`main.py`), web API (`src/web/web_book_api.py`)
+
+#### Accessibility Module 3b: src/accessibility/theme_manager.py — get_current_theme_display_name
+**Status: FALSE POSITIVE (Public API, runtime use)**
+
+- `get_current_theme_display_name` is flagged by vulture as unused, but is a public API intended for runtime use (e.g., Preferences window, dynamic UI updates).
+- No direct static usage found, but retained for runtime/reflective access and future-proofing.
+- **Do not remove.**
+
+> Note for future reviewers: If refactoring theme display logic, check for dynamic or indirect usage before considering removal.
 
 #### Accessibility Module 1: src/accessibility/accessible_events.py
 **Status: TESTED & PASSED on April 6, 2026** ✅
@@ -620,4 +634,41 @@ Targeted follow-up scan (`src/ui/reading_history_window.py`) after removing `QIt
 | `row_factory` | `src/database/connection.py` | SQLite built-in attribute assigned to `connection.row_factory`, not called directly |
 | `DataFrame` | `src/ui/book_list_import_window.py` | Fallback stub class in `except ImportError` block when pandas is unavailable |
 | `on_headers_toggled` | `src/ui/book_list_import_window.py` | Qt signal handler connected via `QHeaderView.sectionClicked` — invisible to static analysis |
+
+
+## April 7, 2026 — VULTURE Cleanup Progress (Today)
+
+### Accessibility: scaling.py
+- **Flagged:** set_preset (unused method)
+- **Action:** Removed (confirmed not used anywhere)
+- **Tested:** All scaling/zoom features tested and working after removal
+- **Status:** DONE
+
+### Accessibility: theme_manager.py
+- **Flagged:** get_current_theme_display_name (unused method)
+- **Action:** Marked as FALSE POSITIVE (public API, used at runtime)
+- **Tested:** Theme switching and display tested, no issues
+- **Status:** DONE
+
+### Database: connection.py
+- **Flagged:** row_factory (unused attribute)
+- **Action:** Marked as FALSE POSITIVE (required SQLite idiom)
+- **Tested:** Database access and queries tested, no issues
+- **Status:** DONE
+
+### Book List Import Window: book_list_import_window.py
+- **Flagged:** DataFrame (unused class), on_headers_toggled (unused method)
+- **Action:**
+  - DataFrame: Confirmed as fallback for missing pandas, required for import error handling (FALSE POSITIVE)
+  - on_headers_toggled: Confirmed connected to checkbox, required for header toggle (FALSE POSITIVE)
+- **Tested:** Import window header toggle and fallback tested, no issues
+- **Status:** DONE
+
+### What’s Left
+- Review any new vulture findings after next code changes
+- Continue window-by-window review for any new flagged items
+
+---
+
+**This section summarizes only the work done today. Use this for quick navigation with JAWS.**
 

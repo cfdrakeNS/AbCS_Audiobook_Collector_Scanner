@@ -19,3 +19,10 @@
 17. done read history win general tab has showing the status bar for date range 
 18. done web_metadata when called from main and no data found now shows popup again (No Web Data Found) and restores focus to table.
 19. done web_metadata source checking optimized: removed redundant refresh retry loop from main/book_details call path. now one call uses WebBookAPI's internal cascade (Google -> Open Library -> WikiData), reducing repeated network waits.
+20. done main window F1/help/status hint now shows Escape for cancel (not Alt+L) make sure you are checking other shortcuts that are centeralized in shortcuts.py 
+21. done reading history window: month tab month field widened, date range tab date field widened for accessibility
+22. book list import window - increase the width of instruction text box by 1/2 & width of options by 1/4 for better fit at high zoom
+23. preferences window reduce the white space between preset control and zoom control make it the same as the distance between theme and preset  not fitting when zoom in 
+24. 
+
+24. look into these 3 items and let me know how many windows are/tables are impacted. 1. when in a table let the tab/shift+tab jump out to the next tab controll  this will allow keyboard users to tab to the buttons etc. 2. the status bar msgs for alt+keys only show if a screen reader is active. 3. add alt+keys to windows that don't have them.  No code changes just create a doc with finding for all 3 changes listed by window that will require a change and the change. How will the alt+key handling for when screen readers is present or not? will this be in the accessibility_event or each window. 
