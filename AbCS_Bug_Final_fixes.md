@@ -25,4 +25,6 @@
 23. preferences window reduce the white space between preset control and zoom control make it the same as the distance between theme and preset  not fitting when zoom in 
 24. 
 
-24. look into these 3 items and let me know how many windows are/tables are impacted. 1. when in a table let the tab/shift+tab jump out to the next tab controll  this will allow keyboard users to tab to the buttons etc. 2. the status bar msgs for alt+keys only show if a screen reader is active. 3. add alt+keys to windows that don't have them.  No code changes just create a doc with finding for all 3 changes listed by window that will require a change and the change. How will the alt+key handling for when screen readers is present or not? will this be in the accessibility_event or each window. 
+24. when in a table let the tab/shift+tab jump out to the next tab controll  this will allow keyboard users to tab to the buttons etc. 
+
+ 2. the status bar msgs for alt+keys only show if a screen reader is active. 3. add alt+keys to windows that don't have them.  No code changes just create a doc with finding for all 3 changes listed by window that will require a change and the change. How will the alt+key handling for when screen readers is present or not? will this be in the accessibility_event or each window. 
