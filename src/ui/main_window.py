@@ -195,6 +195,12 @@ class BookTableModel(QAbstractTableModel):
 
 
 class MainWindow(QMainWindow):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/AbCS_icon.ico"))
+
     def _selection_shortcuts_text(self) -> str:
         """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""
         # Only show minimal, non-noisy selection shortcuts for screen readers
@@ -1827,28 +1833,39 @@ class MainWindow(QMainWindow):
         field_combo.setStyleSheet(
             f"QComboBox {{ min-height: {combo_height}px; max-height: {combo_height}px; }}"
         )
-        # Use theme manager styling instead of F1 popup style for combo boxes
         field_label.setBuddy(field_combo)
         field_row.addWidget(field_label)
         field_row.addWidget(field_combo, 1)
 
         exact_check = QCheckBox("E&xact match")
         exact_check.setAccessibleName("Exact match")
-        # Always default to unchecked (False) every time dialog opens
         exact_check.setChecked(False)
         field_row.addSpacing(12)
         field_row.addWidget(exact_check)
         layout.addLayout(field_row)
 
         text_row = QHBoxLayout()
-        text_label = QLabel("Find &text:")
+        # Set initial label to match the default field
+        initial_field = field_combo.currentText()
+        text_label = QLabel(
+            f"Find &{initial_field.lower()}:" if initial_field else "Find &text:"
+        )
         text_edit = QLineEdit()
         text_edit.setAccessibleName("Find text")
-        # Use theme manager styling instead of F1 popup style for text boxes
         text_label.setBuddy(text_edit)
         text_row.addWidget(text_label)
         text_row.addWidget(text_edit, 1)
         layout.addLayout(text_row)
+
+        def update_text_label(index):
+            field = field_combo.currentText()
+            # Use ampersand for Alt+T shortcut only on 'Title', else just 'Find xxx:'
+            if field == "Title":
+                text_label.setText("Find &title:")
+            else:
+                text_label.setText(f"Find {field.lower()}:")
+
+        field_combo.currentIndexChanged.connect(update_text_label)
 
         dialog_status = QStatusBar(dialog)
         dialog_status.setSizeGripEnabled(False)

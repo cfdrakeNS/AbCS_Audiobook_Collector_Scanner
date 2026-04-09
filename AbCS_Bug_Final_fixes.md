@@ -30,3 +30,5 @@
 28. import and import_progress window when scan is canceled move the "cancel" part of the message to bhe beginning of the message. clearer for screen readers. 
 29. done import_progress window alt+/ not working while scanning however the version in archive called import_progress_window mar21.py did work. compare the alt+/ code when scanning is in progress. let me know if what you find. 
 30. done book_detail & import_detail comnbos when shoosing an item that exists in the db the popup add new is showing.
+31. done main window find popup change the find label to say "find xxx" where xxx is the value in the in combo box 
+32. can we add a icon to the title bar of the windows waht size does it have to be? can we use the icon in \data\graphic 

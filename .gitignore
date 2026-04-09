@@ -1,3 +1,6 @@
+# Ignore graphics assets (both cases)
+data/Graphics/
+data/graphics/
 # Virtual environment
 .venv/
 venv/
