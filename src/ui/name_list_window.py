@@ -114,7 +114,7 @@ class NameListWindow(QDialog):
     COL_NAME = 0
     COL_ACTIVE = 1
     COL_USAGE = 2
-    AUTHOR_FIND_HINT = " enter for next, alt+F clear and start a new search "
+    AUTHOR_FIND_HINT = " enter for next, clear and start a new search "
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -226,7 +226,7 @@ class NameListWindow(QDialog):
         self.find_edit = QLineEdit()
         self.find_edit.setAccessibleName(f"Find {self.entity_plural.lower()}")
         self.find_edit.setAccessibleDescription(
-            f"Type to jump to matching {self.entity_singular.lower()}. Alt+F clears the current search and starts a new one"
+            f"Type to jump to matching {self.entity_singular.lower()}"
         )
         find_label.setBuddy(self.find_edit)
         header_layout.addWidget(find_label)
@@ -241,7 +241,7 @@ class NameListWindow(QDialog):
         self.name_edit = QLineEdit()
         self.name_edit.setAccessibleName(f"{self.entity_singular} name")
         self.name_edit.setAccessibleDescription(
-            f"Edit {self.entity_singular.lower()} name - Alt+M"
+            f"Edit {self.entity_singular.lower()} name"
         )
         name_label.setBuddy(self.name_edit)
         header_layout.addWidget(name_label)
@@ -250,9 +250,7 @@ class NameListWindow(QDialog):
         if self.is_collection_mode:
             self.active_check = QCheckBox("&Active")
             self.active_check.setAccessibleName("Collection active")
-            self.active_check.setAccessibleDescription(
-                "Collection active status - Alt+A"
-            )
+            self.active_check.setAccessibleDescription("Collection active status")
             self.active_check.setChecked(True)
             header_layout.addWidget(self.active_check)
 
@@ -304,14 +302,14 @@ class NameListWindow(QDialog):
         self.edit_button = QPushButton("Edit")
         self.edit_button.clicked.connect(self.on_edit)
         self.edit_button.setAccessibleDescription(
-            f"Edit highlighted {self.entity_singular.lower()} row - Alt+E"
+            f"Edit highlighted {self.entity_singular.lower()} row"
         )
         footer_layout.addWidget(self.edit_button)
 
         self.save_button = QPushButton("Save")
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setAccessibleDescription(
-            f"Save current {self.entity_singular.lower()} - Alt+S"
+            f"Save current {self.entity_singular.lower()}"
         )
         footer_layout.addWidget(self.save_button)
 
@@ -487,38 +485,29 @@ class NameListWindow(QDialog):
             self.active_check.setFocus(Qt.ShortcutFocusReason)
 
     def set_status(self, message: str, announce: bool = False):
-        message = self._format_status_message(message)
-        announce_status_message(self.status_bar, message, move_focus=announce)
+        # Accessibility: forcibly remove ALL shortcut hints from status bar
+        msg = (message or "").strip()
+        import re
 
+        # Remove all Alt+X, Ctrl+X, Enter, Escape, and any 'press ...' or 'shortcut' phrases
+        msg = re.sub(r" ?Alt\+[A-Z](:[\w ]+)?", "", msg)
+        msg = re.sub(r" ?Ctrl\+[A-Z](:[\w ]+)?", "", msg)
+        msg = re.sub(r" ?Enter(:[\w ]+)?", "", msg)
+        msg = re.sub(r" ?Escape(:[\w ]+)?", "", msg)
+        msg = re.sub(r" ?[Pp]ress [^.,;]+", "", msg)
+        msg = re.sub(r" ?shortcut[s]?:?[^.,;]*", "", msg)
+        msg = re.sub(r" ?\([^)]+shortcut[^)]*\)", "", msg)
+        msg = re.sub(r" ?\([^)]+Alt\+[^)]*\)", "", msg)
+        msg = re.sub(r" ?\([^)]+Ctrl\+[^)]*\)", "", msg)
+        msg = re.sub(r" ?\([^)]+Enter[^)]*\)", "", msg)
+        msg = re.sub(r" ?\([^)]+Escape[^)]*\)", "", msg)
+        msg = re.sub(r"[.,;: ]+$", "", msg)  # Remove trailing punctuation
+        announce_status_message(self.status_bar, msg, move_focus=announce)
         parent = self.parent()
         if parent and hasattr(parent, "set_status"):
-            parent.set_status(message, announce=False)
+            parent.set_status(msg, announce=False)
 
-    def _format_status_message(self, message: str) -> str:
-        text = (message or "").strip()
-        if not text:
-            return text
-
-        if "Alt+E" in text:
-            return text
-
-        is_find_message = (
-            text.startswith("Found ")
-            or text.startswith("No matching ")
-            or self.AUTHOR_FIND_HINT.strip() in text
-        )
-        if is_find_message:
-            return text
-
-        is_edit_mode = (
-            bool(getattr(self, "save_button", None))
-            and self.save_button.isVisible()
-            and self.name_edit.isEnabled()
-        )
-        if is_edit_mode:
-            return text
-
-        return f"{text} Alt+E"
+    # _format_status_message removed: no longer needed (no Alt+E hint)
 
     def _book_count_for_item(self, item_id: int) -> int:
         query = f"SELECT COUNT(*) FROM books WHERE {self.book_fk_column} = ?"
@@ -944,7 +933,8 @@ class NameListWindow(QDialog):
         if not name_text:
             return self.status_bar.currentMessage().strip() or "Ready"
 
-        return f"{name_text} - books {usage_text}, Alt+E Edit, Escape Close"
+        # Only announce the name and usage, no shortcut hints
+        return f"{name_text} - books {usage_text}"
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode, or close window."""
@@ -1091,8 +1081,6 @@ class NameListWindow(QDialog):
         self.table.setFocus(Qt.TabFocusReason)
 
     def _set_edit_hint_status(self, item_name: str):
+        # Only show the name, no shortcut hints
         name_text = (item_name or "").strip() or self.entity_singular.lower()
-        if self.is_collection_mode:
-            self.set_status(f"To edit {name_text} press Alt+E")
-        else:
-            self.set_status(f"To edit {name_text} name press Alt+E")
+        self.set_status(f"{name_text}")

@@ -1346,6 +1346,8 @@ class BookListImportWindow(QDialog):
             self.set_status(
                 f"Import complete: {success_count} successful, {error_count} errors"
             )
+            # Set focus to file text box after import completes
+            self.file_edit.setFocus(Qt.TabFocusReason)
 
         except Exception as e:
             exec_styled_message_box(

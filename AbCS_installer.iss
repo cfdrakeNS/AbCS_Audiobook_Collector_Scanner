@@ -1,3 +1,4 @@
+
 ; AbCS - Audio Book Collector Scanner
 ; Inno Setup 6 Installer Script
 ;
@@ -7,6 +8,29 @@
 ; Version source of truth is src/main.py APP_VERSION.
 ; build_installer.bat passes MyAppVersion from APP_VERSION via /D.
 ; The fallback below is used when compiling this .iss directly in ISCC IDE.
+# ──────────────────────────────────────────────────────────────────
+# [CustomMessages] - must come after [Setup]/[Languages]
+# ──────────────────────────────────────────────────────────────────
+[CustomMessages]
+WelcomeTitle=Welcome to AbCS Setup
+WelcomeLine1=AbCS - Audio Book Collector Scanner
+WelcomeLine2=A cross-platform audiobook collection manager with full accessibility support.
+
+# ──────────────────────────────────────────────────────────────────
+# [Code] - must be last
+# ──────────────────────────────────────────────────────────────────
+[Code]
+var
+    WelcomePage: TWizardPage;
+
+procedure InitializeWizard;
+begin
+    WelcomePage := CreateCustomPage(wpWelcome,
+        ExpandConstant('{cm:WelcomeTitle}'),
+        ExpandConstant('{cm:WelcomeLine1}') + #13#10 +
+        ExpandConstant('{cm:WelcomeLine2}')
+    );
+end;
 
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audio Book Collector Scanner"
@@ -40,13 +64,17 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 
+
 ; Output: releases\AbCS-Setup-1.9.4.exe
 OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
-SetupIconFile=AbCS.ico
-UninstallDisplayIcon={app}\AbCS.ico
+; Installer branding
+SetupIconFile=data\Graphics\AbCS_icon.ico
+UninstallDisplayIcon={app}\AbCS_icon.ico
 LicenseFile=AbCS_License.MD
+; For WizardStyle=modern dynamic, image must be 500x313 PNG
+WizardImageFile=data\Graphics\abcs_splash.png
 
 Compression=lzma2
 SolidCompression=yes
@@ -93,19 +121,23 @@ Name: "desktopicon"; \
 Source: "dist\AbCS\*"; \
     DestDir: "{app}"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "AbCS.ico"; \
+Source: "data\Graphics\AbCS_icon.ico"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
 Source: "AbCS_License.MD"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
+; Splash image for installer
+Source: "data\Graphics\abcs_splash.png"; \
+    DestDir: "{tmp}"; \
+    Flags: dontcopy
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
 ; Start Menu
-Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS.ico"
+Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS_icon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 ; Add an uninstall shortcut in the install folder so testers do not need
@@ -115,7 +147,7 @@ Name: "{app}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 ; Desktop (only if user chose that task above)
 Name: "{commondesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
-    IconFilename: "{app}\AbCS.ico"; \
+    IconFilename: "{app}\AbCS_icon.ico"; \
     Tasks: desktopicon
 
 ; ──────────────────────────────────────────────────────────────────

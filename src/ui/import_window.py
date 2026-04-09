@@ -61,9 +61,11 @@ from src.ui.import_progress_window import ImportProgressWindow
 
 
 class ImportWindow(QDialog):
+    # Duplicate eventFilter removed. Only the correct eventFilter remains above.
+
     def keyPressEvent(self, event):
-        """Handle keyboard shortcuts and Enter key properly for buttons."""
-        # Accessibility: Alt+W always triggers file dialog
+        """Handle keyboard shortcuts, Enter key, and Tab/Shift+Tab for accessibility."""
+        # Accessibility: Alt+W always triggers file dialog (no status bar hint)
         if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
             self.on_browse()
             event.accept()
@@ -71,6 +73,19 @@ class ImportWindow(QDialog):
         # Handle Escape key
         if event.key() == Qt.Key_Escape:
             self.on_cancel()
+            event.accept()
+            return
+        # Tab/Shift+Tab: move focus out of table if table has focus
+        if (
+            self.table.hasFocus()
+            and event.key() == Qt.Key_Tab
+            and not event.modifiers() & Qt.ControlModifier
+        ):
+            self.focusNextChild()
+            event.accept()
+            return
+        elif self.table.hasFocus() and event.key() == Qt.Key_Backtab:
+            self.focusPreviousChild()
             event.accept()
             return
         # Handle Enter key on focused widgets
@@ -131,7 +146,19 @@ class ImportWindow(QDialog):
             widget.installEventFilter(self)
 
     def eventFilter(self, source, event):
-        """Handle mapped Alt+letter actions reliably across child widgets and combo anti-noise."""
+        """Handle Tab/Shift+Tab on table, mapped Alt+letter actions, and combo anti-noise."""
+        # Table: Tab/Shift+Tab move focus out of table (cell focus or table focus)
+        if source == self.table and event.type() == QEvent.KeyPress:
+            key = event.key()
+            if key == Qt.Key_Tab and not (event.modifiers() & Qt.ShiftModifier):
+                self.focusNextChild()
+                return True
+            if key in (Qt.Key_Backtab, Qt.Key_Tab) and (
+                event.modifiers() & Qt.ShiftModifier
+            ):
+                self.focusPreviousChild()
+                return True
+
         # Combo anti-noise pattern: block plain arrow keys on combo boxes
         if event.type() == QEvent.KeyPress and isinstance(source, QComboBox):
             if (
@@ -432,6 +459,7 @@ class ImportWindow(QDialog):
 
         # Detail section: import list table
         self.table = QTableWidget()
+        self.table.installEventFilter(self)
         self.table.setAccessibleName("Import list")
         self.table.setAccessibleDescription(
             "List of scanned files with validation results"
@@ -743,7 +771,6 @@ class ImportWindow(QDialog):
         self.table.itemSelectionChanged.connect(self.on_table_selection_changed)
         self.table.mousePressEvent = self.table_mouse_press
         self.table.mouseDoubleClickEvent = self.table_mouse_double_click
-        self.table.keyPressEvent = self.table_key_press
         self.table.horizontalHeader().sectionClicked.connect(
             self.on_table_header_clicked
         )
@@ -1861,13 +1888,15 @@ class ImportWindow(QDialog):
         if scan_was_canceled:
             summary = (
                 f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
+                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | "
+                f"Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
         else:
             summary = (
                 f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
+                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | "
+                f"Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
         self.set_status(summary, announce=True)
@@ -2571,45 +2600,32 @@ class ImportWindow(QDialog):
 
         QTableWidget.mouseDoubleClickEvent(self.table, event)
 
-    def table_key_press(self, event):
-        """Handle table key presses with main-window style selection behavior."""
-        if event.key() in (
-            Qt.Key_Up,
-            Qt.Key_Down,
-            Qt.Key_PageUp,
-            Qt.Key_PageDown,
-            Qt.Key_Home,
-            Qt.Key_End,
-        ):
-            modifiers = event.modifiers()
-
-            if modifiers & Qt.ShiftModifier:
-                # Shift+Arrow: Start selection OR extend selection (Windows standard)
-                row = self.table.currentRow()
-                if row >= 0:
-                    if self.selection_anchor_row is None:
-                        # No anchor set - start selection at current row
-                        self.selection_anchor_row = row
-                        col = (
-                            self.table.currentColumn()
-                            if self.table.currentColumn() >= 0
-                            else 0
-                        )
-                        self._select_row_range(row, row, col)
-                    else:
-                        # Anchor exists - extend selection
-                        self.extend_selection_with_arrow(event.key())
-                event.accept()
-                return
-
-            if modifiers & Qt.ControlModifier:
-                QTableWidget.keyPressEvent(self.table, event)
-                return
-
-            self.move_current_without_selection(event.key())
+    def keyPressEvent(self, event):
+        """Handle keyboard shortcuts, Enter key, and Escape for accessibility."""
+        # Accessibility: Alt+W always triggers file dialog (no status bar hint)
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+            self.on_browse()
             event.accept()
             return
-
+        # Handle Escape key
+        if event.key() == Qt.Key_Escape:
+            self.on_cancel()
+            event.accept()
+            return
+        # Handle Enter key on focused widgets
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, QPushButton):
+                # Click the focused button
+                focused_widget.click()
+                event.accept()
+                return
+            # Enter/Return opens import detail if table has focus
+            elif self.table.hasFocus():
+                self.on_open_detail_selected()
+                event.accept()
+                return
+        super().keyPressEvent(event)
         if event.key() in (Qt.Key_Left, Qt.Key_Right):
             self.move_column_without_selection(event.key())
             event.accept()

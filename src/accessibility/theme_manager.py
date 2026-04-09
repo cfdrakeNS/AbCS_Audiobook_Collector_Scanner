@@ -325,13 +325,6 @@ class ThemeManager(QObject):
             (theme.name, theme_enum.value) for theme_enum, theme in self.THEMES.items()
         ]
 
-    def get_current_theme_display_name(self) -> str:
-        """Get display name of current theme."""
-        for theme_enum, theme in self.THEMES.items():
-            if theme_enum.value == self._current_theme_name:
-                return theme.name
-        return "Unknown"
-
     def _validate_theme_name(self, theme_name: str) -> str:
         """Validate theme name, return default if invalid."""
         valid_names = [t.value for t in ThemeName]

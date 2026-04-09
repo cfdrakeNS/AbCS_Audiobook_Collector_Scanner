@@ -311,6 +311,7 @@ class ImportDetailWindow(QDialog):
 
             if reply == QMessageBox.Cancel:
                 self._clear_dirty()
+                self.set_status("Canceled: changes discarded, window closed.")
                 self.reject()
                 return
 
@@ -1277,7 +1278,6 @@ class ImportDetailWindow(QDialog):
             parent._apply_detail_edits(
                 self.current_index,
                 self,
-                resolve_errors=resolve_errors,
                 refresh_view=False,
             )
 

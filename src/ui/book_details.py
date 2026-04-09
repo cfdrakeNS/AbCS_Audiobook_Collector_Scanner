@@ -79,8 +79,7 @@ class BookDetailsWindow(QDialog):
     }
 
     def set_status(self, message: str, announce: bool = False):
-        """Set status bar message with optional screen reader announcement."""
-        # Preserve 'fields changed' message, but do not announce Alt+key or Escape in status bar
+        """Set status bar message with optional screen reader announcement. No Alt+key shortcut hints."""
         self._default_status_message = message
         announce_status_message(self.status_bar, message, move_focus=announce)
 

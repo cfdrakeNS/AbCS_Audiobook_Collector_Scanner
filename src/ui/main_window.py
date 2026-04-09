@@ -195,6 +195,11 @@ class BookTableModel(QAbstractTableModel):
 
 
 class MainWindow(QMainWindow):
+    def _selection_shortcuts_text(self) -> str:
+        """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""
+        # Only show minimal, non-noisy selection shortcuts for screen readers
+        return "Shift+Click range, Ctrl+Click add/remove, Enter for details, Escape to cancel selection"
+
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit
@@ -456,18 +461,9 @@ class MainWindow(QMainWindow):
         footer_layout = self.create_footer()
         layout.addLayout(footer_layout)
 
-        # Status bar
+        # Status bar (no Alt+key shortcut hints for accessibility)
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        # Updated: clarify Escape is for Cancel, not Alt+L
-        self.status_hint_label = QLabel("Alt+U Update, Alt+D Delete, Escape to Cancel")
-        self.status_hint_label.setVisible(False)
-        self.status_hint_label.setAccessibleName("Selection shortcuts")
-        self.status_hint_label.setAccessibleDescription(
-            "Alt+U Update, Alt+D Delete, Escape to Cancel"
-        )
-        self.status_hint_label.setFocusPolicy(Qt.StrongFocus)
-        self.status_bar.insertWidget(0, self.status_hint_label, 1)
         self.status_bar.showMessage("Ready")
 
         # Menu bar
@@ -642,7 +638,22 @@ class MainWindow(QMainWindow):
         # Custom mouse and key handlers
         self.table.mousePressEvent = self.table_mouse_press
         self.table.mouseDoubleClickEvent = self.table_mouse_double_click  # mw#18
-        self.table.keyPressEvent = self.table_key_press
+        self.table.keyPressEvent = self.accessible_table_key_press
+
+    def accessible_table_key_press(self, event):
+        """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
+        if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
+            # Move focus to next widget outside the table
+            self.focusNextChild()
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Backtab:
+            # Move focus to previous widget outside the table
+            self.focusPreviousChild()
+            event.accept()
+            return
+        # Otherwise, default table navigation
+        self.table_key_press(event)
 
     def _apply_fixed_content_column_widths(self):
         """Set fixed/scaled widths for non-stretch content columns.
@@ -673,19 +684,25 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout()
 
         # Update button (hidden initially)
+
         self.update_button = QPushButton("Update")
         self.update_button.setAccessibleName("Update selected books")
         self.update_button.setAccessibleDescription("Update selected books - Alt+U")
         self.update_button.setFocusPolicy(Qt.StrongFocus)
+        self.update_button.setAutoDefault(True)
+        self.update_button.setDefault(True)
         self.update_button.clicked.connect(self.on_update_clicked)
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
 
         # Delete button (hidden initially)
+
         self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete selected books")
         self.delete_button.setAccessibleDescription("Delete selected books - Alt+D")
         self.delete_button.setFocusPolicy(Qt.StrongFocus)
+        self.delete_button.setAutoDefault(True)
+        self.delete_button.setDefault(True)
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
@@ -999,11 +1016,7 @@ class MainWindow(QMainWindow):
 
         return " • ".join(parts)
 
-    def _selection_shortcuts_text(self) -> str:
-        """Return shortcut hint text based on current action mode."""
-        if self.duplicate_mode_active:
-            return "Alt+D Delete, Escape Cancel Dup Mode"
-        return "Alt+U Update, Alt+D Delete, Escape Cancel"
+    # Removed status shortcut hint text for accessibility
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -2537,8 +2550,8 @@ class MainWindow(QMainWindow):
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
-        self.status_hint_label.setVisible(show_action_buttons)
-        self.status_hint_label.setText(self._selection_shortcuts_text())
+        # status_hint_label removed for accessibility; no longer updated
+        # Removed status shortcut hint text update for accessibility
 
         self.sort_label.setVisible(not show_action_buttons)
 
@@ -3308,35 +3321,33 @@ Use Ctrl+I to import or Alt+M for menu options."""
         except Exception:
             sr_active = False
 
+        version = get_app_version()
         about_lines = [
-            "AbCS - Audio Book Collector Scanner",
-            get_app_version(),
-            "",
+            f"AbCS - Audio Book Collector Scanner    {version}",
             "A cross-platform audiobook collection manager with full accessibility support.",
-            "",
             "LICENSE",
             "Copyright (c) 2025-2026 C.F. Drake & Contributors",
             "Custom non-commercial license.",
             "Commercial sale/distribution requires written permission.",
-            "",
             "FEATURES",
-            "Audio Book Management with full metadata",
-            "ID3 Tag Import from folders",
-            "Advanced Search and Filtering",
-            "Complete Keyboard Navigation",
-            "Screen Reader Support",
-            "Scalable UI (50%-200%+)",
-            "High Contrast Themes",
-            "",
+            "  • Audio Book Management with full metadata",
+            "  • ID3 Tag Import from folders",
+            "  • Advanced Search and Filtering",
+            "  • Complete Keyboard Navigation",
+            "  • Screen Reader Support",
+            "  • Scalable UI (50%-200%+)",
+            "  • High Contrast Themes",
             "ACCESSIBILITY",
-            "Designed for users with low vision and screen readers.",
-            "All features include keyboard shortcuts.",
-            "",
+            "  • Designed for users with low vision and screen readers.",
+            "  • All features include keyboard shortcuts.",
             f"Screen reader detected: {'Yes' if sr_active else 'No'}",
-            "",
             "Press F1 or use Help menu for Keyboard Shortcuts.",
         ]
         focus_ctx = self._capture_table_focus_context()
+
+        from PySide6.QtWidgets import QLabel, QVBoxLayout, QDialog
+        from PySide6.QtGui import QPixmap
+        import os
 
         dlg = QDialog(self)
         dlg.setWindowTitle("About AbCS")
@@ -3344,20 +3355,44 @@ Use Ctrl+I to import or Alt+M for menu options."""
         dlg.setAccessibleDescription(
             "Dialog containing read-only information about AbCS and accessibility features."
         )
-        dlg.resize(self.scaler.get_scaled_size(700), self.scaler.get_scaled_size(520))
-
+        dlg.setModal(True)
+        dlg.setWindowModality(Qt.ApplicationModal)
+        dlg.resize(self.scaler.get_scaled_size(470), self.scaler.get_scaled_size(520))
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
+        # Add abcs_splash.png at the top
+        about_graphic_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "data",
+            "graphics",
+            "abcs_about_win.png",
+        )
+        if os.path.exists(about_graphic_path):
+            splash_label = QLabel(dlg)
+            pixmap = QPixmap(about_graphic_path)
+            # Suggest a larger graphic for best fit: 420x120 px (or similar aspect ratio)
+            # If not provided, stretch current to dialog width
+            target_width = self.scaler.get_scaled_size(420)
+            target_height = self.scaler.get_scaled_size(120)
+            scaled_pixmap = pixmap.scaled(
+                target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            splash_label.setPixmap(scaled_pixmap)
+            splash_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            splash_label.setAccessibleName("AbCS logo")
+            layout.addWidget(splash_label)
+
+        # Use a QTableWidget for about text (for accessibility)
         about_table = QTableWidget(dlg)
         about_table.setAccessibleName("About AbCS information")
         about_table.setAccessibleDescription(
-            "Read-only table of About information. Use arrow keys to read line by line."
+            "Read-only table of AbCS information. Use arrow keys to read line by line."
         )
         about_table.setColumnCount(1)
-        about_table.setHorizontalHeaderLabels([""])
         about_table.setRowCount(len(about_lines))
+        about_table.setHorizontalHeaderLabels([""])
         about_table.setVerticalHeaderLabels([""] * len(about_lines))
         about_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         about_table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -3378,7 +3413,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
         for row, line in enumerate(about_lines):
             item = QTableWidgetItem(line)
-            item.setData(Qt.AccessibleTextRole, line)
+            item.setData(Qt.AccessibleTextRole, line if line else " ")
             item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             about_table.setItem(row, 0, item)
 
@@ -3391,7 +3426,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
 
         close_button = QPushButton("&OK", dlg)
         close_button.setAccessibleName("Close About dialog")
-        close_button.setAccessibleDescription("Closes About AbCS dialog")
+        close_button.setAccessibleDescription("Closes About dialog")
         close_button.setStyleSheet(
             build_accessible_button_style(self.scaler.get_scaled_size(20))
         )
@@ -3453,7 +3488,8 @@ Use Ctrl+I to import or Alt+M for menu options."""
         dlg.setAccessibleDescription(
             "Read-only license terms. Use arrow keys to read line by line."
         )
-        dlg.resize(self.scaler.get_scaled_size(680), self.scaler.get_scaled_size(520))
+        # Reduce width by about 1/4 for better fit
+        dlg.resize(self.scaler.get_scaled_size(510), self.scaler.get_scaled_size(520))
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)

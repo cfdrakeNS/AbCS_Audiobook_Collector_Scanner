@@ -23,8 +23,10 @@
 21. done reading history window: month tab month field widened, date range tab date field widened for accessibility
 22. book list import window - increase the width of instruction text box by 1/2 & width of options by 1/4 for better fit at high zoom
 23. preferences window reduce the white space between preset control and zoom control make it the same as the distance between theme and preset  not fitting when zoom in 
-24. 
-
-24. when in a table let the tab/shift+tab jump out to the next tab controll  this will allow keyboard users to tab to the buttons etc. 
-
- 2. the status bar msgs for alt+keys only show if a screen reader is active. 3. add alt+keys to windows that don't have them.  No code changes just create a doc with finding for all 3 changes listed by window that will require a change and the change. How will the alt+key handling for when screen readers is present or not? will this be in the accessibility_event or each window. 
+24. done when in a table let the tab/shift+tab jump out to the next tab controll  this will allow keyboard users to tab to the buttons etc. windows need changeing: main, collection, import 
+25. done the status bar msgs for alt+keys the blind tester say it noise. Remove all alt+key messages from main, book_detail. name_list, collection windows. check to see if there are other I missed 
+26. tried won't work: main window About popup add the graphic at the top of the window abcs_splash.png in folder c:\Users\cfran\PythonProjects\abcs\data\graphics. change the table that has the text into a text box like on book_list_import window. set the focus to the text box when the win opens. 
+27. tried won't work: main window license popup change the table that has the text into a text box like on book_list_import window set the focus to the text box when the win opens.
+28. import and import_progress window when scan is canceled move the "cancel" part of the message to bhe beginning of the message. clearer for screen readers. 
+29. done import_progress window alt+/ not working while scanning however the version in archive called import_progress_window mar21.py did work. compare the alt+/ code when scanning is in progress. let me know if what you find. 
+30. done book_detail & import_detail comnbos when shoosing an item that exists in the db the popup add new is showing.

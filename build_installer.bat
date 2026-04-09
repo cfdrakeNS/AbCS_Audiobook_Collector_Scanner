@@ -1,45 +1,36 @@
+
 @echo off
 setlocal EnableExtensions
-REM ============================================================
-REM  build_installer.bat
-REM  Full Windows installer build for AbCS
-REM
-REM  What this does:
-REM    Step 1 - Builds an onedir executable with PyInstaller
-REM             (output: dist\AbCS\)
-REM    Step 2 - Compiles dist\AbCS\ into a Windows installer
-REM             using Inno Setup (output: releases\AbCS-Setup-x.x.x.exe)
-REM
-REM  Prerequisites:
-REM    - Inno Setup 6 installed from https://jrsoftware.org/isdl.php
-REM    - venv activated OR run from the project root with venv present
-REM ============================================================
-
-set "BUILD_LOG=build_installer.log"
-if exist "%BUILD_LOG%" del "%BUILD_LOG%"
-set "VENV_DIR="
-if exist ".venv\Scripts\python.exe" set "VENV_DIR=.venv"
-if not defined VENV_DIR if exist "venv\Scripts\python.exe" set "VENV_DIR=venv"
-echo AbCS installer build started.
-echo Detailed log: %BUILD_LOG%
-echo.
-
-REM ------------------------------------------------------------
-REM  Resolve Python environment
-REM ------------------------------------------------------------
-if not defined VENV_DIR (
-    echo ERROR: No virtual environment found.
-    echo Create .venv or venv and install requirements.
+REM Minimal output for screen reader accessibility
+if not defined PYTHON_EXE set PYTHON_EXE=python
+if not exist get_version.py (
+    echo ERROR: get_version.py missing.
     pause
     exit /b 1
 )
-set "PYTHON_EXE=%VENV_DIR%\Scripts\python.exe"
-echo Using environment: %VENV_DIR%
+if not exist src\main.py (
+    echo ERROR: src\main.py missing.
+    pause
+    exit /b 1
+)
+set "BUILD_LOG=build_installer.log"
+if exist "%BUILD_LOG%" del "%BUILD_LOG%"
+set "VER="
+for /f "usebackq delims=" %%V in (`"%PYTHON_EXE%" get_version.py src/main.py`) do (
+    set "VER=%%V"
+)
+for /f "delims=" %%A in ("%VER%") do set VER=%%A
+if not defined VER (
+    echo ERROR: Could not get version.
+    pause
+    exit /b 1
+)
+echo Building AbCS version %VER%...
 
 REM ------------------------------------------------------------
 REM  Check / install PyInstaller
 REM ------------------------------------------------------------
-echo Step 1/4: Checking PyInstaller...
+echo Checking PyInstaller...
 "%PYTHON_EXE%" -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo Installing PyInstaller. This may take a minute...
@@ -68,7 +59,7 @@ echo PyInstaller ready.
 REM ------------------------------------------------------------
 REM  Step 1: Clean previous build artifacts
 REM ------------------------------------------------------------
-echo Step 2/4: Cleaning old build files...
+echo Cleaning old build files...
 taskkill /F /IM AbCS.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
@@ -82,8 +73,7 @@ REM  onedir is used (not onefile) so Inno Setup can package
 REM  individual files - faster app startup and better antivirus
 REM  compatibility than onefile extraction to temp.
 REM ------------------------------------------------------------
-echo Step 3/4: Building app files...
-echo Please wait...
+echo Building app files...
 
 "%PYTHON_EXE%" -m PyInstaller ^
     --name="AbCS" ^
@@ -125,7 +115,7 @@ echo App build complete.
 REM ------------------------------------------------------------
 REM  Step 2: Locate Inno Setup Compiler (ISCC.exe)
 REM ------------------------------------------------------------
-echo Step 4/4: Building installer package...
+echo Creating installer package...
 
 set ISCC=
 
@@ -146,31 +136,13 @@ pause
 exit /b 1
 
 :found_iscc
-echo Inno Setup found.
-
-REM ------------------------------------------------------------
-REM  Resolve installer version from src\main.py APP_VERSION
-REM ------------------------------------------------------------
-set "VER="
-for /f "usebackq delims=" %%V in (`"%PYTHON_EXE%" -c "import pathlib,re; t=pathlib.Path('src/main.py').read_text(encoding='utf-8'); m=re.search(r'^APP_VERSION\s*=\s*\"([^\"]+)\"', t, re.M); print(m.group(1) if m else '')"`) do (
-    set "VER=%%V"
-)
-if not defined VER (
-    echo ERROR: Could not resolve APP_VERSION from src\main.py
-    echo See %BUILD_LOG% for details.
-    pause
-    exit /b 1
-)
-echo Using APP_VERSION: %VER%
-
-REM ------------------------------------------------------------
-REM  Step 2 (cont): Ensure releases\ output folder exists
-REM ------------------------------------------------------------
+REM Inno Setup found.
 if not exist releases mkdir releases
 
 REM ------------------------------------------------------------
+
 REM  Step 2 (cont): Compile the installer
-REM ------------------------------------------------------------
+REM  (Icon and splash PNGs are referenced in AbCS_installer.iss)
 "%ISCC%" /Qp /DMyAppVersion=%VER% AbCS_installer.iss >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (
@@ -181,6 +153,5 @@ if errorlevel 1 (
 )
 
 echo Installer build complete.
-echo Installer: releases\AbCS-Setup-%VER%.exe
-echo Log file: %BUILD_LOG%
+echo Output: releases\AbCS-Setup-%VER%.exe
 pause

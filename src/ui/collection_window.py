@@ -49,7 +49,7 @@ class CollectionWindow(QDialog):
     Built incrementally from accessible skeleton.
     """
 
-    # Alt+letter keys that are allowed to pass through
+    # Alt+letter keys that are allowed to pass through (no status bar hint)
     ALLOWED_ALT_LETTERS = {"E", "L", "N", "S", "D", "/"}
 
     def keyPressEvent(self, event):
@@ -93,6 +93,8 @@ class CollectionWindow(QDialog):
         self.load_collections(populate_editor=False)
         self._set_editor_locked(True)
         self.name_edit.installEventFilter(self)
+        # Accessibility: Tab/Shift+Tab moves focus out of table
+        self.table.keyPressEvent = self.accessible_table_key_press
         QTimer.singleShot(
             0,
             lambda: self.focus_list() if self.table.rowCount() > 0 else None,
@@ -370,8 +372,7 @@ class CollectionWindow(QDialog):
         self._set_editor_locked(False, clear_name=True)
         self.active_check.setChecked(True)
         self.name_edit.setFocus(Qt.TabFocusReason)
-        # Show save/cancel message in status bar
-        self.set_status("Alt+S to Save, Escape to Cancel")
+        # Removed status bar Alt+key shortcut message for accessibility
 
     def on_edit(self):
         collection_id = self._selected_collection_id()
@@ -392,8 +393,7 @@ class CollectionWindow(QDialog):
         self.active_check.setChecked(collection.active)
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.setCursorPosition(len(self.name_edit.text()))
-        # Show save/cancel message in status bar
-        self.set_status("Alt+S to Save, Escape to Cancel")
+        # Removed status bar Alt+key shortcut message for accessibility
 
     def on_save(self) -> bool:
         name = self._to_proper_case(self.name_edit.text())
@@ -696,3 +696,16 @@ class CollectionWindow(QDialog):
                 QApplication.beep()
                 return True
         return super().eventFilter(source, event)
+
+    def accessible_table_key_press(self, event):
+        """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
+        if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
+            self.focusNextChild()
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Backtab:
+            self.focusPreviousChild()
+            event.accept()
+            return
+        # Otherwise, default table navigation
+        QTableWidget.keyPressEvent(self.table, event)

@@ -148,8 +148,12 @@ class ImportProgressWindow(QDialog):
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.status_shortcut.setContext(Qt.ApplicationShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+        self.status_shortcut_shift = QShortcut(QKeySequence("Alt+?"), self)
+        self.status_shortcut_shift.setContext(Qt.ApplicationShortcut)
+        self.status_shortcut_shift.activated.connect(self.on_read_status_bar)
 
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_close_requested)
@@ -162,17 +166,35 @@ class ImportProgressWindow(QDialog):
 
     def eventFilter(self, source, event):
         if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress):
-            # Allow Alt+/ status-read shortcut variants to pass through
-            # (some layouts emit Alt+7 for '/').
-            if bool(event.modifiers() & Qt.AltModifier) and event.key() in (
+            is_alt = bool(event.modifiers() & Qt.AltModifier)
+            is_status_key = event.key() in (
                 Qt.Key_Slash,
+                Qt.Key_Question,
                 Qt.Key_7,
-            ):
-                return False
+            )
+            is_status_text = event.text() in ("/", "?")
+            if is_alt and (is_status_key or is_status_text):
+                self.on_read_status_bar()
+                event.accept()
+                return True
 
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
                 return True
         return super().eventFilter(source, event)
+
+    def keyPressEvent(self, event):
+        is_alt = bool(event.modifiers() & Qt.AltModifier)
+        is_status_key = event.key() in (
+            Qt.Key_Slash,
+            Qt.Key_Question,
+            Qt.Key_7,
+        )
+        is_status_text = event.text() in ("/", "?")
+        if is_alt and (is_status_key or is_status_text):
+            self.on_read_status_bar()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def apply_control_styles(self):
         progress_height = max(self.scaler.get_scaled_size(14), 12)
@@ -204,12 +226,13 @@ class ImportProgressWindow(QDialog):
 
     def set_status(self, message: str, announce: bool = False):
         self._default_status_message = message
-
-        # During explicit Alt+/ reads, hold passive updates briefly so
-        # fast scan progress text does not overwrite the spoken message.
-        if not announce and time.monotonic() < self._status_read_until:
+        # Only block passive updates, never explicit Alt+/ reads
+        if (
+            not announce
+            and hasattr(self, "_status_read_until")
+            and time.monotonic() < getattr(self, "_status_read_until", 0)
+        ):
             return
-
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def on_read_status_bar(self):
@@ -245,6 +268,9 @@ class ImportProgressWindow(QDialog):
             self.title_edit.setText(current_title)
         if current_author:
             self.author_edit.setText(current_author)
+
+        # Keep status bar visible and focus progress bar during scan
+        self.scan_progress.setFocus()
 
         if total > 0:
             percent = int((processed / total) * 100)
@@ -324,9 +350,9 @@ class ImportProgressWindow(QDialog):
             )
             if reply == QMessageBox.Yes:
                 self._cancel_requested = True
-                self.set_status("Canceling scan...")
+                self.set_status("Canceled: scan stopped, partial results kept.")
             else:
-                self.set_status("Continuing scan")
+                self.set_status("Continuing: scan not canceled.")
             return
         self.accept()
 
@@ -342,6 +368,7 @@ class ImportProgressWindow(QDialog):
         summary_text: str | None = None,
     ):
         """Mark scan phase as complete."""
+        # Focus remains on progress bar; status bar always visible
         self.mark_complete(
             canceled=canceled,
             elapsed_text=elapsed_text,

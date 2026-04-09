@@ -401,8 +401,10 @@ class AuthorQueries:
         return Author(author_id=row["author_id"], name=row["name"]) if row else None
 
     def get_by_name(self, name: str) -> Optional[Author]:
-        """Get author by name."""
-        row = self.db.fetch_one("SELECT * FROM authors WHERE name = ?", (name,))
+        """Get author by name (case-insensitive, trimmed)."""
+        row = self.db.fetch_one(
+            "SELECT * FROM authors WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))", (name,)
+        )
         return Author(author_id=row["author_id"], name=row["name"]) if row else None
 
     def insert(self, name: str, commit: bool = True) -> int:
@@ -462,8 +464,10 @@ class SeriesQueries:
         return Series(series_id=row["series_id"], name=row["name"]) if row else None
 
     def get_by_name(self, name: str) -> Optional[Series]:
-        """Get series by name."""
-        row = self.db.fetch_one("SELECT * FROM series WHERE name = ?", (name,))
+        """Get series by name (case-insensitive, trimmed)."""
+        row = self.db.fetch_one(
+            "SELECT * FROM series WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))", (name,)
+        )
         return Series(series_id=row["series_id"], name=row["name"]) if row else None
 
     def insert(self, name: str, commit: bool = True) -> int:
@@ -519,8 +523,10 @@ class GenreQueries:
         return Genre(genre_id=row["genre_id"], name=row["name"]) if row else None
 
     def get_by_name(self, name: str) -> Optional[Genre]:
-        """Get genre by name."""
-        row = self.db.fetch_one("SELECT * FROM genres WHERE name = ?", (name,))
+        """Get genre by name (case-insensitive, trimmed)."""
+        row = self.db.fetch_one(
+            "SELECT * FROM genres WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))", (name,)
+        )
         return Genre(genre_id=row["genre_id"], name=row["name"]) if row else None
 
     def insert(self, name: str, commit: bool = True) -> int:
