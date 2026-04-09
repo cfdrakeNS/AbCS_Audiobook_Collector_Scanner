@@ -1,4 +1,3 @@
-
 ; AbCS - Audio Book Collector Scanner
 ; Inno Setup 6 Installer Script
 ;
@@ -8,29 +7,6 @@
 ; Version source of truth is src/main.py APP_VERSION.
 ; build_installer.bat passes MyAppVersion from APP_VERSION via /D.
 ; The fallback below is used when compiling this .iss directly in ISCC IDE.
-# ──────────────────────────────────────────────────────────────────
-# [CustomMessages] - must come after [Setup]/[Languages]
-# ──────────────────────────────────────────────────────────────────
-[CustomMessages]
-WelcomeTitle=Welcome to AbCS Setup
-WelcomeLine1=AbCS - Audio Book Collector Scanner
-WelcomeLine2=A cross-platform audiobook collection manager with full accessibility support.
-
-# ──────────────────────────────────────────────────────────────────
-# [Code] - must be last
-# ──────────────────────────────────────────────────────────────────
-[Code]
-var
-    WelcomePage: TWizardPage;
-
-procedure InitializeWizard;
-begin
-    WelcomePage := CreateCustomPage(wpWelcome,
-        ExpandConstant('{cm:WelcomeTitle}'),
-        ExpandConstant('{cm:WelcomeLine1}') + #13#10 +
-        ExpandConstant('{cm:WelcomeLine2}')
-    );
-end;
 
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audio Book Collector Scanner"
@@ -64,8 +40,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 
-
-; Output: releases\AbCS-Setup-1.9.4.exe
+; Output: releases\AbCS-Setup-1.9.6.exe
 OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
@@ -137,11 +112,10 @@ Source: "data\Graphics\abcs_splash.png"; \
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
 ; Start Menu
-Name: "{group}\{#MyAppName}";                     Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS_icon.ico"
+Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS_icon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
-; Add an uninstall shortcut in the install folder so testers do not need
-; to rely on Windows Settings / Add or Remove Programs.
+; Uninstall shortcut in install folder for testers
 Name: "{app}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 ; Desktop (only if user chose that task above)
@@ -158,3 +132,27 @@ Name: "{commondesktop}\{#MyAppName}"; \
 Filename: "{app}\{#MyAppExeName}"; \
     Description: "{cm:LaunchProgram,{#MyAppName}}"; \
     Flags: nowait postinstall skipifsilent
+
+; ──────────────────────────────────────────────────────────────────
+; [CustomMessages] - must come after [Setup] and [Languages]
+; ──────────────────────────────────────────────────────────────────
+[CustomMessages]
+WelcomeTitle=Welcome to AbCS Setup
+WelcomeLine1=AbCS - Audio Book Collector Scanner
+WelcomeLine2=A cross-platform audiobook collection manager with full accessibility support.
+
+; ──────────────────────────────────────────────────────────────────
+; [Code] - Pascal script, must always be the last section
+; ──────────────────────────────────────────────────────────────────
+[Code]
+var
+    WelcomePage: TWizardPage;
+
+procedure InitializeWizard;
+begin
+    WelcomePage := CreateCustomPage(wpWelcome,
+        ExpandConstant('{cm:WelcomeTitle}'),
+        ExpandConstant('{cm:WelcomeLine1}') + #13#10 +
+        ExpandConstant('{cm:WelcomeLine2}')
+    );
+end;
