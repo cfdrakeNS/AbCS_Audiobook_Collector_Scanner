@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QTextEdit,
 )
+from PySide6.QtCore import QEvent
 from PySide6.QtCore import Qt, QDate, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
@@ -38,6 +39,19 @@ class ReadingHistoryWindow(QDialog):
 
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
+
+    def eventFilter(self, source, event):
+        # Tab/Shift+Tab on any table: move focus out of table, not to next cell
+        if isinstance(source, QTableWidget) and event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Tab and not event.modifiers():
+                self.focusNextChild()
+                event.accept()
+                return True
+            elif event.key() == Qt.Key_Backtab:
+                self.focusPreviousChild()
+                event.accept()
+                return True
+        return super().eventFilter(source, event)
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -106,6 +120,8 @@ class ReadingHistoryWindow(QDialog):
 
         # Create a table for JAWS accessibility
         self.general_table = QTableWidget()
+        self.general_table.setTabKeyNavigation(False)
+        self.general_table.installEventFilter(self)
         self.general_table.setAccessibleName("General reading statistics table")
         self.general_table.setAccessibleDescription(
             "Table showing total reading statistics"
@@ -196,6 +212,7 @@ class ReadingHistoryWindow(QDialog):
         # Year table
         self.year_table = QTableWidget()
         self.year_table.setAccessibleName("Yearly reading statistics table")
+        self.year_table.installEventFilter(self)
         self.year_table.setAccessibleDescription("Table showing books read per year")
 
         # Setup table columns
@@ -219,11 +236,11 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(80)
         header.setStretchLastSection(False)
-        # Set specific column widths: Year=140 (wider), Books=100, Hours=80
+        # Set specific column widths: Year=80, Books=100, Hours=80
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         header.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.year_table.setColumnWidth(0, 140)  # Year (wider for accessibility)
+        self.year_table.setColumnWidth(0, 80)  # Year
         self.year_table.setColumnWidth(1, 100)  # Books Read
         self.year_table.setColumnWidth(2, 80)  # Total Hours
 
@@ -238,6 +255,7 @@ class ReadingHistoryWindow(QDialog):
         # Month table
         self.month_table = QTableWidget()
         self.month_table.setAccessibleName("Monthly reading statistics table")
+        self.month_table.installEventFilter(self)
         self.month_table.setAccessibleDescription("Table showing books read per month")
 
         # Swap month and year columns: Year, Month, Books Read, Total Hours
@@ -261,13 +279,13 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(80)
         header.setStretchLastSection(False)
-        # Set specific column widths: Year=140, Month=280 (much wider), Books=100, Hours=80
+        # Set specific column widths: Year=80, Month=150, Books=100, Hours=80
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Year
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Month
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Books Read
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Total Hours
-        self.month_table.setColumnWidth(0, 140)  # Year
-        self.month_table.setColumnWidth(1, 280)  # Month (much wider for accessibility)
+        self.month_table.setColumnWidth(0, 80)  # Year
+        self.month_table.setColumnWidth(1, 150)  # Month
         self.month_table.setColumnWidth(2, 100)  # Books Read
         self.month_table.setColumnWidth(3, 80)  # Total Hours
 
@@ -343,8 +361,11 @@ class ReadingHistoryWindow(QDialog):
         range_layout.addLayout(period_layout)
 
         # History table
+
         self.range_table = QTableWidget()
         self.range_table.setAccessibleName("Date range reading history table")
+        self.range_table.installEventFilter(self)
+
         self.range_table.setAccessibleDescription(
             "Table showing reading history with date, title, author, and hours"
         )
@@ -370,12 +391,12 @@ class ReadingHistoryWindow(QDialog):
         header.setSortIndicator(0, Qt.DescendingOrder)
         header.setMinimumSectionSize(100)
         header.setStretchLastSection(False)
-        # Set specific column widths: Date=260 (much wider), Title=523, Author=319, Hours=100
+        # Set specific column widths: Date=120, Title=523, Author=319, Hours=100
         header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
         header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title
         header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
         header.setSectionResizeMode(3, QHeaderView.Fixed)  # Hours
-        self.range_table.setColumnWidth(0, 260)  # Date (much wider for accessibility)
+        self.range_table.setColumnWidth(0, 120)  # Date
         self.range_table.setColumnWidth(1, 523)  # Title
         self.range_table.setColumnWidth(2, 319)  # Author (+33%)
         self.range_table.setColumnWidth(3, 100)  # Hours

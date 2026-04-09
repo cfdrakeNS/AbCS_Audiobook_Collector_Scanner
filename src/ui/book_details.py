@@ -80,6 +80,7 @@ class BookDetailsWindow(QDialog):
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
+        # Preserve 'fields changed' message, but do not announce Alt+key or Escape in status bar
         self._default_status_message = message
         announce_status_message(self.status_bar, message, move_focus=announce)
 
@@ -392,7 +393,7 @@ class BookDetailsWindow(QDialog):
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
                 self.set_status(
-                    f"{field_name} changed. Press Alt+S Save or Escape Cancel",
+                    f"{field_name} changed.",
                     announce=True,
                 )
                 self._pending_dirty_widgets.discard(dirty_widget)
@@ -772,9 +773,7 @@ class BookDetailsWindow(QDialog):
         # New button (Alt+N) - clears form for new entry
         self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
-        self.new_button.setAccessibleDescription(
-            "Clear form for new book entry - Alt+N"
-        )
+        self.new_button.setAccessibleDescription("Clear form for new book entry")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
         # self.new_button.setShortcut(QKeySequence("Alt+N"))  # Commented out for accessibility
         self.new_button.clicked.connect(self.on_new)
@@ -787,7 +786,7 @@ class BookDetailsWindow(QDialog):
         # Save button (Alt+S)
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save book")
-        self.save_button.setAccessibleDescription("Save changes - Alt+S")
+        self.save_button.setAccessibleDescription("Save changes")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
         # self.save_button.setShortcut(QKeySequence("Alt+S"))  # Commented out for accessibility
         self.save_button.clicked.connect(self.on_save)
@@ -800,9 +799,7 @@ class BookDetailsWindow(QDialog):
         # Delete button (Alt+D)
         self.delete_button = QPushButton("Delete")
         self.delete_button.setAccessibleName("Delete book")
-        self.delete_button.setAccessibleDescription(
-            "Delete this book - Alt+D or Delete key"
-        )
+        self.delete_button.setAccessibleDescription("Delete this book")
         self.delete_button.setFocusPolicy(Qt.StrongFocus)
         # self.delete_button.setShortcut(QKeySequence("Alt+D"))  # Commented out for accessibility
         self.delete_button.clicked.connect(self.on_delete)
@@ -817,9 +814,7 @@ class BookDetailsWindow(QDialog):
         # Get web info button (Alt+W)
         self.get_web_details_button = QPushButton("Fetch Web Info")
         self.get_web_details_button.setAccessibleName("Get web info")
-        self.get_web_details_button.setAccessibleDescription(
-            "Fetch book info from web - Alt+W"
-        )
+        self.get_web_details_button.setAccessibleDescription("Fetch book info from web")
         self.get_web_details_button.setFocusPolicy(Qt.StrongFocus)
         self.get_web_details_button.clicked.connect(self.on_get_web_details)
         self.get_web_details_button.setDefault(False)
@@ -1054,12 +1049,12 @@ class BookDetailsWindow(QDialog):
         """Show default status when form is not in edit/save mode."""
         if self.is_new:
             self.set_status(
-                "New book entry. Press Alt+S Save, Escape Cancel, Alt+W Fetch web info",
+                "New book entry.",
                 announce=announce,
             )
         else:
             self.set_status(
-                "Alt+N New, Alt+D Delete, Alt+W Fetch web info, Escape Close",
+                "",
                 announce=announce,
             )
 
@@ -1602,7 +1597,7 @@ class BookDetailsWindow(QDialog):
 
         # Focus title field
         self.title_edit.setFocus()
-        self.set_status("New book entry. Press Alt+S Save or Escape Cancel")
+        self.set_status("")
 
     def _apply_new_defaults(self):
         """Apply defaults for new entries without auto-selecting choices."""
@@ -1814,7 +1809,7 @@ class BookDetailsWindow(QDialog):
         # Block navigation if dirty
         if self._dirty:
             QApplication.beep()
-            self.set_status("Unsaved changes. Press Alt+S Save or Escape Cancel")
+            self.set_status("Unsaved changes.")
             return
 
         if not self.books_list or self.current_index <= 0:
@@ -1839,7 +1834,7 @@ class BookDetailsWindow(QDialog):
         # Block navigation if dirty
         if self._dirty:
             QApplication.beep()
-            self.set_status("Unsaved changes. Press Alt+S Save or Escape Cancel")
+            self.set_status("Unsaved changes.")
             return
 
         if not self.books_list or self.current_index >= len(self.books_list) - 1:
