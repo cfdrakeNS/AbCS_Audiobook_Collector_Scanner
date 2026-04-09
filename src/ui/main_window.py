@@ -1862,8 +1862,19 @@ class MainWindow(QMainWindow):
             # Use ampersand for Alt+T shortcut only on 'Title', else just 'Find xxx:'
             if field == "Title":
                 text_label.setText("Find &title:")
+                text_edit.setAccessibleName("Find title")
+            elif field == "Author":
+                text_label.setText("Find author:")
+                text_edit.setAccessibleName("Find author")
+            elif field == "Series":
+                text_label.setText("Find series:")
+                text_edit.setAccessibleName("Find series")
+            elif field == "Genre":
+                text_label.setText("Find genre:")
+                text_edit.setAccessibleName("Find genre")
             else:
                 text_label.setText(f"Find {field.lower()}:")
+                text_edit.setAccessibleName(f"Find {field.lower()}")
 
         field_combo.currentIndexChanged.connect(update_text_label)
 
