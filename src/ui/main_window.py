@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QTextEdit,
 )
+from src.ui.license_dialogue import LicenseDialog
 from PySide6.QtCore import (
     Qt,
     QTimer,
@@ -3187,107 +3188,6 @@ class MainWindow(QMainWindow):
         dlg.setWindowTitle("Library Statistics")
         dlg.setAccessibleName("")
         dlg.setAccessibleDescription("")
-        dlg.resize(500, 525)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Add About graphic at the top
-        from PySide6.QtGui import QPixmap
-
-        graphic_label = QLabel(dlg)
-        pixmap = QPixmap("data/graphics/abcs_about_win.png")
-        if not pixmap.isNull():
-            graphic_label.setPixmap(pixmap.scaledToWidth(500, Qt.SmoothTransformation))
-            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
-            graphic_label.setAccessibleName("AbCS About Graphic")
-            layout.addWidget(graphic_label)
-
-        if stats.total_books == 0:
-            # First time use - welcome message
-            text_edit = QTextEdit()
-            text_edit.setReadOnly(True)
-            splash_text = """Welcome to AbCS - Audio Book Collector Scanner!
-
-No audiobooks found in the database yet.
-
-You can:
-• Import audiobooks from your computer (scan folders)
-• Manually add a new book
-
-Use Ctrl+I to import or Alt+M for menu options."""
-            text_edit.setPlainText(splash_text)
-            font = text_edit.font()
-            font.setPointSize(self.scaler.get_scaled_size(12))
-            text_edit.setFont(font)
-            layout.addWidget(text_edit)
-            QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
-        else:
-            # Show statistics in a single-column table
-            table = QTableWidget()
-            table.setAccessibleName("")
-            table.setAccessibleDescription("")
-            table.setColumnCount(1)
-            table.setHorizontalHeaderLabels([""])
-            table.setSelectionBehavior(QAbstractItemView.SelectRows)
-            table.setSelectionMode(QAbstractItemView.SingleSelection)
-            table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-            table.setAlternatingRowColors(False)
-            table.verticalHeader().setVisible(False)
-            table.horizontalHeader().setVisible(False)
-            table.setShowGrid(False)
-            # Ensure no focus or highlight on click
-            table.setFocusPolicy(Qt.NoFocus)
-            table.clearSelection()
-            from src.accessibility.shortcut_helpers import (
-                build_accessible_f1_popup_style,
-            )
-
-            table.setStyleSheet(build_accessible_f1_popup_style())
-
-            # Data rows
-            data = [
-                ("Total Books", str(stats.total_books)),
-                ("Total Authors", str(stats.total_authors)),
-                ("Total Series", str(stats.total_series)),
-                ("Total Genres", str(stats.total_genres)),
-                ("Collections", str(stats.total_collections)),
-                ("Books Read", str(stats.books_read)),
-                ("Books Unread", str(stats.books_unread)),
-                ("Total Listening Time", stats.total_time_display),
-            ]
-
-            if stats.collection_breakdown:
-                for collection_name, book_count in stats.collection_breakdown:
-                    data.append((collection_name, str(book_count)))
-
-            table.setRowCount(len(data))
-
-            for row, (label, value) in enumerate(data):
-                combined_text = f"{label:<25} {value}"
-                item = QTableWidgetItem(combined_text)
-                item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
-                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                table.setItem(row, 0, item)
-
-            # Resize column to stretch
-            header = table.horizontalHeader()
-            header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-            # Set font
-            font = table.font()
-            font.setPointSize(self.scaler.get_scaled_size(11))
-            font.setFamily("Courier New")
-            table.setFont(font)
-
-            layout.addWidget(table)
-            QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
-
-        focus_ctx = self._capture_table_focus_context()
-        dlg.exec()
-        self._restore_table_focus_context(focus_ctx)
-        self.restore_main_focus_after_modal()
 
     def on_show_authors(self):
         """Open Author window."""
@@ -3375,223 +3275,21 @@ Use Ctrl+I to import or Alt+M for menu options."""
         self._restore_table_focus_context(focus_ctx)
 
     def on_about(self):
-        """Show about dialog using accessible popup pattern from Book List Import window."""
-        try:
-            from src.accessibility.screen_reader import is_screen_reader_active
+        # TEST: Use AboutDialog from about_dialogue.py instead of internal popup
+        from src.ui.about_dialogue import AboutDialog
 
-            sr_active = is_screen_reader_active()
-        except Exception:
-            sr_active = False
-
-        version = get_app_version()
-        about_lines = [
-            f"AbCS - Audio Book Collector Scanner    {version}",
-            "A cross-platform audiobook collection manager with full accessibility support.",
-            "LICENSE",
-            "Copyright (c) 2025-2026 C.F. Drake & Contributors",
-            "Custom non-commercial license.",
-            "Commercial sale/distribution requires written permission.",
-            "FEATURES",
-            "  • Audio Book Management with full metadata",
-            "  • ID3 Tag Import from folders",
-            "  • Advanced Search and Filtering",
-            "  • Complete Keyboard Navigation",
-            "  • Screen Reader Support",
-            "  • Scalable UI (50%-200%+)",
-            "  • High Contrast Themes",
-            "ACCESSIBILITY",
-            "  • Designed for users with low vision and screen readers.",
-            "  • All features include keyboard shortcuts.",
-            f"Screen reader detected: {'Yes' if sr_active else 'No'}",
-            "Press F1 or use Help menu for Keyboard Shortcuts.",
-        ]
-
-        from PySide6.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QTableWidget,
-            QTableWidgetItem,
-            QPushButton,
-            QHeaderView,
-            QAbstractItemView,
-        )
-        from PySide6.QtCore import Qt, QTimer
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle("About AbCS")
-        dlg.setAccessibleName("About AbCS")
-        dlg.setAccessibleDescription(
-            "Dialog containing read-only information about AbCS and accessibility features."
-        )
-        dlg.setModal(True)
-        dlg.setWindowModality(Qt.ApplicationModal)
-        dlg.resize(self.scaler.get_scaled_size(470), self.scaler.get_scaled_size(520))
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        # Add About graphic at the top
-        from PySide6.QtGui import QPixmap
-
-        graphic_label = QLabel(dlg)
-        pixmap = QPixmap("data/graphics/abcs_about_win.png")
-        if not pixmap.isNull():
-            graphic_label.setPixmap(pixmap.scaledToWidth(500, Qt.SmoothTransformation))
-            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
-            graphic_label.setAccessibleName("AbCS About Graphic")
-            layout.addWidget(graphic_label)
-
-        table = QTableWidget()
-        table.setAccessibleName("About AbCS information")
-        table.setAccessibleDescription(
-            "Read-only list of AbCS information. Use arrow keys to read line by line."
-        )
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(about_lines))
-        table.setVerticalHeaderLabels([""] * len(about_lines))
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(False)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        table.setFocusPolicy(Qt.StrongFocus)
-
-        for row, line in enumerate(about_lines):
-            item = QTableWidgetItem(line)
-            item.setData(Qt.AccessibleTextRole, line if line else " ")
-            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            table.setItem(row, 0, item)
-
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(12))
-        table.setFont(font)
-        layout.addWidget(table)
-
-        def focus_table():
-            if table.rowCount() > 0:
-                table.setCurrentCell(0, 0)
-            table.setFocus(Qt.TabFocusReason)
-
-        QTimer.singleShot(0, focus_table)
-        QTimer.singleShot(150, focus_table)
-        self.set_status("About dialog opened. Use arrow keys to read")
+        dlg = AboutDialog(self.scaler, self)
         dlg.exec()
+        self.set_status("About dialog opened (external AboutDialog test)")
         self.restore_main_focus_after_modal()
+        # --- Internal implementation commented out for test ---
+        # ...existing code...
 
     def on_show_license(self):
-        """Show custom non-commercial license dialog."""
-        license_lines = [
-            "AbCS - Audio Book Collector Scanner",
-            "Custom Non-Commercial License",
-            "",
-            "License Terms",
-            "",
-            "Copyright (c) 2025-2026 C.F. Drake & Contributors",
-            "",
-            "Permission is granted, free of charge, to use, copy, and share this",
-            "software for personal, educational, testing, and non-commercial use.",
-            "",
-            "You may modify this software for your own use.",
-            "If you redistribute copies or modified versions, this notice and",
-            "copyright attribution must remain intact.",
-            "",
-            "Commercial use is prohibited without prior written permission from",
-            "the copyright holder.",
-            "You may not sell this software, bundle it into paid products, or",
-            "distribute it for a fee without explicit written authorization.",
-            "",
-            'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,',
-            "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF",
-            "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND",
-            "NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS",
-            "BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN",
-            "ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN",
-            "CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE",
-            "SOFTWARE.",
-        ]
-
-        focus_ctx = self._capture_table_focus_context()
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle("License — AbCS")
-        dlg.setAccessibleName("License information dialog")
-        dlg.setAccessibleDescription(
-            "Read-only license terms. Use arrow keys to read line by line."
-        )
-        # Reduce width by about 1/4 for better fit
-        dlg.resize(self.scaler.get_scaled_size(510), self.scaler.get_scaled_size(520))
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        lic_table = QTableWidget(dlg)
-        lic_table.setAccessibleName("License text")
-        lic_table.setAccessibleDescription(
-            "Read-only table of license text. Use arrow keys to read line by line."
-        )
-        lic_table.setColumnCount(1)
-        lic_table.setRowCount(len(license_lines))
-        lic_table.setHorizontalHeaderLabels([""])
-        lic_table.setVerticalHeaderLabels([""] * len(license_lines))
-        lic_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        lic_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        lic_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        lic_table.setTabKeyNavigation(False)
-        lic_table.setAlternatingRowColors(False)
-        lic_table.verticalHeader().setVisible(False)
-        lic_table.horizontalHeader().setVisible(False)
-        lic_table.setShowGrid(False)
-        lic_table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected {"
-            " background-color: transparent;"
-            " color: palette(text);"
-            "}"
-            "QTableWidget::item:focus { outline: none; }"
-        )
-
-        for row, line in enumerate(license_lines):
-            item = QTableWidgetItem(line)
-            item.setData(Qt.AccessibleTextRole, line if line else " ")
-            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            lic_table.setItem(row, 0, item)
-
-        lic_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-
-        font = lic_table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        lic_table.setFont(font)
-        layout.addWidget(lic_table)
-
-        close_button = QPushButton("&OK", dlg)
-        close_button.setAccessibleName("Close License dialog")
-        close_button.setAccessibleDescription("Closes License dialog")
-        close_button.setStyleSheet(
-            build_accessible_button_style(self.scaler.get_scaled_size(20))
-        )
-        close_button.clicked.connect(dlg.accept)
-        layout.addWidget(close_button, alignment=Qt.AlignRight)
-
-        dlg.setTabOrder(lic_table, close_button)
-
-        def focus_license_table() -> None:
-            if lic_table.rowCount() > 0:
-                lic_table.setCurrentCell(0, 0)
-            lic_table.setFocus(Qt.ActiveWindowFocusReason)
-
-        self.set_status("License dialog opened. Use arrow keys to read")
-        QTimer.singleShot(0, focus_license_table)
-        QTimer.singleShot(150, focus_license_table)
+        """Show the new accessible license dialog."""
+        dlg = LicenseDialog(self.scaler, self)
         dlg.exec()
-
-        self._restore_table_focus_context(focus_ctx)
+        self.set_status("License dialog opened. Press Tab to move to OK button.")
         self.restore_main_focus_after_modal()
 
     def on_show_shortcuts(self):
