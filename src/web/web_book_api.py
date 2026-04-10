@@ -14,6 +14,19 @@ from typing import Optional, Dict, List
 class WebBookAPI:
     """API client for fetching book metadata from web sources."""
 
+    def _move_article_to_beginning(self, title: str) -> str:
+        """Move trailing articles ', the', ', a', ', an' to beginning of title."""
+        if not title:
+            return title
+        # Lowercase for matching, but preserve original case
+        trailing_articles = [", the", ", a", ", an"]
+        for article in trailing_articles:
+            if title.lower().endswith(article):
+                base = title[: -len(article)].strip()
+                article_word = article[2:].capitalize()
+                return f"{article_word} {base}"
+        return title
+
     def __init__(self):
         """Initialize the API client."""
         self.google_books_url = "https://www.googleapis.com/books/v1/volumes"
@@ -68,16 +81,23 @@ class WebBookAPI:
             if cached_time:
                 self._cache[cache_key] = None  # Clear expired cache
 
-        # Apply search-time transformations (only if explicitly requested)
-        if move_articles or flip_author:
-            search_title = self._apply_title_transformations(title, move_articles)
-            search_author = (
-                self._apply_author_transformations(author, flip_author)
-                if author
-                else None
-            )
+        # Always strip series number for search
+        search_title, _ = self._strip_series_number(title)
+
+        # Move trailing article to beginning if present (e.g., 'Great Gatsby, The' -> 'The Great Gatsby')
+        search_title = self._move_article_to_beginning(search_title)
+
+        # Optionally move leading article to end (for sources that expect it)
+        if move_articles:
+            search_title = self._move_article_to_end(search_title)
+
+        # Clean the title
+        search_title = self._clean_text_field(search_title)
+
+        # Author transformation as before
+        if flip_author and author:
+            search_author = self._apply_author_transformations(author, flip_author)
         else:
-            search_title = title
             search_author = author
 
         # Try Google Books first (fast and reliable)

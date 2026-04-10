@@ -613,24 +613,37 @@ class WebMetadataWindow(QDialog):
             )
             web_str = str(web_value).strip() if web_value is not None else ""
 
+            # For title field, normalize for series number and article
+            if field_name == "title":
+                api = WebBookAPI()
+
+                # Strip series number and move trailing article to beginning
+                def normalize_title(val):
+                    t, _ = api._strip_series_number(val)
+                    t = api._move_article_to_beginning(t)
+                    t = api._clean_text_field(t)
+                    return t.lower()
+
+                norm_current = normalize_title(current_str)
+                norm_web = normalize_title(web_str)
+            else:
+                norm_current = current_str.lower()
+                norm_web = web_str.lower()
+
             if web_value and (current_value is None or current_str == ""):
                 # DB field is empty and web data exists - show web data but hide checkbox (auto-applied)
                 web_edit.setText(web_str)
-                row_widget._web_label.setVisible(
-                    True
-                )  # Show web column so user can see the data
-                row_widget._web_edit.setVisible(True)  # Show web data
-                row_widget._checkbox.setVisible(
-                    False
-                )  # Hide checkbox (not needed for empty DB fields)
-                checkbox.setVisible(False)  # Also hide checkbox directly
+                row_widget._web_label.setVisible(True)
+                row_widget._web_edit.setVisible(True)
+                row_widget._checkbox.setVisible(False)
+                checkbox.setVisible(False)
                 self.field_differences[field_name] = web_str
                 return True
             elif (
                 web_value
                 and current_value is not None
                 and current_str != ""
-                and web_str.lower() != current_str.lower()
+                and norm_web != norm_current
             ):
                 # Data differs and DB field is NOT empty - show web column and checkbox
                 web_edit.setText(web_str)
