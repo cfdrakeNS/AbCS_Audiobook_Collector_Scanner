@@ -176,8 +176,11 @@ class BookTableModel(QAbstractTableModel):
                     )
                 return ""
 
-        if role == Qt.TextAlignmentRole and col == 6:
-            return Qt.AlignRight | Qt.AlignVCenter
+        if role == Qt.TextAlignmentRole:
+            if col == 6:
+                return Qt.AlignRight | Qt.AlignVCenter
+            if col == 7:
+                return Qt.AlignCenter | Qt.AlignVCenter
 
         return None
 
@@ -199,12 +202,13 @@ class MainWindow(QMainWindow):
         super().__init__(*args, **kwargs)
         from PySide6.QtGui import QIcon
 
-        self.setWindowIcon(QIcon("data/graphics/AbCS_icon.ico"))
+        # Set the window icon to abCS_WinTitle.png for the main window
+        self.setWindowIcon(QIcon("data/graphics/abCS_WinTitle.png"))
 
     def _selection_shortcuts_text(self) -> str:
         """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""
-        # Only show minimal, non-noisy selection shortcuts for screen readers
-        return "Shift+Click range, Ctrl+Click add/remove, Enter for details, Escape to cancel selection"
+        # Only show Escape to cancel selection for accessibility
+        return "Escape to cancel selection"
 
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
@@ -271,6 +275,24 @@ class MainWindow(QMainWindow):
         alt_down_shortcut.activated.connect(date_field.calendarPopup)
 
         dlg.setLayout(layout)
+        # Auto-size dialog width so title is always fully visible
+        from PySide6.QtGui import QFontMetrics
+
+        title_text = dlg.windowTitle()
+        font_metrics = QFontMetrics(dlg.font())
+        title_width = (
+            font_metrics.horizontalAdvance(title_text) + 80
+        )  # padding for window controls
+        min_width = 400
+        content_width = dlg.sizeHint().width() + 120
+        final_width = max(title_width, content_width, min_width)
+        dlg.resize(final_width, dlg.sizeHint().height())
+        # Center the dialog in the main window
+        parent_geom = self.geometry()
+        dlg_geom = dlg.frameGeometry()
+        center_point = parent_geom.center() - dlg_geom.center()
+        dlg.move(center_point)
+
         if dlg.exec() == QDialog.Accepted:
             # Check if date is being changed (not just cleared)
             if date_field.date() == date_field.minimumDate():
@@ -311,8 +333,9 @@ class MainWindow(QMainWindow):
                             f"Read date update cancelled for {book.title}",
                             announce=True,
                         )
-            # Optionally, move focus back to the same cell
-            self.table.setCurrentCell(row, 8)
+            # Move focus back to the same cell (QTableView)
+            index = self.book_model.index(row, 7)
+            self.table.setCurrentIndex(index)
             self.table.setFocus()
 
     """
@@ -3035,7 +3058,8 @@ class MainWindow(QMainWindow):
             self.db, self.scaler, self.theme_manager, parent=self
         )
         dialog.exec()
-        # Refresh books to show any imported items
+        # Refresh collections and books to show any imported items and new collections
+        self.refresh_collections()
         self.refresh_books()
 
     def on_import(self):
@@ -3163,11 +3187,22 @@ class MainWindow(QMainWindow):
         dlg.setWindowTitle("Library Statistics")
         dlg.setAccessibleName("")
         dlg.setAccessibleDescription("")
-        dlg.resize(500, 500)
+        dlg.resize(500, 525)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
+
+        # Add About graphic at the top
+        from PySide6.QtGui import QPixmap
+
+        graphic_label = QLabel(dlg)
+        pixmap = QPixmap("data/graphics/abcs_about_win.png")
+        if not pixmap.isNull():
+            graphic_label.setPixmap(pixmap.scaledToWidth(500, Qt.SmoothTransformation))
+            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+            graphic_label.setAccessibleName("AbCS About Graphic")
+            layout.addWidget(graphic_label)
 
         if stats.total_books == 0:
             # First time use - welcome message
@@ -3340,8 +3375,7 @@ Use Ctrl+I to import or Alt+M for menu options."""
         self._restore_table_focus_context(focus_ctx)
 
     def on_about(self):
-        """Show about dialog."""
-        # Detect screen reader (using new utility)
+        """Show about dialog using accessible popup pattern from Book List Import window."""
         try:
             from src.accessibility.screen_reader import is_screen_reader_active
 
@@ -3371,11 +3405,17 @@ Use Ctrl+I to import or Alt+M for menu options."""
             f"Screen reader detected: {'Yes' if sr_active else 'No'}",
             "Press F1 or use Help menu for Keyboard Shortcuts.",
         ]
-        focus_ctx = self._capture_table_focus_context()
 
-        from PySide6.QtWidgets import QLabel, QVBoxLayout, QDialog
-        from PySide6.QtGui import QPixmap
-        import os
+        from PySide6.QtWidgets import (
+            QDialog,
+            QVBoxLayout,
+            QTableWidget,
+            QTableWidgetItem,
+            QPushButton,
+            QHeaderView,
+            QAbstractItemView,
+        )
+        from PySide6.QtCore import Qt, QTimer
 
         dlg = QDialog(self)
         dlg.setWindowTitle("About AbCS")
@@ -3386,94 +3426,62 @@ Use Ctrl+I to import or Alt+M for menu options."""
         dlg.setModal(True)
         dlg.setWindowModality(Qt.ApplicationModal)
         dlg.resize(self.scaler.get_scaled_size(470), self.scaler.get_scaled_size(520))
+
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Add abcs_splash.png at the top
-        about_graphic_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "data",
-            "graphics",
-            "abcs_about_win.png",
-        )
-        if os.path.exists(about_graphic_path):
-            splash_label = QLabel(dlg)
-            pixmap = QPixmap(about_graphic_path)
-            # Suggest a larger graphic for best fit: 420x120 px (or similar aspect ratio)
-            # If not provided, stretch current to dialog width
-            target_width = self.scaler.get_scaled_size(420)
-            target_height = self.scaler.get_scaled_size(120)
-            scaled_pixmap = pixmap.scaled(
-                target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            splash_label.setPixmap(scaled_pixmap)
-            splash_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-            splash_label.setAccessibleName("AbCS logo")
-            layout.addWidget(splash_label)
+        # Add About graphic at the top
+        from PySide6.QtGui import QPixmap
 
-        # Use a QTableWidget for about text (for accessibility)
-        about_table = QTableWidget(dlg)
-        about_table.setAccessibleName("About AbCS information")
-        about_table.setAccessibleDescription(
-            "Read-only table of AbCS information. Use arrow keys to read line by line."
+        graphic_label = QLabel(dlg)
+        pixmap = QPixmap("data/graphics/abcs_about_win.png")
+        if not pixmap.isNull():
+            graphic_label.setPixmap(pixmap.scaledToWidth(500, Qt.SmoothTransformation))
+            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+            graphic_label.setAccessibleName("AbCS About Graphic")
+            layout.addWidget(graphic_label)
+
+        table = QTableWidget()
+        table.setAccessibleName("About AbCS information")
+        table.setAccessibleDescription(
+            "Read-only list of AbCS information. Use arrow keys to read line by line."
         )
-        about_table.setColumnCount(1)
-        about_table.setRowCount(len(about_lines))
-        about_table.setHorizontalHeaderLabels([""])
-        about_table.setVerticalHeaderLabels([""] * len(about_lines))
-        about_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        about_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        about_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        about_table.setTabKeyNavigation(False)
-        about_table.setAlternatingRowColors(False)
-        about_table.verticalHeader().setVisible(False)
-        about_table.horizontalHeader().setVisible(False)
-        about_table.setShowGrid(False)
-        about_table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected {"
-            " background-color: transparent;"
-            " color: palette(text);"
-            "}"
-            "QTableWidget::item:focus { outline: none; }"
-        )
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+        table.setRowCount(len(about_lines))
+        table.setVerticalHeaderLabels([""] * len(about_lines))
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setFocusPolicy(Qt.StrongFocus)
 
         for row, line in enumerate(about_lines):
             item = QTableWidgetItem(line)
             item.setData(Qt.AccessibleTextRole, line if line else " ")
             item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            about_table.setItem(row, 0, item)
+            table.setItem(row, 0, item)
 
-        about_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-
-        font = about_table.font()
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        font = table.font()
         font.setPointSize(self.scaler.get_scaled_size(12))
-        about_table.setFont(font)
-        layout.addWidget(about_table)
+        table.setFont(font)
+        layout.addWidget(table)
 
-        close_button = QPushButton("&OK", dlg)
-        close_button.setAccessibleName("Close About dialog")
-        close_button.setAccessibleDescription("Closes About dialog")
-        close_button.setStyleSheet(
-            build_accessible_button_style(self.scaler.get_scaled_size(20))
-        )
-        close_button.clicked.connect(dlg.accept)
-        layout.addWidget(close_button, alignment=Qt.AlignRight)
+        def focus_table():
+            if table.rowCount() > 0:
+                table.setCurrentCell(0, 0)
+            table.setFocus(Qt.TabFocusReason)
 
-        dlg.setTabOrder(about_table, close_button)
-
-        def focus_about_table() -> None:
-            if about_table.rowCount() > 0:
-                about_table.setCurrentCell(0, 0)
-            about_table.setFocus(Qt.ActiveWindowFocusReason)
-
+        QTimer.singleShot(0, focus_table)
+        QTimer.singleShot(150, focus_table)
         self.set_status("About dialog opened. Use arrow keys to read")
-        QTimer.singleShot(0, focus_about_table)
-        QTimer.singleShot(150, focus_about_table)
         dlg.exec()
-
-        self._restore_table_focus_context(focus_ctx)
         self.restore_main_focus_after_modal()
 
     def on_show_license(self):

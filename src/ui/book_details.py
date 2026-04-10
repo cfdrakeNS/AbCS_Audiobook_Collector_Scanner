@@ -1804,6 +1804,7 @@ class BookDetailsWindow(QDialog):
         """
         bd#4: Navigate to previous book in the list.
         Blocked with beep if there are unsaved changes.
+        After navigation, move focus to title field for accessibility.
         """
         # Block navigation if dirty
         if self._dirty:
@@ -1824,11 +1825,14 @@ class BookDetailsWindow(QDialog):
         # Update window title
         self.setWindowTitle("Book Details")
         self.setAccessibleName("Book Details")
+        # Accessibility: move focus to title field
+        QTimer.singleShot(0, self.title_edit.setFocus)
 
     def on_next(self):
         """
         bd#4: Navigate to next book in the list.
         Blocked with beep if there are unsaved changes.
+        After navigation, move focus to title field for accessibility.
         """
         # Block navigation if dirty
         if self._dirty:
@@ -1849,6 +1853,8 @@ class BookDetailsWindow(QDialog):
         # Update window title
         self.setWindowTitle("Book Details")
         self.setAccessibleName("Book Details")
+        # Accessibility: move focus to title field
+        QTimer.singleShot(0, self.title_edit.setFocus)
 
     def _adjust_comments_height(self):
         """Adjust comments QTextEdit height to fit content."""

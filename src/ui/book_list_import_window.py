@@ -91,6 +91,16 @@ class BookListImportWindow(QDialog):
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H F C V O E /"
 
+    def _normalize_title_for_match(self, title: str) -> str:
+        """Normalize title for matching: strip series number, move trailing article to beginning, clean."""
+        from src.web.web_book_api import WebBookAPI
+
+        api = WebBookAPI()
+        t, _ = api._strip_series_number(title)
+        t = api._move_article_to_beginning(t)
+        t = api._clean_text_field(t)
+        return t.lower()
+
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
         self.db = db
@@ -1324,9 +1334,14 @@ class BookListImportWindow(QDialog):
                 success_count, error_count = self.update_read_dates()
 
             # Show results
-            result_text = (
-                f"Import completed:\n{success_count} books processed successfully"
-            )
+            if self.import_mode == "new":
+                result_text = f"{success_count} books added to Book List collection"
+                status_text = f"{success_count} books added to Book List collection, {error_count} errors"
+            else:
+                result_text = f"{success_count} read dates added to books"
+                status_text = (
+                    f"{success_count} read dates added to books, {error_count} errors"
+                )
             if error_count > 0:
                 result_text += f"\n{error_count} books had errors"
                 result_text += (
@@ -1343,9 +1358,7 @@ class BookListImportWindow(QDialog):
                 default_button=QMessageBox.Ok,
             )
 
-            self.set_status(
-                f"Import complete: {success_count} successful, {error_count} errors"
-            )
+            self.set_status(status_text)
             # Set focus to file text box after import completes
             self.file_edit.setFocus(Qt.TabFocusReason)
 
@@ -1391,12 +1404,14 @@ class BookListImportWindow(QDialog):
                     error_count += 1
                     continue
 
-                # Check for duplicates using SQL query
+                # Normalize title for matching
+                norm_title = self._normalize_title_for_match(title)
+                # Check for duplicates using normalized title
                 dup_row = self.db.fetch_one(
                     "SELECT b.book_id FROM books b "
                     "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE b.title = ? AND a.name = ?",
-                    (title, author),
+                    "WHERE lower(b.title) = ? AND a.name = ?",
+                    (norm_title, author),
                 )
                 if dup_row:
                     self.import_errors.append(
@@ -1519,12 +1534,14 @@ class BookListImportWindow(QDialog):
                     error_count += 1
                     continue
 
-                # Find existing book by title + author using SQL
+                # Normalize title for matching
+                norm_title = self._normalize_title_for_match(title)
+                # Find existing book by normalized title + author using SQL
                 existing_row = self.db.fetch_one(
                     "SELECT b.book_id FROM books b "
                     "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE b.title = ? AND a.name = ?",
-                    (title, author),
+                    "WHERE lower(b.title) = ? AND a.name = ?",
+                    (norm_title, author),
                 )
                 if not existing_row:
                     self.import_errors.append(
@@ -1627,6 +1644,7 @@ class BookListImportWindow(QDialog):
         )
         if not file_path:
             self.set_status("Export cancelled")
+            self._ensure_read_status_bar_shortcut()
             return
 
         if not file_path.lower().endswith(".csv"):
@@ -1642,12 +1660,27 @@ class BookListImportWindow(QDialog):
                     )
         except Exception as exc:
             self.set_status(f"Export failed: {str(exc)}", announce=True)
+            self._ensure_read_status_bar_shortcut()
             return
 
         self.set_status(
             f"Exported {len(self.import_errors)} error(s) to CSV: {os.path.basename(file_path)}",
             announce=True,
         )
+        self._ensure_read_status_bar_shortcut()
+
+    def _ensure_read_status_bar_shortcut(self):
+        """Ensure Alt+/ shortcut for reading status bar is always active."""
+        # Defensive: If shortcut was deleted or lost, re-create it
+        if (
+            not hasattr(self, "read_status_bar_shortcut")
+            or self.read_status_bar_shortcut is None
+        ):
+            self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+            self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
+        else:
+            # Sometimes after modal dialogs, shortcut can be disabled; re-enable if needed
+            self.read_status_bar_shortcut.setEnabled(True)
 
     def get_or_create_book_list_collection(self):
         """Get or create the 'Book List' collection."""

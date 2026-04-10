@@ -65,17 +65,13 @@ class WebBookAPI:
         cache_key = f"{title}|{author}|{year}|{refresh}"
         current_time = time.time()
 
-        print(
-            f"[WebBookAPI] Fetching metadata for: title='{title}', author='{author}', year='{year}', refresh={refresh}"
-        )
+        # print(f"[WebBookAPI] Fetching metadata for: title='{title}', author='{author}', year='{year}', refresh={refresh}")  # Debug: web fetch
 
         # Check if we have a recent cache entry (within CACHE_DURATION seconds)
         if hasattr(self, "_cache") and cache_key in self._cache:
             cached_time, cached_result = self._cache[cache_key]
             if cached_time and (current_time - cached_time) < self.CACHE_DURATION:
-                print(
-                    f"[WebBookAPI] Returning cached result (age={current_time-cached_time:.2f}s)"
-                )
+                # print(f"[WebBookAPI] Returning cached result (age={current_time-cached_time:.2f}s)")  # Debug: web fetch
                 return cached_result
 
             if cached_time:
@@ -102,16 +98,14 @@ class WebBookAPI:
 
         # Try Google Books first (fast and reliable)
         if refresh == 0:
-            print("[WebBookAPI] Trying Google Books...")
+            # print("[WebBookAPI] Trying Google Books...")  # Debug: web fetch
             t0 = time.time()
             try:
                 metadata = self._fetch_from_google_books(
                     search_title, search_author, year
                 )
                 t1 = time.time()
-                print(
-                    f"[WebBookAPI] Google Books result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)"
-                )
+                # print(f"[WebBookAPI] Google Books result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 # Only accept if it's a real match (plot or close title/author match)
                 is_real_match = False
                 if metadata:
@@ -148,26 +142,23 @@ class WebBookAPI:
                     self._cache[cache_key] = (current_time, metadata)
                     return metadata
                 elif metadata and not is_real_match:
-                    print(
-                        "[WebBookAPI] Google Books result is weak/irrelevant, continuing to next source."
-                    )
+                    # print("[WebBookAPI] Google Books result is weak/irrelevant, continuing to next source.")  # Debug: web fetch
+                    pass
             except Exception as e:
                 t1 = time.time()
-                print(f"[WebBookAPI] Google Books error: {e} (elapsed={t1-t0:.2f}s)")
+                # print(f"[WebBookAPI] Google Books error: {e} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 # Continue to next source
 
         # Try Open Library second (always try when refresh=0, or when refresh=1 and Google Books failed)
         if refresh == 0 or refresh == 1:
-            print("[WebBookAPI] Trying Open Library...")
+            # print("[WebBookAPI] Trying Open Library...")  # Debug: web fetch
             t0 = time.time()
             try:
                 metadata = self._fetch_from_open_library(
                     search_title, search_author, year
                 )
                 t1 = time.time()
-                print(
-                    f"[WebBookAPI] Open Library result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)"
-                )
+                # print(f"[WebBookAPI] Open Library result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 if metadata:
                     metadata["source"] = "open_library"
                     metadata["first_attempt"] = refresh == 0
@@ -176,18 +167,16 @@ class WebBookAPI:
                     return metadata
             except Exception as e:
                 t1 = time.time()
-                print(f"[WebBookAPI] Open Library error: {e} (elapsed={t1-t0:.2f}s)")
+                # print(f"[WebBookAPI] Open Library error: {e} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 # Continue to next source instead of failing
 
         # Try WikiData third (great for series and author data)
-        print("[WebBookAPI] Trying WikiData...")
+        # print("[WebBookAPI] Trying WikiData...")  # Debug: web fetch
         t0 = time.time()
         try:
             metadata = self._fetch_from_wikidata(search_title, search_author, year)
             t1 = time.time()
-            print(
-                f"[WebBookAPI] WikiData result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)"
-            )
+            # print(f"[WebBookAPI] WikiData result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
             if metadata:
                 metadata["source"] = "wikidata"
                 metadata["first_attempt"] = False
@@ -196,9 +185,9 @@ class WebBookAPI:
                 return metadata
         except Exception as e:
             t1 = time.time()
-            print(f"[WebBookAPI] WikiData error: {e} (elapsed={t1-t0:.2f}s)")
+            # print(f"[WebBookAPI] WikiData error: {e} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
 
-        print("[WebBookAPI] No data found in any source. Returning None.")
+        # print("[WebBookAPI] No data found in any source. Returning None.")  # Debug: web fetch
         # Cache the failure too to avoid repeated failed requests
         self._cache[cache_key] = (current_time, None)
         return None
@@ -340,7 +329,8 @@ class WebBookAPI:
                         "confidence": 0.9,
                     }
         except Exception as e:
-            print(f"Google Books API error: {e}")
+            # print(f"Google Books API error: {e}")  # Debug: web fetch
+            pass
         return None
 
     def _fetch_from_open_library(
@@ -410,7 +400,7 @@ class WebBookAPI:
 
             return None
         except Exception as e:
-            print(f"Open Library API error: {e}")
+            # print(f"Open Library API error: {e}")  # Debug: web fetch
             return None
 
     def _get_open_library_description(self, work_key: str) -> str:
@@ -576,7 +566,7 @@ class WebBookAPI:
 
                 # Check if we got JSON
                 if not response_text.strip().startswith("{"):
-                    print("WikiData: Got non-JSON response")
+                    # print("WikiData: Got non-JSON response")  # Debug: web fetch
                     return None
 
                 data = json.loads(response_text)
@@ -596,7 +586,7 @@ class WebBookAPI:
 
                 return metadata if metadata["title"] else None
         except Exception as e:
-            print(f"WikiData API error: {e}")
+            # print(f"WikiData API error: {e}")  # Debug: web fetch
             return None
 
     def _get_sparql_value(self, result: dict, field: str) -> str:

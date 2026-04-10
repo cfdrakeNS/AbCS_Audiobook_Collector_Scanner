@@ -1,7 +1,7 @@
 # Final bug fixes
 
 1. done update window - shortcut alt=b replace with alt+l jump to list update shortcuts.py and centralized chortcuts
-2. done read\_history - check the layout and formatting it has issues with the tab Selector and buttons not following theme
+2. done read_history - check the layout and formatting it has issues with the tab Selector and buttons not following theme
 3. done main centre justify win read date
 4. Done Book detail 1. After save or delete move focus to title. 2 after fetch web info is successful move focus to plot if not successful move focus to title.
 5. Done web metadata win when web info is returned set the focus to plot if no data returned set the focus to title.
@@ -30,5 +30,11 @@
 28. import and import_progress window when scan is canceled move the "cancel" part of the message to bhe beginning of the message. clearer for screen readers. 
 29. done import_progress window alt+/ not working while scanning however the version in archive called import_progress_window mar21.py did work. compare the alt+/ code when scanning is in progress. let me know if what you find. 
 30. done book_detail & import_detail comnbos when shoosing an item that exists in the db the popup add new is showing.
-31. done main window find popup change the find label to say "find xxx" where xxx is the value in the in combo box 
-32. can we add a icon to the title bar of the windows waht size does it have to be? can we use the icon in \data\graphic 
+31. done main window find popup change the find label to say "find xxx" where xxx is the value in the in combo box. Update the accessible name to do the same. 
+32. add a icon to the title bar of the windows use bCS_WinTitle.png 
+36. done book list import window  update the status bar msg after import to  instead of "successfull"  "added to Book List collection" also, do the popup message after import.
+37. done book detail & import detail windows - after pgup or pgdn move focus to title - clearer for screen reader users 
+38. done main win 1. after update to read date the focus is lost keep the focus on read date. 2. can't read the title in the popup title bar let stretch out.
+38. done ebook_list_import & web_bookk.api - before a search is it start  or compare staarts - 1. checking if a title has a number at the beginning or at the and of the end of he title for  series. it should strip the series number before doing the search. 2. The same is true for titles that have ", the" or ", an" or ". a"  the title put back to have the article at the beginning of the title before searching. or comparing 
+39. book_list_import window - after export to csv the alt+/ stop working 
+

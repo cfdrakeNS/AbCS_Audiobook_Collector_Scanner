@@ -615,12 +615,24 @@ class ImportDetailWindow(QDialog):
         self._clear_dirty()
 
     def on_prev(self):
-        """Save edits and request previous import item."""
-        if self._navigate_without_close(self.current_index - 1):
+        """Save edits and request previous import item. Always move focus to title field for accessibility."""
+        navigated = self._navigate_without_close(self.current_index - 1)
+        QTimer.singleShot(0, self.title_edit.setFocus)
+        if navigated:
             return
         QApplication.beep()
         self._collect_form_data()
         self.done(self.RESULT_PREV)
+
+    def on_next(self):
+        """Save edits and request next import item. Always move focus to title field for accessibility."""
+        navigated = self._navigate_without_close(self.current_index + 1)
+        QTimer.singleShot(0, self.title_edit.setFocus)
+        if navigated:
+            return
+        QApplication.beep()
+        self._collect_form_data()
+        self.done(self.RESULT_NEXT)
 
     def _check_combo_change(
         self, field_name: str, combo: QComboBox, original_value: str, query_obj
@@ -1209,16 +1221,20 @@ class ImportDetailWindow(QDialog):
             self.book_data["time_minutes"] = 0
 
     def on_prev(self):
-        """Save edits and request previous import item."""
-        if self._navigate_without_close(self.current_index - 1):
+        """Save edits and request previous import item. Always move focus to title field for accessibility."""
+        navigated = self._navigate_without_close(self.current_index - 1)
+        QTimer.singleShot(0, self.title_edit.setFocus)
+        if navigated:
             return
         QApplication.beep()
         self._collect_form_data()
         self.done(self.RESULT_PREV)
 
     def on_next(self):
-        """Save edits and request next import item."""
-        if self._navigate_without_close(self.current_index + 1):
+        """Save edits and request next import item. Always move focus to title field for accessibility."""
+        navigated = self._navigate_without_close(self.current_index + 1)
+        QTimer.singleShot(0, self.title_edit.setFocus)
+        if navigated:
             return
         QApplication.beep()
         self._collect_form_data()

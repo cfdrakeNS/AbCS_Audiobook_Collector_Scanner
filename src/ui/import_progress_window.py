@@ -54,7 +54,7 @@ class ImportProgressWindow(QDialog):
         self.install_event_filters()
         self.apply_control_styles()
 
-        self.setWindowTitle("Import Progress")
+        self.setWindowTitle("imported  Progress")
         self.setAccessibleName("Import Progress")
         self.resize(760, 176)  # Reduced height by about 20% from original 220
         self.set_status("Ready")
