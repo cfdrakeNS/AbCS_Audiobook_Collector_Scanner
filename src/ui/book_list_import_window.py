@@ -692,6 +692,7 @@ class BookListImportWindow(QDialog):
             ("year", "Year"),
             ("plot", "Plot"),
             ("series", "Series"),
+            ("series_no", "Series #"),
             ("genre", "Genre"),
             ("reader", "Reader"),
             ("read_date", "  Read Date"),
@@ -1261,6 +1262,7 @@ class BookListImportWindow(QDialog):
             "year": "Year",
             "plot": "Plot",
             "series": "Series",
+            "series_no": "Series #",
             "genre": "Genre",
             "reader": "Reader",
             "read_date": "Read Date",
@@ -1416,8 +1418,41 @@ class BookListImportWindow(QDialog):
                     error_count += 1
                     continue
 
-                # Normalize title for matching
-                norm_title = self._normalize_title_for_match(title)
+                # Series number logic
+                series_no = None
+                if "series_no" in mapping and mapping["series_no"] is not None:
+                    val = row.iloc[mapping["series_no"]]
+                    if (
+                        pd.notna(val)
+                        and str(val).strip()
+                        and str(val).strip().lower() != "nan"
+                    ):
+                        series_no = str(val).strip()
+
+                # Series logic
+                series = None
+                if mapping.get("series") is not None:
+                    val = row.iloc[mapping["series"]]
+                    if (
+                        pd.notna(val)
+                        and str(val).strip()
+                        and str(val).strip().lower() != "nan"
+                    ):
+                        series = str(val).strip()
+
+                # Append series number to title if both present
+                title_for_save = title
+                if series and series_no:
+                    # Only append if not already present
+                    if not re.search(
+                        rf"\\(\\s*{re.escape(series)}\\s*#?\\s*{re.escape(series_no)}\\s*\\)",
+                        title,
+                        re.IGNORECASE,
+                    ):
+                        title_for_save = f"{title} ({series} #{series_no})"
+
+                # Normalize title for matching (with appended series number)
+                norm_title = self._normalize_title_for_match(title_for_save)
                 # Check for duplicates using normalized title
                 dup_row = self.db.fetch_one(
                     "SELECT b.book_id FROM books b "
@@ -1429,7 +1464,7 @@ class BookListImportWindow(QDialog):
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title,
+                            "title": title_for_save,
                             "author": author,
                             "reason": "Duplicate - book already exists",
                         }
@@ -1442,13 +1477,13 @@ class BookListImportWindow(QDialog):
 
                 # Build Book object
                 book = Book(
-                    title=title,
+                    title=title_for_save,
                     author_id=author_id,
                     collection_id=book_list_collection.collection_id,
                 )
 
                 # Add optional fields
-                if mapping["year"] is not None:
+                if mapping.get("year") is not None:
                     year = row.iloc[mapping["year"]]
                     if pd.notna(year):
                         try:
@@ -1456,44 +1491,42 @@ class BookListImportWindow(QDialog):
                         except (ValueError, TypeError):
                             pass
 
-                if mapping["plot"] is not None:
+                if mapping.get("plot") is not None:
                     plot = row.iloc[mapping["plot"]]
                     if pd.notna(plot) and str(plot) != "nan":
                         book.comments = str(plot)
 
-                if mapping["series"] is not None:
-                    series = row.iloc[mapping["series"]]
-                    if pd.notna(series) and str(series) != "nan":
-                        book.series_id = self.series_queries.get_or_create(
-                            str(series), commit=False
-                        )
+                if series:
+                    book.series_id = self.series_queries.get_or_create(
+                        series, commit=False
+                    )
 
-                if mapping["genre"] is not None:
+                if mapping.get("genre") is not None:
                     genre = row.iloc[mapping["genre"]]
                     if pd.notna(genre) and str(genre) != "nan":
                         book.genre_id = self.genre_queries.get_or_create(
                             str(genre), commit=False
                         )
 
-                if mapping["reader"] is not None:
+                if mapping.get("reader") is not None:
                     reader = row.iloc[mapping["reader"]]
                     if pd.notna(reader) and str(reader) != "nan":
                         book.reader = str(reader)
 
-                if mapping["read_date"] is not None:
+                if mapping.get("read_date") is not None:
                     read_date = row.iloc[mapping["read_date"]]
                     if pd.notna(read_date) and str(read_date) != "nan":
                         parsed_read_date = self._parse_read_date_value(read_date)
                         if parsed_read_date is not None:
                             book.read_date = parsed_read_date
 
-                if mapping["time_hours"] is not None:
+                if mapping.get("time_hours") is not None:
                     time_value = row.iloc[mapping["time_hours"]]
                     parsed_time = self._parse_time_value(time_value)
                     if parsed_time is not None:
                         book.time_hours, book.time_minutes = parsed_time
 
-                if mapping["tracks"] is not None:
+                if mapping.get("tracks") is not None:
                     tracks = row.iloc[mapping["tracks"]]
                     if pd.notna(tracks) and str(tracks) != "nan":
                         try:
@@ -1546,8 +1579,40 @@ class BookListImportWindow(QDialog):
                     error_count += 1
                     continue
 
-                # Normalize title for matching
-                norm_title = self._normalize_title_for_match(title)
+                # Series number logic
+                series_no = None
+                if "series_no" in mapping and mapping["series_no"] is not None:
+                    val = row.iloc[mapping["series_no"]]
+                    if (
+                        pd.notna(val)
+                        and str(val).strip()
+                        and str(val).strip().lower() != "nan"
+                    ):
+                        series_no = str(val).strip()
+
+                # Series logic
+                series = None
+                if mapping.get("series") is not None:
+                    val = row.iloc[mapping["series"]]
+                    if (
+                        pd.notna(val)
+                        and str(val).strip()
+                        and str(val).strip().lower() != "nan"
+                    ):
+                        series = str(val).strip()
+
+                # Append series number to title if both present
+                title_for_match = title
+                if series and series_no:
+                    if not re.search(
+                        rf"\\(\\s*{re.escape(series)}\\s*#?\\s*{re.escape(series_no)}\\s*\\)",
+                        title,
+                        re.IGNORECASE,
+                    ):
+                        title_for_match = f"{title} ({series} #{series_no})"
+
+                # Normalize title for matching (with appended series number)
+                norm_title = self._normalize_title_for_match(title_for_match)
                 # Find existing book by normalized title + author using SQL
                 existing_row = self.db.fetch_one(
                     "SELECT b.book_id FROM books b "
@@ -1559,7 +1624,7 @@ class BookListImportWindow(QDialog):
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title,
+                            "title": title_for_match,
                             "author": author,
                             "reason": "Book not found in database",
                         }
@@ -1573,7 +1638,7 @@ class BookListImportWindow(QDialog):
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title,
+                            "title": title_for_match,
                             "author": author,
                             "reason": "Could not load book record",
                         }
@@ -1582,7 +1647,7 @@ class BookListImportWindow(QDialog):
                     continue
 
                 # Update read date if provided
-                if mapping["read_date"] is not None:
+                if mapping.get("read_date") is not None:
                     read_date = row.iloc[mapping["read_date"]]
                     if pd.notna(read_date) and str(read_date) != "nan":
                         parsed_read_date = self._parse_read_date_value(read_date)
@@ -1594,7 +1659,7 @@ class BookListImportWindow(QDialog):
                             self.import_errors.append(
                                 {
                                     "row": index + 1,
-                                    "title": title,
+                                    "title": title_for_match,
                                     "author": author,
                                     "reason": "Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY",
                                 }
@@ -1604,7 +1669,7 @@ class BookListImportWindow(QDialog):
                         self.import_errors.append(
                             {
                                 "row": index + 1,
-                                "title": title,
+                                "title": title_for_match,
                                 "author": author,
                                 "reason": "Read date is empty",
                             }
@@ -1614,7 +1679,7 @@ class BookListImportWindow(QDialog):
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title,
+                            "title": title_for_match,
                             "author": author,
                             "reason": "Read Date column not mapped",
                         }
