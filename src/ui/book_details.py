@@ -54,6 +54,12 @@ from datetime import datetime
 
 
 class BookDetailsWindow(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
     # List of allowed Alt+key shortcuts for Book Details
     ALLOWED_ALT_KEYS = {
         "N",

@@ -203,8 +203,8 @@ class MainWindow(QMainWindow):
         super().__init__(*args, **kwargs)
         from PySide6.QtGui import QIcon
 
-        # Set the window icon to abCS_WinTitle.png for the main window
-        self.setWindowIcon(QIcon("data/graphics/abCS_WinTitle.png"))
+        # Set the window icon to abCS_WinTitle_32x32.png for the main window
+        self.setWindowIcon(QIcon("data/graphics/abCS_WinTitle_32x32.png"))
 
     def _selection_shortcuts_text(self) -> str:
         """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""
@@ -3177,8 +3177,6 @@ class MainWindow(QMainWindow):
 
     def on_show_splash(self):
         """Show library statistics."""
-        # Redundant imports removed; already imported at top
-
         # Get statistics from database
         stats_queries = StatisticsQueries(self.db)
         stats = stats_queries.get_statistics()
@@ -3186,8 +3184,49 @@ class MainWindow(QMainWindow):
         # Create dialog
         dlg = QDialog(self)
         dlg.setWindowTitle("Library Statistics")
-        dlg.setAccessibleName("")
-        dlg.setAccessibleDescription("")
+        dlg.setAccessibleName("Library Statistics")
+        dlg.setAccessibleDescription(
+            "Shows summary statistics for your audiobook library."
+        )
+        dlg.resize(400, 300)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Add statistics labels
+        layout.addWidget(
+            QLabel(f"<b>Total Books:</b> {getattr(stats, 'total_books', '?')}", dlg)
+        )
+        layout.addWidget(
+            QLabel(f"<b>Total Authors:</b> {getattr(stats, 'total_authors', '?')}", dlg)
+        )
+        layout.addWidget(
+            QLabel(f"<b>Total Series:</b> {getattr(stats, 'total_series', '?')}", dlg)
+        )
+        layout.addWidget(
+            QLabel(f"<b>Total Genres:</b> {getattr(stats, 'total_genres', '?')}", dlg)
+        )
+        layout.addWidget(
+            QLabel(
+                f"<b>Total Collections:</b> {getattr(stats, 'total_collections', '?')}",
+                dlg,
+            )
+        )
+        layout.addWidget(
+            QLabel(
+                f"<b>Total Time (hours):</b> {getattr(stats, 'total_time_hours', '?')}",
+                dlg,
+            )
+        )
+
+        # Add close button
+        close_btn = QPushButton("Close", dlg)
+        close_btn.clicked.connect(dlg.accept)
+        layout.addWidget(close_btn)
+
+        dlg.setLayout(layout)
+        dlg.exec()
 
     def on_show_authors(self):
         """Open Author window."""

@@ -40,6 +40,15 @@ class ReadingHistoryWindow(QDialog):
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
 
+    def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+        super().__init__(parent)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
+    # Alt+Key filtering for accessibility
+    ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
+
     def eventFilter(self, source, event):
         # Tab/Shift+Tab on any table: move focus out of table, not to next cell
         if isinstance(source, QTableWidget) and event.type() == QEvent.KeyPress:

@@ -1,18 +1,48 @@
 """Accessible About Dialog for AbCS."""
 
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QLabel,
-    QScrollArea,
-    QWidget,
-    QStatusBar,
-)
-from PySide6.QtGui import QPixmap, QKeySequence, QShortcut
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
+from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
 from PySide6.QtCore import Qt, QTimer
 
 
+class FocusAnnouncingLabel(QLabel):
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        acc_event = QAccessibleEvent(self, QAccessible.Event.Focus)
+        QAccessible.updateAccessibility(acc_event)
+
+
 class AboutDialog(QDialog):
+
+    def __init__(self, scaler, parent=None):
+        from PySide6.QtGui import QIcon
+
+        super().__init__(parent)
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
+        self.scaler = scaler
+        self.setWindowTitle("About AbCS")
+        self.setAccessibleName("About AbCS")
+        self.setModal(True)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.setMinimumWidth(self.scaler.get_scaled_size(400))
+        self.setMinimumHeight(self.scaler.get_scaled_size(520))
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            self.scaler.get_scaled_size(24),
+            self.scaler.get_scaled_size(6),  # Tighter top margin
+            self.scaler.get_scaled_size(24),
+            self.scaler.get_scaled_size(18),
+        )
+
+    def get_app_version(self):
+        try:
+            from main import APP_VERSION
+
+            return f"v{APP_VERSION}"
+        except ImportError:
+            return "v?.?.?"
 
     def get_app_version(self):
         try:
@@ -24,7 +54,6 @@ class AboutDialog(QDialog):
 
     def __init__(self, scaler, parent=None):
         super().__init__(parent)
-        from src.accessibility.accessible_events import announce_status_message
 
         self.scaler = scaler
         self.setWindowTitle("About AbCS")
@@ -32,25 +61,46 @@ class AboutDialog(QDialog):
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setMinimumWidth(self.scaler.get_scaled_size(400))
+        self.setMinimumHeight(self.scaler.get_scaled_size(520))
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 18, 24, 18)
-        layout.setSpacing(16)
+        layout.setContentsMargins(
+            self.scaler.get_scaled_size(24),
+            self.scaler.get_scaled_size(6),  # Tighter top margin
+            self.scaler.get_scaled_size(24),
+            self.scaler.get_scaled_size(18),
+        )
+        layout.setSpacing(self.scaler.get_scaled_size(8))  # Tighter spacing
 
-        # Graphic
+        # --- Graphic and About text in a zero-spacing container ---
+        from PySide6.QtWidgets import QWidget, QVBoxLayout as QVBoxLayout2
+
+        content_widget = QWidget(self)
+        content_layout = QVBoxLayout2(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
         pixmap = QPixmap("data/graphics/abcs_about_win.png")
         if not pixmap.isNull():
-            graphic_label = QLabel(self)
-            graphic_label.setPixmap(
-                pixmap.scaledToWidth(
-                    self.scaler.get_scaled_size(220), Qt.SmoothTransformation
-                )
+            from PySide6.QtWidgets import (
+                QVBoxLayout as QVBoxLayout3,
+                QWidget as QWidget2,
             )
-            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
-            graphic_label.setAccessibleName("AbCS About Graphic")
-            layout.addWidget(graphic_label)
 
-        # About text
+            graphic_container = QWidget2(self)
+            graphic_layout = QVBoxLayout3(graphic_container)
+            graphic_layout.setContentsMargins(0, 0, 0, 0)
+            graphic_layout.setSpacing(0)
+            graphic_layout.addStretch(1)
+            graphic_label = QLabel(self)
+            graphic_label.setPixmap(pixmap)  # Show at native size (500x162)
+            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+            graphic_label.setFocusPolicy(Qt.NoFocus)
+            graphic_label.setContentsMargins(0, 0, 0, 0)
+            graphic_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
+            graphic_layout.addStretch(1)
+            content_layout.addWidget(graphic_container)
+
         version = self.get_app_version()
         about_text = (
             f"AbCS - Audio Book Collector Scanner    {version}\n"
@@ -73,69 +123,52 @@ class AboutDialog(QDialog):
             "Press F1 or use Help menu for Keyboard Shortcuts."
         )
 
-        # --- KEY CHANGE: QLabel in QScrollArea instead of QTextEdit ---
-        about_label = QLabel(about_text, self)
+        # Tabstop 1: the text content
+        about_label = FocusAnnouncingLabel(about_text, self)
         about_label.setWordWrap(True)
         about_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-
-        # Prevent Qt from promoting this to QAccessibleTextInterface,
-        # which is what causes JAWS to treat it as an edit field.
         about_label.setTextInteractionFlags(Qt.NoTextInteraction)
-
-        # Give it keyboard focus so JAWS finds it via Tab
         about_label.setFocusPolicy(Qt.TabFocus)
-
-        # Full text in accessibleName = JAWS reads the whole thing on focus
         about_label.setAccessibleName(about_text)
         about_label.setAccessibleDescription(
-            "About dialog information. Press Tab to move to the next control."
+            "About information. Press Tab to move to Close button."
         )
 
         font = about_label.font()
         font.setPointSize(self.scaler.get_scaled_size(12))
         about_label.setFont(font)
+        about_label.setContentsMargins(0, 0, 0, 0)
+        content_layout.addWidget(about_label)
 
-        # Wrap in a scroll area so long text doesn't blow out the dialog
-        scroll = QScrollArea(self)
-        scroll.setWidget(about_label)
-        scroll.setWidgetResizable(True)
-        scroll.setFocusPolicy(Qt.NoFocus)  # Tab goes to label, not scroll area
-        scroll.setFrameShape(scroll.NoFrame)
-        layout.addWidget(scroll)
+        layout.addWidget(content_widget)
+
+        # Tabstop 2: Close button — styled and right-aligned
+        from PySide6.QtWidgets import QHBoxLayout, QWidget
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+        ok_btn = QPushButton("OK", self)
+        ok_btn.setAccessibleName("OK")
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(self.accept)
+        from src.accessibility.style_helpers import build_accessible_button_style
+
+        base_height = 20
+        scale_pct = (
+            self.scaler.current_scale if hasattr(self.scaler, "current_scale") else 150
+        )
+        scaled_height = int(base_height * (scale_pct / 100.0))
+        btn_font = ok_btn.font()
+        btn_font.setPointSize(self.scaler.get_scaled_size(12))
+        ok_btn.setFont(btn_font)
+        ok_btn.setMinimumHeight(max(scaled_height - 4, 14))
+        ok_btn.setMaximumHeight(max(scaled_height - 4, 14))
+        ok_btn.setStyleSheet(build_accessible_button_style(scaled_height))
+        btn_row.addWidget(ok_btn)
+        layout.addLayout(btn_row)
 
         self.about_label = about_label
+        self.ok_btn = ok_btn
 
-        # Delay focus slightly so JAWS has settled on the dialog before we hand
-        # focus to the label. 0ms is often too fast; 200ms is reliable.
-        QTimer.singleShot(200, lambda: about_label.setFocus(Qt.TabFocusReason))
-
-        # Status bar
-        self.status_bar = QStatusBar(self)
-        self.status_bar.setSizeGripEnabled(False)
-        self.status_bar.setContentsMargins(0, 10, 0, 0)
-        layout.addWidget(self.status_bar)
-        self.status_bar.showMessage(
-            "AbCS About dialog. Press Alt+/ to read this message."
-        )
-
-        # Alt+/ shortcut
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.setContext(Qt.ApplicationShortcut)
-        self.status_shortcut.activated.connect(self.on_read_status_bar)
-
-    def set_status(self, message: str, announce: bool = False):
-        self.status_bar.showMessage(message)
-        if announce:
-            from src.accessibility.accessible_events import announce_status_message
-
-            announce_status_message(
-                self.status_bar, message, move_focus=True, force_focus_announce=True
-            )
-
-    def on_read_status_bar(self):
-        message = self.status_bar.currentMessage() or "About dialog."
-        from src.accessibility.accessible_events import announce_status_message
-
-        announce_status_message(
-            self.status_bar, message, move_focus=True, force_focus_announce=True
-        )
+        # Start focus on about_label so JAWS reads the text first
+        QTimer.singleShot(100, lambda: about_label.setFocus(Qt.TabFocusReason))

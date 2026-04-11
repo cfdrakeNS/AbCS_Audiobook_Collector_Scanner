@@ -40,6 +40,32 @@ class ImportProgressWindow(QDialog):
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
+        self.scaler = scaler
+        self.theme_manager = theme_manager
+        self._default_status_message = "Ready"
+        self._cancel_requested = False
+        self._scan_active = True
+        self._compact_mode = False
+        self._status_read_until = 0.0
+
+        self.setup_ui()
+        self.setup_shortcuts()
+        self.install_event_filters()
+        self.apply_control_styles()
+        self.setWindowTitle("imported  Progress")
+        self.setAccessibleName("Import Progress")
+        self.resize(760, 176)  # Reduced height by about 20% from original 220
+        self.set_status("Ready")
+
+    # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
+    ALLOWED_ALT_LETTERS = set()
+
+    def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+        super().__init__(parent)
 
         self.scaler = scaler
         self.theme_manager = theme_manager

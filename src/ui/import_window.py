@@ -61,6 +61,17 @@ from src.ui.import_progress_window import ImportProgressWindow
 
 
 class ImportWindow(QDialog):
+    """Import Window
+    Main interface for scanning folders and importing audiobooks.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        # ...existing code for initializing the window...
+
     # Duplicate eventFilter removed. Only the correct eventFilter remains above.
 
     def keyPressEvent(self, event):

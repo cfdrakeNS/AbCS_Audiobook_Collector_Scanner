@@ -121,17 +121,35 @@ Reference files:
 - `src/ui/main_window.py`
 - `src/ui/backup_restore_window.py`
 
-## 9. Reuse checklist
+## 9. About/Info Dialog Pattern (NEW)
 
-When building a new window:
-- Add status API + `Alt+/` readback.
-- Add F1 shortcut help surface.
-- Enforce Alt-key allowlist in event filters.
-- Apply combo anti-noise rules where editable combos exist.
-- Ensure modal validation errors return focus to the invalid field.
-- Set accessible names/descriptions for key controls.
-- Verify explicit tab order.
-- Avoid global Enter/Return shortcuts that override button activation.
+Goal: Provide a consistent, accessible, and themed approach for About, License, and other informational dialogs.
+
+Pattern:
+- Use external dialog classes (e.g., `AboutDialog`, `LicenseDialog`) instead of inline popups in main windows.
+- Structure dialog with header/content/footer using `QVBoxLayout`.
+- Footer: right-aligned, styled OK/Close button using `build_accessible_button_style()`.
+- Apply font scaling with `scaler.get_scaled_size()` for all text and controls.
+- Set accessible names and descriptions for all widgets.
+- Ensure dialog is modal and returns focus to main window after closing.
+- Test with JAWS/NVDA for screen reader feedback.
+
+Example usage in main window:
+```python
+from src.ui.about_dialogue import AboutDialog
+
+def on_about(self):
+    dlg = AboutDialog(self.scaler, self)
+    dlg.exec()
+    self.set_status("About dialog opened.")
+    self.restore_main_focus_after_modal()
+```
+
+Reference files:
+- `src/ui/about_dialogue.py`
+- `src/ui/license_dialogue.py`
+- `src/accessibility/style_helpers.py`
+- `.github/copilot-instructions.md` (for project-wide accessibility/theming)
 
 ## 10. Decision policy: defect vs intentional noise reduction
 

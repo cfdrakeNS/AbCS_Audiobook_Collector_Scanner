@@ -51,6 +51,12 @@ from src.accessibility.accessible_events import (
 
 
 class ImportDetailWindow(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
     """
     Import detail dialog for viewing and editing scanned audiobook metadata.
     """

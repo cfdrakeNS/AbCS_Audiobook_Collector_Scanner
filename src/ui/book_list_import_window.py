@@ -91,6 +91,12 @@ class BookListImportWindow(QDialog):
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H F C V O E /"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
     def _normalize_title_for_match(self, title: str) -> str:
         """Normalize title for matching: strip series number, move trailing article to beginning, clean."""
         from src.web.web_book_api import WebBookAPI

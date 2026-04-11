@@ -52,6 +52,48 @@ class CollectionWindow(QDialog):
     # Alt+letter keys that are allowed to pass through (no status bar hint)
     ALLOWED_ALT_LETTERS = {"E", "L", "N", "S", "D", "/"}
 
+    def __init__(
+        self,
+        db: DatabaseManager,
+        scaler: UIScaler,
+        theme_manager: ThemeManager,
+        parent=None,
+    ):
+        super().__init__(parent)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
+        self.db = db
+        self.scaler = scaler
+        self.theme_manager = theme_manager
+        self.collection_queries = CollectionQueries(db)
+
+        self.current_collection_id: int | None = None
+        self._is_new_entry_mode = False
+        self._editor_locked = False
+
+        self.setup_ui()
+        self.setup_shortcuts()
+        self.load_collections(populate_editor=False)
+        self._set_editor_locked(True)
+        self.name_edit.installEventFilter(self)
+        # Accessibility: Tab/Shift+Tab moves focus out of table
+        self.table.keyPressEvent = self.accessible_table_key_press
+        QTimer.singleShot(
+            0,
+            lambda: self.focus_list() if self.table.rowCount() > 0 else None,
+        )
+
+        self.setWindowTitle("Collection Manager")
+        self.setAccessibleName("Collection Manager")
+        self.setAccessibleDescription(
+            "Manage collections: add, edit active status, and delete when unused."
+        )
+
+    # Alt+letter keys that are allowed to pass through (no status bar hint)
+    ALLOWED_ALT_LETTERS = {"E", "L", "N", "S", "D", "/"}
+
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
         super().keyPressEvent(event)

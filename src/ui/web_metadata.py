@@ -79,8 +79,10 @@ class WebMetadataWindow(QDialog):
         Args:
             web_data: Pre-fetched web data (if provided, skips auto-fetch)
         """
-        # Call base class constructor FIRST
         super().__init__(parent)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
 
         # Store pre-fetched web data if provided
         self.pre_fetched_web_data = web_data

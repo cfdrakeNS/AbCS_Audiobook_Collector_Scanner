@@ -50,6 +50,12 @@ class PreferencesWindow(QDialog):
     Preferences dialog for display and import settings.
     """
 
+    def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+        super().__init__(parent)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
     def keyPressEvent(self, event):
         # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
         if self.browse_button.hasFocus() and event.key() in (

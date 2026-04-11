@@ -148,10 +148,14 @@ class AbCSApplication:
         """Initialize application - runs once when the program starts."""
         # Create Qt application - this is the main event loop that handles all UI interactions
         # It must be created before any other Qt objects
+        from PySide6.QtGui import QIcon
+
         self.qt_app = QApplication(sys.argv)
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
+        # Set application icon for all windows (Windows prefers .ico)
+        self.qt_app.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
 
         self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
 
@@ -260,23 +264,7 @@ class AbCSApplication:
                 )
 
             # Diagnostic: Check accessibility setup (commented out for production)
-            # from accessibility.accessible_events import check_accessibility_support
-            # a11y_status = check_accessibility_support()
-            # print("\n" + "="*60)
-            # print("ACCESSIBILITY DIAGNOSTICS")
-            # print("="*60)
-            # print(f"QAccessible.isActive(): {a11y_status['isActive']}")
-            # print(f"QApplication found: {a11y_status['has_app']}")
-            # print(
-            #     f"QApplication has accessible interface: {a11y_status['app_has_interface']}")
-            # if a11y_status['app_role']:
-            #     print(f"QApplication role: {a11y_status['app_role']}")
-            # if a11y_status['app_name']:
-            #     print(f"QApplication name: {a11y_status['app_name']}")
-            # print(
-            #     "\nTIP: If QAccessible.isActive() is False, no screen reader is attached.")
-            # print("      Start your screen reader FIRST, then run this application.")
-            # print("="*60 + "\n")
+            # ...existing code...
 
             # Run event loop - this blocks until user closes the app
             return self.qt_app.exec()

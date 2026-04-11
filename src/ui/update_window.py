@@ -2,20 +2,33 @@ from src.accessibility.style_helpers import exec_styled_message_box
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
 from src.database import (
-    DatabaseManager, Book, BookQueries, SeriesQueries,
-    GenreQueries, CollectionQueries
+    DatabaseManager,
+    Book,
+    BookQueries,
+    SeriesQueries,
+    GenreQueries,
+    CollectionQueries,
 )
 import time
 from typing import Set, List
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout,
-    QComboBox, QPushButton, QLabel, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QStatusBar, QMessageBox, QApplication,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QComboBox,
+    QPushButton,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QStatusBar,
+    QMessageBox,
+    QApplication,
 )
 import re
-
 
 """
 Update Window - Bulk update for selected books.
@@ -34,6 +47,14 @@ class UpdateWindow(QDialog):
     Updates occur immediately when a combo selection is made.
     Select "None" to clear/remove a field value from selected books.
     """
+
+    def __init__(
+        self, db: DatabaseManager, scaler: UIScaler, selected_book_ids: set, parent=None
+    ):
+        super().__init__(parent)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -60,8 +81,13 @@ class UpdateWindow(QDialog):
             return cls._to_proper_case(value)
         return value
 
-    def __init__(self, db: DatabaseManager, scaler: UIScaler,
-                 selected_book_ids: Set[int], parent=None):
+    def __init__(
+        self,
+        db: DatabaseManager,
+        scaler: UIScaler,
+        selected_book_ids: Set[int],
+        parent=None,
+    ):
         """
         Initialize update window.
 
@@ -75,8 +101,7 @@ class UpdateWindow(QDialog):
 
         self.db = db
         self.scaler = scaler
-        self.selected_book_ids = set(
-            selected_book_ids)  # Copy to avoid mutation
+        self.selected_book_ids = set(selected_book_ids)  # Copy to avoid mutation
         self.changes_applied = False
         self._default_status_message = "Ready"
         self._last_series_action_at = 0.0
@@ -118,7 +143,8 @@ class UpdateWindow(QDialog):
         self.setAccessibleName(title)
         self.setAccessibleDescription(
             "Bulk update Series, Genre, and Collection for selected books. "
-            "Updates occur immediately when a selection is made.")
+            "Updates occur immediately when a selection is made."
+        )
         self.resize(1200, 500)  # Wider window for larger columns
         self.setMinimumWidth(900)  # Ensure minimum width
 
@@ -146,11 +172,13 @@ class UpdateWindow(QDialog):
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
         self.series_combo.setSizeAdjustPolicy(
-            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            QComboBox.AdjustToMinimumContentsLengthWithIcon
+        )
         self.series_combo.setMinimumContentsLength(20)
         self.series_combo.setAccessibleName("Series")
         self.series_combo.setAccessibleDescription(
-            "Select series to apply, enter new, or select None to clear - Alt+S")
+            "Select series to apply, enter new, or select None to clear - Alt+S"
+        )
         series_label.setBuddy(self.series_combo)
         header_layout.addWidget(series_label)
         header_layout.addWidget(self.series_combo, 1)
@@ -160,11 +188,13 @@ class UpdateWindow(QDialog):
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setSizeAdjustPolicy(
-            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            QComboBox.AdjustToMinimumContentsLengthWithIcon
+        )
         self.genre_combo.setMinimumContentsLength(20)
         self.genre_combo.setAccessibleName("Genre")
         self.genre_combo.setAccessibleDescription(
-            "Select genre to apply, enter new, or select None to clear - Alt+G")
+            "Select genre to apply, enter new, or select None to clear - Alt+G"
+        )
         genre_label.setBuddy(self.genre_combo)
         header_layout.addWidget(genre_label)
         header_layout.addWidget(self.genre_combo, 1)
@@ -174,7 +204,8 @@ class UpdateWindow(QDialog):
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setAccessibleDescription(
-            "Select collection to apply - Alt+C")
+            "Select collection to apply - Alt+C"
+        )
         self.collection_label.setBuddy(self.collection_combo)
         header_layout.addWidget(self.collection_label)
         header_layout.addWidget(self.collection_combo, 1)
@@ -192,7 +223,8 @@ class UpdateWindow(QDialog):
         self.table = QTableWidget()
         self.table.setAccessibleName("Selected books list")
         self.table.setAccessibleDescription(
-            "List of books being updated with Title, Year, Series, Genre, Collection")
+            "List of books being updated with Title, Year, Series, Genre, Collection"
+        )
 
         # Columns: Title, Year, Series, Genre, Collection
         columns = ["Title", "Year", "Series", "Genre", "Collection"]
@@ -219,7 +251,7 @@ class UpdateWindow(QDialog):
         header.setSectionResizeMode(4, QHeaderView.Interactive)
 
         # Set column widths (Interactive mode allows these to be set)
-        self.table.setColumnWidth(1, 80)   # Year - wider to show 4 digits
+        self.table.setColumnWidth(1, 80)  # Year - wider to show 4 digits
         self.table.setColumnWidth(2, 200)  # Series
         self.table.setColumnWidth(3, 180)  # Genre
         self.table.setColumnWidth(4, 200)  # Collection
@@ -272,12 +304,22 @@ class UpdateWindow(QDialog):
             key = event.key()
 
             # Prevent unused Alt+letter combinations from being echoed into editable combos
-            if source in (self.series_combo, self._series_line_edit, self.genre_combo, self._genre_line_edit):
+            if source in (
+                self.series_combo,
+                self._series_line_edit,
+                self.genre_combo,
+                self._genre_line_edit,
+            ):
                 modifiers = event.modifiers()
                 if modifiers & Qt.AltModifier:
                     allowed_alt_keys = {
-                        Qt.Key_S, Qt.Key_G, Qt.Key_L,
-                        Qt.Key_Slash, Qt.Key_Question, Qt.Key_Up, Qt.Key_Down
+                        Qt.Key_S,
+                        Qt.Key_G,
+                        Qt.Key_L,
+                        Qt.Key_Slash,
+                        Qt.Key_Question,
+                        Qt.Key_Up,
+                        Qt.Key_Down,
                     }
                     # Block Alt+/ from typing through
                     if key == Qt.Key_Slash:
@@ -291,10 +333,10 @@ class UpdateWindow(QDialog):
                     should_move = self.on_series_entered()
                     if should_move:
                         QTimer.singleShot(
-                            0, lambda s=source: self._focus_next_header_control(s))
+                            0, lambda s=source: self._focus_next_header_control(s)
+                        )
                     else:
-                        QTimer.singleShot(
-                            0, lambda: self.series_combo.setFocus())
+                        QTimer.singleShot(0, lambda: self.series_combo.setFocus())
                     return True
 
                 if source == self.genre_combo or source == self._genre_line_edit:
@@ -302,17 +344,17 @@ class UpdateWindow(QDialog):
                     should_move = self.on_genre_entered()
                     if should_move:
                         QTimer.singleShot(
-                            0, lambda s=source: self._focus_next_header_control(s))
+                            0, lambda s=source: self._focus_next_header_control(s)
+                        )
                     else:
-                        QTimer.singleShot(
-                            0, lambda: self.genre_combo.setFocus())
+                        QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
                     return True
 
                 if source == self.collection_combo:
-                    self.on_collection_changed(
-                        self.collection_combo.currentIndex())
+                    self.on_collection_changed(self.collection_combo.currentIndex())
                     QTimer.singleShot(
-                        0, lambda s=source: self._focus_next_header_control(s))
+                        0, lambda s=source: self._focus_next_header_control(s)
+                    )
                     return True  # Consume the event to prevent dialog close
 
             # Block plain Up/Down arrow keys on combo boxes
@@ -423,7 +465,8 @@ class UpdateWindow(QDialog):
                 self._mark_series_action(text)
                 self.changes_applied = True
                 self.show_status(
-                    f"Series cleared from {count} book{'s' if count != 1 else ''}")
+                    f"Series cleared from {count} book{'s' if count != 1 else ''}"
+                )
                 self.series_combo.setCurrentIndex(0)
                 self.refresh_books_table()
                 if keep_focus:
@@ -435,23 +478,25 @@ class UpdateWindow(QDialog):
                     QTimer.singleShot(0, lambda: self.series_combo.setFocus())
                 return True
 
-            existing_data = self._find_existing_combo_data(
-                self.series_combo, text)
-            existing = self.series_queries.get_by_name(
-                text) if existing_data is None else None
-            existing_series_id = existing_data if existing_data is not None else (
-                existing.series_id if existing else None
+            existing_data = self._find_existing_combo_data(self.series_combo, text)
+            existing = (
+                self.series_queries.get_by_name(text) if existing_data is None else None
+            )
+            existing_series_id = (
+                existing_data
+                if existing_data is not None
+                else (existing.series_id if existing else None)
             )
 
             if existing_series_id is not None:
                 book_ids = list(self.selected_book_ids)
                 count = len(book_ids)
-                self.book_queries.bulk_update_series(
-                    book_ids, existing_series_id)
+                self.book_queries.bulk_update_series(book_ids, existing_series_id)
                 self._mark_series_action(text)
                 self.changes_applied = True
                 self.show_status(
-                    f"Series: {text} added to {count} book{'s' if count != 1 else ''}")
+                    f"Series: {text} added to {count} book{'s' if count != 1 else ''}"
+                )
                 self.series_combo.setCurrentIndex(0)
                 self.load_combos()
                 self.refresh_books_table()
@@ -471,7 +516,8 @@ class UpdateWindow(QDialog):
             self._mark_series_action(text)
             self.changes_applied = True
             self.show_status(
-                f"Series: {text} added to {count} book{'s' if count != 1 else ''}")
+                f"Series: {text} added to {count} book{'s' if count != 1 else ''}"
+            )
             self.load_combos()
             self.refresh_books_table()
             if keep_focus:
@@ -500,7 +546,8 @@ class UpdateWindow(QDialog):
                 self._mark_genre_action(text)
                 self.changes_applied = True
                 self.show_status(
-                    f"Genre cleared from {count} book{'s' if count != 1 else ''}")
+                    f"Genre cleared from {count} book{'s' if count != 1 else ''}"
+                )
                 self.genre_combo.setCurrentIndex(0)
                 self.refresh_books_table()
                 if keep_focus:
@@ -512,23 +559,25 @@ class UpdateWindow(QDialog):
                     QTimer.singleShot(0, lambda: self.genre_combo.setFocus())
                 return True
 
-            existing_data = self._find_existing_combo_data(
-                self.genre_combo, text)
-            existing = self.genre_queries.get_by_name(
-                text) if existing_data is None else None
-            existing_genre_id = existing_data if existing_data is not None else (
-                existing.genre_id if existing else None
+            existing_data = self._find_existing_combo_data(self.genre_combo, text)
+            existing = (
+                self.genre_queries.get_by_name(text) if existing_data is None else None
+            )
+            existing_genre_id = (
+                existing_data
+                if existing_data is not None
+                else (existing.genre_id if existing else None)
             )
 
             if existing_genre_id is not None:
                 book_ids = list(self.selected_book_ids)
                 count = len(book_ids)
-                self.book_queries.bulk_update_genre(
-                    book_ids, existing_genre_id)
+                self.book_queries.bulk_update_genre(book_ids, existing_genre_id)
                 self._mark_genre_action(text)
                 self.changes_applied = True
                 self.show_status(
-                    f"Genre: {text} added to {count} book{'s' if count != 1 else ''}")
+                    f"Genre: {text} added to {count} book{'s' if count != 1 else ''}"
+                )
                 self.genre_combo.setCurrentIndex(0)
                 self.load_combos()
                 self.refresh_books_table()
@@ -548,7 +597,8 @@ class UpdateWindow(QDialog):
             self._mark_genre_action(text)
             self.changes_applied = True
             self.show_status(
-                f"Genre: {text} added to {count} book{'s' if count != 1 else ''}")
+                f"Genre: {text} added to {count} book{'s' if count != 1 else ''}"
+            )
             self.load_combos()
             self.refresh_books_table()
             if keep_focus:
@@ -640,8 +690,7 @@ class UpdateWindow(QDialog):
         self.collection_combo.clear()
         self.collection_combo.addItem("", None)  # Blank = no action
         for collection in self.collections:
-            self.collection_combo.addItem(
-                collection.name, collection.collection_id)
+            self.collection_combo.addItem(collection.name, collection.collection_id)
 
     def load_books_table(self):
         """Load selected books into the table."""
@@ -677,15 +726,15 @@ class UpdateWindow(QDialog):
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
         mgr = get_shortcut_manager()
         callback_map = {
-            'series_combo': self.series_combo.setFocus,
-            'genre_combo': self.genre_combo.setFocus,
-            'collection_combo': self.collection_combo.setFocus,
-            'book_list': self.focus_book_list,
+            "series_combo": self.series_combo.setFocus,
+            "genre_combo": self.genre_combo.setFocus,
+            "collection_combo": self.collection_combo.setFocus,
+            "book_list": self.focus_book_list,
         }
-        mgr.register_alt_shortcuts(
-            self, ShortcutContext.UPDATE_WINDOW, callback_map)
+        mgr.register_alt_shortcuts(self, ShortcutContext.UPDATE_WINDOW, callback_map)
 
         # Escape to close
         escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
@@ -714,8 +763,7 @@ class UpdateWindow(QDialog):
 
         # Handle Enter key in editable combos for typed entries
         if self._series_line_edit:
-            self._series_line_edit.returnPressed.connect(
-                self.on_series_entered)
+            self._series_line_edit.returnPressed.connect(self.on_series_entered)
         if self._genre_line_edit:
             self._genre_line_edit.returnPressed.connect(self.on_genre_entered)
 
@@ -778,13 +826,15 @@ class UpdateWindow(QDialog):
             self.book_queries.bulk_update_series(book_ids, None)
             self.changes_applied = True
             self.show_status(
-                f"Series cleared from {count} book{'s' if count != 1 else ''}")
+                f"Series cleared from {count} book{'s' if count != 1 else ''}"
+            )
         elif data is not None:
             # Apply selected series
             self.book_queries.bulk_update_series(book_ids, data)
             self.changes_applied = True
             self.show_status(
-                f"Series: {series_name} added to {count} book{'s' if count != 1 else ''}")
+                f"Series: {series_name} added to {count} book{'s' if count != 1 else ''}"
+            )
 
         # Reset combo to blank and refresh table
         self.series_combo.setCurrentIndex(0)
@@ -810,13 +860,15 @@ class UpdateWindow(QDialog):
             self.book_queries.bulk_update_genre(book_ids, None)
             self.changes_applied = True
             self.show_status(
-                f"Genre cleared from {count} book{'s' if count != 1 else ''}")
+                f"Genre cleared from {count} book{'s' if count != 1 else ''}"
+            )
         elif data is not None:
             # Apply selected genre
             self.book_queries.bulk_update_genre(book_ids, data)
             self.changes_applied = True
             self.show_status(
-                f"Genre: {genre_name} added to {count} book{'s' if count != 1 else ''}")
+                f"Genre: {genre_name} added to {count} book{'s' if count != 1 else ''}"
+            )
 
         # Reset combo to blank and refresh table
         self.genre_combo.setCurrentIndex(0)
@@ -843,7 +895,8 @@ class UpdateWindow(QDialog):
         self.book_queries.bulk_update_collection(book_ids, data)
         self.changes_applied = True
         self.show_status(
-            f"Collection: {collection_name} set for {count} book{'s' if count != 1 else ''}")
+            f"Collection: {collection_name} set for {count} book{'s' if count != 1 else ''}"
+        )
 
         # Reset combo to blank and refresh table
         self.collection_combo.setCurrentIndex(0)
@@ -852,7 +905,11 @@ class UpdateWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list, build_accessible_f1_popup_style
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         shortcuts = [
             ("Alt+S", "Series"),
             ("Alt+G", "Genre"),
@@ -888,13 +945,13 @@ class UpdateWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        
+
         # Disable hover highlighting for low-vision comfort
         table.setMouseTracking(False)
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
-        
+
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         # Populate table - description on left, key on right

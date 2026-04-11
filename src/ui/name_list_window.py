@@ -47,6 +47,12 @@ NameListType = Literal["author", "genre", "series", "collection"]
 class NameListWindow(QDialog):
     """Window for adding and editing names in reference tables."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6.QtGui import QIcon
+
+        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+
     def on_find_enter_pressed(self):
         # Trigger find on Enter in the find box
         text = self.find_edit.text()
