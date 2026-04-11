@@ -95,6 +95,7 @@ echo Building app files...
     --hidden-import="openpyxl" ^
     --hidden-import="odf" ^
     --hidden-import="odf.opendocument" ^
+    --hidden-import="src.web.web_book_api" ^
     --collect-submodules="odf" ^
     --exclude-module="PySide6.QtSql" ^
     --exclude-module="PySide6.QtQml" ^

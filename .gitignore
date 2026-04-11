@@ -1,6 +1,6 @@
-# Ignore graphics assets (both cases)
+# Ignore graphics assets (all cases)
 data/Graphics/
-data/graphics/
+data/graphics/**
 # Virtual environment
 .venv/
 venv/
@@ -38,6 +38,9 @@ data/*.db
 data/*.db-*
 data/*.sqlite
 data/*.sqlite3
+data/*.sql
+data/*.csv
+data/*.xls
 
 # Backup folder
 backups/

@@ -101,12 +101,12 @@ class WebBookAPI:
         # Try Google Books first (fast and reliable)
         if refresh == 0:
             # print("[WebBookAPI] Trying Google Books...")  # Debug: web fetch
-            t0 = time.time()
+            # t0 = time.time()  # Removed unused timing variable
             try:
                 metadata = self._fetch_from_google_books(
                     search_title, search_author, year
                 )
-                t1 = time.time()
+                # t1 = time.time()  # Removed unused timing variable
                 # print(f"[WebBookAPI] Google Books result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 # Only accept if it's a real match (plot or close title/author match)
                 is_real_match = False
@@ -157,19 +157,20 @@ class WebBookAPI:
                     # print("[WebBookAPI] Google Books result is weak/irrelevant, continuing to next source.")  # Debug: web fetch
                     pass
             except Exception as e:
-                t1 = time.time()
+                # t1 = time.time()  # Removed unused timing variable
                 # print(f"[WebBookAPI] Google Books error: {e} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 # Continue to next source
+                pass
 
         # Try Open Library second (always try when refresh=0, or when refresh=1 and Google Books failed)
         if refresh == 0 or refresh == 1:
             # print("[WebBookAPI] Trying Open Library...")  # Debug: web fetch
-            t0 = time.time()
+            # t0 = time.time()  # Removed unused timing variable
             try:
                 metadata = self._fetch_from_open_library(
                     search_title, search_author, year
                 )
-                t1 = time.time()
+                # t1 = time.time()  # Removed unused timing variable
                 # print(f"[WebBookAPI] Open Library result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 if metadata:
                     metadata["source"] = "open_library"
@@ -178,16 +179,17 @@ class WebBookAPI:
                     self._cache[cache_key] = (current_time, metadata)
                     return metadata
             except Exception as e:
-                t1 = time.time()
+                # t1 = time.time()  # Removed unused timing variable
                 # print(f"[WebBookAPI] Open Library error: {e} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
                 # Continue to next source instead of failing
+                pass
 
         # Try WikiData third (great for series and author data)
         # print("[WebBookAPI] Trying WikiData...")  # Debug: web fetch
-        t0 = time.time()
+        # t0 = time.time()  # Removed unused timing variable
         try:
             metadata = self._fetch_from_wikidata(search_title, search_author, year)
-            t1 = time.time()
+            # t1 = time.time()  # Removed unused timing variable
             # print(f"[WebBookAPI] WikiData result: {'FOUND' if metadata else 'not found'} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
             if metadata:
                 metadata["source"] = "wikidata"
@@ -196,8 +198,9 @@ class WebBookAPI:
                 self._cache[cache_key] = (current_time, metadata)
                 return metadata
         except Exception as e:
-            t1 = time.time()
+            # t1 = time.time()  # Removed unused timing variable
             # print(f"[WebBookAPI] WikiData error: {e} (elapsed={t1-t0:.2f}s)")  # Debug: web fetch
+            pass
 
         # print("[WebBookAPI] No data found in any source. Returning None.")  # Debug: web fetch
         # Cache the failure too to avoid repeated failed requests

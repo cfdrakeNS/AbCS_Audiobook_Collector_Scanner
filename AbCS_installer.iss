@@ -45,15 +45,13 @@ OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
 ; Installer branding
-SetupIconFile=data\Graphics\AbCS_icon.ico
+SetupIconFile=data\Graphics\abCS_icon.ico
 UninstallDisplayIcon={app}\AbCS_icon.ico
 LicenseFile=AbCS_License.MD
-; For WizardStyle=modern dynamic, image must be 500x313 PNG
 WizardImageFile=data\Graphics\abcs_splash.png
 
 Compression=lzma2
 SolidCompression=yes
-; Follow user's Windows light/dark preference automatically.
 WizardStyle=modern dynamic
 
 ; Require Windows 10 or later
@@ -102,7 +100,6 @@ Source: "data\Graphics\AbCS_icon.ico"; \
 Source: "AbCS_License.MD"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
-; Splash image for installer
 Source: "data\Graphics\abcs_splash.png"; \
     DestDir: "{tmp}"; \
     Flags: dontcopy
@@ -112,7 +109,7 @@ Source: "data\Graphics\abcs_splash.png"; \
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
 ; Start Menu
-Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS_icon.ico"
+Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\abCS_icon_install.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 ; Uninstall shortcut in install folder for testers
@@ -121,7 +118,7 @@ Name: "{app}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 ; Desktop (only if user chose that task above)
 Name: "{commondesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
-    IconFilename: "{app}\AbCS_icon.ico"; \
+    IconFilename: "{app}\abCS_icon.ico"; \
     Tasks: desktopicon
 
 ; ──────────────────────────────────────────────────────────────────

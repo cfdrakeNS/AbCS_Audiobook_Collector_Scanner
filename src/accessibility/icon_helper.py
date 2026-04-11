@@ -9,7 +9,7 @@ from PySide6.QtGui import QIcon
 import os
 
 # Path to the application icon (relative to project root)
-ICON_PATH = os.path.join("data", "graphics", "abCS_icon.ico")
+ICON_PATH = os.path.join("data", "graphics", "abCS_icon_title_bar.ico")
 
 
 def get_app_icon() -> QIcon:
