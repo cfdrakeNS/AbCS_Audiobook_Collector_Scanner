@@ -127,7 +127,7 @@ class PreferencesWindow(QDialog):
         self.setAccessibleDescription(
             "Application preferences for display and import settings"
         )
-        self.resize(994, 560)
+        self.resize(994, 747)
         QTimer.singleShot(0, self.update_scenario_description_height)
 
         announce_dialog_opened(self, title)

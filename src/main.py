@@ -61,7 +61,7 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 
 
 # Version information - update this with each release
-APP_VERSION = "1.9.8"
+APP_VERSION = "1.9.9a"
 
 
 def _check_trial_expiry():

@@ -44,6 +44,7 @@ class WebBookAPI:
         refresh: int = 0,
         move_articles: bool = False,
         flip_author: bool = False,
+        append_series_to_title: bool = True,
     ) -> Optional[Dict]:
         """
         Fetch book metadata from multiple web sources.
@@ -77,18 +78,19 @@ class WebBookAPI:
             if cached_time:
                 self._cache[cache_key] = None  # Clear expired cache
 
-        # Always strip series number for search
-        search_title, _ = self._strip_series_number(title)
-
-        # Move trailing article to beginning if present (e.g., 'Great Gatsby, The' -> 'The Great Gatsby')
+        # Normalize title for search and comparison
+        search_title, series_number = self._strip_series_number(title)
         search_title = self._move_article_to_beginning(search_title)
-
-        # Optionally move leading article to end (for sources that expect it)
         if move_articles:
             search_title = self._move_article_to_end(search_title)
-
-        # Clean the title
         search_title = self._clean_text_field(search_title)
+
+        # Optionally append series number to title for saving
+        save_title = search_title
+        if append_series_to_title and series_number:
+            # Only append if not already present at end
+            if not save_title.rstrip().endswith(f"- {series_number}"):
+                save_title = f"{save_title} - {series_number}".strip()
 
         # Author transformation as before
         if flip_author and author:
@@ -136,6 +138,16 @@ class WebBookAPI:
                             is_real_match = True
 
                 if metadata and is_real_match:
+                    # Ensure title in metadata is normalized and series number is appended if needed
+                    if append_series_to_title and series_number:
+                        if (
+                            not metadata["title"]
+                            .rstrip()
+                            .endswith(f"- {series_number}")
+                        ):
+                            metadata["title"] = (
+                                f"{metadata['title']} - {series_number}".strip()
+                            )
                     metadata["source"] = "google_books"
                     metadata["first_attempt"] = True
                     # Cache the result

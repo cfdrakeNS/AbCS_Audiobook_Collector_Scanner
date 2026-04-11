@@ -75,6 +75,7 @@ class ShortcutManager(QObject):
     MAIN_WINDOW_SHORTCUTS = {
         "U": ("Update selected", "update_button"),
         "D": ("Delete selected", "delete_button"),
+        "A": ("Author filter", "author_filter_combo"),
     }
 
     # Book Details Window

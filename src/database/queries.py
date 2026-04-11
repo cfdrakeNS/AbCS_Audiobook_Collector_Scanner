@@ -123,6 +123,8 @@ class BookQueries:
             query += " ORDER BY g.name IS NULL, g.name, b.title"
         elif filter_criteria.order_by == "Series":
             query += " ORDER BY s.name IS NULL, s.name, b.year, b.title"
+        elif filter_criteria.order_by == "Read Date":
+            query += " ORDER BY b.read_date IS NULL, b.read_date, b.title"
         else:  # Title
             query += " ORDER BY b.title"
 

@@ -400,7 +400,7 @@ class MainWindow(QMainWindow):
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
         self._read_filter_options = ["All", "Read", "Unread"]
-        self._primary_sort_options = ["Title", "Author", "Genre", "Series"]
+        self._primary_sort_options = ["Title", "Author", "Genre", "Series", "Read Date"]
 
         # Selected books (for bulk operations)
         self.selected_book_ids = set()
@@ -1537,7 +1537,7 @@ class MainWindow(QMainWindow):
             ("Length", "&Length", 5, False),
             ("Tracks", "Trac&ks", 6, False),
             ("Read", "&Read", 7, False),
-            ("Added", "Add&ed", 8, False),
+            ("Read Date", "Read &Date", 7, False),
         ]
 
         self._sort_actions_by_key = {}
@@ -1566,8 +1566,7 @@ class MainWindow(QMainWindow):
             4: "Genre",
             5: "Length",
             6: "Tracks",
-            7: "Read",
-            8: "Added",
+            7: "Read Date",
         }
         return mapping.get(column, "Title")
 
@@ -1585,11 +1584,12 @@ class MainWindow(QMainWindow):
 
     def on_sort_menu_selected(self, key: str, column: int, is_primary: bool):
         """Handle Sort menu selection."""
-        if is_primary:
+        # Always use backend SQL for Read Date (and primary sorts)
+        if is_primary or key == "Read Date":
             self.on_order_changed(key)
             return
 
-        # For custom sorts (Author, Genre, Series), toggle order like header clicks
+        # For custom sorts (Year, Length, Tracks), toggle order like header clicks
         if self._last_header_sort_column == column:
             next_order = (
                 Qt.DescendingOrder
@@ -1819,8 +1819,6 @@ class MainWindow(QMainWindow):
                 return (book.time_hours or 0) * 60 + (book.time_minutes or 0)
             if column == 6:  # Tracks
                 return book.tracks or 0
-            if column == 7:  # Read date
-                return book.read_date or ""
             if column == 8:  # Date added
                 return book.date_added or ""
             return ""
@@ -2323,13 +2321,9 @@ class MainWindow(QMainWindow):
 
     def table_key_press(self, event: QKeyEvent):
         """Handle key press in table."""
+        # Allow default Select All (Ctrl+A) behavior
         if event.matches(QKeySequence.SelectAll):
-            self.set_status(
-                "Ctrl+A is disabled in Main Window to prevent accidental bulk actions",
-                timeout_ms=3000,
-                announce=True,
-            )
-            event.accept()
+            QTableView.keyPressEvent(self.table, event)
             return
 
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):

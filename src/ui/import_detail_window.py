@@ -288,20 +288,37 @@ class ImportDetailWindow(QDialog):
     def on_cancel_edit(self):
         """
         Handle Cancel (Escape) action: show save dialog if dirty, then close.
+        Restores combo focus if Escape pressed while a combo is focused.
         """
+        focused_widget = self.focusWidget()
+        combo_to_restore = None
+        if isinstance(focused_widget, QComboBox):
+            combo_to_restore = focused_widget
+        elif hasattr(focused_widget, "parentWidget") and isinstance(
+            focused_widget.parentWidget(), QComboBox
+        ):
+            combo_to_restore = focused_widget.parentWidget()
+
         if self._dirty:
             # Show save changes dialog like book_details
+            book_title = getattr(self, "title_edit", None)
+            book_author = getattr(self, "author_combo", None)
+            title_val = book_title.text().strip() if book_title else "(Untitled)"
+            author_val = (
+                book_author.currentText().strip() if book_author else "(Unknown author)"
+            )
+            msg_text = (
+                f"You have unsaved changes for '{title_val}' by {author_val}.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n"
+                "Cancel = Discard and close"
+            )
             msg = QMessageBox(self)
             msg.setWindowTitle("Unsaved Changes")
             msg.setStyleSheet(
                 build_accessible_message_box_style(self.scaler.get_scaled_size(20))
             )
-            msg.setText(
-                "You have unsaved changes.\n\n"
-                "Yes = Save and close\n"
-                "No = Continue editing\n"
-                "Cancel = Discard and close"
-            )
+            msg.setText(msg_text)
             msg.setStandardButtons(
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
             )
@@ -316,6 +333,8 @@ class ImportDetailWindow(QDialog):
 
             if reply == QMessageBox.No:
                 self.set_status("Continue editing")
+                if combo_to_restore:
+                    QTimer.singleShot(0, combo_to_restore.setFocus)
                 return
 
             if reply == QMessageBox.Cancel:
@@ -325,9 +344,13 @@ class ImportDetailWindow(QDialog):
                 return
 
             self.set_status("Continue editing")
+            if combo_to_restore:
+                QTimer.singleShot(0, combo_to_restore.setFocus)
             return
 
         self.reject()
+        if combo_to_restore:
+            QTimer.singleShot(0, combo_to_restore.setFocus)
 
     def install_focus_filters(self):
         """
@@ -411,7 +434,12 @@ class ImportDetailWindow(QDialog):
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
-                self.set_status(f"{field_name} changed.", announce=True)
+                # Only announce if value actually changed
+                last_status = getattr(self, "_last_status_message", None)
+                new_status = f"{field_name} changed."
+                if last_status != new_status:
+                    self.set_status(new_status, announce=True)
+                    self._last_status_message = new_status
                 self._pending_dirty_widgets.discard(dirty_widget)
 
         return super().eventFilter(source, event)

@@ -486,7 +486,7 @@ class ImportWindow(QDialog):
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
 
-        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
@@ -2627,44 +2627,6 @@ class ImportWindow(QDialog):
                 return
 
         QTableWidget.mouseDoubleClickEvent(self.table, event)
-
-    def keyPressEvent(self, event):
-        """Handle keyboard shortcuts, Enter key, and Escape for accessibility."""
-        # Accessibility: Alt+W always triggers file dialog (no status bar hint)
-        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
-            self.on_browse()
-            event.accept()
-            return
-        # Handle Escape key
-        if event.key() == Qt.Key_Escape:
-            self.on_cancel()
-            event.accept()
-            return
-        # Handle Enter key on focused widgets
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            focused_widget = self.focusWidget()
-            if isinstance(focused_widget, QPushButton):
-                # Click the focused button
-                focused_widget.click()
-                event.accept()
-                return
-            # Enter/Return opens import detail if table has focus
-            elif self.table.hasFocus():
-                self.on_open_detail_selected()
-                event.accept()
-                return
-        super().keyPressEvent(event)
-        if event.key() in (Qt.Key_Left, Qt.Key_Right):
-            self.move_column_without_selection(event.key())
-            event.accept()
-            return
-
-        # Skip Space key handling - no longer used for selection
-        if event.key() == Qt.Key_Space:
-            event.accept()
-            return
-
-        QTableWidget.keyPressEvent(self.table, event)
 
     def move_current_without_selection(self, key: int):
         """Move current cell and clear selection when navigating rows."""

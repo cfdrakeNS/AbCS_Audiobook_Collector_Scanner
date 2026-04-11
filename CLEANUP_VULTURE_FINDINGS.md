@@ -1,4 +1,37 @@
-# stuff the AI deleted without asking 
+---
+
+# April 11, 2026 — Latest Vulture Scan Results
+
+## New/Outstanding Vulture Findings (min-confidence 60)
+
+### src/database/connection.py
+- Line 75: unused attribute 'row_factory' (60%)
+  - **FALSE POSITIVE**: Required SQLite idiom (see above, already documented)
+
+### src/ui/book_list_import_window.py
+- Line 21: unused class 'DataFrame' (60%)
+  - **FALSE POSITIVE**: Fallback for missing pandas, required for import error handling (see above)
+- Line 1163: unused method 'on_headers_toggled' (60%)
+  - **FALSE POSITIVE**: Connected to checkbox/header toggle, required for header toggle (see above)
+
+### src/web/web_book_api.py
+- Line 102: unused variable 't0' (60%)
+- Line 107: unused variable 't1' (60%)
+- Line 148: unused variable 't1' (60%)
+- Line 155: unused variable 't0' (60%)
+- Line 160: unused variable 't1' (60%)
+- Line 169: unused variable 't1' (60%)
+- Line 175: unused variable 't0' (60%)
+- Line 178: unused variable 't1' (60%)
+- Line 187: unused variable 't1' (60%)
+  - **REVIEW**: These are likely timing/debug variables in web_book_api.py. If not used for logging or profiling, they can be safely removed. Mark for next cleanup pass.
+
+## Summary
+
+- All previously documented false positives remain valid and are not actionable.
+- Only new actionable items are the 't0' and 't1' variables in src/web/web_book_api.py, which should be reviewed and removed if not needed for debugging or profiling.
+
+---
 #### Database Module 1b: src/database/connection.py — row_factory
 **Status: FALSE POSITIVE (Required SQLite idiom)**
 

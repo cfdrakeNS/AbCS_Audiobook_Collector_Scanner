@@ -38,21 +38,6 @@ class ImportProgressWindow(QDialog):
     # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
     ALLOWED_ALT_LETTERS = set()
 
-    def setup_shortcuts(self):
-        # F1: Show help (if implemented)
-        self.f1_shortcut = QShortcut(QKeySequence(Qt.Key_F1), self)
-        # Escape: Cancel/close
-        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
-        self.escape_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.escape_shortcut.activated.connect(self.on_close_requested)
-        # Alt+/: Read status bar
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
-        self.status_shortcut.setContext(Qt.ApplicationShortcut)
-        self.status_shortcut.activated.connect(self.on_read_status_bar)
-
-    # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
-    ALLOWED_ALT_LETTERS = set()
-
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
         from src.accessibility.icon_helper import get_app_icon
@@ -71,31 +56,8 @@ class ImportProgressWindow(QDialog):
         self.setup_shortcuts()
         self.install_event_filters()
         self.apply_control_styles()
-        self.setWindowTitle("imported  Progress")
-        self.setAccessibleName("Import Progress")
-        self.resize(760, 176)  # Reduced height by about 20% from original 220
-        self.set_status("Ready")
 
-    # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
-    ALLOWED_ALT_LETTERS = set()
-
-    def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
-        super().__init__(parent)
-
-        self.scaler = scaler
-        self.theme_manager = theme_manager
-        self._default_status_message = "Ready"
-        self._cancel_requested = False
-        self._scan_active = True
-        self._compact_mode = False
-        self._status_read_until = 0.0
-
-        self.setup_ui()
-        self.setup_shortcuts()
-        self.install_event_filters()
-        self.apply_control_styles()
-
-        self.setWindowTitle("imported  Progress")
+        self.setWindowTitle("Import Progress")
         self.setAccessibleName("Import Progress")
         self.resize(760, 176)  # Reduced height by about 20% from original 220
         self.set_status("Ready")
@@ -182,6 +144,13 @@ class ImportProgressWindow(QDialog):
         self.author_label.setVisible(show_details)
         self.author_edit.setVisible(show_details)
         # Issues controls removed
+        self._apply_tab_order()
+
+    def setup_shortcuts(self):
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.setContext(Qt.ApplicationShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
@@ -368,6 +337,26 @@ class ImportProgressWindow(QDialog):
         return
 
     def on_close_requested(self):
+        if self._scan_active and not self._cancel_requested:
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Cancel Scan",
+                text=(
+                    "Cancel the current scan?\n\n"
+                    "Yes: stop scanning and keep partial results.\n"
+                    "No: continue scanning."
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self._cancel_requested = True
+                self.set_status("Canceled: scan stopped, partial results kept.")
+            else:
+                self.set_status("Continuing: scan not canceled.")
+            return
         self.accept()
 
     def mark_scan_complete(
