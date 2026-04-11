@@ -48,10 +48,10 @@ class NameListWindow(QDialog):
     """Window for adding and editing names in reference tables."""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        super().__init__(*args, **kwargs)
+        self.setWindowIcon(get_app_icon())
 
     def on_find_enter_pressed(self):
         # Trigger find on Enter in the find box
@@ -952,7 +952,10 @@ class NameListWindow(QDialog):
         # If editing, show save changes dialog like other windows
         from src.accessibility.style_helpers import build_accessible_message_box_style
 
+        from src.accessibility.icon_helper import get_app_icon
+
         msg = QMessageBox(self)
+        msg.setWindowIcon(get_app_icon())
         msg.setWindowTitle("Unsaved Changes")
         msg.setStyleSheet(
             build_accessible_message_box_style(self.scaler.get_scaled_size(20))

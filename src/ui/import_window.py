@@ -67,9 +67,9 @@ class ImportWindow(QDialog):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
         # ...existing code for initializing the window...
 
     # Duplicate eventFilter removed. Only the correct eventFilter remains above.
@@ -802,6 +802,8 @@ class ImportWindow(QDialog):
             message_lines.append(f"There are {valid_count} books not added!")
         message_lines.append("Current scan results in this window will be discarded.")
 
+        from src.accessibility.icon_helper import get_app_icon
+
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -810,6 +812,7 @@ class ImportWindow(QDialog):
             text="\n\n".join(message_lines),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
         )
         return reply == QMessageBox.Yes
 
@@ -1024,12 +1027,15 @@ class ImportWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def _update_header_info_line(self):
@@ -2055,6 +2061,17 @@ class ImportWindow(QDialog):
         self.set_status(
             f"Exported {len(rows_to_export)} row(s) to CSV: {os.path.basename(file_path)}",
             announce=True,
+        )
+        from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.style_helpers import exec_styled_message_box
+
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Export Complete",
+            text=f"Exported to:\n{file_path}",
+            window_icon=get_app_icon(),
         )
 
     def _refresh_summary_from_items(self):

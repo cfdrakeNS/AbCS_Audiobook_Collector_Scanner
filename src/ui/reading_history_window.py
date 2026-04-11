@@ -42,9 +42,9 @@ class ReadingHistoryWindow(QDialog):
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
@@ -587,9 +587,14 @@ class ReadingHistoryWindow(QDialog):
             self.load_date_range_data()
 
         except Exception as e:
-            QMessageBox.critical(
-                self, "Error", f"Failed to load reading history: {str(e)}"
-            )
+            from src.accessibility.icon_helper import get_app_icon
+
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Critical)
+            box.setWindowTitle("Error")
+            box.setText(f"Failed to load reading history: {str(e)}")
+            box.setWindowIcon(get_app_icon())
+            box.exec()
         finally:
             self._loading = False
 

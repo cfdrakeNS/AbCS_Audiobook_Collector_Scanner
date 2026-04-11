@@ -36,5 +36,14 @@
 37. done book detail & import detail windows - after pgup or pgdn move focus to title - clearer for screen reader users 
 38. done main win 1. after update to read date the focus is lost keep the focus on read date. 2. can't read the title in the popup title bar let stretch out.
 38. done ebook_list_import & web_bookk.api - before a search is it start  or compare staarts - 1. checking if a title has a number at the beginning or at the and of the end of he title for  series. it should strip the series number before doing the search. 2. The same is true for titles that have ", the" or ", an" or ". a"  the title put back to have the article at the beginning of the title before searching. or comparing 
-39. book_list_import window - after export to csv the alt+/ stop working 
+39. done book_list_import window - after export add a confirm popup with the file and path name 
+40. done import windows - after export add a confirm popup with the file and path name 
 
+41. import window - check the selecting with shift+up /down erros not selecting entire rows.
+42. web_book.api - some titles have a number at the beginning of the title  e.g." 06 The Unquiet"  when comparing to see if title is differnt and title start with a number and they match when the number is stripped then they are the same.  same is for if the number is at the end of the title e.g. "th Anniversary - 10"
+43. book_detail - change the popup after a delete to include the title and autthor clearer for screen readers 
+44. web_book.api - check to see if a series number is available we are adding it to the end of the title when we save the book. 
+45.  book_detail after picking a existing item in a combo and press escape focus is lot 
+46.  book_detail - when a fields is chnage the status bar sometime say the field you tabed to instead of the fields you chnaged 
+47. main window - 1. series and genre when opened are returning to the wrong column  2. sorrt on read date not working. 2. remove date added from sort menu. 3.  when slecting jaws is saying row and column numbers silance these as they have no revelance to the book table. 
+48. 

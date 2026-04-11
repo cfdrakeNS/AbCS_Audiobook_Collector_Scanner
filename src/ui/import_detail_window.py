@@ -53,9 +53,9 @@ from src.accessibility.accessible_events import (
 class ImportDetailWindow(QDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
     """
     Import detail dialog for viewing and editing scanned audiobook metadata.
@@ -274,12 +274,15 @@ class ImportDetailWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def on_cancel_edit(self):

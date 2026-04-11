@@ -59,10 +59,10 @@ class CollectionWindow(QDialog):
         theme_manager: ThemeManager,
         parent=None,
     ):
-        super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        super().__init__(parent)
+        self.setWindowIcon(get_app_icon())
 
         self.db = db
         self.scaler = scaler
@@ -613,27 +613,35 @@ class CollectionWindow(QDialog):
             return
 
         if collection.active and self._active_collection_count() <= 1:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="Collection",
                 text="At least one collection must remain active.",
+                window_icon=get_app_icon(),
             )
             self.set_status("Cannot delete the last active collection.", announce=True)
             return
 
         usage_count = self._book_count_for_collection(collection.collection_id)
         if usage_count > 0:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="Collection",
                 text=f"Cannot delete '{collection.name}' because {usage_count} book{'s' if usage_count != 1 else ''} use it.",
+                window_icon=get_app_icon(),
             )
             self.set_status("Delete blocked: collection is in use.", announce=True)
             return
+
+        from src.accessibility.icon_helper import get_app_icon
 
         answer = exec_styled_message_box(
             self,
@@ -643,6 +651,7 @@ class CollectionWindow(QDialog):
             text=f"Delete collection '{collection.name}'?",
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
         )
         if answer != QMessageBox.Yes:
             self.set_status("Delete canceled.")

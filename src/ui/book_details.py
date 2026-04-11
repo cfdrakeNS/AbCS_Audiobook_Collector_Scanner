@@ -56,9 +56,9 @@ from datetime import datetime
 class BookDetailsWindow(QDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
     # List of allowed Alt+key shortcuts for Book Details
     ALLOWED_ALT_KEYS = {
@@ -95,12 +95,15 @@ class BookDetailsWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def on_cancel_edit(self):
@@ -108,26 +111,28 @@ class BookDetailsWindow(QDialog):
         Handle Cancel (Escape) action: show save dialog if dirty, then close.
         """
         if self._dirty:
-            # Show save changes dialog like preferences
-            msg = QMessageBox(self)
-            msg.setWindowTitle("Unsaved Changes")
-            msg.setStyleSheet(
-                build_accessible_message_box_style(self.scaler.get_scaled_size(20))
-            )
-            msg.setText(
-                "You have unsaved changes.\n\n"
-                "Yes = Save and close\n"
-                "No = Continue editing\n"
-                "Cancel = Revert and close"
-            )
-            msg.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
-            )
-            msg.button(QMessageBox.Yes).setText("&Yes")
-            msg.button(QMessageBox.No).setText("&No")
-            msg.button(QMessageBox.Cancel).setText("&Cancel")
+            from src.accessibility.icon_helper import get_app_icon
 
-            reply = msg.exec()
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Unsaved Changes",
+                text=(
+                    "You have unsaved changes.\n\n"
+                    "Yes = Save and close\n"
+                    "No = Continue editing\n"
+                    "Cancel = Revert and close"
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                default_button=QMessageBox.Cancel,
+                button_texts={
+                    QMessageBox.Yes: "&Yes",
+                    QMessageBox.No: "&No",
+                    QMessageBox.Cancel: "&Cancel",
+                },
+                window_icon=get_app_icon(),
+            )
 
             if reply == QMessageBox.Yes:
                 # Save and close

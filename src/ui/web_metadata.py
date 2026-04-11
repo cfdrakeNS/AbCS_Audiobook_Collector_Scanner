@@ -80,9 +80,9 @@ class WebMetadataWindow(QDialog):
             web_data: Pre-fetched web data (if provided, skips auto-fetch)
         """
         super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
         # Store pre-fetched web data if provided
         self.pre_fetched_web_data = web_data
@@ -906,12 +906,15 @@ class WebMetadataWindow(QDialog):
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Alt+/ Test",
                 text=f"Alt+/ working! Status: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
@@ -928,6 +931,8 @@ class WebMetadataWindow(QDialog):
         """Handle escape key - show save confirmation before closing."""
         from src.accessibility.style_helpers import exec_styled_message_box
 
+        from src.accessibility.icon_helper import get_app_icon
+
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -936,6 +941,7 @@ class WebMetadataWindow(QDialog):
             text="Save web data?",
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.Yes,
+            window_icon=get_app_icon(),
         )
 
         if reply == QMessageBox.Yes:

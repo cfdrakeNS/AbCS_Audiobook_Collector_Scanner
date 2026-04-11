@@ -6,10 +6,10 @@ from PySide6.QtCore import Qt, QTimer
 
 class LicenseDialog(QDialog):
     def __init__(self, scaler, parent=None):
-        super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        super().__init__(parent)
+        self.setWindowIcon(get_app_icon())
         self.scaler = scaler
         self.setWindowTitle("AbCS License")
         self.setAccessibleName("AbCS License")

@@ -201,10 +201,10 @@ class BookTableModel(QAbstractTableModel):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        # Set the window icon to abCS_WinTitle_32x32.png for the main window
-        self.setWindowIcon(QIcon("data/graphics/abCS_WinTitle_32x32.png"))
+        # Set the window icon using centralized icon helper
+        self.setWindowIcon(get_app_icon())
 
     def _selection_shortcuts_text(self) -> str:
         """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""
@@ -215,6 +215,7 @@ class MainWindow(QMainWindow):
         """Show a dialog to set the read date for the selected book (accessible version)."""
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit
         from PySide6.QtCore import QDate
+        from src.accessibility.icon_helper import get_app_icon
 
         class ReadDateDialog(QDialog):
             """Scoped Enter handling for the read-date dialog without global shortcuts."""
@@ -222,6 +223,7 @@ class MainWindow(QMainWindow):
             def __init__(self, parent=None):
                 super().__init__(parent)
                 self.date_field = None
+                self.setWindowIcon(get_app_icon())
 
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
@@ -1308,12 +1310,15 @@ class MainWindow(QMainWindow):
         if not duplicate_ids:
             msg = f"No duplicates found for mode: {self._duplicate_mode_label(selected_mode)}"
             self.set_status(msg, timeout_ms=3000)
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Duplicate Check Result",
                 text=msg,
+                window_icon=get_app_icon(),
             )
             return
 
@@ -1347,12 +1352,15 @@ class MainWindow(QMainWindow):
         status_msg = f"{dup_count} duplicate books found ({self._duplicate_mode_label(selected_mode)})"
         self.set_status(status_msg, timeout_ms=0)
         popup_msg = f"Duplicate check complete: {dup_count} duplicate books found using mode: {self._duplicate_mode_label(selected_mode)}."
+        from src.accessibility.icon_helper import get_app_icon
+
         exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Information,
             title="Duplicate Check Result",
             text=popup_msg,
+            window_icon=get_app_icon(),
         )
         # Set focus to the first title in the table for accessibility
         if self.table.model() and self.table.model().rowCount() > 0:
@@ -1399,12 +1407,15 @@ class MainWindow(QMainWindow):
             self.set_status(self.get_default_status(), timeout_ms=0, announce=True)
         else:
             # No screen reader detected - show fallback message box
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {self.get_default_status()}",
+                window_icon=get_app_icon(),
             )
 
     def on_open_book_details(self):
@@ -1972,12 +1983,15 @@ class MainWindow(QMainWindow):
                 dialog_status.showMessage(message)
                 self.set_status(message, timeout_ms=3000, announce=True)
                 # Popup for screen reader users
+                from src.accessibility.icon_helper import get_app_icon
+
                 exec_styled_message_box(
                     self,
                     self.scaler.get_scaled_size(20),
                     icon=QMessageBox.Information,
                     title="No Match Found",
                     text=message,
+                    window_icon=get_app_icon(),
                 )
                 # Clear filter so new search works
                 self.current_filter.search_text = ""
@@ -2707,6 +2721,8 @@ class MainWindow(QMainWindow):
                     first_selected_row = row
                     break
 
+            from src.accessibility.icon_helper import get_app_icon
+
             reply = exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -2715,6 +2731,7 @@ class MainWindow(QMainWindow):
                 text=f"Are you sure you want to delete {count} selected book(s)?",
                 buttons=QMessageBox.Yes | QMessageBox.No,
                 default_button=QMessageBox.No,
+                window_icon=get_app_icon(),
             )
 
             if reply == QMessageBox.Yes:
@@ -3177,6 +3194,8 @@ class MainWindow(QMainWindow):
 
     def on_show_splash(self):
         """Show library statistics."""
+        # Redundant imports removed; already imported at top
+
         # Get statistics from database
         stats_queries = StatisticsQueries(self.db)
         stats = stats_queries.get_statistics()
@@ -3184,49 +3203,98 @@ class MainWindow(QMainWindow):
         # Create dialog
         dlg = QDialog(self)
         dlg.setWindowTitle("Library Statistics")
-        dlg.setAccessibleName("Library Statistics")
-        dlg.setAccessibleDescription(
-            "Shows summary statistics for your audiobook library."
-        )
-        dlg.resize(400, 300)
+        dlg.setAccessibleName("")
+        dlg.setAccessibleDescription("")
+        dlg.resize(500, 500)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        # Add statistics labels
-        layout.addWidget(
-            QLabel(f"<b>Total Books:</b> {getattr(stats, 'total_books', '?')}", dlg)
-        )
-        layout.addWidget(
-            QLabel(f"<b>Total Authors:</b> {getattr(stats, 'total_authors', '?')}", dlg)
-        )
-        layout.addWidget(
-            QLabel(f"<b>Total Series:</b> {getattr(stats, 'total_series', '?')}", dlg)
-        )
-        layout.addWidget(
-            QLabel(f"<b>Total Genres:</b> {getattr(stats, 'total_genres', '?')}", dlg)
-        )
-        layout.addWidget(
-            QLabel(
-                f"<b>Total Collections:</b> {getattr(stats, 'total_collections', '?')}",
-                dlg,
-            )
-        )
-        layout.addWidget(
-            QLabel(
-                f"<b>Total Time (hours):</b> {getattr(stats, 'total_time_hours', '?')}",
-                dlg,
-            )
-        )
+        if stats.total_books == 0:
+            # First time use - welcome message
+            text_edit = QTextEdit()
+            text_edit.setReadOnly(True)
+            splash_text = """Welcome to AbCS - Audio Book Collector Scanner!
 
-        # Add close button
-        close_btn = QPushButton("Close", dlg)
-        close_btn.clicked.connect(dlg.accept)
-        layout.addWidget(close_btn)
+No audiobooks found in the database yet.
 
-        dlg.setLayout(layout)
+You can:
+• Import audiobooks from your computer (scan folders)
+• Manually add a new book
+
+Use Ctrl+I to import or Alt+M for menu options."""
+            text_edit.setPlainText(splash_text)
+            font = text_edit.font()
+            font.setPointSize(self.scaler.get_scaled_size(12))
+            text_edit.setFont(font)
+            layout.addWidget(text_edit)
+            QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
+        else:
+            # Show statistics in a single-column table
+            table = QTableWidget()
+            table.setAccessibleName("")
+            table.setAccessibleDescription("")
+            table.setColumnCount(1)
+            table.setHorizontalHeaderLabels([""])
+            table.setSelectionBehavior(QAbstractItemView.SelectRows)
+            table.setSelectionMode(QAbstractItemView.SingleSelection)
+            table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            table.setAlternatingRowColors(False)
+            table.verticalHeader().setVisible(False)
+            table.horizontalHeader().setVisible(False)
+            table.setShowGrid(False)
+            # Ensure no focus or highlight on click
+            table.setFocusPolicy(Qt.NoFocus)
+            table.clearSelection()
+            from src.accessibility.shortcut_helpers import (
+                build_accessible_f1_popup_style,
+            )
+
+            table.setStyleSheet(build_accessible_f1_popup_style())
+
+            # Data rows
+            data = [
+                ("Total Books", str(stats.total_books)),
+                ("Total Authors", str(stats.total_authors)),
+                ("Total Series", str(stats.total_series)),
+                ("Total Genres", str(stats.total_genres)),
+                ("Collections", str(stats.total_collections)),
+                ("Books Read", str(stats.books_read)),
+                ("Books Unread", str(stats.books_unread)),
+                ("Total Listening Time", stats.total_time_display),
+            ]
+
+            if stats.collection_breakdown:
+                for collection_name, book_count in stats.collection_breakdown:
+                    data.append((collection_name, str(book_count)))
+
+            table.setRowCount(len(data))
+
+            for row, (label, value) in enumerate(data):
+                combined_text = f"{label:<25} {value}"
+                item = QTableWidgetItem(combined_text)
+                item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, 0, item)
+
+            # Resize column to stretch
+            header = table.horizontalHeader()
+            header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+            # Set font
+            font = table.font()
+            font.setPointSize(self.scaler.get_scaled_size(11))
+            font.setFamily("Courier New")
+            table.setFont(font)
+
+            layout.addWidget(table)
+            QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
+
+        focus_ctx = self._capture_table_focus_context()
         dlg.exec()
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
 
     def on_show_authors(self):
         """Open Author window."""

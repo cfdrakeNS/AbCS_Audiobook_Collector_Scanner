@@ -57,7 +57,10 @@ class BackupRestoreWindow(QDialog):
         theme_manager: ThemeManager,
         parent=None,
     ):
+        from src.accessibility.icon_helper import get_app_icon
+
         super().__init__(parent)
+        self.setWindowIcon(get_app_icon())
         from PySide6.QtGui import QIcon
 
         self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
@@ -343,12 +346,15 @@ class BackupRestoreWindow(QDialog):
                 force_focus_announce=True,
             )
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def _set_restore_path(self, path_text: str):
@@ -460,12 +466,15 @@ class BackupRestoreWindow(QDialog):
         try:
             backup_path = self.db.create_manual_backup()
         except Exception as exc:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Critical,
                 title="Backup Failed",
                 text=f"Backup failed.\n\n{exc}",
+                window_icon=get_app_icon(),
             )
             self.set_status("Backup failed")
             return
@@ -477,17 +486,22 @@ class BackupRestoreWindow(QDialog):
     def on_restore(self):
         restore_path = self.restore_path_edit.text().strip()
         if not restore_path:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="No Backup Selected",
                 text="Select a backup file to restore.",
+                window_icon=get_app_icon(),
             )
             self.set_status("Restore canceled: no backup selected")
             return
 
         restore_name = self._display_backup_name(restore_path)
+
+        from src.accessibility.icon_helper import get_app_icon
 
         confirm = exec_styled_message_box(
             self,
@@ -501,6 +515,7 @@ class BackupRestoreWindow(QDialog):
             ),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
         )
         if confirm != QMessageBox.Yes:
             self.set_status("Restore canceled")
@@ -509,12 +524,15 @@ class BackupRestoreWindow(QDialog):
         try:
             self.db.restore_from_backup(restore_path)
         except Exception as exc:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Critical,
                 title="Restore Failed",
                 text=f"Restore failed.\n\n{exc}",
+                window_icon=get_app_icon(),
             )
             self.set_status("Restore failed")
             return
@@ -526,12 +544,15 @@ class BackupRestoreWindow(QDialog):
 
     def on_delete_backup(self):
         if not self._has_backup_list_selection():
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="No Backup Selected",
                 text="Select a backup file before deleting.",
+                window_icon=get_app_icon(),
             )
             self.set_status("Delete canceled: no backup row selected in Backup List")
             return
@@ -544,17 +565,22 @@ class BackupRestoreWindow(QDialog):
         if current_item is not None:
             backup_path = (current_item.data(Qt.UserRole) or "").strip()
         if not backup_path:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Warning,
                 title="No Backup Selected",
                 text="Focus Backup List and select a backup file before deleting.",
+                window_icon=get_app_icon(),
             )
             self.set_status("Delete canceled: no backup row selected in Backup List")
             return
 
         backup_name = self._display_backup_name(backup_path)
+        from src.accessibility.icon_helper import get_app_icon
+
         confirm = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -563,6 +589,7 @@ class BackupRestoreWindow(QDialog):
             text=("Delete backup file?\n\n" f"{backup_name}"),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
         )
         if confirm != QMessageBox.Yes:
             self.set_status("Delete backup canceled")
@@ -571,12 +598,15 @@ class BackupRestoreWindow(QDialog):
         try:
             self.db.delete_backup_file(backup_path)
         except Exception as exc:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Critical,
                 title="Delete Failed",
                 text=f"Delete backup failed.\n\n{exc}",
+                window_icon=get_app_icon(),
             )
             self.set_status("Delete backup failed")
             return
@@ -585,6 +615,8 @@ class BackupRestoreWindow(QDialog):
         self.set_status(f"Deleted backup: {backup_name}")
 
     def on_full_reset(self):
+        from src.accessibility.icon_helper import get_app_icon
+
         confirm = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -596,6 +628,7 @@ class BackupRestoreWindow(QDialog):
             ),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
         )
         if confirm != QMessageBox.Yes:
             self.set_status("Full reset canceled")
@@ -604,12 +637,15 @@ class BackupRestoreWindow(QDialog):
         try:
             backup_path = self.db.full_reset_database(create_backup=True)
         except Exception as exc:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Critical,
                 title="Full Reset Failed",
                 text=f"Full reset failed.\n\n{exc}",
+                window_icon=get_app_icon(),
             )
             self.set_status("Full reset failed")
             return

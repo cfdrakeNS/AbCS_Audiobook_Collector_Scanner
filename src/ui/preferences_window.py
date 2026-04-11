@@ -52,9 +52,9 @@ class PreferencesWindow(QDialog):
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
     def keyPressEvent(self, event):
         # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
@@ -989,6 +989,7 @@ class PreferencesWindow(QDialog):
     def _confirm_exit_with_changes(self) -> int:
         """Ask whether to save changes before exit using standardized message box."""
         from src.accessibility.style_helpers import exec_styled_message_box
+        from src.accessibility.icon_helper import get_app_icon
 
         reply = exec_styled_message_box(
             self,
@@ -1001,6 +1002,7 @@ class PreferencesWindow(QDialog):
             "Cancel = Revert and close",
             buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             default_button=QMessageBox.Yes,
+            window_icon=get_app_icon(),
         )
         return reply
 

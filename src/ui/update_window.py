@@ -52,9 +52,9 @@ class UpdateWindow(QDialog):
         self, db: DatabaseManager, scaler: UIScaler, selected_book_ids: set, parent=None
     ):
         super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
     @staticmethod
     def _to_proper_case(text: str) -> str:
@@ -778,12 +778,15 @@ class UpdateWindow(QDialog):
         if QAccessible.isActive():
             self.show_status(status_text, announce=True)
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def keyPressEvent(self, event):
@@ -800,6 +803,8 @@ class UpdateWindow(QDialog):
         Returns True if confirmed, False if cancelled.
         """
         msg = f"'{value}' is a new {field_name}.\n\nCreate this new {field_name}?"
+        from src.accessibility.icon_helper import get_app_icon
+
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -808,6 +813,7 @@ class UpdateWindow(QDialog):
             text=msg,
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
         )
         return reply == QMessageBox.Yes
 

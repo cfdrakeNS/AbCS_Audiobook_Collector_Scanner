@@ -38,11 +38,26 @@ class ImportProgressWindow(QDialog):
     # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
     ALLOWED_ALT_LETTERS = set()
 
+    def setup_shortcuts(self):
+        # F1: Show help (if implemented)
+        self.f1_shortcut = QShortcut(QKeySequence(Qt.Key_F1), self)
+        # Escape: Cancel/close
+        self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.escape_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.escape_shortcut.activated.connect(self.on_close_requested)
+        # Alt+/: Read status bar
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.ApplicationShortcut)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+    # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
+    ALLOWED_ALT_LETTERS = set()
+
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
         self.scaler = scaler
         self.theme_manager = theme_manager
@@ -167,13 +182,6 @@ class ImportProgressWindow(QDialog):
         self.author_label.setVisible(show_details)
         self.author_edit.setVisible(show_details)
         # Issues controls removed
-        self._apply_tab_order()
-
-    def setup_shortcuts(self):
-        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
-        self.help_shortcut.activated.connect(self.on_show_shortcuts)
-
-        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.setContext(Qt.ApplicationShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
@@ -360,26 +368,6 @@ class ImportProgressWindow(QDialog):
         return
 
     def on_close_requested(self):
-        if self._scan_active and not self._cancel_requested:
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Cancel Scan",
-                text=(
-                    "Cancel the current scan?\n\n"
-                    "Yes: stop scanning and keep partial results.\n"
-                    "No: continue scanning."
-                ),
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No,
-            )
-            if reply == QMessageBox.Yes:
-                self._cancel_requested = True
-                self.set_status("Canceled: scan stopped, partial results kept.")
-            else:
-                self.set_status("Continuing: scan not canceled.")
-            return
         self.accept()
 
     def mark_scan_complete(

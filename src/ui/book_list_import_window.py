@@ -93,9 +93,9 @@ class BookListImportWindow(QDialog):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
     def _normalize_title_for_match(self, title: str) -> str:
         """Normalize title for matching: strip series number, move trailing article to beginning, clean."""
@@ -122,6 +122,8 @@ class BookListImportWindow(QDialog):
 
         # Check for pandas availability
         if not PANDAS_AVAILABLE:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -130,6 +132,7 @@ class BookListImportWindow(QDialog):
                 text="Book List Import requires pandas and openpyxl.\n\nPlease install with:\npip install pandas openpyxl",
                 buttons=QMessageBox.Ok,
                 default_button=QMessageBox.Ok,
+                window_icon=get_app_icon(),
             )
             self.reject()
             return
@@ -913,12 +916,15 @@ class BookListImportWindow(QDialog):
         if QAccessible.isActive():
             announce_status_message(self.status_bar, status_text, move_focus=True)
         else:
+            from src.accessibility.icon_helper import get_app_icon
+
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
                 title="Status Bar",
                 text=f"No screen reader active.\n\nStatus: {status_text}",
+                window_icon=get_app_icon(),
             )
 
     def browse_file(self):
@@ -1672,6 +1678,17 @@ class BookListImportWindow(QDialog):
         self.set_status(
             f"Exported {len(self.import_errors)} error(s) to CSV: {os.path.basename(file_path)}",
             announce=True,
+        )
+        from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.style_helpers import exec_styled_message_box
+
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Export Complete",
+            text=f"Exported to:\n{file_path}",
+            window_icon=get_app_icon(),
         )
         self._ensure_read_status_bar_shortcut()
 

@@ -83,6 +83,7 @@ def exec_styled_message_box(
     buttons=QMessageBox.Ok,
     default_button=None,
     button_texts=None,
+    window_icon=None,
 ) -> int:
     """Show a styled QMessageBox and return the exec result."""
     msg = QMessageBox(parent)
@@ -90,11 +91,14 @@ def exec_styled_message_box(
         msg.setIcon(icon)
     else:
         msg.setIcon(QMessageBox.NoIcon)
-    # Remove window icon (top left) for accessibility popups
+    # Set window icon (top left) for accessibility popups
     try:
-        from PySide6.QtGui import QIcon
+        if window_icon is not None:
+            msg.setWindowIcon(window_icon)
+        else:
+            from src.accessibility.icon_helper import get_app_icon
 
-        msg.setWindowIcon(QIcon())
+            msg.setWindowIcon(get_app_icon())
     except Exception:
         pass
     msg.setWindowTitle(title)

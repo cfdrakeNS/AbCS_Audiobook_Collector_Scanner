@@ -15,10 +15,10 @@ class FocusAnnouncingLabel(QLabel):
 class AboutDialog(QDialog):
 
     def __init__(self, scaler, parent=None):
-        from PySide6.QtGui import QIcon
+        from src.accessibility.icon_helper import get_app_icon
 
         super().__init__(parent)
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        self.setWindowIcon(get_app_icon())
 
         self.scaler = scaler
         self.setWindowTitle("About AbCS")
