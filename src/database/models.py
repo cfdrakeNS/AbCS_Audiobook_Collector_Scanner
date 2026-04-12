@@ -172,6 +172,7 @@ class Statistics:
     books_read: int = 0
     books_unread: int = 0
     total_time_hours: int = 0
+    total_hours_read: int = 0
     collection_breakdown: list[tuple[str, int]] | None = None
 
     @property
@@ -181,4 +182,13 @@ class Statistics:
             return f"{self.total_time_hours} hours"
         days = self.total_time_hours // 24
         hours = self.total_time_hours % 24
+        return f"{days} days, {hours} hours"
+
+    @property
+    def total_hours_read_display(self) -> str:
+        """Format total hours read (read books only)."""
+        if self.total_hours_read < 24:
+            return f"{self.total_hours_read} hours"
+        days = self.total_hours_read // 24
+        hours = self.total_hours_read % 24
         return f"{days} days, {hours} hours"

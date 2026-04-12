@@ -495,7 +495,7 @@ class ImportWindow(QDialog):
         self.table.verticalHeader().setHighlightSections(False)
         self.table.verticalHeader().setAccessibleName(
             ""
-        )  # Prevent JAWS row announcements
+        )  # Prevent screen reader row announcements
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         header = self.table.horizontalHeader()

@@ -254,7 +254,8 @@ class AbCSApplication:
                     announce=True,
                 )
 
-            self._show_empty_library_dialog_if_needed()
+            # Empty database dialog is now handled by SetupDialog in main_window.py
+            # (No longer handled here; all old code removed)
 
             shortcut_conflicts = find_shortcut_conflicts(self.main_window)
             if shortcut_conflicts:
@@ -293,147 +294,7 @@ class AbCSApplication:
             # Cleanup database connection
             close_db()
 
-    def _show_empty_library_dialog_if_needed(self):
-        """Show action dialog whenever the database has no books."""
-        stats = StatisticsQueries(self.db).get_statistics()
-        if stats.total_books != 0:
-            return
-
-        from PySide6.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QHBoxLayout,
-            QLabel,
-            QPushButton,
-            QTableWidget,
-            QTableWidgetItem,
-            QHeaderView,
-            QAbstractItemView,
-        )
-
-        guidance_lines = [
-            "Database is empty.",
-            "Use Tab key to move to the option buttons and press Enter to select.",
-            "Import Books: Scan audiobook folders and read tags automatically.",
-            "Import List: Import from spreadsheet files (CSV, XLSX, XLS).",
-            "Preferences: Adjust colors and font size.",
-            "Continue: Stay in the main window.",
-            "Non-commercial use only; fee-based distribution requires written permission from C.F. Drake and Contributors.",
-        ]
-
-        # Mirror working popup pattern by announcing guidance in status bar as well.
-        self.main_window.set_status(
-            "Database empty dialog opened. Choose Import Books, Import List, Preferences, or Continue.",
-            timeout_ms=12000,
-            announce=True,
-        )
-
-        dlg = QDialog(self.main_window)
-        dlg.setModal(True)
-        dlg.setWindowTitle("Welcome to AbCS - Database Empty")
-        dlg.setAccessibleName("Database Empty - Choose Import Option")
-        dlg.setAccessibleDescription("Choose how to start with an empty database")
-        dlg.resize(self.scaler.get_scaled_size(700), self.scaler.get_scaled_size(300))
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
-
-        heading = QLabel("Choose one option to get started", dlg)
-        heading.setAccessibleName("Choose one option to get started")
-        heading_font = heading.font()
-        heading_font.setPointSize(self.scaler.get_scaled_size(12))
-        heading.setFont(heading_font)
-        layout.addWidget(heading)
-
-        guidance_table = QTableWidget(dlg)
-        guidance_table.setAccessibleName("Empty database guidance")
-        guidance_table.setAccessibleDescription(
-            "Read-only guidance text for startup options. Use arrow keys to read line by line."
-        )
-        guidance_table.setColumnCount(1)
-        guidance_table.setRowCount(len(guidance_lines))
-        guidance_table.setHorizontalHeaderLabels([""])
-        guidance_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        guidance_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        guidance_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        guidance_table.setTabKeyNavigation(False)
-        guidance_table.setAlternatingRowColors(False)
-        guidance_table.setShowGrid(False)
-        guidance_table.verticalHeader().setVisible(False)
-        guidance_table.horizontalHeader().setVisible(False)
-        guidance_table.setStyleSheet(
-            "QTableWidget:focus { border: none; outline: none; }"
-            "QTableWidget::item:selected { background-color: transparent; color: palette(text); }"
-            "QTableWidget::item:focus { outline: none; }"
-        )
-
-        for row, line in enumerate(guidance_lines):
-            item = QTableWidgetItem(line)
-            item.setData(Qt.AccessibleTextRole, line)
-            item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            guidance_table.setItem(row, 0, item)
-
-        guidance_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        guidance_table.setMaximumHeight(self.scaler.get_scaled_size(150))
-        table_font = guidance_table.font()
-        table_font.setPointSize(self.scaler.get_scaled_size(11))
-        guidance_table.setFont(table_font)
-        layout.addWidget(guidance_table)
-
-        button_row = QHBoxLayout()
-        button_row.setSpacing(8)
-
-        import_books_btn = QPushButton("Import Books", dlg)
-        import_list_btn = QPushButton("Import List", dlg)
-        preferences_btn = QPushButton("Preferences", dlg)
-        continue_btn = QPushButton("Continue", dlg)
-
-        reference_button_style = self.main_window.update_button.styleSheet()
-        for btn in (import_books_btn, import_list_btn, preferences_btn, continue_btn):
-            btn.setStyleSheet(reference_button_style)
-            button_row.addWidget(btn)
-
-        layout.addLayout(button_row)
-
-        choice = {"value": "continue"}
-
-        import_books_btn.clicked.connect(
-            lambda: (choice.update(value="import_books"), dlg.accept())
-        )
-        import_list_btn.clicked.connect(
-            lambda: (choice.update(value="import_list"), dlg.accept())
-        )
-        preferences_btn.clicked.connect(
-            lambda: (choice.update(value="preferences"), dlg.accept())
-        )
-        continue_btn.clicked.connect(
-            lambda: (choice.update(value="continue"), dlg.accept())
-        )
-
-        dlg.setTabOrder(guidance_table, import_books_btn)
-        dlg.setTabOrder(import_books_btn, import_list_btn)
-        dlg.setTabOrder(import_list_btn, preferences_btn)
-        dlg.setTabOrder(preferences_btn, continue_btn)
-
-        def focus_guidance_table() -> None:
-            if guidance_table.rowCount() > 0:
-                guidance_table.setCurrentCell(0, 0)
-            guidance_table.setFocus(Qt.ActiveWindowFocusReason)
-
-        QTimer.singleShot(0, focus_guidance_table)
-        QTimer.singleShot(150, focus_guidance_table)
-        dlg.exec()
-
-        # Handle user's choice
-        if choice["value"] == "import_books":
-            self.main_window.on_import()
-        elif choice["value"] == "import_list":
-            self.main_window.on_book_list_import()
-        elif choice["value"] == "preferences":
-            self.main_window.on_preferences()
-        elif choice["value"] == "continue":
-            pass
+    # The empty database dialog is now handled by SetupDialog in main_window.py
 
 
 def main():

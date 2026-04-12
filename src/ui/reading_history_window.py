@@ -127,7 +127,7 @@ class ReadingHistoryWindow(QDialog):
         stats_group = QGroupBox("Reading Statistics")
         stats_layout = QVBoxLayout(stats_group)
 
-        # Create a table for JAWS accessibility
+        # Create a table for screen reader accessibility
         self.general_table = QTableWidget()
         self.general_table.setTabKeyNavigation(False)
         self.general_table.installEventFilter(self)
@@ -414,7 +414,7 @@ class ReadingHistoryWindow(QDialog):
 
         self.tab_widget.addTab(range_widget, "Date &Range")
 
-        # Set explicit tab order for predictable JAWS navigation
+        # Set explicit tab order for predictable screen reader navigation
         self.setTabOrder(self.start_date_edit, self.end_date_edit)
         self.setTabOrder(self.end_date_edit, self.refresh_button)
 

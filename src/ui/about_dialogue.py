@@ -80,7 +80,7 @@ class AboutDialog(QDialog):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        pixmap = QPixmap("data/graphics/abcs_about_win.png")
+        pixmap = QPixmap("data/graphics/abcs_app_splash.png")
         if not pixmap.isNull():
             from PySide6.QtWidgets import (
                 QVBoxLayout as QVBoxLayout3,
@@ -170,5 +170,5 @@ class AboutDialog(QDialog):
         self.about_label = about_label
         self.ok_btn = ok_btn
 
-        # Start focus on about_label so JAWS reads the text first
+        # Start focus on about_label so the screen reader reads the text first
         QTimer.singleShot(100, lambda: about_label.setFocus(Qt.TabFocusReason))

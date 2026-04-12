@@ -56,6 +56,7 @@ from src.database import (
     Book,
     StatisticsQueries,
 )
+from src.ui.statistics_dialog import StatisticsDialog
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.style_helpers import (
@@ -178,6 +179,10 @@ class BookTableModel(QAbstractTableModel):
                 return ""
 
         if role == Qt.TextAlignmentRole:
+            if col == 2:  # Year column
+                return Qt.AlignCenter | Qt.AlignVCenter
+            if col == 5:  # Time (length) column
+                return Qt.AlignRight | Qt.AlignVCenter
             if col == 6:
                 return Qt.AlignRight | Qt.AlignVCenter
             if col == 7:
@@ -458,6 +463,12 @@ class MainWindow(QMainWindow):
         self.resize(1400, 800)
         # mw#22: Minimum size to prevent columns from being cut off
         self.setMinimumSize(900, 400)
+
+        # Show SetupDialog if database is empty
+        stats_queries = StatisticsQueries(self.db)
+        stats = stats_queries.get_statistics()
+        if stats.total_books == 0:
+            self.on_show_splash()
 
         # Set focus to first title in book list on startup.
         if self.table.model() and self.table.model().rowCount() > 0:
@@ -1375,7 +1386,7 @@ class MainWindow(QMainWindow):
             message: Message to display
             timeout_ms: If > 0, message will clear to default after this delay.
                        If 0, message stays until manually changed.
-            announce: If True, briefly move focus to status bar so JAWS/NVDA read it
+            announce: If True, briefly move focus to status bar so the screen reader reads it
         """
         if announce and message == self._last_announced_message:
             if (time.monotonic() - self._last_announce_monotonic) < 0.6:
@@ -3201,77 +3212,8 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             self.restore_main_focus_after_modal()
         else:
-            # Show statistics in a single-column table (unchanged)
-            dlg = QDialog(self)
-            dlg.setWindowTitle("Library Statistics")
-            dlg.setAccessibleName("")
-            dlg.setAccessibleDescription("")
-            dlg.resize(500, 500)
-
-            layout = QVBoxLayout(dlg)
-            layout.setContentsMargins(20, 20, 20, 20)
-            layout.setSpacing(10)
-
-            table = QTableWidget()
-            table.setAccessibleName("")
-            table.setAccessibleDescription("")
-            table.setColumnCount(1)
-            table.setHorizontalHeaderLabels([""])
-            table.setSelectionBehavior(QAbstractItemView.SelectRows)
-            table.setSelectionMode(QAbstractItemView.SingleSelection)
-            table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-            table.setAlternatingRowColors(False)
-            table.verticalHeader().setVisible(False)
-            table.horizontalHeader().setVisible(False)
-            table.setShowGrid(False)
-            # Ensure no focus or highlight on click
-            table.setFocusPolicy(Qt.NoFocus)
-            table.clearSelection()
-            from src.accessibility.shortcut_helpers import (
-                build_accessible_f1_popup_style,
-            )
-
-            table.setStyleSheet(build_accessible_f1_popup_style())
-
-            # Data rows
-            data = [
-                ("Total Books", str(stats.total_books)),
-                ("Total Authors", str(stats.total_authors)),
-                ("Total Series", str(stats.total_series)),
-                ("Total Genres", str(stats.total_genres)),
-                ("Collections", str(stats.total_collections)),
-                ("Books Read", str(stats.books_read)),
-                ("Books Unread", str(stats.books_unread)),
-                ("Total Listening Time", stats.total_time_display),
-            ]
-
-            if stats.collection_breakdown:
-                for collection_name, book_count in stats.collection_breakdown:
-                    data.append((collection_name, str(book_count)))
-
-            table.setRowCount(len(data))
-
-            for row, (label, value) in enumerate(data):
-                combined_text = f"{label:<25} {value}"
-                item = QTableWidgetItem(combined_text)
-                item.setData(Qt.AccessibleTextRole, f"{label}: {value}")
-                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                table.setItem(row, 0, item)
-
-            # Resize column to stretch
-            header = table.horizontalHeader()
-            header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-            # Set font
-            font = table.font()
-            font.setPointSize(self.scaler.get_scaled_size(11))
-            font.setFamily("Courier New")
-            table.setFont(font)
-
-            layout.addWidget(table)
-            QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
-
             focus_ctx = self._capture_table_focus_context()
+            dlg = StatisticsDialog(stats, self.scaler, parent=self)
             dlg.exec()
             self._restore_table_focus_context(focus_ctx)
             self.restore_main_focus_after_modal()
@@ -3380,7 +3322,7 @@ class MainWindow(QMainWindow):
         self.restore_main_focus_after_modal()
 
     def on_show_shortcuts(self):
-        """Show keyboard shortcuts help in a table for JAWS accessibility."""
+        """Show keyboard shortcuts help in a table for screen reader accessibility."""
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Main Window")
         dlg.setAccessibleName("")

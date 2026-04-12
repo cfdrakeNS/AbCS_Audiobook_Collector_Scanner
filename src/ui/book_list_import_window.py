@@ -435,10 +435,10 @@ class BookListImportWindow(QDialog):
         self.instructions_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
 
         # NO setTextInteractionFlags — keeps Qt using QAccessibleInterface (name-based)
-        # instead of QAccessibleTextInterface (line-by-line) so JAWS reads the whole text
+        # instead of QAccessibleTextInterface (line-by-line) so the screen reader reads the whole text
         self.instructions_label.setFocusPolicy(Qt.TabFocus)
 
-        # Put the full text here — this is what JAWS reads on focus
+        # Put the full text here — this is what the screen reader reads on focus
         self.instructions_label.setAccessibleName(instructions_text)
         self.instructions_label.setAccessibleDescription(
             "Step-by-step instructions for using the book list import"

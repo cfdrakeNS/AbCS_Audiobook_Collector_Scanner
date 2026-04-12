@@ -129,7 +129,7 @@ class WebMetadataWindow(QDialog):
             widget.installEventFilter(self)
 
         # CRITICAL: Set focus to first field with web differences when window opens
-        # JAWS requires focus to be set for Alt+keys to work properly
+        # Screen readers require focus to be set for Alt+keys to work properly
         QTimer.singleShot(0, self.set_focus_to_first_differing_field)
 
     def eventFilter(self, source, event):

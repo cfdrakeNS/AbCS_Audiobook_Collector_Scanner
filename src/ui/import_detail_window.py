@@ -1091,7 +1091,7 @@ class ImportDetailWindow(QDialog):
 
         layout.addLayout(button_layout)
 
-        # Set explicit tab order for predictable JAWS navigation
+        # Set explicit tab order for predictable screen reader navigation
         self.setTabOrder(self.title_edit, self.author_combo)
         self.setTabOrder(self.author_combo, self.comments_edit)
         self.setTabOrder(self.comments_edit, self.year_spin)

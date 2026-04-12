@@ -432,13 +432,13 @@ class BookDetailsWindow(QDialog):
                 self._pending_dirty_widgets.discard(dirty_widget)
 
         # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
-        # This prevents silent value changes that JAWS doesn't announce
+        # This prevents silent value changes that the screen reader doesn't announce
         if event.type() == QEvent.KeyPress:
             if isinstance(source, QComboBox):
                 key = event.key()
                 modifiers = event.modifiers()
                 if key in (Qt.Key_Up, Qt.Key_Down):
-                    # Only allow with Alt modifier (opens dropdown, JAWS announces)
+                    # Only allow with Alt modifier (opens dropdown, screen reader announces)
                     if not (modifiers & Qt.AltModifier):
                         # Block plain arrow keys - beep to indicate blocked
                         QApplication.beep()
@@ -864,7 +864,7 @@ class BookDetailsWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         layout.addWidget(self.status_bar)
 
-        # Set explicit tab order for predictable JAWS navigation
+        # Set explicit tab order for predictable screen reader navigation
         self.setTabOrder(self.title_edit, self.author_combo)
         self.setTabOrder(self.author_combo, self.comments_edit)
         self.setTabOrder(self.comments_edit, self.year_spin)

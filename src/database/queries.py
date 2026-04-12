@@ -661,11 +661,17 @@ class StatisticsQueries:
         )[0]
         stats.books_unread = stats.total_books - stats.books_read
 
-        # Total listening time
+        # Total listening time (all books)
         time_row = self.db.fetch_one(
             "SELECT SUM(time_hours) + SUM(time_minutes) / 60 FROM books"
         )
         stats.total_time_hours = int(time_row[0] or 0)
+
+        # Total hours read (books with read_date)
+        read_time_row = self.db.fetch_one(
+            "SELECT SUM(time_hours) + SUM(time_minutes) / 60 FROM books WHERE read_date IS NOT NULL"
+        )
+        stats.total_hours_read = int(read_time_row[0] or 0)
 
         collection_rows = self.db.fetch_all("""
             SELECT collection_name, book_count

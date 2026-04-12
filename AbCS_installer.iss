@@ -45,10 +45,10 @@ OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
 ; Installer branding
-SetupIconFile=data\Graphics\abCS_icon.ico
-UninstallDisplayIcon={app}\AbCS_icon.ico
+SetupIconFile=data\Graphics\AbCS.ico
+UninstallDisplayIcon={app}\AbCS.ico
 LicenseFile=AbCS_License.MD
-WizardImageFile=data\Graphics\abcs_splash.png
+WizardImageFile=data\Graphics\abcs_installer_splash.png
 
 Compression=lzma2
 SolidCompression=yes
@@ -94,7 +94,7 @@ Name: "desktopicon"; \
 Source: "dist\AbCS\*"; \
     DestDir: "{app}"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "data\Graphics\AbCS_icon.ico"; \
+Source: "data\Graphics\AbCS.ico"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
 Source: "AbCS_License.MD"; \
@@ -118,7 +118,7 @@ Name: "{app}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 ; Desktop (only if user chose that task above)
 Name: "{commondesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
-    IconFilename: "{app}\abCS_icon.ico"; \
+    IconFilename: "{app}\AbCS.ico"; \
     Tasks: desktopicon
 
 ; ──────────────────────────────────────────────────────────────────
