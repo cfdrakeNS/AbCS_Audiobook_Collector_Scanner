@@ -47,6 +47,7 @@
 47. done main window - 1. series and genre when opened are returning to the wrong column  2. sorrt on read date not working. 2. remove date added from sort menu. 3.  when selecting jaws is saying row and column numbers silence these as they have no relevance to the book table. 
 48. done preference win increse the height by 1/3
 49. done main win - Ctrl+A (Select All) is now enabled in the main window table. Restriction and blocking message removed.
+50. title bar icons not showing on built install check if they are included in the build 
 
 # April 11th work
 

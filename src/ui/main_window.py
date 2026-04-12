@@ -3187,45 +3187,31 @@ class MainWindow(QMainWindow):
         self.restore_main_focus_after_modal()
 
     def on_show_splash(self):
-        """Show library statistics."""
-        # Redundant imports removed; already imported at top
-
-        # Get statistics from database
+        """Show library statistics or setup dialog if empty DB."""
         stats_queries = StatisticsQueries(self.db)
         stats = stats_queries.get_statistics()
 
-        # Create dialog
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Library Statistics")
-        dlg.setAccessibleName("")
-        dlg.setAccessibleDescription("")
-        dlg.resize(500, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
         if stats.total_books == 0:
-            # First time use - welcome message
-            text_edit = QTextEdit()
-            text_edit.setReadOnly(True)
-            splash_text = """Welcome to AbCS - Audio Book Collector Scanner!
+            # Show accessible SetupDialog for empty DB
+            from src.ui.setup_dialogue import SetupDialog
 
-No audiobooks found in the database yet.
-
-You can:
-• Import audiobooks from your computer (scan folders)
-• Manually add a new book
-
-Use Ctrl+I to import or Alt+M for menu options."""
-            text_edit.setPlainText(splash_text)
-            font = text_edit.font()
-            font.setPointSize(self.scaler.get_scaled_size(12))
-            text_edit.setFont(font)
-            layout.addWidget(text_edit)
-            QTimer.singleShot(0, lambda: text_edit.setFocus(Qt.TabFocusReason))
+            focus_ctx = self._capture_table_focus_context()
+            dlg = SetupDialog(self.scaler, parent=self)
+            dlg.exec()
+            self._restore_table_focus_context(focus_ctx)
+            self.restore_main_focus_after_modal()
         else:
-            # Show statistics in a single-column table
+            # Show statistics in a single-column table (unchanged)
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Library Statistics")
+            dlg.setAccessibleName("")
+            dlg.setAccessibleDescription("")
+            dlg.resize(500, 500)
+
+            layout = QVBoxLayout(dlg)
+            layout.setContentsMargins(20, 20, 20, 20)
+            layout.setSpacing(10)
+
             table = QTableWidget()
             table.setAccessibleName("")
             table.setAccessibleDescription("")
@@ -3285,10 +3271,10 @@ Use Ctrl+I to import or Alt+M for menu options."""
             layout.addWidget(table)
             QTimer.singleShot(0, lambda: table.setFocus(Qt.TabFocusReason))
 
-        focus_ctx = self._capture_table_focus_context()
-        dlg.exec()
-        self._restore_table_focus_context(focus_ctx)
-        self.restore_main_focus_after_modal()
+            focus_ctx = self._capture_table_focus_context()
+            dlg.exec()
+            self._restore_table_focus_context(focus_ctx)
+            self.restore_main_focus_after_modal()
 
     def on_show_authors(self):
         """Open Author window."""
