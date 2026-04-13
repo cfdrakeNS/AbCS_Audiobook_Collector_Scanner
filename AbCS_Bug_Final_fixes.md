@@ -27,7 +27,7 @@
 25. done the status bar msgs for alt+keys the blind tester say it noise. Remove all alt+key messages from main, book_detail. name_list, collection windows. 
 26. done main window About popup add the graphic at the top of the window abcs_splash.png in folder c:/Users/cfran/PythonProjects/abcs/data/graphics. change the table that has the text into a text box like on book_list_import window. set the focus to the text box when the win opens. 
 27. done main window license popup change the table that has the text into a text box like on book_list_import window set the focus to the text box when the win opens.
-28. import and import_progress window when scan is canceled move the "cancel" part of the message to bhe beginning of the message. 
+28. done import and import_progress window when scan is canceled move the "Cancel Scan" test to bhe beginning of the message not at the end.
 29. done import_progress window alt+/ not working while scanning however the version in archive called import_progress_window mar21.py did work. compare the alt+/ code when scanning is in progress. 
 30. done book_detail & import_detail comnbos when shoosing an item that exists in the db the popup add new is showing.
 31. done main window find popup change the find label to say "find xxx" where xxx is the value in the in combo box. Update the accessible name to do the same. 
@@ -42,45 +42,11 @@
 42. web_book.api - some titles have a number at the beginning of the title  for series number, e.g." 06 The Unquiet"  when comparing to see if title is differnt and title start with a number and they match when the number is stripped then they are the same.  same is for if the number is at the end of the title e.g. "th Anniversary - 10"
 43. done book_detail - change the popup after a delete to include the title and autthor clearer for screen readers 
 44. web_book.api - check to see if a series number is available we are adding it to the end of the title when we save the book. 
-45.  done book_detail - after picking a existing item in a combo and press escape focus is lot 
-46.  done book_detail - when a fields is changed the status bar sometime say the field you tab to instead of the fields you change 
+45. done book_detail - after picking a existing item in a combo and press escape focus is lot 
+46. done book_detail - when a fields is changed the status bar sometime say the field you tab to instead of the fields you change 
 47. done main window - 1. series and genre when opened are returning to the wrong column  2. sorrt on read date not working. 2. remove date added from sort menu. 3.  when selecting jaws is saying row and column numbers silence these as they have no relevance to the book table. 
 48. done preference win increse the height by 1/3
 49. done main win - Ctrl+A (Select All) is now enabled in the main window table. Restriction and blocking message removed.
-50. title bar icons not showing on built install check if they are included in the build 
-51. import window 1. highligheter not highlighintng entire row when selecting; look at main win code for selecting highlighting  
-52.  import window  - add the same slection status bar messaging like main window. don't change the normal status bar msg that exist for non-selection 
-
-# April 11th work
-
-## By Window: Remaining Items & Likely Fixes
-
-### Import Window
-- **Shift+Up/Down selection errors (41):**
-	- *Likely fix:* Review table selection logic; ensure selection model uses full row selection and handles keyboard events for Shift+Up/Down. Check for custom event filters or selection overrides.
-
-### Web Book API
-- **Title number/series comparison logic (42):**
-	- *Likely fix:* Refactor title comparison to strip leading/trailing numbers before comparing. Add utility to normalize titles for comparison.
-- **Series number handling (44):**
-	- *Likely fix:* When series number is detected, append to title only if not already present. Add check in save logic.
-
-### Book Detail Window 
-- **after Deletinhg a book  popup after clarity for screen readers (43):**
-	- **Fixed:** Delete confirmation and success dialogs now include both book title and author for screen reader clarity. No duplicated code; variables are used for accessible text in both dialogs.
-- **Combo focus lost after Escape (45):**
-	- *Likely fix:* On Escape, explicitly set focus back to the combo box or previous field.
-- **Status bar field change message (46):**
-	- *Likely fix:* Ensure status bar only announces the field that was changed, not the one tabbed to. Track last changed field and update message logic.
-
-### Main Window
-**47.1 Series/Genre column return:**
-done - Table navigation and cell focus logic updated; correct column is restored after dialog closes.
-**47.2 Sort on read date not working:**
-done - Sorting function for read date column fixed; column index and data type handled correctly.
-**47.3 Remove date added from sort menu:**
-done - Sort menu options updated to exclude 'date added'.
-**47.4 JAWS row/column number noise:**
-done - Row/column number announcements suppressed for screen readers; accessible description set.
-
-
+50.  title bar icons not showing on built install check if they are included in the build 
+51. done import window 1. highligheter not highlighintng entire row when selecting; look at main win code for selecting highlighting  
+52. done import window  - add the same slection status bar messaging like main window. don't change the normal status bar msg that exist for non-selection 

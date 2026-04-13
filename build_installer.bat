@@ -65,7 +65,7 @@ timeout /t 1 /nobreak >nul
 
 if exist build    rmdir /s /q build
 if exist dist     rmdir /s /q dist
-if exist AbCS.spec del AbCS.spec
+
 
 REM ------------------------------------------------------------
 REM  Step 1 (cont): Build with PyInstaller in onedir mode
@@ -75,36 +75,7 @@ REM  compatibility than onefile extraction to temp.
 REM ------------------------------------------------------------
 echo Building app files...
 
-"%PYTHON_EXE%" -m PyInstaller ^
-    --name="AbCS" ^
-    --icon="data\Graphics\AbCS.ico" ^
-    --onedir ^
-    --windowed ^
-    --log-level=WARN ^
-    --clean ^
-    --noconfirm ^
-    --add-data="data/abcdDB_def.sql;data" ^
-    --add-data="data/Graphics;data/Graphics" ^
-    --hidden-import="PySide6.QtCore" ^
-    --hidden-import="PySide6.QtGui" ^
-    --hidden-import="PySide6.QtWidgets" ^
-    --hidden-import="mutagen" ^
-    --hidden-import="mutagen.mp3" ^
-    --hidden-import="mutagen.mp4" ^
-    --hidden-import="mutagen.flac" ^
-    --hidden-import="mutagen.oggvorbis" ^
-    --hidden-import="mutagen.wave" ^
-    --hidden-import="openpyxl" ^
-    --hidden-import="odf" ^
-    --hidden-import="odf.opendocument" ^
-    --hidden-import="src.web.web_book_api" ^
-    --collect-submodules="odf" ^
-    --exclude-module="PySide6.QtSql" ^
-    --exclude-module="PySide6.QtQml" ^
-    --exclude-module="PySide6.QtQuick" ^
-    --exclude-module="PySide6.QtQuickShapes" ^
-    --noconsole ^
-    src/main.py >>"%BUILD_LOG%" 2>&1
+"%PYTHON_EXE%" -m PyInstaller AbCS.spec >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (
     echo ERROR: App build failed.
@@ -154,8 +125,8 @@ if not exist releases mkdir releases
 REM ------------------------------------------------------------
 
 REM  Step 2 (cont): Compile the installer
-REM  (Icon and splash PNGs are referenced in AbCS_installer.iss)
-"%ISCC%" /Qp /DMyAppVersion=%VER% AbCS_installer.iss >>"%BUILD_LOG%" 2>&1
+REM  (Icon and splash PNGs are referenced in build_installer.jss)
+"%ISCC%" /Qp /DMyAppVersion=%VER% build_installer.iss >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (
     echo ERROR: Installer packaging failed.

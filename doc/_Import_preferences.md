@@ -1,4 +1,4 @@
-# info to gather 
+# Import Preferences 
 
 1. **Import Rules for Each Scenario (including Fallback):**
    - **Mass Standard Import:**
@@ -21,21 +21,3 @@
    - **High value (e.g., 90-100%):** Only nearly identical author/title pairs are considered duplicates. Safer, less likely to block legitimate imports.
    - **Low value (e.g., 70-80%):** More aggressive; even small differences are flagged as duplicates. May block more books, including some that are not true duplicates.
    - Adjust in preferences for stricter or looser duplicate detection.
-
-3. **Shortcut/Close Button Removal (Outline by File):**
-   - All windows can use Escape to close; Close button is redundant.
-   - **Files to update:**
-     - src/ui/main_window.py
-     - src/ui/book_details.py
-     - src/ui/import_window.py
-     - src/ui/update_window.py
-     - src/ui/collection_window.py
-     - src/ui/author_window.py, genre_window.py, series_window.py
-   - **Code changes:**
-     - Remove Close button from footer/action section in each window.
-     - Ensure Escape key is mapped to window close (usually default in QDialog/QMainWindow).
-     - Update keyboard shortcut help and accessibility descriptions to reflect Escape as the close action.
-
----
-
-Let me know if you need more detail or code snippets for any item!

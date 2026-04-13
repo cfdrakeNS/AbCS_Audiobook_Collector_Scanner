@@ -1,6 +1,10 @@
 import sys
 
-sys.stdout.flush()
+try:
+    if sys.stdout:
+        sys.stdout.flush()
+except Exception:
+    pass
 """
 AbCS - Audio Book Collector Scanner
 Main application entry point.
@@ -64,7 +68,7 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 
 
 # Version information - update this with each release
-APP_VERSION = "1.9.9a"
+APP_VERSION = "1.9.9b"
 
 
 def _check_trial_expiry():

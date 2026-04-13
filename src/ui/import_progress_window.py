@@ -353,7 +353,7 @@ class ImportProgressWindow(QDialog):
             )
             if reply == QMessageBox.Yes:
                 self._cancel_requested = True
-                self.set_status("Canceled: scan stopped, partial results kept.")
+                self.set_status("Cancel Scan: scan stopped, partial results kept.")
             else:
                 self.set_status("Continuing: scan not canceled.")
             return
@@ -415,6 +415,8 @@ class ImportProgressWindow(QDialog):
 
         if summary_text:
             message = summary_text.strip()
+            if canceled:
+                message = f"Cancel Scan: {message}"
             if "esc to close" not in message.lower():
                 message = f"{message}. Esc to close"
             self.set_status(message, announce=True)
@@ -422,7 +424,8 @@ class ImportProgressWindow(QDialog):
 
         if canceled:
             self.set_status(
-                f"Scan canceled. Elapsed: {elapsed_text}. Esc to close.", announce=True
+                f"Scan canceled! Elapsed: {elapsed_text}. Esc to close.",
+                announce=True,
             )
         else:
             self.set_status(

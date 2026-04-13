@@ -44,11 +44,21 @@ AllowNoIcons=yes
 OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
-; Installer branding
-SetupIconFile=graphics\AbCS.ico
-UninstallDisplayIcon={app}\AbCS.ico
-LicenseFile=AbCS_License.MD
-WizardImageFile=graphics\abcs_installer_splash.png
+
+; ── Installer branding ────────────────────────────────────────────
+; Icon embedded into Setup.exe itself and shown in taskbar/title bar
+SetupIconFile=graphics\abcs_icon_256x256.ico
+
+; Icon shown in Windows Add/Remove Programs after install
+UninstallDisplayIcon={app}\abcs_icon_256x256.ico
+
+; Large portrait image: left sidebar on Welcome and Finish pages
+WizardImageFile=installer_graphics\abcs_wizard_164x314.png
+
+; Small square image: top-right corner on all inner wizard pages
+WizardSmallImageFile=installer_graphics\abcs_small_55x55.png
+
+LicenseFile=AbCS_License.txt
 
 Compression=lzma2
 SolidCompression=yes
@@ -96,24 +106,28 @@ Source: "dist\AbCS\*"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
 ; Explicitly include graphics files from build output
 Source: "dist\AbCS\data\Graphics\*"; \
-    DestDir: "{app}\data\Graphics"; \
+    DestDir: "{app}\Graphics"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "graphics\AbCS.ico"; \
+Source: "graphics\abcs_icon_256x256.ico"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
-Source: "AbCS_License.MD"; \
-    DestDir: "{app}"; \
-    Flags: ignoreversion
-Source: "graphics\abcs_installer_splash.png"; \
+; Installer-only graphics (not copied to app folder)
+Source: "installer_graphics\abcs_wizard_164x314.png"; \
     DestDir: "{tmp}"; \
     Flags: dontcopy
+Source: "installer_graphics\abcs_small_55x55.png"; \
+    DestDir: "{tmp}"; \
+    Flags: dontcopy
+Source: "AbCS_License.txt"; \
+    DestDir: "{app}"; \
+    Flags: ignoreversion
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
 ; Start Menu
-Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS.ico"
+Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\abcs_icon_256x256.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 ; Uninstall shortcut in install folder for testers
@@ -122,7 +136,7 @@ Name: "{app}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 ; Desktop (only if user chose that task above)
 Name: "{commondesktop}\{#MyAppName}"; \
     Filename: "{app}\{#MyAppExeName}"; \
-    IconFilename: "{app}\AbCS.ico"; \
+    IconFilename: "{app}\abcs_icon_256x256.ico"; \
     Tasks: desktopicon
 
 ; ──────────────────────────────────────────────────────────────────
@@ -133,27 +147,3 @@ Name: "{commondesktop}\{#MyAppName}"; \
 Filename: "{app}\{#MyAppExeName}"; \
     Description: "{cm:LaunchProgram,{#MyAppName}}"; \
     Flags: nowait postinstall skipifsilent
-
-; ──────────────────────────────────────────────────────────────────
-; [CustomMessages] - must come after [Setup] and [Languages]
-; ──────────────────────────────────────────────────────────────────
-[CustomMessages]
-WelcomeTitle=Welcome to AbCS Setup
-WelcomeLine1=AbCS - Audio Book Collector Scanner
-WelcomeLine2=A cross-platform audiobook collection manager with full accessibility support.
-
-; ──────────────────────────────────────────────────────────────────
-; [Code] - Pascal script, must always be the last section
-; ──────────────────────────────────────────────────────────────────
-[Code]
-var
-    WelcomePage: TWizardPage;
-
-procedure InitializeWizard;
-begin
-    WelcomePage := CreateCustomPage(wpWelcome,
-        ExpandConstant('{cm:WelcomeTitle}'),
-        ExpandConstant('{cm:WelcomeLine1}') + #13#10 +
-        ExpandConstant('{cm:WelcomeLine2}')
-    );
-end;
