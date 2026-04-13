@@ -16,6 +16,22 @@ class ImportValidator:
     """
 
     @staticmethod
+    def normalize_title_for_compare(title: str) -> str:
+        """Normalize title for comparison: move leading article to end, lowercase, strip."""
+        if not isinstance(title, str):
+            return ""
+        t = title.strip()
+        articles = ["the ", "a ", "an "]
+        for article in articles:
+            if t.lower().startswith(article) and len(t) > len(article):
+                t_core = t[len(article) :].strip()
+                article_cap = article.title().strip()
+                if t_core and not t_core.lower().endswith(f", {article.strip()}"):
+                    t = f"{t_core}, {article_cap}"
+                break
+        return t.lower()
+
+    @staticmethod
     def append_flag_once(book: dict, message: str):
         """Append a flag message to book errors exactly once (case-insensitive)."""
         if not message:
@@ -94,7 +110,7 @@ class ImportValidator:
         Returns:
             True if duplicate found
         """
-        title = book.get("title", "").strip().lower()
+        title = self.normalize_title_for_compare(book.get("title", ""))
         author = book.get("author", "").strip().lower()
         year = book.get("year")
         collection_id = book.get("collection_id", target_collection_id)
@@ -112,7 +128,7 @@ class ImportValidator:
         fuzzy_enabled = self.duplicate_fuzzy_threshold > 0
 
         for existing in existing_books:
-            existing_title = existing.get("title", "").strip().lower()
+            existing_title = self.normalize_title_for_compare(existing.get("title", ""))
             existing_author = existing.get("author", "").strip().lower()
 
             same_title = existing_title == title

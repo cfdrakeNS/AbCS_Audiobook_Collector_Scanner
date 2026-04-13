@@ -1,3 +1,6 @@
+import sys
+
+sys.stdout.flush()
 """
 AbCS - Audio Book Collector Scanner
 Main application entry point.
@@ -148,14 +151,15 @@ class AbCSApplication:
         """Initialize application - runs once when the program starts."""
         # Create Qt application - this is the main event loop that handles all UI interactions
         # It must be created before any other Qt objects
-        from PySide6.QtGui import QIcon
+
+        from src.accessibility.icon_helper import get_app_icon
 
         self.qt_app = QApplication(sys.argv)
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
-        # Set application icon for all windows (Windows prefers .ico)
-        self.qt_app.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
+        # Set application icon for all windows using centralized helper
+        self.qt_app.setWindowIcon(get_app_icon())
 
         self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
 

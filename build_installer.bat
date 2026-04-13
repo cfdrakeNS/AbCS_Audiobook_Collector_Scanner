@@ -77,12 +77,14 @@ echo Building app files...
 
 "%PYTHON_EXE%" -m PyInstaller ^
     --name="AbCS" ^
+    --icon="data\Graphics\AbCS.ico" ^
     --onedir ^
     --windowed ^
     --log-level=WARN ^
     --clean ^
     --noconfirm ^
     --add-data="data/abcdDB_def.sql;data" ^
+    --add-data="data/Graphics;data/Graphics" ^
     --hidden-import="PySide6.QtCore" ^
     --hidden-import="PySide6.QtGui" ^
     --hidden-import="PySide6.QtWidgets" ^
@@ -112,6 +114,15 @@ if errorlevel 1 (
 )
 
 echo App build complete.
+
+REM Copy graphics to dist output
+if exist "dist\AbCS" (
+    if exist "graphics" (
+        if not exist "dist\AbCS\data\Graphics" mkdir "dist\AbCS\data\Graphics"
+        xcopy /E /I /Y "graphics\*" "dist\AbCS\data\Graphics" >nul 2>&1
+        echo Graphics files copied.
+    )
+)
 
 REM ------------------------------------------------------------
 REM  Step 2: Locate Inno Setup Compiler (ISCC.exe)

@@ -98,14 +98,23 @@ class BookListImportWindow(QDialog):
         self.setWindowIcon(get_app_icon())
 
     def _normalize_title_for_match(self, title: str) -> str:
-        """Normalize title for matching: strip series number, move trailing article to beginning, clean."""
+        """Normalize title for matching: strip series number, move trailing article to beginning, clean, re-append series number if present."""
         from src.web.web_book_api import WebBookAPI
 
         api = WebBookAPI()
-        t, _ = api._strip_series_number(title)
+        t, series_number = api._strip_series_number(title)
         t = api._move_article_to_beginning(t)
         t = api._clean_text_field(t)
+        if series_number:
+            t = f"{t} - {series_number}"
         return t.lower()
+
+    def _normalize_author_for_match(self, author: str) -> str:
+        """Normalize author for matching: clean and canonicalize as for DB fields."""
+        from src.web.web_book_api import WebBookAPI
+
+        api = WebBookAPI()
+        return api._apply_author_transformations(author).lower()
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -658,28 +667,26 @@ class BookListImportWindow(QDialog):
         # Set initial status
         self.set_status("Ready - Select a spreadsheet file to begin")
 
-        # Set up tab order for accessibility
-        if self.field_mappings:
-            prev_combo = None
-            for field in [
-                "title",
-                "author",
-                "year",
-                "plot",
-                "series",
-                "genre",
-                "reader",
-                "read_date",
-                "time_hours",
-                "tracks",
-            ]:
-                if self.field_mappings.get(field):
-                    if prev_combo:
-                        self.setTabOrder(prev_combo, self.field_mappings[field])
-                    prev_combo = self.field_mappings[field]
+        # Set up tab order for accessibility: mapping combos in table row order, then import/export buttons
+        if self.field_mappings and hasattr(self, "mapping_table"):
+            prev_widget = None
+            for row in range(self.mapping_table.rowCount()):
+                combo_container = self.mapping_table.cellWidget(row, 1)
+                if combo_container is not None and combo_container.layout() is not None:
+                    # The combo is the first widget in the container's layout
+                    combo = None
+                    for i in range(combo_container.layout().count()):
+                        w = combo_container.layout().itemAt(i).widget()
+                        if isinstance(w, QComboBox):
+                            combo = w
+                            break
+                    if combo:
+                        if prev_widget:
+                            self.setTabOrder(prev_widget, combo)
+                        prev_widget = combo
             # Last combo to import button
-            if prev_combo:
-                self.setTabOrder(prev_combo, self.import_button)
+            if prev_widget:
+                self.setTabOrder(prev_widget, self.import_button)
         else:
             self.setTabOrder(self.instructions_label, self.import_button)
         self.setTabOrder(self.import_button, self.export_button)
@@ -1451,14 +1458,15 @@ class BookListImportWindow(QDialog):
                     ):
                         title_for_save = f"{title} ({series} #{series_no})"
 
-                # Normalize title for matching (with appended series number)
+                # Normalize title and author for matching (with appended series number)
                 norm_title = self._normalize_title_for_match(title_for_save)
-                # Check for duplicates using normalized title
+                norm_author = self._normalize_author_for_match(author)
+                # Check for duplicates using normalized title and normalized author
                 dup_row = self.db.fetch_one(
                     "SELECT b.book_id FROM books b "
                     "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE lower(b.title) = ? AND a.name = ?",
-                    (norm_title, author),
+                    "WHERE lower(b.title) = ? AND lower(trim(a.name)) = ?",
+                    (norm_title, norm_author),
                 )
                 if dup_row:
                     self.import_errors.append(

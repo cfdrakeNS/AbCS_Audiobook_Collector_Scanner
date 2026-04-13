@@ -45,14 +45,14 @@ OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
 ; Installer branding
-SetupIconFile=data\Graphics\AbCS.ico
+SetupIconFile=graphics\AbCS.ico
 UninstallDisplayIcon={app}\AbCS.ico
 LicenseFile=AbCS_License.MD
-WizardImageFile=data\Graphics\abcs_installer_splash.png
+WizardImageFile=graphics\abcs_installer_splash.png
 
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern dynamic
+WizardStyle=modern
 
 ; Require Windows 10 or later
 MinVersion=10.0
@@ -94,13 +94,17 @@ Name: "desktopicon"; \
 Source: "dist\AbCS\*"; \
     DestDir: "{app}"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "data\Graphics\AbCS.ico"; \
+; Explicitly include graphics files from build output
+Source: "dist\AbCS\data\Graphics\*"; \
+    DestDir: "{app}\data\Graphics"; \
+    Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "graphics\AbCS.ico"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
 Source: "AbCS_License.MD"; \
     DestDir: "{app}"; \
     Flags: ignoreversion
-Source: "data\Graphics\abcs_splash.png"; \
+Source: "graphics\abcs_installer_splash.png"; \
     DestDir: "{tmp}"; \
     Flags: dontcopy
 
@@ -109,7 +113,7 @@ Source: "data\Graphics\abcs_splash.png"; \
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
 ; Start Menu
-Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\abCS_icon_install.ico"
+Name: "{group}\{#MyAppName}";                       Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\AbCS.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 ; Uninstall shortcut in install folder for testers

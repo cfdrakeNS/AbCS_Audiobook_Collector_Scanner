@@ -204,10 +204,21 @@ class BookTableModel(QAbstractTableModel):
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from src.accessibility.icon_helper import get_app_icon
+        import os
 
+        # Debug: print resolved icon path and existence
+        from src.accessibility import icon_helper
+
+        print(
+            "[DEBUG] ICON_PATH:",
+            os.path.abspath(icon_helper.ICON_PATH),
+            "Exists:",
+            os.path.exists(icon_helper.ICON_PATH),
+        )
         # Set the window icon using centralized icon helper
         self.setWindowIcon(get_app_icon())
 
@@ -3299,6 +3310,12 @@ class MainWindow(QMainWindow):
         )
         dialog.exec()
         if dialog.data_changed:
+            # Re-initialize all query objects to ensure new DB connection is used
+            self.book_queries = BookQueries(self.db)
+            self.author_queries = AuthorQueries(self.db)
+            self.series_queries = SeriesQueries(self.db)
+            self.genre_queries = GenreQueries(self.db)
+            self.collection_queries = CollectionQueries(self.db)
             self.refresh_books()
             self.set_status("Database updated from backup/restore operation")
         self._restore_table_focus_context(focus_ctx)

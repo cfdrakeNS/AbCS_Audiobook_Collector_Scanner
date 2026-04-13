@@ -20,6 +20,9 @@ openpyxl>=3.1.0
 odfpy>=1.4.1
 numpy<2.0
 
+# Image processing
+Pillow>=10.0.0
+
 # Development/Testing (optional)
 pytest>=7.4.0
 pytest-qt>=4.2.0

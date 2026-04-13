@@ -61,9 +61,6 @@ class BackupRestoreWindow(QDialog):
 
         super().__init__(parent)
         self.setWindowIcon(get_app_icon())
-        from PySide6.QtGui import QIcon
-
-        self.setWindowIcon(QIcon("data/graphics/abCS_icon.ico"))
         self.db = db
         self.scaler = scaler
         self.theme_manager = theme_manager

@@ -80,7 +80,7 @@ class AboutDialog(QDialog):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        pixmap = QPixmap("data/graphics/abcs_app_splash.png")
+        pixmap = QPixmap("Graphics/abcs_app_splash.png")
         if not pixmap.isNull():
             from PySide6.QtWidgets import (
                 QVBoxLayout as QVBoxLayout3,

@@ -76,7 +76,7 @@ class SetupDialog(QDialog):
         layout.setSpacing(self.scaler.get_scaled_size(8))  # Tighter spacing
 
         # --- Graphic and Setup text in a zero-spacing container (like AboutDialog) ---
-        pixmap = QPixmap("data/graphics/abcs_app_splash.png")
+        pixmap = QPixmap("Graphics/abcs_app_splash.png")
         if not pixmap.isNull():
             from PySide6.QtWidgets import QSizePolicy
 

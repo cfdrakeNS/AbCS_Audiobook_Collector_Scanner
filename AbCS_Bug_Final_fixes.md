@@ -48,6 +48,8 @@
 48. done preference win increse the height by 1/3
 49. done main win - Ctrl+A (Select All) is now enabled in the main window table. Restriction and blocking message removed.
 50. title bar icons not showing on built install check if they are included in the build 
+51. import window 1. highligheter not highlighintng entire row when selecting; look at main win code for selecting highlighting  
+52.  import window  - add the same slection status bar messaging like main window. don't change the normal status bar msg that exist for non-selection 
 
 # April 11th work
 
