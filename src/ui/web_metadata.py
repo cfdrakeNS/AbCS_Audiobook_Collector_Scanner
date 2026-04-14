@@ -51,12 +51,23 @@ from src.web.web_book_api import WebBookAPI
 
 
 class WebMetadataWindow(QDialog):
-        @staticmethod
-        def normalize_db_title(title: str) -> str:
-            """Normalize DB title for search/compare: trim, lowercase, remove embedded spaces."""
-            if not title:
-                return ""
-            return ''.join(title.strip().lower().split())
+
+    @staticmethod
+    def normalize_db_title(title: str) -> str:
+        """Normalize DB title for search/compare: move article to beginning, trim, lowercase, remove embedded spaces."""
+        if not title:
+            return ""
+        # Move trailing article to beginning (e.g., 'moon the' -> 'the moon')
+        import re
+
+        t = title.strip()
+        match = re.match(r"^(.*?)[,\s]+(the|a|an)$", t, re.IGNORECASE)
+        if match:
+            base = match.group(1).strip()
+            article = match.group(2).lower()
+            t = f"{article} {base}"
+        return "".join(t.lower().split())
+
     """
     Web metadata window with PROVEN accessibility foundation.
 

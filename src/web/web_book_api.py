@@ -65,7 +65,7 @@ class WebBookAPI:
         cache_key = f"{title}|{author}|{year}|{refresh}"
         current_time = time.time()
 
-        # print(f"[WebBookAPI] Fetching metadata for: title='{title}', author='{author}', year='{year}', refresh={refresh}")  # Debug: web fetch
+        # Debug print removed
 
         # Check if we have a recent cache entry (within CACHE_DURATION seconds)
         if hasattr(self, "_cache") and cache_key in self._cache:
@@ -77,19 +77,16 @@ class WebBookAPI:
             if cached_time:
                 self._cache[cache_key] = None  # Clear expired cache
 
-        # Normalize title for search and comparison
+        # Normalize title for search and comparison (do NOT append series number)
         search_title, series_number = self._strip_series_number(title)
         search_title = self._move_article_to_beginning(search_title)
         if move_articles:
             search_title = self._move_article_to_end(search_title)
         search_title = self._clean_text_field(search_title)
 
-        # Optionally append series number to title for saving
+        # Only append series number to title when SAVING, not for search/compare
         save_title = search_title
-        if append_series_to_title and series_number:
-            # Only append if not already present at end
-            if not save_title.rstrip().endswith(f"- {series_number}"):
-                save_title = f"{save_title} - {series_number}".strip()
+        # The code that saves to DB should append series number if and only if a real series number is found
 
         # Author transformation as before
         if flip_author and author:
@@ -617,29 +614,20 @@ class WebBookAPI:
         if not title:
             return "", ""
 
-        # Patterns to match series numbers
+        # Patterns to match series numbers (only if clearly separated)
         patterns = [
             r"^(.*?)\s*-\s*(\d+)$",  # "Title - 09"
             r"^(.*?)\s*#\s*(\d+)$",  # "Title #09"
-            r"^(.*?)\s*Book\s*(\d+)$",  # "Title Book 09"
-            r"^(.*?)\s*Volume\s*(\d+)$",  # "Title Volume 09"
-            r"^(\d+)\s*(.*?)$",  # "09 Title"
+            r"^(.*?)\s+Book\s*(\d+)$",  # "Title Book 09"
+            r"^(.*?)\s+Volume\s*(\d+)$",  # "Title Volume 09"
+            r"^(.*?)\s*,\s*(\d+)$",  # "Title, 09"
         ]
 
         for pattern in patterns:
             match = re.match(pattern, title.strip(), re.IGNORECASE)
             if match:
-                if pattern == r"^(\d+)\s*(.*?)$":
-                    # Number first pattern
-                    series_number = match.group(1)
-                    clean_title = match.group(2)
-                else:
-                    # Title first patterns
-                    clean_title = match.group(1)
-                    series_number = match.group(2)
-
-                # Clean up the title
-                clean_title = clean_title.strip()
+                clean_title = match.group(1).strip()
+                series_number = match.group(2)
                 if clean_title:
                     return clean_title, series_number
 

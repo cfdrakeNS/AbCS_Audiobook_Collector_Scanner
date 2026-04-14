@@ -98,10 +98,26 @@ class BookListImportWindow(QDialog):
         self.setWindowIcon(get_app_icon())
 
     def _normalize_title_for_match(self, title: str) -> str:
-        """Normalize title for matching: trim, lowercase, remove all spaces."""
+        """Normalize title for matching: move leading article to end, lowercase, remove all spaces and punctuation."""
+        import string
+
         if not title:
             return ""
-        return "".join(title.strip().lower().split())
+        t = title.strip().lower()
+        # Move leading article to end
+        articles = ["the ", "a ", "an "]
+        for article in articles:
+            if t.startswith(article) and len(t) > len(article):
+                t_core = t[len(article) :].strip()
+                article_word = article.strip()
+                if t_core and not t_core.endswith(", " + article_word):
+                    t = f"{t_core}, {article_word}"
+                break
+        # Remove all spaces and punctuation
+        t = "".join(
+            c for c in t if c not in string.whitespace and c not in string.punctuation
+        )
+        return t
 
         def _normalize_title_for_match(self, title: str) -> str:
             """Normalize title for matching: trim, lowercase, remove all spaces and punctuation."""
@@ -1427,6 +1443,12 @@ class BookListImportWindow(QDialog):
         # Ensure "Book List" collection exists
         book_list_collection = self.get_or_create_book_list_collection()
 
+        # Fetch all existing books in the DB before import starts
+        preexisting_books = self.db.fetch_all(
+            "SELECT b.book_id, b.title, a.name FROM books b "
+            "JOIN authors a ON b.author_id = a.author_id"
+        )
+
         for index, row in self.file_data.iterrows():
             try:
                 # Extract required fields
@@ -1478,27 +1500,23 @@ class BookListImportWindow(QDialog):
                     ):
                         title_for_save = f"{title} ({series} #{series_no})"
 
-                # Check for duplicates by normalizing DB titles only (import title is compared as-is)
-                # Fetch all books by this author (case-insensitive, trimmed)
-                # Fetch all books (no author filter, compare normalized author in Python)
-                candidate_rows = self.db.fetch_all(
-                    "SELECT b.book_id, b.title, a.name FROM books b "
-                    "JOIN authors a ON b.author_id = a.author_id"
-                )
+                # Check for duplicates only against books that existed before import
                 duplicate_found = False
                 import_title_for_compare = self._normalize_title_for_match(
                     title_for_save
                 )
                 import_author_for_compare = self._normalize_author_for_match(author)
-                for row in candidate_rows:
-                    db_title = row[1]
-                    db_author = row[2]
+                for db_row in preexisting_books:
+                    db_title = db_row[1]
+                    db_author = db_row[2]
                     norm_db_title = self._normalize_title_for_match(db_title)
                     norm_db_author = self._normalize_author_for_match(db_author)
+                    # Debug output removed
                     if (
                         norm_db_title == import_title_for_compare
                         and norm_db_author == import_author_for_compare
                     ):
+                        # Debug output removed
                         duplicate_found = True
                         break
                 if duplicate_found:
@@ -1512,6 +1530,8 @@ class BookListImportWindow(QDialog):
                     )
                     error_count += 1
                     continue
+                # After inserting, add this book to preexisting_books so subsequent imports in the same file are checked for duplicates
+                preexisting_books.append((None, title_for_save, author))
 
                 # Get or create author
                 author_id = self.author_queries.get_or_create(author, commit=False)
@@ -1652,8 +1672,10 @@ class BookListImportWindow(QDialog):
                     ):
                         title_for_save = f"{title} ({series} #{series_no})"
 
-                # Prepare import title for comparison: trim and lowercase only (no normalization)
-                import_title_for_compare = title_for_save.strip().lower()
+                # Prepare import title for comparison: use full normalization
+                import_title_for_compare = self._normalize_title_for_match(
+                    title_for_save
+                )
                 # Fetch all books by this author (case-insensitive, trimmed)
                 candidate_rows = self.db.fetch_all(
                     "SELECT b.book_id, b.title, a.name FROM books b "
@@ -1665,7 +1687,14 @@ class BookListImportWindow(QDialog):
                 for db_row in candidate_rows:
                     db_title = db_row[1]
                     norm_db_title = self._normalize_title_for_match(db_title)
+                    # Debug output for matching
+                    print(
+                        f"[DEBUG][READ_DATE] DB: '{db_title}' -> '{norm_db_title}' | IMPORT: '{title_for_save}' -> '{import_title_for_compare}'"
+                    )
                     if norm_db_title == import_title_for_compare:
+                        print(
+                            f"[DEBUG][READ_DATE] MATCH FOUND: DB({db_title}) == IMPORT({title_for_save})"
+                        )
                         found_book_id = db_row[0]
                         break
                 if not found_book_id:
