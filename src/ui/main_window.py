@@ -124,7 +124,6 @@ class BookTableModel(QAbstractTableModel):
         "Series",
         "Genre",
         "Time",
-        "Tracks",
         "Read",
     ]
 
@@ -168,8 +167,6 @@ class BookTableModel(QAbstractTableModel):
             if col == 5:
                 return book.time_display or ""
             if col == 6:
-                return str(book.tracks or 0)
-            if col == 7:
                 if book.read_date:
                     return (
                         book.read_date
@@ -184,8 +181,6 @@ class BookTableModel(QAbstractTableModel):
             if col == 5:  # Time (length) column
                 return Qt.AlignRight | Qt.AlignVCenter
             if col == 6:
-                return Qt.AlignRight | Qt.AlignVCenter
-            if col == 7:
                 return Qt.AlignCenter | Qt.AlignVCenter
 
         return None
@@ -353,7 +348,7 @@ class MainWindow(QMainWindow):
                             announce=True,
                         )
             # Move focus back to the same cell (QTableView)
-            index = self.book_model.index(row, 7)
+            index = self.book_model.index(row, 6)
             self.table.setCurrentIndex(index)
             self.table.setFocus()
 
@@ -610,7 +605,7 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
-        # Columns: Author, Title, Year, Series, Genre, Time, Tracks, Read
+        # Columns: Author, Title, Year, Series, Genre, Time, Read
         self.table.setColumnHidden(0, True)  # Author
         self.table.setColumnHidden(3, True)  # Series
         self.table.setColumnHidden(5, True)  # Time
@@ -655,12 +650,13 @@ class MainWindow(QMainWindow):
         header.setMinimumSectionSize(60)  # Prevent columns from disappearing
 
         # mw#22: Store stretch column proportions (relative weights)
-        # Title gets 3.5x weight, Author 2.5x, Series and Genre 1.5x each
+        # Title reduced by 20%, half of that added to Series and Genre
+        # New: Author 2.5, Title 2.8, Series 1.85, Genre 1.85
         self._stretch_columns = {
             0: 2.5,  # Author
-            1: 3.5,  # Title (widest)
-            3: 1.5,  # Series
-            4: 1.5,  # Genre
+            1: 2.8,  # Title (reduced)
+            3: 1.85,  # Series (increased)
+            4: 1.85,  # Genre (increased)
         }
 
         # Fixed content columns - use fixed/scaled widths for large dataset performance
@@ -725,8 +721,7 @@ class MainWindow(QMainWindow):
         base_widths = {
             2: 72,  # Year
             5: 82,  # Time
-            6: 78,  # Tracks
-            7: 116,  # Read
+            6: 116,  # Read (was 7)
         }
 
         for col, base_width in base_widths.items():
@@ -988,10 +983,10 @@ class MainWindow(QMainWindow):
         self.escape_shortcut.activated.connect(self.on_escape_pressed)
 
         # mw#23: Alt+1 through Alt+8 to jump to table columns
-        # Columns: 0=Author, 1=Title, 2=Year, 3=Series, 4=Genre, 5=Time, 6=Tracks, 7=Read
+        # Columns: 0=Author, 1=Title, 2=Year, 3=Series, 4=Genre, 5=Time, 6=Read
         self.column_shortcuts = []
-        for i in range(8):
-            shortcut = QShortcut(QKeySequence(f"Alt+{i + 1}"), self)  # Alt+1..8
+        for i in range(7):
+            shortcut = QShortcut(QKeySequence(f"Alt+{i + 1}"), self)  # Alt+1..7
             shortcut.activated.connect(lambda col=i: self.jump_to_column(col))
             self.column_shortcuts.append(shortcut)
 
@@ -1557,9 +1552,7 @@ class MainWindow(QMainWindow):
             ("Series", "&Series", 3, True),
             ("Genre", "&Genre", 4, True),
             ("Length", "&Length", 5, False),
-            ("Tracks", "Trac&ks", 6, False),
-            ("Read", "&Read", 7, False),
-            ("Read Date", "Read &Date", 7, False),
+            ("Read Date", "Read &Date", 6, False),
         ]
 
         self._sort_actions_by_key = {}
@@ -1587,8 +1580,7 @@ class MainWindow(QMainWindow):
             3: "Series",
             4: "Genre",
             5: "Length",
-            6: "Tracks",
-            7: "Read Date",
+            6: "Read Date",
         }
         return mapping.get(column, "Title")
 
@@ -1839,10 +1831,8 @@ class MainWindow(QMainWindow):
                 return (book.year is None, book.year or 0)
             if column == 5:  # Length
                 return (book.time_hours or 0) * 60 + (book.time_minutes or 0)
-            if column == 6:  # Tracks
-                return book.tracks or 0
-            if column == 8:  # Date added
-                return book.date_added or ""
+            if column == 6:  # Read Date
+                return book.read_date or ""
             return ""
 
         self.books.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
@@ -2334,8 +2324,8 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
-        # Read column (7): Open date dialog
-        if column == 7:
+        # Read Date column (6): Open date dialog
+        if column == 6:
             self.show_read_date_dialog(row)
             return
 
@@ -2352,25 +2342,24 @@ class MainWindow(QMainWindow):
             row = self.table.currentRow()
             col = self.table.currentColumn()
             if 0 <= row < len(self.books):
-                if col == 7:  # Read column
-                    # Enter: open date dialog for specific date
+                if col == 6:  # Read Date column
                     self.show_read_date_dialog(row)
                     event.accept()
                     return
+                elif col in (0, 3, 4):
+                    self._handle_book_table_double_click(row, col)
+                    event.accept()
+                    return
+                elif col == 1:
+                    self._handle_book_table_double_click(row, col)
+                    event.accept()
+                    return
                 else:
-                    # Enter: Author, Series, Genre columns open their manager dialogs
-                    if col in (0, 3, 4):
-                        self._handle_book_table_double_click(row, col)
-                    # Only open Book Details for Title column (1)
-                    elif col == 1:
-                        self._handle_book_table_double_click(row, col)
-                    # All other columns: do nothing, show status
-                    else:
-                        self.set_status(
-                            "No action available for this column", timeout_ms=2000
-                        )
-                event.accept()
-                return
+                    self.set_status(
+                        "No action available for this column", timeout_ms=2000
+                    )
+                    event.accept()
+                    return
 
             # Check for Shift+Arrow keys for selection
         if event.key() in (
@@ -3353,14 +3342,21 @@ class MainWindow(QMainWindow):
         shortcuts = [
             ("Alt+1", "Jump to Author"),
             ("Alt+2", "Jump to Title"),
-            ("Alt+1..Alt+8", "Jump to other columns (see table order)"),
+            ("Alt+3", "Jump to Year"),
+            ("Alt+4", "Jump to Series"),
+            ("Alt+5", "Jump to Genre"),
+            ("Alt+6", "Jump to Time"),
+            ("Alt+7", "Jump to Read Date"),
             ("Shift+Down/Up", "Start selection or extend selection"),
             ("Alt+U", "Update selected"),
             ("Alt+D", "Delete selected"),
             ("Ctrl+F", "Find"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
-            ("Enter", "Open focused item (Title=details; Author/Series/Genre=manager)"),
+            (
+                "Enter",
+                "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
+            ),
             ("Escape", "Clear selection/search/read filter"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),

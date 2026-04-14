@@ -76,6 +76,7 @@ class ShortcutManager(QObject):
         "U": ("Update selected", "update_button"),
         "D": ("Delete selected", "delete_button"),
         "A": ("Author filter", "author_filter_combo"),
+        # Alt+1..7 handled in main_window.py for column jump
     }
 
     # Book Details Window
