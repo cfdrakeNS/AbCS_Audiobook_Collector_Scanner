@@ -15,16 +15,15 @@ class WebBookAPI:
     """API client for fetching book metadata from web sources."""
 
     def _move_article_to_beginning(self, title: str) -> str:
-        """Move trailing articles ', the', ', a', ', an' to beginning of title."""
+        """Move trailing articles (comma, optional space, then article) to beginning of title."""
         if not title:
             return title
-        # Lowercase for matching, but preserve original case
-        trailing_articles = [", the", ", a", ", an"]
-        for article in trailing_articles:
-            if title.lower().endswith(article):
-                base = title[: -len(article)].strip()
-                article_word = article[2:].capitalize()
-                return f"{article_word} {base}"
+        # Accept variations: ',the', ', the', ',  the', ',An', etc.
+        match = re.match(r"^(.*?)[,\s]+(the|a|an)$", title.strip(), re.IGNORECASE)
+        if match:
+            base = match.group(1).strip()
+            article = match.group(2).capitalize()
+            return f"{article} {base}"
         return title
 
     def __init__(self):

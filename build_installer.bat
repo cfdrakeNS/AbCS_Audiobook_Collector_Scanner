@@ -56,6 +56,8 @@ if errorlevel 1 (
 )
 echo PyInstaller ready.
 
+rem goto step2
+
 REM ------------------------------------------------------------
 REM  Step 1: Clean previous build artifacts
 REM ------------------------------------------------------------
@@ -94,7 +96,7 @@ if exist "dist\AbCS" (
         echo Graphics files copied.
     )
 )
-
+:step2
 REM ------------------------------------------------------------
 REM  Step 2: Locate Inno Setup Compiler (ISCC.exe)
 REM ------------------------------------------------------------

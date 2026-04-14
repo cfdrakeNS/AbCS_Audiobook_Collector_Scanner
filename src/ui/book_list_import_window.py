@@ -1458,17 +1458,26 @@ class BookListImportWindow(QDialog):
                     ):
                         title_for_save = f"{title} ({series} #{series_no})"
 
-                # Normalize title and author for matching (with appended series number)
-                norm_title = self._normalize_title_for_match(title_for_save)
-                norm_author = self._normalize_author_for_match(author)
-                # Check for duplicates using normalized title and normalized author
-                dup_row = self.db.fetch_one(
-                    "SELECT b.book_id FROM books b "
+                # Check for duplicates by normalizing DB titles only (import title is compared as-is)
+                # Fetch all books by this author (case-insensitive, trimmed)
+                candidate_rows = self.db.fetch_all(
+                    "SELECT b.book_id, b.title, a.name FROM books b "
                     "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE lower(b.title) = ? AND lower(trim(a.name)) = ?",
-                    (norm_title, norm_author),
+                    "WHERE lower(trim(a.name)) = ?",
+                    (author.strip().lower(),),
                 )
-                if dup_row:
+                duplicate_found = False
+                # Prepare import title for comparison: trim and lowercase only (no normalization)
+                import_title_for_compare = title_for_save.strip().lower()
+                for row in candidate_rows:
+                    db_title = row[1]
+                    # Normalize the DB title for comparison
+                    norm_db_title = self._normalize_title_for_match(db_title)
+                    # Compare normalized DB title to import title (trimmed, lowercased)
+                    if norm_db_title == import_title_for_compare:
+                        duplicate_found = True
+                        break
+                if duplicate_found:
                     self.import_errors.append(
                         {
                             "row": index + 1,
@@ -1610,29 +1619,36 @@ class BookListImportWindow(QDialog):
                         series = str(val).strip()
 
                 # Append series number to title if both present
-                title_for_match = title
+                title_for_save = title
                 if series and series_no:
                     if not re.search(
                         rf"\\(\\s*{re.escape(series)}\\s*#?\\s*{re.escape(series_no)}\\s*\\)",
                         title,
                         re.IGNORECASE,
                     ):
-                        title_for_match = f"{title} ({series} #{series_no})"
+                        title_for_save = f"{title} ({series} #{series_no})"
 
-                # Normalize title for matching (with appended series number)
-                norm_title = self._normalize_title_for_match(title_for_match)
-                # Find existing book by normalized title + author using SQL
-                existing_row = self.db.fetch_one(
-                    "SELECT b.book_id FROM books b "
+                # Prepare import title for comparison: trim and lowercase only (no normalization)
+                import_title_for_compare = title_for_save.strip().lower()
+                # Fetch all books by this author (case-insensitive, trimmed)
+                candidate_rows = self.db.fetch_all(
+                    "SELECT b.book_id, b.title, a.name FROM books b "
                     "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE lower(b.title) = ? AND a.name = ?",
-                    (norm_title, author),
+                    "WHERE lower(trim(a.name)) = ?",
+                    (author.strip().lower(),),
                 )
-                if not existing_row:
+                found_book_id = None
+                for db_row in candidate_rows:
+                    db_title = db_row[1]
+                    norm_db_title = self._normalize_title_for_match(db_title)
+                    if norm_db_title == import_title_for_compare:
+                        found_book_id = db_row[0]
+                        break
+                if not found_book_id:
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title_for_match,
+                            "title": title_for_save,
                             "author": author,
                             "reason": "Book not found in database",
                         }
@@ -1641,12 +1657,12 @@ class BookListImportWindow(QDialog):
                     continue
 
                 # Get the full book object
-                existing_book = self.book_queries.get_by_id(existing_row["book_id"])
+                existing_book = self.book_queries.get_by_id(found_book_id)
                 if not existing_book:
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title_for_match,
+                            "title": title_for_save,
                             "author": author,
                             "reason": "Could not load book record",
                         }
@@ -1667,7 +1683,7 @@ class BookListImportWindow(QDialog):
                             self.import_errors.append(
                                 {
                                     "row": index + 1,
-                                    "title": title_for_match,
+                                    "title": title_for_save,
                                     "author": author,
                                     "reason": "Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY",
                                 }
@@ -1677,7 +1693,7 @@ class BookListImportWindow(QDialog):
                         self.import_errors.append(
                             {
                                 "row": index + 1,
-                                "title": title_for_match,
+                                "title": title_for_save,
                                 "author": author,
                                 "reason": "Read date is empty",
                             }
@@ -1687,7 +1703,7 @@ class BookListImportWindow(QDialog):
                     self.import_errors.append(
                         {
                             "row": index + 1,
-                            "title": title_for_match,
+                            "title": title_for_save,
                             "author": author,
                             "reason": "Read Date column not mapped",
                         }

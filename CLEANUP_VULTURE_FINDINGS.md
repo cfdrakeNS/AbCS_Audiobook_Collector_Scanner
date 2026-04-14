@@ -6,25 +6,42 @@
 
 ### src/database/connection.py
 - Line 75: unused attribute 'row_factory' (60%)
-  - **FALSE POSITIVE**: Required SQLite idiom (see above, already documented)
+  - **FALSE POSITIVE**: Already documented above; required SQLite idiom.
 
 ### src/ui/book_list_import_window.py
 - Line 21: unused class 'DataFrame' (60%)
-  - **FALSE POSITIVE**: Fallback for missing pandas, required for import error handling (see above)
-- Line 1163: unused method 'on_headers_toggled' (60%)
-  - **FALSE POSITIVE**: Connected to checkbox/header toggle, required for header toggle (see above)
+  - **FALSE POSITIVE**: Already documented above; fallback for missing pandas.
+- Line 112: unused method '_normalize_author_for_match' (60%)
+- Line 1171: unused method 'on_headers_toggled' (60%)
+  - **FALSE POSITIVE**: Already documented above; required for header toggle.
 
-### src/web/web_book_api.py
-- Line 102: unused variable 't0' (60%)
-- Line 107: unused variable 't1' (60%)
-- Line 148: unused variable 't1' (60%)
-- Line 155: unused variable 't0' (60%)
-- Line 160: unused variable 't1' (60%)
-- Line 169: unused variable 't1' (60%)
-- Line 175: unused variable 't0' (60%)
-- Line 178: unused variable 't1' (60%)
-- Line 187: unused variable 't1' (60%)
-  - **REVIEW**: These are likely timing/debug variables in web_book_api.py. If not used for logging or profiling, they can be safely removed. Mark for next cleanup pass.
+### src/ui/import_window.py
+- Line 236: unused attribute 'current_formats_text' (60%)
+- Line 266: unused attribute '_scan_prompt_open' (60%)
+- Line 542: unused variable 'lineedit_style' (60%)
+- Line 652: unused attribute 'current_formats_text' (60%)
+- Line 736: unused variable 'require_selection' (60%)
+- Line 1022: unused method 'on_focus_list' (60%)
+- Line 1038: unused method '_hide_table_cell_highlight' (60%)
+- Line 1518: unused variable 'path_type' (60%)
+- Line 1524: unused variable 'path_type' (60%)
+- Line 1527: unused variable 'path_type' (60%)
+- Line 1532: unused variable 'path_type' (60%)
+- Line 1593: unused variable 'scan_files_processed' (60%)
+- Line 1594: unused variable 'scan_total_files' (60%)
+- Line 1602: unused variable 'scan_files_processed' (60%)
+- Line 1603: unused variable 'scan_total_files' (60%)
+
+### src/accessibility/icon_helper.py
+- Line 13: unused variable 'relative_path' (100%)
+
+---
+
+**Note:**
+- All previously documented false positives remain valid and are not actionable.
+- Only new actionable items are listed above for review in the next cleanup pass.
+
+---
 
 ## Summary
 

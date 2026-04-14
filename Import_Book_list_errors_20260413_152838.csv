@@ -1,9 +1,0 @@
-Row,Title,Author,Error
-13,7 Hours To Die,James Patterson,Book not found in database
-49,True Crime Case History Vol.1-2-3,Jason Neal,Book not found in database
-65,Lust killer,Ann Rule,"Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY"
-74,Don't Look  Behind YOU,Ann Rule,Book not found in database
-104,Heat Lighting,John Sanford,"Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY"
-105,The Revelation,Bentley Little,"Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY"
-137,Title,Author,"Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY"
-138,Song Of Shadows,John Connolly,Read date is empty
