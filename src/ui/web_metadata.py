@@ -51,6 +51,12 @@ from src.web.web_book_api import WebBookAPI
 
 
 class WebMetadataWindow(QDialog):
+        @staticmethod
+        def normalize_db_title(title: str) -> str:
+            """Normalize DB title for search/compare: trim, lowercase, remove embedded spaces."""
+            if not title:
+                return ""
+            return ''.join(title.strip().lower().split())
     """
     Web metadata window with PROVEN accessibility foundation.
 
@@ -607,6 +613,7 @@ class WebMetadataWindow(QDialog):
         self.field_differences = {}
 
         # Helper to handle field comparison and visibility
+
         def handle_field_comparison(
             web_value, current_value, web_edit, checkbox, field_name, row_widget
         ):
@@ -615,19 +622,10 @@ class WebMetadataWindow(QDialog):
             )
             web_str = str(web_value).strip() if web_value is not None else ""
 
-            # For title field, normalize for series number and article
+            # For title field, normalize for compare/search (trim, lowercase, remove embedded spaces)
             if field_name == "title":
-                api = WebBookAPI()
-
-                # Strip series number and move trailing article to beginning
-                def normalize_title(val):
-                    t, _ = api._strip_series_number(val)
-                    t = api._move_article_to_beginning(t)
-                    t = api._clean_text_field(t)
-                    return t.lower()
-
-                norm_current = normalize_title(current_str)
-                norm_web = normalize_title(web_str)
+                norm_current = self.normalize_db_title(current_str)
+                norm_web = self.normalize_db_title(web_str)
             else:
                 norm_current = current_str.lower()
                 norm_web = web_str.lower()

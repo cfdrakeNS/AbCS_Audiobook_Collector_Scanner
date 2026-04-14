@@ -98,23 +98,43 @@ class BookListImportWindow(QDialog):
         self.setWindowIcon(get_app_icon())
 
     def _normalize_title_for_match(self, title: str) -> str:
-        """Normalize title for matching: strip series number, move trailing article to beginning, clean, re-append series number if present."""
-        from src.web.web_book_api import WebBookAPI
+        """Normalize title for matching: trim, lowercase, remove all spaces."""
+        if not title:
+            return ""
+        return "".join(title.strip().lower().split())
 
-        api = WebBookAPI()
-        t, series_number = api._strip_series_number(title)
-        t = api._move_article_to_beginning(t)
-        t = api._clean_text_field(t)
-        if series_number:
-            t = f"{t} - {series_number}"
-        return t.lower()
+        def _normalize_title_for_match(self, title: str) -> str:
+            """Normalize title for matching: trim, lowercase, remove all spaces and punctuation."""
+            import string
+
+            if not title:
+                return ""
+            # Remove spaces and punctuation
+            t = title.strip().lower()
+            t = "".join(
+                c
+                for c in t
+                if c not in string.whitespace and c not in string.punctuation
+            )
+            return t
 
     def _normalize_author_for_match(self, author: str) -> str:
-        """Normalize author for matching: clean and canonicalize as for DB fields."""
-        from src.web.web_book_api import WebBookAPI
+        """Normalize author for matching: trim, lowercase, remove spaces/punctuation, canonicalize 'last, first' to 'first last'."""
+        import string
 
-        api = WebBookAPI()
-        return api._apply_author_transformations(author).lower()
+        if not author:
+            return ""
+        a = author.strip().lower()
+        # Canonicalize 'last, first' to 'first last'
+        if "," in a:
+            parts = [p.strip() for p in a.split(",")]
+            if len(parts) == 2:
+                a = f"{parts[1]} {parts[0]}"
+        # Remove spaces and punctuation
+        a = "".join(
+            c for c in a if c not in string.whitespace and c not in string.punctuation
+        )
+        return a
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
@@ -1460,21 +1480,25 @@ class BookListImportWindow(QDialog):
 
                 # Check for duplicates by normalizing DB titles only (import title is compared as-is)
                 # Fetch all books by this author (case-insensitive, trimmed)
+                # Fetch all books (no author filter, compare normalized author in Python)
                 candidate_rows = self.db.fetch_all(
                     "SELECT b.book_id, b.title, a.name FROM books b "
-                    "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE lower(trim(a.name)) = ?",
-                    (author.strip().lower(),),
+                    "JOIN authors a ON b.author_id = a.author_id"
                 )
                 duplicate_found = False
-                # Prepare import title for comparison: trim and lowercase only (no normalization)
-                import_title_for_compare = title_for_save.strip().lower()
+                import_title_for_compare = self._normalize_title_for_match(
+                    title_for_save
+                )
+                import_author_for_compare = self._normalize_author_for_match(author)
                 for row in candidate_rows:
                     db_title = row[1]
-                    # Normalize the DB title for comparison
+                    db_author = row[2]
                     norm_db_title = self._normalize_title_for_match(db_title)
-                    # Compare normalized DB title to import title (trimmed, lowercased)
-                    if norm_db_title == import_title_for_compare:
+                    norm_db_author = self._normalize_author_for_match(db_author)
+                    if (
+                        norm_db_title == import_title_for_compare
+                        and norm_db_author == import_author_for_compare
+                    ):
                         duplicate_found = True
                         break
                 if duplicate_found:
