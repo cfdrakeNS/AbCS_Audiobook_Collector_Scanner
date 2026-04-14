@@ -101,26 +101,26 @@ Name: "desktopicon"; \
 ; DestDir: where they go on the user's machine
 ; ──────────────────────────────────────────────────────────────────
 [Files]
-Source: "dist\AbCS\*"; \
-    DestDir: "{app}"; \
-    Flags: ignoreversion recursesubdirs createallsubdirs
-; Explicitly include graphics files from build output
-Source: "dist\AbCS\data\Graphics\*"; \
-    DestDir: "{app}\Graphics"; \
-    Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "graphics\abcs_icon_256x256.ico"; \
-    DestDir: "{app}"; \
-    Flags: ignoreversion
+Source: "dist\AbCS\AbCS.exe";           DestDir: "{app}";   Flags: ignoreversion
+Source: "dist\AbCS\*.dll";              DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
+Source: "dist\AbCS\*.pyd";             DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
+Source: "dist\AbCS\*.txt";             DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
+
+; data\ contains ONLY the schema file - nothing else routes here
+Source: "dist\AbCS\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Graphics sourced from _internal (where PyInstaller bundles data files).
+; This single entry is the only place graphics are copied - prevents the
+; previous double-copy into both {app}\Graphics and {app}\data\Graphics
+Source: "dist\AbCS\_internal\Graphics\*"; DestDir: "{app}\Graphics"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+Source: "graphics\abcs_icon_256x256.ico"; DestDir: "{app}"; Flags: ignoreversion
+
 ; Installer-only graphics (not copied to app folder)
-Source: "installer_graphics\abcs_wizard_164x314.png"; \
-    DestDir: "{tmp}"; \
-    Flags: dontcopy
-Source: "installer_graphics\abcs_small_55x55.png"; \
-    DestDir: "{tmp}"; \
-    Flags: dontcopy
-Source: "AbCS_License.txt"; \
-    DestDir: "{app}"; \
-    Flags: ignoreversion
+Source: "installer_graphics\abcs_wizard_164x314.png"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "installer_graphics\abcs_small_55x55.png";    DestDir: "{tmp}"; Flags: dontcopy
+
+Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
