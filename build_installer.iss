@@ -107,7 +107,11 @@ Source: "dist\AbCS\*.pyd";             DestDir: "{app}";   Flags: ignoreversion 
 Source: "dist\AbCS\*.txt";             DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
 
 ; data\ contains ONLY the schema file - nothing else routes here
+
 Source: "dist\AbCS\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Copy only the schema file, not the whole data folder
+Source: "data\abcdDB_def.sql"; DestDir: "{app}\data"; Flags: ignoreversion
 
 ; Graphics sourced from _internal (where PyInstaller bundles data files).
 ; This single entry is the only place graphics are copied - prevents the
