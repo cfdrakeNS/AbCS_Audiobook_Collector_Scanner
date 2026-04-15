@@ -153,6 +153,18 @@ class BookQueries:
         # Detail form benefits from parsed dates.
         return self._row_to_book(row, parse_dates=True) if row else None
 
+    def _normalize_string(self, value: Optional[str]) -> str:
+        """Applies mandatory normalization: Trim and Proper Case."""
+        if not value:
+            return ""
+        # Trim whitespace
+        cleaned = value.strip()
+        # Simple Proper Case implementation if needed,
+        # or just return cleaned if Proper Case is handled by a more sophisticated utility
+        if cleaned and not cleaned.isupper():  # Avoid destroying acronyms
+            return cleaned.title()
+        return cleaned
+
     def insert(self, book: Book, commit: bool = True) -> int:
         """Insert a new book into the 'books' table."""
         read_date_value = self._serialize_read_date(book.read_date)
@@ -165,7 +177,7 @@ class BookQueries:
             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            book.title,
+            self._normalize_string(book.title),
             book.author_id,
             book.year,
             book.series_id,
@@ -202,7 +214,7 @@ class BookQueries:
             WHERE book_id = ?
         """
         params = (
-            book.title,
+            self._normalize_string(book.title),
             book.author_id,
             book.year,
             book.series_id,

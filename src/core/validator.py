@@ -17,19 +17,10 @@ class ImportValidator:
 
     @staticmethod
     def normalize_title_for_compare(title: str) -> str:
-        """Normalize title for comparison: move leading article to end, lowercase, strip."""
+        """Normalize title for comparison: lowercase and strip."""
         if not isinstance(title, str):
             return ""
-        t = title.strip()
-        articles = ["the ", "a ", "an "]
-        for article in articles:
-            if t.lower().startswith(article) and len(t) > len(article):
-                t_core = t[len(article) :].strip()
-                article_cap = article.title().strip()
-                if t_core and not t_core.lower().endswith(f", {article.strip()}"):
-                    t = f"{t_core}, {article_cap}"
-                break
-        return t.lower()
+        return title.strip().lower()
 
     @staticmethod
     def append_flag_once(book: dict, message: str):
@@ -157,29 +148,6 @@ class ImportValidator:
                 return True
 
         return False
-
-    def flip_author_name(self, name: str) -> str:
-        """
-        Flip author name from "First Last" to "Last, First".
-
-        Args:
-            name: Author name
-
-        Returns:
-            Flipped name
-        """
-        if not name or "," in name:
-            # Already in Last, First format or empty
-            return name
-
-        parts = name.strip().split()
-        if len(parts) < 2:
-            return name
-
-        # Simple flip: last word is last name
-        last_name = parts[-1]
-        first_names = " ".join(parts[:-1])
-        return f"{last_name}, {first_names}"
 
     def categorize_error(self, error: str) -> str:
         """
