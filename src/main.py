@@ -78,7 +78,8 @@ def _check_trial_expiry():
     except ImportError:
         return  # Not a trial build
 
-    if not TRIAL_BUILD:
+    # If TRIAL_BUILD_DATE is empty or None, ignore expiry logic
+    if not TRIAL_BUILD_DATE:
         return
 
     try:

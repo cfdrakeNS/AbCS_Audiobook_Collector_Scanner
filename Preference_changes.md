@@ -1,16 +1,18 @@
 in order to reduces some complexity app and that is really not much value and add just confusion I want to remove the below listed preferences
 
-#  build a plan to remove from preferences the Options and Auto-correct section and there option. refactor the code as required. crate a doc outlining the changes and a practical approach to change to permit effective testing.
+build a plan to remove from preferences the Options and Auto-correct section and there option. refactor the code as required. crate a doc outlining the changes and a practical approach to change to permit effective testing.
+
+# preferences Options & Auto-correct removal and code refactoring 
 
 ## 1. Review clean books before adding;
 modules: preferences, import & import progress window 
 changes remove  "add valid"  button and logic update status bar messages f1 shortcuts and shortcuts.py following standardized centralization 
 
-## 2. flip author name; book_list_import, web_metadat  
+## 2. flip author name; book_list_import, web_metadat remove this completely 
 logic around comparison and normalization of author 
 
-## 3. Move leading 'the', 'a', 'an' to end of title:
-modules: book_list_import, web_metadat,
+## 3. Move leading 'the', 'a', 'an' to end of title: remove this completely 
+modules: book_list_import, web_metadata,
 change logic around comparison and normalization of title 
 
 
