@@ -2673,6 +2673,16 @@ class ImportWindow(QDialog):
 
     def table_key_press(self, event):
         """Handle table key presses with main-window style selection behavior."""
+        # Tab/Shift+Tab: Move focus out of table to next/previous widget (accessibility)
+        if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
+            self.focusNextChild()
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Backtab:
+            self.focusPreviousChild()
+            event.accept()
+            return
+
         if event.key() in (
             Qt.Key_Up,
             Qt.Key_Down,
