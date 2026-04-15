@@ -346,20 +346,7 @@ class BookListImportWindow(QDialog):
             # Block plain Up/Down arrows on combo boxes
             if key in (Qt.Key_Up, Qt.Key_Down) and modifiers == Qt.NoModifier:
                 QApplication.beep()
-                return True
-
-            # Allow Alt+Up/Down to open dropdown
-            if key in (Qt.Key_Up, Qt.Key_Down) and modifiers & Qt.AltModifier:
-                source.showPopup()
-                return True
-
-        # Handle Alt+letter filtering
-        if event.type() == QEvent.KeyPress:
-            key = event.key()
-            modifiers = event.modifiers()
-
-            # Handle Escape to close window
-            if key == Qt.Key_Escape:
+                return t
                 self.reject()
                 return True
 

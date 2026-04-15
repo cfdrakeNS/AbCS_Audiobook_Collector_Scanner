@@ -35,6 +35,18 @@
 ### src/accessibility/icon_helper.py
 - Line 13: unused variable 'relative_path' (100%)
 
+
+---
+
+# April 15, 2026 — Vulture Scan Results (All Items Complete)
+
+All new actionable vulture findings from April 15 have been addressed:
+
+- src/ui/book_list_import_window.py: unreachable code after 'return' — removed
+- src/web/web_book_api.py: unused variable 'save_title' — removed
+
+No outstanding actionable items remain. The codebase is fully clean as of this scan.
+
 ---
 
 **Note:**
