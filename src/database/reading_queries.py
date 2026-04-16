@@ -234,7 +234,7 @@ class ReadingQueries:
         if result and result["book_count"] > 0:
             month_str = result["month"]
             year = int(month_str[:4])
-            month = int(month_str.split("-")[1])
+            month = int(month_str[4:6])
 
             # Get month name
             import calendar
@@ -331,7 +331,7 @@ class ReadingQueries:
         for row in rows:
             month_str = row["month"]
             year = int(month_str[:4])
-            month = int(month_str.split("-")[1])
+            month = int(month_str[5:7])  # Fix: get month part after the dash
 
             # Get month name with error handling
             import calendar
