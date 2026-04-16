@@ -1,26 +1,36 @@
-in order to reduces some complexity app and that is really not much value and add just confusion I want to remove the below listed preferences
+---
 
-build a plan to remove from preferences the Options and Auto-correct section and there option. refactor the code as required. crate a doc outlining the changes and a practical approach to change to permit effective testing.
+## Status Update (April 16, 2026)
 
-# preferences Options & Auto-correct removal and code refactoring 
+### What is implemented so far
+- The Preferences window still contains the “Options” and “Auto-Correction” sections, including checkboxes for:
+  - Review clean books before adding (“Add Valid” logic)
+  - Flip Author Name
+  - Apply Proper Case
+  - Move leading 'The', 'A', 'An' to end of title
+- The codebase (import_scanner.py and related modules) still references flags for punctuation, proper case, and other auto-correct options.
+- No removal or refactor of these options has been completed yet; the UI and logic are still present.
 
-## 1. Review clean books before adding;
-modules: preferences, import & import progress window 
-changes remove  "add valid"  button and logic update status bar messages f1 shortcuts and shortcuts.py following standardized centralization 
+### What’s next (plan)
+1. **Remove UI elements:**
+   - Delete the “Options” and “Auto-Correction” groups and all related checkboxes from PreferencesWindow. IMPORTANT!: ensure no extra vertical spacing is applied where the old sections were.
+   - Remove any code that loads/saves these preferences from QSettings.
+2. **Refactor logic:**
+   - Remove all code paths that check these flags in import_scanner.py, book_list_import, web_metadata, and related modules.
+   - Make proper case, trim whitespace, punctuation, and special character cleanup always apply before saving to the DB (no user toggle).
+   - Remove “flip author” and “move leading articles” logic entirely.
+   - Remove “Add Valid” button and logic from import windows; update status bar and shortcut help accordingly.
 
-## 2. flip author name; book_list_import, web_metadat remove this completely 
-logic around comparison and normalization of author 
+3. **Update documentation and tests:**
+   - Update this file to reflect these removals.
+   - Add a checklist for manual and automated testing to ensure all options are gone and normalization is always applied.
 
-## 3. Move leading 'the', 'a', 'an' to end of title: remove this completely 
-modules: book_list_import, web_metadata,
-change logic around comparison and normalization of title 
+### Practical approach for effective testing
+- After code changes, verify:
+  - Preferences window no longer shows removed options.
+  - Importing books always applies normalization (proper case, trim, etc.).
+  - No “flip author” or “move leading article” logic is present.
+  - “Add Valid” button and related status/shortcuts are gone.
+  - All modules (import, book details, update, etc.) behave as expected with new normalization defaults.
 
-
-## 4. remove these 4 preferences: Apply Proper case, trim whitespace, Trim leading Punctuation, and Remove Special Characters: 
-All of the above always should be applied throughout the app before saving to db.
-maintain the flagging of 
-modules:  book_list_import, web_metadat, book_detail,  import_detail, name_list, collection, update 
-
-these module may also need changes.
-validato, import_rules.py, import_scanner.py, validator.py
- 
+---

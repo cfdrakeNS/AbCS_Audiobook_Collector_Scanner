@@ -74,30 +74,25 @@ APP_VERSION = "1.9.11"
 def _check_trial_expiry():
     """Block startup if this is a trial build that has expired."""
     try:
-        import build_config
-
-        # Use getattr for safe access in case variables are missing in the file
-        trial_active = getattr(build_config, "TRIAL_BUILD", False)
-        trial_days = getattr(build_config, "TRIAL_DAYS", 30)
-        trial_date_str = getattr(build_config, "TRIAL_BUILD_DATE", "")
+        from build_config import TRIAL_BUILD, TRIAL_DAYS, TRIAL_BUILD_DATE
     except ImportError:
         return  # Not a trial build
 
-    # Trial mode is active if the flag is True OR a date is populated
-    if not trial_active and not trial_date_str:
+    # If TRIAL_BUILD_DATE is empty or None, ignore expiry logic
+    if not TRIAL_BUILD_DATE:
         return
 
     try:
         from datetime import date as _date
 
-        build = _date.fromisoformat(trial_date_str)
+        build = _date.fromisoformat(TRIAL_BUILD_DATE)
         age_days = (_date.today() - build).days
-        if age_days >= trial_days:
+        if age_days >= TRIAL_DAYS:
             title = "AbCS — Tester Build Expired"
             msg = (
-                f"This tester copy of AbCS (build {trial_date_str}) is "
+                f"This tester copy of AbCS (build {TRIAL_BUILD_DATE}) is "
                 f"{age_days} days old and has expired.\n\n"
-                f"Tester builds expire after {trial_days} days to ensure "
+                f"Tester builds expire after {TRIAL_DAYS} days to ensure "
                 f"everyone is testing the latest version.\n\n"
                 f"Please ask for a newer build to continue."
             )

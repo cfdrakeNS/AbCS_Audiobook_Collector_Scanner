@@ -41,11 +41,13 @@ REM Back up original build_config.py
 copy /y "%BUILD_CONFIG%" "%BUILD_CONFIG_BAK%" >nul
 
 REM Patch build_config.py for trial
+REM Set TRIAL_BUILD_DATE to a fixed old date for expiry testing, or use %TODAY% for normal builds
+REM Set APP_VERSION to your current version
 (
     echo # build_config.py -- TRIAL BUILD ^(patched by build_trial.bat^)
-    echo TRIAL_BUILD = True
+    echo APP_VERSION = "1.9.11"
     echo TRIAL_DAYS = 30
-    echo TRIAL_BUILD_DATE = "%TODAY%"
+    echo TRIAL_BUILD_DATE = "2026-05-18"
 ) > "%BUILD_CONFIG%"
 
 echo Step 1/3: Checking PyInstaller...
