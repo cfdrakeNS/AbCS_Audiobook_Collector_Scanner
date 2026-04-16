@@ -93,6 +93,8 @@ echo Please wait...
     --hidden-import="openpyxl" ^
     --hidden-import="odf" ^
     --hidden-import="odf.opendocument" ^
+    --hidden-import="src.build_config" ^
+    --hidden-import="build_config" ^
     --hidden-import="src.web.web_book_api" ^
     --collect-submodules="odf" ^
     --exclude-module="PySide6.QtSql" ^

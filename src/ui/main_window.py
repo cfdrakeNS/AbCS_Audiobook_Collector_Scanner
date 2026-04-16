@@ -76,17 +76,22 @@ from src.ui.backup_restore_window import BackupRestoreWindow
 
 from src.ui.web_metadata import WebMetadataWindow
 
-# Import version from main module
+# Import version from build_config
 
 
 def get_app_version():
-    """Get app version from main module."""
+    """Get app version from build_config module."""
     try:
-        from main import APP_VERSION
+        from src.build_config import APP_VERSION
 
         return f"v{APP_VERSION}"
     except ImportError:
-        return "v?.?.?"
+        try:
+            from build_config import APP_VERSION
+
+            return f"v{APP_VERSION}"
+        except ImportError:
+            return "v?.?.?"
 
 
 class BookTableView(QTableView):

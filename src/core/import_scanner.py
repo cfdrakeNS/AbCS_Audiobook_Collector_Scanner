@@ -38,11 +38,6 @@ class ImportScanner:
         self.author_fallback_mode = "folder"
         self.title_fallback_mode = "file"
         self.reader_keywords = ["reader", "read by", "narrator", "narrated by"]
-        self.trim_whitespace = False
-        self.strip_leading_punctuation = False
-        self.remove_non_alphanumeric = False
-        self.proper_case_fields = False
-        self.move_leading_the_title = False
 
     def configure(
         self,
@@ -50,22 +45,12 @@ class ImportScanner:
         author_fallback_mode: str = None,
         title_fallback_mode: str = None,
         reader_keywords: List[str] = None,
-        trim_whitespace: bool = False,
-        strip_leading_punctuation: bool = False,
-        remove_non_alphanumeric: bool = False,
-        proper_case_fields: bool = False,
-        move_leading_the_title: bool = False,
     ):
         self.scenario_mode = scenario_mode or "mass_standard"
         self.author_fallback_mode = (
             author_fallback_mode if author_fallback_mode else None
         )
         self.title_fallback_mode = title_fallback_mode if title_fallback_mode else None
-        self.trim_whitespace = bool(trim_whitespace)
-        self.strip_leading_punctuation = bool(strip_leading_punctuation)
-        self.remove_non_alphanumeric = bool(remove_non_alphanumeric)
-        self.proper_case_fields = bool(proper_case_fields)
-        self.move_leading_the_title = bool(move_leading_the_title)
 
         if reader_keywords:
             cleaned = [
@@ -324,7 +309,7 @@ class ImportScanner:
         return normalized in cls.TITLE_PLACEHOLDERS
 
     def _apply_auto_corrections(self, book: Dict) -> Dict[str, List[str]]:
-        """Apply auto-corrections and return mapping of field -> list of corrections."""
+        """Apply auto-corrections (always on) and return mapping of field -> list of corrections."""
         fields = ["author", "title", "series", "genre", "narrator"]
         field_corrections: Dict[str, List[str]] = {}
 
@@ -336,53 +321,36 @@ class ImportScanner:
             corrections_applied = []
             updated = value
 
-            if self.trim_whitespace:
-                trimmed = " ".join(updated.split())
-                if trimmed != updated:
-                    corrections_applied.append("trimmed")
-                    updated = trimmed
+            # Trim whitespace — always applied
+            trimmed = " ".join(updated.split())
+            if trimmed != updated:
+                corrections_applied.append("trimmed")
+                updated = trimmed
 
-            if self.strip_leading_punctuation:
-                stripped = re.sub(r"^[^A-Za-z0-9]+", "", updated)
-                if stripped != updated:
-                    corrections_applied.append("punctuation removed")
-                    updated = stripped
+            # Strip leading punctuation — always applied
+            stripped = re.sub(r"^[^A-Za-z0-9]+", "", updated)
+            if stripped != updated:
+                corrections_applied.append("punctuation removed")
+                updated = stripped
 
-            if self.remove_non_alphanumeric:
-                # Remove only non-printable characters, keep punctuation and accent letters
-                cleaned = "".join(c for c in updated if c.isprintable())
-                if cleaned != updated:
-                    corrections_applied.append("non-printable characters removed")
-                    updated = cleaned
+            # Remove non-printable characters — always applied
+            cleaned = "".join(c for c in updated if c.isprintable())
+            if cleaned != updated:
+                corrections_applied.append("non-printable characters removed")
+                updated = cleaned
 
-            if self.proper_case_fields:
-                proper_cased = " ".join(
-                    word.capitalize() for word in updated.split(" ")
-                )
-                if proper_cased != updated:
-                    # Apply proper case but don't flag it
-                    updated = proper_cased
+            # Proper case — always applied
+            proper_cased = " ".join(
+                word.capitalize() for word in updated.split(" ")
+            )
+            if proper_cased != updated:
+                # Apply proper case but don't flag it
+                updated = proper_cased
 
             normalized_updated = updated.strip()
             if corrections_applied:
                 field_corrections[field.title()] = corrections_applied
 
             book[field] = normalized_updated
-
-        if self.move_leading_the_title:
-            title = (book.get("title") or "").strip()
-
-            # Check for leading articles: "The", "A", "An"
-            articles = ["the ", "a ", "an "]
-            for article in articles:
-                if title.lower().startswith(article) and len(title) > len(article):
-                    title_core = title[len(article) :].strip()
-                    article_capital = article.title().strip()  # "The", "A", "An"
-                    if title_core and not title_core.lower().endswith(
-                        f", {article.lower()}"
-                    ):
-                        # Move article to end but don't flag it
-                        book["title"] = f"{title_core}, {article_capital}"
-                    break  # Only handle the first matching article
 
         return field_corrections

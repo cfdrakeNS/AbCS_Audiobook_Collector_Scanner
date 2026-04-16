@@ -1,8 +1,8 @@
 @echo off
 setlocal EnableExtensions
 REM Build AbCS_Trial executable using PyInstaller
-REM Patches build_config.py to enable the trial expiry check, builds,
-REM then restores build_config.py to the original (TRIAL_BUILD=False) state.
+REM Patches build_config.py to set TRIAL_BUILD_DATE to today, builds,
+REM then restores build_config.py to the original (empty date) state.
 REM Output is a single-file executable like build.bat.
 
 set "BUILD_CONFIG=src\build_config.py"
@@ -37,20 +37,7 @@ echo Build date: %TODAY%
 echo Log: %BUILD_LOG%
 echo.
 
-REM Back up original build_config.py
-copy /y "%BUILD_CONFIG%" "%BUILD_CONFIG_BAK%" >nul
-
-REM Patch build_config.py for trial
-REM Set TRIAL_BUILD_DATE to a fixed old date for expiry testing, or use %TODAY% for normal builds
-REM Set APP_VERSION to your current version
-(
-    echo # build_config.py -- TRIAL BUILD ^(patched by build_trial.bat^)
-    echo APP_VERSION = "1.9.11"
-    echo TRIAL_DAYS = 30
-    echo TRIAL_BUILD_DATE = "2026-05-18"
-) > "%BUILD_CONFIG%"
-
-echo Step 1/3: Checking PyInstaller...
+echo Step 1/4: Checking PyInstaller...
 "%PYTHON_EXE%" -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo Installing PyInstaller. This may take a minute...
@@ -58,8 +45,6 @@ if errorlevel 1 (
     if errorlevel 1 (
         echo ERROR: Failed to install PyInstaller
         echo See %BUILD_LOG% for details.
-        copy /y "%BUILD_CONFIG_BAK%" "%BUILD_CONFIG%" >nul 2>&1
-        del /q "%BUILD_CONFIG_BAK%" >nul 2>&1
         pause
         exit /b 1
     )
@@ -71,16 +56,31 @@ if errorlevel 1 (
     if errorlevel 1 (
         echo ERROR: Failed to install required build dependencies.
         echo See %BUILD_LOG% for details.
-        copy /y "%BUILD_CONFIG_BAK%" "%BUILD_CONFIG%" >nul 2>&1
-        del /q "%BUILD_CONFIG_BAK%" >nul 2>&1
         pause
         exit /b 1
     )
 )
 echo PyInstaller ready.
 
+REM ---- Patch build_config.py with trial date ----
+echo Step 2/4: Patching build_config.py with trial date %TODAY%...
+copy /y "%BUILD_CONFIG%" "%BUILD_CONFIG_BAK%" >nul
+if errorlevel 1 (
+    echo ERROR: Could not back up %BUILD_CONFIG%.
+    pause
+    exit /b 1
+)
+"%PYTHON_EXE%" -c "import pathlib; p=pathlib.Path(r'%BUILD_CONFIG%'); t=p.read_text(encoding='utf-8'); t=t.replace('TRIAL_BUILD_DATE = \"\"', 'TRIAL_BUILD_DATE = \"%TODAY%\"'); p.write_text(t, encoding='utf-8'); print('Patched TRIAL_BUILD_DATE =', '%TODAY%')"
+if errorlevel 1 (
+    echo ERROR: Failed to patch %BUILD_CONFIG%.
+    copy /y "%BUILD_CONFIG_BAK%" "%BUILD_CONFIG%" >nul 2>&1
+    del /q "%BUILD_CONFIG_BAK%" >nul 2>&1
+    pause
+    exit /b 1
+)
+
 REM Clean previous trial build
-echo Step 2/3: Cleaning old trial build files...
+echo Step 3/4: Cleaning old trial build files...
 taskkill /F /IM AbCS_Trial.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
@@ -103,7 +103,7 @@ if exist dist rmdir /s /q dist
 if exist AbCS_Trial.spec del AbCS_Trial.spec
 
 REM Build
-echo Step 3/3: Building trial executable...
+echo Step 4/4: Building trial executable...
 echo Please wait...
 
 "%PYTHON_EXE%" -m PyInstaller ^
@@ -126,6 +126,9 @@ echo Please wait...
     --hidden-import="openpyxl" ^
     --hidden-import="odf" ^
     --hidden-import="odf.opendocument" ^
+    --hidden-import="src.build_config" ^
+    --hidden-import="build_config" ^
+    --hidden-import="src.web.web_book_api" ^
     --collect-submodules="odf" ^
     --exclude-module="PySide6.QtSql" ^
     --exclude-module="PySide6.QtQml" ^
@@ -149,8 +152,8 @@ if %BUILD_ERR% neq 0 (
 echo.
 echo Trial build complete.
 echo Executable location: dist\AbCS_Trial.exe
-echo Build date embedded: %TODAY%
-echo Expires after: 30 days (on %TODAY% + 30 days)
+echo Trial expiry date embedded: %TODAY%
+echo (App will block startup when system date is after %TODAY%)
 echo Log: %BUILD_LOG%
 echo.
 pause
