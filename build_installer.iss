@@ -151,3 +151,21 @@ Name: "{commondesktop}\{#MyAppName}"; \
 Filename: "{app}\{#MyAppExeName}"; \
     Description: "{cm:LaunchProgram,{#MyAppName}}"; \
     Flags: nowait postinstall skipifsilent
+
+; ──────────────────────────────────────────────────────────────────
+; [UninstallDelete] - Extra cleanup the uninstaller must force-remove
+; ──────────────────────────────────────────────────────────────────
+[UninstallDelete]
+; _internal is a PyInstaller onedir bundle folder. Inno Setup tracks
+; individual files inside it but won't remove the folder itself if
+; any file is left behind. Force-delete the whole tree here.
+Type: filesandordirs; Name: "{app}\_internal"
+
+; data subfolder only contains the schema file but clean it up too
+Type: filesandordirs; Name: "{app}\data"
+
+; Graphics folder copied separately from _internal - clean it up
+Type: filesandordirs; Name: "{app}\Graphics"
+
+; Remove {app} itself if empty after all other cleanup is done
+Type: dirifempty;     Name: "{app}"
