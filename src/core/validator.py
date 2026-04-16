@@ -17,19 +17,10 @@ class ImportValidator:
 
     @staticmethod
     def normalize_title_for_compare(title: str) -> str:
-        """Normalize title for comparison: move leading article to end, lowercase, strip."""
+        """Normalize title for comparison: lowercase, strip (Articles no longer moved)."""
         if not isinstance(title, str):
             return ""
-        t = title.strip()
-        articles = ["the ", "a ", "an "]
-        for article in articles:
-            if t.lower().startswith(article) and len(t) > len(article):
-                t_core = t[len(article) :].strip()
-                article_cap = article.title().strip()
-                if t_core and not t_core.lower().endswith(f", {article.strip()}"):
-                    t = f"{t_core}, {article_cap}"
-                break
-        return t.lower()
+        return title.strip().lower()
 
     @staticmethod
     def append_flag_once(book: dict, message: str):
@@ -158,28 +149,39 @@ class ImportValidator:
 
         return False
 
-    def flip_author_name(self, name: str) -> str:
+    def sanitize_metadata(self, book: Dict[str, Any]) -> List[str]:
         """
-        Flip author name from "First Last" to "Last, First".
-
-        Args:
-            name: Author name
-
-        Returns:
-            Flipped name
+        Apply mandatory sanitization rules to title and author.
+        Returns a list of 'C:' flags for any significant corrections.
         """
-        if not name or "," in name:
-            # Already in Last, First format or empty
-            return name
+        flags = []
 
-        parts = name.strip().split()
-        if len(parts) < 2:
-            return name
+        for field in ["title", "author"]:
+            val = str(book.get(field, "") or "").strip()
+            if not val:
+                continue
 
-        # Simple flip: last word is last name
-        last_name = parts[-1]
-        first_names = " ".join(parts[:-1])
-        return f"{last_name}, {first_names}"
+            original = val
+
+            # 1. Trim leading punctuation and special characters
+            # Characters often found at start of messy tags
+            val = val.lstrip("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ")
+
+            # 2. Proper Case (Mandatory)
+            # We use title() but ensure we don't destroy mid-word caps (simplified)
+            if val:
+                val = val.title()
+
+            # Check if we need to flag a correction
+            if val != original:
+                # Only flag significant cleanups (punctuation/special chars)
+                # to avoid noise for simple casing/whitespace
+                if any(c in original[0:2] for c in "!\"#$%&'()*+,-./"):
+                    flags.append(f"C: Sanitized {field}")
+
+            book[field] = val
+
+        return flags
 
     def categorize_error(self, error: str) -> str:
         """
