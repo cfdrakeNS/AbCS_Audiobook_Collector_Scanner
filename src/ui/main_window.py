@@ -463,16 +463,8 @@ class MainWindow(QMainWindow):
         self.refresh_books()
 
         # Window settings
-        # Show version only for trial builds
-        try:
-            from build_config import TRIAL_BUILD
-        except ImportError:
-            TRIAL_BUILD = False
-        if TRIAL_BUILD:
-            version_str = get_app_version()
-            self.setWindowTitle(f"AbCS - Audio Book Collector Scanner {version_str}")
-        else:
-            self.setWindowTitle("AbCS - Audio Book Collector Scanner")
+        version_str = get_app_version()
+        self.setWindowTitle(f"AbCS - Audio Book Collector Scanner {version_str}")
         # Larger default size for better column visibility
         self.resize(1400, 800)
         # mw#22: Minimum size to prevent columns from being cut off

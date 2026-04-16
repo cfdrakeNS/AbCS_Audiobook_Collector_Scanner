@@ -4,4 +4,4 @@
 
 TRIAL_BUILD = True
 TRIAL_DAYS = 30
-TRIAL_BUILD_DATE = "2026-03-10"  # Set to ISO date (YYYY-MM-DD) by build_trial.bat
+TRIAL_BUILD_DATE = "2026-04-10"  # Set to ISO date (YYYY-MM-DD) by build_trial.bat
