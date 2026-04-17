@@ -188,7 +188,7 @@ class PreferencesWindow(QDialog):
         display_layout.addWidget(self.preset_combo)
 
         # Reduce spacing between preset and zoom by 1/2 (was 18)
-        display_layout.addSpacing(9)
+        display_layout.addSpacing(3) # @@ cfd 
 
         zoom_label = QLabel("Zoom (%):")
         zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -345,7 +345,7 @@ class PreferencesWindow(QDialog):
         scenario_desc_layout.addWidget(scenario_desc_label)
         scenario_desc_layout.addWidget(self.scenario_description_edit, 1)
         source_scope_layout.addLayout(scenario_desc_layout)
-
+# @@ cfd start 
         self.auto_add_clean_books_check = QCheckBox("Review Clean Books Before Adding")
         self.auto_add_clean_books_check.setAccessibleName(
             "Review clean books before adding"
@@ -383,7 +383,7 @@ class PreferencesWindow(QDialog):
 
         import_layout.addWidget(source_scope_group)
         import_layout.addWidget(options_group)
-
+# @@ to here 
         self.author_fallback_checkbox = QCheckBox("Author fallback to folder?")
         self.author_fallback_checkbox.setAccessibleName("Author fallback to folder")
         self.author_fallback_checkbox.setAccessibleDescription(
@@ -436,10 +436,6 @@ class PreferencesWindow(QDialog):
         self.rules_section_text = QTextEdit()
         self.rules_section_text.setReadOnly(True)
         self.rules_section_text.setTabChangesFocus(True)
-        # self.rules_section_text.setAccessibleName(
-        #     "Author and title rules description")
-        # self.rules_section_text.setAccessibleDescription(
-        #     "")
         self.rules_section_text.setFocusPolicy(Qt.StrongFocus)
         self.rules_section_text.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         self.rules_section_text.setPlainText(
@@ -602,7 +598,7 @@ class PreferencesWindow(QDialog):
         validation_layout.addWidget(rules_group, 0, Qt.AlignLeft)
         import_layout.addWidget(validation_group)
         import_layout.addSpacing(self.scaler.get_scaled_size(8))
-
+# @@ cfd start 
         self.autocorrect_section_text = QTextEdit()
         self.autocorrect_section_text.setReadOnly(True)
         self.autocorrect_section_text.setTabChangesFocus(True)
@@ -657,7 +653,7 @@ class PreferencesWindow(QDialog):
         self._sync_autocorrect_group_width()
 
         self.content_layout.addWidget(import_group)
-
+# @@ cfd end 
         # Footer section: Status bar and action buttons
         footer_layout = QHBoxLayout()
 

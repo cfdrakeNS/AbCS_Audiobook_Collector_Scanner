@@ -7,6 +7,7 @@ from .import_rules import ImportRulesEngine
 from PySide6.QtCore import QSettings
 from typing import List, Dict, Any
 from difflib import SequenceMatcher
+import re
 
 
 class ImportValidator:
@@ -153,33 +154,40 @@ class ImportValidator:
         """
         Apply mandatory sanitization rules to title and author.
         Returns a list of 'C:' flags for any significant corrections.
+        This version always enforces C: errors for whitespace, punctuation, and special characters,
+        regardless of user preferences.
         """
         flags = []
-
         for field in ["title", "author"]:
-            val = str(book.get(field, "") or "").strip()
-            if not val:
+            original = str(book.get(field, "") or "")
+            if not original:
                 continue
 
-            original = val
+            # 1. Trim leading/trailing whitespace and leading punctuation
+            cleaned = original.strip().lstrip("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ")
 
-            # 1. Trim leading punctuation and special characters
-            # Characters often found at start of messy tags
-            val = val.lstrip("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ")
+            # 2. Remove special characters (non-alphanumeric except space)
+            import re
 
-            # 2. Proper Case (Mandatory)
-            # We use title() but ensure we don't destroy mid-word caps (simplified)
-            if val:
-                val = val.title()
+            cleaned = re.sub(r"[^\w\s]", "", cleaned)
 
-            # Check if we need to flag a correction
-            if val != original:
-                # Only flag significant cleanups (punctuation/special chars)
-                # to avoid noise for simple casing/whitespace
-                if any(c in original[0:2] for c in "!\"#$%&'()*+,-./"):
-                    flags.append(f"C: Sanitized {field}")
+            # 3. Proper Case (Mandatory)
+            if cleaned:
+                cleaned = cleaned.title()
 
-            book[field] = val
+            # Detection logic for the C: flag
+            significant_change = False
+            if original.strip() != original:
+                significant_change = True
+            if original.strip().lstrip("!\"#$%&'()*+,-./") != original.strip():
+                significant_change = True
+            if re.sub(r"[^\w\s]", "", original) != original:
+                significant_change = True
+
+            if significant_change:
+                flags.append(f"C: Sanitized {field}")
+
+            book[field] = cleaned
 
         return flags
 

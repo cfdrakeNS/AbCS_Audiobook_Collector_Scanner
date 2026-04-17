@@ -79,18 +79,14 @@ class WebBookAPI:
         # Normalize title for search and comparison (do NOT append series number)
         search_title, series_number = self._strip_series_number(title)
         search_title = self._move_article_to_beginning(search_title)
-        if move_articles:
-            search_title = self._move_article_to_end(search_title)
+        # Move articles to end logic removed for accessibility compliance
         search_title = self._clean_text_field(search_title)
 
         # Only append series number to title when SAVING, not for search/compare
         # The code that saves to DB should append series number if and only if a real series number is found
 
-        # Author transformation as before
-        if flip_author and author:
-            search_author = self._apply_author_transformations(author, flip_author)
-        else:
-            search_author = author
+        # Author transformation: clean only, never flip
+        search_author = self._apply_author_transformations(author, False)
 
         # Try Google Books first (fast and reliable)
         if refresh == 0:
@@ -617,21 +613,6 @@ class WebBookAPI:
         # No series number found
         return title.strip(), ""
 
-    def _move_article_to_end(self, title: str) -> str:
-        """Move leading articles 'The', 'A', 'An' to end of title."""
-        if not title:
-            return title
-
-        articles = ["The ", "A ", "An "]
-        for article in articles:
-            if title.startswith(article):
-                # Remove article and any extra spaces
-                title_without_article = title[len(article) :].strip()
-                # Add article to end with comma
-                return f"{title_without_article}, {article.strip()}"
-
-        return title
-
     def _clean_text_field(self, text: str) -> str:
         """Clean text field: remove extra spaces, special chars, capitalize properly."""
         if not text:
@@ -658,9 +639,7 @@ class WebBookAPI:
         # Strip series number first
         clean_title, series_number = self._strip_series_number(title)
 
-        # Move articles to end if requested
-        if move_articles:
-            clean_title = self._move_article_to_end(clean_title)
+        # Move articles to end logic removed for accessibility compliance
 
         # Clean the title
         clean_title = self._clean_text_field(clean_title)
@@ -674,20 +653,12 @@ class WebBookAPI:
     def _apply_author_transformations(
         self, author: str, flip_name: bool = False
     ) -> str:
-        """Apply author transformations: flip name if requested, clean."""
+        """Apply author transformations: clean only (no flipping)."""
         if not author:
             return ""
 
-        # Clean the author name first
+        # Clean the author name only
         author = self._clean_text_field(author)
-
-        # Flip name if requested (John Smith -> Smith, John)
-        if flip_name and "," not in author:
-            parts = author.split()
-            if len(parts) >= 2:
-                # Last name first, then first name
-                author = f"{parts[-1]}, {' '.join(parts[:-1])}"
-
         return author
 
     def clean_web_data_for_storage(
@@ -702,13 +673,13 @@ class WebBookAPI:
         # Clean title
         if "title" in cleaned_data:
             cleaned_data["title"] = self._apply_title_transformations(
-                cleaned_data["title"], move_articles
+                cleaned_data["title"], False
             )
 
         # Clean author
         if "author" in cleaned_data:
             cleaned_data["author"] = self._apply_author_transformations(
-                cleaned_data["author"], flip_author
+                cleaned_data["author"], False
             )
 
         # Clean other text fields

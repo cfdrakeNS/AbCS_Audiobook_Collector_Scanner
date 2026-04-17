@@ -666,6 +666,7 @@ class ImportWindow(QDialog):
         self.flip_author_names = self.settings.value(
             "import/flip_author_name", False, type=bool
         )
+        self.flip_author_names = False  # Explicitly disabled for Phase 1
         self.auto_add_clean_books = self.settings.value(
             "import/auto_add_clean_books", False, type=bool
         )
@@ -690,10 +691,19 @@ class ImportWindow(QDialog):
             type=bool,
         )
 
+        # Mandatory settings (ignore checkboxes)
+        self.autocorrect_trim_whitespace = True
+        self.autocorrect_strip_leading_punctuation = True
+        self.autocorrect_proper_case = True
+        self.autocorrect_move_leading_the = False
+
         keywords = self.settings.value(
             "import/reader_keywords",
             "reader, read by, narrator, narrated by",
             type=str,
+        )
+        keywords = self.settings.value(
+            "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
         )
         parsed_keywords = [
             key.strip().lower() for key in keywords.split(",") if key.strip()
@@ -1721,12 +1731,6 @@ class ImportWindow(QDialog):
             for row, book in enumerate(books):
                 auto_added = False
                 self.import_scanner.apply_preferences(book)
-                self.import_scanner.apply_preferences(book)
-
-                if self.flip_author_names:
-                    author_value = (book.get("author") or "").strip()
-                    if author_value:
-                        book["author"] = self.validator.flip_author_name(author_value)
 
                 errors = list(book.get("errors", []))
                 errors.extend(self.validator.validate_book(book))
@@ -1867,13 +1871,16 @@ class ImportWindow(QDialog):
                         }
                     )
 
+                    # Only count as warning if it is a true warning (not fallback/correction)
                     if not is_duplicate and not has_hard_error:
-                        if has_warning:
+                        if has_warning and not has_fallback and not has_correction:
                             warning_count += 1
                     elif is_duplicate:
                         pass  # already counted
                     else:
-                        error_count += 1
+                        # Only count as error if it is a true error (not fallback/correction)
+                        if has_hard_error and not has_fallback and not has_correction:
+                            error_count += 1
 
                 # Track all scan outcomes
                 self.scan_outcomes.append(

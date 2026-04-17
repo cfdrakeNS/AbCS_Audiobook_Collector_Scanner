@@ -98,54 +98,25 @@ class BookListImportWindow(QDialog):
         self.setWindowIcon(get_app_icon())
 
     def _normalize_title_for_match(self, title: str) -> str:
-        """Normalize title for matching: move leading article to end, lowercase, remove all spaces and punctuation."""
+        """Normalize title for matching: lowercase, remove all spaces and punctuation (articles no longer moved)."""
         import string
 
         if not title:
             return ""
         t = title.strip().lower()
-        # Move leading article to end
-        articles = ["the ", "a ", "an "]
-        for article in articles:
-            if t.startswith(article) and len(t) > len(article):
-                t_core = t[len(article) :].strip()
-                article_word = article.strip()
-                if t_core and not t_core.endswith(", " + article_word):
-                    t = f"{t_core}, {article_word}"
-                break
         # Remove all spaces and punctuation
         t = "".join(
             c for c in t if c not in string.whitespace and c not in string.punctuation
         )
         return t
 
-        def _normalize_title_for_match(self, title: str) -> str:
-            """Normalize title for matching: trim, lowercase, remove all spaces and punctuation."""
-            import string
-
-            if not title:
-                return ""
-            # Remove spaces and punctuation
-            t = title.strip().lower()
-            t = "".join(
-                c
-                for c in t
-                if c not in string.whitespace and c not in string.punctuation
-            )
-            return t
-
     def _normalize_author_for_match(self, author: str) -> str:
-        """Normalize author for matching: trim, lowercase, remove spaces/punctuation, canonicalize 'last, first' to 'first last'."""
+        """Normalize author for matching: lowercase, remove spaces/punctuation (flipping logic removed)."""
         import string
 
         if not author:
             return ""
         a = author.strip().lower()
-        # Canonicalize 'last, first' to 'first last'
-        if "," in a:
-            parts = [p.strip() for p in a.split(",")]
-            if len(parts) == 2:
-                a = f"{parts[1]} {parts[0]}"
         # Remove spaces and punctuation
         a = "".join(
             c for c in a if c not in string.whitespace and c not in string.punctuation
@@ -1687,14 +1658,7 @@ class BookListImportWindow(QDialog):
                 for db_row in candidate_rows:
                     db_title = db_row[1]
                     norm_db_title = self._normalize_title_for_match(db_title)
-                    # Debug output for matching
-                    print(
-                        f"[DEBUG][READ_DATE] DB: '{db_title}' -> '{norm_db_title}' | IMPORT: '{title_for_save}' -> '{import_title_for_compare}'"
-                    )
                     if norm_db_title == import_title_for_compare:
-                        print(
-                            f"[DEBUG][READ_DATE] MATCH FOUND: DB({db_title}) == IMPORT({title_for_save})"
-                        )
                         found_book_id = db_row[0]
                         break
                 if not found_book_id:
