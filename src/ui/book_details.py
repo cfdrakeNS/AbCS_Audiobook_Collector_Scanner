@@ -607,8 +607,9 @@ class BookDetailsWindow(QDialog):
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setMaximumWidth(110)
         row3_layout.addWidget(self.year_spin)
-
+        
         time_label = QLabel("&Time:")
+        time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.time_edit = QLineEdit()
         self.time_edit.setInputMask(
             "99:99;_"
@@ -629,6 +630,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(self.reader_edit)
 
         read_label = QLabel("R&ead:")
+        read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.read_date = QDateEdit()
         self._null_read_date = QDate(2000, 1, 1)
         self.read_date.setCalendarPopup(True)

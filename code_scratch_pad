@@ -1,0 +1,35 @@
+# Replacement for right-justifying Time and Read labels in Book Details window
+# Copy this block to replace the code between the markers in book_details.py
+
+        time_label = QLabel("&Time:")
+        time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.time_edit = QLineEdit()
+        self.time_edit.setInputMask(
+            "99:99;_"
+        )  # HH:MM format with underscore placeholder
+        self.time_edit.setPlaceholderText("HH:MM")
+        self.time_edit.setAccessibleName("Time")
+        self.time_edit.setMaximumWidth(100)
+        time_label.setBuddy(self.time_edit)
+        row3_layout.addWidget(time_label)
+        row3_layout.addWidget(self.time_edit)
+
+        reader_label = QLabel("&Reader:")
+        self.reader_edit = QLineEdit()
+        self.reader_edit.setAccessibleName("Reader/Narrator")
+        self.reader_edit.setMaximumWidth(220)
+        reader_label.setBuddy(self.reader_edit)
+        row3_layout.addWidget(reader_label)
+        row3_layout.addWidget(self.reader_edit)
+
+        read_label = QLabel("R&ead:")
+        read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.read_date = QDateEdit()
+        self._null_read_date = QDate(2000, 1, 1)
+        self.read_date.setCalendarPopup(True)
+        self.read_date.setDisplayFormat("yyyy-MM-dd")
+        self.read_date.setAccessibleName("Date read")
+        self.read_date.setMinimumDate(QDate(1752, 9, 14))
+        self.read_date.setSpecialValueText("")
+        self.read_date.setMaximumWidth(150)
+        self.read_date.setDate(self._null_read_date)

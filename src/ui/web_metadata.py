@@ -560,11 +560,11 @@ class WebMetadataWindow(QDialog):
             )
             msg = f"Web data found{diff_str}"
             self.set_status(msg, announce=True)
-            # Requirement: web info returned => focus Plot
-            if self._has_any_web_data(cleaned_web_data):
+            # Requirement: web info returned => focus Plot ONLY if plot is non-empty
+            plot_text = cleaned_web_data.get("plot")
+            if plot_text and str(plot_text).strip():
                 QTimer.singleShot(100, self.plot_edit.setFocus)
             else:
-                # Requirement: no data returned => focus Title
                 QTimer.singleShot(100, self.title_edit.setFocus)
         else:
             # No web payload provided to this window.

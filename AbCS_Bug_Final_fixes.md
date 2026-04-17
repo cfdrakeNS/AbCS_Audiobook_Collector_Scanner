@@ -50,4 +50,5 @@
 50.  title bar icons not showing on built install check if they are included in the build 
 51. done import window 1. highligheter not highlighintng entire row when selecting; look at main win code for selecting highlighting  
 52. done import window  - add the same slection status bar messaging like main window. don't change the normal status bar msg that exist for non-selection 
-w
+53. book_detail window - the labels for Time & Read seem to be left justifyed they sshuld be right justifyes as there the labels are closer to the field to the left not their own fields 
+54. book_detail windows - genre fields should be vertically aligned under the reader fields 
