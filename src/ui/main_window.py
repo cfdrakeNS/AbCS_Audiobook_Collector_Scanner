@@ -80,9 +80,9 @@ from src.ui.web_metadata import WebMetadataWindow
 
 
 def get_app_version():
-    """Get app version from main module."""
+    """Get app version from build_config."""
     try:
-        from main import APP_VERSION
+        from src.build_config import APP_VERSION
 
         return f"v{APP_VERSION}"
     except ImportError:
