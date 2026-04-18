@@ -38,15 +38,7 @@ class AboutDialog(QDialog):
 
     def get_app_version(self):
         try:
-            from main import APP_VERSION
-
-            return f"v{APP_VERSION}"
-        except ImportError:
-            return "v?.?.?"
-
-    def get_app_version(self):
-        try:
-            from main import APP_VERSION
+            from src.build_config import APP_VERSION
 
             return f"v{APP_VERSION}"
         except ImportError:
