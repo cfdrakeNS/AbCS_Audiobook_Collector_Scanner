@@ -397,33 +397,66 @@ class BookDetailsWindow(QDialog):
                 # QSpinBox also has an internal lineEdit
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
-        # Check for FocusOut on author/series/genre combos to detect new values
+        # Check for FocusOut on relevant fields to sanitize input silently
         if event.type() == QEvent.FocusOut:
-            if source == self.time_edit:
-                self._normalize_time_on_focus_out()
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            # Title
+            if source == self.title_edit:
+                val = self.title_edit.text()
+                temp = {"title": val}
+                validator.sanitize_metadata(temp)
+                if temp["title"] != val:
+                    self.title_edit.setText(temp["title"])
+            # Author
             elif source == self.author_combo:
+                val = self.author_combo.currentText()
+                temp = {"author": val}
+                validator.sanitize_metadata(temp)
+                if temp["author"] != val:
+                    self.author_combo.setEditText(temp["author"])
                 self._check_combo_change(
                     "Author",
                     self.author_combo,
                     self._original_author,
                     self.author_queries,
                 )
+            # Series
             elif source == self.series_combo:
+                val = self.series_combo.currentText()
+                temp = {"series": val}
+                validator.sanitize_metadata(temp)
+                if temp["series"] != val:
+                    self.series_combo.setEditText(temp["series"])
                 self._check_combo_change(
                     "Series",
                     self.series_combo,
                     self._original_series,
                     self.series_queries,
                 )
+            # Genre
             elif source == self.genre_combo:
+                val = self.genre_combo.currentText()
+                temp = {"genre": val}
+                validator.sanitize_metadata(temp)
+                if temp["genre"] != val:
+                    self.genre_combo.setEditText(temp["genre"])
                 self._check_combo_change(
                     "Genre", self.genre_combo, self._original_genre, self.genre_queries
                 )
+            # Reader
+            elif source == self.reader_edit:
+                val = self.reader_edit.text()
+                temp = {"reader": val}
+                validator.sanitize_metadata(temp)
+                if temp["reader"] != val:
+                    self.reader_edit.setText(temp["reader"])
 
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
-                # Only announce if value actually changed
+                # Only announce if value actually changed (existing logic)
                 last_status = getattr(self, "_last_status_message", None)
                 new_status = f"{field_name} changed."
                 if last_status != new_status:
@@ -607,7 +640,7 @@ class BookDetailsWindow(QDialog):
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setMaximumWidth(110)
         row3_layout.addWidget(self.year_spin)
-        
+
         time_label = QLabel("&Time:")
         time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.time_edit = QLineEdit()
@@ -1367,15 +1400,35 @@ class BookDetailsWindow(QDialog):
             self._original_genre = value
 
     def on_save(self):
-        """Save book data."""
-        # Normalize time field before saving (in case user hasn't lost focus from time field)
+        """Save book data with mandatory sanitization (title, author, genre, series, reader)."""
         if self.time_edit.hasFocus():
             self._normalize_time_on_focus_out()
 
-        title_text = self._normalize_name_field(self.title_edit.text())
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
+        # Collect all editable fields to sanitize
+        book_dict = {
+            "title": self.title_edit.text(),
+            "author": self.author_combo.currentText(),
+            "series": self.series_combo.currentText(),
+            "genre": self.genre_combo.currentText(),
+            "reader": self.reader_edit.text(),
+        }
+        # Sanitize all fields (ignore C: flags, silent correction)
+        for field in ["title", "author", "series", "genre", "reader"]:
+            temp = {field: book_dict[field]}
+            validator.sanitize_metadata(temp)
+            book_dict[field] = temp[field]
+        # Update UI fields with sanitized values
+        self.title_edit.setText(book_dict["title"])
+        self.author_combo.setEditText(book_dict["author"])
+        self.series_combo.setEditText(book_dict["series"])
+        self.genre_combo.setEditText(book_dict["genre"])
+        self.reader_edit.setText(book_dict["reader"])
 
         # Validate
-        if not title_text:
+        if not book_dict["title"]:
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -1386,10 +1439,7 @@ class BookDetailsWindow(QDialog):
             self.title_edit.setFocus()
             self.set_status("Title is required")
             return
-
-        # Get author - confirm if creating new
-        author_text = self._normalize_name_field(self.author_combo.currentText())
-        if not author_text:
+        if not book_dict["author"]:
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -1402,22 +1452,16 @@ class BookDetailsWindow(QDialog):
             return
 
         # Get or create author (confirmation already done on focusOut)
-        author_id = self.author_queries.get_or_create(author_text)
-
-        # Get or create series (confirmation already done on focusOut)
-        series_text = self._normalize_name_field(self.series_combo.currentText())
+        author_id = self.author_queries.get_or_create(book_dict["author"])
+        # Get or create series
         series_id = None
-        if series_text:
-            series_id = self.series_queries.get_or_create(series_text)
-
-        # Get or create genre (confirmation already done on focusOut)
-        genre_text = self._normalize_name_field(self.genre_combo.currentText())
+        if book_dict["series"]:
+            series_id = self.series_queries.get_or_create(book_dict["series"])
+        # Get or create genre
         genre_id = None
-        if genre_text:
-            genre_id = self.genre_queries.get_or_create(genre_text)
-
-        reader_text = self._normalize_name_field(self.reader_edit.text())
-
+        if book_dict["genre"]:
+            genre_id = self.genre_queries.get_or_create(book_dict["genre"])
+        reader_text = book_dict["reader"]
         # Get collection
         collection_id = self.collection_combo.currentData()
         if collection_id is None and self.collection_combo.count() == 1:
@@ -1446,6 +1490,20 @@ class BookDetailsWindow(QDialog):
         year_value = self.year_spin.value()
         year_value = None if year_value == self.year_spin.minimum() else year_value
 
+        # Removed legacy normalization methods (_to_proper_case, _is_proper_case_enabled, _normalize_name_field)
+        self.book.title = book_dict["title"]
+        self.book.author_name = book_dict["author"]
+        self.book.author_id = author_id
+        self.book.series_id = series_id
+        self.book.genre_id = genre_id
+        self.book.collection_id = collection_id
+        self.book.reader = reader_text
+        self.book.time_hours = time_hours
+        self.book.time_minutes = time_minutes
+        # The following assignments must come after tracks, size_mb, bitrate, file_format, source_text, path_text are defined
+        # (moved below after those variables are set)
+
+        # Parse files, bitrate, size, format, source, path
         tracks = 0
         files_text = self.files_edit.text().strip()
         if files_text:
@@ -1476,16 +1534,6 @@ class BookDetailsWindow(QDialog):
         source_text = self.source_edit.text().strip()
         path_text = self.path_edit.text().strip()
 
-        # Update book object
-        self.book.title = title_text
-        self.book.author_id = author_id
-        self.book.year = year_value
-        self.book.series_id = series_id
-        self.book.genre_id = genre_id
-        self.book.collection_id = collection_id
-        self.book.reader = reader_text
-        self.book.time_hours = time_hours
-        self.book.time_minutes = time_minutes
         self.book.tracks = tracks
         self.book.size_mb = size_mb
         self.book.bitrate = bitrate

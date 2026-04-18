@@ -152,29 +152,28 @@ class ImportValidator:
 
     def sanitize_metadata(self, book: Dict[str, Any]) -> List[str]:
         """
-        Apply mandatory sanitization rules to title and author.
+        Apply mandatory sanitization rules to all relevant fields.
+        Removes extra spaces, punctuation, special chars, and applies proper case.
         Returns a list of 'C:' flags for any significant corrections.
-        This version always enforces C: errors for whitespace, punctuation, and special characters,
-        regardless of user preferences.
         """
+        import re
+
         flags = []
-        for field in ["title", "author"]:
+        # Fields to sanitize
+        fields = ["title", "author", "genre", "series", "reader", "collection"]
+        for field in fields:
             original = str(book.get(field, "") or "")
             if not original:
                 continue
-
             # 1. Trim leading/trailing whitespace and leading punctuation
             cleaned = original.strip().lstrip("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ")
-
             # 2. Remove special characters (non-alphanumeric except space)
-            import re
-
             cleaned = re.sub(r"[^\w\s]", "", cleaned)
-
-            # 3. Proper Case (Mandatory)
+            # 3. Collapse multiple spaces to single space
+            cleaned = re.sub(r"\s+", " ", cleaned)
+            # 4. Proper Case (Mandatory)
             if cleaned:
                 cleaned = cleaned.title()
-
             # Detection logic for the C: flag
             significant_change = False
             if original.strip() != original:
@@ -183,12 +182,11 @@ class ImportValidator:
                 significant_change = True
             if re.sub(r"[^\w\s]", "", original) != original:
                 significant_change = True
-
+            if re.sub(r"\s+", " ", original) != original:
+                significant_change = True
             if significant_change:
                 flags.append(f"C: Sanitized {field}")
-
             book[field] = cleaned
-
         return flags
 
     def categorize_error(self, error: str) -> str:

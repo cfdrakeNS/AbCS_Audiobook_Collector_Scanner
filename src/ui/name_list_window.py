@@ -122,17 +122,6 @@ class NameListWindow(QDialog):
     COL_USAGE = 2
     AUTHOR_FIND_HINT = " enter for next, clear and start a new search "
 
-    @staticmethod
-    def _to_proper_case(text: str) -> str:
-        value = text.strip().lower()
-        if not value:
-            return ""
-        return re.sub(
-            r"(^|[\s\-'])([a-z])",
-            lambda match: f"{match.group(1)}{match.group(2).upper()}",
-            value,
-        )
-
     def __init__(
         self,
         db: DatabaseManager,
@@ -371,7 +360,7 @@ class NameListWindow(QDialog):
                 self.setTabOrder(first, second)
 
     def eventFilter(self, source, event):
-        """Allow Tab/Shift+Tab to move focus out of table to footer controls."""
+        """Allow Tab/Shift+Tab to move focus out of table to footer controls. Also sanitize name field on FocusOut."""
         if event.type() == QEvent.KeyPress and source in (
             self.name_edit,
             self.find_edit,
@@ -398,6 +387,25 @@ class NameListWindow(QDialog):
             QTimer.singleShot(
                 0, lambda w=source: (w.deselect(), w.setCursorPosition(len(w.text())))
             )
+
+        # --- Always sanitize name field on FocusOut ---
+        if source == self.name_edit and event.type() == QEvent.FocusOut:
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            # Map to correct field for sanitization
+            field_map = {
+                "author": "author",
+                "genre": "genre",
+                "series": "series",
+                "collection": "collection",
+            }
+            field = field_map.get(self.list_type, "author")
+            temp = {field: self.name_edit.text()}
+            validator.sanitize_metadata(temp)
+            sanitized = temp[field]
+            if sanitized != self.name_edit.text():
+                self.name_edit.setText(sanitized)
 
         if source == self.table and event.type() == QEvent.KeyPress:
             key = event.key()
@@ -713,7 +721,20 @@ class NameListWindow(QDialog):
         self._set_edit_hint_status(item.name)
 
     def on_save(self) -> bool:
-        name = self._to_proper_case(self.name_edit.text())
+        # Always sanitize name field before saving
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
+        field_map = {
+            "author": "author",
+            "genre": "genre",
+            "series": "series",
+            "collection": "collection",
+        }
+        field = field_map.get(self.list_type, "author")
+        temp = {field: self.name_edit.text()}
+        validator.sanitize_metadata(temp)
+        name = temp[field]
         self.name_edit.setText(name)
         active = self.active_check.isChecked() if self.is_collection_mode else True
 

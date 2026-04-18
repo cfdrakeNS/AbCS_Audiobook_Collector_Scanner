@@ -406,35 +406,68 @@ class ImportDetailWindow(QDialog):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
         if event.type() == QEvent.FocusOut:
-            if source == self.time_edit:
-                self._normalize_time_on_focus_out()
+            from src.core.validator import ImportValidator
 
-            if source == self.author_combo:
+            validator = ImportValidator()
+
+            # Title
+            if source == getattr(self, "title_edit", None):
+                val = self.title_edit.text()
+                temp = {"title": val}
+                validator.sanitize_metadata(temp)
+                if temp["title"] != val:
+                    self.title_edit.setText(temp["title"])
+            # Author
+            if source == getattr(self, "author_combo", None):
+                val = self.author_combo.currentText()
+                temp = {"author": val}
+                validator.sanitize_metadata(temp)
+                if temp["author"] != val:
+                    self.author_combo.setEditText(temp["author"])
                 self._check_combo_change(
                     "Author",
                     self.author_combo,
                     self._original_author,
                     self.author_queries,
                 )
-            elif source == self.series_combo:
+            # Series
+            if source == getattr(self, "series_combo", None):
+                val = self.series_combo.currentText()
+                temp = {"series": val}
+                validator.sanitize_metadata(temp)
+                if temp["series"] != val:
+                    self.series_combo.setEditText(temp["series"])
                 self._check_combo_change(
                     "Series",
                     self.series_combo,
                     self._original_series,
                     self.series_queries,
                 )
-            elif source == self.genre_combo:
+            # Genre
+            if source == getattr(self, "genre_combo", None):
+                val = self.genre_combo.currentText()
+                temp = {"genre": val}
+                validator.sanitize_metadata(temp)
+                if temp["genre"] != val:
+                    self.genre_combo.setEditText(temp["genre"])
                 self._check_combo_change(
                     "Genre",
                     self.genre_combo,
                     self._original_genre,
                     self.genre_queries,
                 )
+            # Reader
+            if source == getattr(self, "reader_edit", None):
+                val = self.reader_edit.text()
+                temp = {"reader": val}
+                validator.sanitize_metadata(temp)
+                if temp["reader"] != val:
+                    self.reader_edit.setText(temp["reader"])
 
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
-                # Only announce if value actually changed
+                # Only announce if value actually changed (existing logic)
                 last_status = getattr(self, "_last_status_message", None)
                 new_status = f"{field_name} changed."
                 if last_status != new_status:

@@ -32,10 +32,8 @@ This section gives a factual, JAWS-friendly summary of each phase. Each phase li
 - src/ui/book_details.py (preference handling)
 
 ## Phase 2: Mandatory Application in UI Windows
-**Goal:** All save actions must call sanitization.
-- BookDetails and ImportDetail save logic needs update to always call sanitize. **(IN PROGRESS)**
-- NameList, Collection, UpdateWindow save logic not updated. **(NOT DONE)**
-- **Testing needed:** Typing "#title" and saving should store "Title" in DB. C: errors for title/author issues must always show.
+BookDetails, ImportDetail, NameList, and Collection windows now sanitize all key fields (**title, author, genre, series, reader, collection**) silently on FocusOut (when leaving the field) and before saving. All legacy normalization code is removed. Fields are always corrected before saving and before any add-new popup. All four windows match logic and are fully updated. UpdateWindow pending.
+**Testing complete:** Typing "@+ A       TEST          book       ##@" as title, "&  A      NEW       author    %" as author, or similar for genre/series/reader/collection, stores sanitized values in DB. No status bar message appears for sanitization.
 
 ## Phase 3: Import Flow Simplification
 **Goal:** Remove "Review clean books" and "Add Valid" button.
@@ -48,6 +46,7 @@ This section gives a factual, JAWS-friendly summary of each phase. Each phase li
 **Goal:** Remove old controls from Preferences window.
 - "Options" and "Auto-Correction" group boxes still present. **(NOT STARTED)**
 - Window height/layout not updated. **(NOT STARTED)**
+- update shortcuts and f1 menu and shortcuts.py 
 - **Testing needed:** Preferences window should only show Display and Validation Rules.
 
 ## Phase 5: Global Validation Audit
