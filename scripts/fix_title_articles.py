@@ -33,12 +33,11 @@ def fix_title_articles(db_path: str, dry_run: bool = True):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Find all books with ", The" at the end of title in collection_id = 3
+    # Find all books with ", The" at the end of title (any collection)
     cursor.execute("""
         SELECT book_id, title 
         FROM books 
-        WHERE title LIKE '%, The' 
-        AND collection_id = 3
+        WHERE title LIKE '%, The'
     """)
 
     books_to_fix = [row for row in cursor.fetchall() if row[1].endswith(", The")]

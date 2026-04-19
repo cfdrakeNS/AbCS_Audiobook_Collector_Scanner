@@ -65,7 +65,9 @@
 64. complete - update window  is not using the sanitization. It should do that before the popup to add new genre or series and also saved as sanitized.
 65. complete - book_detail, import_detail sanitization of author should remove  beginning punctuation 
 66. complete - name_list window author - sanitization of author should remove  beginning punctuation 
-67. import window  - when the import button is clicked or the shortcut for it pressed lock the collection so it can't be accedentally change when reviewing book still on the import list.]
+67. complete -import window  - when the import button is clicked or the shortcut for it pressed lock the collection so it can't be accedentally change when reviewing book still on the import list.]
 68. complete - when a collection is selected in main win other then "all collections" the new book book_detail collection should default to the main window current collection. if main win collection is "all collections" and there is more than one collection then let book detail collection empty  if only one collection than default to that collection 
 69. complete - book_detail & import_detail check the unsave warning popup as it seems sometimes pgup pgdn then press escape it will popup 
 70. complete - book detail & import_detail when dirty and pgup/down warn popup yes/no yes save and page  no don't save and page. remove the current blocking for paging when dirty. 
+71. complete - import window default the collection the same way as it does for book_detail  for collection 
+when a collection is selected in main win other then "all collections" the import window collection should default to the main window current collection. if main win collection is "all collections" and there is more than one collection then let import window leave collection empty  if only one collection than default to that collection 
