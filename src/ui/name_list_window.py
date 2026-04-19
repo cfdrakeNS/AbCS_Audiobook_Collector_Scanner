@@ -735,6 +735,11 @@ class NameListWindow(QDialog):
         temp = {field: self.name_edit.text()}
         validator.sanitize_metadata(temp)
         name = temp[field]
+        # Ensure author field is sanitized even if user did not leave the field
+        if field == "author":
+            temp2 = {"author": name}
+            validator.sanitize_metadata(temp2)
+            name = temp2["author"]
         self.name_edit.setText(name)
         active = self.active_check.isChecked() if self.is_collection_mode else True
 

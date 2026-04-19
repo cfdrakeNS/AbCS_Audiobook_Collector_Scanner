@@ -451,7 +451,15 @@ class UpdateWindow(QDialog):
 
         self._processing_series_input = True
         try:
-            text = self._normalize_name_field(self.series_combo.currentText())
+            # Sanitize input using ImportValidator at the start
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            temp = {
+                "series": self._normalize_name_field(self.series_combo.currentText())
+            }
+            validator.sanitize_metadata(temp)
+            text = temp["series"]
             normalized_text = text.casefold()
             if not text:
                 if keep_focus:
@@ -532,7 +540,13 @@ class UpdateWindow(QDialog):
 
         self._processing_genre_input = True
         try:
-            text = self._normalize_name_field(self.genre_combo.currentText())
+            # Sanitize input using ImportValidator at the start
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            temp = {"genre": self._normalize_name_field(self.genre_combo.currentText())}
+            validator.sanitize_metadata(temp)
+            text = temp["genre"]
             normalized_text = text.casefold()
             if not text:
                 if keep_focus:

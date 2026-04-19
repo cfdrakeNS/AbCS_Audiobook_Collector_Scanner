@@ -226,6 +226,7 @@ class BookDetailsWindow(QDialog):
         current_index: int = 0,
         theme_manager: ThemeManager = None,
         parent=None,
+        current_collection_id=None,
     ):
         """
         Initialize book details window.
@@ -239,6 +240,7 @@ class BookDetailsWindow(QDialog):
             current_index: Index of current book in books_list
             theme_manager: Theme manager for styling
             parent: Parent widget
+            current_collection_id: Current collection ID (if provided and new book)
         """
         super().__init__(parent)
         self.setAttribute(Qt.WA_NativeWindow, True)
@@ -266,6 +268,9 @@ class BookDetailsWindow(QDialog):
         # bd#4: Store book list for Prev/Next navigation
         self.books_list = books_list or []
         self.current_index = current_index
+
+        # Store current collection id for new book defaulting
+        self.current_collection_id = current_collection_id
 
         # Query objects
         self.book_queries = BookQueries(db)
@@ -1066,6 +1071,8 @@ class BookDetailsWindow(QDialog):
 
     def _mark_dirty(self, widget=None):
         """bd#6: Mark form as having unsaved changes."""
+        if getattr(self, "_loading_fields", False):
+            return
         if widget is not None:
             self._pending_dirty_widgets.add(widget)
 
@@ -1228,116 +1235,96 @@ class BookDetailsWindow(QDialog):
             self.collection_combo.addItem(coll.name, coll.collection_id)
 
     def load_book_data(self):
-        """Load book data into form."""
-        self.title_edit.setText(self.book.title)
-
-        # Set author combo
-        idx = self.author_combo.findData(self.book.author_id)
-        if idx >= 0:
-            self.author_combo.setCurrentIndex(idx)
-
-        # Year
-        if self.book.year:
-            self.year_spin.setValue(self.book.year)
-        else:
-            self.year_spin.setValue(self.year_spin.minimum())
-
-        # Series
-        if self.book.series_id:
-            idx = self.series_combo.findData(self.book.series_id)
+        """Load book data into form, suppressing dirty tracking."""
+        self._loading_fields = True
+        try:
+            self.title_edit.setText(self.book.title)
+            idx = self.author_combo.findData(self.book.author_id)
             if idx >= 0:
-                self.series_combo.setCurrentIndex(idx)
-        else:
-            self.series_combo.setCurrentIndex(-1)
-            self.series_combo.clearEditText()
-
-        # Genre
-        if self.book.genre_id:
-            idx = self.genre_combo.findData(self.book.genre_id)
-            if idx >= 0:
-                self.genre_combo.setCurrentIndex(idx)
-        else:
-            self.genre_combo.setCurrentIndex(-1)
-            self.genre_combo.clearEditText()
-
-        # Reader
-        self.reader_edit.setText(self.book.reader or "")
-
-        # Collection
-        if self.book.collection_id:
-            idx = self.collection_combo.findData(self.book.collection_id)
-            if idx >= 0:
-                self.collection_combo.setCurrentIndex(idx)
-
-        # Time
-        self.time_edit.setText(self.book.time_display)
-
-        # Files
-        self.files_edit.setText(str(self.book.tracks) if self.book.tracks else "")
-
-        # Size
-        self.size_edit.setText(self.book.size_display if self.book.size_mb else "")
-
-        # Bitrate
-        self.bitrate_edit.setText(str(self.book.bitrate) if self.book.bitrate else "")
-
-        # Format
-        format_value = (self.book.file_format or "").lower()
-        if format_value:
-            idx = self.format_combo.findData(format_value)
-            if idx >= 0:
-                self.format_combo.setCurrentIndex(idx)
+                self.author_combo.setCurrentIndex(idx)
+            if self.book.year:
+                self.year_spin.setValue(self.book.year)
+            else:
+                self.year_spin.setValue(self.year_spin.minimum())
+            if self.book.series_id:
+                idx = self.series_combo.findData(self.book.series_id)
+                if idx >= 0:
+                    self.series_combo.setCurrentIndex(idx)
+            else:
+                self.series_combo.setCurrentIndex(-1)
+                self.series_combo.clearEditText()
+            if self.book.genre_id:
+                idx = self.genre_combo.findData(self.book.genre_id)
+                if idx >= 0:
+                    self.genre_combo.setCurrentIndex(idx)
+            else:
+                self.genre_combo.setCurrentIndex(-1)
+                self.genre_combo.clearEditText()
+            self.reader_edit.setText(self.book.reader or "")
+            if self.is_new:
+                if self.current_collection_id is not None:
+                    idx = self.collection_combo.findData(self.current_collection_id)
+                    if idx >= 0:
+                        self.collection_combo.setCurrentIndex(idx)
+                else:
+                    if self.collection_combo.count() == 1:
+                        self.collection_combo.setCurrentIndex(0)
+                    else:
+                        self.collection_combo.setCurrentIndex(-1)
+            else:
+                if self.book.collection_id:
+                    idx = self.collection_combo.findData(self.book.collection_id)
+                    if idx >= 0:
+                        self.collection_combo.setCurrentIndex(idx)
+            self.time_edit.setText(self.book.time_display)
+            self.files_edit.setText(str(self.book.tracks) if self.book.tracks else "")
+            self.size_edit.setText(self.book.size_display if self.book.size_mb else "")
+            self.bitrate_edit.setText(
+                str(self.book.bitrate) if self.book.bitrate else ""
+            )
+            format_value = (self.book.file_format or "").lower()
+            if format_value:
+                idx = self.format_combo.findData(format_value)
+                if idx >= 0:
+                    self.format_combo.setCurrentIndex(idx)
+                else:
+                    self.format_combo.setCurrentIndex(-1)
             else:
                 self.format_combo.setCurrentIndex(-1)
-        else:
-            self.format_combo.setCurrentIndex(-1)
-
-        # Path
-        self.path_edit.setText(self.book.path or "")
-
-        # Source
-        self.source_edit.setText(self.book.source or "")
-
-        # Date Added
-        if self.book.date_added:
-            if isinstance(self.book.date_added, str):
-                self.added_edit.setText(self.book.date_added[:10])
+            self.path_edit.setText(self.book.path or "")
+            self.source_edit.setText(self.book.source or "")
+            if self.book.date_added:
+                if isinstance(self.book.date_added, str):
+                    self.added_edit.setText(self.book.date_added[:10])
+                else:
+                    self.added_edit.setText(self.book.date_added.strftime("%Y-%m-%d"))
             else:
-                self.added_edit.setText(self.book.date_added.strftime("%Y-%m-%d"))
-        else:
-            self.added_edit.setText("")
-
-        # Comments - hide row if empty
-        self.comments_edit.setPlainText(self.book.comments or "")
-        # Delay height adjustment until widget is laid out
-        QTimer.singleShot(0, self._adjust_comments_height)
-
-        # Read date
-        if self.book.read_date:
-            read_date_value = self.book.read_date
-            if isinstance(read_date_value, str):
-                # Expect YYYY-MM-DD from SQLite; ignore invalid strings
-                try:
-                    read_date_value = datetime.strptime(
-                        read_date_value, "%Y-%m-%d"
-                    ).date()
-                except ValueError:
-                    read_date_value = None
-
-            if read_date_value:
-                qdate = QDate(
-                    read_date_value.year, read_date_value.month, read_date_value.day
-                )
-                self.read_date.setDate(qdate)
+                self.added_edit.setText("")
+            self.comments_edit.setPlainText(self.book.comments or "")
+            QTimer.singleShot(0, self._adjust_comments_height)
+            if self.book.read_date:
+                read_date_value = self.book.read_date
+                if isinstance(read_date_value, str):
+                    try:
+                        read_date_value = datetime.strptime(
+                            read_date_value, "%Y-%m-%d"
+                        ).date()
+                    except ValueError:
+                        read_date_value = None
+                if read_date_value:
+                    qdate = QDate(
+                        read_date_value.year, read_date_value.month, read_date_value.day
+                    )
+                    self.read_date.setDate(qdate)
+                else:
+                    self.read_date.setDate(self._null_read_date)
             else:
                 self.read_date.setDate(self._null_read_date)
-        else:
-            self.read_date.setDate(self._null_read_date)
-
-        # Store original combo values for focusOut change detection
-        self._original_author = self.author_combo.currentText()
-        self._original_series = self.series_combo.currentText()
-        self._original_genre = self.genre_combo.currentText()
+            self._original_author = self.author_combo.currentText()
+            self._original_series = self.series_combo.currentText()
+            self._original_genre = self.genre_combo.currentText()
+        finally:
+            self._loading_fields = False
 
     def _check_combo_change(
         self, field_name: str, combo: QComboBox, original_value: str, query_obj
@@ -1410,6 +1397,10 @@ class BookDetailsWindow(QDialog):
             temp = {field: book_dict[field]}
             validator.sanitize_metadata(temp)
             book_dict[field] = temp[field]
+        # Ensure author field is sanitized even if user did not leave the field
+        temp = {"author": book_dict["author"]}
+        validator.sanitize_metadata(temp)
+        book_dict["author"] = temp["author"]
         # Update UI fields with sanitized values
         self.title_edit.setText(book_dict["title"])
         self.author_combo.setEditText(book_dict["author"])
@@ -1454,8 +1445,17 @@ class BookDetailsWindow(QDialog):
         reader_text = book_dict["reader"]
         # Get collection
         collection_id = self.collection_combo.currentData()
-        if collection_id is None and self.collection_combo.count() == 1:
-            collection_id = self.collection_combo.itemData(0)
+        if collection_id is None:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(14),
+                icon=QMessageBox.Warning,
+                title="Missing Collection",
+                text="Please select a collection before saving.",
+            )
+            self.collection_combo.setFocus()
+            return
+        self.book.collection_id = collection_id
 
         # Parse time with normalization
         time_text = self.time_edit.text().strip()
@@ -1687,36 +1687,48 @@ class BookDetailsWindow(QDialog):
 
     def _apply_new_defaults(self):
         """Apply defaults for new entries without auto-selecting choices."""
-        if self.collection_combo.count() == 1:
-            self.collection_combo.setCurrentIndex(0)
-        else:
-            self.collection_combo.setCurrentIndex(-1)
+        # Only set source field here; collection logic moved to _reset_new_fields
         if not self.source_edit.text().strip():
             self.source_edit.setText(getpass.getuser())
 
     def _reset_new_fields(self):
-        """Reset all editable fields for a new book without prepopulation."""
-        self.title_edit.clear()
-        self.author_combo.setCurrentIndex(-1)
-        self.author_combo.clearEditText()
-        self.year_spin.setValue(self.year_spin.minimum())
-        self.series_combo.setCurrentIndex(-1)
-        self.series_combo.clearEditText()
-        self.genre_combo.setCurrentIndex(-1)
-        self.genre_combo.clearEditText()
-        self.reader_edit.clear()
-        self.time_edit.clear()
-        self.files_edit.clear()
-        self.size_edit.clear()
-        self.bitrate_edit.clear()
-        self.format_combo.setCurrentIndex(-1)
-        self.path_edit.clear()
-        self.source_edit.clear()
-        self.added_edit.setText("")
-        self.comments_edit.clear()
-        self.read_date.setDate(self._null_read_date)
-        self._apply_new_defaults()
-        self.reader_edit.setText("")
+        """Reset all editable fields for a new book without prepopulation, suppressing dirty tracking."""
+        self._loading_fields = True
+        try:
+            self.title_edit.clear()
+            self.author_combo.setCurrentIndex(-1)
+            self.author_combo.clearEditText()
+            self.year_spin.setValue(self.year_spin.minimum())
+            self.series_combo.setCurrentIndex(-1)
+            self.series_combo.clearEditText()
+            self.genre_combo.setCurrentIndex(-1)
+            self.genre_combo.clearEditText()
+            self.reader_edit.clear()
+            self.time_edit.clear()
+            self.files_edit.clear()
+            self.size_edit.clear()
+            self.bitrate_edit.clear()
+            self.format_combo.setCurrentIndex(-1)
+            self.path_edit.clear()
+            self.source_edit.clear()
+            self.added_edit.setText("")
+            self.comments_edit.clear()
+            self.read_date.setDate(self._null_read_date)
+            if self.current_collection_id is not None:
+                idx = self.collection_combo.findData(self.current_collection_id)
+                if idx >= 0:
+                    self.collection_combo.setCurrentIndex(idx)
+                else:
+                    self.collection_combo.setCurrentIndex(-1)
+            else:
+                if self.collection_combo.count() == 1:
+                    self.collection_combo.setCurrentIndex(0)
+                else:
+                    self.collection_combo.setCurrentIndex(-1)
+            self._apply_new_defaults()
+            self.reader_edit.setText("")
+        finally:
+            self._loading_fields = False
 
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""
@@ -1887,61 +1899,78 @@ class BookDetailsWindow(QDialog):
             traceback.print_exc()
             self.set_status(f"Error opening web details: {str(e)}")
 
+    def _focus_first_dirty_field(self):
+        """Focus the first dirty field if any, else title_edit."""
+        if self._first_dirty_widget:
+            self._first_dirty_widget.setFocus()
+        else:
+            self.title_edit.setFocus()
+
+    def _confirm_save_or_cancel(self, nav_callback):
+        """Show unsaved changes popup for navigation. If Yes, save and navigate; if No, stay and focus dirty field."""
+        from src.accessibility.icon_helper import get_app_icon
+
+        msg_text = (
+            "You have unsaved changes.\n\n"
+            "Yes = Save and continue\n"
+            "No = Stay and continue editing"
+        )
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Unsaved Changes",
+            text=msg_text,
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+            button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            window_icon=get_app_icon(),
+        )
+        if reply == QMessageBox.Yes:
+            self.on_save()
+            nav_callback()
+        else:
+            self._focus_first_dirty_field()
+
     def on_prev(self):
-        """
-        bd#4: Navigate to previous book in the list.
-        Blocked with beep if there are unsaved changes.
-        After navigation, move focus to title field for accessibility.
-        """
-        # Block navigation if dirty
+        """Navigate to previous book in the list, with dirty check and popup."""
+
+        def do_nav():
+            if self.books_list and self.current_index > 0:
+                self.current_index -= 1
+                self.book = self.books_list[self.current_index]
+                self.is_new = False
+                self.load_book_data()
+                self._clear_dirty()
+                self.update_navigation_state()
+                self.setWindowTitle("Book Details")
+                self.setAccessibleName("Book Details")
+                QTimer.singleShot(0, self.title_edit.setFocus)
+
         if self._dirty:
-            QApplication.beep()
-            self.set_status("Unsaved changes.")
-            return
-
-        if not self.books_list or self.current_index <= 0:
-            return
-
-        self.current_index -= 1
-        self.book = self.books_list[self.current_index]
-        self.is_new = False
-        self.load_book_data()
-        self._clear_dirty()  # bd#6: Reset dirty after loading new book
-        self.update_navigation_state()
-
-        # Update window title
-        self.setWindowTitle("Book Details")
-        self.setAccessibleName("Book Details")
-        # Accessibility: move focus to title field
-        QTimer.singleShot(0, self.title_edit.setFocus)
+            self._confirm_save_or_cancel(do_nav)
+        else:
+            do_nav()
 
     def on_next(self):
-        """
-        bd#4: Navigate to next book in the list.
-        Blocked with beep if there are unsaved changes.
-        After navigation, move focus to title field for accessibility.
-        """
-        # Block navigation if dirty
+        """Navigate to next book in the list, with dirty check and popup."""
+
+        def do_nav():
+            if self.books_list and self.current_index < len(self.books_list) - 1:
+                self.current_index += 1
+                self.book = self.books_list[self.current_index]
+                self.is_new = False
+                self.load_book_data()
+                self._clear_dirty()
+                self.update_navigation_state()
+                self.setWindowTitle("Book Details")
+                self.setAccessibleName("Book Details")
+                QTimer.singleShot(0, self.title_edit.setFocus)
+
         if self._dirty:
-            QApplication.beep()
-            self.set_status("Unsaved changes.")
-            return
-
-        if not self.books_list or self.current_index >= len(self.books_list) - 1:
-            return
-
-        self.current_index += 1
-        self.book = self.books_list[self.current_index]
-        self.is_new = False
-        self.load_book_data()
-        self._clear_dirty()  # bd#6: Reset dirty after loading new book
-        self.update_navigation_state()
-
-        # Update window title
-        self.setWindowTitle("Book Details")
-        self.setAccessibleName("Book Details")
-        # Accessibility: move focus to title field
-        QTimer.singleShot(0, self.title_edit.setFocus)
+            self._confirm_save_or_cancel(do_nav)
+        else:
+            do_nav()
 
     def _adjust_comments_height(self):
         """Adjust comments QTextEdit height to fit content."""

@@ -908,23 +908,11 @@ class WebMetadataWindow(QDialog):
         dlg.exec()
 
     def on_read_status_bar(self):
-        """Alt+/ shortcut - read status."""
+        """Alt+/ shortcut - read status. Do nothing if no screen reader active."""
         status_text = self.status_bar.currentMessage()
-        from src.accessibility.style_helpers import exec_styled_message_box
-
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Alt+/ Test",
-                text=f"Alt+/ working! Status: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
         """Set status message with centralized status helper."""

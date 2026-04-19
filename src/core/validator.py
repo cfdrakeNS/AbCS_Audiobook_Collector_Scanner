@@ -153,8 +153,8 @@ class ImportValidator:
     def sanitize_metadata(self, book: Dict[str, Any]) -> List[str]:
         """
         Apply mandatory sanitization rules to all relevant fields.
-        Removes extra spaces, punctuation, special chars, and applies proper case.
-        Returns a list of 'C:' flags for any significant corrections.
+        Only removes leading/trailing whitespace and leading punctuation (not internal punctuation).
+        Applies proper case. Returns a list of 'C:' flags for any significant corrections.
         """
         import re
 
@@ -165,10 +165,11 @@ class ImportValidator:
             original = str(book.get(field, "") or "")
             if not original:
                 continue
-            # 1. Trim leading/trailing whitespace and leading punctuation
-            cleaned = original.strip().lstrip("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ")
-            # 2. Remove special characters (non-alphanumeric except space)
-            cleaned = re.sub(r"[^\w\s]", "", cleaned)
+            # 1. Trim leading/trailing whitespace
+            cleaned = original.strip()
+            # 2. For author and reader only, remove all leading non-alphabetic characters (not internal)
+            if field in ("author", "reader"):
+                cleaned = re.sub(r"^[^A-Za-z]+", "", cleaned)
             # 3. Collapse multiple spaces to single space
             cleaned = re.sub(r"\s+", " ", cleaned)
             # 4. Proper Case (Mandatory)
@@ -178,10 +179,10 @@ class ImportValidator:
             significant_change = False
             if original.strip() != original:
                 significant_change = True
-            if original.strip().lstrip("!\"#$%&'()*+,-./") != original.strip():
-                significant_change = True
-            if re.sub(r"[^\w\s]", "", original) != original:
-                significant_change = True
+            if field == "author":
+                if field in ("author", "reader"):
+                    if re.sub(r"^[^A-Za-z]+", "", original.strip()) != original.strip():
+                        significant_change = True
             if re.sub(r"\s+", " ", original) != original:
                 significant_change = True
             if significant_change:
@@ -282,11 +283,4 @@ class ImportValidator:
 
     def format_error_summary(self, errors: List[str]) -> str:
         """Format a list of errors as compact display text."""
-        formatted_errors: List[str] = []
-        for err in errors:
-            formatted = self.format_error_message(str(err))
-            if not formatted:
-                continue
-            formatted_errors.append(formatted)
-
-        return "; ".join(formatted_errors)
+        return "; ".join(self.format_error_message(e) for e in errors if e)

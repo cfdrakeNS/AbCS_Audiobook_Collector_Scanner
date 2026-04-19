@@ -3051,7 +3051,11 @@ class MainWindow(QMainWindow):
         # bd#8: Pass current sort order to show in header
         sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
-            self.db, self.scaler, sort_order=sort_order, parent=self
+            self.db,
+            self.scaler,
+            sort_order=sort_order,
+            parent=self,
+            current_collection_id=self.current_filter.collection_id,
         )
         details.exec()
 

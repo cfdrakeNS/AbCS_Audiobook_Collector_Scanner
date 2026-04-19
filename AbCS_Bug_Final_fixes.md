@@ -59,5 +59,13 @@
 57. complete - main window - when no screen reader is present don't put out a popup msg remove that not wanted this appears to happen in other window. remove this no point in the popup.
 58. complete -import window -alt+b is registered as a shortcut for browse remove as alt+w is brows 
 60. web_metadata & book_api.py -- tighten the search so that at least the author last name is in the web_author and 50% of the words in the title match web data 
-61. complete -  main window - after a restore in backup_restore the main window is sometimes empty after a restore set set collection to all collections to avoid empty window.
-62. import win when error type is filtered and you press ctrl+A the status bar selected counter show the total number of books in the import table not the filter selected.
+61. complete - main window - after a restore in backup_restore the main window is sometimes empty after a restore set set collection to all collections to avoid empty window.
+62. complete import win when error type is filtered and you press ctrl+A the status bar selected counter show the total number of books in the import table not the filter selected.
+63. complete - the sanitization of title and author is removing punctuation with in the fields when it should only remove punctuation at the beginning of the field. 
+64. complete - update window  is not using the sanitization. It should do that before the popup to add new genre or series and also saved as sanitized.
+65. complete - book_detail, import_detail sanitization of author should remove  beginning punctuation 
+66. complete - name_list window author - sanitization of author should remove  beginning punctuation 
+67. import window  - when the import button is clicked or the shortcut for it pressed lock the collection so it can't be accedentally change when reviewing book still on the import list.]
+68. complete - when a collection is selected in main win other then "all collections" the new book book_detail collection should default to the main window current collection. if main win collection is "all collections" and there is more than one collection then let book detail collection empty  if only one collection than default to that collection 
+69. complete - book_detail & import_detail check the unsave warning popup as it seems sometimes pgup pgdn then press escape it will popup 
+70. complete - book detail & import_detail when dirty and pgup/down warn popup yes/no yes save and page  no don't save and page. remove the current blocking for paging when dirty. 

@@ -313,7 +313,14 @@ class ImportWindow(QDialog):
     def _build_book_from_scan(self, data: dict, defer_commits: bool = False) -> Book:
         """Create a Book object from scanned data."""
         title = (data.get("title") or "").strip()
+        # Sanitize author field before using
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
         author_text = (data.get("author") or "").strip()
+        temp = {"author": author_text}
+        validator.sanitize_metadata(temp)
+        author_text = temp["author"]
         series_text = (data.get("series") or "").strip()
         genre_text = (data.get("genre") or "").strip()
         reader_text = (data.get("narrator") or "").strip()
@@ -627,6 +634,7 @@ class ImportWindow(QDialog):
             ("Alt+3-5", "Jump to Year..."),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
+            ("Alt+V", "Add valid"),
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
@@ -1448,6 +1456,9 @@ class ImportWindow(QDialog):
             )
             self.folder_edit.setFocus()
             return
+
+        # Lock the collection combo to prevent changes during review
+        self.collection_combo.setEnabled(False)
 
         # Validate path based on scenario
         is_single_item = self.import_scenario_mode == "single_item"
@@ -2458,6 +2469,8 @@ class ImportWindow(QDialog):
 
     def on_cancel(self):
         """Handle cancel request for add-in-progress or close dialog."""
+        # Re-enable collection combo when canceling import/review
+        self.collection_combo.setEnabled(True)
         # Escape should trigger the same confirmation as window close
         self._closing_via_handler = True
         try:

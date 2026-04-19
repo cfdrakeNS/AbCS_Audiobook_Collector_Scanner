@@ -51,6 +51,45 @@ from src.accessibility.accessible_events import (
 
 
 class ImportDetailWindow(QDialog):
+    def _focus_first_dirty_field(self):
+        """Focus the first field that was changed (for accessibility)."""
+        if self._first_dirty_widget:
+            QTimer.singleShot(0, self._first_dirty_widget.setFocus)
+        else:
+            QTimer.singleShot(0, self.title_edit.setFocus)
+
+    def _confirm_save_or_cancel(self, nav_callback):
+        """Show unsaved changes popup for navigation. If Yes, save and navigate; if No, stay and focus dirty field."""
+        from src.accessibility.icon_helper import get_app_icon
+
+        book_title = getattr(self, "title_edit", None)
+        book_author = getattr(self, "author_combo", None)
+        title_val = book_title.text().strip() if book_title else "(Untitled)"
+        author_val = (
+            book_author.currentText().strip() if book_author else "(Unknown author)"
+        )
+        msg_text = (
+            f"You have unsaved changes for '{title_val}' by {author_val}.\n\n"
+            "Yes = Save and continue\n"
+            "No = Stay and continue editing"
+        )
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Unsaved Changes",
+            text=msg_text,
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+            button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            window_icon=get_app_icon(),
+        )
+        if reply == QMessageBox.Yes:
+            if self.on_save():
+                nav_callback()
+        else:
+            self._focus_first_dirty_field()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from src.accessibility.icon_helper import get_app_icon
@@ -675,24 +714,38 @@ class ImportDetailWindow(QDialog):
         self._clear_dirty()
 
     def on_prev(self):
-        """Save edits and request previous import item. Always move focus to title field for accessibility."""
-        navigated = self._navigate_without_close(self.current_index - 1)
-        QTimer.singleShot(0, self.title_edit.setFocus)
-        if navigated:
-            return
-        QApplication.beep()
-        self._collect_form_data()
-        self.done(self.RESULT_PREV)
+        """Navigate to previous import item, with dirty check and popup."""
+
+        def do_nav():
+            navigated = self._navigate_without_close(self.current_index - 1)
+            QTimer.singleShot(0, self.title_edit.setFocus)
+            if navigated:
+                return
+            QApplication.beep()
+            self._collect_form_data()
+            self.done(self.RESULT_PREV)
+
+        if self._dirty:
+            self._confirm_save_or_cancel(do_nav)
+        else:
+            do_nav()
 
     def on_next(self):
-        """Save edits and request next import item. Always move focus to title field for accessibility."""
-        navigated = self._navigate_without_close(self.current_index + 1)
-        QTimer.singleShot(0, self.title_edit.setFocus)
-        if navigated:
-            return
-        QApplication.beep()
-        self._collect_form_data()
-        self.done(self.RESULT_NEXT)
+        """Navigate to next import item, with dirty check and popup."""
+
+        def do_nav():
+            navigated = self._navigate_without_close(self.current_index + 1)
+            QTimer.singleShot(0, self.title_edit.setFocus)
+            if navigated:
+                return
+            QApplication.beep()
+            self._collect_form_data()
+            self.done(self.RESULT_NEXT)
+
+        if self._dirty:
+            self._confirm_save_or_cancel(do_nav)
+        else:
+            do_nav()
 
     def _check_combo_change(
         self, field_name: str, combo: QComboBox, original_value: str, query_obj
@@ -1280,26 +1333,6 @@ class ImportDetailWindow(QDialog):
             self.book_data["time_hours"] = 0
             self.book_data["time_minutes"] = 0
 
-    def on_prev(self):
-        """Save edits and request previous import item. Always move focus to title field for accessibility."""
-        navigated = self._navigate_without_close(self.current_index - 1)
-        QTimer.singleShot(0, self.title_edit.setFocus)
-        if navigated:
-            return
-        QApplication.beep()
-        self._collect_form_data()
-        self.done(self.RESULT_PREV)
-
-    def on_next(self):
-        """Save edits and request next import item. Always move focus to title field for accessibility."""
-        navigated = self._navigate_without_close(self.current_index + 1)
-        QTimer.singleShot(0, self.title_edit.setFocus)
-        if navigated:
-            return
-        QApplication.beep()
-        self._collect_form_data()
-        self.done(self.RESULT_NEXT)
-
     def on_skip_discard(self):
         """Discard this import item and return skip result to parent."""
         parent = self.parent()
@@ -1367,17 +1400,25 @@ class ImportDetailWindow(QDialog):
         self._clear_dirty()
 
     def on_save(self):
-        """Save edits in-place and keep dialog open."""
+        """Save edits in-place and keep dialog open. Returns True if save succeeded, False if validation failed."""
         if not self._dirty:
-            return
+            return True
 
         # Normalize time field before saving (in case user hasn't lost focus from time field)
         if self.time_edit.hasFocus():
             self._normalize_time_on_focus_out()
 
+        # Validation logic (add your own as needed)
+        if not self.title_edit.text().strip():
+            self.set_status("Title is required.")
+            self.title_edit.setFocus()
+            return False
+        # Add more validation as needed
+
         resolve_errors = bool(self.errors)
         self._save_to_parent(resolve_errors=resolve_errors)
         self.set_status("Changes saved")
+        return True
 
     def accept(self):
         """Return edited data when accepting."""
