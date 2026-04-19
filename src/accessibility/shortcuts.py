@@ -116,10 +116,8 @@ class ShortcutManager(QObject):
     IMPORT_WINDOW_SHORTCUTS = {
         "C": ("Collection field", "collection_combo"),
         "F": ("Folder field", "folder_field"),
-        "W": ("Browse", "browse_button"),
         "E": ("Error filter", "error_filter"),
         "S": ("Import Selected", "import_selected_button"),
-        "V": ("Import All Valid", "import_all_valid_button"),
         "L": ("Focus import list table", "import_list_table"),
         "X": ("Export list to CSV", "export_csv_button"),
     }

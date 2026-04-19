@@ -1418,22 +1418,11 @@ class MainWindow(QMainWindow):
         self.set_status(self.get_default_status(), timeout_ms=0, announce=announce)
 
     def on_read_status_bar(self):
-        """mw#24: Alt+/ reads status bar. Shows message if no screen reader active."""
+        """mw#24: Alt+/ reads status bar. Do nothing if no screen reader active."""
         if QAccessible.isActive():
             # Announce status bar to screen reader
             self.set_status(self.get_default_status(), timeout_ms=0, announce=True)
-        else:
-            # No screen reader detected - show fallback message box
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {self.get_default_status()}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def on_open_book_details(self):
         """mw#17,19: Open book details for current book (Enter)."""
@@ -1933,13 +1922,16 @@ class MainWindow(QMainWindow):
         field_to_column = {
             "Author": 0,
             "Title": 1,
-            "Series": 4,
-            "Genre": 5,
+            "Series": 3,
+            "Genre": 4,
         }
 
-        current_order = self.current_filter.order_by
-        if current_order in field_to_column:
-            field_combo.setCurrentText(current_order)
+        # Use search_field if present, else order_by
+        current_field = getattr(
+            self.current_filter, "search_field", self.current_filter.order_by
+        )
+        if current_field in field_to_column:
+            field_combo.setCurrentText(current_field)
         else:
             field_combo.setCurrentText("Title")
 
@@ -1980,9 +1972,8 @@ class MainWindow(QMainWindow):
             selected_field = field_combo.currentText()
             selected_column = field_to_column.get(selected_field, 1)
 
-            if self.current_filter.order_by != selected_field:
-                self.on_order_changed(selected_field)
-
+            # Always keep order_by as user selected, but search_field is what to search
+            self.current_filter.search_field = selected_field
             self.current_filter.search_text = query
             self.current_filter.is_keyword_search = not exact_check.isChecked()
             self.refresh_books()
@@ -3305,8 +3296,13 @@ class MainWindow(QMainWindow):
             self.series_queries = SeriesQueries(self.db)
             self.genre_queries = GenreQueries(self.db)
             self.collection_queries = CollectionQueries(self.db)
+            self.refresh_collections()
+            self.current_filter.collection_id = None  # Reset to All Collections
+            self._sync_collection_menu_selection()
             self.refresh_books()
-            self.set_status("Database updated from backup/restore operation")
+            self.set_status(
+                "Database updated from backup/restore operation. Showing All Collections."
+            )
         self._restore_table_focus_context(focus_ctx)
 
     def on_about(self):

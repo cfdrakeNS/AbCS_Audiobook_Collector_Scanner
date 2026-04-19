@@ -930,17 +930,7 @@ class BookListImportWindow(QDialog):
         status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
             announce_status_message(self.status_bar, status_text, move_focus=True)
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def browse_file(self):
         """Browse for spreadsheet file."""

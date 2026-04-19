@@ -94,17 +94,7 @@ class BookDetailsWindow(QDialog):
         status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def on_cancel_edit(self):
         """

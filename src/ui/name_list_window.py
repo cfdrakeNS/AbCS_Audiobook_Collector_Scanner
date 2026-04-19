@@ -856,15 +856,7 @@ class NameListWindow(QDialog):
         message = self._build_read_status_message()
         if QAccessible.isActive():
             self.set_status(message, announce=True)
-            return
-
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Status",
-            text=f"No screen reader active.\n\nStatus: {message}",
-        )
+        # else: do nothing (no popup)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""

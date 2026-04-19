@@ -129,9 +129,7 @@ class ImportProgressWindow(QDialog):
 
         self._apply_tab_order()
 
-    def set_show_valid_counter(self, enabled: bool):
-        """Compatibility no-op: counter widgets were removed in favor of status-only updates."""
-        return
+    # set_show_valid_counter removed (Phase 3: always auto-add valid books)
 
     def _apply_tab_order(self):
         return
@@ -249,14 +247,7 @@ class ImportProgressWindow(QDialog):
                 move_focus=True,
                 force_focus_announce=True,
             )
-        else:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-            )
+        # else: do nothing (no popup)
 
     def update_scan_progress(
         self,
@@ -325,16 +316,7 @@ class ImportProgressWindow(QDialog):
 
         self.set_status(status_text)
 
-    def update_counters(
-        self,
-        *,
-        files_scanned: int | None = None,
-        elapsed_text: str | None = None,
-        books_added: int | None = None,
-        valid_books: int | None = None,
-        read_errors: int | None = None,
-    ):
-        return
+    # update_counters removed (Phase 3: always auto-add valid books)
 
     def on_close_requested(self):
         if self._scan_active and not self._cancel_requested:
@@ -366,18 +348,16 @@ class ImportProgressWindow(QDialog):
         elapsed_text: str,
         files_scanned: int,
         books_added: int,
-        valid_books: int,
         read_errors: int,
         summary_text: str | None = None,
     ):
-        """Mark scan phase as complete."""
+        """Mark scan phase as complete (no valid counter, Phase 3)."""
         # Focus remains on progress bar; status bar always visible
         self.mark_complete(
             canceled=canceled,
             elapsed_text=elapsed_text,
             files_scanned=files_scanned,
             books_added=books_added,
-            valid_books=valid_books,
             read_errors=read_errors,
             summary_text=summary_text,
         )
@@ -389,18 +369,11 @@ class ImportProgressWindow(QDialog):
         elapsed_text: str,
         files_scanned: int,
         books_added: int,
-        valid_books: int,
         read_errors: int,
         summary_text: str | None = None,
     ):
         self._scan_active = False
-        self.update_counters(
-            files_scanned=files_scanned,
-            elapsed_text=elapsed_text,
-            books_added=books_added,
-            valid_books=valid_books,
-            read_errors=read_errors,
-        )
+        # update_counters removed (Phase 3)
 
         if canceled:
             self.scan_progress.setFormat(f"Scan canceled ({elapsed_text})")

@@ -342,17 +342,7 @@ class BackupRestoreWindow(QDialog):
                 move_focus=True,
                 force_focus_announce=True,
             )
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def _set_restore_path(self, path_text: str):
         self.restore_path_edit.setText(path_text)

@@ -41,7 +41,7 @@ def fix_title_articles(db_path: str, dry_run: bool = True):
         AND collection_id = 3
     """)
 
-    books_to_fix = cursor.fetchall()
+    books_to_fix = [row for row in cursor.fetchall() if row[1].endswith(", The")]
 
     if not books_to_fix:
         print("No books found with ', The' at end of title in collection_id = 3")
@@ -54,7 +54,11 @@ def fix_title_articles(db_path: str, dry_run: bool = True):
 
     for book_id, old_title in books_to_fix:
         # Remove ", The" from end and add "The " to beginning
-        new_title = "The " + old_title[:-5]  # Remove last 5 chars (", The")
+        if old_title.endswith(", The"):
+            base_title = old_title[:-5].rstrip()
+            new_title = f"The {base_title}"
+        else:
+            new_title = old_title  # Should not happen, but safety
 
         print(f"Book ID {book_id}:")
         print(f"  OLD: {old_title}")
