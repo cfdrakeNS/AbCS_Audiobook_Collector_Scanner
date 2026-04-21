@@ -19,17 +19,14 @@ from src.ui.update_window import UpdateWindow
 from src.database.queries import CollectionQueries
 from src.database.models import Collection
 
-
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 @pytest.fixture(autouse=True)
 def suppress_import_confirmations(monkeypatch):
     """Avoid modal close/cancel prompts during automated test teardown."""
-    monkeypatch.setattr(
-        ImportWindow, "_confirm_close_window", lambda self: True)
-    monkeypatch.setattr(
-        ImportWindow, "_confirm_cancel_scan", lambda self: True)
+    monkeypatch.setattr(ImportWindow, "_confirm_close_window", lambda self: True)
+    monkeypatch.setattr(ImportWindow, "_confirm_cancel_scan", lambda self: True)
 
 
 @pytest.fixture
@@ -84,9 +81,9 @@ def cleanup_window(window):
     for widget in QApplication.topLevelWidgets():
         if widget.isVisible() and widget != window:
             try:
-                if hasattr(widget, 'reject'):
+                if hasattr(widget, "reject"):
                     widget.reject()
-                elif hasattr(widget, 'close'):
+                elif hasattr(widget, "close"):
                     widget.close()
                 widget.setVisible(False)
             except:
@@ -95,7 +92,7 @@ def cleanup_window(window):
     QApplication.processEvents()
 
     # Force close progress window if exists
-    if hasattr(window, 'progress_window') and window.progress_window is not None:
+    if hasattr(window, "progress_window") and window.progress_window is not None:
         pw = window.progress_window
         try:
             if pw.isVisible():
@@ -124,9 +121,9 @@ def cleanup_window(window):
         if not widget:
             continue
         try:
-            if hasattr(widget, 'reject'):
+            if hasattr(widget, "reject"):
                 widget.reject()
-            elif hasattr(widget, 'close'):
+            elif hasattr(widget, "close"):
                 widget.close()
             widget.setVisible(False)
         except Exception:
@@ -156,8 +153,6 @@ def test_import_warning_filter_excludes_fallback_and_corrected(
     theme_manager = ThemeManager(qapp)
     window = ImportWindow(temp_db, scaler, theme_manager)
     qtbot.addWidget(window)
-    window.settings.setValue("import/auto_add_clean_books", False)
-    window.auto_add_clean_books = False
 
     warning_index = window.error_filter_combo.findData("warning")
     assert warning_index >= 0
@@ -184,15 +179,18 @@ def test_import_warning_filter_excludes_fallback_and_corrected(
     cleanup_window(window)
 
 
-def test_import_summary_uses_errors_warnings_label(qapp, qtbot, temp_db, isolated_qsettings):
+def test_import_summary_uses_errors_warnings_label(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
     """Status summary should display combined Errors/Warnings count label."""
     scaler = UIScaler(qapp)
     theme_manager = ThemeManager(qapp)
     window = ImportWindow(temp_db, scaler, theme_manager)
     qtbot.addWidget(window)
 
-    window.update_summary(scanned=10, fixed=3, errors=2,
-                          warnings=4, duplicates=1, added=5)
+    window.update_summary(
+        scanned=10, fixed=3, errors=2, warnings=4, duplicates=1, added=5
+    )
     status_text = window.status_bar.currentMessage()
 
     assert "Fixed: 3" in status_text
@@ -213,18 +211,13 @@ def test_import_fixed_counter_counts_fallback_and_autocorrect(
     qtbot.addWidget(window)
 
     window.scanned_items = []
-    window.scan_outcomes = (
-        [
-            {"status": "Added", "is_duplicate": False,
-                "outcomes": ["autocorrect_used"]}
-            for _ in range(6)
-        ]
-        + [
-            {"status": "Added", "is_duplicate": False,
-                "outcomes": ["fallback_used"]}
-            for _ in range(2)
-        ]
-    )
+    window.scan_outcomes = [
+        {"status": "Added", "is_duplicate": False, "outcomes": ["autocorrect_used"]}
+        for _ in range(6)
+    ] + [
+        {"status": "Added", "is_duplicate": False, "outcomes": ["fallback_used"]}
+        for _ in range(2)
+    ]
 
     window._refresh_summary_from_items()
 
@@ -308,16 +301,21 @@ def test_scan_keeps_fixed_warning_rows_for_manual_add(
 
     # Process any pending Qt events to ensure all UI updates have been processed
     from PySide6.QtWidgets import QApplication
+
     QApplication.processEvents()
 
     # Give the progress window time to update
     qtbot.wait(100)
 
     # Clean row auto-added, fixed row remains for review/manual add.
-    assert any((item.get("book", {}).get("title") == "Fixed Example")
-               for item in window.scanned_items)
-    assert not any((item.get("book", {}).get("title") == "Clean Example")
-                   for item in window.scanned_items)
+    assert any(
+        (item.get("book", {}).get("title") == "Fixed Example")
+        for item in window.scanned_items
+    )
+    assert not any(
+        (item.get("book", {}).get("title") == "Clean Example")
+        for item in window.scanned_items
+    )
     assert window._summary_counts["fixed"] >= 1
 
     # Cleanup: use helper to close all windows properly

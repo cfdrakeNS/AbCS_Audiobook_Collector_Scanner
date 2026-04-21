@@ -1,4 +1,3 @@
-# Alt+W remains local for accessibility (file dialog)
 import csv
 from PySide6.QtWidgets import (
     QDialog,
@@ -236,13 +235,6 @@ class ImportWindow(QDialog):
         )
         self.author_fallback_to_folder = True
         self.title_fallback_to_file = True
-        self.flip_author_names = False
-        self.auto_add_clean_books = False
-        self.autocorrect_trim_whitespace = False
-        self.autocorrect_strip_leading_punctuation = False
-        self.autocorrect_remove_non_alphanumeric = False
-        self.autocorrect_proper_case = False
-        self.autocorrect_move_leading_the = False
         self.reader_keywords = ["reader", "read by", "narrator", "narrated by"]
         self._summary_counts = {
             "scanned": 0,
@@ -654,36 +646,7 @@ class ImportWindow(QDialog):
         self.title_fallback_to_file = self.settings.value(
             "import/fallback/title_to_file", True, type=bool
         )
-        self.flip_author_names = self.settings.value(
-            "import/flip_author_name", False, type=bool
-        )
-        self.flip_author_names = False  # Explicitly disabled for Phase 1
-        self.auto_add_clean_books = False
         self._configure_error_filter_options(include_valid=False)
-
-        self.autocorrect_trim_whitespace = self.settings.value(
-            "import/autocorrect/trim_whitespace", False, type=bool
-        )
-        self.autocorrect_strip_leading_punctuation = self.settings.value(
-            "import/autocorrect/strip_leading_punctuation", False, type=bool
-        )
-        self.autocorrect_remove_non_alphanumeric = self.settings.value(
-            "import/autocorrect/remove_non_alphanumeric", False, type=bool
-        )
-        self.autocorrect_proper_case = self.settings.value(
-            "import/autocorrect/proper_case", False, type=bool
-        )
-        self.autocorrect_move_leading_the = self.settings.value(
-            "import/autocorrect/move_leading_the_title",
-            False,
-            type=bool,
-        )
-
-        # Mandatory settings (ignore checkboxes)
-        self.autocorrect_trim_whitespace = True
-        self.autocorrect_strip_leading_punctuation = True
-        self.autocorrect_proper_case = True
-        self.autocorrect_move_leading_the = False
 
         keywords = self.settings.value(
             "import/reader_keywords",
@@ -704,11 +667,11 @@ class ImportWindow(QDialog):
             author_fallback_mode="folder" if self.author_fallback_to_folder else None,
             title_fallback_mode="file" if self.title_fallback_to_file else None,
             reader_keywords=self.reader_keywords,
-            trim_whitespace=self.autocorrect_trim_whitespace,
-            strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
-            remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
-            proper_case_fields=self.autocorrect_proper_case,
-            move_leading_the_title=self.autocorrect_move_leading_the,
+            trim_whitespace=True,
+            strip_leading_punctuation=True,
+            remove_non_alphanumeric=False,
+            proper_case_fields=True,
+            move_leading_the_title=False,
         )
         self.validator.reload_settings()
         self._update_header_info_line()
@@ -1713,8 +1676,7 @@ class ImportWindow(QDialog):
                 # Auto-add valid books to database during scan
                 auto_added = False
                 should_auto_add = (
-                    not self.auto_add_clean_books
-                    and not is_duplicate
+                    not is_duplicate
                     and not has_hard_error
                     and not has_warning
                     and not has_fallback
@@ -1888,24 +1850,23 @@ class ImportWindow(QDialog):
 
         issues_count = warning_count + error_count
         scanned_total = len(self.scan_outcomes)
-        valid_segment = f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
         if scan_was_canceled:
             self.set_status("Scan canceled", announce=True)
             self.set_status(
-                f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
+                f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | "
                 f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
         else:
             self.set_status(
-                f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
+                f"Scanned: {scanned_total} | Added: {added_count} | "
                 f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
 
         if self.progress_window:
             summary_text = (
-                f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
+                f"Scanned: {scanned_total} | Added: {added_count} | "
                 f"Fixed: {fixed_count} | "
                 f"Errors/Warnings: {issues_count} | "
                 f"Duplicates: {duplicate_count} | "

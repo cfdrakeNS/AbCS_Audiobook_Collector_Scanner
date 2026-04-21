@@ -32,12 +32,12 @@ This section gives a factual, JAWS-friendly summary of each phase. Each phase li
 - src/ui/book_details.py (preference handling)
 
 ## Phase 2: Mandatory Application in UI Windows
-BookDetails, ImportDetail, NameList, and Collection windows now sanitize all key fields (**title, author, genre, series, reader, collection**) silently on FocusOut (when leaving the field) and before saving. All legacy normalization code is removed. Fields are always corrected before saving and before any add-new popup. All four windows match logic and are fully updated. UpdateWindow pending.
+BookDetails, ImportDetail, NameList, Collection, and Update windows now sanitize all key fields (**title, author, genre, series, reader, collection**) silently on FocusOut (when leaving the field) and before saving. All legacy normalization code is removed. Fields are always corrected before saving and before any add-new popup. All relevant windows match logic and are fully updated.
+
+**Phase 2 is now COMPLETE.**
+
 **Testing complete:** Typing "@+ A       TEST          book       ##@" as title, "&  A      NEW       author    %" as author, or similar for genre/series/reader/collection, stores sanitized values in DB. No status bar message appears for sanitization.
-
-
 ## Phase 3: Import Flow Simplification
-
 
 **Goal:** Remove all review/valid mode logic and make import always auto-add valid books after scan. No Add Valid button, no valid filter, no valid counter, and no review mode.
 
@@ -70,13 +70,14 @@ BookDetails, ImportDetail, NameList, and Collection windows now sanitize all key
 
 **Implementation Plan:**
 1. Remove the "Options" and "Auto-Correction" group boxes and all related controls from the Preferences window UI and code.
-2. Remove all references to preference options that are no longer used (e.g., move leading article, flip author, auto-correct checkboxes, review/valid mode, etc.).
+2. Remove all references to preference options that are no longer used (e.g., move leading article, flip author, auto-correct checkboxes, review/valid mode, etc.). **(IN PROGRESS - ImportWindow cleaned)**
 3. Update the Preferences window layout to reduce height and whitespace, making it accessible and visually balanced at all zoom levels.
-4. Update all help text, F1 dialogs, and shortcuts.py to reflect the new, simplified Preferences window (only Display and Validation Rules remain).
-5. Test: Preferences window should only show Display and Validation Rules sections. No legacy or unused options should be present in the UI or code.
+4. Update all help text, F1 dialogs, and shortcuts.py to reflect the new, simplified Preferences window
 
 **Testing needed:**
-- Preferences window only shows Display and Validation Rules sections.
+- Preferences window must no longer show the "Options" or "Auto-Correction" group boxes.
+- The window height should be adjusted to remove resulting whitespace.
+- Preferences window no longer Display the "Options" and "Auto-Correction" sections and controls 
 - No legacy or unused options or group boxes are present.
 - F1/help and shortcuts are accurate and up to date.
 
@@ -88,10 +89,9 @@ BookDetails, ImportDetail, NameList, and Collection windows now sanitize all key
 
 ---
 
-**Summary:**
-- Only some code cleanup is done.
-- Most logic is still preference-dependent and needs to be made mandatory.
-- Most UI and workflow changes are not started.
-- Testing is needed after each phase to confirm C: errors always show and sanitization always runs.
-
+**Summary:**  
+- Phase 1, 2, and 3 are COMPLETE.
+- Sanitization is now mandatory across all primary UI windows.
+- Import flow has been simplified (auto-add valid).
+- **Next Step:** Phase 4 UI cleanup (removing group boxes from the Preferences window).
 
