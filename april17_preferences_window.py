@@ -220,7 +220,15 @@ class PreferencesWindow(QDialog):
         source_scope_layout = QVBoxLayout(source_scope_group)
         source_scope_layout.setSpacing(8)
 
-        # Options section fully removed (April 22, 2026)
+        options_group = QGroupBox("Options")
+
+        options_group.setFont(display_font)
+        options_group.setFont(display_font)
+        options_layout = QGridLayout(options_group)
+        self.options_layout = options_layout
+        options_layout.setContentsMargins(8, 8, 8, 8)
+        options_layout.setHorizontalSpacing(20)
+        options_layout.setVerticalSpacing(8)
 
         fallback_group = QGroupBox("Fallback and Parsing Behavior")
 
@@ -243,7 +251,12 @@ class PreferencesWindow(QDialog):
         validation_layout = QVBoxLayout(validation_group)
         validation_layout.setSpacing(8)
 
-        # Fully removed: Auto-Correct heading, QGroupBox, and text box
+        autocorrect_block_group = QGroupBox("Auto-Correction")
+
+        autocorrect_block_group.setFont(display_font)
+        autocorrect_block_group.setFont(display_font)
+        autocorrect_block_layout = QVBoxLayout(autocorrect_block_group)
+        autocorrect_block_layout.setSpacing(8)
 
         dir_layout = QHBoxLayout()
         dir_label = QLabel("Directory:")
@@ -333,8 +346,43 @@ class PreferencesWindow(QDialog):
         scenario_desc_layout.addWidget(self.scenario_description_edit, 1)
         source_scope_layout.addLayout(scenario_desc_layout)
 
-        # All Options section code and layout fully removed (April 22, 2026)
+        self.auto_add_clean_books_check = QCheckBox("Review Clean Books Before Adding")
+        self.auto_add_clean_books_check.setAccessibleName(
+            "Review clean books before adding"
+        )
+        self.auto_add_clean_books_check.setAccessibleDescription(
+            "Keep valid books in Import Window for review and Add Valid when enabled"
+        )
+        self.flip_author_check = QCheckBox("Flip Author Name Last, First")
+        self.flip_author_check.setAccessibleName("Flip author name Last, First")
+        self.flip_author_check.setAccessibleDescription(
+            "Flip author names to Last, First during import"
+        )
+        self.autocorrect_proper_case_check = QCheckBox("Apply proper case")
+        self.autocorrect_proper_case_check.setAccessibleName(
+            "Apply proper case to fields"
+        )
+        self.autocorrect_move_the_check = QCheckBox(
+            "Move leading 'The', 'A', 'An' to end of title"
+        )
+        self.autocorrect_move_the_check.setAccessibleName(
+            "Move leading 'The', 'A', 'An' to end of title"
+        )
+        options_layout.addWidget(self.auto_add_clean_books_check, 0, 0)
+        options_layout.addWidget(self.flip_author_check, 0, 1)
+        options_layout.addWidget(self.autocorrect_proper_case_check, 1, 0)
+        options_layout.addWidget(self.autocorrect_move_the_check, 1, 1)
+        options_col0_width = max(
+            self.auto_add_clean_books_check.sizeHint().width(),
+            self.autocorrect_proper_case_check.sizeHint().width(),
+        )
+        options_layout.setColumnMinimumWidth(0, options_col0_width)
+        self.autocorrect_proper_case_check.setMinimumWidth(options_col0_width)
+        options_layout.setColumnStretch(0, 0)
+        options_layout.setColumnStretch(1, 0)
+
         import_layout.addWidget(source_scope_group)
+        import_layout.addWidget(options_group)
 
         self.author_fallback_checkbox = QCheckBox("Author fallback to folder?")
         self.author_fallback_checkbox.setAccessibleName("Author fallback to folder")
@@ -346,8 +394,8 @@ class PreferencesWindow(QDialog):
         self.title_fallback_checkbox.setAccessibleDescription(
             "If checked, missing title will fallback to file name"
         )
-        fallback_checks_layout.setColumnMinimumWidth(0, 0)
-        self.author_fallback_checkbox.setMinimumWidth(0)
+        fallback_checks_layout.setColumnMinimumWidth(0, options_col0_width)
+        self.author_fallback_checkbox.setMinimumWidth(options_col0_width)
         fallback_checks_layout.addWidget(
             self.author_fallback_checkbox,
             0,
@@ -405,7 +453,10 @@ class PreferencesWindow(QDialog):
         rules_layout.setContentsMargins(2, 4, 2, 4)
         rules_layout.setHorizontalSpacing(6)
         rules_layout.setVerticalSpacing(6)
-        # Removed: entire Auto-Correct section group box, header, and layout
+        rules_layout.setColumnMinimumWidth(0, 140)
+        rules_layout.setColumnMinimumWidth(2, 140)
+        rules_layout.setColumnStretch(1, 0)
+        rules_layout.setColumnStretch(3, 0)
         rules_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
         severity_header_left = QLabel("Severity")
@@ -560,7 +611,7 @@ class PreferencesWindow(QDialog):
             Qt.TextSelectableByKeyboard
         )
         self.autocorrect_section_text.setPlainText(
-            "Auto-Correction: applies to Author, Series, Genre, and Narrator."
+            "Auto-Correction: applies to Author, Series, Genre, and Narrator. Trim whitespace always applies to Title."
         )
         self._fit_readonly_section_text_height(self.autocorrect_section_text)
         self._sync_section_label_heights()
@@ -573,19 +624,37 @@ class PreferencesWindow(QDialog):
         self.autocorrect_layout.setContentsMargins(4, 2, 4, 2)
         self.autocorrect_layout.setSpacing(35)
 
-        # Removed: autocorrect_strip_punct_check (Strip leading punctuation)
-        # Removed: autocorrect_non_alnum_check (Remove special characters)
-        # Removed: autocorrect_trim_check (Trim whitespace)
-        # Removed: autocorrect_strip_punct_check.setSizePolicy
-        # Removed: autocorrect_non_alnum_check.setSizePolicy
-        # Removed: autocorrect_proper_case_check.setSizePolicy
-        # Removed: autocorrect_move_the_check.setSizePolicy
+        self.autocorrect_trim_check = QCheckBox("Trim whitespace")
+        self.autocorrect_trim_check.setAccessibleName("Trim whitespace")
+        self.autocorrect_strip_punct_check = QCheckBox("Strip leading punctuation")
+        self.autocorrect_strip_punct_check.setAccessibleName(
+            "Strip leading punctuation"
+        )
+        self.autocorrect_non_alnum_check = QCheckBox("Remove special characters")
+        self.autocorrect_non_alnum_check.setAccessibleName("Remove special characters")
 
-        # Removed: autocorrect_strip_punct_check from layout
-        # Removed: autocorrect_non_alnum_check from layout
+        self.autocorrect_trim_check.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.autocorrect_strip_punct_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
+        self.autocorrect_non_alnum_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
+        self.autocorrect_proper_case_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
+        self.autocorrect_move_the_check.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed
+        )
+
+        self.autocorrect_layout.addWidget(self.autocorrect_trim_check)
+        self.autocorrect_layout.addWidget(self.autocorrect_strip_punct_check)
+        self.autocorrect_layout.addWidget(self.autocorrect_non_alnum_check)
         self.autocorrect_layout.addStretch(1)
-        # Removed: leftover references to autocorrect_block_layout and autocorrect_block_group
-        # Fully removed: _sync_autocorrect_group_width and all Auto-Correct UI
+        autocorrect_block_layout.addWidget(self.autocorrect_section_text)
+        autocorrect_block_layout.addWidget(self.autocorrect_group, 0, Qt.AlignLeft)
+        import_layout.addWidget(autocorrect_block_group)
+        self._sync_autocorrect_group_width()
 
         self.content_layout.addWidget(import_group)
 
@@ -688,12 +757,13 @@ class PreferencesWindow(QDialog):
         """
         for checkbox in self.format_checks.values():
             checkbox.setStyleSheet(format_checkbox_style)
-        # Removed: flip_author_check.setStyleSheet
-        # Removed: auto_add_clean_books_check.setStyleSheet
-        # Removed: autocorrect_strip_punct_check.setStyleSheet
-        # Removed: autocorrect_non_alnum_check.setStyleSheet
-        # Removed: autocorrect_proper_case_check.setStyleSheet
-        # Removed: autocorrect_move_the_check.setStyleSheet
+        self.flip_author_check.setStyleSheet(format_checkbox_style)
+        self.auto_add_clean_books_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_trim_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_strip_punct_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_non_alnum_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_proper_case_check.setStyleSheet(format_checkbox_style)
+        self.autocorrect_move_the_check.setStyleSheet(format_checkbox_style)
 
         section_text_style = f"""
             QTextEdit {{
@@ -741,29 +811,65 @@ class PreferencesWindow(QDialog):
 
     def _sync_fallback_column_alignment(self):
         """Align fallback checkbox columns with Options checkbox columns."""
-        # Options section and alignment logic fully removed (April 22, 2026)
-        if not hasattr(self, "fallback_checks_layout") or not hasattr(
-            self, "author_fallback_checkbox"
-        ):
+        required_attrs = (
+            "options_layout",
+            "fallback_checks_layout",
+            "auto_add_clean_books_check",
+            "autocorrect_proper_case_check",
+            "author_fallback_checkbox",
+        )
+        if not all(hasattr(self, attr) for attr in required_attrs):
             return
-        self.fallback_checks_layout.setColumnMinimumWidth(0, 0)
-        self.author_fallback_checkbox.setMinimumWidth(0)
-        self.fallback_checks_layout.setHorizontalSpacing(0)
+
+        options_col0_width = max(
+            self.auto_add_clean_books_check.sizeHint().width(),
+            self.autocorrect_proper_case_check.sizeHint().width(),
+        )
+        self.options_layout.setColumnMinimumWidth(0, options_col0_width)
+        self.autocorrect_proper_case_check.setMinimumWidth(options_col0_width)
+        self.fallback_checks_layout.setColumnMinimumWidth(0, options_col0_width)
+        self.author_fallback_checkbox.setMinimumWidth(options_col0_width)
+
+        options_spacing = self.options_layout.horizontalSpacing()
+        if options_spacing >= 0:
+            self.fallback_checks_layout.setHorizontalSpacing(options_spacing)
+
+        QTimer.singleShot(0, self._sync_fallback_visual_alignment)
 
     def _sync_fallback_visual_alignment(self):
         """Fine-tune fallback checkbox positions to match options row visually."""
-        # Options section and visual alignment logic fully removed (April 22, 2026)
-        if (
-            not hasattr(self, "fallback_checks_layout")
-            or not hasattr(self, "author_fallback_checkbox")
-            or not hasattr(self, "title_fallback_checkbox")
-        ):
+        required_attrs = (
+            "fallback_checks_layout",
+            "autocorrect_proper_case_check",
+            "autocorrect_move_the_check",
+            "author_fallback_checkbox",
+            "title_fallback_checkbox",
+        )
+        if not all(hasattr(self, attr) for attr in required_attrs):
             return
         if not self.isVisible():
             return
+
+        options_col0_x = self.autocorrect_proper_case_check.mapTo(
+            self, QPoint(0, 0)
+        ).x()
+        fallback_col0_x = self.author_fallback_checkbox.mapTo(self, QPoint(0, 0)).x()
+        delta_left = options_col0_x - fallback_col0_x
+
         left, top, right, bottom = self.fallback_checks_layout.getContentsMargins()
-        self.fallback_checks_layout.setContentsMargins(0, top, right, bottom)
-        self.fallback_checks_layout.setHorizontalSpacing(0)
+        new_left = max(0, left + delta_left)
+        self.fallback_checks_layout.setContentsMargins(new_left, top, right, bottom)
+
+        options_col1_x = self.autocorrect_move_the_check.mapTo(self, QPoint(0, 0)).x()
+        fallback_col1_x = self.title_fallback_checkbox.mapTo(self, QPoint(0, 0)).x()
+        residual_col1 = options_col1_x - (fallback_col1_x + (new_left - left))
+
+        current_spacing = self.fallback_checks_layout.horizontalSpacing()
+        if current_spacing < 0:
+            current_spacing = 0
+        self.fallback_checks_layout.setHorizontalSpacing(
+            max(0, current_spacing + residual_col1)
+        )
 
     def _sync_section_label_heights(self):
         """Keep section label boxes the same height for visual consistency."""
@@ -850,8 +956,8 @@ class PreferencesWindow(QDialog):
             "scenario_mode": self.import_scenario_combo.currentData(),
             "author_fallback": self.author_fallback_checkbox.isChecked(),
             "title_fallback": self.title_fallback_checkbox.isChecked(),
-            # Removed: flip_author_name from _capture_state
-            # Removed: auto_add_clean_books from _capture_state
+            "flip_author_name": self.flip_author_check.isChecked(),
+            "auto_add_clean_books": self.auto_add_clean_books_check.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
             "rule_author_in_title": (self.rule_author_in_title_severity.currentData(),),
             "rule_title_in_author": (self.rule_title_in_author_severity.currentData(),),
@@ -868,11 +974,11 @@ class PreferencesWindow(QDialog):
             "duplicate_match_mode": self.duplicate_match_combo.currentData(),
             "duplicate_fuzzy_threshold": self.duplicate_fuzzy_spin.value(),
             "autocorrect": (
-                # Removed: autocorrect_non_alnum_check (Remove special characters)
-                # Removed: autocorrect_strip_punct_check (Strip leading punctuation)
-                # Removed: autocorrect_trim_check (Trim whitespace)
-                # Removed: autocorrect_proper_case_check from _capture_state
-                # Removed: autocorrect_move_the_check from _capture_state
+                self.autocorrect_trim_check.isChecked(),
+                self.autocorrect_strip_punct_check.isChecked(),
+                self.autocorrect_non_alnum_check.isChecked(),
+                self.autocorrect_proper_case_check.isChecked(),
+                self.autocorrect_move_the_check.isChecked(),
             ),
         }
 
@@ -978,9 +1084,13 @@ class PreferencesWindow(QDialog):
         )
         self.title_fallback_checkbox.setChecked(title_fallback_to_file)
 
-        # Removed: flip_author_name from settings and UI
+        flip_author = self.settings.value("import/flip_author_name", False, type=bool)
+        self.flip_author_check.setChecked(flip_author)
 
-        # Removed: auto_add_clean_books from settings and UI
+        auto_add_clean_books = self.settings.value(
+            "import/auto_add_clean_books", False, type=bool
+        )
+        self.auto_add_clean_books_check.setChecked(auto_add_clean_books)
 
         reader_keywords = self.settings.value(
             "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
@@ -1158,10 +1268,41 @@ class PreferencesWindow(QDialog):
             0 if year_quality_index < 0 else year_quality_index
         )
 
-        # Removed: autocorrect_strip_punct_check from settings load
-        # Removed: autocorrect_non_alnum_check from settings load
-        # Removed: autocorrect_proper_case_check from settings and UI
-        # Removed: autocorrect_move_the_check from settings and UI
+        self.autocorrect_trim_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/trim_whitespace",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_strip_punct_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/strip_leading_punctuation",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_non_alnum_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/remove_non_alphanumeric",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_proper_case_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/proper_case",
+                False,
+                type=bool,
+            )
+        )
+        self.autocorrect_move_the_check.setChecked(
+            self.settings.value(
+                "import/autocorrect/move_leading_the_title",
+                False,
+                type=bool,
+            )
+        )
 
         self._apply_compact_combo_widths()
         QTimer.singleShot(0, self._sync_fallback_column_alignment)
@@ -1189,7 +1330,7 @@ class PreferencesWindow(QDialog):
             "theme_combo": self.focus_display_section,
             "import_dir_edit": self.focus_source_scope_section,
             "browse_button": self.on_browse,
-            # Removed: auto_add_clean_books_check from shortcut registration
+            "auto_add_clean_books_check": self.focus_options_section,
             "author_fallback_checkbox": self.focus_fallback_section,
             "rules_section_text": self.focus_validation_section,
             "autocorrect_section_text": self.focus_autocorrect_section,
@@ -1227,7 +1368,7 @@ class PreferencesWindow(QDialog):
 
     def focus_options_section(self):
         """Focus first control in Options section."""
-        # Removed: focus on auto_add_clean_books_check in Options section
+        self._focus_section_widget(self.auto_add_clean_books_check, "Options")
 
     def focus_fallback_section(self):
         """Focus first control in Fallback and Parsing section."""
@@ -1268,8 +1409,10 @@ class PreferencesWindow(QDialog):
             ("Alt+D", "Display section"),
             ("Alt+P", "Path & Scope section"),
             ("Alt+B", "Browse for default import directory"),
+            ("Alt+O", "Options section"),
             ("Alt+F", "Fallback and Parsing Behavior section"),
             ("Alt+R", "Validation Rules section"),
+            ("Alt+A", "Auto-Correction section"),
             ("Alt+S", "Save"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
@@ -1510,8 +1653,12 @@ class PreferencesWindow(QDialog):
         self.settings.setValue(
             "import/fallback/title_to_file", self.title_fallback_checkbox.isChecked()
         )
-        # Removed: flip_author_name from settings save
-        # Removed: auto_add_clean_books from settings save
+        self.settings.setValue(
+            "import/flip_author_name", self.flip_author_check.isChecked()
+        )
+        self.settings.setValue(
+            "import/auto_add_clean_books", self.auto_add_clean_books_check.isChecked()
+        )
         self.settings.setValue(
             "import/reader_keywords", self.reader_keywords_edit.text().strip()
         )
@@ -1604,10 +1751,26 @@ class PreferencesWindow(QDialog):
             self.duplicate_fuzzy_spin.value(),
         )
 
-        # Removed: autocorrect_strip_punct_check from settings save
-        # Removed: autocorrect_non_alnum_check from settings save
-        # Removed: autocorrect_proper_case_check from settings save
-        # Removed: autocorrect_move_the_check from settings save
+        self.settings.setValue(
+            "import/autocorrect/trim_whitespace",
+            self.autocorrect_trim_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/strip_leading_punctuation",
+            self.autocorrect_strip_punct_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/remove_non_alphanumeric",
+            self.autocorrect_non_alnum_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/proper_case",
+            self.autocorrect_proper_case_check.isChecked(),
+        )
+        self.settings.setValue(
+            "import/autocorrect/move_leading_the_title",
+            self.autocorrect_move_the_check.isChecked(),
+        )
 
         self._initial_state = self._capture_state()
         self.set_status("Preferences saved")

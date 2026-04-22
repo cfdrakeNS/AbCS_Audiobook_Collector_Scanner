@@ -1895,6 +1895,15 @@ class ImportWindow(QDialog):
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
 
+        # Defensive: ensure valid_segment is always defined
+        valid_segment = ""
+        if hasattr(self, "auto_add_clean_books") and getattr(
+            self, "auto_add_clean_books", False
+        ):
+            try:
+                valid_segment = f"Valid: {valid_count} | "
+            except Exception:
+                valid_segment = ""
         final_status = (
             f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
             f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | "
