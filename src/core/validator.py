@@ -230,8 +230,6 @@ class ImportValidator:
             "author contains unknown or various",
             "title below minimum length",
             "folder path does not match expected structure",
-            "year outside allowed range",
-            "year is not a valid number",
         ]
         if any(warn in normalized_lower for warn in warning_errors):
             return "warning"

@@ -516,6 +516,7 @@ class PreferencesWindow(QDialog):
 
         year_quality_label = QLabel("Year Consistency:")
         year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        year_quality_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         year_quality_layout = QHBoxLayout()
         year_quality_layout.setContentsMargins(0, 0, 0, 0)
         year_quality_layout.setSpacing(6)
