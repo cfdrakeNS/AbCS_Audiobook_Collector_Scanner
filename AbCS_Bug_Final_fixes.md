@@ -71,15 +71,10 @@
 69. complete - book detail h& importh_detail when dirty and pgup/down warn popup yes/no yes save and page  no don't save and page. remove the current blocking for paging when dirty.
 70. complete - import window default the collection the same way as it does for bookh_detail  for collection
 when a collection is selected in main win other then "all collections" the import window collection should default to the main window current collection. if main win collection is "all collections" and there is more than one collection then let import window leave collection empty  if only one collection than default to that collection
-
-71. book detail window - 1. alt+o change to format update f1 and centralized shortcuts.py. 2. source field make it editable
-
-72. bookh_listh_import window - During import of the sheet set the source field in books table to Bookh_list
-
-73. bookh_listh_importh_window - add collection combo  for collection. when a collection is selected in main win other then "all collections" the bookh_listh_impor window collection should default to the main window current collection. if main win collection is "all collections" and there is more than one collection then let bookh_listh_import window leave collection empty  if only one collection than default to that collection. look at import win as it has this logic  
-
-74. Preference window - ad button default which will reset the setting with a confirm popup. The default setting should be as they are set currently. 
-if you can't read those give me a list and I'll provide the default values.  
+71. complete - book detail window: Alt+O now jumps to Format field (centralized, F1/help updated, shortcuts.py updated). Source field is now editable. (2026-04-22: Verified Alt+O only moves to Format, not Plot. Fixed any mapping issues.)
+72. complete - bookh_listh_import window: During import, the source field in books table is now set to Bookh_list.
+73. complete - bookh_listh_importh_window: Add collection combo for collection to the top of the options section. When a collection is selected in main win other than "all collections" the bookh_listh_import window should default to the main window current collection. If main win collection is "all collections" and there is more than one collection, leave collection empty; if only one collection, default to that collection. (See import window for logic.) Popup warning if no collection is selected. 
+74. complete - Preference window: Added "Restore Defaults" button with Alt+E shortcut. Shows confirmation popup before resetting all settings to defaults per AbCS_default_preference.md. Resets: Display (default theme, 150% zoom), Import (empty directory, all formats, mass_standard scenario, fallback enabled), Reader keywords, Validation rules (author in title=warning, title in author=error, unknown=error, min title=3/disabled, file structure=warning/enabled, year consistency=warning/enabled), Duplicate checking (title_author_year, 90% fuzzy).  
 
 
 

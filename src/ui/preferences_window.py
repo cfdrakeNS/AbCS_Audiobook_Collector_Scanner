@@ -220,8 +220,6 @@ class PreferencesWindow(QDialog):
         source_scope_layout = QVBoxLayout(source_scope_group)
         source_scope_layout.setSpacing(8)
 
-        # Options section fully removed (April 22, 2026)
-
         fallback_group = QGroupBox("Fallback and Parsing Behavior")
 
         fallback_group.setFont(display_font)
@@ -242,8 +240,6 @@ class PreferencesWindow(QDialog):
         validation_group.setFont(display_font)
         validation_layout = QVBoxLayout(validation_group)
         validation_layout.setSpacing(8)
-
-        # Fully removed: Auto-Correct heading, QGroupBox, and text box
 
         dir_layout = QHBoxLayout()
         dir_label = QLabel("Directory:")
@@ -333,7 +329,6 @@ class PreferencesWindow(QDialog):
         scenario_desc_layout.addWidget(self.scenario_description_edit, 1)
         source_scope_layout.addLayout(scenario_desc_layout)
 
-        # All Options section code and layout fully removed (April 22, 2026)
         import_layout.addWidget(source_scope_group)
 
         self.author_fallback_checkbox = QCheckBox("Author fallback to folder?")
@@ -405,7 +400,6 @@ class PreferencesWindow(QDialog):
         rules_layout.setContentsMargins(2, 4, 2, 4)
         rules_layout.setHorizontalSpacing(6)
         rules_layout.setVerticalSpacing(6)
-        # Removed: entire Auto-Correct section group box, header, and layout
         rules_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
         severity_header_left = QLabel("Severity")
@@ -573,19 +567,7 @@ class PreferencesWindow(QDialog):
         self.autocorrect_layout.setContentsMargins(4, 2, 4, 2)
         self.autocorrect_layout.setSpacing(35)
 
-        # Removed: autocorrect_strip_punct_check (Strip leading punctuation)
-        # Removed: autocorrect_non_alnum_check (Remove special characters)
-        # Removed: autocorrect_trim_check (Trim whitespace)
-        # Removed: autocorrect_strip_punct_check.setSizePolicy
-        # Removed: autocorrect_non_alnum_check.setSizePolicy
-        # Removed: autocorrect_proper_case_check.setSizePolicy
-        # Removed: autocorrect_move_the_check.setSizePolicy
-
-        # Removed: autocorrect_strip_punct_check from layout
-        # Removed: autocorrect_non_alnum_check from layout
         self.autocorrect_layout.addStretch(1)
-        # Removed: leftover references to autocorrect_block_layout and autocorrect_block_group
-        # Fully removed: _sync_autocorrect_group_width and all Auto-Correct UI
 
         self.content_layout.addWidget(import_group)
 
@@ -595,6 +577,15 @@ class PreferencesWindow(QDialog):
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
+
+        self.restore_defaults_button = QPushButton("Restore D&efaults")
+        self.restore_defaults_button.setAccessibleName("Restore Defaults")
+        self.restore_defaults_button.setAccessibleDescription(
+            "Reset all preferences to default values - Alt+R"
+        )
+        self.restore_defaults_button.setDefault(False)
+        self.restore_defaults_button.setAutoDefault(False)
+        footer_layout.addWidget(self.restore_defaults_button)
 
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
@@ -675,6 +666,7 @@ class PreferencesWindow(QDialog):
         self.reader_keywords_edit.setStyleSheet("")  # Clear local style
         self.rule_min_title_value.setStyleSheet(combo_style)
         self.browse_button.setStyleSheet(button_style)
+        self.restore_defaults_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
 
         format_checkbox_style = f"""
@@ -688,12 +680,6 @@ class PreferencesWindow(QDialog):
         """
         for checkbox in self.format_checks.values():
             checkbox.setStyleSheet(format_checkbox_style)
-        # Removed: flip_author_check.setStyleSheet
-        # Removed: auto_add_clean_books_check.setStyleSheet
-        # Removed: autocorrect_strip_punct_check.setStyleSheet
-        # Removed: autocorrect_non_alnum_check.setStyleSheet
-        # Removed: autocorrect_proper_case_check.setStyleSheet
-        # Removed: autocorrect_move_the_check.setStyleSheet
 
         section_text_style = f"""
             QTextEdit {{
@@ -741,7 +727,6 @@ class PreferencesWindow(QDialog):
 
     def _sync_fallback_column_alignment(self):
         """Align fallback checkbox columns with Options checkbox columns."""
-        # Options section and alignment logic fully removed (April 22, 2026)
         if not hasattr(self, "fallback_checks_layout") or not hasattr(
             self, "author_fallback_checkbox"
         ):
@@ -752,7 +737,6 @@ class PreferencesWindow(QDialog):
 
     def _sync_fallback_visual_alignment(self):
         """Fine-tune fallback checkbox positions to match options row visually."""
-        # Options section and visual alignment logic fully removed (April 22, 2026)
         if (
             not hasattr(self, "fallback_checks_layout")
             or not hasattr(self, "author_fallback_checkbox")
@@ -850,8 +834,6 @@ class PreferencesWindow(QDialog):
             "scenario_mode": self.import_scenario_combo.currentData(),
             "author_fallback": self.author_fallback_checkbox.isChecked(),
             "title_fallback": self.title_fallback_checkbox.isChecked(),
-            # Removed: flip_author_name from _capture_state
-            # Removed: auto_add_clean_books from _capture_state
             "reader_keywords": self.reader_keywords_edit.text().strip(),
             "rule_author_in_title": (self.rule_author_in_title_severity.currentData(),),
             "rule_title_in_author": (self.rule_title_in_author_severity.currentData(),),
@@ -867,13 +849,7 @@ class PreferencesWindow(QDialog):
             "rule_year_quality": self.rule_year_quality_severity.currentData(),
             "duplicate_match_mode": self.duplicate_match_combo.currentData(),
             "duplicate_fuzzy_threshold": self.duplicate_fuzzy_spin.value(),
-            "autocorrect": (
-                # Removed: autocorrect_non_alnum_check (Remove special characters)
-                # Removed: autocorrect_strip_punct_check (Strip leading punctuation)
-                # Removed: autocorrect_trim_check (Trim whitespace)
-                # Removed: autocorrect_proper_case_check from _capture_state
-                # Removed: autocorrect_move_the_check from _capture_state
-            ),
+            "autocorrect": (),
         }
 
     def _has_unsaved_changes(self) -> bool:
@@ -977,10 +953,6 @@ class PreferencesWindow(QDialog):
             "import/fallback/title_to_file", True, type=bool
         )
         self.title_fallback_checkbox.setChecked(title_fallback_to_file)
-
-        # Removed: flip_author_name from settings and UI
-
-        # Removed: auto_add_clean_books from settings and UI
 
         reader_keywords = self.settings.value(
             "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
@@ -1158,11 +1130,6 @@ class PreferencesWindow(QDialog):
             0 if year_quality_index < 0 else year_quality_index
         )
 
-        # Removed: autocorrect_strip_punct_check from settings load
-        # Removed: autocorrect_non_alnum_check from settings load
-        # Removed: autocorrect_proper_case_check from settings and UI
-        # Removed: autocorrect_move_the_check from settings and UI
-
         self._apply_compact_combo_widths()
         QTimer.singleShot(0, self._sync_fallback_column_alignment)
 
@@ -1177,7 +1144,7 @@ class PreferencesWindow(QDialog):
             self.on_import_scenario_changed
         )
         self.browse_button.clicked.connect(self.on_browse)
-
+        self.restore_defaults_button.clicked.connect(self.on_restore_defaults)
         self.save_button.clicked.connect(self.on_save)
 
     def register_shortcuts(self):
@@ -1189,10 +1156,10 @@ class PreferencesWindow(QDialog):
             "theme_combo": self.focus_display_section,
             "import_dir_edit": self.focus_source_scope_section,
             "browse_button": self.on_browse,
-            # Removed: auto_add_clean_books_check from shortcut registration
             "author_fallback_checkbox": self.focus_fallback_section,
             "rules_section_text": self.focus_validation_section,
             "autocorrect_section_text": self.focus_autocorrect_section,
+            "restore_defaults_button": self.on_restore_defaults,
             "save_button": self.on_save,
         }
         mgr.register_alt_shortcuts(
@@ -1227,7 +1194,6 @@ class PreferencesWindow(QDialog):
 
     def focus_options_section(self):
         """Focus first control in Options section."""
-        # Removed: focus on auto_add_clean_books_check in Options section
 
     def focus_fallback_section(self):
         """Focus first control in Fallback and Parsing section."""
@@ -1269,7 +1235,8 @@ class PreferencesWindow(QDialog):
             ("Alt+P", "Path & Scope section"),
             ("Alt+B", "Browse for default import directory"),
             ("Alt+F", "Fallback and Parsing Behavior section"),
-            ("Alt+R", "Validation Rules section"),
+            ("Alt+V", "Validation Rules section"),
+            ("Alt+R", "Restore Defaults"),
             ("Alt+S", "Save"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
@@ -1490,6 +1457,153 @@ class PreferencesWindow(QDialog):
             self.import_dir_edit.setText(selected)
             self.set_status("Import directory selected")
 
+    def on_restore_defaults(self):
+        """Restore all settings to default values with confirmation."""
+        # Build confirmation message for screen reader accessibility
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Restore Defaults")
+        msg_box.setAccessibleName("Restore Defaults Confirmation")
+        msg_box.setAccessibleDescription(
+            "Warning, this will reset all preferences to their default values. "
+            "This action cannot be undone. Are you sure you want to continue?"
+        )
+        msg_box.setText(
+            "Are you sure you want to restore all preferences to their default values?"
+        )
+        msg_box.setInformativeText(
+            "This will reset: Display settings (theme, zoom), Import settings "
+            "(directory, formats, scenario, fallback options), and Validation rules. "
+            "This action cannot be undone."
+        )
+        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.button(QMessageBox.Yes).setAccessibleName("Yes, restore defaults")
+        msg_box.button(QMessageBox.No).setAccessibleName("No, keep current settings")
+
+        # Apply accessible styling
+        msg_box.setStyleSheet(
+            build_accessible_message_box_style(self.scaler.current_scale)
+        )
+
+        reply = msg_box.exec()
+
+        if reply != QMessageBox.Yes:
+            self.set_status("Restore defaults cancelled")
+            return
+
+        # Reset all settings to defaults (from AbCS_default_preference.md)
+        # Display settings
+        # Theme: repopulate combo and select "Default (System)"
+        self.theme_combo.clear()
+        for display_name, theme_id in self.theme_manager.get_theme_names():
+            self.theme_combo.addItem(display_name, theme_id)
+        self.theme_manager.set_theme("default")
+        index = self.theme_combo.findData("default")
+        if index >= 0:
+            self.theme_combo.setCurrentIndex(index)
+        else:
+            # Fallback: find by display name
+            self.theme_combo.setCurrentText("Default (System)")
+
+        self.scaler.set_scale(150)
+        self.preset_combo.setCurrentText("Custom")
+        self.zoom_spin.setValue(150)
+
+        # Import settings
+        self.import_dir_edit.setText("")
+        self.settings.setValue("import/default_directory", "")
+
+        # All formats enabled by default
+        for key in self.format_checks:
+            self.format_checks[key].setChecked(True)
+            self.settings.setValue(f"import/formats/{key}", True)
+
+        # Scenario
+        self.import_scenario_combo.setCurrentIndex(
+            self.import_scenario_combo.findData("mass_standard")
+        )
+        self.settings.setValue("import/scenario/mode", "mass_standard")
+
+        # Fallback options
+        self.author_fallback_checkbox.setChecked(True)
+        self.settings.setValue("import/fallback/author_to_folder", True)
+        self.title_fallback_checkbox.setChecked(True)
+        self.settings.setValue("import/fallback/title_to_file", True)
+
+        # Reader keywords
+        default_keywords = "reader, read by, narrator, narrated by"
+        self.reader_keywords_edit.setText(default_keywords)
+        self.settings.setValue("import/reader_keywords", default_keywords)
+
+        # Validation rules - reset to defaults
+        # Author in Title: warning
+        self.rule_author_in_title_severity.setCurrentIndex(
+            self.rule_author_in_title_severity.findData("warning")
+        )
+        self.settings.setValue("import/rules/author_name_in_title/enabled", True)
+        self.settings.setValue("import/rules/author_name_in_title/severity", "warning")
+
+        # Title in Author: error
+        self.rule_title_in_author_severity.setCurrentIndex(
+            self.rule_title_in_author_severity.findData("error")
+        )
+        self.settings.setValue("import/rules/title_in_author_name/enabled", True)
+        self.settings.setValue("import/rules/title_in_author_name/severity", "error")
+
+        # Unknown author: error
+        self.rule_unknown_author_severity.setCurrentIndex(
+            self.rule_unknown_author_severity.findData("error")
+        )
+        self.settings.setValue("import/rules/unknown_or_various_author/enabled", True)
+        self.settings.setValue(
+            "import/rules/unknown_or_various_author/severity", "error"
+        )
+
+        # Min title length: value 3, severity none (disabled)
+        self.rule_min_title_value.setValue(3)
+        self.rule_min_title_severity.setCurrentIndex(
+            self.rule_min_title_severity.findData("none")
+        )
+        self.settings.setValue("import/rules/minimum_title_length/enabled", False)
+        self.settings.setValue("import/rules/minimum_title_length/value", 3)
+        self.settings.setValue("import/rules/minimum_title_length/severity", "warning")
+
+        # File structure: enabled, warning, pattern author_title
+        self.rule_file_structure_pattern.setCurrentIndex(
+            self.rule_file_structure_pattern.findData("author_title")
+        )
+        self.rule_file_structure_severity.setCurrentIndex(
+            self.rule_file_structure_severity.findData("warning")
+        )
+        self.settings.setValue("import/rules/file_structure/enabled", True)
+        self.settings.setValue("import/rules/file_structure/pattern", "author_title")
+        self.settings.setValue("import/rules/file_structure/severity", "warning")
+
+        # Year quality: enabled, warning
+        self.rule_year_quality_severity.setCurrentIndex(
+            self.rule_year_quality_severity.findData("warning")
+        )
+        self.settings.setValue("import/rules/year_out_of_range/enabled", True)
+        self.settings.setValue("import/rules/year_out_of_range/severity", "warning")
+
+        # Duplicate checking: title + author + year, 90%
+        self.duplicate_match_combo.setCurrentIndex(
+            self.duplicate_match_combo.findData("title_author_year")
+        )
+        self.settings.setValue("import/rules/duplicate/match_mode", "title_author_year")
+
+        self.duplicate_fuzzy_spin.setValue(90)
+        self.settings.setValue("import/rules/duplicate/fuzzy_threshold", 90)
+
+        # Update descriptions
+        self.update_scenario_description()
+
+        # Update initial state tracking so we don't prompt on close
+        self._initial_state = self._capture_state()
+
+        self.set_status("All preferences restored to default values")
+        announce_status_message(self, "All preferences restored to default values")
+
     def on_save(self):
         """Save settings and close dialog."""
         self.settings.setValue(
@@ -1510,8 +1624,6 @@ class PreferencesWindow(QDialog):
         self.settings.setValue(
             "import/fallback/title_to_file", self.title_fallback_checkbox.isChecked()
         )
-        # Removed: flip_author_name from settings save
-        # Removed: auto_add_clean_books from settings save
         self.settings.setValue(
             "import/reader_keywords", self.reader_keywords_edit.text().strip()
         )
@@ -1603,11 +1715,6 @@ class PreferencesWindow(QDialog):
             "import/rules/duplicate/fuzzy_threshold",
             self.duplicate_fuzzy_spin.value(),
         )
-
-        # Removed: autocorrect_strip_punct_check from settings save
-        # Removed: autocorrect_non_alnum_check from settings save
-        # Removed: autocorrect_proper_case_check from settings save
-        # Removed: autocorrect_move_the_check from settings save
 
         self._initial_state = self._capture_state()
         self.set_status("Preferences saved")

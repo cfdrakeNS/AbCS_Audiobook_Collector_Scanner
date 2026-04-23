@@ -41,7 +41,7 @@ except ImportError:
 
     pd = DummyPandas()
 
-from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtCore import Qt, QDate, QTimer, QSettings
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -74,6 +74,7 @@ from src.database import (
     SeriesQueries,
     GenreQueries,
 )
+from src.database.models import Collection
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.style_helpers import (
@@ -123,7 +124,137 @@ class BookListImportWindow(QDialog):
         )
         return a
 
-    def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+    def _check_duplicate(
+        self,
+        title: str,
+        author: str,
+        year: int | None,
+        collection_id: int,
+        preexisting_books: list,
+        match_mode: str,
+        fuzzy_threshold: int,
+    ) -> bool:
+        """Check if a book is a duplicate based on preferences settings.
+
+        Args:
+            title: Book title
+            author: Book author
+            year: Book year (optional)
+            collection_id: Target collection ID
+            preexisting_books: List of existing books from DB
+            match_mode: Duplicate matching mode from preferences
+            fuzzy_threshold: Fuzzy matching threshold (0-100, 0=disabled)
+
+        Returns:
+            True if duplicate found, False otherwise
+        """
+        norm_title = self._normalize_title_for_match(title)
+        norm_author = self._normalize_author_for_match(author)
+
+        for db_row in preexisting_books:
+            db_title = db_row[1]
+            db_author = db_row[2]
+            db_year = db_row[3] if len(db_row) > 3 else None
+            db_collection_id = db_row[4] if len(db_row) > 4 else None
+
+            norm_db_title = self._normalize_title_for_match(db_title)
+            norm_db_author = self._normalize_author_for_match(db_author)
+
+            # Check title and author match (always required)
+            title_match = norm_db_title == norm_title
+            author_match = norm_db_author == norm_author
+
+            if not (title_match and author_match):
+                # Check fuzzy matching if enabled and threshold > 0
+                if fuzzy_threshold > 0:
+                    title_similarity = self._calculate_similarity(
+                        norm_db_title, norm_title
+                    )
+                    author_similarity = self._calculate_similarity(
+                        norm_db_author, norm_author
+                    )
+                    if (
+                        title_similarity >= fuzzy_threshold
+                        and author_similarity >= fuzzy_threshold
+                    ):
+                        title_match = True
+                        author_match = True
+                    else:
+                        continue
+                else:
+                    continue
+
+            # Apply match mode rules
+            if match_mode == "title_author":
+                # Match by title + author only
+                return True
+            elif match_mode == "title_author_year":
+                # Match by title + author + year
+                if year is not None and db_year is not None and year == db_year:
+                    return True
+                elif year is None or db_year is None:
+                    # If year missing, consider it a match
+                    return True
+            elif match_mode == "title_author_year_collection":
+                # Match by title + author + year + collection
+                collection_match = db_collection_id == collection_id
+                if collection_match:
+                    if year is not None and db_year is not None and year == db_year:
+                        return True
+                    elif year is None or db_year is None:
+                        return True
+            else:
+                # Default: title + author
+                return True
+
+        return False
+
+    def _calculate_similarity(self, s1: str, s2: str) -> float:
+        """Calculate string similarity percentage using Levenshtein distance.
+
+        Args:
+            s1: First string
+            s2: Second string
+
+        Returns:
+            Similarity percentage (0-100)
+        """
+        if not s1 and not s2:
+            return 100.0
+        if not s1 or not s2:
+            return 0.0
+        if s1 == s2:
+            return 100.0
+
+        # Simple Levenshtein distance calculation
+        m, n = len(s1), len(s2)
+        # Create distance matrix
+        d = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            d[i][0] = i
+        for j in range(n + 1):
+            d[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                cost = 0 if s1[i - 1] == s2[j - 1] else 1
+                d[i][j] = min(
+                    d[i - 1][j] + 1,  # deletion
+                    d[i][j - 1] + 1,  # insertion
+                    d[i - 1][j - 1] + cost,  # substitution
+                )
+        max_len = max(m, n)
+        if max_len == 0:
+            return 100.0
+        similarity = ((max_len - d[m][n]) / max_len) * 100
+        return similarity
+
+    def __init__(
+        self,
+        db,
+        scaler: UIScaler,
+        theme_manager: ThemeManager,
+        parent=None,
+    ):
         super().__init__(parent)
         self.db = db
         self.scaler = scaler
@@ -167,7 +298,7 @@ class BookListImportWindow(QDialog):
             "Import books from spreadsheet files with field mapping"
         )
         # Keep the window resizable to narrower widths like ImportWindow.
-        self.setMinimumSize(560, 350)
+        self.setMinimumSize(460, 350)
         self.resize(350, 200)
 
         self.setup_ui()
@@ -188,6 +319,8 @@ class BookListImportWindow(QDialog):
         # Setup shortcuts using centralized ShortcutManager
         self.setup_shortcuts()
 
+    ###@END replace code
+
     def on_scale_changed(self, _scale_percentage: int):
         """Recompute fixed metrics so this window scales like the rest of the app."""
         if not hasattr(self, "mapping_table"):
@@ -195,19 +328,25 @@ class BookListImportWindow(QDialog):
 
         # Recompute panel widths
         if hasattr(self, "left_widget"):
-            self.left_widget.setMinimumWidth(110)
-            self.left_widget.setMaximumWidth(320)
+            # Set a wider minimum, and use 16777215 to allow infinite expansion
+            self.left_widget.setMinimumWidth(self.scaler.get_scaled_size(150))
+            self.left_widget.setMaximumWidth(16777215)
+
         if hasattr(self, "right_widget"):
-            self.right_widget.setMaximumWidth(self.scaler.get_scaled_size(220))
+            # Keep the middle options panel fixed
+            self.right_widget.setMaximumWidth(self.scaler.get_scaled_size(150))
+
         if hasattr(self, "mapping_group"):
-            self.mapping_group.setMaximumWidth(16777215)
+            # Keep the right table panel fixed instead of letting it expand
+            self.mapping_group.setMaximumWidth(self.scaler.get_scaled_size(240))
 
         # Recompute table and combo sizing
         header = self.mapping_table.horizontalHeader()
         self._update_mapping_field_column_width()
         combo_width = max(100, self.scaler.get_scaled_size(130))
         self.mapping_table.setColumnWidth(1, combo_width)
-        self.mapping_table.setMaximumWidth(16777215)
+        # Keep table width fixed - don't let it expand and steal space from instructions
+        self.mapping_table.setMaximumWidth(self.scaler.get_scaled_size(220))
         header.resizeSections(QHeaderView.ResizeToContents)
 
         # Keep mapping combos readable at low scales.
@@ -232,11 +371,11 @@ class BookListImportWindow(QDialog):
         self.mapping_table.setMaximumHeight(table_height)
 
         # Scale the window size itself so it grows/shrinks with zoom level.
-        min_w = max(760, self.scaler.get_scaled_size(760))
-        min_h = max(300, self.scaler.get_scaled_size(450))
+        min_w = max(760, self.scaler.get_scaled_size(660))
+        min_h = max(300, self.scaler.get_scaled_size(350))
         self.setMinimumSize(min_w, min_h)
-        scaled_w = max(min_w, self.scaler.get_scaled_size(850))
-        scaled_h = max(min_h, self.scaler.get_scaled_size(500))
+        scaled_w = max(min_w, self.scaler.get_scaled_size(750))
+        scaled_h = max(min_h, self.scaler.get_scaled_size(400))
         self.resize(scaled_w, scaled_h)
 
     def setup_shortcuts(self):
@@ -246,12 +385,14 @@ class BookListImportWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             "browse_button": lambda: self.browse_file(),
+            "collection_combo": lambda: self.collection_combo.setFocus(),
             "options_group": self.focus_options_section,
             "title_mapping": lambda: self.focus_mapping_combo("title"),
             "author_mapping": lambda: self.focus_mapping_combo("author"),
             "year_mapping": lambda: self.focus_mapping_combo("year"),
             "plot_mapping": lambda: self.focus_mapping_combo("plot"),
             "series_mapping": lambda: self.focus_mapping_combo("series"),
+            "series_number_mapping": lambda: self.focus_mapping_combo("series_no"),
             "genre_mapping": lambda: self.focus_mapping_combo("genre"),
             "reader_mapping": lambda: self.focus_mapping_combo("reader"),
             "read_date_mapping": lambda: self.focus_mapping_combo("read_date"),
@@ -336,6 +477,9 @@ class BookListImportWindow(QDialog):
 
             # Handle Alt+letter filtering
             if modifiers & Qt.AltModifier and event.text().upper():
+                # Alt+W: let keyPressEvent handle it for accessibility
+                if key == Qt.Key_W:
+                    return False  # Do not block Alt+W
                 if event.text().upper() in self.ALLOWED_ALT_LETTERS:
                     # Let the event through for allowed Alt+letters
                     return super().eventFilter(source, event)
@@ -347,11 +491,16 @@ class BookListImportWindow(QDialog):
         return super().eventFilter(source, event)
 
     def keyPressEvent(self, event):
-        """Handle Enter key for focused buttons (Pattern #18: Global Enter anti-pattern avoidance)."""
+        """Handle keyboard shortcuts and Enter key properly for buttons."""
+        # Accessibility: Alt+W always triggers file dialog
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+            self.browse_file()
+            event.accept()
+            return
+        # Handle Enter key for focused buttons (Pattern #18: Global Enter anti-pattern avoidance)
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             focused_widget = self.focusWidget()
             if isinstance(focused_widget, QPushButton):
-                # Let Qt handle Enter on buttons (default behavior)
                 focused_widget.click()
                 event.accept()
                 return
@@ -387,35 +536,44 @@ class BookListImportWindow(QDialog):
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(8)
 
-        # File selection
-        file_group = QGroupBox("File Selection")
-        file_group.setAccessibleName("File selection group")
-        file_layout = QHBoxLayout(file_group)
+        # Header row with file selector and collection (like ImportWindow)
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(10)
 
-        file_label = QLabel("Spreadsheet file:")
-        file_label.setAccessibleName("")
-        file_label.setAccessibleDescription("")
+        file_label = QLabel("&File:")
         self.file_edit = QLineEdit()
         self.file_edit.setReadOnly(True)
         self.file_edit.setAccessibleName("Selected file")
         self.file_edit.setAccessibleDescription("Path to selected spreadsheet file")
-        self.file_edit.setMinimumWidth(0)
-        self.file_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        file_label.setBuddy(self.file_edit)
+        header_layout.addWidget(file_label)
+        header_layout.addWidget(self.file_edit, 1)
+
         self.browse_button = QPushButton("Browse...")
         self.browse_button.setAccessibleName("Browse for file")
         self.browse_button.setAccessibleDescription(
             "Browse for spreadsheet file - Alt+W"
         )
         self.browse_button.clicked.connect(self.browse_file)
+        header_layout.addWidget(self.browse_button)
 
-        file_layout.addWidget(file_label)
-        file_layout.addWidget(self.file_edit)
-        file_layout.addWidget(self.browse_button)
+        collection_label = QLabel("&Collection:")
+        self.collection_combo = QComboBox()
+        self.collection_combo.setAccessibleName("Import collection")
+        self.collection_combo.setAccessibleDescription(
+            "Select target collection for imported books - Alt+C"
+        )
+        collection_label.setBuddy(self.collection_combo)
+        header_layout.addWidget(collection_label)
+        header_layout.addWidget(self.collection_combo, 1)
 
-        main_layout.addWidget(file_group)
+        main_layout.addLayout(header_layout)
+
+        self._load_collection_options()
 
         # Field mapping container with instructions on left, table on right
         mapping_container = QWidget()
+        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         mapping_layout = QHBoxLayout(mapping_container)
         mapping_layout.setContentsMargins(0, 0, 0, 0)
         mapping_layout.setSpacing(12)
@@ -424,27 +582,30 @@ class BookListImportWindow(QDialog):
         # Left side - Instructions
         instructions_group = QGroupBox("Instructions")
         instructions_group.setAccessibleName("Instructions group")
+        instructions_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         instructions_layout = QVBoxLayout(instructions_group)
         # Move instructions group down a bit for visual separation
         instructions_layout.setContentsMargins(0, 16, 0, 0)
 
         # Instructions text for screen readers (single sentence format)
         instructions_text = (
-            "How to use: Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button. "
-            "Map spreadsheet columns to book fields using the dropdown combos. "
-            "Use checkboxes in Options column for import settings. "
-            "Title and Author fields are required for import. "
-            "Click Import to process the file. "
+            "How to use: 1. Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button. "
+            "2. Choose a Collection from the Collection Combo Box\n"
+            "3. Map spreadsheet columns to book fields using the dropdown combos. "
+            "4. Use checkboxes in Options column for import settings\n"
+            "5. Title and Author fields are required for import. "
+            "6. Click Import to process the file. "
             "Press Alt+H to return focus to these instructions."
         )
 
         self.instructions_label = QLabel(
             "How to use:\n"
             "1 Select an Excel (.xlsx, .xls), OpenDocument (.ods), or CSV file using the Browse button\n"
-            "2 Map spreadsheet columns to book fields using the dropdown combos\n"
-            "3 Use checkboxes in Options column for import settings\n"
-            "4 Title and Author fields are required for import\n"
-            "5 Click Import to process the file\n"
+            "2 Choose a Collection from the Collection Combo Box\n"
+            "3 Map spreadsheet columns to book fields using the dropdown combos\n"
+            "4 Use checkboxes in Options column for import settings\n"
+            "5 Title and Author fields are required for import\n"
+            "6 Click Import to process the file\n\n"
             "Press Alt+H to return focus to these instructions"
         )
         self.instructions_label.setWordWrap(True)
@@ -463,7 +624,6 @@ class BookListImportWindow(QDialog):
         # Set fixed height to fit all text without scrolling
         fixed_height = self.scaler.get_scaled_size(200)
         self.instructions_label.setMinimumHeight(fixed_height)
-        self.instructions_label.setMinimumWidth(0)
         self.instructions_label.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.Preferred
         )
@@ -486,7 +646,7 @@ class BookListImportWindow(QDialog):
         mapping_group = QGroupBox("Field Mapping")
         self.mapping_group = mapping_group
         mapping_group.setAccessibleName("Field mapping group")
-        mapping_group.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
+        mapping_group.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         mapping_table_layout = QVBoxLayout(mapping_group)
         mapping_table_layout.setContentsMargins(4, 4, 4, 4)
         mapping_table_layout.setSpacing(0)
@@ -590,7 +750,8 @@ class BookListImportWindow(QDialog):
         options_layout.addWidget(self.file_has_header_check)
 
         options_group.setLayout(options_layout)
-        options_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        options_group.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        options_group.setMaximumWidth(self.scaler.get_scaled_size(130))
 
         # Add left widget first (instructions) - wider by 1/3
         left_layout = QVBoxLayout()
@@ -600,10 +761,15 @@ class BookListImportWindow(QDialog):
         left_widget = QWidget()
         self.left_widget = left_widget
         left_widget.setLayout(left_layout)
-        # Double instructions panel width (was max 320)
-        left_widget.setMinimumWidth(220)
-        left_widget.setMaximumWidth(640)
-        mapping_layout.addWidget(left_widget, 2)  # Give more stretch to instructions
+
+        # Explicitly tell Qt this widget should expand to fill space
+        left_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        # Increase base width by ~1/3 (340 -> 450)
+        left_widget.setMinimumWidth(450)
+
+        # Add to layout with a stretch factor of 1 so it eats all extra window width
+        mapping_layout.addWidget(left_widget, 1, Qt.AlignTop)
 
         # Add options second (center)
         right_layout = QVBoxLayout()
@@ -613,9 +779,10 @@ class BookListImportWindow(QDialog):
         right_widget = QWidget()
         self.right_widget = right_widget
         right_widget.setLayout(right_layout)
+        right_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         # Reduce options panel width by 1/4 (was 180)
         right_widget.setMaximumWidth(135)
-        mapping_layout.addWidget(right_widget, 1)  # Less stretch for options
+        mapping_layout.addWidget(right_widget, 0, Qt.AlignTop)  # No stretch, align top
 
         # Add table third (far right) - wrapped same as other panels so AlignTop works
         table_layout = QVBoxLayout()
@@ -624,9 +791,11 @@ class BookListImportWindow(QDialog):
         table_layout.addStretch()
         table_widget = QWidget()
         table_widget.setLayout(table_layout)
-        mapping_layout.addWidget(table_widget)
+        table_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        table_widget.setMaximumWidth(self.scaler.get_scaled_size(240))
+        mapping_layout.addWidget(table_widget, 0, Qt.AlignTop)  # No stretch, align top
 
-        main_layout.addWidget(mapping_container)
+        main_layout.addWidget(mapping_container, 1)  # Add stretch factor to expand
 
         # Hide vertical headers for accessibility
         self.mapping_table.verticalHeader().setVisible(False)
@@ -697,6 +866,37 @@ class BookListImportWindow(QDialog):
         else:
             self.setTabOrder(self.instructions_label, self.import_button)
         self.setTabOrder(self.import_button, self.export_button)
+
+    def _load_collection_options(self):
+        """Load target collection options for imports."""
+        self.collection_combo.blockSignals(True)
+        self.collection_combo.clear()
+
+        collections = self.collection_queries.get_all(active_only=True)
+        if not collections:
+            default_collection = Collection(name="Default", active=True)
+            new_id = self.collection_queries.insert(default_collection)
+            collections = [
+                Collection(collection_id=new_id, name="Default", active=True)
+            ]
+
+        collections = sorted(
+            collections,
+            key=lambda collection: (collection.name or "").casefold(),
+        )
+
+        for collection in collections:
+            self.collection_combo.addItem(collection.name, collection.collection_id)
+
+        # Selection logic: if only 1 collection, select it; if more, default to empty
+        if len(collections) == 1:
+            self.collection_combo.setCurrentIndex(0)
+        elif len(collections) > 1:
+            self.collection_combo.setCurrentIndex(-1)  # No selection
+        else:
+            self.collection_combo.setCurrentIndex(-1)
+
+        self.collection_combo.blockSignals(False)
 
     def setup_mapping_table(self):
         """Setup the field mapping table rows with checkboxes in options column."""
@@ -847,14 +1047,17 @@ class BookListImportWindow(QDialog):
         )
 
         shortcuts = [
+            ("Alt+F", "file path"),
             ("Alt+W", "Browse for file"),
-            ("Alt+O", "Options section"),
+            ("Alt+C", "Collection"),
             ("Alt+H", "Instructions"),
+            ("Alt+O", "Options section"),
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
             ("Alt+Y", "Year"),
             ("Alt+P", "Plot"),
             ("Alt+S", "Series"),
+            ("Alt+N", "Series number"),
             ("Alt+G", "Genre"),
             ("Alt+R", "Reader"),
             ("Alt+E", "Read Date"),
@@ -1289,6 +1492,21 @@ class BookListImportWindow(QDialog):
 
     def import_books(self):
         """Import books from the loaded file with preview confirmation."""
+        # Check if collection is selected
+        if self.collection_combo.currentIndex() < 0:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Collection Required",
+                text="Please select a collection before importing.",
+                buttons=QMessageBox.Ok,
+                default_button=QMessageBox.Ok,
+            )
+            self.set_status("No collection selected. Please select a collection.")
+            self.collection_combo.setFocus(Qt.TabFocusReason)
+            return
+
         if not self.file_data is not None:
             exec_styled_message_box(
                 self,
@@ -1352,9 +1570,10 @@ class BookListImportWindow(QDialog):
                 success_count, error_count = self.update_read_dates()
 
             # Show results
+            selected_collection_name = self.collection_combo.currentText()
             if self.import_mode == "new":
-                result_text = f"{success_count} books added to Book List collection"
-                status_text = f"{success_count} books added to Book List collection, {error_count} errors"
+                result_text = f"{success_count} books added to {selected_collection_name} collection"
+                status_text = f"{success_count} books added to {selected_collection_name} collection, {error_count} errors"
             else:
                 result_text = f"{success_count} read dates added to books"
                 status_text = (
@@ -1401,12 +1620,27 @@ class BookListImportWindow(QDialog):
         error_count = 0
         self.import_errors = []  # Reset errors
 
-        # Ensure "Book List" collection exists
-        book_list_collection = self.get_or_create_book_list_collection()
+        # Get selected collection from combo box
+        selected_collection_id = self.collection_combo.currentData()
+        if selected_collection_id is None:
+            self.set_status("Error: No collection selected")
+            return
+
+        # Load duplicate checking settings from preferences
+        settings = QSettings()
+        duplicate_match_mode = settings.value(
+            "import/rules/duplicate/match_mode",
+            "title_author_year_collection",
+            type=str,
+        )
+        fuzzy_threshold = settings.value(
+            "import/rules/duplicate/fuzzy_threshold", 0, type=int
+        )
 
         # Fetch all existing books in the DB before import starts
+        # Include collection_id for collection-based duplicate checking
         preexisting_books = self.db.fetch_all(
-            "SELECT b.book_id, b.title, a.name FROM books b "
+            "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
             "JOIN authors a ON b.author_id = a.author_id"
         )
 
@@ -1461,25 +1695,26 @@ class BookListImportWindow(QDialog):
                     ):
                         title_for_save = f"{title} ({series} #{series_no})"
 
-                # Check for duplicates only against books that existed before import
-                duplicate_found = False
-                import_title_for_compare = self._normalize_title_for_match(
-                    title_for_save
+                # Extract year for duplicate checking (before book object is created)
+                import_year = None
+                if mapping.get("year") is not None:
+                    year_val = row.iloc[mapping["year"]]
+                    if pd.notna(year_val):
+                        try:
+                            import_year = int(year_val)
+                        except (ValueError, TypeError):
+                            pass
+
+                # Check for duplicates based on preferences settings
+                duplicate_found = self._check_duplicate(
+                    title_for_save,
+                    author,
+                    import_year,
+                    selected_collection_id,
+                    preexisting_books,
+                    duplicate_match_mode,
+                    fuzzy_threshold,
                 )
-                import_author_for_compare = self._normalize_author_for_match(author)
-                for db_row in preexisting_books:
-                    db_title = db_row[1]
-                    db_author = db_row[2]
-                    norm_db_title = self._normalize_title_for_match(db_title)
-                    norm_db_author = self._normalize_author_for_match(db_author)
-                    # Debug output removed
-                    if (
-                        norm_db_title == import_title_for_compare
-                        and norm_db_author == import_author_for_compare
-                    ):
-                        # Debug output removed
-                        duplicate_found = True
-                        break
                 if duplicate_found:
                     self.import_errors.append(
                         {
@@ -1492,7 +1727,9 @@ class BookListImportWindow(QDialog):
                     error_count += 1
                     continue
                 # After inserting, add this book to preexisting_books so subsequent imports in the same file are checked for duplicates
-                preexisting_books.append((None, title_for_save, author))
+                preexisting_books.append(
+                    (None, title_for_save, author, import_year, selected_collection_id)
+                )
 
                 # Get or create author
                 author_id = self.author_queries.get_or_create(author, commit=False)
@@ -1501,7 +1738,7 @@ class BookListImportWindow(QDialog):
                 book = Book(
                     title=title_for_save,
                     author_id=author_id,
-                    collection_id=book_list_collection.collection_id,
+                    collection_id=selected_collection_id,
                 )
 
                 # Add optional fields
@@ -1556,6 +1793,8 @@ class BookListImportWindow(QDialog):
                         except (ValueError, TypeError):
                             pass
 
+                # Set source field for Book List import
+                book.source = "Bookh_list"
                 # Insert book
                 self.book_queries.insert(book, commit=False)
                 success_count += 1

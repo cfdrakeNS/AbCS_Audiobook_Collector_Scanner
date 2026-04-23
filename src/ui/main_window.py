@@ -3069,12 +3069,30 @@ class MainWindow(QMainWindow):
             self.focus_book_by_id(new_book_id)
 
     def on_book_list_import(self):
-        """Open book list import window."""
+        """Open book list import window with collection defaulting logic matching ImportWindow."""
         from src.ui.book_list_import_window import BookListImportWindow
 
+        # Determine which collection to default in BookListImportWindow
+        collection_id = self.current_filter.collection_id
         dialog = BookListImportWindow(
             self.db, self.scaler, self.theme_manager, parent=self
         )
+        # After dialog is constructed and collections loaded, set default selection
+        # Only set if collections are loaded and combo exists
+        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
+            if collection_id is not None:
+                # Main window has a specific collection selected (not All Collections)
+                idx = dialog.collection_combo.findData(collection_id)
+                if idx >= 0:
+                    dialog.collection_combo.setCurrentIndex(idx)
+                else:
+                    dialog.collection_combo.setCurrentIndex(-1)
+            else:
+                # All Collections selected in main
+                if dialog.collection_combo.count() == 1:
+                    dialog.collection_combo.setCurrentIndex(0)
+                else:
+                    dialog.collection_combo.setCurrentIndex(-1)
         dialog.exec()
         # Refresh collections and books to show any imported items and new collections
         self.refresh_collections()

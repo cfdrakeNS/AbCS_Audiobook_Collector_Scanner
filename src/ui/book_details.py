@@ -79,6 +79,7 @@ class BookDetailsWindow(QDialog):
         "F",
         "B",
         "Z",
+        "O",  # Alt+O for Format
         "H",
         "/",
         "F1",
@@ -614,7 +615,7 @@ class BookDetailsWindow(QDialog):
         form.addRow(title_label, row1_layout)
 
         # bd#3 Row 2: Plot (expand to fit, hide when empty)
-        self.comments_label = QLabel("Pl&ot:")
+        self.comments_label = QLabel("Plot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
         # Tab navigates instead of inserting tabs
@@ -650,6 +651,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(self.time_edit)
 
         reader_label = QLabel("&Reader:")
+        reader_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
         self.reader_edit.setMaximumWidth(220)
@@ -762,6 +764,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(self.files_edit)
 
         bitrate_label = QLabel("&Bitrate:")
+        bitrate_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(False)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
@@ -781,6 +784,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(self.size_edit)
 
         format_label = QLabel("Format:")
+        format_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.format_combo = QComboBox()
         self.format_combo.setAccessibleName("File format")
         self.format_combo.setMaximumWidth(110)
@@ -799,8 +803,9 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(self.format_combo)
 
         source_label = QLabel("Source:")
+        source_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.source_edit = QLineEdit()
-        self.source_edit.setReadOnly(True)
+        self.source_edit.setReadOnly(False)  # Make source field editable
         self.source_edit.setAccessibleName("Import source")
         self.source_edit.setMaximumWidth(110)
         row5_layout.addWidget(source_label)
@@ -927,24 +932,20 @@ class BookDetailsWindow(QDialog):
         mgr = get_shortcut_manager()
 
         # Field shortcuts (centralized)
-        callback_map = {
-            "title_edit": lambda: self.title_edit.setFocus(),
-            "author_combo": lambda: self.author_combo.setFocus(),
-            "comments_edit": lambda: self.comments_edit.setFocus(),
-            "year_spin": lambda: self.year_spin.setFocus(),
-            "time_edit": lambda: self.time_edit.setFocus(),
-            "reader_edit": lambda: self.reader_edit.setFocus(),
-            "read_date": lambda: self.read_date.setFocus(),
-            "series_combo": lambda: self.series_combo.setFocus(),
-            "genre_combo": lambda: self.genre_combo.setFocus(),
-            "collection_combo": lambda: self.collection_combo.setFocus(),
-            "files_edit": lambda: self.files_edit.setFocus(),
-            "bitrate_edit": lambda: self.bitrate_edit.setFocus(),
-            "size_edit": lambda: self.size_edit.setFocus(),
-            "path_edit": lambda: self.path_edit.setFocus(),
-            "get_web_details_button": self.on_get_web_details,  # Alt+W centralized
-            "show_help": self.on_show_shortcuts,
-        }
+        # Build callback map from centralized shortcut mapping to avoid duplicates
+        from src.accessibility.shortcuts import BOOK_DETAILS_SHORTCUTS
+
+        callback_map = {}
+        for key, (desc, attr) in BOOK_DETAILS_SHORTCUTS.items():
+            if attr == "show_help":
+                callback_map[attr] = self.on_show_shortcuts
+            elif hasattr(self, attr):
+                widget = getattr(self, attr)
+                # Only connect focus for widgets that support setFocus
+                if hasattr(widget, "setFocus"):
+                    callback_map[attr] = lambda w=widget: w.setFocus()
+        # Add web details button
+        callback_map["get_web_details_button"] = self.on_get_web_details
         mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
 
         # Button shortcuts (local like import_detail)
@@ -1137,15 +1138,19 @@ class BookDetailsWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
+        from src.accessibility.shortcuts import BOOK_DETAILS_SHORTCUTS
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+        )
+
         dlg = QDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(580, 440)
-
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
-
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
@@ -1158,54 +1163,26 @@ class BookDetailsWindow(QDialog):
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
-        from src.accessibility.shortcut_helpers import (
-            get_accessible_shortcuts_list,
-            build_accessible_f1_popup_style,
-        )
-
         table.setStyleSheet(build_accessible_f1_popup_style())
-
-        shortcuts = [
-            ("Alt+T", "Title"),
-            ("Alt+A", "Author"),
-            ("Alt+P", "Plot"),
-            ("Alt+Y", "Year"),
-            ("Alt+M", "Time"),
-            ("Alt+R", "Reader"),
-            ("Alt+E", "Read date"),
-            ("Alt+I", "Series"),
-            ("Alt+G", "Genre"),
-            ("Alt+C", "Collection"),
-            ("Alt+F", "Files"),
-            ("Alt+B", "Bitrate"),
-            ("Alt+Z", "Size"),
-            ("Alt+H", "Path"),
-            ("Alt+W", "Fetch web info"),
-            ("Alt+N", "New book"),
-            ("Alt+S", "Save"),
-            ("Alt+D", "Delete"),
-            ("Page Up", "Previous book"),
-            ("Page Down", "Next book"),
-            ("Escape", "Cancel/Close window"),
-            ("Alt+/", "Read status bar"),
-            ("F1", "Show keyboard shortcuts"),
+        # Build shortcut list from centralized mapping
+        shortcut_keys = [
+            ("Alt+" + k, desc)
+            for k, (desc, _) in BOOK_DETAILS_SHORTCUTS.items()
+            if k != "F1"
         ]
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
-
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
-        for row, (key, desc) in enumerate(shortcuts):
+        shortcut_keys.append(("F1", "Show keyboard shortcuts"))
+        shortcut_keys = get_accessible_shortcuts_list(shortcut_keys)
+        table.setRowCount(len(shortcut_keys))
+        table.setVerticalHeaderLabels([""] * len(shortcut_keys))
+        for row, (key, desc) in enumerate(shortcut_keys):
             item = QTableWidgetItem(f"{desc} - {key}")
             item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
             table.setItem(row, 0, item)
-
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-
         font = table.font()
         font.setPointSize(self.scaler.get_scaled_size(11))
         table.setFont(font)
         layout.addWidget(table)
-
         dlg.exec()
 
     def load_combos(self):

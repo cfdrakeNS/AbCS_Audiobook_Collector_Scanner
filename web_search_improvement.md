@@ -20,4 +20,3 @@ To improve the search in `web_metadata` and `book_api.py` so that results are mo
 **Result:**  
 - This will prevent mismatches where the author is completely different, and will filter out web results with unrelated titles.
 
-If you want, I can provide a code snippet for these checks to add to your matching logic. Let me know if you want the code!
