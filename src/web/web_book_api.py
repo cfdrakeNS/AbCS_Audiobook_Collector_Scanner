@@ -107,8 +107,6 @@ class WebBookAPI:
         cache_key = f"{title}|{author}|{year}|{refresh}"
         current_time = time.time()
 
-        # Debug print removed
-
         # Check if we have a recent cache entry (within CACHE_DURATION seconds)
         if hasattr(self, "_cache") and cache_key in self._cache:
             cached_time, cached_result = self._cache[cache_key]
@@ -132,12 +130,10 @@ class WebBookAPI:
 
         # Try Google Books first (fast and reliable)
         if refresh == 0:
-            # t0 = time.time()  # Removed unused timing variable
             try:
                 metadata = self._fetch_from_google_books(
                     search_title, search_author, year
                 )
-                # t1 = time.time()  # Removed unused timing variable
                 # Tiered confidence matching - plot not required
                 is_real_match = False
                 if metadata:
@@ -212,18 +208,15 @@ class WebBookAPI:
                 elif metadata and not is_real_match:
                     pass
             except Exception as e:
-                # t1 = time.time()  # Removed unused timing variable
                 # Continue to next source
                 pass
 
         # Try Open Library second (always try when refresh=0, or when refresh=1 and Google Books failed)
         if refresh == 0 or refresh == 1:
-            # t0 = time.time()  # Removed unused timing variable
             try:
                 metadata = self._fetch_from_open_library(
                     search_title, search_author, year
                 )
-                # t1 = time.time()  # Removed unused timing variable
                 if metadata:
                     metadata["source"] = "open_library"
                     metadata["first_attempt"] = refresh == 0
@@ -231,15 +224,12 @@ class WebBookAPI:
                     self._cache[cache_key] = (current_time, metadata)
                     return metadata
             except Exception as e:
-                # t1 = time.time()  # Removed unused timing variable
                 # Continue to next source instead of failing
                 pass
 
         # Try WikiData third (great for series and author data)
-        # t0 = time.time()  # Removed unused timing variable
         try:
             metadata = self._fetch_from_wikidata(search_title, search_author, year)
-            # t1 = time.time()  # Removed unused timing variable
             if metadata:
                 metadata["source"] = "wikidata"
                 metadata["first_attempt"] = False
@@ -247,7 +237,6 @@ class WebBookAPI:
                 self._cache[cache_key] = (current_time, metadata)
                 return metadata
         except Exception as e:
-            # t1 = time.time()  # Removed unused timing variable
             pass
 
         # Cache the failure too to avoid repeated failed requests
