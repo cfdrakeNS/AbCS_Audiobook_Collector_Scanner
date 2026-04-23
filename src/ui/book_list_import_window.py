@@ -2040,22 +2040,6 @@ class BookListImportWindow(QDialog):
             # Sometimes after modal dialogs, shortcut can be disabled; re-enable if needed
             self.read_status_bar_shortcut.setEnabled(True)
 
-    def get_or_create_book_list_collection(self):
-        """Get or create the 'Book List' collection."""
-        from src.database.models import Collection
-
-        # Search existing collections by name
-        all_collections = self.collection_queries.get_all(active_only=False)
-        for col in all_collections:
-            if col.name == "Book List":
-                return col
-
-        # Create new collection if not found
-        new_collection = Collection(name="Book List", active=True)
-        new_id = self.collection_queries.insert(new_collection)
-        new_collection.collection_id = new_id
-        return new_collection
-
     def set_status(self, message: str, announce: bool = False):
         """Set status message and optionally announce to screen reader."""
         self._default_status_message = message
