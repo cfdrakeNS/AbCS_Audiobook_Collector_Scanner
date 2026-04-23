@@ -126,7 +126,7 @@ class WebBookAPI:
         # The code that saves to DB should append series number if and only if a real series number is found
 
         # Author transformation: clean only, never flip
-        search_author = self._apply_author_transformations(author, False)
+        search_author = self._apply_author_transformations(author)
 
         # Try Google Books first (fast and reliable)
         if refresh == 0:
@@ -836,9 +836,7 @@ class WebBookAPI:
 
         return clean_title
 
-    def _apply_author_transformations(
-        self, author: str, flip_name: bool = False
-    ) -> str:
+    def _apply_author_transformations(self, author: str) -> str:
         """Apply author transformations: clean only (no flipping)."""
         if not author:
             return ""
@@ -865,7 +863,7 @@ class WebBookAPI:
         # Clean author
         if "author" in cleaned_data:
             cleaned_data["author"] = self._apply_author_transformations(
-                cleaned_data["author"], False
+                cleaned_data["author"]
             )
 
         # Clean other text fields

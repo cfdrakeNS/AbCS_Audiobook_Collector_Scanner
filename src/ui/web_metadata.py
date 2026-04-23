@@ -570,21 +570,6 @@ class WebMetadataWindow(QDialog):
             # No web payload provided to this window.
             QTimer.singleShot(100, self.title_edit.setFocus)
 
-    @staticmethod
-    def _has_any_web_data(web_data: dict | None) -> bool:
-        """Return True when the web payload contains at least one non-empty value."""
-        if not isinstance(web_data, dict):
-            return False
-        for value in web_data.values():
-            if value is None:
-                continue
-            if isinstance(value, str):
-                if value.strip():
-                    return True
-                continue
-            return True
-        return False
-
     def set_focus_to_first_differing_field(self):
         """Set focus to first field that has web differences, fallback to title."""
         # Always start with title field for accessibility

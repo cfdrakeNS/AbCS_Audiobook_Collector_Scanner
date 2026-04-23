@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QFrame,
 )
-from PySide6.QtCore import QSettings, Qt, QTimer, QEvent, QPoint
+from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
 from shiboken6 import isValid
 from datetime import datetime
@@ -733,20 +733,6 @@ class PreferencesWindow(QDialog):
             return
         self.fallback_checks_layout.setColumnMinimumWidth(0, 0)
         self.author_fallback_checkbox.setMinimumWidth(0)
-        self.fallback_checks_layout.setHorizontalSpacing(0)
-
-    def _sync_fallback_visual_alignment(self):
-        """Fine-tune fallback checkbox positions to match options row visually."""
-        if (
-            not hasattr(self, "fallback_checks_layout")
-            or not hasattr(self, "author_fallback_checkbox")
-            or not hasattr(self, "title_fallback_checkbox")
-        ):
-            return
-        if not self.isVisible():
-            return
-        left, top, right, bottom = self.fallback_checks_layout.getContentsMargins()
-        self.fallback_checks_layout.setContentsMargins(0, top, right, bottom)
         self.fallback_checks_layout.setHorizontalSpacing(0)
 
     def _sync_section_label_heights(self):

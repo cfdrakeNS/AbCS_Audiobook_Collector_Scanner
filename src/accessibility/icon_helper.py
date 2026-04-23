@@ -10,8 +10,8 @@ import os
 import sys
 
 
-def resource_path(relative_path):
-    # Get absolute path to resource, works for dev, PyInstaller, and installed
+def resource_path():
+    """Get absolute path to resource, works for dev, PyInstaller, and installed."""
     if hasattr(sys, "_MEIPASS"):
         # PyInstaller bundle
         base = sys._MEIPASS
@@ -24,7 +24,7 @@ def resource_path(relative_path):
     return icon_path
 
 
-ICON_PATH = resource_path("graphics/abcs_icon_256x256.ico")
+ICON_PATH = resource_path()
 
 
 def get_app_icon() -> QIcon:

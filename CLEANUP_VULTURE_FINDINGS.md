@@ -1,5 +1,41 @@
 ---
 
+# April 23, 2026 — Cleanup Complete
+
+## Items Removed
+
+The following vulture findings have been addressed and removed:
+
+### src/accessibility/icon_helper.py
+- Line 13: unused variable 'relative_path' (100%) — **REMOVED**
+
+### src/ui/import_window.py
+- Line 232: unused attribute 'current_formats_text' (60%) — **REMOVED**
+- Line 255: unused attribute '_scan_prompt_open' (60%) — **REMOVED**
+- Line 526: unused variable 'lineedit_style' (60%) — **REMOVED**
+- Line 697: unused variable 'require_selection' (60%) — **REMOVED**
+- Line 964: unused method 'on_focus_list' (60%) — **REMOVED**
+- Line 980: unused method '_hide_table_cell_highlight' (60%) — **REMOVED**
+- Line 1097: unused variable 'include_valid' (100%) — **REMOVED** (parameter removed from `_configure_error_filter_options`)
+- Line 1429, 1435, 1438, 1443: unused variable 'path_type' (60%) — **REMOVED** (simplified path validation logic)
+- Line 1496, 1497, 1505, 1506: unused variables 'scan_files_processed', 'scan_total_files' (60%) — **FALSE POSITIVE**: These are used via `nonlocal` in nested `on_progress` function.
+
+### src/ui/preferences_window.py
+- Line 32: unused import 'QPoint' (90%) — **REMOVED**
+
+### src/ui/web_metadata.py
+- Line 573: unused method '_has_any_web_data' (60%) — **REMOVED**
+
+### src/web/web_book_api.py
+- Line 654: unused variable 'flip_name' (100%) — **REMOVED** (parameter removed from `_apply_author_transformations`)
+
+## Remaining Actionable Items
+
+- src/ui/book_list_import_window.py:2043 — `get_or_create_book_list_collection` method (verify if dynamically called)
+- src/ui/preferences_window.py:738 — `_sync_fallback_visual_alignment` method (verify if unused)
+
+---
+
 # April 11, 2026 — Latest Vulture Scan Results
 
 ## New/Outstanding Vulture Findings (min-confidence 60)
@@ -12,28 +48,23 @@
 - Line 21: unused class 'DataFrame' (60%)
   - **FALSE POSITIVE**: Already documented above; fallback for missing pandas.
 - Line 112: unused method '_normalize_author_for_match' (60%)
+  - **FALSE POSITIVE**: Used in duplicate detection logic (`_check_exact_duplicate` method).
 - Line 1171: unused method 'on_headers_toggled' (60%)
   - **FALSE POSITIVE**: Already documented above; required for header toggle.
 
 ### src/ui/import_window.py
-- Line 236: unused attribute 'current_formats_text' (60%)
-- Line 266: unused attribute '_scan_prompt_open' (60%)
-- Line 542: unused variable 'lineedit_style' (60%)
-- Line 652: unused attribute 'current_formats_text' (60%)
-- Line 736: unused variable 'require_selection' (60%)
-- Line 1022: unused method 'on_focus_list' (60%)
-- Line 1038: unused method '_hide_table_cell_highlight' (60%)
-- Line 1518: unused variable 'path_type' (60%)
-- Line 1524: unused variable 'path_type' (60%)
-- Line 1527: unused variable 'path_type' (60%)
-- Line 1532: unused variable 'path_type' (60%)
-- Line 1593: unused variable 'scan_files_processed' (60%)
-- Line 1594: unused variable 'scan_total_files' (60%)
-- Line 1602: unused variable 'scan_files_processed' (60%)
-- Line 1603: unused variable 'scan_total_files' (60%)
+- Line 236: unused attribute 'current_formats_text' (60%) — **REMOVED April 23, 2026**
+- Line 266: unused attribute '_scan_prompt_open' (60%) — **REMOVED April 23, 2026**
+- Line 542: unused variable 'lineedit_style' (60%) — **REMOVED April 23, 2026**
+- Line 652: unused attribute 'current_formats_text' (60%) — **REMOVED April 23, 2026**
+- Line 736: unused variable 'require_selection' (60%) — **REMOVED April 23, 2026**
+- Line 1022: unused method 'on_focus_list' (60%) — **REMOVED April 23, 2026**
+- Line 1038: unused method '_hide_table_cell_highlight' (60%) — **REMOVED April 23, 2026**
+- Line 1518, 1524, 1527, 1532: unused variable 'path_type' (60%) — **REMOVED April 23, 2026** (simplified path validation)
+- Line 1593, 1594, 1602, 1603: unused variables 'scan_files_processed', 'scan_total_files' (60%) — **FALSE POSITIVE**: Used via `nonlocal` in nested `on_progress` function.
 
 ### src/accessibility/icon_helper.py
-- Line 13: unused variable 'relative_path' (100%)
+- Line 13: unused variable 'relative_path' (100%) — **REMOVED April 23, 2026**
 
 
 ---

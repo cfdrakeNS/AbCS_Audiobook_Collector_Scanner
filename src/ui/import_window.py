@@ -229,7 +229,6 @@ class ImportWindow(QDialog):
         self.default_collection_id = None
         self.current_collection_name = ""
         self.import_scenario_mode = "mass_standard"
-        self.current_formats_text = "None"
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
@@ -252,7 +251,6 @@ class ImportWindow(QDialog):
         self._cancel_add_requested = False
         self._is_scanning = False
         self._cancel_scan_requested = False
-        self._scan_prompt_open = False
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
@@ -405,7 +403,7 @@ class ImportWindow(QDialog):
             ("Fallback", "fallback"),
             ("Warning", "warning"),
         ]
-        self._configure_error_filter_options(include_valid=False)
+        self._configure_error_filter_options()
         error_filter_label.setBuddy(self.error_filter_combo)
         header_layout.addWidget(error_filter_label)
         header_layout.addWidget(self.error_filter_combo)
@@ -523,21 +521,7 @@ class ImportWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
-
-        combo_style = f"""
+        checkbox_style = f"""
             QComboBox {{
                 min-height: {scaled_height}px;
                 max-height: {scaled_height}px;
@@ -632,8 +616,6 @@ class ImportWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        self.current_formats_text = "None"  # Removed undefined 'formats' variable
-
         self.import_scenario_mode = self.settings.value(
             "import/scenario/mode", "mass_standard", type=str
         )
@@ -646,7 +628,7 @@ class ImportWindow(QDialog):
         self.title_fallback_to_file = self.settings.value(
             "import/fallback/title_to_file", True, type=bool
         )
-        self._configure_error_filter_options(include_valid=False)
+        self._configure_error_filter_options()
 
         keywords = self.settings.value(
             "import/reader_keywords",
@@ -692,9 +674,6 @@ class ImportWindow(QDialog):
             collections = [
                 Collection(collection_id=new_id, name="Default", active=True)
             ]
-
-        # Do not add 'None' option; always require a real collection
-        require_selection = False
 
         collections = sorted(
             collections,
@@ -961,29 +940,6 @@ class ImportWindow(QDialog):
             self.set_status(status_text, announce=True)
         # else: do nothing (no popup)
 
-    def on_focus_list(self):
-        """Move focus to import list table (Alt+L)."""
-        if self.table.rowCount() > 0:
-            target_row = self.table.currentRow()
-            if target_row < 0 or self.table.isRowHidden(target_row):
-                target_row = self._first_visible_row()
-            if target_row < 0:
-                target_row = 0
-            self.table.setCurrentCell(target_row, self.COL_TITLE)
-            self.table.setCurrentIndex(
-                self.table.model().index(target_row, self.COL_TITLE)
-            )
-            self.table.scrollTo(self.table.model().index(target_row, self.COL_TITLE))
-        self.table.setFocus()
-        self.set_status("Import list focused", announce=True)
-
-    def _hide_table_cell_highlight(self):
-        """Hide active-cell highlight when focus moves away from table."""
-        model = self.table.selectionModel()
-        if model is not None:
-            model.setCurrentIndex(QModelIndex(), QItemSelectionModel.NoUpdate)
-        self.table.viewport().update()
-
     def jump_to_column(self, column: int):
         """Jump to a column in the import table for the current row."""
         if self.table.columnCount() == 0:
@@ -1094,7 +1050,7 @@ class ImportWindow(QDialog):
 
         return True
 
-    def _configure_error_filter_options(self, include_valid: bool):
+    def _configure_error_filter_options(self):
         """Configure error filter options (no valid filter, Phase 3)."""
         current_value = self.error_filter_combo.currentData()
         options = list(self._base_error_filter_options)
@@ -1426,21 +1382,15 @@ class ImportWindow(QDialog):
         # Validate path based on scenario
         is_single_item = self.import_scenario_mode == "single_item"
         is_valid = False
-        path_type = "folder"
 
         if is_single_item:
             # Single item mode: accept either file or folder
-            if os.path.isfile(folder_path):
+            if os.path.isfile(folder_path) or os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "file"
-            elif os.path.isdir(folder_path):
-                is_valid = True
-                path_type = "folder"
         else:
             # Other modes: expect folder only
             if os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "folder"
 
         if not is_valid:
             msg = QMessageBox(self)
