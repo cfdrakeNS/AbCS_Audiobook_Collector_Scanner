@@ -2,12 +2,13 @@
 ; Inno Setup 6 Installer Script
 ;
 ; To compile: run build_installer.bat
-;             or open this file in Inno Setup IDE and press F9
+;
+; or open this file in Inno Setup IDE and press F9
 ;
 ; Version source of truth is src/main.py APP_VERSION.
+;
 ; build_installer.bat passes MyAppVersion from APP_VERSION via /D.
 ; The fallback below is used when compiling this .iss directly in ISCC IDE.
-
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audio Book Collector Scanner"
 #ifndef MyAppVersion
@@ -44,7 +45,6 @@ AllowNoIcons=yes
 OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 
-
 ; ── Installer branding ────────────────────────────────────────────
 ; Icon embedded into Setup.exe itself and shown in taskbar/title bar
 SetupIconFile=graphics\abcs_icon_256x256.ico
@@ -63,6 +63,7 @@ LicenseFile=AbCS_License.txt
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+WizardResizable=yes
 
 ; Require Windows 10 or later
 MinVersion=10.0
@@ -97,34 +98,35 @@ Name: "desktopicon"; \
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Files] - Files to install
-; Source: the build output from PyInstaller (onedir mode)
+; Source: the build output from PyInstaller
 ; DestDir: where they go on the user's machine
 ; ──────────────────────────────────────────────────────────────────
 [Files]
-Source: "dist\AbCS\AbCS.exe";           DestDir: "{app}";   Flags: ignoreversion
-Source: "dist\AbCS\*.dll";              DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
-Source: "dist\AbCS\*.pyd";             DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
-Source: "dist\AbCS\*.txt";             DestDir: "{app}";   Flags: ignoreversion skipifsourcedoesntexist
+; Main Executable
+Source: "dist\AbCS.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; data\ contains ONLY the schema file - nothing else routes here
+; Optional libraries/files (skipped if they don't exist in a one-file build)
+Source: "dist\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "dist\*.pyd"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "dist\*.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
-Source: "dist\AbCS\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Internal PyInstaller folder (skipped if one-file build)
+Source: "dist\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Copy only the schema file, not the whole data folder
-Source: "data\abcdDB_def.sql"; DestDir: "{app}\data"; Flags: ignoreversion
+Source: "data\abcdDB_def.sql"; DestDir: "{app}\data"; Flags: ignoreversion skipifsourcedoesntexist
 
-; Graphics sourced from _internal (where PyInstaller bundles data files).
-; This single entry is the only place graphics are copied - prevents the
-; previous double-copy into both {app}\Graphics and {app}\data\Graphics
-Source: "dist\AbCS\_internal\Graphics\*"; DestDir: "{app}\Graphics"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Graphics sourced from _internal (skipped if one-file build)
+Source: "dist\_internal\Graphics\*"; DestDir: "{app}\Graphics"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
+; Local project graphics
 Source: "graphics\abcs_icon_256x256.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Installer-only graphics (not copied to app folder)
 Source: "installer_graphics\abcs_wizard_164x314.png"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "installer_graphics\abcs_small_55x55.png";    DestDir: "{tmp}"; Flags: dontcopy
 
-Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
@@ -156,16 +158,44 @@ Filename: "{app}\{#MyAppExeName}"; \
 ; [UninstallDelete] - Extra cleanup the uninstaller must force-remove
 ; ──────────────────────────────────────────────────────────────────
 [UninstallDelete]
-; _internal is a PyInstaller onedir bundle folder. Inno Setup tracks
-; individual files inside it but won't remove the folder itself if
-; any file is left behind. Force-delete the whole tree here.
+; Cleanup extra folders that Inno Setup might leave behind
 Type: filesandordirs; Name: "{app}\_internal"
-
-; data subfolder only contains the schema file but clean it up too
 Type: filesandordirs; Name: "{app}\data"
-
-; Graphics folder copied separately from _internal - clean it up
 Type: filesandordirs; Name: "{app}\Graphics"
 
 ; Remove {app} itself if empty after all other cleanup is done
 Type: dirifempty;     Name: "{app}"
+
+; ──────────────────────────────────────────────────────────────────
+; [Code] - Custom Logic and Splash/Features Screen
+; ──────────────────────────────────────────────────────────────────
+[Code]
+var
+  FeaturesPage: TOutputMsgMemoWizardPage;
+
+procedure InitializeWizard;
+var
+  FeaturesText: String;
+begin
+  { Construct the Features and Accessibility text }
+  FeaturesText :=
+    'FEATURES -' + #13#10 +
+    '• Audio Book Management with full metadata.' + #13#10 +
+    '• ID3 Tag Import from Most Audio Format Files.' + #13#10 +
+    '• Web import & Updated Metadata.' + #13#10 +
+    '• Advanced Search and Filtering.' + #13#10 +
+    '• Complete Keyboard Navigation.' + #13#10 +
+    '• Screen Reader Support.' + #13#10 +
+    '• Scalable UI (50%-200%+).' + #13#10 +
+    '• High Contrast Themes.' + #13#10 + #13#10 +
+    'ACCESSIBILITY.' + #13#10 +
+    '• Designed for users with low vision and screen readers.' + #13#10 +
+    '• All features include keyboard shortcuts.';
+
+  { Create a custom page right after the Welcome page }
+  FeaturesPage := CreateOutputMsgMemoPage(wpWelcome,
+    'AbCS Features & Accessibility',
+    'Review what AbCS can do for you.',
+    'Here are the key features and accessibility tools included in this release:',
+    FeaturesText);
+end;

@@ -110,3 +110,70 @@ No outstanding actionable items remain. The codebase is fully clean as of this s
 
 **Note:** All previously documented false positives remain valid and are not actionable. Only new actionable items are listed above for review in the next cleanup pass.
 
+---
+
+# April 23, 2026 — Vulture Scan Results
+
+## April 23 Findings (min-confidence 60)
+
+### src/accessibility/icon_helper.py
+- Line 13: unused variable 'relative_path' (100%)
+  - **Already documented April 19, 2026**.
+
+### src/database/connection.py
+- Line 75: unused attribute 'row_factory' (60%)
+  - **FALSE POSITIVE**: Required SQLite idiom (see previous notes).
+
+### src/ui/book_list_import_window.py
+- Line 21: unused class 'DataFrame' (60%)
+  - **FALSE POSITIVE**: Fallback for missing pandas (see previous notes).
+- Line 1371: unused method 'on_headers_toggled' (60%)
+  - **Already documented April 19, 2026** (line shifted from 1168).
+- Line 2043: unused method 'get_or_create_book_list_collection' (60%)
+  - **NEW FINDING**: Method may be unused or called dynamically.
+
+### src/ui/import_window.py
+- Line 232: unused attribute 'current_formats_text' (60%)
+  - **Already documented April 19, 2026** (line shifted from 233).
+- Line 255: unused attribute '_scan_prompt_open' (60%)
+  - **Already documented April 19, 2026** (line shifted from 263).
+- Line 526: unused variable 'lineedit_style' (60%)
+  - **Already documented April 19, 2026** (line shifted from 527).
+- Line 635: unused attribute 'current_formats_text' (60%)
+  - **Already documented April 19, 2026**.
+- Line 697: unused variable 'require_selection' (60%)
+  - **Already documented April 19, 2026** (line shifted from 726).
+- Line 964: unused method 'on_focus_list' (60%)
+  - **Already documented April 19, 2026** (line shifted from 993).
+- Line 980: unused method '_hide_table_cell_highlight' (60%)
+  - **Already documented April 19, 2026** (line shifted from 1009).
+- Line 1097: unused variable 'include_valid' (100%)
+  - **Already documented April 19, 2026** (line shifted from 1126).
+- Line 1429, 1435, 1438, 1443: unused variable 'path_type' (60%)
+  - **Already documented April 19, 2026** (lines shifted from 1455-1469).
+- Line 1496, 1497, 1505, 1506: unused variables 'scan_files_processed', 'scan_total_files' (60%)
+  - **Already documented April 19, 2026** (lines shifted from 1522-1532).
+
+### src/ui/preferences_window.py
+- Line 32: unused import 'QPoint' (90%)
+  - **NEW FINDING**: Import not used in current code; safe to remove.
+- Line 738: unused method '_sync_fallback_visual_alignment' (60%)
+  - **NEW FINDING**: Method may be unused or replaced by newer implementation.
+
+### src/ui/web_metadata.py
+- Line 573: unused method '_has_any_web_data' (60%)
+  - **Already documented April 19, 2026**.
+
+### src/web/web_book_api.py
+- Line 654: unused variable 'flip_name' (100%)
+  - **Already documented April 19, 2026**.
+
+## Summary of New Actionable Items (April 23, 2026)
+
+1. **src/ui/book_list_import_window.py:2043** - `get_or_create_book_list_collection` method
+2. **src/ui/preferences_window.py:32** - `QPoint` import (90% confidence)
+3. **src/ui/preferences_window.py:738** - `_sync_fallback_visual_alignment` method
+
+All other findings are either previously documented false positives or line-shifted versions of previously documented items due to code changes.
+
+---

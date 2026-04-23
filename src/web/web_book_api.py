@@ -10,6 +10,9 @@ import re
 import time
 from typing import Optional, Dict, List
 
+# Common stopwords to ignore in title matching
+STOPWORDS = {"the", "a", "an", "and", "or", "of", "in", "on", "to", "for"}
+
 
 class WebBookAPI:
     """API client for fetching book metadata from web sources."""
@@ -26,6 +29,43 @@ class WebBookAPI:
             return f"{article} {base}"
         return title
 
+    def _extract_last_name(self, author: str) -> str:
+        """Extract last name from author string."""
+        if not author:
+            return ""
+        # Handle "Last, First" format
+        if "," in author:
+            return author.split(",")[0].strip()
+        # Handle "First Last" format
+        parts = author.strip().split()
+        return parts[-1] if parts else ""
+
+    def _author_matches(self, db_author: str, web_author: str) -> bool:
+        """Check if web author contains DB author's last name."""
+        last_name = self._extract_last_name(db_author)
+        if not last_name:
+            return True  # Can't verify, allow it
+        return last_name.lower() in web_author.lower()
+
+    def _title_word_match_score(self, db_title: str, web_title: str) -> float:
+        """Calculate percentage of DB title words found in web title."""
+        if not db_title or not web_title:
+            return 0.0
+
+        # Clean and split titles
+        db_words = set(re.findall(r"\b\w+\b", db_title.lower())) - STOPWORDS
+        web_words = set(re.findall(r"\b\w+\b", web_title.lower()))
+
+        if not db_words:
+            return 1.0  # No meaningful words to match
+
+        matches = len(db_words & web_words)
+        return matches / len(db_words)
+
+    def _title_matches(self, db_title: str, web_title: str) -> bool:
+        """Check if at least 50% of DB title words appear in web title."""
+        return self._title_word_match_score(db_title, web_title) >= 0.5
+
     def __init__(self):
         """Initialize the API client."""
         self.google_books_url = "https://www.googleapis.com/books/v1/volumes"
@@ -33,6 +73,8 @@ class WebBookAPI:
         self.open_library_work_url = "https://openlibrary.org/works"
         # WikiData SPARQL endpoint
         self.wikidata_url = "https://query.wikidata.org/sparql"
+        # Wikipedia API for plot summaries
+        self.wikipedia_url = "https://en.wikipedia.org/w/api.php"
         self._cache = {}  # Initialize cache to avoid hasattr checks
 
     def get_book_metadata(
@@ -96,36 +138,62 @@ class WebBookAPI:
                     search_title, search_author, year
                 )
                 # t1 = time.time()  # Removed unused timing variable
-                # Only accept if it's a real match (plot or close title/author match)
+                # Tiered confidence matching - plot not required
                 is_real_match = False
                 if metadata:
-                    title_match = metadata.get("title", "").lower()
+                    title_score = self._title_word_match_score(
+                        search_title, metadata.get("title", "")
+                    )
+                    author_match = self._author_matches(
+                        search_author, metadata.get("author", "")
+                    )
+
+                    # Check for any useful metadata (not just plot)
+                    has_metadata = any(
+                        [
+                            metadata.get("plot"),
+                            metadata.get("rating"),
+                            metadata.get("genre"),
+                            metadata.get("series"),
+                        ]
+                    )
+
+                    # Check if titles contain each other
+                    web_title_lower = metadata.get("title", "").lower()
                     search_title_lower = (search_title or "").lower()
-                    author_match = metadata.get("author", "").lower()
-                    search_author_lower = (search_author or "").lower()
-                    # Has plot content - likely a real match
-                    if metadata.get("plot"):
+                    title_contains = search_title_lower and (
+                        search_title_lower in web_title_lower
+                        or web_title_lower in search_title_lower
+                    )
+
+                    # Tier 1: Both title (>=50%) and author match
+                    if title_score >= 0.5 and author_match:
                         is_real_match = True
-                    elif search_title_lower and title_match:
-                        # Check if title similarity (contains at least part of search title)
-                        if (
-                            search_title_lower in title_match
-                            or title_match in search_title_lower
-                            or any(
-                                word in title_match
-                                for word in search_title_lower.split()
-                                if len(word) > 2
-                            )
-                        ):
-                            is_real_match = True
-                    elif search_author_lower and author_match:
-                        if (
-                            search_author_lower in author_match
-                            or author_match in search_author_lower
-                        ):
-                            is_real_match = True
+                    # Tier 2: Perfect title match + has metadata
+                    elif title_score >= 1.0 and has_metadata:
+                        is_real_match = True
+                    # Tier 3: Author match + title contains search
+                    elif author_match and title_contains:
+                        is_real_match = True
+                    # Tier 4: Good title match + has metadata
+                    elif title_score >= 0.5 and has_metadata:
+                        is_real_match = True
 
                 if metadata and is_real_match:
+                    # Try to fetch missing plot from alternative sources
+                    if not metadata.get("plot"):
+                        # Try Open Library first
+                        plot = self._fetch_plot_from_open_library(
+                            metadata.get("title", ""), metadata.get("author", "")
+                        )
+                        # Fallback to Wikipedia if Open Library has no plot
+                        if not plot:
+                            plot = self._fetch_plot_from_wikipedia(
+                                metadata.get("title", ""), metadata.get("author", "")
+                            )
+                        if plot:
+                            metadata["plot"] = plot
+
                     # Ensure title in metadata is normalized and series number is appended if needed
                     if append_series_to_title and series_number:
                         if (
@@ -406,6 +474,135 @@ class WebBookAPI:
             with urllib.request.urlopen(req, timeout=6) as response:
                 data = json.loads(response.read().decode("utf-8"))
                 return self._extract_description(data.get("description", ""))
+        except Exception:
+            return ""
+
+    def _fetch_plot_from_open_library(self, title: str, author: str = None) -> str:
+        """Search Open Library for a book and return its plot/description."""
+        try:
+            if not title:
+                return ""
+
+            # Build search query
+            query = title
+            if author:
+                query += f" author:{author}"
+
+            params = {
+                "q": query,
+                "limit": 3,
+                "fields": "key,title,author_name,description",
+            }
+
+            url = f"{self.open_library_url}?{urllib.parse.urlencode(params)}"
+            req = urllib.request.Request(url)
+            req.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
+
+            with urllib.request.urlopen(req, timeout=8) as response:
+                data = json.loads(response.read().decode("utf-8"))
+
+            if not data.get("docs"):
+                return ""
+
+            # Find best match with plot
+            for doc in data["docs"]:
+                work_key = doc.get("key", "")
+                if work_key:
+                    plot = self._get_open_library_description(work_key)
+                    if plot and len(plot) > 20:
+                        return plot
+
+            return ""
+        except Exception:
+            return ""
+
+    def _fetch_plot_from_wikipedia(self, title: str, author: str = None) -> str:
+        """Search Wikipedia for a book and return its summary/extract."""
+        try:
+            if not title:
+                return ""
+
+            # Build search query - be more specific to find book pages
+            search_terms = [f"{title} novel", f"{title} book"]
+            if author:
+                search_terms.insert(0, f"{title} {author} novel")
+                search_terms.insert(1, f"{title} {author} book")
+
+            for search_query in search_terms:
+                # Search for the page
+                search_params = {
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": search_query,
+                    "srlimit": 3,
+                    "format": "json",
+                    "origin": "*",
+                }
+
+                search_url = (
+                    f"{self.wikipedia_url}?{urllib.parse.urlencode(search_params)}"
+                )
+                req = urllib.request.Request(search_url)
+                req.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
+
+                with urllib.request.urlopen(req, timeout=8) as response:
+                    search_data = json.loads(response.read().decode("utf-8"))
+
+                if not search_data.get("query", {}).get("search"):
+                    continue
+
+                # Try each search result
+                for result in search_data["query"]["search"][:2]:
+                    page_title = result.get("title", "")
+                    if not page_title:
+                        continue
+
+                    # Skip author biography pages (e.g., "John Connolly (author)")
+                    if author:
+                        author_parts = author.lower().split()
+                        # If page title is just the author name, skip it
+                        if all(part in page_title.lower() for part in author_parts):
+                            if "(" in page_title or "author" in page_title.lower():
+                                continue
+
+                    # Get the extract/summary for this page
+                    extract_params = {
+                        "action": "query",
+                        "prop": "extracts",
+                        "explaintext": True,
+                        "exsentences": 10,
+                        "titles": page_title,
+                        "format": "json",
+                        "origin": "*",
+                    }
+
+                    extract_url = (
+                        f"{self.wikipedia_url}?{urllib.parse.urlencode(extract_params)}"
+                    )
+                    req2 = urllib.request.Request(extract_url)
+                    req2.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
+
+                    with urllib.request.urlopen(req2, timeout=8) as response2:
+                        extract_data = json.loads(response2.read().decode("utf-8"))
+
+                    pages = extract_data.get("query", {}).get("pages", {})
+                    for page_id, page_data in pages.items():
+                        extract = page_data.get("extract", "")
+                        # Filter out disambiguation pages and short extracts
+                        if extract and len(extract) > 50:
+                            # Skip if it's a disambiguation page
+                            if "may refer to" in extract.lower()[:100]:
+                                continue
+                            if "disambiguation" in page_data.get("title", "").lower():
+                                continue
+                            # Verify author appears in extract (if author provided)
+                            if author:
+                                author_last = author.split()[-1].lower()
+                                if author_last not in extract.lower():
+                                    continue
+                            return extract
+
+            return ""
         except Exception:
             return ""
 
