@@ -1149,8 +1149,7 @@ class PreferencesWindow(QDialog):
             "import_dir_edit": self.focus_source_scope_section,
             "browse_button": self.on_browse,
             "author_fallback_checkbox": self.focus_fallback_section,
-            "rules_section_text": self.focus_validation_section,
-            "autocorrect_section_text": self.focus_autocorrect_section,
+            "rules_section_text": self.focus_validation_section,  # Alt+V
             "restore_defaults_button": self.on_restore_defaults,
             "save_button": self.on_save,
         }

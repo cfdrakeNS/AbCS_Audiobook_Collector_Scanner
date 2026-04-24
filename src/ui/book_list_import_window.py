@@ -595,7 +595,6 @@ class BookListImportWindow(QDialog):
             "4. Use checkboxes in Options column for import settings\n"
             "5. Title and Author fields are required for import. "
             "6. Click Import to process the file. "
-            "Press Alt+H to return focus to these instructions."
         )
 
         self.instructions_label = QLabel(
@@ -606,7 +605,6 @@ class BookListImportWindow(QDialog):
             "4 Use checkboxes in Options column for import settings\n"
             "5 Title and Author fields are required for import\n"
             "6 Click Import to process the file\n\n"
-            "Press Alt+H to return focus to these instructions"
         )
         self.instructions_label.setWordWrap(True)
         self.instructions_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)

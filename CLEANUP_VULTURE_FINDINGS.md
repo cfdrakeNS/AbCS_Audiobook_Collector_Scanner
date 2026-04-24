@@ -1,4 +1,9 @@
----
+#@ volture cleanup process 
+1. read CLEANUP_VULTURE_FINDINGS noting the false positives that are document. 
+2. Do a vulture scan of the code 
+3. update the doc with your finding. 
+4. do not remove existing text add your finding under the heading 'todays date'finding.
+
 
 # April 23, 2026 — Cleanup Complete
 
