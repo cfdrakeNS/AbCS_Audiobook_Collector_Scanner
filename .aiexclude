@@ -1,0 +1,53 @@
+# Ignore graphics assets (all cases)
+data/Graphics/
+data/graphics/**
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Build outputs
+build/
+dist/
+*.exe
+*.pkg
+*.spec
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database files (keep schema SQL tracked, ignore runtime DBs)
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite3
+data/*.sql
+data/*.csv
+data/*.xls
+
+# Backup folder
+backups/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Archive folder
+archive/

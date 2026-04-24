@@ -4,38 +4,27 @@ This document outlines the phased approach to optimizing AbCS for large librarie
 
 ---
 
-## Phase 0: Benchmarking (Current Step)
-*Priority: Immediate*
+## Phase 0: Benchmarking (Complete)
+*Status: Baseline Established with 34,679 records*
 
-Before refactoring, we must measure the current performance with the 31k database.
-
-### Metrics to Capture:
-1. **Main Window:**
-   - **Initial Load:** Time from app start to table focus.
-   - **Find (Search):** Time to filter the table after pressing Enter in Find dialog.
-   - **Filter Read:** Time to refresh after selecting Read/Unread.
-   - **Sorts:** Compare SQL sort (Author/Series) vs. In-memory sort (Year/Length).
-   - **Collection Switch:** Time to reload when changing collection filters.
-   - **Book Details:** Time to open the details window for a record.
-
-2. **Import Window:**
-   - **Auto-Add Phase:** Time spent adding valid books to DB during scan.
-   - **Manual Add:** Time spent adding "Selected" books from the review list.
-
-3. **Book List Import:**
-   - **Batch Add:** Time to process and insert books from a CSV/Text list.
-
-### Success Criteria:
-* Document the "Current State" column in the Summary of Gains table.
+### Baseline Results:
+*   **Library Load (34.7k):** ~0.58s - 0.63s
+*   **SQL Sort:** ~0.62s
+*   **Search (Filter):** ~0.55s
+*   **Import (Scan):** ~0.56s
+*   **Folder Import (Add):** **9.14s for 6 books** (Fuzzy Duplicate check identified as the bottleneck).
+*   **Book List Import (XLS):** **CRASHED** (Currently unmeasured due to application hang; suspected bottleneck in Excel parsing or Fuzzy Duplicate matching).
 
 ---
 
-## Module 1: Main Library View (`src/ui/main_win.py`)
+## Phase 1: Virtualization & Threading (Deprioritized)
+
+## Module 1: Main Library View (`src/ui/main_window.py`)
 *Priority: Critical*
 
 ### Changes:
-1.  **Virtualization:** Replace `QTableWidget` with `QTableView`.
-2.  **Data Modeling:** Implement a custom `QAbstractTableModel` to handle the SQLite data set. This prevents the creation of 150,000+ Python objects.
+1.  **Lightweight Data:** Modify `BookTableModel` to use a list of tuples/dictionaries instead of full `Book` dataclasses to reduce object overhead.
+2.  **Pagination/Chunking:** Update `BookQueries.get_all` to support `LIMIT`/`OFFSET` or `fetchmany` so we don't load 35k records into RAM at once.
 3.  **Sorting:** Move sorting logic to the SQL query level (ORDER BY) or use `QSortFilterProxyModel` to avoid GUI-thread stutter.
 4.  **Repaint Control:** Wrap the initial library load in `setUpdatesEnabled(False/True)` blocks.
 

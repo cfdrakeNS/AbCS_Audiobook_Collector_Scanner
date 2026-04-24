@@ -3,8 +3,6 @@ Main Window - Audio Book Window
 Primary interface for browsing and managing audiobook collection.
 """
 
-import time
-
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -1680,7 +1678,6 @@ class MainWindow(QMainWindow):
 
     def on_collection_menu_selected(self, collection_id):
         """Handle View > Collections menu selection."""
-        print(f"[TIMING] Switching Collection...")
         valid_ids = {
             collection_id_value
             for _label, collection_id_value in self._collection_filter_items
@@ -1704,7 +1701,6 @@ class MainWindow(QMainWindow):
         """Refresh books table based on current filter."""
         # BLOCK ALL EVENTS - This is critical!
         self.table.blockSignals(True)
-        start_time = time.perf_counter()
 
         try:
             # Get books from database
@@ -1729,8 +1725,6 @@ class MainWindow(QMainWindow):
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
 
-            elapsed = time.perf_counter() - start_time
-            print(f"[TIMING] refresh_books: {elapsed:.4f}s for {len(self.books)} rows (Filter: {self.current_filter.read_filter}, Sort: {self.current_filter.order_by})")
             self.set_default_status(announce=False)
 
         except Exception as e:
@@ -1966,7 +1960,6 @@ class MainWindow(QMainWindow):
 
         def run_find():
             query = text_edit.text().strip()
-            start_find = time.perf_counter()
             if not query:
                 QApplication.beep()
                 dialog_status.showMessage(
@@ -1982,9 +1975,6 @@ class MainWindow(QMainWindow):
             self.current_filter.search_text = query
             self.current_filter.is_keyword_search = not exact_check.isChecked()
             self.refresh_books()
-
-            elapsed_find = time.perf_counter() - start_find
-            print(f"[TIMING] run_find: {elapsed_find:.4f}s for query '{query}'")
 
             if not self.books:
                 message = f"No match found for {selected_field.lower()}: {query}"
@@ -3196,8 +3186,6 @@ class MainWindow(QMainWindow):
 
     def open_book_details(self, book: Book):
         """Open book details window."""
-        start_details = time.perf_counter()
-        # bd#8: Pass current sort order to show in header
         sort_order = self.current_filter.order_by
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
@@ -3216,9 +3204,6 @@ class MainWindow(QMainWindow):
             current_index=current_index,
             parent=self,
         )
-        elapsed_details = time.perf_counter() - start_details
-        print(f"[TIMING] open_book_details (init): {elapsed_details:.4f}s")
-        
         details.exec()
 
         # bd#7: After dialog closes, get the last viewed book_id

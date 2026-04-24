@@ -6,6 +6,7 @@ import csv
 import os
 import re
 from datetime import datetime
+import difflib
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -151,14 +152,11 @@ class BookListImportWindow(QDialog):
         norm_title = self._normalize_title_for_match(title)
         norm_author = self._normalize_author_for_match(author)
 
-        for db_row in preexisting_books:
-            db_title = db_row[1]
-            db_author = db_row[2]
-            db_year = db_row[3] if len(db_row) > 3 else None
-            db_collection_id = db_row[4] if len(db_row) > 4 else None
-
-            norm_db_title = self._normalize_title_for_match(db_title)
-            norm_db_author = self._normalize_author_for_match(db_author)
+        for db_book in preexisting_books:
+            norm_db_title = db_book["norm_title"]
+            norm_db_author = db_book["norm_author"]
+            db_year = db_book["year"]
+            db_collection_id = db_book["collection_id"]
 
             # Check title and author match (always required)
             title_match = norm_db_title == norm_title
@@ -210,43 +208,15 @@ class BookListImportWindow(QDialog):
         return False
 
     def _calculate_similarity(self, s1: str, s2: str) -> float:
-        """Calculate string similarity percentage using Levenshtein distance.
-
-        Args:
-            s1: First string
-            s2: Second string
-
-        Returns:
-            Similarity percentage (0-100)
-        """
+        """Calculate string similarity percentage using difflib.SequenceMatcher."""
         if not s1 and not s2:
             return 100.0
         if not s1 or not s2:
             return 0.0
         if s1 == s2:
             return 100.0
-
-        # Simple Levenshtein distance calculation
-        m, n = len(s1), len(s2)
-        # Create distance matrix
-        d = [[0] * (n + 1) for _ in range(m + 1)]
-        for i in range(m + 1):
-            d[i][0] = i
-        for j in range(n + 1):
-            d[0][j] = j
-        for i in range(1, m + 1):
-            for j in range(1, n + 1):
-                cost = 0 if s1[i - 1] == s2[j - 1] else 1
-                d[i][j] = min(
-                    d[i - 1][j] + 1,  # deletion
-                    d[i][j - 1] + 1,  # insertion
-                    d[i - 1][j - 1] + cost,  # substitution
-                )
-        max_len = max(m, n)
-        if max_len == 0:
-            return 100.0
-        similarity = ((max_len - d[m][n]) / max_len) * 100
-        return similarity
+            
+        return difflib.SequenceMatcher(None, s1, s2).ratio() * 100
 
     def __init__(
         self,
@@ -1639,10 +1609,22 @@ class BookListImportWindow(QDialog):
 
         # Fetch all existing books in the DB before import starts
         # Include collection_id for collection-based duplicate checking
-        preexisting_books = self.db.fetch_all(
+        preexisting_rows = self.db.fetch_all(
             "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
             "JOIN authors a ON b.author_id = a.author_id"
         )
+        
+        # Pre-normalize DB records once to avoid millions of repeated string operations
+        preexisting_books = []
+        for row_data in preexisting_rows:
+            preexisting_books.append({
+                "title": row_data[1],
+                "author": row_data[2],
+                "norm_title": self._normalize_title_for_match(row_data[1]),
+                "norm_author": self._normalize_author_for_match(row_data[2]),
+                "year": row_data[3],
+                "collection_id": row_data[4]
+            })
 
         # Import validator for sanitizing metadata fields
         from src.core.validator import ImportValidator
@@ -1731,20 +1713,24 @@ class BookListImportWindow(QDialog):
                     fuzzy_threshold,
                 )
                 if duplicate_found:
-                    self.import_errors.append(
-                        {
-                            "row": index + 1,
-                            "title": title_for_save,
-                            "author": author,
-                            "reason": "Duplicate - book already exists",
-                        }
-                    )
+                    self.import_errors.append({
+                        "row": index + 1,
+                        "title": title_for_save,
+                        "author": author,
+                        "reason": "Duplicate - book already exists",
+                    })
                     error_count += 1
                     continue
-                # After inserting, add this book to preexisting_books so subsequent imports in the same file are checked for duplicates
-                preexisting_books.append(
-                    (None, title_for_save, author, import_year, selected_collection_id)
-                )
+
+                # Add this book to preexisting_books so subsequent imports in the same file are checked
+                preexisting_books.append({
+                    "title": title_for_save,
+                    "author": author,
+                    "norm_title": self._normalize_title_for_match(title_for_save),
+                    "norm_author": self._normalize_author_for_match(author),
+                    "year": import_year,
+                    "collection_id": selected_collection_id
+                })
 
                 # Get or create author
                 author_id = self.author_queries.get_or_create(author, commit=False)

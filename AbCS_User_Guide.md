@@ -92,6 +92,7 @@ Go to **View > Preferences** to customize your experience:
 * **Display:** Adjust Theme and Zoom level.
 * **Import Rules:** Set how the scanner handles missing data (e.g., Warning if title is too short).
 * **Duplicates:** Configure "Fuzzy Matching" (default 90%) to catch nearly identical titles.
+* **Performance Note:** Using a very high Fuzzy Matching threshold (above 90%) with libraries exceeding 10,000 books can impact import performance. A setting of 75-85% is recommended for large collections.
 * **Restore Defaults (Alt + E):** Quickly reset all settings to the recommended AbCS configuration.
 
 ---
