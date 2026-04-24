@@ -193,7 +193,7 @@ def test_import_summary_uses_errors_warnings_label(
     )
     status_text = window.status_bar.currentMessage()
 
-    assert "Fixed: 3" in status_text
+    assert "Corrected: 3" in status_text
     assert "Errors/Warnings: 6" in status_text
     assert "Issues:" not in status_text
 
