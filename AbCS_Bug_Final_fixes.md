@@ -76,6 +76,10 @@ when a collection is selected in main win other then "all collections" the impor
 73. complete - bookh_listh_importh_window: Add collection combo for collection to the top of the options section. When a collection is selected in main win other than "all collections" the bookh_listh_import window should default to the main window current collection. If main win collection is "all collections" and there is more than one collection, leave collection empty; if only one collection, default to that collection. (See import window for logic.) Popup warning if no collection is selected. 
 74. complete - Preference window: Added "Restore Defaults" button with Alt+E shortcut. Shows confirmation popup before resetting all settings to defaults per AbCS_default_preference.md. Resets: Display (default theme, 150% zoom), Import (empty directory, all formats, mass_standard scenario, fallback enabled), Reader keywords, Validation rules (author in title=warning, title in author=error, unknown=error, min title=3/disabled, file structure=warning/enabled, year consistency=warning/enabled), Duplicate checking (title_author_year, 90% fuzzy).  
 75. ppreference window - 1. year cons when pick error import error list show W: not E: 2. year const label right justify it. 
+74. preferences window year consistency label right justify 
+75. default preference for min title length is 3 add waring it is current none 
+76. book_detail window if read date is not set to a vulue when using the date picker set the date to current 
+77. import import_progress window - status bar change the literal "Fixed" to "Corrected"
 
 
 

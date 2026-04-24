@@ -705,9 +705,11 @@ class BookDetailsWindow(QDialog):
                     self.setStyleSheet(calendar_style)
 
             def showEvent(self, event):
-                # If date is minimum (null), set to today before showing
+                # If date is null (not set), set to today before showing
                 if self.date_edit.date() == self.date_edit._null_read_date:
-                    self.date_edit.setDate(QDate.currentDate())
+                    today = QDate.currentDate()
+                    self.date_edit.setDate(today)
+                    self.setSelectedDate(today)
                 super().showEvent(event)
 
         # Replace the calendar widget with our custom one

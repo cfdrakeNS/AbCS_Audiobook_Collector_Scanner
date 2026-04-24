@@ -516,7 +516,6 @@ class PreferencesWindow(QDialog):
 
         year_quality_label = QLabel("Year Consistency:")
         year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        year_quality_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         year_quality_layout = QHBoxLayout()
         year_quality_layout.setContentsMargins(0, 0, 0, 0)
         year_quality_layout.setSpacing(6)
@@ -735,6 +734,12 @@ class PreferencesWindow(QDialog):
         self.fallback_checks_layout.setColumnMinimumWidth(0, 0)
         self.author_fallback_checkbox.setMinimumWidth(0)
         self.fallback_checks_layout.setHorizontalSpacing(0)
+
+    def _update_min_title_warning(self):
+        """Show/hide warning when min title length severity is 'none' (disabled)."""
+        if hasattr(self, "min_title_warning_label"):
+            is_disabled = self.rule_min_title_severity.currentData() == "none"
+            self.min_title_warning_label.setVisible(is_disabled)
 
     def _sync_section_label_heights(self):
         """Keep section label boxes the same height for visual consistency."""
@@ -1047,7 +1052,7 @@ class PreferencesWindow(QDialog):
 
         min_title_enabled = self.settings.value(
             "import/rules/minimum_title_length/enabled",
-            False,
+            True,
             type=bool,
         )
         self.rule_min_title_value.setValue(
@@ -1066,6 +1071,7 @@ class PreferencesWindow(QDialog):
             min_title_severity = "none"
         index = self.rule_min_title_severity.findData(min_title_severity)
         self.rule_min_title_severity.setCurrentIndex(0 if index < 0 else index)
+        self._update_min_title_warning()
 
         file_structure_enabled = self.settings.value(
             "import/rules/file_structure/enabled",
@@ -1133,6 +1139,9 @@ class PreferencesWindow(QDialog):
         self.browse_button.clicked.connect(self.on_browse)
         self.restore_defaults_button.clicked.connect(self.on_restore_defaults)
         self.save_button.clicked.connect(self.on_save)
+        self.rule_min_title_severity.currentIndexChanged.connect(
+            self._update_min_title_warning
+        )
 
     def register_shortcuts(self):
         """Register keyboard shortcuts using ShortcutManager (except Alt+/)."""

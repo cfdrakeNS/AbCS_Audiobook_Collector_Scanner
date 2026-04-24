@@ -1227,7 +1227,7 @@ class ImportWindow(QDialog):
         filter_value = self.error_filter_combo.currentData()
         message = (
             f"Scanned: {scanned} | Added: {added} | "
-            f"Fixed: {fixed} | Errors/Warnings: {issues} | "
+            f"Corrected: {fixed} | Errors/Warnings: {issues} | "
             f"Duplicates: {duplicates} | "
             f"Filtered: {filtered}"
         )
@@ -1777,7 +1777,7 @@ class ImportWindow(QDialog):
                     f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
                 )
                 summary_text = (
-                    f"Scanned: {scanned_total} | Added: {added_count} | Fixed: 0 | Issues: 0 | "
+                    f"Scanned: {scanned_total} | Added: {added_count} | Corrected: 0 | Issues: 0 | "
                     f"{valid_segment}"
                     f"Duplicates: 0 | Elapsed: {elapsed_text}"
                 )
@@ -1804,20 +1804,20 @@ class ImportWindow(QDialog):
             self.set_status("Scan canceled", announce=True)
             self.set_status(
                 f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | "
-                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
+                f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
         else:
             self.set_status(
                 f"Scanned: {scanned_total} | Added: {added_count} | "
-                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
+                f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
 
         if self.progress_window:
             summary_text = (
                 f"Scanned: {scanned_total} | Added: {added_count} | "
-                f"Fixed: {fixed_count} | "
+                f"Corrected: {fixed_count} | "
                 f"Errors/Warnings: {issues_count} | "
                 f"Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
@@ -1856,7 +1856,7 @@ class ImportWindow(QDialog):
                 valid_segment = ""
         final_status = (
             f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-            f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | "
+            f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | "
             f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
         )
         if scan_was_canceled:
