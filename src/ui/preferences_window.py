@@ -398,7 +398,7 @@ class PreferencesWindow(QDialog):
         rules_group.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         rules_layout = QGridLayout(rules_group)
         rules_layout.setContentsMargins(2, 4, 2, 4)
-        rules_layout.setHorizontalSpacing(6)
+        rules_layout.setHorizontalSpacing(12)
         rules_layout.setVerticalSpacing(6)
         rules_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
@@ -516,7 +516,6 @@ class PreferencesWindow(QDialog):
 
         year_quality_label = QLabel("Year Consistency:")
         year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        year_quality_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         year_quality_layout = QHBoxLayout()
         year_quality_layout.setContentsMargins(0, 0, 0, 0)
         year_quality_layout.setSpacing(6)
