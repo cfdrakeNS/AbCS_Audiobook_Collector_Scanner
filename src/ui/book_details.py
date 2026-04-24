@@ -675,9 +675,10 @@ class BookDetailsWindow(QDialog):
         from PySide6.QtWidgets import QCalendarWidget
 
         class CustomCalendar(QCalendarWidget):
-            def __init__(self, parent, date_edit):
+            def __init__(self, parent, date_edit, null_date):
                 super().__init__(parent)
                 self.date_edit = date_edit
+                self._null_date = null_date
 
                 # Make calendar larger and more readable
                 if hasattr(parent, "scaler"):
@@ -706,14 +707,14 @@ class BookDetailsWindow(QDialog):
 
             def showEvent(self, event):
                 # If date is null (not set), set to today before showing
-                if self.date_edit.date() == self.date_edit._null_read_date:
+                if self.date_edit.date() == self._null_date:
                     today = QDate.currentDate()
                     self.date_edit.setDate(today)
                     self.setSelectedDate(today)
                 super().showEvent(event)
 
         # Replace the calendar widget with our custom one
-        calendar = CustomCalendar(self.read_date, self.read_date)
+        calendar = CustomCalendar(self, self.read_date, self._null_read_date)
         self.read_date.setCalendarWidget(calendar)
 
         read_label.setBuddy(self.read_date)
