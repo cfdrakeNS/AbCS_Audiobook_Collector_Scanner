@@ -516,6 +516,7 @@ class PreferencesWindow(QDialog):
 
         year_quality_label = QLabel("Year Consistency:")
         year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        year_quality_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         year_quality_layout = QHBoxLayout()
         year_quality_layout.setContentsMargins(0, 0, 0, 0)
         year_quality_layout.setSpacing(6)
@@ -1555,12 +1556,12 @@ class PreferencesWindow(QDialog):
             "import/rules/unknown_or_various_author/severity", "error"
         )
 
-        # Min title length: value 3, severity none (disabled)
+        # Min title length: value 3, severity warning (enabled)
         self.rule_min_title_value.setValue(3)
         self.rule_min_title_severity.setCurrentIndex(
-            self.rule_min_title_severity.findData("none")
+            self.rule_min_title_severity.findData("warning")
         )
-        self.settings.setValue("import/rules/minimum_title_length/enabled", False)
+        self.settings.setValue("import/rules/minimum_title_length/enabled", True)
         self.settings.setValue("import/rules/minimum_title_length/value", 3)
         self.settings.setValue("import/rules/minimum_title_length/severity", "warning")
 
