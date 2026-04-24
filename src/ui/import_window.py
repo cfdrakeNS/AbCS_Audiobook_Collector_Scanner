@@ -1557,6 +1557,7 @@ class ImportWindow(QDialog):
         transaction_open = False
         try:
             conn.execute("BEGIN")
+            auto_add_start = time.perf_counter()
             transaction_open = True
 
             # Update progress window to show add phase starting.
@@ -1752,6 +1753,8 @@ class ImportWindow(QDialog):
             if transaction_open:
                 conn.commit()
                 transaction_open = False
+                auto_add_elapsed = time.perf_counter() - auto_add_start
+                print(f"[TIMING] Auto-add phase: {auto_add_elapsed:.4f}s for {added_count} books")
         except Exception:
             if transaction_open:
                 conn.rollback()
@@ -2028,6 +2031,7 @@ class ImportWindow(QDialog):
         failed = 0
         processed_valid = 0
         rows_to_remove = []
+        manual_add_start = time.perf_counter()
         conn = self.db.connect()
         transaction_open = False
 
@@ -2123,6 +2127,8 @@ class ImportWindow(QDialog):
             if transaction_open:
                 conn.commit()
                 transaction_open = False
+                manual_add_elapsed = time.perf_counter() - manual_add_start
+                print(f"[TIMING] Manual add selected: {manual_add_elapsed:.4f}s for {imported} books")
 
             if rows_to_remove:
                 sorted_rows_to_remove = sorted(set(rows_to_remove))

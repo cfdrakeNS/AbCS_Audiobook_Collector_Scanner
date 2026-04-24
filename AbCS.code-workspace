@@ -16,13 +16,12 @@
       "**/build": true,
       "**/dist": true,
       "**/code_scratch_pad": true
-
     },
     "python.linting.ignorePatterns": [
       "code_scratch_pad"
     ],
     "python.analysis.typeCheckingMode": "off",
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
+    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
     "python.terminal.activateEnvironment": true,
     "terminal.integrated.environmentChangesRelaunch": true,
     "terminal.integrated.environmentChangesIndicator": "off",
@@ -41,7 +40,7 @@
     "git.enableStatusBarSync": false,
     "git.showProgress": false,
     "github.copilot.enable": {
-      "*": true,
+      "*": false,
       "plaintext": false,
       "markdown": false
     },
@@ -63,8 +62,7 @@
   "extensions": {
     "recommendations": [
       "ms-python.python",
-      "ms-python.vscode-pylance",
-      "github.copilot"
+      "ms-python.vscode-pylance"
     ]
   }
 }
