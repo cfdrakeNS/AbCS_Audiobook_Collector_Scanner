@@ -394,19 +394,23 @@ class BookDetailsWindow(QDialog):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
         # Check for FocusOut on relevant fields to sanitize input silently
+        # Only sanitize if field has been modified (is dirty) - prevents unwanted prompts for save
         if event.type() == QEvent.FocusOut:
             from src.core.validator import ImportValidator
 
             validator = ImportValidator()
-            # Title
-            if source == self.title_edit:
+            dirty_widget = self._resolve_dirty_source(source)
+            is_dirty = dirty_widget is not None
+
+            # Title - only sanitize if dirty
+            if source == self.title_edit and is_dirty:
                 val = self.title_edit.text()
                 temp = {"title": val}
                 validator.sanitize_metadata(temp)
                 if temp["title"] != val:
                     self.title_edit.setText(temp["title"])
-            # Author
-            elif source == self.author_combo:
+            # Author - only sanitize if dirty
+            elif source == self.author_combo and is_dirty:
                 val = self.author_combo.currentText()
                 temp = {"author": val}
                 validator.sanitize_metadata(temp)
@@ -418,8 +422,8 @@ class BookDetailsWindow(QDialog):
                     self._original_author,
                     self.author_queries,
                 )
-            # Series
-            elif source == self.series_combo:
+            # Series - only sanitize if dirty
+            elif source == self.series_combo and is_dirty:
                 val = self.series_combo.currentText()
                 temp = {"series": val}
                 validator.sanitize_metadata(temp)
@@ -431,8 +435,8 @@ class BookDetailsWindow(QDialog):
                     self._original_series,
                     self.series_queries,
                 )
-            # Genre
-            elif source == self.genre_combo:
+            # Genre - only sanitize if dirty
+            elif source == self.genre_combo and is_dirty:
                 val = self.genre_combo.currentText()
                 temp = {"genre": val}
                 validator.sanitize_metadata(temp)
@@ -441,13 +445,34 @@ class BookDetailsWindow(QDialog):
                 self._check_combo_change(
                     "Genre", self.genre_combo, self._original_genre, self.genre_queries
                 )
-            # Reader
-            elif source == self.reader_edit:
+            # Reader - only sanitize if dirty
+            elif source == self.reader_edit and is_dirty:
                 val = self.reader_edit.text()
                 temp = {"reader": val}
                 validator.sanitize_metadata(temp)
                 if temp["reader"] != val:
                     self.reader_edit.setText(temp["reader"])
+
+            # The combo _check_combo_change calls still need to happen for non-dirty fields
+            # to handle auto-creation of new entries, but sanitization is skipped
+            elif source == self.author_combo:
+                self._check_combo_change(
+                    "Author",
+                    self.author_combo,
+                    self._original_author,
+                    self.author_queries,
+                )
+            elif source == self.series_combo:
+                self._check_combo_change(
+                    "Series",
+                    self.series_combo,
+                    self._original_series,
+                    self.series_queries,
+                )
+            elif source == self.genre_combo:
+                self._check_combo_change(
+                    "Genre", self.genre_combo, self._original_genre, self.genre_queries
+                )
 
             dirty_widget = self._resolve_dirty_source(source)
             if dirty_widget is not None:
@@ -841,6 +866,9 @@ class BookDetailsWindow(QDialog):
         # bd#4: Action buttons - New, Save, Delete (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
 
+        # Stretch first to push buttons to the right
+        button_layout.addStretch()
+
         # New button (Alt+N) - clears form for new entry
         self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
@@ -893,8 +921,6 @@ class BookDetailsWindow(QDialog):
             False
         )  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.get_web_details_button)
-
-        button_layout.addStretch()
 
         layout.addLayout(button_layout)
 
@@ -1173,6 +1199,14 @@ class BookDetailsWindow(QDialog):
             for k, (desc, _) in BOOK_DETAILS_SHORTCUTS.items()
             if k != "F1"
         ]
+        # Add local button shortcuts and status read (not in centralized mapping)
+        shortcut_keys.extend(
+            [
+                ("Alt+N", "New book"),
+                ("Alt+D", "Delete book"),
+                ("Alt+/", "Read status bar"),
+            ]
+        )
         shortcut_keys.append(("F1", "Show keyboard shortcuts"))
         shortcut_keys = get_accessible_shortcuts_list(shortcut_keys)
         table.setRowCount(len(shortcut_keys))

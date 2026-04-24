@@ -810,8 +810,10 @@ class BookListImportWindow(QDialog):
 
         # Buttons
         button_layout = QHBoxLayout()
-        button_layout.setAlignment(Qt.AlignLeft)
         button_layout.setSpacing(8)
+
+        # Stretch first to push buttons to the right
+        button_layout.addStretch()
 
         self.import_button = QPushButton("Import")
         self.import_button.setAccessibleName("Import button")
@@ -1644,11 +1646,22 @@ class BookListImportWindow(QDialog):
             "JOIN authors a ON b.author_id = a.author_id"
         )
 
+        # Import validator for sanitizing metadata fields
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
+
         for index, row in self.file_data.iterrows():
             try:
                 # Extract required fields
                 title = str(row.iloc[mapping["title"]]).strip()
                 author = str(row.iloc[mapping["author"]]).strip()
+
+                # Sanitize title and author fields before processing
+                temp_meta = {"title": title, "author": author}
+                validator.sanitize_metadata(temp_meta)
+                title = temp_meta["title"]
+                author = temp_meta["author"]
 
                 if not title or not author or title == "nan" or author == "nan":
                     self.import_errors.append(
@@ -1683,6 +1696,10 @@ class BookListImportWindow(QDialog):
                         and str(val).strip().lower() != "nan"
                     ):
                         series = str(val).strip()
+                        # Sanitize series field
+                        temp = {"series": series}
+                        validator.sanitize_metadata(temp)
+                        series = temp["series"]
 
                 # Append series number to title if both present
                 title_for_save = title
@@ -1763,14 +1780,24 @@ class BookListImportWindow(QDialog):
                 if mapping.get("genre") is not None:
                     genre = row.iloc[mapping["genre"]]
                     if pd.notna(genre) and str(genre) != "nan":
+                        genre = str(genre).strip()
+                        # Sanitize genre field
+                        temp = {"genre": genre}
+                        validator.sanitize_metadata(temp)
+                        genre = temp["genre"]
                         book.genre_id = self.genre_queries.get_or_create(
-                            str(genre), commit=False
+                            genre, commit=False
                         )
 
                 if mapping.get("reader") is not None:
                     reader = row.iloc[mapping["reader"]]
                     if pd.notna(reader) and str(reader) != "nan":
-                        book.reader = str(reader)
+                        reader = str(reader).strip()
+                        # Sanitize reader field
+                        temp = {"reader": reader}
+                        validator.sanitize_metadata(temp)
+                        reader = temp["reader"]
+                        book.reader = reader
 
                 if mapping.get("read_date") is not None:
                     read_date = row.iloc[mapping["read_date"]]

@@ -131,6 +131,9 @@ class BackupRestoreWindow(QDialog):
         layout.addLayout(restore_layout)
 
         footer_layout = QHBoxLayout()
+        # Stretch first to push buttons to the right
+        footer_layout.addStretch(1)
+
         self.backup_button = QPushButton("Backup")
         self.backup_button.setAccessibleName("Backup")
         self.backup_button.setAccessibleDescription(
@@ -159,7 +162,6 @@ class BackupRestoreWindow(QDialog):
         footer_layout.addWidget(self.restore_button)
         footer_layout.addWidget(self.delete_button)
         footer_layout.addWidget(self.full_reset_button)
-        footer_layout.addStretch(1)
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()

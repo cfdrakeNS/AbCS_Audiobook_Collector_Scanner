@@ -434,20 +434,24 @@ class ImportDetailWindow(QDialog):
             elif isinstance(source, QSpinBox):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
+        # Check for FocusOut on relevant fields to sanitize input silently
+        # Only sanitize if field has been modified (is dirty) - prevents unwanted prompts for save
         if event.type() == QEvent.FocusOut:
             from src.core.validator import ImportValidator
 
             validator = ImportValidator()
+            dirty_widget = self._resolve_dirty_source(source)
+            is_dirty = dirty_widget is not None
 
-            # Title
-            if source == getattr(self, "title_edit", None):
+            # Title - only sanitize if dirty
+            if source == getattr(self, "title_edit", None) and is_dirty:
                 val = self.title_edit.text()
                 temp = {"title": val}
                 validator.sanitize_metadata(temp)
                 if temp["title"] != val:
                     self.title_edit.setText(temp["title"])
-            # Author
-            if source == getattr(self, "author_combo", None):
+            # Author - only sanitize if dirty
+            if source == getattr(self, "author_combo", None) and is_dirty:
                 val = self.author_combo.currentText()
                 temp = {"author": val}
                 validator.sanitize_metadata(temp)
@@ -459,8 +463,8 @@ class ImportDetailWindow(QDialog):
                     self._original_author,
                     self.author_queries,
                 )
-            # Series
-            if source == getattr(self, "series_combo", None):
+            # Series - only sanitize if dirty
+            if source == getattr(self, "series_combo", None) and is_dirty:
                 val = self.series_combo.currentText()
                 temp = {"series": val}
                 validator.sanitize_metadata(temp)
@@ -472,8 +476,8 @@ class ImportDetailWindow(QDialog):
                     self._original_series,
                     self.series_queries,
                 )
-            # Genre
-            if source == getattr(self, "genre_combo", None):
+            # Genre - only sanitize if dirty
+            if source == getattr(self, "genre_combo", None) and is_dirty:
                 val = self.genre_combo.currentText()
                 temp = {"genre": val}
                 validator.sanitize_metadata(temp)
@@ -485,15 +489,38 @@ class ImportDetailWindow(QDialog):
                     self._original_genre,
                     self.genre_queries,
                 )
-            # Reader
-            if source == getattr(self, "reader_edit", None):
+            # Reader - only sanitize if dirty
+            if source == getattr(self, "reader_edit", None) and is_dirty:
                 val = self.reader_edit.text()
                 temp = {"reader": val}
                 validator.sanitize_metadata(temp)
                 if temp["reader"] != val:
                     self.reader_edit.setText(temp["reader"])
 
-            dirty_widget = self._resolve_dirty_source(source)
+            # The combo _check_combo_change calls still need to happen for non-dirty fields
+            # to handle auto-creation of new entries, but sanitization is skipped
+            elif source == getattr(self, "author_combo", None):
+                self._check_combo_change(
+                    "Author",
+                    self.author_combo,
+                    self._original_author,
+                    self.author_queries,
+                )
+            elif source == getattr(self, "series_combo", None):
+                self._check_combo_change(
+                    "Series",
+                    self.series_combo,
+                    self._original_series,
+                    self.series_queries,
+                )
+            elif source == getattr(self, "genre_combo", None):
+                self._check_combo_change(
+                    "Genre",
+                    self.genre_combo,
+                    self._original_genre,
+                    self.genre_queries,
+                )
+
             if dirty_widget is not None:
                 field_name = self._get_dirty_field_name(dirty_widget)
                 # Only announce if value actually changed (existing logic)

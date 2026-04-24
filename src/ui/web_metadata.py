@@ -435,6 +435,9 @@ class WebMetadataWindow(QDialog):
         # Add buttons
         button_layout = QHBoxLayout()
 
+        # Stretch first to push buttons to the right
+        button_layout.addStretch()
+
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
@@ -444,8 +447,6 @@ class WebMetadataWindow(QDialog):
         self.save_button.clicked.connect(self.on_save_clicked)
         self.save_button.setObjectName("save_button")  # For shortcut manager
         button_layout.addWidget(self.save_button)
-
-        button_layout.addStretch()
 
         self.main_layout.addLayout(button_layout)
 

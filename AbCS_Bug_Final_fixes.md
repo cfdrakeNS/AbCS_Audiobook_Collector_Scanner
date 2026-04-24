@@ -1,5 +1,4 @@
 # Final bug fixes
-
 1. complete - update window - shortcut alt=b replace with alt+l jump to list update shortcuts.py and centralized chortcuts
 2. complete - readh_history - check the layout and formatting it has issues with the tab Selector and buttons not following theme
 3. complete - main centre justify win read date
@@ -76,10 +75,16 @@ when a collection is selected in main win other then "all collections" the impor
 73. complete - bookh_listh_importh_window: Add collection combo for collection to the top of the options section. When a collection is selected in main win other than "all collections" the bookh_listh_import window should default to the main window current collection. If main win collection is "all collections" and there is more than one collection, leave collection empty; if only one collection, default to that collection. (See import window for logic.) Popup warning if no collection is selected. 
 74. complete - Preference window: Added "Restore Defaults" button with Alt+E shortcut. Shows confirmation popup before resetting all settings to defaults per AbCS_default_preference.md. Resets: Display (default theme, 150% zoom), Import (empty directory, all formats, mass_standard scenario, fallback enabled), Reader keywords, Validation rules (author in title=warning, title in author=error, unknown=error, min title=3/disabled, file structure=warning/enabled, year consistency=warning/enabled), Duplicate checking (title_author_year, 90% fuzzy).  
 75. ppreference window - 1. year cons when pick error import error list show W: not E: 2. year const label right justify it. 
-74. preferences window year consistency label right justify 
-75. default preference for min title length is 3 add waring it is current none 
-76. book_detail window if read date is not set to a vulue when using the date picker set the date to current 
-77. import import_progress window - status bar change the literal "Fixed" to "Corrected"
+74. complete - preferences window year consistency label right justify 
+75. complete - default preference for min title length is 3 add waring it is current none 
+76. complete - book_detail window if read date is not set to a vulue when using the date picker set the date to current 
+77. complete - import, import_progress window - status bar change the literal "Fixed" to "Corrected"
+78. complete - book_detail window - f1 help needs to be updated missing alt+/, alt+n new, alt+d delete, check to see that it is using centrlaized shortcuts.py
+79. complete - button in window footer consistency all right align needed; book detail, book list import, import detail backup restore, and main window 
+80. complete - book detail window - is applying sanitization function on data that is in the db. e.g. proper case. This is causing the window to prompt for save which is confusing. Only apply the sanitization to a field if it is dirty when field lost focus. This might also be happening in import detail window as well. 
+81. complete - preference window - change the shortcut for browse to alt+w update centralized shortcut and f1 menu 
+82. complete book list import window - apply sensitization to fields before saving to db. title, author, reader, genre, series,  using the same rules for sensitization as import window 
+83. check all windows for accessibility - shortcuts and f1 menu to ensure they are following centralized standards. refer to the PySide6_.. doc located in the docs folder. put your finding in abcs_accessibility_check.md
 
 
 

@@ -732,6 +732,13 @@ class MainWindow(QMainWindow):
         """Create footer with action buttons and info."""
         layout = QHBoxLayout()
 
+        # Sort order label (on left side)
+        self.sort_label = QLabel("Sorted by: Title")
+        layout.addWidget(self.sort_label)
+
+        # Spacer to push buttons to the right
+        layout.addStretch()
+
         # Update button (hidden initially)
 
         self.update_button = QPushButton("Update")
@@ -755,13 +762,6 @@ class MainWindow(QMainWindow):
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
-
-        # Spacer
-        layout.addStretch()
-
-        # Sort order label
-        self.sort_label = QLabel("Sorted by: Title")
-        layout.addWidget(self.sort_label)
 
         return layout
 

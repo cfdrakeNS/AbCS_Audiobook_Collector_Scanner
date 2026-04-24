@@ -1,6 +1,6 @@
 # default preference 
  - theme: Default (system)
- - Zoom: 150% 
+ - Zoom: 150% Extra Large
  - directory: empty 
  - formats: all checked 
  - scenario: mass standard import 
@@ -10,10 +10,10 @@
  - author in title: warning 
  - title in author: error
  - unknown/various: error
- - min title length: 3
+ - min title length: 3 warning
  - Duplicate match: title + author + year
  - fuzzy duplicate %: 90
- - File structure warning 
+ - File structure Author/title warning 
  - year consistency: warning 
 
 ## Fuzzy Threshold Explained:

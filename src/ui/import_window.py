@@ -169,7 +169,7 @@ class ImportWindow(QDialog):
         "L",
         "S",
         "X",
-        "W",  # Only actually implemented shortcuts
+        "W", 
     }
 
     COL_AUTHOR = 0
@@ -769,7 +769,7 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+B", "Browse"),
+            ("Alt+W", "Browse"),
             ("Alt+E", "Error filter"),
             ("Ctrl+I", "Import"),
             ("Alt+L", "Jump to table"),
@@ -778,7 +778,6 @@ class ImportWindow(QDialog):
             ("Alt+3-5", "Jump to Year..."),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
-            ("Alt+V", "Add valid"),
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),

@@ -516,18 +516,14 @@ class PreferencesWindow(QDialog):
 
         year_quality_label = QLabel("Year Consistency:")
         year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        year_quality_layout = QHBoxLayout()
-        year_quality_layout.setContentsMargins(0, 0, 0, 0)
-        year_quality_layout.setSpacing(6)
         self.rule_year_quality_severity = QComboBox()
         self.rule_year_quality_severity.setAccessibleName("Year range severity")
         self.rule_year_quality_severity.setAccessibleDescription(
             "Set severity or None for year consistency rule (>1800 and <= current year)"
         )
-        year_quality_layout.addWidget(self.rule_year_quality_severity)
         year_quality_label.setBuddy(self.rule_year_quality_severity)
         rules_layout.addWidget(year_quality_label, 4, 2)
-        rules_layout.addLayout(year_quality_layout, 4, 3)
+        rules_layout.addWidget(self.rule_year_quality_severity, 4, 3)
 
         rule_severity_combos = (
             self.rule_author_in_title_severity,
@@ -1229,7 +1225,7 @@ class PreferencesWindow(QDialog):
         shortcuts = [
             ("Alt+D", "Display section"),
             ("Alt+P", "Path & Scope section"),
-            ("Alt+B", "Browse for default import directory"),
+            ("Alt+W", "Browse for default import directory"),
             ("Alt+F", "Fallback and Parsing Behavior section"),
             ("Alt+V", "Validation Rules section"),
             ("Alt+R", "Restore Defaults"),

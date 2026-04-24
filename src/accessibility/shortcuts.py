@@ -105,6 +105,7 @@ WEB_METADATA_SHORTCUTS = {
 IMPORT_WINDOW_SHORTCUTS = {
     "C": ("Collection field", "collection_combo"),
     "F": ("Folder field", "folder_field"),
+    "W": ("Browse", "browse_button"),
     "E": ("Error filter", "error_filter"),
     "S": ("Import Selected", "import_selected_button"),
     "L": ("Focus import list table", "import_list_table"),
@@ -142,7 +143,7 @@ UPDATE_WINDOW_SHORTCUTS = {
 PREFERENCES_WINDOW_SHORTCUTS = {
     "D": ("Display section", "theme_combo"),
     "P": ("Path & Scope section", "import_dir_edit"),
-    "B": ("Browse", "browse_button"),
+    "W": ("Browse", "browse_button"),
     "O": ("Options section", "auto_add_clean_books_check"),
     "F": ("Fallback section", "author_fallback_checkbox"),
     "V": ("Validation Rules section", "rules_section_text"),
