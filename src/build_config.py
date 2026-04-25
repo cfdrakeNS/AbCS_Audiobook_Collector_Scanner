@@ -4,5 +4,5 @@
 
 APP_VERSION = "1.9.25"
 TRIAL_BUILD_DATE = (
-    ""  # Set to ISO date (YYYY-MM-DD) by build_trial.bat; empty = normal build
+    "2026-05-24"  # Set to ISO date (YYYY-MM-DD) by build_trial.bat; empty = normal build
 )

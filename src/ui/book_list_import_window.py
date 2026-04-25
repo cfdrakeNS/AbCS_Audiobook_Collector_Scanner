@@ -542,36 +542,6 @@ class BookListImportWindow(QDialog):
         mapping_layout = QHBoxLayout(mapping_container)
         mapping_layout.setContentsMargins(0, 0, 0, 0)
         mapping_layout.setSpacing(12)
-        main_layout.addLayout(header_layout)
-
-        self._load_collection_options()
-
-        # Field mapping container with instructions on left, table on right
-        mapping_container = QWidget()
-        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        mapping_layout = QHBoxLayout(mapping_container)
-        mapping_layout.setContentsMargins(0, 0, 0, 0)
-        mapping_layout.setSpacing(12)
-        main_layout.addLayout(header_layout)
-
-        self._load_collection_options()
-
-        # Field mapping container with instructions on left, table on right
-        mapping_container = QWidget()
-        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        mapping_layout = QHBoxLayout(mapping_container)
-        mapping_layout.setContentsMargins(0, 0, 0, 0)
-        mapping_layout.setSpacing(12)
-        main_layout.addLayout(header_layout)
-
-        self._load_collection_options()
-
-        # Field mapping container with instructions on left, table on right
-        mapping_container = QWidget()
-        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        mapping_layout = QHBoxLayout(mapping_container)
-        mapping_layout.setContentsMargins(0, 0, 0, 0)
-        mapping_layout.setSpacing(12)
         mapping_layout.setAlignment(Qt.AlignTop)  # Align all panels to top
 
         # Left side - Instructions

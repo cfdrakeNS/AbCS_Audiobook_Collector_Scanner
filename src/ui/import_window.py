@@ -907,12 +907,17 @@ class ImportWindow(QDialog):
         if not self.scanned_items:
             return
 
-        # Clear current table
-        self.table.setRowCount(0)
+        # PHASE 1 OPTIMIZATION: Block updates and pre-size table
+        repopulate_start = time.perf_counter()
+        self.table.setUpdatesEnabled(False)
+        self.table.setSortingEnabled(False)
+
+        # Clear and pre-size table (allocate once instead of per-row)
+        total_rows = len(self.scanned_items)
+        self.table.setRowCount(total_rows)
 
         # Repopulate with sorted data
         for row, item in enumerate(self.scanned_items):
-            self.table.insertRow(row)
             self.table.setItem(
                 row, self.COL_AUTHOR, QTableWidgetItem(item.get("author", ""))
             )
@@ -928,6 +933,12 @@ class ImportWindow(QDialog):
             self.table.setItem(
                 row, self.COL_PATH, QTableWidgetItem(item.get("folder", ""))
             )
+
+        # PHASE 1 OPTIMIZATION: Re-enable updates
+        self.table.setUpdatesEnabled(True)
+        self.table.setSortingEnabled(True)
+        repopulate_elapsed = time.perf_counter() - repopulate_start
+        print(f"[TIMING] Table repopulate (sort): {repopulate_elapsed:.4f}s for {total_rows} rows")
 
         # Reapply error filter
         self._apply_error_filter()
@@ -1571,6 +1582,11 @@ class ImportWindow(QDialog):
                 )
                 QApplication.processEvents()
 
+            # PHASE 1 OPTIMIZATION: Block table repaint and sorting during batch load
+            table_opt_start = time.perf_counter()
+            self.table.setUpdatesEnabled(False)
+            self.table.setSortingEnabled(False)
+
             for row, book in enumerate(books):
                 auto_added = False
                 self.import_scanner.apply_preferences(book)
@@ -1750,6 +1766,12 @@ class ImportWindow(QDialog):
                     next_counters_ui_update = now + counters_update_interval
                     QApplication.processEvents()
 
+            # PHASE 1 OPTIMIZATION: Re-enable table updates after batch load
+            self.table.setUpdatesEnabled(True)
+            self.table.setSortingEnabled(True)
+            table_opt_elapsed = time.perf_counter() - table_opt_start
+            print(f"[TIMING] Table batch load (optimized): {table_opt_elapsed:.4f}s for {len(books)} books")
+
             if transaction_open:
                 conn.commit()
                 transaction_open = False
@@ -1758,6 +1780,9 @@ class ImportWindow(QDialog):
         except Exception:
             if transaction_open:
                 conn.rollback()
+            # PHASE 1 OPTIMIZATION: Ensure table updates are re-enabled on error
+            self.table.setUpdatesEnabled(True)
+            self.table.setSortingEnabled(True)
             raise
 
         if not books:
@@ -1843,6 +1868,10 @@ class ImportWindow(QDialog):
             duplicates=duplicate_count,
             added=added_count,
         )
+
+        # Print total scan timing for performance comparison
+        total_elapsed = time.perf_counter() - scan_start
+        print(f"[TIMING] Total scan: {total_elapsed:.4f}s | Scanned: {scanned_total} | Added: {added_count} | Table rows: {self.table.rowCount()}")
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()

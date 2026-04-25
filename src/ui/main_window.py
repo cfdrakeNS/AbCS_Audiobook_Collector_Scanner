@@ -3,6 +3,8 @@ Main Window - Audio Book Window
 Primary interface for browsing and managing audiobook collection.
 """
 
+import time
+
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -1700,11 +1702,14 @@ class MainWindow(QMainWindow):
     def refresh_books(self):
         """Refresh books table based on current filter."""
         # BLOCK ALL EVENTS - This is critical!
+        refresh_start = time.perf_counter()
         self.table.blockSignals(True)
 
         try:
             # Get books from database
+            db_start = time.perf_counter()
             self.books = self.book_queries.get_all(self.current_filter)
+            db_elapsed = time.perf_counter() - db_start
 
             # Duplicate mode only shows duplicate candidates for selected matching rule
             if self.duplicate_mode_active:
@@ -1724,6 +1729,9 @@ class MainWindow(QMainWindow):
 
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
+
+            refresh_elapsed = time.perf_counter() - refresh_start
+            print(f"[TIMING] Library refresh: {refresh_elapsed:.4f}s (DB: {db_elapsed:.4f}s) | Books: {len(self.books)}")
 
             self.set_default_status(announce=False)
 
