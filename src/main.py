@@ -70,12 +70,9 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
 def _check_trial_expiry():
     """Block startup if this is a trial build that has expired.
 
-<<<<<<< HEAD
-    # If TRIAL_BUILD_DATE is empty or None, ignore expiry logic
-=======
     build_config.TRIAL_BUILD_DATE holds an ISO date string (YYYY-MM-DD).
-    * If the value is empty/None → normal (non-trial) build, skip check.
-    * If set and today's date > that date → show expiry message and exit.
+    * If the value is empty/None ? normal (non-trial) build, skip check.
+    * If set and today's date > that date ? show expiry message and exit.
     """
     try:
         from src.build_config import TRIAL_BUILD_DATE
@@ -86,7 +83,6 @@ def _check_trial_expiry():
             return  # build_config not available — not a trial build
 
     # If TRIAL_BUILD_DATE is empty or None, this is a normal build
->>>>>>> final
     if not TRIAL_BUILD_DATE:
         return
 
