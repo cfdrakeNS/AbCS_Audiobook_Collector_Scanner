@@ -584,9 +584,8 @@ class BookListImportWindow(QDialog):
 
         # Instructions text for screen readers (single sentence format)
         instructions_text = (
-            "How to use: 1. Choose a Collection from the Collection Combo Box\n"
+            "              How to use: \n1. Choose a Collection from the Collection Combo Box\n"
             "2. Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button.\n"
-            "1. Choose a Collection from the Collection Combo Box\n"
             "3. Map spreadsheet columns to book fields using the dropdown combos.\n "
             "4. Use checkboxes in Options column for import settings\n"
             "5. Title and Author fields are required for import.\n "
@@ -594,9 +593,8 @@ class BookListImportWindow(QDialog):
         )
 
         self.instructions_label = QLabel(
-            "How to use: 1. Choose a Collection from the Collection Combo Box\n"
+            "              How to use: \n1. Choose a Collection from the Collection Combo Box\n"
             "2. Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button.\n"
-            "1. Choose a Collection from the Collection Combo Box\n"
             "3. Map spreadsheet columns to book fields using the dropdown combos.\n "
             "4. Use checkboxes in Options column for import settings\n"
             "5. Title and Author fields are required for import.\n "
