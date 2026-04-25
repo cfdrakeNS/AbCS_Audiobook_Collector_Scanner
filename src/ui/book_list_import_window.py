@@ -93,12 +93,6 @@ class BookListImportWindow(QDialog):
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H F C V O E /"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        from src.accessibility.icon_helper import get_app_icon
-
-        self.setWindowIcon(get_app_icon())
-
     def _normalize_title_for_match(self, title: str) -> str:
         """Normalize title for matching: lowercase, remove all spaces and punctuation (articles no longer moved)."""
         import string
@@ -226,6 +220,9 @@ class BookListImportWindow(QDialog):
         parent=None,
     ):
         super().__init__(parent)
+        from src.accessibility.icon_helper import get_app_icon
+        self.setWindowIcon(get_app_icon())
+
         self.db = db
         self.scaler = scaler
         self.theme_manager = theme_manager
@@ -288,8 +285,6 @@ class BookListImportWindow(QDialog):
 
         # Setup shortcuts using centralized ShortcutManager
         self.setup_shortcuts()
-
-    ###@END replace code
 
     def on_scale_changed(self, _scale_percentage: int):
         """Recompute fixed metrics so this window scales like the rest of the app."""
@@ -510,6 +505,16 @@ class BookListImportWindow(QDialog):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
 
+        collection_label = QLabel("&Collection:")
+        self.collection_combo = QComboBox()
+        self.collection_combo.setAccessibleName("Import collection")
+        self.collection_combo.setAccessibleDescription(
+            "Select target collection for imported books - Alt+C"
+        )
+        collection_label.setBuddy(self.collection_combo)
+        header_layout.addWidget(collection_label)
+        header_layout.addWidget(self.collection_combo, 1)
+
         file_label = QLabel("&File:")
         self.file_edit = QLineEdit()
         self.file_edit.setReadOnly(True)
@@ -527,16 +532,36 @@ class BookListImportWindow(QDialog):
         self.browse_button.clicked.connect(self.browse_file)
         header_layout.addWidget(self.browse_button)
 
-        collection_label = QLabel("&Collection:")
-        self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Import collection")
-        self.collection_combo.setAccessibleDescription(
-            "Select target collection for imported books - Alt+C"
-        )
-        collection_label.setBuddy(self.collection_combo)
-        header_layout.addWidget(collection_label)
-        header_layout.addWidget(self.collection_combo, 1)
+        main_layout.addLayout(header_layout)
 
+        self._load_collection_options()
+
+        # Field mapping container with instructions on left, table on right
+        mapping_container = QWidget()
+        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        mapping_layout = QHBoxLayout(mapping_container)
+        mapping_layout.setContentsMargins(0, 0, 0, 0)
+        mapping_layout.setSpacing(12)
+        main_layout.addLayout(header_layout)
+
+        self._load_collection_options()
+
+        # Field mapping container with instructions on left, table on right
+        mapping_container = QWidget()
+        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        mapping_layout = QHBoxLayout(mapping_container)
+        mapping_layout.setContentsMargins(0, 0, 0, 0)
+        mapping_layout.setSpacing(12)
+        main_layout.addLayout(header_layout)
+
+        self._load_collection_options()
+
+        # Field mapping container with instructions on left, table on right
+        mapping_container = QWidget()
+        mapping_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        mapping_layout = QHBoxLayout(mapping_container)
+        mapping_layout.setContentsMargins(0, 0, 0, 0)
+        mapping_layout.setSpacing(12)
         main_layout.addLayout(header_layout)
 
         self._load_collection_options()
@@ -559,22 +584,23 @@ class BookListImportWindow(QDialog):
 
         # Instructions text for screen readers (single sentence format)
         instructions_text = (
-            "How to use: 1. Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button. "
-            "2. Choose a Collection from the Collection Combo Box\n"
-            "3. Map spreadsheet columns to book fields using the dropdown combos. "
+            "How to use: 1. Choose a Collection from the Collection Combo Box\n"
+            "2. Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button.\n"
+            "1. Choose a Collection from the Collection Combo Box\n"
+            "3. Map spreadsheet columns to book fields using the dropdown combos.\n "
             "4. Use checkboxes in Options column for import settings\n"
-            "5. Title and Author fields are required for import. "
-            "6. Click Import to process the file. "
+            "5. Title and Author fields are required for import.\n "
+            "6. Click Import to process the file."
         )
 
         self.instructions_label = QLabel(
-            "How to use:\n"
-            "1 Select an Excel (.xlsx, .xls), OpenDocument (.ods), or CSV file using the Browse button\n"
-            "2 Choose a Collection from the Collection Combo Box\n"
-            "3 Map spreadsheet columns to book fields using the dropdown combos\n"
-            "4 Use checkboxes in Options column for import settings\n"
-            "5 Title and Author fields are required for import\n"
-            "6 Click Import to process the file\n\n"
+            "How to use: 1. Choose a Collection from the Collection Combo Box\n"
+            "2. Select an Excel .xlsx or .xls or OpenDocument .ods or CSV file using the Browse button.\n"
+            "1. Choose a Collection from the Collection Combo Box\n"
+            "3. Map spreadsheet columns to book fields using the dropdown combos.\n "
+            "4. Use checkboxes in Options column for import settings\n"
+            "5. Title and Author fields are required for import.\n "
+            "6. Click Import to process the file."
         )
         self.instructions_label.setWordWrap(True)
         self.instructions_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
@@ -1017,9 +1043,8 @@ class BookListImportWindow(QDialog):
         )
 
         shortcuts = [
-            ("Alt+F", "file path"),
-            ("Alt+W", "Browse for file"),
             ("Alt+C", "Collection"),
+            ("Alt+W", "Browse for file"),
             ("Alt+H", "Instructions"),
             ("Alt+O", "Options section"),
             ("Alt+T", "Title"),

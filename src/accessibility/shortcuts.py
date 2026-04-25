@@ -114,8 +114,8 @@ IMPORT_WINDOW_SHORTCUTS = {
 
 # Book List Import Window
 BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
-    "W": ("Browse for file", "browse_button"),
     "C": ("Collection", "collection_combo"),
+    "W": ("Browse for file", "browse_button"),
     "O": ("Options group", "options_group"),
     "T": ("Title field mapping", "title_mapping"),
     "A": ("Author field mapping", "author_mapping"),
@@ -128,8 +128,8 @@ BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
     "E": ("Read Date field mapping", "read_date_mapping"),
     "M": ("Time field mapping", "time_mapping"),
     "F": ("Files field mapping", "tracks_mapping"),
-    "X": ("Export errors to CSV", "export_button"),
     "I": ("Import books", "import_button"),
+    "X": ("Export errors to CSV", "export_button"),
 }
 
 UPDATE_WINDOW_SHORTCUTS = {
