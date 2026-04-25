@@ -1567,7 +1567,9 @@ class ImportWindow(QDialog):
         conn = self.db.connect()
         transaction_open = False
         try:
-            conn.execute("BEGIN")
+            # Only start transaction if not already in one (WAL mode may have implicit transaction)
+            if not conn.in_transaction:
+                conn.execute("BEGIN")
             auto_add_start = time.perf_counter()
             transaction_open = True
 
@@ -2089,7 +2091,9 @@ class ImportWindow(QDialog):
             QApplication.processEvents()
 
         try:
-            conn.execute("BEGIN")
+            # Only start transaction if not already in one (WAL mode may have implicit transaction)
+            if not conn.in_transaction:
+                conn.execute("BEGIN")
             transaction_open = True
 
             for row in row_indices:
