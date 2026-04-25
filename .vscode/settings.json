@@ -32,6 +32,7 @@
         "plaintext": false,
         "markdown": false
     },
+    "extensions.autoUpdate": true,
     "accessibility.verbosity.notification": false,
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",

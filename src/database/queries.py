@@ -106,11 +106,12 @@ class BookQueries:
             else:
                 search_term = f"{search_text}%"
 
-            if filter_criteria.order_by == "Author":
+            search_field = getattr(filter_criteria, "search_field", "Title")
+            if search_field == "Author":
                 query += " AND a.name LIKE ? COLLATE NOCASE"
-            elif filter_criteria.order_by == "Genre":
+            elif search_field == "Genre":
                 query += " AND g.name LIKE ? COLLATE NOCASE"
-            elif filter_criteria.order_by == "Series":
+            elif search_field == "Series":
                 query += " AND s.name LIKE ? COLLATE NOCASE"
             else:  # Title
                 query += " AND b.title LIKE ? COLLATE NOCASE"

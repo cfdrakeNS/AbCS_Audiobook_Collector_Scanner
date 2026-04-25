@@ -7,6 +7,7 @@ from .import_rules import ImportRulesEngine
 from PySide6.QtCore import QSettings
 from typing import List, Dict, Any
 from difflib import SequenceMatcher
+import re
 
 
 class ImportValidator:
@@ -17,19 +18,10 @@ class ImportValidator:
 
     @staticmethod
     def normalize_title_for_compare(title: str) -> str:
-        """Normalize title for comparison: move leading article to end, lowercase, strip."""
+        """Normalize title for comparison: lowercase, strip (Articles no longer moved)."""
         if not isinstance(title, str):
             return ""
-        t = title.strip()
-        articles = ["the ", "a ", "an "]
-        for article in articles:
-            if t.lower().startswith(article) and len(t) > len(article):
-                t_core = t[len(article) :].strip()
-                article_cap = article.title().strip()
-                if t_core and not t_core.lower().endswith(f", {article.strip()}"):
-                    t = f"{t_core}, {article_cap}"
-                break
-        return t.lower()
+        return title.strip().lower()
 
     @staticmethod
     def append_flag_once(book: dict, message: str):
@@ -158,28 +150,45 @@ class ImportValidator:
 
         return False
 
-    def flip_author_name(self, name: str) -> str:
+    def sanitize_metadata(self, book: Dict[str, Any]) -> List[str]:
         """
-        Flip author name from "First Last" to "Last, First".
-
-        Args:
-            name: Author name
-
-        Returns:
-            Flipped name
+        Apply mandatory sanitization rules to all relevant fields.
+        Only removes leading/trailing whitespace and leading punctuation (not internal punctuation).
+        Applies proper case. Returns a list of 'C:' flags for any significant corrections.
         """
-        if not name or "," in name:
-            # Already in Last, First format or empty
-            return name
+        import re
 
-        parts = name.strip().split()
-        if len(parts) < 2:
-            return name
-
-        # Simple flip: last word is last name
-        last_name = parts[-1]
-        first_names = " ".join(parts[:-1])
-        return f"{last_name}, {first_names}"
+        flags = []
+        # Fields to sanitize
+        fields = ["title", "author", "genre", "series", "reader", "collection"]
+        for field in fields:
+            original = str(book.get(field, "") or "")
+            if not original:
+                continue
+            # 1. Trim leading/trailing whitespace
+            cleaned = original.strip()
+            # 2. For author and reader only, remove all leading non-alphabetic characters (not internal)
+            if field in ("author", "reader"):
+                cleaned = re.sub(r"^[^A-Za-z]+", "", cleaned)
+            # 3. Collapse multiple spaces to single space
+            cleaned = re.sub(r"\s+", " ", cleaned)
+            # 4. Proper Case (Mandatory)
+            if cleaned:
+                cleaned = cleaned.title()
+            # Detection logic for the C: flag
+            significant_change = False
+            if original.strip() != original:
+                significant_change = True
+            if field == "author":
+                if field in ("author", "reader"):
+                    if re.sub(r"^[^A-Za-z]+", "", original.strip()) != original.strip():
+                        significant_change = True
+            if re.sub(r"\s+", " ", original) != original:
+                significant_change = True
+            if significant_change:
+                flags.append(f"C: Sanitized {field}")
+            book[field] = cleaned
+        return flags
 
     def categorize_error(self, error: str) -> str:
         """
@@ -221,8 +230,6 @@ class ImportValidator:
             "author contains unknown or various",
             "title below minimum length",
             "folder path does not match expected structure",
-            "year outside allowed range",
-            "year is not a valid number",
         ]
         if any(warn in normalized_lower for warn in warning_errors):
             return "warning"
@@ -274,11 +281,4 @@ class ImportValidator:
 
     def format_error_summary(self, errors: List[str]) -> str:
         """Format a list of errors as compact display text."""
-        formatted_errors: List[str] = []
-        for err in errors:
-            formatted = self.format_error_message(str(err))
-            if not formatted:
-                continue
-            formatted_errors.append(formatted)
-
-        return "; ".join(formatted_errors)
+        return "; ".join(self.format_error_message(e) for e in errors if e)

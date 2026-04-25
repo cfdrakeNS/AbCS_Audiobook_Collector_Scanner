@@ -435,6 +435,9 @@ class WebMetadataWindow(QDialog):
         # Add buttons
         button_layout = QHBoxLayout()
 
+        # Stretch first to push buttons to the right
+        button_layout.addStretch()
+
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
@@ -444,8 +447,6 @@ class WebMetadataWindow(QDialog):
         self.save_button.clicked.connect(self.on_save_clicked)
         self.save_button.setObjectName("save_button")  # For shortcut manager
         button_layout.addWidget(self.save_button)
-
-        button_layout.addStretch()
 
         self.main_layout.addLayout(button_layout)
 
@@ -560,30 +561,15 @@ class WebMetadataWindow(QDialog):
             )
             msg = f"Web data found{diff_str}"
             self.set_status(msg, announce=True)
-            # Requirement: web info returned => focus Plot
-            if self._has_any_web_data(cleaned_web_data):
+            # Requirement: web info returned => focus Plot ONLY if plot is non-empty
+            plot_text = cleaned_web_data.get("plot")
+            if plot_text and str(plot_text).strip():
                 QTimer.singleShot(100, self.plot_edit.setFocus)
             else:
-                # Requirement: no data returned => focus Title
                 QTimer.singleShot(100, self.title_edit.setFocus)
         else:
             # No web payload provided to this window.
             QTimer.singleShot(100, self.title_edit.setFocus)
-
-    @staticmethod
-    def _has_any_web_data(web_data: dict | None) -> bool:
-        """Return True when the web payload contains at least one non-empty value."""
-        if not isinstance(web_data, dict):
-            return False
-        for value in web_data.values():
-            if value is None:
-                continue
-            if isinstance(value, str):
-                if value.strip():
-                    return True
-                continue
-            return True
-        return False
 
     def set_focus_to_first_differing_field(self):
         """Set focus to first field that has web differences, fallback to title."""
@@ -908,23 +894,11 @@ class WebMetadataWindow(QDialog):
         dlg.exec()
 
     def on_read_status_bar(self):
-        """Alt+/ shortcut - read status."""
+        """Alt+/ shortcut - read status. Do nothing if no screen reader active."""
         status_text = self.status_bar.currentMessage()
-        from src.accessibility.style_helpers import exec_styled_message_box
-
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Alt+/ Test",
-                text=f"Alt+/ working! Status: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
         """Set status message with centralized status helper."""

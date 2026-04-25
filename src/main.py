@@ -67,34 +67,41 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
     timer.cancel()
 
 
-# Version information - update this with each release
-APP_VERSION = "1.9.11"
-
-
 def _check_trial_expiry():
-    """Block startup if this is a trial build that has expired."""
-    try:
-        from build_config import TRIAL_BUILD, TRIAL_DAYS, TRIAL_BUILD_DATE
-    except ImportError:
-        return  # Not a trial build
+    """Block startup if this is a trial build that has expired.
 
+<<<<<<< HEAD
     # If TRIAL_BUILD_DATE is empty or None, ignore expiry logic
+=======
+    build_config.TRIAL_BUILD_DATE holds an ISO date string (YYYY-MM-DD).
+    * If the value is empty/None → normal (non-trial) build, skip check.
+    * If set and today's date > that date → show expiry message and exit.
+    """
+    try:
+        from src.build_config import TRIAL_BUILD_DATE
+    except ImportError:
+        try:
+            from build_config import TRIAL_BUILD_DATE
+        except ImportError:
+            return  # build_config not available — not a trial build
+
+    # If TRIAL_BUILD_DATE is empty or None, this is a normal build
+>>>>>>> final
     if not TRIAL_BUILD_DATE:
         return
 
     try:
         from datetime import date as _date
 
-        build = _date.fromisoformat(TRIAL_BUILD_DATE)
-        age_days = (_date.today() - build).days
-        if age_days >= TRIAL_DAYS:
-            title = "AbCS — Tester Build Expired"
+        expiry = _date.fromisoformat(TRIAL_BUILD_DATE)
+        today = _date.today()
+        if today > expiry:
+            days_past = (today - expiry).days
+            title = "AbCS — Trial Build Expired"
             msg = (
-                f"This tester copy of AbCS (build {TRIAL_BUILD_DATE}) is "
-                f"{age_days} days old and has expired.\n\n"
-                f"Tester builds expire after {TRIAL_DAYS} days to ensure "
-                f"everyone is testing the latest version.\n\n"
-                f"Please ask for a newer build to continue."
+                f"This trial copy of AbCS expired on {TRIAL_BUILD_DATE} "
+                f"({days_past} day(s) ago).\n\n"
+                f"Please contact the developer for a newer build."
             )
             _show_native_message(title, msg, auto_close_seconds=60.0)
             sys.exit(1)

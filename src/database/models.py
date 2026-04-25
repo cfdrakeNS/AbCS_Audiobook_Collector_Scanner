@@ -153,6 +153,7 @@ class SearchFilter:
     order_by: str = "Title"  # Title, Author, Genre, Series
     search_text: str = ""
     is_keyword_search: bool = False  # True if search starts with "?"
+    search_field: str = "Title"  # Field to search (Title, Author, Series, Genre)
 
     @property
     def has_search(self) -> bool:

@@ -131,6 +131,9 @@ class BackupRestoreWindow(QDialog):
         layout.addLayout(restore_layout)
 
         footer_layout = QHBoxLayout()
+        # Stretch first to push buttons to the right
+        footer_layout.addStretch(1)
+
         self.backup_button = QPushButton("Backup")
         self.backup_button.setAccessibleName("Backup")
         self.backup_button.setAccessibleDescription(
@@ -159,7 +162,6 @@ class BackupRestoreWindow(QDialog):
         footer_layout.addWidget(self.restore_button)
         footer_layout.addWidget(self.delete_button)
         footer_layout.addWidget(self.full_reset_button)
-        footer_layout.addStretch(1)
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
@@ -342,17 +344,7 @@ class BackupRestoreWindow(QDialog):
                 move_focus=True,
                 force_focus_announce=True,
             )
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def _set_restore_path(self, path_text: str):
         self.restore_path_edit.setText(path_text)

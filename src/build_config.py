@@ -1,7 +1,8 @@
 # build_config.py — build-time flags
 # Do NOT edit manually.
-# build_trial.bat patches TRIAL_BUILD=True before running PyInstaller, then restores this file.
+# build_trial.bat patches TRIAL_BUILD_DATE before running PyInstaller, then restores this file.
 
-TRIAL_BUILD = True
-TRIAL_DAYS = 30
-TRIAL_BUILD_DATE = "2026-04-17"  # Set to ISO date (YYYY-MM-DD) by build_trial.bat
+APP_VERSION = "1.9.25"
+TRIAL_BUILD_DATE = (
+    ""  # Set to ISO date (YYYY-MM-DD) by build_trial.bat; empty = normal build
+)

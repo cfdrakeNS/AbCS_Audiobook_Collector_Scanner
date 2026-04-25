@@ -101,17 +101,6 @@ class CollectionWindow(QDialog):
     COL_NAME = 0
     COL_ACTIVE = 1
 
-    @staticmethod
-    def _to_proper_case(text: str) -> str:
-        value = text.strip().lower()
-        if not value:
-            return ""
-        return re.sub(
-            r"(^|[\s\-'])([a-z])",
-            lambda match: f"{match.group(1)}{match.group(2).upper()}",
-            value,
-        )
-
     def __init__(
         self,
         db: DatabaseManager,
@@ -438,7 +427,13 @@ class CollectionWindow(QDialog):
         # Removed status bar Alt+key shortcut message for accessibility
 
     def on_save(self) -> bool:
-        name = self._to_proper_case(self.name_edit.text())
+        # Always sanitize collection name before saving
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
+        temp = {"collection": self.name_edit.text()}
+        validator.sanitize_metadata(temp)
+        name = temp["collection"]
         self.name_edit.setText(name)
         active = self.active_check.isChecked()
 
@@ -669,15 +664,7 @@ class CollectionWindow(QDialog):
         message = self.status_bar.currentMessage().strip() or "Ready"
         if QAccessible.isActive():
             self.set_status(message, announce=True)
-            return
-
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title="Status",
-            text=f"No screen reader active.\n\nStatus: {message}",
-        )
+        # else: do nothing (no popup)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
@@ -741,11 +728,23 @@ class CollectionWindow(QDialog):
         dlg.exec()
 
     def eventFilter(self, source, event):
-        """Filter events for Alt+key handling - PROVEN accessibility pattern."""
+        """Filter events for Alt+key handling and sanitize name field on FocusOut."""
         if event.type() == QEvent.KeyPress:
             if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS):
                 QApplication.beep()
                 return True
+
+        # Always sanitize name field on FocusOut
+        if source == self.name_edit and event.type() == QEvent.FocusOut:
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            temp = {"collection": self.name_edit.text()}
+            validator.sanitize_metadata(temp)
+            sanitized = temp["collection"]
+            if sanitized != self.name_edit.text():
+                self.name_edit.setText(sanitized)
+
         return super().eventFilter(source, event)
 
     def accessible_table_key_press(self, event):

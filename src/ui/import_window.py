@@ -1,4 +1,3 @@
-# Alt+W remains local for accessibility (file dialog)
 import csv
 from PySide6.QtWidgets import (
     QDialog,
@@ -105,7 +104,6 @@ class ImportWindow(QDialog):
             "folder_field": lambda: self.folder_edit.setFocus(),
             "error_filter": lambda: self.error_filter_combo.setFocus(),
             "import_selected_button": lambda: self.import_selected_button.click(),
-            "add_valid_button": lambda: self.add_valid_button.click(),
             "import_list_table": lambda: self.table.setFocus(),
             "export_button": lambda: self.export_button.click(),
         }
@@ -155,10 +153,10 @@ class ImportWindow(QDialog):
             event.modifiers() & Qt.AltModifier
         ):
             key = event.key()
-            # Alt+W and Alt+B: let keyPressEvent handle it for accessibility
-            if key in (Qt.Key_W, Qt.Key_B):
-                return False  # Do not block Alt+W or Alt+B
-            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {"W", "B"}):
+            # Alt+W: let keyPressEvent handle it for accessibility
+            if key == Qt.Key_W:
+                return False  # Do not block Alt+W
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {"W"}):
                 return True
         return super().eventFilter(source, event)
 
@@ -167,13 +165,11 @@ class ImportWindow(QDialog):
     ALLOWED_ALT_LETTERS = {
         "C",
         "F",
-        "B",
         "E",
         "L",
         "S",
-        "V",
         "X",
-        "W",  # Only actually implemented shortcuts
+        "W", 
     }
 
     COL_AUTHOR = 0
@@ -233,19 +229,11 @@ class ImportWindow(QDialog):
         self.default_collection_id = None
         self.current_collection_name = ""
         self.import_scenario_mode = "mass_standard"
-        self.current_formats_text = "None"
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
         self.author_fallback_to_folder = True
         self.title_fallback_to_file = True
-        self.flip_author_names = False
-        self.auto_add_clean_books = False
-        self.autocorrect_trim_whitespace = False
-        self.autocorrect_strip_leading_punctuation = False
-        self.autocorrect_remove_non_alphanumeric = False
-        self.autocorrect_proper_case = False
-        self.autocorrect_move_leading_the = False
         self.reader_keywords = ["reader", "read by", "narrator", "narrated by"]
         self._summary_counts = {
             "scanned": 0,
@@ -263,7 +251,6 @@ class ImportWindow(QDialog):
         self._cancel_add_requested = False
         self._is_scanning = False
         self._cancel_scan_requested = False
-        self._scan_prompt_open = False
         self._closing_via_handler = False
         self.progress_window: ImportProgressWindow | None = None
         self._pending_info_popup = None  # For non-blocking popups
@@ -316,7 +303,14 @@ class ImportWindow(QDialog):
     def _build_book_from_scan(self, data: dict, defer_commits: bool = False) -> Book:
         """Create a Book object from scanned data."""
         title = (data.get("title") or "").strip()
+        # Sanitize author field before using
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
         author_text = (data.get("author") or "").strip()
+        temp = {"author": author_text}
+        validator.sanitize_metadata(temp)
+        author_text = temp["author"]
         series_text = (data.get("series") or "").strip()
         genre_text = (data.get("genre") or "").strip()
         reader_text = (data.get("narrator") or "").strip()
@@ -390,10 +384,10 @@ class ImportWindow(QDialog):
         header_layout.addWidget(folder_label)
         header_layout.addWidget(self.folder_edit, 1)
 
-        self.browse_button = QPushButton("&Browse")
+        self.browse_button = QPushButton("Bro&wse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a folder to scan - Alt+B"
+            "Browse for a folder to scan - Alt+W"
         )
         self.browse_button.setDefault(False)
         header_layout.addWidget(self.browse_button)
@@ -409,7 +403,7 @@ class ImportWindow(QDialog):
             ("Fallback", "fallback"),
             ("Warning", "warning"),
         ]
-        self._configure_error_filter_options(include_valid=False)
+        self._configure_error_filter_options()
         error_filter_label.setBuddy(self.error_filter_combo)
         header_layout.addWidget(error_filter_label)
         header_layout.addWidget(self.error_filter_combo)
@@ -430,9 +424,7 @@ class ImportWindow(QDialog):
         # Detail section: import list table
         self.table = QTableWidget()
         self.table.setAccessibleName("Import list")
-        self.table.setAccessibleDescription(
-            "List of scanned files with validation results"
-        )
+        self.table.setAccessibleDescription("Browse for a folder to scan - Alt+W")
 
         columns = [
             "Author",
@@ -498,15 +490,6 @@ class ImportWindow(QDialog):
         # Removed setShortcut("Alt+S") to allow ShortcutManager to handle Alt+S
         footer_layout.addWidget(self.import_selected_button)
 
-        self.add_valid_button = QPushButton("Add &Valid")
-        self.add_valid_button.setAccessibleName("Add Valid")
-        self.add_valid_button.setAccessibleDescription(
-            "Add all clean valid rows in the current view - Alt+V"
-        )
-        self.add_valid_button.setDefault(False)
-        self.add_valid_button.setAutoDefault(True)
-        footer_layout.addWidget(self.add_valid_button)
-
         self.export_button = QPushButton("E&xport")
         self.export_button.setAccessibleName("Export")
         self.export_button.setAccessibleDescription(
@@ -525,8 +508,7 @@ class ImportWindow(QDialog):
         self.setTabOrder(self.error_filter_combo, self.scan_button)
         self.setTabOrder(self.scan_button, self.table)
         self.setTabOrder(self.table, self.import_selected_button)
-        self.setTabOrder(self.import_selected_button, self.add_valid_button)
-        self.setTabOrder(self.add_valid_button, self.export_button)
+        self.setTabOrder(self.import_selected_button, self.export_button)
 
     def apply_control_styles(self):
         """Apply consistent styling to inputs and buttons."""
@@ -539,21 +521,7 @@ class ImportWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        lineedit_style = f"""
-            QLineEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
-
-        combo_style = f"""
+        checkbox_style = f"""
             QComboBox {{
                 min-height: {scaled_height}px;
                 max-height: {scaled_height}px;
@@ -634,7 +602,6 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+B", "Browse"),
             ("Alt+E", "Error filter"),
             ("Ctrl+I", "Import"),
             ("Alt+L", "Jump to table"),
@@ -649,8 +616,6 @@ class ImportWindow(QDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        self.current_formats_text = "None"  # Removed undefined 'formats' variable
-
         self.import_scenario_mode = self.settings.value(
             "import/scenario/mode", "mass_standard", type=str
         )
@@ -663,37 +628,15 @@ class ImportWindow(QDialog):
         self.title_fallback_to_file = self.settings.value(
             "import/fallback/title_to_file", True, type=bool
         )
-        self.flip_author_names = self.settings.value(
-            "import/flip_author_name", False, type=bool
-        )
-        self.auto_add_clean_books = self.settings.value(
-            "import/auto_add_clean_books", False, type=bool
-        )
-        self._configure_error_filter_options(include_valid=self.auto_add_clean_books)
-        # Keep Add Valid visibility in sync on first window open.
-        self._update_add_valid_button_visibility()
-        self.autocorrect_trim_whitespace = self.settings.value(
-            "import/autocorrect/trim_whitespace", False, type=bool
-        )
-        self.autocorrect_strip_leading_punctuation = self.settings.value(
-            "import/autocorrect/strip_leading_punctuation", False, type=bool
-        )
-        self.autocorrect_remove_non_alphanumeric = self.settings.value(
-            "import/autocorrect/remove_non_alphanumeric", False, type=bool
-        )
-        self.autocorrect_proper_case = self.settings.value(
-            "import/autocorrect/proper_case", False, type=bool
-        )
-        self.autocorrect_move_leading_the = self.settings.value(
-            "import/autocorrect/move_leading_the_title",
-            False,
-            type=bool,
-        )
+        self._configure_error_filter_options()
 
         keywords = self.settings.value(
             "import/reader_keywords",
             "reader, read by, narrator, narrated by",
             type=str,
+        )
+        keywords = self.settings.value(
+            "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
         )
         parsed_keywords = [
             key.strip().lower() for key in keywords.split(",") if key.strip()
@@ -706,11 +649,11 @@ class ImportWindow(QDialog):
             author_fallback_mode="folder" if self.author_fallback_to_folder else None,
             title_fallback_mode="file" if self.title_fallback_to_file else None,
             reader_keywords=self.reader_keywords,
-            trim_whitespace=self.autocorrect_trim_whitespace,
-            strip_leading_punctuation=self.autocorrect_strip_leading_punctuation,
-            remove_non_alphanumeric=self.autocorrect_remove_non_alphanumeric,
-            proper_case_fields=self.autocorrect_proper_case,
-            move_leading_the_title=self.autocorrect_move_leading_the,
+            trim_whitespace=True,
+            strip_leading_punctuation=True,
+            remove_non_alphanumeric=False,
+            proper_case_fields=True,
+            move_leading_the_title=False,
         )
         self.validator.reload_settings()
         self._update_header_info_line()
@@ -731,9 +674,6 @@ class ImportWindow(QDialog):
             collections = [
                 Collection(collection_id=new_id, name="Default", active=True)
             ]
-
-        # Do not add 'None' option; always require a real collection
-        require_selection = False
 
         collections = sorted(
             collections,
@@ -776,7 +716,7 @@ class ImportWindow(QDialog):
         )
         self.collection_combo.currentIndexChanged.connect(self.on_collection_changed)
         self.import_selected_button.clicked.connect(self.on_import_selected)
-        self.add_valid_button.clicked.connect(self.on_add_valid)
+
         self.export_button.clicked.connect(self.on_export_csv)
         self.table.cellDoubleClicked.connect(self.on_open_detail)
         self.table.itemSelectionChanged.connect(self.on_table_selection_changed)
@@ -792,17 +732,11 @@ class ImportWindow(QDialog):
         pass  # Cancel button removed
 
     def _confirm_close_window(self) -> bool:
-        """Prompt before closing the import window."""
+        """Prompt before closing the import window (Phase 3: no valid counter)."""
         if self.table.rowCount() == 0:
             return True
 
-        valid_count = self._get_valid_import_count()
-
-        message_lines = []
-        if valid_count > 0:
-            message_lines.append(f"There are {valid_count} books not added!")
-        message_lines.append("Current scan results in this window will be discarded.")
-
+        message_lines = ["Current scan results in this window will be discarded."]
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -814,13 +748,7 @@ class ImportWindow(QDialog):
         )
         return reply == QMessageBox.Yes
 
-    def _get_valid_import_count(self) -> int:
-        """Return count of valid books currently in the import list."""
-        valid_count = 0
-        for item in self.scanned_items or []:
-            if self._is_clean_valid_item(item):
-                valid_count += 1
-        return valid_count
+    # _get_valid_import_count removed (Phase 3: always auto-add valid books)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -841,7 +769,7 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+B", "Browse"),
+            ("Alt+W", "Browse"),
             ("Alt+E", "Error filter"),
             ("Ctrl+I", "Import"),
             ("Alt+L", "Jump to table"),
@@ -850,7 +778,6 @@ class ImportWindow(QDialog):
             ("Alt+3-5", "Jump to Year..."),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
-            ("Alt+V", "Add valid"),
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel/Close window"),
             ("Alt+/", "Read status bar"),
@@ -1010,37 +937,7 @@ class ImportWindow(QDialog):
         status_text = self._default_status_message
         if QAccessible.isActive():
             self.set_status(status_text, announce=True)
-        else:
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-            )
-
-    def on_focus_list(self):
-        """Move focus to import list table (Alt+L)."""
-        if self.table.rowCount() > 0:
-            target_row = self.table.currentRow()
-            if target_row < 0 or self.table.isRowHidden(target_row):
-                target_row = self._first_visible_row()
-            if target_row < 0:
-                target_row = 0
-            self.table.setCurrentCell(target_row, self.COL_TITLE)
-            self.table.setCurrentIndex(
-                self.table.model().index(target_row, self.COL_TITLE)
-            )
-            self.table.scrollTo(self.table.model().index(target_row, self.COL_TITLE))
-        self.table.setFocus()
-        self.set_status("Import list focused", announce=True)
-
-    def _hide_table_cell_highlight(self):
-        """Hide active-cell highlight when focus moves away from table."""
-        model = self.table.selectionModel()
-        if model is not None:
-            model.setCurrentIndex(QModelIndex(), QItemSelectionModel.NoUpdate)
-        self.table.viewport().update()
+        # else: do nothing (no popup)
 
     def jump_to_column(self, column: int):
         """Jump to a column in the import table for the current row."""
@@ -1152,29 +1049,20 @@ class ImportWindow(QDialog):
 
         return True
 
-    def _configure_error_filter_options(self, include_valid: bool):
-        """Configure error filter options based on current review mode."""
+    def _configure_error_filter_options(self):
+        """Configure error filter options (no valid filter, Phase 3)."""
         current_value = self.error_filter_combo.currentData()
         options = list(self._base_error_filter_options)
-        if include_valid:
-            options.append(("Valid", "valid"))
-
+        # Do not add valid filter
         self.error_filter_combo.blockSignals(True)
         self.error_filter_combo.clear()
         for label, value in options:
             self.error_filter_combo.addItem(label, value)
-
         desc = (
             "Filter import list by All, Warning, Error, Duplicate, Fallback, or Corrected - Alt+E. "
             "Duplicates are kept in review list and are not auto-added."
         )
-        if include_valid:
-            desc = (
-                "Filter import list by All, Valid, Warning, Error, Duplicate, Fallback, or Corrected - Alt+E. "
-                "Duplicates are kept in review list and are not auto-added."
-            )
         self.error_filter_combo.setAccessibleDescription(desc)
-
         index = self.error_filter_combo.findData(current_value)
         if index < 0:
             index = 0
@@ -1182,9 +1070,8 @@ class ImportWindow(QDialog):
         self.error_filter_combo.blockSignals(False)
 
     def _apply_error_filter(self):
-        """Apply current error filter to table row visibility."""
+        """Apply current error filter to table row visibility (Phase 3: no Add Valid logic)."""
         if not self.scanned_items:
-            self._update_add_valid_button_visibility()
             return
 
         self._updating_selection_ui = True
@@ -1195,27 +1082,6 @@ class ImportWindow(QDialog):
 
         for row, item in enumerate(self.scanned_items):
             self.table.setRowHidden(row, not self._matches_error_filter(item))
-
-        self._update_add_valid_button_visibility()
-
-    def _update_add_valid_button_visibility(self):
-        """Show/enable Add Valid only when review mode is enabled and valid rows exist."""
-        if not hasattr(self, "add_valid_button"):
-            return
-
-        self.add_valid_button.setVisible(self.auto_add_clean_books)
-        if not self.auto_add_clean_books:
-            self.add_valid_button.setEnabled(False)
-            return
-
-        visible_valid_rows = 0
-        for row, item in enumerate(self.scanned_items or []):
-            if self.table.rowCount() > row and self.table.isRowHidden(row):
-                continue
-            if self._is_clean_valid_item(item):
-                visible_valid_rows += 1
-
-        self.add_valid_button.setEnabled(visible_valid_rows > 0)
 
     def _get_filtered_count(self) -> int:
         """Return number of scanned items matching the active error filter."""
@@ -1286,14 +1152,18 @@ class ImportWindow(QDialog):
             self.table.setFocus(Qt.TabFocusReason)
 
     def on_table_selection_changed(self):
-        """Show selection status bar message like MainWindow, only when selection is active."""
+        """Show selection status bar message like MainWindow, only when selection is active.
+        Only count visible (filtered) rows as selected.
+        """
         if self._updating_selection_ui:
             return
 
         model = self.table.selectionModel()
         selected_rows = set()
         for idx in model.selectedRows():
-            selected_rows.add(idx.row())
+            row = idx.row()
+            if not self.table.isRowHidden(row):
+                selected_rows.add(row)
         self.selected_rows = selected_rows
 
         if self.selected_rows:
@@ -1338,14 +1208,11 @@ class ImportWindow(QDialog):
         duplicates: int = 0,
         warnings: int = 0,
         added: int | None = None,
-        valid: int | None = None,
         announce: bool = False,
     ):
-        """Update status bar summary."""
+        """Update status bar summary (no valid counter, Phase 3)."""
         if added is None:
             added = self._summary_counts.get("added", 0)
-        if valid is None:
-            valid = self._summary_counts.get("valid", 0)
         issues = errors + warnings
         self._summary_counts = {
             "scanned": scanned,
@@ -1353,16 +1220,13 @@ class ImportWindow(QDialog):
             "errors": errors,
             "warnings": warnings,
             "duplicates": duplicates,
-            "valid": valid,
             "added": added,
         }
         filtered = self._get_filtered_count()
         filter_value = self.error_filter_combo.currentData()
-        valid_segment = f"Valid: {valid} | " if self.auto_add_clean_books else ""
         message = (
             f"Scanned: {scanned} | Added: {added} | "
-            f"{valid_segment}"
-            f"Fixed: {fixed} | Errors/Warnings: {issues} | "
+            f"Corrected: {fixed} | Errors/Warnings: {issues} | "
             f"Duplicates: {duplicates} | "
             f"Filtered: {filtered}"
         )
@@ -1421,14 +1285,13 @@ class ImportWindow(QDialog):
         item["error_summary"] = self._format_error_summary(errors)
 
     def restore_summary_status(self):
-        """Restore scan summary message after transient selection messages."""
+        """Restore scan summary message after transient selection messages (no valid counter, Phase 3)."""
         self.update_summary(
             scanned=self._summary_counts["scanned"],
             fixed=self._summary_counts["fixed"],
             errors=self._summary_counts["errors"],
             warnings=self._summary_counts.get("warnings", 0),
             duplicates=self._summary_counts["duplicates"],
-            valid=self._summary_counts.get("valid", 0),
         )
 
     def _show_info_popup(self, title: str, message: str):
@@ -1512,24 +1375,21 @@ class ImportWindow(QDialog):
             self.folder_edit.setFocus()
             return
 
+        # Lock the collection combo to prevent changes during review
+        self.collection_combo.setEnabled(False)
+
         # Validate path based on scenario
         is_single_item = self.import_scenario_mode == "single_item"
         is_valid = False
-        path_type = "folder"
 
         if is_single_item:
             # Single item mode: accept either file or folder
-            if os.path.isfile(folder_path):
+            if os.path.isfile(folder_path) or os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "file"
-            elif os.path.isdir(folder_path):
-                is_valid = True
-                path_type = "folder"
         else:
             # Other modes: expect folder only
             if os.path.isdir(folder_path):
                 is_valid = True
-                path_type = "folder"
 
         if not is_valid:
             msg = QMessageBox(self)
@@ -1572,18 +1432,10 @@ class ImportWindow(QDialog):
             self.scaler, self.theme_manager, parent=self
         )
         self.progress_window.set_compact_mode(True)
-        self.progress_window.set_show_valid_counter(self.auto_add_clean_books)
         self.progress_window.finished.connect(self._on_progress_window_closed)
         self.progress_window.show()
         self.progress_window.raise_()
         self.progress_window.activateWindow()
-        self.progress_window.update_counters(
-            files_scanned=0,
-            elapsed_text="00:00",
-            books_added=0,
-            valid_books=0,
-            read_errors=0,
-        )
 
         self.scan_button.setEnabled(False)
         # Keep browse button enabled for accessibility - show message if clicked during scan
@@ -1705,6 +1557,7 @@ class ImportWindow(QDialog):
         transaction_open = False
         try:
             conn.execute("BEGIN")
+            auto_add_start = time.perf_counter()
             transaction_open = True
 
             # Update progress window to show add phase starting.
@@ -1721,12 +1574,6 @@ class ImportWindow(QDialog):
             for row, book in enumerate(books):
                 auto_added = False
                 self.import_scanner.apply_preferences(book)
-                self.import_scanner.apply_preferences(book)
-
-                if self.flip_author_names:
-                    author_value = (book.get("author") or "").strip()
-                    if author_value:
-                        book["author"] = self.validator.flip_author_name(author_value)
 
                 errors = list(book.get("errors", []))
                 errors.extend(self.validator.validate_book(book))
@@ -1779,8 +1626,7 @@ class ImportWindow(QDialog):
                 # Auto-add valid books to database during scan
                 auto_added = False
                 should_auto_add = (
-                    not self.auto_add_clean_books
-                    and not is_duplicate
+                    not is_duplicate
                     and not has_hard_error
                     and not has_warning
                     and not has_fallback
@@ -1867,13 +1713,16 @@ class ImportWindow(QDialog):
                         }
                     )
 
+                    # Only count as warning if it is a true warning (not fallback/correction)
                     if not is_duplicate and not has_hard_error:
-                        if has_warning:
+                        if has_warning and not has_fallback and not has_correction:
                             warning_count += 1
                     elif is_duplicate:
                         pass  # already counted
                     else:
-                        error_count += 1
+                        # Only count as error if it is a true error (not fallback/correction)
+                        if has_hard_error and not has_fallback and not has_correction:
+                            error_count += 1
 
                 # Track all scan outcomes
                 self.scan_outcomes.append(
@@ -1892,10 +1741,6 @@ class ImportWindow(QDialog):
                 if is_final_book or now >= next_counters_ui_update:
                     if self.progress_window:
                         current_elapsed = self._format_elapsed(now - scan_start)
-                        self.progress_window.update_counters(
-                            read_errors=read_error_count,
-                            valid_books=valid_count,
-                        )
                         self.progress_window.update_add_progress(
                             processed=row + 1,
                             total=len(books),
@@ -1908,6 +1753,8 @@ class ImportWindow(QDialog):
             if transaction_open:
                 conn.commit()
                 transaction_open = False
+                auto_add_elapsed = time.perf_counter() - auto_add_start
+                print(f"[TIMING] Auto-add phase: {auto_add_elapsed:.4f}s for {added_count} books")
         except Exception:
             if transaction_open:
                 conn.rollback()
@@ -1932,7 +1779,7 @@ class ImportWindow(QDialog):
                     f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
                 )
                 summary_text = (
-                    f"Scanned: {scanned_total} | Added: {added_count} | Fixed: 0 | Issues: 0 | "
+                    f"Scanned: {scanned_total} | Added: {added_count} | Corrected: 0 | Issues: 0 | "
                     f"{valid_segment}"
                     f"Duplicates: 0 | Elapsed: {elapsed_text}"
                 )
@@ -1955,25 +1802,24 @@ class ImportWindow(QDialog):
 
         issues_count = warning_count + error_count
         scanned_total = len(self.scan_outcomes)
-        valid_segment = f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
         if scan_was_canceled:
             self.set_status("Scan canceled", announce=True)
             self.set_status(
-                f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
+                f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | "
+                f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
         else:
             self.set_status(
-                f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-                f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
+                f"Scanned: {scanned_total} | Added: {added_count} | "
+                f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
             )
 
         if self.progress_window:
             summary_text = (
-                f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-                f"Fixed: {fixed_count} | "
+                f"Scanned: {scanned_total} | Added: {added_count} | "
+                f"Corrected: {fixed_count} | "
                 f"Errors/Warnings: {issues_count} | "
                 f"Duplicates: {duplicate_count} | "
                 f"Elapsed: {elapsed_text}"
@@ -1985,7 +1831,6 @@ class ImportWindow(QDialog):
                 elapsed_text=elapsed_text,
                 files_scanned=scanned_total,
                 books_added=added_count,
-                valid_books=valid_count,
                 read_errors=read_error_count,
                 summary_text=summary_text,
             )
@@ -1996,16 +1841,24 @@ class ImportWindow(QDialog):
             errors=error_count,
             warnings=warning_count,
             duplicates=duplicate_count,
-            valid=valid_count,
             added=added_count,
         )
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
 
+        # Defensive: ensure valid_segment is always defined
+        valid_segment = ""
+        if hasattr(self, "auto_add_clean_books") and getattr(
+            self, "auto_add_clean_books", False
+        ):
+            try:
+                valid_segment = f"Valid: {valid_count} | "
+            except Exception:
+                valid_segment = ""
         final_status = (
             f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
-            f"Fixed: {fixed_count} | Errors/Warnings: {issues_count} | "
+            f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | "
             f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
         )
         if scan_was_canceled:
@@ -2024,25 +1877,6 @@ class ImportWindow(QDialog):
             return
 
         self._import_rows(sorted(selected_rows))
-
-    def on_add_valid(self):
-        """Add all visible clean-valid rows from current review list."""
-        if not self.scanned_items:
-            self.set_status("No scanned items to add")
-            return
-
-        rows_to_add = []
-        for row, item in enumerate(self.scanned_items):
-            if self.table.rowCount() > row and self.table.isRowHidden(row):
-                continue
-            if self._is_clean_valid_item(item):
-                rows_to_add.append(row)
-
-        if not rows_to_add:
-            self.set_status("No clean valid rows in current filter")
-            return
-
-        self._import_rows(rows_to_add)
 
     def on_export_csv(self):
         """Export visible import rows to CSV for spreadsheet review."""
@@ -2150,7 +1984,6 @@ class ImportWindow(QDialog):
             errors=errors,
             warnings=warnings,
             duplicates=duplicates,
-            valid=valid,
             added=added,
         )
         self._apply_error_filter()
@@ -2198,6 +2031,7 @@ class ImportWindow(QDialog):
         failed = 0
         processed_valid = 0
         rows_to_remove = []
+        manual_add_start = time.perf_counter()
         conn = self.db.connect()
         transaction_open = False
 
@@ -2293,6 +2127,8 @@ class ImportWindow(QDialog):
             if transaction_open:
                 conn.commit()
                 transaction_open = False
+                manual_add_elapsed = time.perf_counter() - manual_add_start
+                print(f"[TIMING] Manual add selected: {manual_add_elapsed:.4f}s for {imported} books")
 
             if rows_to_remove:
                 sorted_rows_to_remove = sorted(set(rows_to_remove))
@@ -2558,6 +2394,8 @@ class ImportWindow(QDialog):
 
     def on_cancel(self):
         """Handle cancel request for add-in-progress or close dialog."""
+        # Re-enable collection combo when canceling import/review
+        self.collection_combo.setEnabled(True)
         # Escape should trigger the same confirmation as window close
         self._closing_via_handler = True
         try:

@@ -451,7 +451,15 @@ class UpdateWindow(QDialog):
 
         self._processing_series_input = True
         try:
-            text = self._normalize_name_field(self.series_combo.currentText())
+            # Sanitize input using ImportValidator at the start
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            temp = {
+                "series": self._normalize_name_field(self.series_combo.currentText())
+            }
+            validator.sanitize_metadata(temp)
+            text = temp["series"]
             normalized_text = text.casefold()
             if not text:
                 if keep_focus:
@@ -532,7 +540,13 @@ class UpdateWindow(QDialog):
 
         self._processing_genre_input = True
         try:
-            text = self._normalize_name_field(self.genre_combo.currentText())
+            # Sanitize input using ImportValidator at the start
+            from src.core.validator import ImportValidator
+
+            validator = ImportValidator()
+            temp = {"genre": self._normalize_name_field(self.genre_combo.currentText())}
+            validator.sanitize_metadata(temp)
+            text = temp["genre"]
             normalized_text = text.casefold()
             if not text:
                 if keep_focus:
@@ -777,17 +791,7 @@ class UpdateWindow(QDialog):
         status_text = self.status_bar.currentMessage() or self._default_status_message
         if QAccessible.isActive():
             self.show_status(status_text, announce=True)
-        else:
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {status_text}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def keyPressEvent(self, event):
         """Override to prevent Enter from closing the dialog."""

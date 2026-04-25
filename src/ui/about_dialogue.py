@@ -38,15 +38,7 @@ class AboutDialog(QDialog):
 
     def get_app_version(self):
         try:
-            from main import APP_VERSION
-
-            return f"v{APP_VERSION}"
-        except ImportError:
-            return "v?.?.?"
-
-    def get_app_version(self):
-        try:
-            from main import APP_VERSION
+            from src.build_config import APP_VERSION
 
             return f"v{APP_VERSION}"
         except ImportError:
@@ -109,17 +101,18 @@ class AboutDialog(QDialog):
             "Copyright (c) 2025-2026 C.F. Drake & Contributors\n"
             "Custom non-commercial license.\n"
             "Commercial sale/distribution requires written permission.\n\n"
-            "FEATURES\n"
-            "• Audio Book Management with full metadata\n"
-            "• ID3 Tag Import from folders\n"
-            "• Advanced Search and Filtering\n"
-            "• Complete Keyboard Navigation\n"
-            "• Screen Reader Support\n"
-            "• Scalable UI (50%-200%+)\n"
-            "• High Contrast Themes\n\n"
-            "ACCESSIBILITY\n"
-            "• Designed for users with low vision and screen readers.\n"
-            "• All features include keyboard shortcuts.\n"
+            "FEATURES - \n "
+            "• Audio Book Management with full metadata.\n "
+            "• ID3 Tag Import from Most Audio Format Files.\n "
+            "• Web import & Updated Metadata.\n "
+            "• Advanced Search and Filtering.\n "
+            "• Complete Keyboard Navigation.\n "
+            "• Screen Reader Support.\n "
+            "• Scalable UI (50%-200%+).\n "
+            "• High Contrast Themes.\n .\n "
+            "ACCESSIBILITY.\n "
+            "• Designed for users with low vision and screen readers.\n "
+            "• All features include keyboard shortcuts.\n "
             "Press F1 or use Help menu for Keyboard Shortcuts."
         )
 

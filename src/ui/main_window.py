@@ -3,8 +3,6 @@ Main Window - Audio Book Window
 Primary interface for browsing and managing audiobook collection.
 """
 
-import time
-
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -80,9 +78,9 @@ from src.ui.web_metadata import WebMetadataWindow
 
 
 def get_app_version():
-    """Get app version from main module."""
+    """Get app version from build_config."""
     try:
-        from main import APP_VERSION
+        from src.build_config import APP_VERSION
 
         return f"v{APP_VERSION}"
     except ImportError:
@@ -732,6 +730,13 @@ class MainWindow(QMainWindow):
         """Create footer with action buttons and info."""
         layout = QHBoxLayout()
 
+        # Sort order label (on left side)
+        self.sort_label = QLabel("Sorted by: Title")
+        layout.addWidget(self.sort_label)
+
+        # Spacer to push buttons to the right
+        layout.addStretch()
+
         # Update button (hidden initially)
 
         self.update_button = QPushButton("Update")
@@ -755,13 +760,6 @@ class MainWindow(QMainWindow):
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
-
-        # Spacer
-        layout.addStretch()
-
-        # Sort order label
-        self.sort_label = QLabel("Sorted by: Title")
-        layout.addWidget(self.sort_label)
 
         return layout
 
@@ -1418,22 +1416,11 @@ class MainWindow(QMainWindow):
         self.set_status(self.get_default_status(), timeout_ms=0, announce=announce)
 
     def on_read_status_bar(self):
-        """mw#24: Alt+/ reads status bar. Shows message if no screen reader active."""
+        """mw#24: Alt+/ reads status bar. Do nothing if no screen reader active."""
         if QAccessible.isActive():
             # Announce status bar to screen reader
             self.set_status(self.get_default_status(), timeout_ms=0, announce=True)
-        else:
-            # No screen reader detected - show fallback message box
-            from src.accessibility.icon_helper import get_app_icon
-
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title="Status Bar",
-                text=f"No screen reader active.\n\nStatus: {self.get_default_status()}",
-                window_icon=get_app_icon(),
-            )
+        # else: do nothing (no popup)
 
     def on_open_book_details(self):
         """mw#17,19: Open book details for current book (Enter)."""
@@ -1933,13 +1920,16 @@ class MainWindow(QMainWindow):
         field_to_column = {
             "Author": 0,
             "Title": 1,
-            "Series": 4,
-            "Genre": 5,
+            "Series": 3,
+            "Genre": 4,
         }
 
-        current_order = self.current_filter.order_by
-        if current_order in field_to_column:
-            field_combo.setCurrentText(current_order)
+        # Use search_field if present, else order_by
+        current_field = getattr(
+            self.current_filter, "search_field", self.current_filter.order_by
+        )
+        if current_field in field_to_column:
+            field_combo.setCurrentText(current_field)
         else:
             field_combo.setCurrentText("Title")
 
@@ -1980,9 +1970,8 @@ class MainWindow(QMainWindow):
             selected_field = field_combo.currentText()
             selected_column = field_to_column.get(selected_field, 1)
 
-            if self.current_filter.order_by != selected_field:
-                self.on_order_changed(selected_field)
-
+            # Always keep order_by as user selected, but search_field is what to search
+            self.current_filter.search_field = selected_field
             self.current_filter.search_text = query
             self.current_filter.is_keyword_search = not exact_check.isChecked()
             self.refresh_books()
@@ -3060,7 +3049,11 @@ class MainWindow(QMainWindow):
         # bd#8: Pass current sort order to show in header
         sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
-            self.db, self.scaler, sort_order=sort_order, parent=self
+            self.db,
+            self.scaler,
+            sort_order=sort_order,
+            parent=self,
+            current_collection_id=self.current_filter.collection_id,
         )
         details.exec()
 
@@ -3074,20 +3067,56 @@ class MainWindow(QMainWindow):
             self.focus_book_by_id(new_book_id)
 
     def on_book_list_import(self):
-        """Open book list import window."""
+        """Open book list import window with collection defaulting logic matching ImportWindow."""
         from src.ui.book_list_import_window import BookListImportWindow
 
+        # Determine which collection to default in BookListImportWindow
+        collection_id = self.current_filter.collection_id
         dialog = BookListImportWindow(
             self.db, self.scaler, self.theme_manager, parent=self
         )
+        # After dialog is constructed and collections loaded, set default selection
+        # Only set if collections are loaded and combo exists
+        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
+            if collection_id is not None:
+                # Main window has a specific collection selected (not All Collections)
+                idx = dialog.collection_combo.findData(collection_id)
+                if idx >= 0:
+                    dialog.collection_combo.setCurrentIndex(idx)
+                else:
+                    dialog.collection_combo.setCurrentIndex(-1)
+            else:
+                # All Collections selected in main
+                if dialog.collection_combo.count() == 1:
+                    dialog.collection_combo.setCurrentIndex(0)
+                else:
+                    dialog.collection_combo.setCurrentIndex(-1)
         dialog.exec()
         # Refresh collections and books to show any imported items and new collections
         self.refresh_collections()
         self.refresh_books()
 
     def on_import(self):
-        """Open import window."""
+        """Open import window with collection defaulting logic matching BookDetailsWindow."""
+        # Determine which collection to default in ImportWindow
+        collection_id = self.current_filter.collection_id
         dialog = ImportWindow(self.db, self.scaler, self.theme_manager, parent=self)
+        # After dialog is constructed and collections loaded, set default selection
+        # Only set if collections are loaded and combo exists
+        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
+            if collection_id is not None:
+                # Main window has a specific collection selected (not All Collections)
+                idx = dialog.collection_combo.findData(collection_id)
+                if idx >= 0:
+                    dialog.collection_combo.setCurrentIndex(idx)
+                else:
+                    dialog.collection_combo.setCurrentIndex(-1)
+            else:
+                # All Collections selected in main
+                if dialog.collection_combo.count() == 1:
+                    dialog.collection_combo.setCurrentIndex(0)
+                else:
+                    dialog.collection_combo.setCurrentIndex(-1)
         dialog.exec()
         imported_count = getattr(dialog, "total_imported", 0)
         self.refresh_books()
@@ -3157,7 +3186,6 @@ class MainWindow(QMainWindow):
 
     def open_book_details(self, book: Book):
         """Open book details window."""
-        # bd#8: Pass current sort order to show in header
         sort_order = self.current_filter.order_by
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
@@ -3305,8 +3333,13 @@ class MainWindow(QMainWindow):
             self.series_queries = SeriesQueries(self.db)
             self.genre_queries = GenreQueries(self.db)
             self.collection_queries = CollectionQueries(self.db)
+            self.refresh_collections()
+            self.current_filter.collection_id = None  # Reset to All Collections
+            self._sync_collection_menu_selection()
             self.refresh_books()
-            self.set_status("Database updated from backup/restore operation")
+            self.set_status(
+                "Database updated from backup/restore operation. Showing All Collections."
+            )
         self._restore_table_focus_context(focus_ctx)
 
     def on_about(self):
