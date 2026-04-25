@@ -1,21 +1,20 @@
+"""
+AbCS - Audio Book Collector Scanner
+Main application entry point.
+"""
 import sys
+from pathlib import Path
+
+# Add project root to sys.path so 'src.xxx' imports work correctly
+root_path = Path(__file__).resolve().parent.parent
+if str(root_path) not in sys.path:
+    sys.path.insert(0, str(root_path))
 
 try:
     if sys.stdout:
         sys.stdout.flush()
 except Exception:
     pass
-"""
-AbCS - Audio Book Collector Scanner
-Main application entry point.
-
-This file is responsible for:
-1. Initializing the Qt application framework
-2. Setting up the database connection
-3. Loading accessibility settings (scaling, themes)
-4. Displaying the splash screen with statistics
-5. Creating and showing the main application window
-"""
 
 from src.ui.main_window import MainWindow
 from src.accessibility.shortcuts import find_shortcut_conflicts
@@ -203,7 +202,6 @@ class AbCSApplication:
 
         # Main window (created later)
         self.main_window = None
-        main_window = None
 
     def _check_spreadsheet_dependencies(self) -> dict:
         """Check spreadsheet import engines at startup so build regressions are obvious."""
