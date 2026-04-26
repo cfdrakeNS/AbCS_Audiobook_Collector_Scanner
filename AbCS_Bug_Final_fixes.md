@@ -88,6 +88,7 @@ when a collection is selected in main win other then "all collections" the impor
 83. complete statistics window - stop table row anouncment to screen readers, look at  f1 shortut style.
 84. read CLEANUP_VULTURE_FINDINGS noting the false positives that are document. Do a vulture scan of the code and update the doc with your finding. do not remove existing text add your finding under the heading April 24 2026 finding.
 85. complete - generate a user guide for the app keeping in mind that the app will be used both by sighted, low vision and blind users, who would use text magnifying or screen reader software. read AbCS_MSA_Guide located in the doc folder I  wrote this AbCS_MSA_Guide for the former version of AbCS which was written in MS Access. Keep in mind the functionality is similar the user interface is different with the the python version using menus and proper status bars. 
+86. book detail and web metadata windows - plot need to expand more check the windows height setting 
 
 # performance tuining bugs 
 1. complete - if the timing prints are no longer required remove those

@@ -118,8 +118,8 @@ class WebMetadataWindow(QDialog):
         self.refresh_callback = refresh_callback
         self.setWindowTitle("Web Metadata")
         self.setModal(True)
-        # Make window wider for proper plot field letterbox shape
-        self.resize(800, 600)
+        # Make window taller for expanded plot field
+        self.resize(800, 700)
         self.web_data = None
         self.field_differences = {}
         self.status_bar = QStatusBar()
@@ -393,6 +393,7 @@ class WebMetadataWindow(QDialog):
             Qt.StrongFocus
         )  # Ensure it can receive focus for tabbing
         self.plot_edit.setObjectName("plot_edit")  # For shortcut manager
+        self.plot_edit.setMinimumHeight(150)  # Give plot more vertical space
         plot_label.setBuddy(self.plot_edit)
         plot_layout.addWidget(plot_label)
         plot_layout.addWidget(self.plot_edit)

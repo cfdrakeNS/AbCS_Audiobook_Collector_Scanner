@@ -314,7 +314,7 @@ class BookDetailsWindow(QDialog):
         self.setWindowTitle(title)
         self.setAccessibleName(title)
         self.setAccessibleDescription("Form for viewing and editing book information")
-        self.resize(850, 500)
+        self.resize(850, 650)
         announce_dialog_opened(self, title)
         self._show_idle_status(announce=False)
         QTimer.singleShot(0, self.title_edit.setFocus)
@@ -2233,8 +2233,13 @@ class BookDetailsWindow(QDialog):
             do_nav()
 
     def _adjust_comments_height(self):
-        """Adjust comments QTextEdit height to fit content."""
+        """Adjust comments QTextEdit height to fit content and update accessible description."""
         text = self.comments_edit.toPlainText().strip()
+        # Update accessible description so screen readers read full content without stopping at newlines
+        if text:
+            self.comments_edit.setAccessibleDescription(text.replace('\n', ' ').replace('\r', ' '))
+        else:
+            self.comments_edit.setAccessibleDescription("")
         if not text:
             # Empty: collapse to single line height
             self.comments_edit.setFixedHeight(25)
@@ -2250,8 +2255,8 @@ class BookDetailsWindow(QDialog):
         needed_height = int(
             doc_height + margins.top() + margins.bottom() + frame_width + 5
         )
-        # Clamp between min 40 and max 200
-        new_height = max(40, min(200, needed_height))
+        # Clamp between min 60 and max 350 for more plot visibility
+        new_height = max(60, min(350, needed_height))
         self.comments_edit.setFixedHeight(new_height)
 
     def update_navigation_state(self):
