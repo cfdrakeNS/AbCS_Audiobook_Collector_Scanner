@@ -757,7 +757,7 @@ class WebMetadataWindow(QDialog):
                         rating_str += f" ({count_val:,} ratings)"
                     except (ValueError, TypeError):
                         pass
-                plot_text_for_db += rating_str + "\n"
+                plot_text_for_db += rating_str + " - "
 
             # Add the actual plot
             plot_text_for_db += web_data["plot"]

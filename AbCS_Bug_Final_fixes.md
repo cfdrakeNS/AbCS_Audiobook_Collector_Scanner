@@ -98,7 +98,7 @@ when a collection is selected in main win other then "all collections" the impor
 5. complete - new should only show save no update button 
 6. complete Title label alignment -- look at import detail very similar layout 
 7. complete box accessibility - tab order is not normalized new fields come after fetch web info button, alt+a i g c don't work check centralized shortcuts in shortcuts.py 
-8. complete - tionality - move focus to button but doesn't trigger update. look at delete button
+8. complete - was onfocus to button but doesn't trigger update. look at delete button
 9. complete - on update move focus to title not author 
 
 
