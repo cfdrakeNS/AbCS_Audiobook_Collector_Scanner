@@ -1702,14 +1702,11 @@ class MainWindow(QMainWindow):
     def refresh_books(self):
         """Refresh books table based on current filter."""
         # BLOCK ALL EVENTS - This is critical!
-        refresh_start = time.perf_counter()
         self.table.blockSignals(True)
 
         try:
             # Get books from database
-            db_start = time.perf_counter()
             self.books = self.book_queries.get_all(self.current_filter)
-            db_elapsed = time.perf_counter() - db_start
 
             # Duplicate mode only shows duplicate candidates for selected matching rule
             if self.duplicate_mode_active:
@@ -1729,9 +1726,6 @@ class MainWindow(QMainWindow):
 
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
-
-            refresh_elapsed = time.perf_counter() - refresh_start
-            print(f"[TIMING] Library refresh: {refresh_elapsed:.4f}s (DB: {db_elapsed:.4f}s) | Books: {len(self.books)}")
 
             self.set_default_status(announce=False)
 
@@ -2828,29 +2822,9 @@ class MainWindow(QMainWindow):
         web_data = None
         try:
             from src.web.web_book_api import WebBookAPI
-            from PySide6.QtCore import QSettings
-
-            # Read user preferences
-            settings = QSettings("AbCS", "AudioBookCollector")
-            if not settings.contains("import/flip_author_name"):
-                legacy_settings = QSettings("AbCS", "AbCS")
-                flip_author = legacy_settings.value(
-                    "import/flip_author_name", False, type=bool
-                )
-            else:
-                flip_author = settings.value(
-                    "import/flip_author_name", False, type=bool
-                )
-
-            if not settings.contains("import/autocorrect/move_leading_the_title"):
-                legacy_settings = QSettings("AbCS", "AbCS")
-                move_articles = legacy_settings.value(
-                    "import/autocorrect/move_leading_the_title", False, type=bool
-                )
-            else:
-                move_articles = settings.value(
-                    "import/autocorrect/move_leading_the_title", False, type=bool
-                )
+            # Read import preferences via helper (handles legacy fallback)
+            from src.utils.settings_helpers import get_import_preferences
+            move_articles, flip_author = get_import_preferences()
 
             # Try to fetch web data once. WebBookAPI already cascades through
             # Google Books -> Open Library -> WikiData for refresh=0.
@@ -3218,6 +3192,9 @@ class MainWindow(QMainWindow):
         # The dialog object still exists after exec() returns (just hidden),
         # so we can read its current book state before it's garbage collected
         last_book_id = details.book.book_id if details.book else None
+
+        # PHASE 2 OPTIMIZATION: Force dialog cleanup to prevent accumulation
+        details.deleteLater()
 
         self.refresh_books()
 

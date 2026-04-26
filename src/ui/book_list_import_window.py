@@ -6,7 +6,6 @@ import csv
 import os
 import re
 from datetime import datetime
-import difflib
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -85,6 +84,7 @@ from src.accessibility.style_helpers import (
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.utils.text_utils import normalize_title, normalize_author, similarity_percentage
 
 
 class BookListImportWindow(QDialog):
@@ -92,32 +92,6 @@ class BookListImportWindow(QDialog):
 
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H F C V O E /"
-
-    def _normalize_title_for_match(self, title: str) -> str:
-        """Normalize title for matching: lowercase, remove all spaces and punctuation (articles no longer moved)."""
-        import string
-
-        if not title:
-            return ""
-        t = title.strip().lower()
-        # Remove all spaces and punctuation
-        t = "".join(
-            c for c in t if c not in string.whitespace and c not in string.punctuation
-        )
-        return t
-
-    def _normalize_author_for_match(self, author: str) -> str:
-        """Normalize author for matching: lowercase, remove spaces/punctuation (flipping logic removed)."""
-        import string
-
-        if not author:
-            return ""
-        a = author.strip().lower()
-        # Remove spaces and punctuation
-        a = "".join(
-            c for c in a if c not in string.whitespace and c not in string.punctuation
-        )
-        return a
 
     def _check_duplicate(
         self,
@@ -143,8 +117,8 @@ class BookListImportWindow(QDialog):
         Returns:
             True if duplicate found, False otherwise
         """
-        norm_title = self._normalize_title_for_match(title)
-        norm_author = self._normalize_author_for_match(author)
+        norm_title = normalize_title(title, aggressive=True)
+        norm_author = normalize_author(author, aggressive=True)
 
         for db_book in preexisting_books:
             norm_db_title = db_book["norm_title"]
@@ -159,12 +133,8 @@ class BookListImportWindow(QDialog):
             if not (title_match and author_match):
                 # Check fuzzy matching if enabled and threshold > 0
                 if fuzzy_threshold > 0:
-                    title_similarity = self._calculate_similarity(
-                        norm_db_title, norm_title
-                    )
-                    author_similarity = self._calculate_similarity(
-                        norm_db_author, norm_author
-                    )
+                    title_similarity = similarity_percentage(norm_db_title, norm_title)
+                    author_similarity = similarity_percentage(norm_db_author, norm_author)
                     if (
                         title_similarity >= fuzzy_threshold
                         and author_similarity >= fuzzy_threshold
@@ -200,17 +170,6 @@ class BookListImportWindow(QDialog):
                 return True
 
         return False
-
-    def _calculate_similarity(self, s1: str, s2: str) -> float:
-        """Calculate string similarity percentage using difflib.SequenceMatcher."""
-        if not s1 and not s2:
-            return 100.0
-        if not s1 or not s2:
-            return 0.0
-        if s1 == s2:
-            return 100.0
-            
-        return difflib.SequenceMatcher(None, s1, s2).ratio() * 100
 
     def __init__(
         self,
@@ -1614,8 +1573,8 @@ class BookListImportWindow(QDialog):
             preexisting_books.append({
                 "title": row_data[1],
                 "author": row_data[2],
-                "norm_title": self._normalize_title_for_match(row_data[1]),
-                "norm_author": self._normalize_author_for_match(row_data[2]),
+                "norm_title": normalize_title(row_data[1], aggressive=True),
+                "norm_author": normalize_author(row_data[2], aggressive=True),
                 "year": row_data[3],
                 "collection_id": row_data[4]
             })
@@ -1720,8 +1679,8 @@ class BookListImportWindow(QDialog):
                 preexisting_books.append({
                     "title": title_for_save,
                     "author": author,
-                    "norm_title": self._normalize_title_for_match(title_for_save),
-                    "norm_author": self._normalize_author_for_match(author),
+                    "norm_title": normalize_title(title_for_save, aggressive=True),
+                    "norm_author": normalize_author(author, aggressive=True),
                     "year": import_year,
                     "collection_id": selected_collection_id
                 })
@@ -1878,9 +1837,7 @@ class BookListImportWindow(QDialog):
                         title_for_save = f"{title} ({series} #{series_no})"
 
                 # Prepare import title for comparison: use full normalization
-                import_title_for_compare = self._normalize_title_for_match(
-                    title_for_save
-                )
+                import_title_for_compare = normalize_title(title_for_save, aggressive=True)
                 # Fetch all books by this author (case-insensitive, trimmed)
                 candidate_rows = self.db.fetch_all(
                     "SELECT b.book_id, b.title, a.name FROM books b "
@@ -1891,7 +1848,7 @@ class BookListImportWindow(QDialog):
                 found_book_id = None
                 for db_row in candidate_rows:
                     db_title = db_row[1]
-                    norm_db_title = self._normalize_title_for_match(db_title)
+                    norm_db_title = normalize_title(db_title, aggressive=True)
                     if norm_db_title == import_title_for_compare:
                         found_book_id = db_row[0]
                         break

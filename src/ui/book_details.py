@@ -48,10 +48,10 @@ from PySide6.QtWidgets import (
     QApplication,
     QStatusBar,
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
-
+from typing import List, Dict, Any
 
 class BookDetailsWindow(QDialog):
     def __init__(self, *args, **kwargs):
@@ -65,6 +65,7 @@ class BookDetailsWindow(QDialog):
         "N",
         "D",
         "S",
+        "U",
         "W",
         "T",
         "A",
@@ -243,6 +244,7 @@ class BookDetailsWindow(QDialog):
             parent: Parent widget
             current_collection_id: Current collection ID (if provided and new book)
         """
+        # Initialize book details window
         super().__init__(parent)
         self.setAttribute(Qt.WA_NativeWindow, True)
         self.setWindowModality(Qt.ApplicationModal)
@@ -285,8 +287,19 @@ class BookDetailsWindow(QDialog):
         self.apply_control_styles()  # bd#1: Uniform control heights
         self.disable_hover_highlight()
         self.install_focus_filters()  # bd#2: Prevent text auto-select on focus
-        self.load_combos()
 
+        # PHASE 2 OPTIMIZATION: View/Edit mode - skip combo loading for existing books
+        # New books: load combos immediately (user will edit)
+        # Existing books: show labels, load combos on demand via Edit button
+        if self.is_new:
+            # New book: load combos and show them immediately
+            self.load_combos()
+            self._hide_view_labels()
+        else:
+            # Existing book: view mode - hide combos, show labels (fast!)
+            self._show_view_labels()
+
+        # Load book data (view mode uses labels, edit mode uses combos)
         if not self.is_new:
             self.load_book_data()
         else:
@@ -624,15 +637,23 @@ class BookDetailsWindow(QDialog):
         row1_layout = QHBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("Book title")
-        row1_layout.addWidget(self.title_edit, 2)  # stretch=2 (wider)
+        row1_layout.addWidget(self.title_edit, 2)  # stretch=2
 
-        author_label = QLabel("&Author:")
+        # bd#3 Author with View/Edit mode support
+        author_label = QLabel("Author:")
+        self.author_label_display = QLineEdit()
+        self.author_label_display.setReadOnly(True)
+        self.author_label_display.setAccessibleName("Author")
+        self.author_label_display.setAccessibleDescription("Author name - press Alt+A to focus, Alt+U to edit")
+        self.author_label_display.setMaximumWidth(280)
+        self.author_label_display.setFocusPolicy(Qt.StrongFocus)
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
         self.author_combo.setMaximumWidth(280)
-        author_label.setBuddy(self.author_combo)
+        self.author_combo.hide()  # Hidden in view mode
         row1_layout.addWidget(author_label)
+        row1_layout.addWidget(self.author_label_display, 1)
         row1_layout.addWidget(self.author_combo, 1)  # stretch=1
 
         title_label = QLabel("&Title:")
@@ -750,35 +771,58 @@ class BookDetailsWindow(QDialog):
         year_label.setBuddy(self.year_spin)
         form.addRow(year_label, row3_layout)
 
-        # bd#3 Row 4: Series + Genre + Collection
+        # bd#3 Row 4: Series + Genre + Collection with View/Edit mode support
         row4_layout = QHBoxLayout()
 
+        series_label = QLabel("Series:")
+        self.series_label_display = QLineEdit()
+        self.series_label_display.setReadOnly(True)
+        self.series_label_display.setAccessibleName("Book series")
+        self.series_label_display.setAccessibleDescription("Series name - press Alt+I to focus, Alt+U to edit")
+        self.series_label_display.setMaximumWidth(260)
+        self.series_label_display.setFocusPolicy(Qt.StrongFocus)
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
         self.series_combo.setAccessibleName("Book series")
         self.series_combo.setMaximumWidth(260)
+        self.series_combo.hide()
+        row4_layout.addWidget(series_label)
+        row4_layout.addWidget(self.series_label_display, 1)
         row4_layout.addWidget(self.series_combo, 1)
 
-        genre_label = QLabel("&Genre:")
+        genre_label = QLabel("Genre:")
+        self.genre_label_display = QLineEdit()
+        self.genre_label_display.setReadOnly(True)
+        self.genre_label_display.setAccessibleName("Genre")
+        self.genre_label_display.setAccessibleDescription("Genre - press Alt+G to focus, Alt+U to edit")
+        self.genre_label_display.setMaximumWidth(220)
+        self.genre_label_display.setFocusPolicy(Qt.StrongFocus)
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
         self.genre_combo.setMaximumWidth(220)
-        genre_label.setBuddy(self.genre_combo)
+        self.genre_combo.hide()
         row4_layout.addWidget(genre_label)
+        row4_layout.addWidget(self.genre_label_display, 1)
         row4_layout.addWidget(self.genre_combo, 1)
 
         collection_label = QLabel("Collection:")
+        self.collection_label_display = QLineEdit()
+        self.collection_label_display.setReadOnly(True)
+        self.collection_label_display.setAccessibleName("Collection")
+        self.collection_label_display.setAccessibleDescription("Collection - press Alt+C to focus, Alt+U to edit")
+        self.collection_label_display.setMaximumWidth(220)
+        self.collection_label_display.setFocusPolicy(Qt.StrongFocus)
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
-        collection_label.setBuddy(self.collection_combo)
+        self.collection_combo.hide()
         row4_layout.addWidget(collection_label)
+        row4_layout.addWidget(self.collection_label_display, 1)
         row4_layout.addWidget(self.collection_combo, 1)
 
-        series_label = QLabel("Ser&ies:")
-        series_label.setBuddy(self.series_combo)
-        form.addRow(series_label, row4_layout)
+        # Add row4 to form without a separate label (labels are inside the row layout)
+        form.addRow(QLabel(""), row4_layout)
 
         # bd#3 Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
@@ -874,7 +918,6 @@ class BookDetailsWindow(QDialog):
         self.new_button.setAccessibleName("New book")
         self.new_button.setAccessibleDescription("Clear form for new book entry")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
-        # self.new_button.setShortcut(QKeySequence("Alt+N"))  # Commented out for accessibility
         self.new_button.clicked.connect(self.on_new)
         self.new_button.setDefault(False)
         self.new_button.setAutoDefault(
@@ -882,12 +925,21 @@ class BookDetailsWindow(QDialog):
         )  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.new_button)
 
+        # Update button (Alt+U via shortcut) - toggles view/edit mode for combos
+        self.edit_button = QPushButton("Update")
+        self.edit_button.setAccessibleName("Update book")
+        self.edit_button.setAccessibleDescription("Enable editing of book details")
+        self.edit_button.setFocusPolicy(Qt.StrongFocus)
+        self.edit_button.clicked.connect(self.on_edit_mode)
+        self.edit_button.setDefault(False)
+        self.edit_button.setAutoDefault(False)
+        button_layout.addWidget(self.edit_button)
+
         # Save button (Alt+S)
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save book")
         self.save_button.setAccessibleDescription("Save changes")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
-        # self.save_button.setShortcut(QKeySequence("Alt+S"))  # Commented out for accessibility
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setDefault(False)
         self.save_button.setAutoDefault(
@@ -900,7 +952,6 @@ class BookDetailsWindow(QDialog):
         self.delete_button.setAccessibleName("Delete book")
         self.delete_button.setAccessibleDescription("Delete this book")
         self.delete_button.setFocusPolicy(Qt.StrongFocus)
-        # self.delete_button.setShortcut(QKeySequence("Alt+D"))  # Commented out for accessibility
         self.delete_button.clicked.connect(self.on_delete)
         # Hide delete for new books (nothing to delete yet)
         self.delete_button.setVisible(not self.is_new)
@@ -929,15 +980,20 @@ class BookDetailsWindow(QDialog):
         layout.addWidget(self.status_bar)
 
         # Set explicit tab order for predictable screen reader navigation
-        self.setTabOrder(self.title_edit, self.author_combo)
+        # bd#7: Include view labels in tab order for accessibility
+        self.setTabOrder(self.title_edit, self.author_label_display)
+        self.setTabOrder(self.author_label_display, self.author_combo)
         self.setTabOrder(self.author_combo, self.comments_edit)
         self.setTabOrder(self.comments_edit, self.year_spin)
         self.setTabOrder(self.year_spin, self.time_edit)
         self.setTabOrder(self.time_edit, self.reader_edit)
         self.setTabOrder(self.reader_edit, self.read_date)
-        self.setTabOrder(self.read_date, self.series_combo)
-        self.setTabOrder(self.series_combo, self.genre_combo)
-        self.setTabOrder(self.genre_combo, self.collection_combo)
+        self.setTabOrder(self.read_date, self.series_label_display)
+        self.setTabOrder(self.series_label_display, self.series_combo)
+        self.setTabOrder(self.series_combo, self.genre_label_display)
+        self.setTabOrder(self.genre_label_display, self.genre_combo)
+        self.setTabOrder(self.genre_combo, self.collection_label_display)
+        self.setTabOrder(self.collection_label_display, self.collection_combo)
         self.setTabOrder(self.collection_combo, self.files_edit)
         self.setTabOrder(self.files_edit, self.bitrate_edit)
         self.setTabOrder(self.bitrate_edit, self.size_edit)
@@ -946,7 +1002,8 @@ class BookDetailsWindow(QDialog):
         self.setTabOrder(self.source_edit, self.path_edit)
         self.setTabOrder(self.path_edit, self.added_edit)
         self.setTabOrder(self.added_edit, self.new_button)
-        self.setTabOrder(self.new_button, self.save_button)
+        self.setTabOrder(self.new_button, self.edit_button)
+        self.setTabOrder(self.edit_button, self.save_button)
         self.setTabOrder(self.save_button, self.delete_button)
         self.setTabOrder(self.delete_button, self.get_web_details_button)
 
@@ -973,8 +1030,14 @@ class BookDetailsWindow(QDialog):
                 # Only connect focus for widgets that support setFocus
                 if hasattr(widget, "setFocus"):
                     callback_map[attr] = lambda w=widget: w.setFocus()
-        # Add web details button
+        # Add button callbacks that trigger actions (not just focus)
         callback_map["get_web_details_button"] = self.on_get_web_details
+        callback_map["edit_button"] = self.on_edit_mode
+        # Add focus routing for view labels (route to combos when labels are hidden in edit mode)
+        callback_map["author_label_display"] = self._focus_author
+        callback_map["series_label_display"] = self._focus_series
+        callback_map["genre_label_display"] = self._focus_genre
+        callback_map["collection_label_display"] = self._focus_collection
         mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
 
         # Button shortcuts (local like import_detail)
@@ -989,6 +1052,12 @@ class BookDetailsWindow(QDialog):
         self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
         self.save_shortcut.activated.connect(
             lambda: self.on_save() if self.save_button.isVisible() else None
+        )
+
+        # Update/Edit button shortcut (Alt+U) - triggers action like delete button
+        self.edit_shortcut = QShortcut(QKeySequence("Alt+U"), self)
+        self.edit_shortcut.activated.connect(
+            lambda: self.on_edit_mode() if self.edit_button.isVisible() else None
         )
 
         # Escape key for cancel functionality
@@ -1013,8 +1082,20 @@ class BookDetailsWindow(QDialog):
         Override reject to close dialog directly.
         Escape key handles save changes dialog.
         """
+        # PHASE 2 OPTIMIZATION: Clean up event filters to prevent accumulation
+        self._cleanup_event_filters()
+
         announce_dialog_closed(self)
+
         super().reject()
+
+    def _cleanup_event_filters(self):
+        """Remove event filters from all child widgets to prevent accumulation."""
+        for widget in self.findChildren(QObject):
+            try:
+                widget.removeEventFilter(self)
+            except:
+                pass  # Some widgets may not have our filter
 
     def _revert_changes(self):
         """
@@ -1156,14 +1237,18 @@ class BookDetailsWindow(QDialog):
     def _update_save_button_visibility(self):
         """
         bd#6: Show save button only when there are unsaved changes.
-        For new books, always show save button.
+        For new books, always show save button, hide Update button.
+        For existing books in view mode, show Update button.
+        In edit mode, hide Update button.
         """
         save_active = self._dirty or self.is_new
         self.new_button.setVisible(not save_active)
         self.delete_button.setVisible((not self.is_new) and (not save_active))
         self.save_button.setVisible(save_active)
-        # Update Metadata: show for existing books, hide for new books
-        self.get_web_details_button.setVisible(not self.is_new)
+        # Get Web Info: show for existing books, hide for new books and in edit mode
+        self.get_web_details_button.setVisible(not self.is_new and not save_active)
+        # Update button: hide for new books, hide in edit mode, show in view mode for existing
+        self.edit_button.setVisible(not self.is_new and not save_active)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -1223,73 +1308,72 @@ class BookDetailsWindow(QDialog):
         dlg.exec()
 
     def load_combos(self):
-        """Load combo box data."""
+        """Load combo box data and build lookup indexes for fast access."""
+        # PHASE 2 OPTIMIZATION: Build id->index lookup dicts to avoid slow findData()
+        self._author_index_map: Dict[int, int] = {}
+        self._series_index_map: Dict[int, int] = {}
+        self._genre_index_map: Dict[int, int] = {}
+        self._collection_index_map: Dict[int, int] = {}
+
         # Authors
         self.author_combo.clear()
         authors = self.author_queries.get_all()
-        for author in authors:
+        for idx, author in enumerate(authors):
             self.author_combo.addItem(author.name, author.author_id)
+            self._author_index_map[author.author_id] = idx
+        self.author_combo.setMaxVisibleItems(20)  # Limit dropdown size
 
         # Series
         self.series_combo.clear()
         series_list = self.series_queries.get_all()
-        for series in series_list:
+        for idx, series in enumerate(series_list):
             self.series_combo.addItem(series.name, series.series_id)
+            self._series_index_map[series.series_id] = idx
+        self.series_combo.setMaxVisibleItems(20)
 
         # Genres
         self.genre_combo.clear()
         genres = self.genre_queries.get_all()
-        for genre in genres:
+        for idx, genre in enumerate(genres):
             self.genre_combo.addItem(genre.name, genre.genre_id)
+            self._genre_index_map[genre.genre_id] = idx
+        self.genre_combo.setMaxVisibleItems(20)
 
         # Collections
         self.collection_combo.clear()
         collections = self.collection_queries.get_all()
-        for coll in collections:
+        for idx, coll in enumerate(collections):
             self.collection_combo.addItem(coll.name, coll.collection_id)
+            self._collection_index_map[coll.collection_id] = idx
+        self.collection_combo.setMaxVisibleItems(20)
 
     def load_book_data(self):
         """Load book data into form, suppressing dirty tracking."""
         self._loading_fields = True
         try:
             self.title_edit.setText(self.book.title)
-            idx = self.author_combo.findData(self.book.author_id)
-            if idx >= 0:
-                self.author_combo.setCurrentIndex(idx)
+            # View mode: set label text instead of loading combos (fast!)
+            self.author_label_display.setText(self.book.author_name or "")
             if self.book.year:
                 self.year_spin.setValue(self.book.year)
             else:
                 self.year_spin.setValue(self.year_spin.minimum())
-            if self.book.series_id:
-                idx = self.series_combo.findData(self.book.series_id)
-                if idx >= 0:
-                    self.series_combo.setCurrentIndex(idx)
-            else:
-                self.series_combo.setCurrentIndex(-1)
-                self.series_combo.clearEditText()
-            if self.book.genre_id:
-                idx = self.genre_combo.findData(self.book.genre_id)
-                if idx >= 0:
-                    self.genre_combo.setCurrentIndex(idx)
-            else:
-                self.genre_combo.setCurrentIndex(-1)
-                self.genre_combo.clearEditText()
+            # View mode: set label text instead of loading combos
+            self.series_label_display.setText(self.book.series_name or "")
+            self.genre_label_display.setText(self.book.genre_name or "")
             self.reader_edit.setText(self.book.reader or "")
             if self.is_new:
                 if self.current_collection_id is not None:
-                    idx = self.collection_combo.findData(self.current_collection_id)
-                    if idx >= 0:
-                        self.collection_combo.setCurrentIndex(idx)
+                    coll_name = self.collection_queries.get_by_id(self.current_collection_id)
+                    self.collection_label_display.setText(coll_name.name if coll_name else "")
                 else:
-                    if self.collection_combo.count() == 1:
-                        self.collection_combo.setCurrentIndex(0)
-                    else:
-                        self.collection_combo.setCurrentIndex(-1)
+                    self.collection_label_display.setText("")
             else:
                 if self.book.collection_id:
-                    idx = self.collection_combo.findData(self.book.collection_id)
-                    if idx >= 0:
-                        self.collection_combo.setCurrentIndex(idx)
+                    coll_name = self.collection_queries.get_by_id(self.book.collection_id)
+                    self.collection_label_display.setText(coll_name.name if coll_name else "")
+                else:
+                    self.collection_label_display.setText("")
             self.time_edit.setText(self.book.time_display)
             self.files_edit.setText(str(self.book.tracks) if self.book.tracks else "")
             self.size_edit.setText(self.book.size_display if self.book.size_mb else "")
@@ -1334,9 +1418,10 @@ class BookDetailsWindow(QDialog):
                     self.read_date.setDate(self._null_read_date)
             else:
                 self.read_date.setDate(self._null_read_date)
-            self._original_author = self.author_combo.currentText()
-            self._original_series = self.series_combo.currentText()
-            self._original_genre = self.genre_combo.currentText()
+            # Store original values from book for change tracking
+            self._original_author = self.book.author_name or ""
+            self._original_series = self.book.series_name or ""
+            self._original_genre = self.book.genre_name or ""
         finally:
             self._loading_fields = False
 
@@ -1571,6 +1656,17 @@ class BookDetailsWindow(QDialog):
             self._original_genre = self.genre_combo.currentText()
             self.setWindowTitle("Book Details")
             self.setAccessibleName("Book Details")
+
+            # Switch back to view mode (hide combos, show labels)
+            self._show_view_labels()
+            # Update labels with saved values
+            self.author_label_display.setText(self.author_combo.currentText())
+            self.series_label_display.setText(self.series_combo.currentText())
+            self.genre_label_display.setText(self.genre_combo.currentText())
+            self.collection_label_display.setText(self.collection_combo.currentText())
+            # Show edit button, hide save button
+            self._clear_dirty()  # Clears dirty state and updates button visibility
+
             QTimer.singleShot(0, self.title_edit.setFocus)
 
         except Exception as e:
@@ -1684,6 +1780,10 @@ class BookDetailsWindow(QDialog):
         self.book = Book()
         self.is_new = True
 
+        # Load combos and switch to edit mode (show combos, hide labels)
+        self.load_combos()
+        self._hide_view_labels()
+
         # Clear form fields
         self._reset_new_fields()
 
@@ -1699,6 +1799,146 @@ class BookDetailsWindow(QDialog):
         self.title_edit.setFocus()
         self.set_status("")
 
+    def on_edit_mode(self):
+        """
+        Switch from view mode to edit mode.
+        Loads combo boxes and shows them for editing.
+        """
+        # Load combo data (this is the slow part - only done when needed)
+        self.load_combos()
+
+        # Switch from labels to combos and unlock all fields
+        self._hide_view_labels()
+
+        # Now set combo values using the fast index maps
+        # PHASE 2 OPTIMIZATION: Block signals to prevent slow event cascades
+        self.author_combo.blockSignals(True)
+        idx = self._author_index_map.get(self.book.author_id, -1)
+        if idx >= 0:
+            self.author_combo.setCurrentIndex(idx)
+        self.author_combo.blockSignals(False)
+
+        self.series_combo.blockSignals(True)
+        if self.book.series_id:
+            idx = self._series_index_map.get(self.book.series_id, -1)
+            if idx >= 0:
+                self.series_combo.setCurrentIndex(idx)
+        else:
+            self.series_combo.setCurrentIndex(-1)
+            self.series_combo.clearEditText()
+        self.series_combo.blockSignals(False)
+
+        self.genre_combo.blockSignals(True)
+        if self.book.genre_id:
+            idx = self._genre_index_map.get(self.book.genre_id, -1)
+            if idx >= 0:
+                self.genre_combo.setCurrentIndex(idx)
+        else:
+            self.genre_combo.setCurrentIndex(-1)
+            self.genre_combo.clearEditText()
+        self.genre_combo.blockSignals(False)
+
+        self.collection_combo.blockSignals(True)
+        if self.book.collection_id:
+            idx = self._collection_index_map.get(self.book.collection_id, -1)
+            if idx >= 0:
+                self.collection_combo.setCurrentIndex(idx)
+        else:
+            self.collection_combo.setCurrentIndex(-1)
+        self.collection_combo.blockSignals(False)
+
+        # Hide edit button in edit mode, show save instead
+        self.edit_button.setVisible(False)
+        self.save_button.setVisible(True)
+        self.get_web_details_button.setVisible(False)
+
+        # Focus the title field (most logical starting point for editing)
+        self.title_edit.setFocus()
+
+    def _show_view_labels(self):
+        """Show view labels and hide combos for fast display mode."""
+        # Show view labels, hide combos
+        self.author_label_display.show()
+        self.author_combo.hide()
+        self.series_label_display.show()
+        self.series_combo.hide()
+        self.genre_label_display.show()
+        self.genre_combo.hide()
+        self.collection_label_display.show()
+        self.collection_combo.hide()
+        # Make other fields read-only in view mode
+        self._set_fields_read_only(True)
+
+    def _hide_view_labels(self):
+        """Hide view labels and show combos for edit mode."""
+        self.author_label_display.hide()
+        self.author_combo.show()
+        self.series_label_display.hide()
+        self.series_combo.show()
+        self.genre_label_display.hide()
+        self.genre_combo.show()
+        self.collection_label_display.hide()
+        self.collection_combo.show()
+        # Make other fields editable in edit mode
+        self._set_fields_read_only(False)
+
+    def _set_fields_read_only(self, read_only: bool):
+        """Set all non-combo fields to read-only or editable."""
+        # Title
+        self.title_edit.setReadOnly(read_only)
+        # Plot/Comments
+        self.comments_edit.setReadOnly(read_only)
+        # Year
+        self.year_spin.setReadOnly(read_only)
+        # Time
+        self.time_edit.setReadOnly(read_only)
+        # Reader
+        self.reader_edit.setReadOnly(read_only)
+        # Read date
+        self.read_date.setReadOnly(read_only)
+        # Files
+        self.files_edit.setReadOnly(read_only)
+        # Bitrate
+        self.bitrate_edit.setReadOnly(read_only)
+        # Size
+        self.size_edit.setReadOnly(read_only)
+        # Format
+        self.format_combo.setEnabled(not read_only)
+        # Path
+        self.path_edit.setReadOnly(read_only)
+        # Source
+        self.source_edit.setReadOnly(read_only)
+        # Added date
+        self.added_edit.setReadOnly(read_only)
+
+    def _focus_author(self):
+        """Focus author - view label in view mode, combo in edit mode."""
+        if self.author_label_display.isVisible():
+            self.author_label_display.setFocus()
+        else:
+            self.author_combo.setFocus()
+
+    def _focus_series(self):
+        """Focus series - view label in view mode, combo in edit mode."""
+        if self.series_label_display.isVisible():
+            self.series_label_display.setFocus()
+        else:
+            self.series_combo.setFocus()
+
+    def _focus_genre(self):
+        """Focus genre - view label in view mode, combo in edit mode."""
+        if self.genre_label_display.isVisible():
+            self.genre_label_display.setFocus()
+        else:
+            self.genre_combo.setFocus()
+
+    def _focus_collection(self):
+        """Focus collection - view label in view mode, combo in edit mode."""
+        if self.collection_label_display.isVisible():
+            self.collection_label_display.setFocus()
+        else:
+            self.collection_combo.setFocus()
+
     def _apply_new_defaults(self):
         """Apply defaults for new entries without auto-selecting choices."""
         # Only set source field here; collection logic moved to _reset_new_fields
@@ -1710,6 +1950,12 @@ class BookDetailsWindow(QDialog):
         self._loading_fields = True
         try:
             self.title_edit.clear()
+            # Clear view labels (QLineEdit widgets)
+            self.author_label_display.clear()
+            self.series_label_display.clear()
+            self.genre_label_display.clear()
+            self.collection_label_display.clear()
+            # Clear combos
             self.author_combo.setCurrentIndex(-1)
             self.author_combo.clearEditText()
             self.year_spin.setValue(self.year_spin.minimum())

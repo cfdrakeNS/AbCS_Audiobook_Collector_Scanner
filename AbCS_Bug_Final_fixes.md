@@ -87,10 +87,18 @@ when a collection is selected in main win other then "all collections" the impor
 83. complete - check all windows for accessibility - shortcuts and f1 menu to ensure they are following centralized standards. refer to the PySide6_.. doc located in the docs folder. put your finding in abcs_accessibility_check.md
 83. complete statistics window - stop table row anouncment to screen readers, look at  f1 shortut style.
 84. read CLEANUP_VULTURE_FINDINGS noting the false positives that are document. Do a vulture scan of the code and update the doc with your finding. do not remove existing text add your finding under the heading April 24 2026 finding.
-85. generate a user guide for the app keeping in mind that the app will be used both by sighted, low vision and blind users, who would use text magnifying or screen reader software. read AbCS_MSA_Guide located in the doc folder I  wrote this AbCS_MSA_Guide for the former version of AbCS which was written in MS Access. Keep in mind the functionality is similar the user interface is different with the the python version using menus and proper status bars. 
+85. complete - generate a user guide for the app keeping in mind that the app will be used both by sighted, low vision and blind users, who would use text magnifying or screen reader software. read AbCS_MSA_Guide located in the doc folder I  wrote this AbCS_MSA_Guide for the former version of AbCS which was written in MS Access. Keep in mind the functionality is similar the user interface is different with the the python version using menus and proper status bars. 
 
-
-
+# performance tuining bugs 
+1. complete - if the timing prints are no longer required remove those
+2. complete - New book combos display works when you do ctrl+n from main win but not when in 
+3. complete - Update mode field unlocking  combos appear but other fields are locked 
+4. complete - editing button appears when you press update only save button should show not fetch web info 
+5. complete - new should only show save no update button 
+6. complete Title label alignment -- look at import detail very similar layout 
+7. complete box accessibility - tab order is not normalized new fields come after fetch web info button, alt+a i g c don't work check centralized shortcuts in shortcuts.py 
+8. complete - tionality - move focus to button but doesn't trigger update. look at delete button
+9. complete - on update move focus to title not author 
 
 
 

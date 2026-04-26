@@ -46,7 +46,7 @@ from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.style_helpers import build_accessible_button_style
 
 from src.database import DatabaseManager, Book
-from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries
+from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
 from src.web.web_book_api import WebBookAPI
 
 
@@ -128,6 +128,7 @@ class WebMetadataWindow(QDialog):
         self.author_queries = AuthorQueries(self.db) if self.db else None
         self.series_queries = SeriesQueries(self.db) if self.db else None
         self.genre_queries = GenreQueries(self.db) if self.db else None
+        self.collection_queries = CollectionQueries(self.db) if self.db else None
         # Main layout
         layout = QVBoxLayout(self)
         self.setup_ui(layout)
@@ -908,7 +909,13 @@ class WebMetadataWindow(QDialog):
 
         # Auto-clear status after timeout if specified
         if timeout_ms > 0:
-            QTimer.singleShot(timeout_ms, lambda: self.status_bar.clearMessage())
+            def safe_clear_status():
+                try:
+                    if self.status_bar:
+                        self.status_bar.clearMessage()
+                except RuntimeError:
+                    pass  # Widget already destroyed
+            QTimer.singleShot(timeout_ms, safe_clear_status)
 
     def on_escape_pressed(self):
         """Handle escape key - show save confirmation before closing."""
@@ -1120,8 +1127,29 @@ class WebMetadataWindow(QDialog):
 
                 # Source is NOT saved to database (display only for legal safety)
 
+                # Validate foreign keys before save (prevent IntegrityError)
+                if self.book.author_id and self.author_queries:
+                    author = self.author_queries.get_by_id(self.book.author_id)
+                    if not author:
+                        self.book.author_id = None
+                if self.book.series_id and self.series_queries:
+                    series = self.series_queries.get_by_id(self.book.series_id)
+                    if not series:
+                        self.book.series_id = None
+                if self.book.genre_id and self.genre_queries:
+                    genre = self.genre_queries.get_by_id(self.book.genre_id)
+                    if not genre:
+                        self.book.genre_id = None
+                if self.book.collection_id and self.collection_queries:
+                    collection = self.collection_queries.get_by_id(self.book.collection_id)
+                    if not collection:
+                        self.book.collection_id = None
+
                 # Save to database
-                self.book_queries.update(self.book)
+                try:
+                    self.book_queries.update(self.book)
+                except Exception as e:
+                    raise
 
                 # Emit signal to notify main window of data save
                 self.data_saved.emit()

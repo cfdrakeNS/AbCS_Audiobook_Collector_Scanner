@@ -487,7 +487,6 @@ class ImportWindow(QDialog):
         )
         self.import_selected_button.setDefault(False)
         self.import_selected_button.setAutoDefault(True)
-        # Removed setShortcut("Alt+S") to allow ShortcutManager to handle Alt+S
         footer_layout.addWidget(self.import_selected_button)
 
         self.export_button = QPushButton("E&xport")
@@ -499,7 +498,6 @@ class ImportWindow(QDialog):
         self.export_button.setAutoDefault(True)
         footer_layout.addWidget(self.export_button)
 
-        # Cancel button removed - use Escape key instead
         layout.addLayout(footer_layout)
 
         self.setTabOrder(self.collection_combo, self.folder_edit)
@@ -726,10 +724,6 @@ class ImportWindow(QDialog):
         self.table.horizontalHeader().sectionClicked.connect(
             self.on_table_header_clicked
         )
-
-    def _update_cancel_button_state(self):
-        """Show Cancel only while scanning."""
-        pass  # Cancel button removed
 
     def _confirm_close_window(self) -> bool:
         """Prompt before closing the import window (Phase 3: no valid counter)."""
@@ -1268,9 +1262,15 @@ class ImportWindow(QDialog):
         errors = list(book_data.get("errors", []))
         errors.extend(self.validator.validate_book(book_data))
 
-        is_duplicate = self.validator.is_duplicate(
+        # PHASE 2 OPTIMIZATION: Build index once and use fast check
+        existing_list = self._build_existing_book_list()
+        dup_index = self.validator.build_duplicate_index(
+            existing_list,
+            target_collection_id=self._get_target_collection_id(),
+        )
+        is_duplicate = self.validator.is_duplicate_fast(
             book_data,
-            self._build_existing_book_list(),
+            dup_index,
             target_collection_id=self._get_target_collection_id(),
         )
         if is_duplicate:
@@ -1437,7 +1437,6 @@ class ImportWindow(QDialog):
 
         self._is_scanning = True
         self._cancel_scan_requested = False
-        self._update_cancel_button_state()
         scan_was_canceled = False
         self.progress_window = ImportProgressWindow(
             self.scaler, self.theme_manager, parent=self
@@ -1512,7 +1511,6 @@ class ImportWindow(QDialog):
             elapsed_text = self._format_elapsed(elapsed)
             self._is_scanning = False
             self._cancel_scan_requested = False
-            self._update_cancel_button_state()
             self.scan_button.setEnabled(True)
             # Browse button remains enabled (accessibility pattern)
             if self.progress_window and self.progress_window.cancel_requested:
@@ -1531,30 +1529,17 @@ class ImportWindow(QDialog):
             for b in existing_books
         ]
 
-        mode = self.validator.duplicate_match_mode
-        include_year = mode in (
-            "title_author_year",
-            "title_author_year_collection",
+        # PHASE 2 OPTIMIZATION: Build optimized duplicate index once before loop
+        # This replaces O(n²) checking with O(1) exact + O(k) fuzzy where k << n
+        index_build_start = time.perf_counter()
+        dup_index = self.validator.build_duplicate_index(
+            existing_list,
+            target_collection_id=target_collection_id,
         )
-        include_collection = mode in (
-            "title_author",
-            "title_author_year_collection",
-        )
+        index_build_time = time.perf_counter() - index_build_start
+        print(f"[TIMING] Duplicate index built: {index_build_time:.4f}s for {len(existing_list)} books")
+
         fuzzy_enabled = self.validator.duplicate_fuzzy_threshold > 0
-
-        def _dup_key(book_dict: dict, collection_id: int | None):
-            title_key = (book_dict.get("title") or "").strip().lower()
-            author_key = (book_dict.get("author") or "").strip().lower()
-            key_parts = [title_key, author_key]
-            if include_year:
-                key_parts.append(book_dict.get("year"))
-            if include_collection:
-                key_parts.append(collection_id)
-            return tuple(key_parts)
-
-        existing_exact_keys = {
-            _dup_key(b, b.get("collection_id")) for b in existing_list
-        }
 
         fixed_count = 0
         error_count = 0
@@ -1596,14 +1581,12 @@ class ImportWindow(QDialog):
                 errors = list(book.get("errors", []))
                 errors.extend(self.validator.validate_book(book))
 
-                candidate_key = _dup_key(book, target_collection_id)
-                is_duplicate = candidate_key in existing_exact_keys
-                if not is_duplicate and fuzzy_enabled:
-                    is_duplicate = self.validator.is_duplicate(
-                        book,
-                        existing_list,
-                        target_collection_id=target_collection_id,
-                    )
+                # PHASE 2 OPTIMIZATION: Use fast index-based duplicate check
+                is_duplicate = self.validator.is_duplicate_fast(
+                    book,
+                    dup_index,
+                    target_collection_id=target_collection_id,
+                )
                 if is_duplicate:
                     errors = [
                         err for err in errors if str(err).strip().lower() != "duplicate"
