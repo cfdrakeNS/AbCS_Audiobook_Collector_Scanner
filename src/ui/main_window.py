@@ -3,6 +3,8 @@ Main Window - Audio Book Window
 Primary interface for browsing and managing audiobook collection.
 """
 
+import time
+
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -2820,29 +2822,9 @@ class MainWindow(QMainWindow):
         web_data = None
         try:
             from src.web.web_book_api import WebBookAPI
-            from PySide6.QtCore import QSettings
-
-            # Read user preferences
-            settings = QSettings("AbCS", "AudioBookCollector")
-            if not settings.contains("import/flip_author_name"):
-                legacy_settings = QSettings("AbCS", "AbCS")
-                flip_author = legacy_settings.value(
-                    "import/flip_author_name", False, type=bool
-                )
-            else:
-                flip_author = settings.value(
-                    "import/flip_author_name", False, type=bool
-                )
-
-            if not settings.contains("import/autocorrect/move_leading_the_title"):
-                legacy_settings = QSettings("AbCS", "AbCS")
-                move_articles = legacy_settings.value(
-                    "import/autocorrect/move_leading_the_title", False, type=bool
-                )
-            else:
-                move_articles = settings.value(
-                    "import/autocorrect/move_leading_the_title", False, type=bool
-                )
+            # Read import preferences via helper (handles legacy fallback)
+            from src.utils.settings_helpers import get_import_preferences
+            move_articles, flip_author = get_import_preferences()
 
             # Try to fetch web data once. WebBookAPI already cascades through
             # Google Books -> Open Library -> WikiData for refresh=0.
@@ -2872,12 +2854,12 @@ class MainWindow(QMainWindow):
         if web_data:
             # Check if any field has meaningful content
             meaningful_fields = [
-                web_data.get("description"),
+                web_data.get("plot"),  # API returns "plot", not "description"
                 web_data.get("publisher"),
-                web_data.get("published_year"),
+                web_data.get("year"),  # API returns "year", not "published_year"
                 web_data.get("isbn"),
-                web_data.get("pages"),
-                web_data.get("language"),
+                web_data.get("rating"),  # API includes rating
+                web_data.get("ratings_count"),  # API includes ratings count
             ]
             is_real_match = any(
                 field
@@ -3210,6 +3192,9 @@ class MainWindow(QMainWindow):
         # The dialog object still exists after exec() returns (just hidden),
         # so we can read its current book state before it's garbage collected
         last_book_id = details.book.book_id if details.book else None
+
+        # PHASE 2 OPTIMIZATION: Force dialog cleanup to prevent accumulation
+        details.deleteLater()
 
         self.refresh_books()
 

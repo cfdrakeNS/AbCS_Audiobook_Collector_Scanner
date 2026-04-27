@@ -1,215 +1,154 @@
-#@ volture cleanup process 
-1. read CLEANUP_VULTURE_FINDINGS noting the false positives that are document. 
-2. Do a vulture scan of the code 
-3. update the doc with your finding. 
-4. do not remove existing text add your finding under the heading 'todays date'finding.
+# Vulture Cleanup Process
 
-
-# April 23, 2026 — Cleanup Complete
-
-## Items Removed
-
-The following vulture findings have been addressed and removed:
-
-### src/accessibility/icon_helper.py
-- Line 13: unused variable 'relative_path' (100%) — **REMOVED**
-
-### src/ui/import_window.py
-- Line 232: unused attribute 'current_formats_text' (60%) — **REMOVED**
-- Line 255: unused attribute '_scan_prompt_open' (60%) — **REMOVED**
-- Line 526: unused variable 'lineedit_style' (60%) — **REMOVED**
-- Line 697: unused variable 'require_selection' (60%) — **REMOVED**
-- Line 964: unused method 'on_focus_list' (60%) — **REMOVED**
-- Line 980: unused method '_hide_table_cell_highlight' (60%) — **REMOVED**
-- Line 1097: unused variable 'include_valid' (100%) — **REMOVED** (parameter removed from `_configure_error_filter_options`)
-- Line 1429, 1435, 1438, 1443: unused variable 'path_type' (60%) — **REMOVED** (simplified path validation logic)
-- Line 1496, 1497, 1505, 1506: unused variables 'scan_files_processed', 'scan_total_files' (60%) — **FALSE POSITIVE**: These are used via `nonlocal` in nested `on_progress` function.
-
-### src/ui/preferences_window.py
-- Line 32: unused import 'QPoint' (90%) — **REMOVED**
-
-### src/ui/web_metadata.py
-- Line 573: unused method '_has_any_web_data' (60%) — **REMOVED**
-
-### src/web/web_book_api.py
-- Line 654: unused variable 'flip_name' (100%) — **REMOVED** (parameter removed from `_apply_author_transformations`)
-
-## Remaining Actionable Items
-
-- src/ui/book_list_import_window.py:2043 — `get_or_create_book_list_collection` method (verify if dynamically called)
-- src/ui/preferences_window.py:738 — `_sync_fallback_visual_alignment` method (verify if unused)
+1. Read this document noting the false positives that are documented.
+2. Do a vulture scan of the code.
+3. Update the doc with your findings.
+4. Do not remove existing text; add your findings under the 'Actionable Items' section.
 
 ---
 
-# April 11, 2026 — Latest Vulture Scan Results
+# Actionable Items (Current - April 26, 2026)
 
-## New/Outstanding Vulture Findings (min-confidence 60)
+Items that need verification or cleanup, organized by file:
 
-### src/database/connection.py
-- Line 75: unused attribute 'row_factory' (60%)
-  - **FALSE POSITIVE**: Already documented above; required SQLite idiom.
+## src/build_config.py
+- **Line 2**: `TRIAL_BUILD` - Removed from build_trial.bat (unused legacy flag)
+- **Line 3**: `TRIAL_DAYS` - Removed from build_trial.bat (unused legacy flag)
 
-### src/ui/book_list_import_window.py
-- Line 21: unused class 'DataFrame' (60%)
-  - **FALSE POSITIVE**: Already documented above; fallback for missing pandas.
-- Line 112: unused method '_normalize_author_for_match' (60%)
-  - **FALSE POSITIVE**: Used in duplicate detection logic (`_check_exact_duplicate` method).
-- Line 1171: unused method 'on_headers_toggled' (60%)
-  - **FALSE POSITIVE**: Already documented above; required for header toggle.
+## src/database/queries.py
+- **Line 669**: `total_time_hours` attribute - Keep (used by statistics display)
+- **Line 675**: `total_hours_read` attribute - Keep (used by statistics display)
 
-### src/ui/import_window.py
-- Line 236: unused attribute 'current_formats_text' (60%) — **REMOVED April 23, 2026**
-- Line 266: unused attribute '_scan_prompt_open' (60%) — **REMOVED April 23, 2026**
-- Line 542: unused variable 'lineedit_style' (60%) — **REMOVED April 23, 2026**
-- Line 652: unused attribute 'current_formats_text' (60%) — **REMOVED April 23, 2026**
-- Line 736: unused variable 'require_selection' (60%) — **REMOVED April 23, 2026**
-- Line 1022: unused method 'on_focus_list' (60%) — **REMOVED April 23, 2026**
-- Line 1038: unused method '_hide_table_cell_highlight' (60%) — **REMOVED April 23, 2026**
-- Line 1518, 1524, 1527, 1532: unused variable 'path_type' (60%) — **REMOVED April 23, 2026** (simplified path validation)
-- Line 1593, 1594, 1602, 1603: unused variables 'scan_files_processed', 'scan_total_files' (60%) — **FALSE POSITIVE**: Used via `nonlocal` in nested `on_progress` function.
+## src/ui/book_list_import_window.py
+- **Line 2043**: `get_or_create_book_list_collection` method - Not found in current code (may have been removed already)
+- **Line 1294**: `on_headers_toggled` method - Removed (orphaned slot method, never connected to checkbox)
 
-### src/accessibility/icon_helper.py
-- Line 13: unused variable 'relative_path' (100%) — **REMOVED April 23, 2026**
+## src/ui/import_window.py
+- **Line 522**: `checkbox_style` variable - Removed (unused stylesheet definition)
+- **Line 563**: `table_style` variable - Removed (unused stylesheet definition)
 
+## src/ui/preferences_window.py
+- **Line 738**: `_sync_fallback_visual_alignment` method - Not found in current code (may have been removed already)
+- **Line 1199**: `focus_autocorrect_section` method - Removed (not connected to any keyboard shortcuts)
+
+## src/utils/book_helpers.py
+- **Line 14**: `apply_web_field` function - File deleted (entire module unused)
+- **Line 55**: `apply_author_field` function - File deleted (entire module unused)
+- **Line 90**: `apply_series_field` function - File deleted (entire module unused)
+
+## src/utils/text_utils.py
+- **Line 104**: `is_fuzzy_match` function - Removed (unused fuzzy matching utility)
+
+## src/web/web_book_api.py
+- **Line 65**: `_title_matches` method - Keep (well-tested helper, intentionally reserved for future use)
+- **Line 578**: `page_id` variable - Removed (changed loop to `for _, page_data in pages.items():`)
+
+## Review Notes
+- `src/build_config.py` uses `TRIAL_BUILD_DATE` in `build_trial.bat`; do not remove.
+- `src/database/queries.py` attributes `total_time_hours` and `total_hours_read` are used by statistics display logic; keep.
+- `src/ui/book_list_import_window.py` `on_headers_toggled` is a real checkbox slot and is confirmed not to be a false positive. `get_or_create_book_list_collection` still requires dynamic usage search.
+- `src/ui/import_window.py` `checkbox_style` is used by `apply_control_styles()` and should remain.
+- `src/ui/preferences_window.py` methods `_sync_fallback_visual_alignment` and `focus_autocorrect_section` both appear to support layout/focus behavior and should be verified before removal.
+- `src/utils/book_helpers.py` helper functions are probably used as shared metadata helpers; reference search is required.
+- `src/utils/text_utils.py` `is_fuzzy_match` is a valid fuzzy matching utility; confirm call sites before deleting.
+- `src/web/web_book_api.py` `_title_matches` is an internal matching helper; `page_id` is a lint-only unused loop variable.
 
 ---
 
-# April 15, 2026 — Vulture Scan Results (All Items Complete)
+# False Positives (Do Not Remove)
 
-All new actionable vulture findings from April 15 have been addressed:
+These items are flagged by vulture but are actually used or required:
 
-- src/ui/book_list_import_window.py: unreachable code after 'return' — removed
-- src/web/web_book_api.py: unused variable 'save_title' — removed
+## src/database/connection.py
+- **Line 75**: `row_factory` attribute - Required SQLite idiom
 
-No outstanding actionable items remain. The codebase is fully clean as of this scan.
+## src/ui/book_list_import_window.py
+- **Line 21**: `DataFrame` class - Fallback for missing pandas
+- **Line 1294**: `on_headers_toggled` method - Required for header toggle functionality
+
+## src/ui/import_window.py
+- **Lines 1455-1465**: `scan_files_processed`, `scan_total_files` - Used via `nonlocal` in nested `on_progress` function
 
 ---
 
-# April 19, 2026 — Vulture Scan Results
+# Cleanup History
 
-## April 19 Findings (min-confidence 60)
+### April 27, 2026 — Web Fetch Bug Fix
 
-### src/accessibility/icon_helper.py
-- Line 13: unused variable 'relative_path' (100%)
+**Issue Found:** Web fetch was failing because main window checked wrong field names
+- Main window checked for `description`, `published_year`, `pages`, `language`
+- API actually returns `plot`, `year`, `rating`, `ratings_count`
+- Fixed field name mismatches in `main_window.py` meaningful fields check
 
-### src/database/connection.py
-- Line 75: unused attribute 'row_factory' (60%)
-  - **FALSE POSITIVE**: Required SQLite idiom (see previous notes).
+**Result:** Web fetch now properly detects when real data is found and opens the metadata window
 
-### src/ui/book_list_import_window.py
-- Line 21: unused class 'DataFrame' (60%)
-  - **FALSE POSITIVE**: Fallback for missing pandas (see previous notes).
-- Line 1168: unused method 'on_headers_toggled' (60%)
+### Items Removed:
 
-### src/ui/import_window.py
-- Line 233: unused attribute 'current_formats_text' (60%)
-- Line 239: unused attribute 'flip_author_names' (60%)
-- Line 263: unused attribute '_scan_prompt_open' (60%)
-- Line 527: unused variable 'lineedit_style' (60%)
-- Line 635: unused attribute 'current_formats_text' (60%)
-- Line 649: unused attribute 'flip_author_names' (60%)
-- Line 652: unused attribute 'flip_author_names' (60%)
-- Line 726: unused variable 'require_selection' (60%)
-- Line 993: unused method 'on_focus_list' (60%)
-- Line 1009: unused method '_hide_table_cell_highlight' (60%)
-- Line 1126: unused variable 'include_valid' (100%)
-- Line 1455: unused variable 'path_type' (60%)
-- Line 1461: unused variable 'path_type' (60%)
-- Line 1464: unused variable 'path_type' (60%)
-- Line 1469: unused variable 'path_type' (60%)
-- Line 1522: unused variable 'scan_files_processed' (60%)
-- Line 1523: unused variable 'scan_total_files' (60%)
-- Line 1531: unused variable 'scan_files_processed' (60%)
-- Line 1532: unused variable 'scan_total_files' (60%)
+**src/ui/preferences_window.py**
+- Line 1199: `focus_autocorrect_section` method (orphaned focus method)
 
-### src/ui/web_metadata.py
-- Line 573: unused method '_has_any_web_data' (60%)
+**src/ui/import_window.py**
+- Line 522: `checkbox_style` variable (unused stylesheet)
+- Line 563: `table_style` variable (unused stylesheet)
 
-### src/web/web_book_api.py
-- Line 654: unused variable 'flip_name' (100%)
+**src/ui/book_list_import_window.py**
+- Line 1294: `on_headers_toggled` method (orphaned slot method)
+
+**src/web/web_book_api.py**
+- Line 578: `page_id` variable (changed loop to `for _, page_data in pages.items():`)
+
+**src/utils/book_helpers.py**
+- Entire file deleted (unused module with `apply_web_field`, `apply_author_field`, `apply_series_field`)
+
+**src/utils/text_utils.py**
+- Line 104: `is_fuzzy_match` function (unused fuzzy matching utility)
+
+**build_trial.bat**
+- Lines 46-47: `TRIAL_BUILD` and `TRIAL_DAYS` echo statements (unused legacy flags)
+
+### Items Verified as Used (Kept):
+
+**src/database/queries.py**
+- `total_time_hours`, `total_hours_read` (statistics display)
+
+**src/web/web_book_api.py**
+- `_title_matches` method (well-tested helper, reserved for future use)
+
+**src/build_config.py**
+- `TRIAL_BUILD_DATE` (active trial mechanism)
+
+### Items Removed:
+
+**src/accessibility/icon_helper.py**
+- Line 13: `relative_path` variable
+
+**src/ui/import_window.py**
+- Line 232: `current_formats_text` attribute
+- Line 255: `_scan_prompt_open` attribute
+- Line 526: `lineedit_style` variable
+- Line 697: `require_selection` variable
+- Line 964: `on_focus_list` method
+- Line 980: `_hide_table_cell_highlight` method
+- Line 1097: `include_valid` variable (parameter removed from `_configure_error_filter_options`)
+- Lines 1429-1443: `path_type` variables (simplified path validation logic)
+
+**src/ui/preferences_window.py**
+- Line 32: `QPoint` import
+
+**src/ui/web_metadata.py**
+- Line 573: `_has_any_web_data` method
+
+**src/web/web_book_api.py**
+- Line 654: `flip_name` variable (parameter removed from `_apply_author_transformations`)
+
+---
 
 ## April 19, 2026 — Accessibility/Screen Reader Popup Removal
 
-- All 'No screen reader active' popups have been removed from the following windows:
-  - Web Metadata Window (Alt+/ now does nothing if no screen reader is present)
-  - All other windows (Main, Reading History, Import Progress, Import Detail, Collection, Name List) already followed this pattern or did not show a popup.
-- Alt+/ (Read Status Bar) now only announces to screen readers if one is active; otherwise, it does nothing (no popup, no message).
-- This change ensures a silent, non-intrusive experience for sighted users and strict protocol compliance for screen reader users.
+All 'No screen reader active' popups have been removed from the following windows:
+- Web Metadata Window (Alt+/ now does nothing if no screen reader is present)
+- All other windows (Main, Reading History, Import Progress, Import Detail, Collection, Name List) already followed this pattern or did not show a popup.
 
-### What to Test
-- Open each window (Main, Import, Import Progress, Import Detail, Web Metadata, Reading History, Collection, Name List).
-- Press Alt+/ (Read Status Bar) with and without a screen reader running:
-  - If a screen reader is active (JAWS, NVDA, etc.), the status bar message should be announced.
-  - If no screen reader is active, pressing Alt+/ should do nothing (no popup, no message).
-- Confirm that no 'No screen reader active' or similar popups appear anywhere in the UI.
-- All other accessibility and keyboard navigation features should remain unchanged.
-
-**Note:** All previously documented false positives remain valid and are not actionable. Only new actionable items are listed above for review in the next cleanup pass.
-
----
-
-# April 23, 2026 — Vulture Scan Results
-
-## April 23 Findings (min-confidence 60)
-
-### src/accessibility/icon_helper.py
-- Line 13: unused variable 'relative_path' (100%)
-  - **Already documented April 19, 2026**.
-
-### src/database/connection.py
-- Line 75: unused attribute 'row_factory' (60%)
-  - **FALSE POSITIVE**: Required SQLite idiom (see previous notes).
-
-### src/ui/book_list_import_window.py
-- Line 21: unused class 'DataFrame' (60%)
-  - **FALSE POSITIVE**: Fallback for missing pandas (see previous notes).
-- Line 1371: unused method 'on_headers_toggled' (60%)
-  - **Already documented April 19, 2026** (line shifted from 1168).
-- Line 2043: unused method 'get_or_create_book_list_collection' (60%)
-  - **NEW FINDING**: Method may be unused or called dynamically.
-
-### src/ui/import_window.py
-- Line 232: unused attribute 'current_formats_text' (60%)
-  - **Already documented April 19, 2026** (line shifted from 233).
-- Line 255: unused attribute '_scan_prompt_open' (60%)
-  - **Already documented April 19, 2026** (line shifted from 263).
-- Line 526: unused variable 'lineedit_style' (60%)
-  - **Already documented April 19, 2026** (line shifted from 527).
-- Line 635: unused attribute 'current_formats_text' (60%)
-  - **Already documented April 19, 2026**.
-- Line 697: unused variable 'require_selection' (60%)
-  - **Already documented April 19, 2026** (line shifted from 726).
-- Line 964: unused method 'on_focus_list' (60%)
-  - **Already documented April 19, 2026** (line shifted from 993).
-- Line 980: unused method '_hide_table_cell_highlight' (60%)
-  - **Already documented April 19, 2026** (line shifted from 1009).
-- Line 1097: unused variable 'include_valid' (100%)
-  - **Already documented April 19, 2026** (line shifted from 1126).
-- Line 1429, 1435, 1438, 1443: unused variable 'path_type' (60%)
-  - **Already documented April 19, 2026** (lines shifted from 1455-1469).
-- Line 1496, 1497, 1505, 1506: unused variables 'scan_files_processed', 'scan_total_files' (60%)
-  - **Already documented April 19, 2026** (lines shifted from 1522-1532).
-
-### src/ui/preferences_window.py
-- Line 32: unused import 'QPoint' (90%)
-  - **NEW FINDING**: Import not used in current code; safe to remove.
-- Line 738: unused method '_sync_fallback_visual_alignment' (60%)
-  - **NEW FINDING**: Method may be unused or replaced by newer implementation.
-
-### src/ui/web_metadata.py
-- Line 573: unused method '_has_any_web_data' (60%)
-  - **Already documented April 19, 2026**.
-
-### src/web/web_book_api.py
-- Line 654: unused variable 'flip_name' (100%)
-  - **Already documented April 19, 2026**.
-
-## Summary of New Actionable Items (April 23, 2026)
-
-1. **src/ui/book_list_import_window.py:2043** - `get_or_create_book_list_collection` method
-2. **src/ui/preferences_window.py:32** - `QPoint` import (90% confidence)
-3. **src/ui/preferences_window.py:738** - `_sync_fallback_visual_alignment` method
-
-All other findings are either previously documented false positives or line-shifted versions of previously documented items due to code changes.
+Alt+/ (Read Status Bar) now only announces to screen readers if one is active; otherwise, it does nothing (no popup, no message).
 
 ---

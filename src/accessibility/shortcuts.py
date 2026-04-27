@@ -71,21 +71,22 @@ MAIN_WINDOW_SHORTCUTS = {
 
 BOOK_DETAILS_SHORTCUTS = {
     "T": ("Title", "title_edit"),
-    "A": ("Author", "author_combo"),
+    "A": ("Author", "author_label_display"),  # View label (QLineEdit) - always accessible
     "P": ("Plot", "comments_edit"),  # From Pl&ot label
     "Y": ("Year", "year_spin"),
     "M": ("Time", "time_edit"),  # From &Time label
     "R": ("Reader", "reader_edit"),
-    "E": ("Read date", "read_date"),
-    "I": ("Series", "series_combo"),
-    "G": ("Genre", "genre_combo"),
-    "C": ("Collection", "collection_combo"),
+    "E": ("Read date", "read_date"),  # Alt+E for Read date
+    "I": ("Series", "series_label_display"),  # View label (QLineEdit) - always accessible
+    "G": ("Genre", "genre_label_display"),  # View label (QLineEdit) - always accessible
+    "C": ("Collection", "collection_label_display"),  # View label (QLineEdit) - always accessible
     "F": ("Files", "files_edit"),
     "B": ("Bitrate", "bitrate_edit"),
     "Z": ("Size", "size_edit"),
     "O": ("Format", "format_combo"),  # Alt+O for Format (ensured)
     "H": ("Path", "path_edit"),  # From Pat&h label
     "W": ("Get web info", "get_web_details_button"),
+    # "U" shortcut handled locally in book_details.py to trigger action
     "F1": ("Show help", "show_help"),
 }
 
@@ -224,6 +225,7 @@ class ShortcutManager(QObject):
                 else:
                     key_seq = QKeySequence(f"Alt+{key}")
                 shortcut = QShortcut(key_seq, widget)
+                shortcut.setContext(Qt.WindowShortcut)
                 shortcut.activated.connect(callback_map[widget_id])
                 shortcut_id = f"{context.value}_{key}"
                 self._shortcuts[shortcut_id] = shortcut

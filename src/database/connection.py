@@ -76,6 +76,9 @@ class DatabaseManager:
             # Enable foreign key constraints - SQLite doesn't enforce these by default
             # This prevents you from deleting an author if books still reference them
             self._connection.execute("PRAGMA foreign_keys = ON")
+            # PHASE 1 OPTIMIZATION: Enable WAL mode for better concurrency and performance
+            # WAL allows readers and writers to proceed concurrently
+            self._connection.execute("PRAGMA journal_mode=WAL")
         return self._connection
 
     def close(self):

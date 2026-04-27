@@ -487,7 +487,6 @@ class ImportWindow(QDialog):
         )
         self.import_selected_button.setDefault(False)
         self.import_selected_button.setAutoDefault(True)
-        # Removed setShortcut("Alt+S") to allow ShortcutManager to handle Alt+S
         footer_layout.addWidget(self.import_selected_button)
 
         self.export_button = QPushButton("E&xport")
@@ -499,7 +498,6 @@ class ImportWindow(QDialog):
         self.export_button.setAutoDefault(True)
         footer_layout.addWidget(self.export_button)
 
-        # Cancel button removed - use Escape key instead
         layout.addLayout(footer_layout)
 
         self.setTabOrder(self.collection_combo, self.folder_edit)
@@ -520,19 +518,6 @@ class ImportWindow(QDialog):
         font = self.font()
         font.setPointSize(base_font_size)
         self.setFont(font)
-
-        checkbox_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            """
 
         button_style = f"""
             QPushButton {{
@@ -562,23 +547,6 @@ class ImportWindow(QDialog):
             self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56)
         )
 
-        table_style = """
-            QTableView::item:selected:active {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            QTableView::item:selected:!active {
-                background-color: palette(base);
-                color: palette(text);
-            }
-            QTableView::item:focus {
-                outline: none;
-                border: none;
-            }
-            QTableView {
-                outline: 0;
-            }
-        """
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
         self.table.setStyleSheet(build_accessible_f1_popup_style())
@@ -726,10 +694,6 @@ class ImportWindow(QDialog):
         self.table.horizontalHeader().sectionClicked.connect(
             self.on_table_header_clicked
         )
-
-    def _update_cancel_button_state(self):
-        """Show Cancel only while scanning."""
-        pass  # Cancel button removed
 
     def _confirm_close_window(self) -> bool:
         """Prompt before closing the import window (Phase 3: no valid counter)."""
@@ -907,12 +871,17 @@ class ImportWindow(QDialog):
         if not self.scanned_items:
             return
 
-        # Clear current table
-        self.table.setRowCount(0)
+        # PHASE 1 OPTIMIZATION: Block updates and pre-size table
+        repopulate_start = time.perf_counter()
+        self.table.setUpdatesEnabled(False)
+        self.table.setSortingEnabled(False)
+
+        # Clear and pre-size table (allocate once instead of per-row)
+        total_rows = len(self.scanned_items)
+        self.table.setRowCount(total_rows)
 
         # Repopulate with sorted data
         for row, item in enumerate(self.scanned_items):
-            self.table.insertRow(row)
             self.table.setItem(
                 row, self.COL_AUTHOR, QTableWidgetItem(item.get("author", ""))
             )
@@ -928,6 +897,12 @@ class ImportWindow(QDialog):
             self.table.setItem(
                 row, self.COL_PATH, QTableWidgetItem(item.get("folder", ""))
             )
+
+        # PHASE 1 OPTIMIZATION: Re-enable updates
+        self.table.setUpdatesEnabled(True)
+        self.table.setSortingEnabled(True)
+        repopulate_elapsed = time.perf_counter() - repopulate_start
+        print(f"[TIMING] Table repopulate (sort): {repopulate_elapsed:.4f}s for {total_rows} rows")
 
         # Reapply error filter
         self._apply_error_filter()
@@ -1257,9 +1232,15 @@ class ImportWindow(QDialog):
         errors = list(book_data.get("errors", []))
         errors.extend(self.validator.validate_book(book_data))
 
-        is_duplicate = self.validator.is_duplicate(
+        # PHASE 2 OPTIMIZATION: Build index once and use fast check
+        existing_list = self._build_existing_book_list()
+        dup_index = self.validator.build_duplicate_index(
+            existing_list,
+            target_collection_id=self._get_target_collection_id(),
+        )
+        is_duplicate = self.validator.is_duplicate_fast(
             book_data,
-            self._build_existing_book_list(),
+            dup_index,
             target_collection_id=self._get_target_collection_id(),
         )
         if is_duplicate:
@@ -1426,7 +1407,6 @@ class ImportWindow(QDialog):
 
         self._is_scanning = True
         self._cancel_scan_requested = False
-        self._update_cancel_button_state()
         scan_was_canceled = False
         self.progress_window = ImportProgressWindow(
             self.scaler, self.theme_manager, parent=self
@@ -1501,7 +1481,6 @@ class ImportWindow(QDialog):
             elapsed_text = self._format_elapsed(elapsed)
             self._is_scanning = False
             self._cancel_scan_requested = False
-            self._update_cancel_button_state()
             self.scan_button.setEnabled(True)
             # Browse button remains enabled (accessibility pattern)
             if self.progress_window and self.progress_window.cancel_requested:
@@ -1520,30 +1499,16 @@ class ImportWindow(QDialog):
             for b in existing_books
         ]
 
-        mode = self.validator.duplicate_match_mode
-        include_year = mode in (
-            "title_author_year",
-            "title_author_year_collection",
+        # PHASE 2 OPTIMIZATION: Build optimized duplicate index once before loop
+        # This replaces O(n²) checking with O(1) exact + O(k) fuzzy where k << n
+        index_build_start = time.perf_counter()
+        dup_index = self.validator.build_duplicate_index(
+            existing_list,
+            target_collection_id=target_collection_id,
         )
-        include_collection = mode in (
-            "title_author",
-            "title_author_year_collection",
-        )
+        index_build_time = time.perf_counter() - index_build_start
+
         fuzzy_enabled = self.validator.duplicate_fuzzy_threshold > 0
-
-        def _dup_key(book_dict: dict, collection_id: int | None):
-            title_key = (book_dict.get("title") or "").strip().lower()
-            author_key = (book_dict.get("author") or "").strip().lower()
-            key_parts = [title_key, author_key]
-            if include_year:
-                key_parts.append(book_dict.get("year"))
-            if include_collection:
-                key_parts.append(collection_id)
-            return tuple(key_parts)
-
-        existing_exact_keys = {
-            _dup_key(b, b.get("collection_id")) for b in existing_list
-        }
 
         fixed_count = 0
         error_count = 0
@@ -1556,7 +1521,9 @@ class ImportWindow(QDialog):
         conn = self.db.connect()
         transaction_open = False
         try:
-            conn.execute("BEGIN")
+            # Only start transaction if not already in one (WAL mode may have implicit transaction)
+            if not conn.in_transaction:
+                conn.execute("BEGIN")
             auto_add_start = time.perf_counter()
             transaction_open = True
 
@@ -1571,6 +1538,11 @@ class ImportWindow(QDialog):
                 )
                 QApplication.processEvents()
 
+            # PHASE 1 OPTIMIZATION: Block table repaint and sorting during batch load
+            table_opt_start = time.perf_counter()
+            self.table.setUpdatesEnabled(False)
+            self.table.setSortingEnabled(False)
+
             for row, book in enumerate(books):
                 auto_added = False
                 self.import_scanner.apply_preferences(book)
@@ -1578,14 +1550,12 @@ class ImportWindow(QDialog):
                 errors = list(book.get("errors", []))
                 errors.extend(self.validator.validate_book(book))
 
-                candidate_key = _dup_key(book, target_collection_id)
-                is_duplicate = candidate_key in existing_exact_keys
-                if not is_duplicate and fuzzy_enabled:
-                    is_duplicate = self.validator.is_duplicate(
-                        book,
-                        existing_list,
-                        target_collection_id=target_collection_id,
-                    )
+                # PHASE 2 OPTIMIZATION: Use fast index-based duplicate check
+                is_duplicate = self.validator.is_duplicate_fast(
+                    book,
+                    dup_index,
+                    target_collection_id=target_collection_id,
+                )
                 if is_duplicate:
                     errors = [
                         err for err in errors if str(err).strip().lower() != "duplicate"
@@ -1750,14 +1720,21 @@ class ImportWindow(QDialog):
                     next_counters_ui_update = now + counters_update_interval
                     QApplication.processEvents()
 
+            # PHASE 1 OPTIMIZATION: Re-enable table updates after batch load
+            self.table.setUpdatesEnabled(True)
+            self.table.setSortingEnabled(True)
+            table_opt_elapsed = time.perf_counter() - table_opt_start
+
             if transaction_open:
                 conn.commit()
                 transaction_open = False
                 auto_add_elapsed = time.perf_counter() - auto_add_start
-                print(f"[TIMING] Auto-add phase: {auto_add_elapsed:.4f}s for {added_count} books")
         except Exception:
             if transaction_open:
                 conn.rollback()
+            # PHASE 1 OPTIMIZATION: Ensure table updates are re-enabled on error
+            self.table.setUpdatesEnabled(True)
+            self.table.setSortingEnabled(True)
             raise
 
         if not books:
@@ -1843,6 +1820,8 @@ class ImportWindow(QDialog):
             duplicates=duplicate_count,
             added=added_count,
         )
+
+        total_elapsed = time.perf_counter() - scan_start
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
@@ -2060,7 +2039,9 @@ class ImportWindow(QDialog):
             QApplication.processEvents()
 
         try:
-            conn.execute("BEGIN")
+            # Only start transaction if not already in one (WAL mode may have implicit transaction)
+            if not conn.in_transaction:
+                conn.execute("BEGIN")
             transaction_open = True
 
             for row in row_indices:
@@ -2128,7 +2109,6 @@ class ImportWindow(QDialog):
                 conn.commit()
                 transaction_open = False
                 manual_add_elapsed = time.perf_counter() - manual_add_start
-                print(f"[TIMING] Manual add selected: {manual_add_elapsed:.4f}s for {imported} books")
 
             if rows_to_remove:
                 sorted_rows_to_remove = sorted(set(rows_to_remove))

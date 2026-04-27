@@ -3,11 +3,13 @@ Validator for audiobook import data.
 Detects errors and issues in imported audiobook metadata.
 """
 
+import time
 from .import_rules import ImportRulesEngine
 from PySide6.QtCore import QSettings
-from typing import List, Dict, Any
-from difflib import SequenceMatcher
+from typing import List, Dict, Any, Set, Tuple
 import re
+
+from src.utils.text_utils import normalize_title, similarity_ratio
 
 
 class ImportValidator:
@@ -15,13 +17,6 @@ class ImportValidator:
     Validates imported audiobook data and identifies errors.
     Matches the error detection from MS Access version.
     """
-
-    @staticmethod
-    def normalize_title_for_compare(title: str) -> str:
-        """Normalize title for comparison: lowercase, strip (Articles no longer moved)."""
-        if not isinstance(title, str):
-            return ""
-        return title.strip().lower()
 
     @staticmethod
     def append_flag_once(book: dict, message: str):
@@ -66,12 +61,159 @@ class ImportValidator:
         )
         self.duplicate_fuzzy_threshold = max(0, min(100, threshold))
 
-    @staticmethod
-    def _similarity_ratio(left: str, right: str) -> float:
-        """Return a normalized text similarity score from 0.0 to 1.0."""
-        if not left or not right:
-            return 0.0
-        return SequenceMatcher(None, left, right).ratio()
+    def build_duplicate_index(
+        self,
+        existing_books: List[Dict[str, Any]],
+        target_collection_id: int | None = None,
+    ) -> Dict[str, Any]:
+        """
+        PHASE 2 OPTIMIZATION: Build an optimized index for duplicate checking.
+
+        Pre-computes normalized keys and signatures for all existing books,
+        enabling O(1) exact lookups and filtered fuzzy checks.
+
+        Args:
+            existing_books: List of existing book dictionaries
+            target_collection_id: Collection to scope duplicate checks to
+
+        Returns:
+            Dictionary containing:
+            - 'exact_keys': Set of exact match keys
+            - 'books_by_key': Dict mapping keys to list of books
+            - 'normalized_books': List of pre-normalized book data for fuzzy checks
+            - 'build_time': Time taken to build index
+        """
+        index_start = time.perf_counter()
+
+        mode = self.duplicate_match_mode
+        include_year = mode in ("title_author_year", "title_author_year_collection")
+        include_collection = mode in ("title_author", "title_author_year_collection")
+
+        exact_keys: Set[str] = set()
+        books_by_key: Dict[str, List[Dict]] = {}
+        normalized_books: List[Dict] = []
+
+        for book in existing_books:
+            # Pre-normalize all fields
+            title = normalize_title(book.get("title", ""))
+            author = book.get("author", "").strip().lower()
+            year = book.get("year")
+            collection_id = book.get("collection_id", target_collection_id)
+
+            # Build exact match key
+            key_parts = [title, author]
+            if include_year and year:
+                key_parts.append(str(year))
+            if include_collection:
+                key_parts.append(str(collection_id or "none"))
+            exact_key = "|".join(key_parts)
+
+            exact_keys.add(exact_key)
+            books_by_key.setdefault(exact_key, []).append(book)
+
+            # Store normalized data for fuzzy matching
+            normalized_books.append({
+                "book": book,
+                "title": title,
+                "author": author,
+                "year": year,
+                "collection_id": collection_id,
+                "exact_key": exact_key,
+                "title_len": len(title),
+                "author_len": len(author),
+            })
+
+        build_time = time.perf_counter() - index_start
+
+        return {
+            "exact_keys": exact_keys,
+            "books_by_key": books_by_key,
+            "normalized_books": normalized_books,
+            "build_time": build_time,
+            "include_year": include_year,
+            "include_collection": include_collection,
+        }
+
+    def is_duplicate_fast(
+        self,
+        book: Dict[str, Any],
+        index: Dict[str, Any],
+        target_collection_id: int | None = None,
+    ) -> bool:
+        """
+        PHASE 2 OPTIMIZATION: Fast duplicate check using pre-built index.
+
+        O(1) exact lookup + O(k) fuzzy where k is small subset of candidates.
+
+        Args:
+            book: Book to check
+            index: Pre-built index from build_duplicate_index()
+            target_collection_id: Collection to scope duplicate checks to
+
+        Returns:
+            True if duplicate found
+        """
+        title = normalize_title(book.get("title", ""))
+        author = book.get("author", "").strip().lower()
+        year = book.get("year")
+        collection_id = book.get("collection_id", target_collection_id)
+
+        include_year = index["include_year"]
+        include_collection = index["include_collection"]
+        fuzzy_ratio_threshold = self.duplicate_fuzzy_threshold / 100.0
+        fuzzy_enabled = self.duplicate_fuzzy_threshold > 0
+
+        # Build exact key for O(1) lookup
+        key_parts = [title, author]
+        if include_year and year:
+            key_parts.append(str(year))
+        if include_collection:
+            key_parts.append(str(collection_id or "none"))
+        exact_key = "|".join(key_parts)
+
+        # O(1) exact match check
+        if exact_key in index["exact_keys"]:
+            return True
+
+        if not fuzzy_enabled:
+            return False
+
+        # PHASE 2 OPTIMIZATION: Filtered fuzzy check
+        # Only check books with similar title/author length (likely matches)
+        # This reduces O(n) to O(k) where k << n
+        title_len = len(title)
+        author_len = len(author)
+        len_tolerance = 5  # Characters difference allowed for fuzzy candidate
+
+        for existing in index["normalized_books"]:
+            # Quick length filter - skip obviously different books
+            if abs(existing["title_len"] - title_len) > len_tolerance:
+                continue
+            if abs(existing["author_len"] - author_len) > len_tolerance:
+                continue
+
+            # Check year if required
+            if include_year and existing["year"] != year:
+                continue
+
+            # Check collection if required
+            if include_collection:
+                if existing["collection_id"] != collection_id:
+                    continue
+
+            # Expensive fuzzy check only on filtered candidates
+            title_sim = similarity_ratio(existing["title"], title)
+            if title_sim < fuzzy_ratio_threshold:
+                continue
+
+            author_sim = similarity_ratio(existing["author"], author)
+            if author_sim < fuzzy_ratio_threshold:
+                continue
+
+            # Both title and author match fuzzily
+            return True
+
+        return False
 
     def validate_book(self, book: Dict[str, Any]) -> List[str]:
         """
@@ -102,7 +244,7 @@ class ImportValidator:
         Returns:
             True if duplicate found
         """
-        title = self.normalize_title_for_compare(book.get("title", ""))
+        title = normalize_title(book.get("title", ""))
         author = book.get("author", "").strip().lower()
         year = book.get("year")
         collection_id = book.get("collection_id", target_collection_id)
@@ -120,7 +262,7 @@ class ImportValidator:
         fuzzy_enabled = self.duplicate_fuzzy_threshold > 0
 
         for existing in existing_books:
-            existing_title = self.normalize_title_for_compare(existing.get("title", ""))
+            existing_title = normalize_title(existing.get("title", ""))
             existing_author = existing.get("author", "").strip().lower()
 
             same_title = existing_title == title
@@ -131,8 +273,8 @@ class ImportValidator:
                 if not fuzzy_enabled:
                     continue
 
-                title_similarity = self._similarity_ratio(existing_title, title)
-                author_similarity = self._similarity_ratio(existing_author, author)
+                title_similarity = similarity_ratio(existing_title, title)
+                author_similarity = similarity_ratio(existing_author, author)
                 if (
                     title_similarity < fuzzy_ratio_threshold
                     or author_similarity < fuzzy_ratio_threshold
