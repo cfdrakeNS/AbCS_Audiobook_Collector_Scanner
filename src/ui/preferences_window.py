@@ -398,7 +398,7 @@ class PreferencesWindow(QDialog):
         rules_group.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         rules_layout = QGridLayout(rules_group)
         rules_layout.setContentsMargins(2, 4, 2, 4)
-        rules_layout.setHorizontalSpacing(12)
+        rules_layout.setHorizontalSpacing(22)
         rules_layout.setVerticalSpacing(6)
         rules_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
@@ -1195,10 +1195,6 @@ class PreferencesWindow(QDialog):
     def focus_validation_section(self):
         """Focus first control in Validation Rules section."""
         self._focus_section_widget(self.rules_section_text, "Validation Rules")
-
-    def focus_autocorrect_section(self):
-        """Focus first control in Auto-Correction section."""
-        self._focus_section_widget(self.autocorrect_section_text, "Auto-Correction")
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""

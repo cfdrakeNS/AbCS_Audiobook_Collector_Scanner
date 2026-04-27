@@ -2854,12 +2854,12 @@ class MainWindow(QMainWindow):
         if web_data:
             # Check if any field has meaningful content
             meaningful_fields = [
-                web_data.get("description"),
+                web_data.get("plot"),  # API returns "plot", not "description"
                 web_data.get("publisher"),
-                web_data.get("published_year"),
+                web_data.get("year"),  # API returns "year", not "published_year"
                 web_data.get("isbn"),
-                web_data.get("pages"),
-                web_data.get("language"),
+                web_data.get("rating"),  # API includes rating
+                web_data.get("ratings_count"),  # API includes ratings count
             ]
             is_real_match = any(
                 field

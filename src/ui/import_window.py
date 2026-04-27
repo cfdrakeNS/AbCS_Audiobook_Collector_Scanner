@@ -519,19 +519,6 @@ class ImportWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        checkbox_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            """
-
         button_style = f"""
             QPushButton {{
                 padding: 4px 12px;
@@ -560,23 +547,6 @@ class ImportWindow(QDialog):
             self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56)
         )
 
-        table_style = """
-            QTableView::item:selected:active {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-            QTableView::item:selected:!active {
-                background-color: palette(base);
-                color: palette(text);
-            }
-            QTableView::item:focus {
-                outline: none;
-                border: none;
-            }
-            QTableView {
-                outline: 0;
-            }
-        """
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
         self.table.setStyleSheet(build_accessible_f1_popup_style())
@@ -1537,7 +1507,6 @@ class ImportWindow(QDialog):
             target_collection_id=target_collection_id,
         )
         index_build_time = time.perf_counter() - index_build_start
-        print(f"[TIMING] Duplicate index built: {index_build_time:.4f}s for {len(existing_list)} books")
 
         fuzzy_enabled = self.validator.duplicate_fuzzy_threshold > 0
 
@@ -1755,13 +1724,11 @@ class ImportWindow(QDialog):
             self.table.setUpdatesEnabled(True)
             self.table.setSortingEnabled(True)
             table_opt_elapsed = time.perf_counter() - table_opt_start
-            print(f"[TIMING] Table batch load (optimized): {table_opt_elapsed:.4f}s for {len(books)} books")
 
             if transaction_open:
                 conn.commit()
                 transaction_open = False
                 auto_add_elapsed = time.perf_counter() - auto_add_start
-                print(f"[TIMING] Auto-add phase: {auto_add_elapsed:.4f}s for {added_count} books")
         except Exception:
             if transaction_open:
                 conn.rollback()
@@ -1854,9 +1821,7 @@ class ImportWindow(QDialog):
             added=added_count,
         )
 
-        # Print total scan timing for performance comparison
         total_elapsed = time.perf_counter() - scan_start
-        print(f"[TIMING] Total scan: {total_elapsed:.4f}s | Scanned: {scanned_total} | Added: {added_count} | Table rows: {self.table.rowCount()}")
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
@@ -2144,7 +2109,6 @@ class ImportWindow(QDialog):
                 conn.commit()
                 transaction_open = False
                 manual_add_elapsed = time.perf_counter() - manual_add_start
-                print(f"[TIMING] Manual add selected: {manual_add_elapsed:.4f}s for {imported} books")
 
             if rows_to_remove:
                 sorted_rows_to_remove = sorted(set(rows_to_remove))

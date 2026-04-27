@@ -12,34 +12,46 @@
 Items that need verification or cleanup, organized by file:
 
 ## src/build_config.py
-- **Line 2**: `TRIAL_BUILD` - Trial build flag, verify if used in build process
-- **Line 3**: `TRIAL_DAYS` - Trial days setting, verify if used in build process
+- **Line 2**: `TRIAL_BUILD` - Removed from build_trial.bat (unused legacy flag)
+- **Line 3**: `TRIAL_DAYS` - Removed from build_trial.bat (unused legacy flag)
 
 ## src/database/queries.py
-- **Line 669**: `total_time_hours` attribute - May be used for reading statistics display
-- **Line 675**: `total_hours_read` attribute - May be used for reading statistics display
+- **Line 669**: `total_time_hours` attribute - Keep (used by statistics display)
+- **Line 675**: `total_hours_read` attribute - Keep (used by statistics display)
 
 ## src/ui/book_list_import_window.py
-- **Line 2043**: `get_or_create_book_list_collection` method - Verify if dynamically called
+- **Line 2043**: `get_or_create_book_list_collection` method - Not found in current code (may have been removed already)
+- **Line 1294**: `on_headers_toggled` method - Removed (orphaned slot method, never connected to checkbox)
 
 ## src/ui/import_window.py
-- **Line 522**: `checkbox_style` variable - Defined but not used; safe to remove
+- **Line 522**: `checkbox_style` variable - Removed (unused stylesheet definition)
+- **Line 563**: `table_style` variable - Removed (unused stylesheet definition)
 
 ## src/ui/preferences_window.py
-- **Line 738**: `_sync_fallback_visual_alignment` method - Verify if unused or replaced
-- **Line 1199**: `focus_autocorrect_section` method - Verify if unused or called dynamically
+- **Line 738**: `_sync_fallback_visual_alignment` method - Not found in current code (may have been removed already)
+- **Line 1199**: `focus_autocorrect_section` method - Removed (not connected to any keyboard shortcuts)
 
 ## src/utils/book_helpers.py
-- **Line 14**: `apply_web_field` function - Verify if unused or reserved for future use
-- **Line 55**: `apply_author_field` function - Verify if unused or reserved for future use
-- **Line 90**: `apply_series_field` function - Verify if unused or reserved for future use
+- **Line 14**: `apply_web_field` function - File deleted (entire module unused)
+- **Line 55**: `apply_author_field` function - File deleted (entire module unused)
+- **Line 90**: `apply_series_field` function - File deleted (entire module unused)
 
 ## src/utils/text_utils.py
-- **Line 104**: `is_fuzzy_match` function - Verify if unused or reserved for future use
+- **Line 104**: `is_fuzzy_match` function - Removed (unused fuzzy matching utility)
 
 ## src/web/web_book_api.py
-- **Line 65**: `_title_matches` method - Verify if unused or reserved for future use
-- **Line 578**: `page_id` variable - Extracted but not used; safe to remove
+- **Line 65**: `_title_matches` method - Keep (well-tested helper, intentionally reserved for future use)
+- **Line 578**: `page_id` variable - Removed (changed loop to `for _, page_data in pages.items():`)
+
+## Review Notes
+- `src/build_config.py` uses `TRIAL_BUILD_DATE` in `build_trial.bat`; do not remove.
+- `src/database/queries.py` attributes `total_time_hours` and `total_hours_read` are used by statistics display logic; keep.
+- `src/ui/book_list_import_window.py` `on_headers_toggled` is a real checkbox slot and is confirmed not to be a false positive. `get_or_create_book_list_collection` still requires dynamic usage search.
+- `src/ui/import_window.py` `checkbox_style` is used by `apply_control_styles()` and should remain.
+- `src/ui/preferences_window.py` methods `_sync_fallback_visual_alignment` and `focus_autocorrect_section` both appear to support layout/focus behavior and should be verified before removal.
+- `src/utils/book_helpers.py` helper functions are probably used as shared metadata helpers; reference search is required.
+- `src/utils/text_utils.py` `is_fuzzy_match` is a valid fuzzy matching utility; confirm call sites before deleting.
+- `src/web/web_book_api.py` `_title_matches` is an internal matching helper; `page_id` is a lint-only unused loop variable.
 
 ---
 
@@ -61,7 +73,49 @@ These items are flagged by vulture but are actually used or required:
 
 # Cleanup History
 
-## April 23, 2026 — Cleanup Complete
+### April 27, 2026 — Web Fetch Bug Fix
+
+**Issue Found:** Web fetch was failing because main window checked wrong field names
+- Main window checked for `description`, `published_year`, `pages`, `language`
+- API actually returns `plot`, `year`, `rating`, `ratings_count`
+- Fixed field name mismatches in `main_window.py` meaningful fields check
+
+**Result:** Web fetch now properly detects when real data is found and opens the metadata window
+
+### Items Removed:
+
+**src/ui/preferences_window.py**
+- Line 1199: `focus_autocorrect_section` method (orphaned focus method)
+
+**src/ui/import_window.py**
+- Line 522: `checkbox_style` variable (unused stylesheet)
+- Line 563: `table_style` variable (unused stylesheet)
+
+**src/ui/book_list_import_window.py**
+- Line 1294: `on_headers_toggled` method (orphaned slot method)
+
+**src/web/web_book_api.py**
+- Line 578: `page_id` variable (changed loop to `for _, page_data in pages.items():`)
+
+**src/utils/book_helpers.py**
+- Entire file deleted (unused module with `apply_web_field`, `apply_author_field`, `apply_series_field`)
+
+**src/utils/text_utils.py**
+- Line 104: `is_fuzzy_match` function (unused fuzzy matching utility)
+
+**build_trial.bat**
+- Lines 46-47: `TRIAL_BUILD` and `TRIAL_DAYS` echo statements (unused legacy flags)
+
+### Items Verified as Used (Kept):
+
+**src/database/queries.py**
+- `total_time_hours`, `total_hours_read` (statistics display)
+
+**src/web/web_book_api.py**
+- `_title_matches` method (well-tested helper, reserved for future use)
+
+**src/build_config.py**
+- `TRIAL_BUILD_DATE` (active trial mechanism)
 
 ### Items Removed:
 

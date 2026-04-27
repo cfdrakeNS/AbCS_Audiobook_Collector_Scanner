@@ -575,7 +575,7 @@ class WebBookAPI:
                         extract_data = json.loads(response2.read().decode("utf-8"))
 
                     pages = extract_data.get("query", {}).get("pages", {})
-                    for page_id, page_data in pages.items():
+                    for _, page_data in pages.items():
                         extract = page_data.get("extract", "")
                         # Filter out disambiguation pages and short extracts
                         if extract and len(extract) > 50:

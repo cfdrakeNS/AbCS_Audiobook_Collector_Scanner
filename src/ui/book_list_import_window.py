@@ -1291,12 +1291,6 @@ class BookListImportWindow(QDialog):
                 # Set to column letter (add 1 for "None" option)
                 self.field_mappings[field].setCurrentIndex(column_index + 1)
 
-    def on_headers_toggled(self, checked: bool):
-        """Handle headers checkbox toggle."""
-        if self.file_data is not None:
-            # Reload file with new header setting
-            self.reload_file_with_headers(checked)
-
     def reload_file_with_headers(self, has_headers: bool):
         """Reload the current file with updated header setting."""
         if not self.selected_file:

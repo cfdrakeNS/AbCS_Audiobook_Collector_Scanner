@@ -43,8 +43,6 @@ copy /y "%BUILD_CONFIG%" "%BUILD_CONFIG_BAK%" >nul
 REM Patch build_config.py for trial
 (
     echo # build_config.py -- TRIAL BUILD ^(patched by build_trial.bat^)
-    echo TRIAL_BUILD = True
-    echo TRIAL_DAYS = 30
     echo TRIAL_BUILD_DATE = "%TODAY%"
 ) > "%BUILD_CONFIG%"
 
