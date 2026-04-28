@@ -1228,6 +1228,7 @@ class ImportWindow(QDialog):
 
     def _revalidate_scanned_item(self, item: dict):
         """Recompute validation + duplicate state for an edited scanned item."""
+        self.validator.reload_settings()  # Ensure settings are current
         book_data = item.get("book", {})
         errors = list(book_data.get("errors", []))
         errors.extend(self.validator.validate_book(book_data))
@@ -1486,9 +1487,13 @@ class ImportWindow(QDialog):
             if self.progress_window and self.progress_window.cancel_requested:
                 scan_was_canceled = True
 
-        existing_books = self.book_queries.get_all(
-            filter_criteria=SearchFilter(collection_id=target_collection_id)
-        )
+        if self.validator.duplicate_match_mode == "title_author_year_collection":
+            existing_books = self.book_queries.get_all(
+                filter_criteria=SearchFilter(collection_id=target_collection_id)
+            )
+        else:
+            existing_books = self.book_queries.get_all()
+
         existing_list = [
             {
                 "title": b.title,

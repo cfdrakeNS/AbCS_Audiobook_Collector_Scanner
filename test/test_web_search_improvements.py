@@ -101,6 +101,44 @@ def test_title_matches():
     print("[PASS] _title_matches works correctly")
 
 
+def test_clean_web_data_for_storage_removes_series_plot():
+    """Test that plot values equal to series names are cleared before UI update/db save."""
+    api = WebBookAPI()
+
+    web_data = {
+        "title": "A Great Mystery",
+        "author": "Louise Penny",
+        "series": "How The Light Gets In",
+        "plot": "How The Light Gets In",
+    }
+
+    cleaned = api.clean_web_data_for_storage(web_data)
+    assert cleaned["plot"] == ""
+
+    web_data["plot"] = "How The Light Gets In series"
+    cleaned = api.clean_web_data_for_storage(web_data)
+    assert cleaned["plot"] == ""
+
+    print("[PASS] clean_web_data_for_storage filters redundant series plot text")
+
+
+def test_clean_web_data_for_storage_rejects_long_series_text():
+    """Test that series values containing plot-like narrative text are dropped."""
+    api = WebBookAPI()
+
+    web_data = {
+        "title": "How the Light Gets In",
+        "author": "Louise Penny",
+        "series": "New York Times bestselling author Louise Penny. \"There is a crack in everything. That's how the light gets in.\" Leonard Cohen Christmas is approaching, and in Québec it's a time of dazzling snowfalls, bright lights, and gatherings with friends in front of blazing hearths.",
+        "plot": "How the Light Gets In is the ninth Chief Inspector Gamache Novel from 1 New York Times bestselling author Louise Penny. \"There is a crack in everything. That's how the light gets in.\" Leonard Cohen Christmas is approaching, and in Québec it's a time of dazzling snowfalls, bright lights, and gatherings with friends in front of blazing hearths.",
+    }
+
+    cleaned = api.clean_web_data_for_storage(web_data)
+    assert cleaned["series"] == ""
+
+    print("[PASS] clean_web_data_for_storage rejects long narrative series text")
+
+
 if __name__ == "__main__":
     test_stopwords()
     test_extract_last_name()

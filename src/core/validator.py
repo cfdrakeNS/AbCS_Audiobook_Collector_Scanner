@@ -9,7 +9,7 @@ from PySide6.QtCore import QSettings
 from typing import List, Dict, Any, Set, Tuple
 import re
 
-from src.utils.text_utils import normalize_title, similarity_ratio
+from src.utils.text_utils import normalize_title, normalize_author, similarity_ratio
 
 
 class ImportValidator:
@@ -95,8 +95,8 @@ class ImportValidator:
 
         for book in existing_books:
             # Pre-normalize all fields
-            title = normalize_title(book.get("title", ""))
-            author = book.get("author", "").strip().lower()
+            title = normalize_title(book.get("title", ""), aggressive=True)
+            author = normalize_author(book.get("author", ""), aggressive=True)
             year = book.get("year")
             collection_id = book.get("collection_id", target_collection_id)
 
@@ -153,9 +153,9 @@ class ImportValidator:
         Returns:
             True if duplicate found
         """
-        title = normalize_title(book.get("title", ""))
-        author = book.get("author", "").strip().lower()
-        year = book.get("year")
+        title = normalize_title(book.get("title", ""), aggressive=True)
+        author = normalize_author(book.get("author", ""), aggressive=True)
+        year = int(book.get("year")) if book.get("year") else None
         collection_id = book.get("collection_id", target_collection_id)
 
         include_year = index["include_year"]
@@ -170,10 +170,14 @@ class ImportValidator:
         if include_collection:
             key_parts.append(str(collection_id or "none"))
         exact_key = "|".join(key_parts)
+        print(f"Checking duplicate: title='{title}', author='{author}', year={year}, key='{exact_key}'")
 
         # O(1) exact match check
         if exact_key in index["exact_keys"]:
+            print(f"Duplicate found for '{title}' '{author}' {year}")
             return True
+        else:
+            print(f"No exact duplicate for '{title}' '{author}' {year}, key: '{exact_key}'")
 
         if not fuzzy_enabled:
             return False

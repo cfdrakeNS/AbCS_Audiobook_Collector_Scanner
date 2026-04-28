@@ -187,7 +187,7 @@ class WebBookAPI:
                             plot = self._fetch_plot_from_wikipedia(
                                 metadata.get("title", ""), metadata.get("author", "")
                             )
-                        if plot:
+                        if plot and not (metadata.get("series") and plot.strip().lower() == metadata["series"].strip().lower()):
                             metadata["plot"] = plot
 
                     # Ensure title in metadata is normalized and series number is appended if needed
@@ -818,6 +818,62 @@ class WebBookAPI:
 
         return text
 
+    def _is_redundant_plot(self, plot: str, series: str) -> bool:
+        """Return True when the plot appears to be just a series label rather than a real description."""
+        if not plot or not series:
+            return False
+
+        normalized_plot = re.sub(r"\s+", " ", plot.strip().lower())
+        normalized_series = re.sub(r"\s+", " ", series.strip().lower())
+
+        if normalized_plot == normalized_series:
+            return True
+
+        redundant_variants = [
+            f"{normalized_series} series",
+            f"{normalized_series} book",
+            f"{normalized_series} books",
+            f"book in the {normalized_series} series",
+            f"series: {normalized_series}",
+        ]
+        if normalized_plot in redundant_variants:
+            return True
+
+        return False
+
+    def _is_unlikely_series_name(
+        self, series: str, title: str = "", plot: str = ""
+    ) -> bool:
+        """Return True when the series value is too long or looks like plot/article text."""
+        if not series:
+            return False
+
+        normalized_series = re.sub(r"\s+", " ", series.strip())
+        if len(normalized_series) > 90:
+            return True
+        if len(normalized_series.split()) > 12:
+            return True
+        if len(re.findall(r"[\.\?!]", normalized_series)) > 1:
+            return True
+
+        series_lower = normalized_series.lower()
+        if "new york times" in series_lower or "bestselling author" in series_lower:
+            return True
+        if "novel" in series_lower and "chief inspector" in series_lower:
+            return True
+
+        if plot:
+            normalized_plot = re.sub(r"\s+", " ", plot.strip().lower())
+            if series_lower in normalized_plot and len(normalized_plot) > len(series_lower) + 20:
+                return True
+
+        if title:
+            title_lower = title.strip().lower()
+            if title_lower and title_lower in series_lower and len(series_lower) > len(title_lower) + 20:
+                return True
+
+        return False
+
     def _apply_title_transformations(
         self, title: str, move_articles: bool = False
     ) -> str:
@@ -874,5 +930,16 @@ class WebBookAPI:
         # Clean series
         if "series" in cleaned_data:
             cleaned_data["series"] = self._clean_text_field(cleaned_data["series"])
+            if self._is_unlikely_series_name(
+                cleaned_data["series"],
+                title=cleaned_data.get("title", ""),
+                plot=cleaned_data.get("plot", ""),
+            ):
+                cleaned_data["series"] = ""
+
+        # Remove plot text that is just the series name or a series-only label
+        if "plot" in cleaned_data and cleaned_data.get("plot"):
+            if self._is_redundant_plot(cleaned_data["plot"], cleaned_data.get("series", "")):
+                cleaned_data["plot"] = ""
 
         return cleaned_data
