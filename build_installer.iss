@@ -103,21 +103,21 @@ Name: "desktopicon"; \
 ; ──────────────────────────────────────────────────────────────────
 [Files]
 ; Main Executable
-Source: "dist\AbCS.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\AbCS\AbCS.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; Optional libraries/files (skipped if they don't exist in a one-file build)
-Source: "dist\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "dist\*.pyd"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "dist\*.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Optional libraries/files (onedir mode)
+Source: "dist\AbCS\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "dist\AbCS\*.pyd"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "dist\AbCS\*.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
-; Internal PyInstaller folder (skipped if one-file build)
-Source: "dist\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+; Internal PyInstaller folder (onedir mode)
+Source: "dist\AbCS\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Copy only the schema file, not the whole data folder
 Source: "data\abcdDB_def.sql"; DestDir: "{app}\data"; Flags: ignoreversion skipifsourcedoesntexist
 
-; Graphics sourced from _internal (skipped if one-file build)
-Source: "dist\_internal\Graphics\*"; DestDir: "{app}\Graphics"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+; Graphics sourced from _internal (onedir mode)
+Source: "dist\AbCS\_internal\Graphics\*"; DestDir: "{app}\Graphics"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Local project graphics
 Source: "graphics\abcs_icon_256x256.ico"; DestDir: "{app}"; Flags: ignoreversion

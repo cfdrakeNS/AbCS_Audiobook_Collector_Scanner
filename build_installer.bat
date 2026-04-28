@@ -91,8 +91,8 @@ echo App build complete.
 REM Copy graphics to dist output
 if exist "dist\AbCS" (
     if exist "graphics" (
-        if not exist "dist\AbCS\data\Graphics" mkdir "dist\AbCS\data\Graphics"
-        xcopy /E /I /Y "graphics\*" "dist\AbCS\data\Graphics" >nul 2>&1
+        if not exist "dist\AbCS\_internal\Graphics" mkdir "dist\AbCS\_internal\Graphics"
+        xcopy /E /I /Y "graphics\*" "dist\AbCS\_internal\Graphics" >nul 2>&1
         echo Graphics files copied.
     )
 )
