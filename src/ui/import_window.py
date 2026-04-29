@@ -103,6 +103,7 @@ class ImportWindow(QDialog):
             "collection_combo": lambda: self.collection_combo.setFocus(),
             "folder_field": lambda: self.folder_edit.setFocus(),
             "error_filter": lambda: self.error_filter_combo.setFocus(),
+            "scan_button": lambda: self.scan_button.click(),
             "import_selected_button": lambda: self.import_selected_button.click(),
             "import_list_table": lambda: self.table.setFocus(),
             "export_button": lambda: self.export_button.click(),
@@ -408,15 +409,14 @@ class ImportWindow(QDialog):
         header_layout.addWidget(error_filter_label)
         header_layout.addWidget(self.error_filter_combo)
 
-        self.scan_button = QPushButton("&Import")
+        self.scan_button = QPushButton("Import")
         self.scan_button.setAccessibleName("Import")
         self.scan_button.setAccessibleDescription(
-            "Import audio files from the selected folder - Ctrl+I"
+            "Import audio files from the selected folder - Alt+I"
         )
         self.scan_button.setDefault(False)
         self.scan_button.setAutoDefault(True)
         self.scan_button.setEnabled(False)
-        self.scan_button.setShortcut(QKeySequence("Ctrl+I"))
         header_layout.addWidget(self.scan_button)
 
         layout.addLayout(header_layout)
@@ -571,7 +571,7 @@ class ImportWindow(QDialog):
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
             ("Alt+E", "Error filter"),
-            ("Ctrl+I", "Import"),
+            ("Alt+I", "Import"),
             ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
@@ -735,7 +735,7 @@ class ImportWindow(QDialog):
             ("Alt+F", "Folder"),
             ("Alt+W", "Browse"),
             ("Alt+E", "Error filter"),
-            ("Ctrl+I", "Import"),
+            ("Alt+I", "Import"),
             ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
@@ -901,8 +901,6 @@ class ImportWindow(QDialog):
         # PHASE 1 OPTIMIZATION: Re-enable updates
         self.table.setUpdatesEnabled(True)
         self.table.setSortingEnabled(True)
-        repopulate_elapsed = time.perf_counter() - repopulate_start
-        print(f"[TIMING] Table repopulate (sort): {repopulate_elapsed:.4f}s for {total_rows} rows")
 
         # Reapply error filter
         self._apply_error_filter()
@@ -1474,7 +1472,6 @@ class ImportWindow(QDialog):
             )
             scan_was_canceled = self._cancel_scan_requested
 
-            # Debug: Log number of books found
             if is_single_item:
                 self.set_status(f"Single file scan: {len(books)} book(s) found")
         finally:

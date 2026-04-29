@@ -170,14 +170,10 @@ class ImportValidator:
         if include_collection:
             key_parts.append(str(collection_id or "none"))
         exact_key = "|".join(key_parts)
-        print(f"Checking duplicate: title='{title}', author='{author}', year={year}, key='{exact_key}'")
 
         # O(1) exact match check
         if exact_key in index["exact_keys"]:
-            print(f"Duplicate found for '{title}' '{author}' {year}")
             return True
-        else:
-            print(f"No exact duplicate for '{title}' '{author}' {year}, key: '{exact_key}'")
 
         if not fuzzy_enabled:
             return False
@@ -320,7 +316,19 @@ class ImportValidator:
             cleaned = re.sub(r"\s+", " ", cleaned)
             # 4. Proper Case (Mandatory)
             if cleaned:
-                cleaned = cleaned.title()
+                cleaned = cleaned.lower()
+
+                def proper_case_word(match):
+                    return match.group(1) + match.group(2).upper()
+
+                # Capitalize first letters after whitespace or hyphen, but preserve apostrophe lowercase
+                cleaned = re.sub(r"(^|[\s\-])([a-z])", proper_case_word, cleaned)
+                # Handle names like O'Connor correctly
+                cleaned = re.sub(
+                    r"(\bO')([a-z])",
+                    lambda m: m.group(1) + m.group(2).upper(),
+                    cleaned,
+                )
             # Detection logic for the C: flag
             significant_change = False
             if original.strip() != original:

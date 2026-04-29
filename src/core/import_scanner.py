@@ -356,8 +356,20 @@ class ImportScanner:
                     updated = cleaned
 
             if self.proper_case_fields:
-                proper_cased = " ".join(
-                    word.capitalize() for word in updated.split(" ")
+                normalized = updated.lower()
+
+                def proper_case_word(match):
+                    return match.group(1) + match.group(2).upper()
+
+                proper_cased = re.sub(
+                    r"(^|[\s\-])([a-z])",
+                    proper_case_word,
+                    normalized,
+                )
+                proper_cased = re.sub(
+                    r"(\bO')([a-z])",
+                    lambda m: m.group(1) + m.group(2).upper(),
+                    proper_cased,
                 )
                 if proper_cased != updated:
                     # Apply proper case but don't flag it

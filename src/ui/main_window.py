@@ -810,8 +810,7 @@ class MainWindow(QMainWindow):
         self.edit_menu.addAction(self.delete_action)
 
         # Update action (same as update button)
-        self.update_action = QAction("&Update\tCtrl+U", self)
-        self.update_action.setShortcut("Ctrl+U")
+        self.update_action = QAction("&Update\tAlt+U", self)
         self.update_action.triggered.connect(self.on_update_clicked)
         self.update_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.update_action)
