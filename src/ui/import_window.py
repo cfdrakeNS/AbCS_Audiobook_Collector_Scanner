@@ -393,6 +393,16 @@ class ImportWindow(QDialog):
         self.browse_button.setDefault(False)
         header_layout.addWidget(self.browse_button)
 
+        self.scan_button = QPushButton("Import")
+        self.scan_button.setAccessibleName("Import")
+        self.scan_button.setAccessibleDescription(
+            "Import audio files from the selected folder - Alt+I"
+        )
+        self.scan_button.setDefault(False)
+        self.scan_button.setAutoDefault(True)
+        self.scan_button.setEnabled(False)
+        header_layout.addWidget(self.scan_button)
+
         error_filter_label = QLabel("&Errors Filter:")
         self.error_filter_combo = QComboBox()
         self.error_filter_combo.setAccessibleName("Import error filter")
@@ -408,16 +418,6 @@ class ImportWindow(QDialog):
         error_filter_label.setBuddy(self.error_filter_combo)
         header_layout.addWidget(error_filter_label)
         header_layout.addWidget(self.error_filter_combo)
-
-        self.scan_button = QPushButton("Import")
-        self.scan_button.setAccessibleName("Import")
-        self.scan_button.setAccessibleDescription(
-            "Import audio files from the selected folder - Alt+I"
-        )
-        self.scan_button.setDefault(False)
-        self.scan_button.setAutoDefault(True)
-        self.scan_button.setEnabled(False)
-        header_layout.addWidget(self.scan_button)
 
         layout.addLayout(header_layout)
 
@@ -502,9 +502,9 @@ class ImportWindow(QDialog):
 
         self.setTabOrder(self.collection_combo, self.folder_edit)
         self.setTabOrder(self.folder_edit, self.browse_button)
-        self.setTabOrder(self.browse_button, self.error_filter_combo)
-        self.setTabOrder(self.error_filter_combo, self.scan_button)
-        self.setTabOrder(self.scan_button, self.table)
+        self.setTabOrder(self.browse_button, self.scan_button)
+        self.setTabOrder(self.scan_button, self.error_filter_combo)
+        self.setTabOrder(self.error_filter_combo, self.table)
         self.setTabOrder(self.table, self.import_selected_button)
         self.setTabOrder(self.import_selected_button, self.export_button)
 
@@ -570,8 +570,8 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+E", "Error filter"),
             ("Alt+I", "Import"),
+            ("Alt+E", "Error filter"),
             ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
@@ -734,11 +734,13 @@ class ImportWindow(QDialog):
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
             ("Alt+W", "Browse"),
-            ("Alt+E", "Error filter"),
             ("Alt+I", "Import"),
+            ("Alt+E", "Error filter"),
             ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
+
+
             ("Alt+3-5", "Jump to Year..."),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
@@ -1627,7 +1629,6 @@ class ImportWindow(QDialog):
                                 "collection_id": target_collection_id,
                             }
                         )
-                        existing_exact_keys.add(candidate_key)
                     except Exception as exc:
                         # Add failed auto-add as error
                         errors.append(f"E: {str(exc)}")
@@ -2136,6 +2137,10 @@ class ImportWindow(QDialog):
                 self.total_imported += imported
 
             remaining = len(self.scanned_items)
+
+            # Re-enable collection combo if no items remain to review
+            if remaining == 0:
+                self.collection_combo.setEnabled(True)
 
             # Mark add phase complete in progress window
             if self.progress_window:
@@ -2773,5 +2778,8 @@ class ImportWindow(QDialog):
             self.set_status("Close canceled")
             event.ignore()
             return
+
+        # Re-enable collection combo when closing normally
+        self.collection_combo.setEnabled(True)
 
         super().closeEvent(event)
