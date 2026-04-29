@@ -455,6 +455,8 @@ class ImportWindow(QDialog):
         header.setSectionsClickable(True)
         header.setSortIndicatorShown(True)
         header.setSortIndicator(self.COL_AUTHOR, Qt.AscendingOrder)
+        # Disable Qt's built-in sorting - we handle sorting manually via header clicks
+        self.table.setSortingEnabled(False)
 
         # Keep compact metadata column fixed to content, size remaining columns proportionally.
         header.setSectionResizeMode(self.COL_YEAR, QHeaderView.Fixed)
@@ -902,7 +904,7 @@ class ImportWindow(QDialog):
 
         # PHASE 1 OPTIMIZATION: Re-enable updates
         self.table.setUpdatesEnabled(True)
-        self.table.setSortingEnabled(True)
+        # Note: Qt sorting stays disabled - we handle sorting manually
 
         # Reapply error filter
         self._apply_error_filter()
@@ -1725,7 +1727,7 @@ class ImportWindow(QDialog):
 
             # PHASE 1 OPTIMIZATION: Re-enable table updates after batch load
             self.table.setUpdatesEnabled(True)
-            self.table.setSortingEnabled(True)
+            # Note: Qt sorting stays disabled - we handle sorting manually
             table_opt_elapsed = time.perf_counter() - table_opt_start
 
             if transaction_open:
@@ -1737,7 +1739,7 @@ class ImportWindow(QDialog):
                 conn.rollback()
             # PHASE 1 OPTIMIZATION: Ensure table updates are re-enabled on error
             self.table.setUpdatesEnabled(True)
-            self.table.setSortingEnabled(True)
+            # Note: Qt sorting stays disabled - we handle sorting manually
             raise
 
         if not books:
