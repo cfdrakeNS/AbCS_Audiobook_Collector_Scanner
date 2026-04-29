@@ -377,6 +377,8 @@ class ImportValidator:
         configured_severity = self.rules_engine.message_severity(normalized_error)
         if configured_severity == "warning":
             return "warning"
+        if configured_severity == "error":
+            return "parse"
 
         warning_errors = [
             "author name in title",

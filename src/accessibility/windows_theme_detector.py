@@ -1,10 +1,15 @@
 """
 Windows theme detection workaround for broken Qt system palette detection.
 This uses Windows registry to detect dark mode when Qt fails.
+On non-Windows platforms, this is a no-op that returns None.
 """
 
-import winreg
+import sys
 from typing import Optional
+
+# Only import winreg on Windows
+if sys.platform == "win32":
+    import winreg
 
 def detect_windows_dark_mode() -> Optional[bool]:
     """
@@ -13,6 +18,10 @@ def detect_windows_dark_mode() -> Optional[bool]:
     Returns:
         True if dark mode, False if light mode, None if detection fails
     """
+    if sys.platform != "win32":
+        # On non-Windows platforms, return None (no Windows registry available)
+        return None
+    
     try:
         # Check Windows 10/11 dark mode setting
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 

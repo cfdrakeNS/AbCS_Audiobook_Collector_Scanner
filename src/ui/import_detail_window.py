@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
+from src.core.validator import ImportValidator
 from src.database import (
     DatabaseManager,
     AuthorQueries,
@@ -729,7 +730,8 @@ class ImportDetailWindow(QDialog):
         self.path_edit.setText(self.book_data.get("folder", ""))
 
         if self.errors:
-            error_text = "; ".join(self.errors)
+            validator = ImportValidator()
+            error_text = validator.format_error_summary(self.errors)
             self.errors_edit.setText(error_text)
         else:
             self.errors_edit.setText("")
