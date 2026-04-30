@@ -88,7 +88,10 @@ when a collection is selected in main win other then "all collections" the impor
 83. complete statistics window - stop table row anouncment to screen readers, look at  f1 shortut style.
 84. read CLEANUP_VULTURE_FINDINGS noting the false positives that are document. Do a vulture scan of the code and update the doc with your finding. do not remove existing text add your finding under the heading April 24 2026 finding.
 85. complete - generate a user guide for the app keeping in mind that the app will be used both by sighted, low vision and blind users, who would use text magnifying or screen reader software. read AbCS_MSA_Guide located in the doc folder I  wrote this AbCS_MSA_Guide for the former version of AbCS which was written in MS Access. Keep in mind the functionality is similar the user interface is different with the the python version using menus and proper status bars. 
-86. book detail and web metadata windows - plot need to expand more check the windows height setting 
+86. complete - book detail and web metadata windows - plot need to expand more check the windows height setting 
+90. main window - when in duplicate mode and a export button that will export to csv file with author, title, year, collection and date added. simular to import window export. 
+91. the installed app when exporting aloways defaults to the program files\abcs folder - can this be changed to the user's documents folder or home folder?
+92. what is involved in fixing this? - linux version window incos and graphic in the about_dialogue are not shoowing - 
 
 # performance tuining bugs 
 1. complete - if the timing prints are no longer required remove those

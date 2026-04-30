@@ -23,12 +23,21 @@ if [[ ! -f "src/main.py" ]]; then
   exit 1
 fi
 
-if [[ ! -d ".venv" ]]; then
-  echo "Creating .venv..."
-  python3 -m venv .venv
+# Find virtual environment (accept both venv and .venv)
+VENV_DIR=""
+if [[ -d "venv" ]]; then
+  VENV_DIR="venv"
+elif [[ -d ".venv" ]]; then
+  VENV_DIR=".venv"
 fi
 
-source .venv/bin/activate
+if [[ ! -d "$VENV_DIR" ]]; then
+  echo "Creating virtual environment..."
+  python3 -m venv venv
+  VENV_DIR="venv"
+fi
+
+source "${VENV_DIR}/bin/activate"
 
 echo "Installing/updating build dependencies..."
 python -m pip install --upgrade pip

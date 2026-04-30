@@ -9,12 +9,18 @@ if [[ ! -f "src/main.py" ]]; then
   exit 1
 fi
 
-if [[ ! -d "venv" ]]; then
+# Find virtual environment (accept both venv and .venv)
+VENV_DIR=""
+if [[ -d "venv" ]]; then
+  VENV_DIR="venv"
+elif [[ -d ".venv" ]]; then
+  VENV_DIR=".venv"
+else
   echo "ERROR: venv not found. Create it first: python3 -m venv venv"
   exit 1
 fi
 
-source venv/bin/activate
+source "${VENV_DIR}/bin/activate"
 
 if ! python -m pip show pyinstaller >/dev/null 2>&1; then
   echo "Installing PyInstaller..."

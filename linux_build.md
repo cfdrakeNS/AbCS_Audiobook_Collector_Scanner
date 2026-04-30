@@ -124,11 +124,12 @@ git branch --show-current
 ```bash
 cd ~/abcs
 
-# Create venv
+# Create venv (or .venv - both work)
 python3 -m venv venv
 
 # Activate it
 source venv/bin/activate
+# Or if you used .venv: source .venv/bin/activate
 
 # Verify (should show path to venv python)
 which python
@@ -326,3 +327,4 @@ Your CPU doesn't support the required instruction set. Use the legacy CPU script
 - The Windows build uses `onedir` mode (folder) for better antivirus compatibility
 - Linux onefile builds extract to `/tmp` on each run, causing slower startup
 - Consider using `onedir` mode for Linux if startup performance is important
+- **Screen Reader Support:** Orca (Linux screen reader) is auto-detected; Alt+/ shortcut works to re-read status bar messages
