@@ -3,7 +3,9 @@ Main Window - Audio Book Window
 Primary interface for browsing and managing audiobook collection.
 """
 
+import csv
 import time
+from datetime import datetime
 
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -14,6 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QComboBox,
+    QFileDialog,
     QLineEdit,
     QPushButton,
     QLabel,
@@ -762,6 +765,16 @@ class MainWindow(QMainWindow):
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
+
+        # Export button (only visible in duplicate mode)
+        self.export_button = QPushButton("Export Duplicates")
+        self.export_button.setAccessibleName("Export duplicate books to CSV")
+        self.export_button.setAccessibleDescription("Export duplicate books to CSV - Alt+X")
+        self.export_button.setFocusPolicy(Qt.StrongFocus)
+        self.export_button.setAutoDefault(True)
+        self.export_button.clicked.connect(self.on_export_duplicates)
+        self.export_button.setVisible(False)
+        layout.addWidget(self.export_button)
 
         return layout
 
@@ -2611,6 +2624,8 @@ class MainWindow(QMainWindow):
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
         self.delete_button.setVisible(show_action_buttons)
+        # Export button only visible in duplicate mode
+        self.export_button.setVisible(in_duplicate_mode)
         # status_hint_label removed for accessibility; no longer updated
         # Removed status shortcut hint text update for accessibility
 
@@ -2768,6 +2783,72 @@ class MainWindow(QMainWindow):
 
                 # Show deletion message
                 self.set_status(f"{deleted_count} book(s) deleted", timeout_ms=2000)
+
+    def on_export_duplicates(self):
+        """Export duplicate books to CSV file with author, title, year, collection, and date added."""
+        if not self.duplicate_mode_active:
+            self.set_status("Export only available in duplicate mode", announce=True)
+            return
+
+        if not self.books:
+            self.set_status("No duplicate books to export", announce=True)
+            return
+
+        # Get user's documents folder for default location
+        from pathlib import Path
+
+        if hasattr(Path.home(), "Documents"):
+            default_path = Path.home() / "Documents"
+        else:
+            default_path = Path.home()
+
+        # Suggest filename with date
+        today_str = datetime.now().strftime("%Y%m%d")
+        suggested_filename = f"abcs_duplicates_{today_str}.csv"
+        default_file = str(default_path / suggested_filename)
+
+        # Show save dialog
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Duplicates to CSV",
+            default_file,
+            "CSV Files (*.csv);;All Files (*)",
+        )
+
+        if not file_path:
+            self.set_status("Export canceled", announce=False)
+            return
+
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                # Write header
+                writer.writerow(["Author", "Title", "Year", "Collection", "Date Added"])
+                # Write data for each duplicate book
+                for book in self.books:
+                    # Get collection name
+                    collection_name = ""
+                    if book.collection_id and self.collection_queries:
+                        collection = self.collection_queries.get_by_id(book.collection_id)
+                        if collection:
+                            collection_name = collection.name or ""
+
+                    # Format date added
+                    date_added_str = ""
+                    if book.date_added:
+                        date_added_str = book.date_added.strftime("%Y-%m-%d")
+
+                    writer.writerow([
+                        book.author_name or "",
+                        book.title or "",
+                        book.year or "",
+                        collection_name,
+                        date_added_str,
+                    ])
+
+            self.set_status(f"Exported {len(self.books)} duplicates to {file_path}", announce=True)
+        except Exception as e:
+            self.set_status(f"Export failed: {str(e)}", announce=True)
 
     def on_get_web_info_clicked(self, from_button=False):
         """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
