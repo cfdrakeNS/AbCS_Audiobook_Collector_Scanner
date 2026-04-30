@@ -5,26 +5,6 @@ Main application entry point.
 import sys
 from pathlib import Path
 
-# Check for PySide6 early with helpful error message
-try:
-    from PySide6.QtWidgets import QApplication
-except ImportError as e:
-    print("=" * 60)
-    print("ERROR: PySide6 is not installed!")
-    print("=" * 60)
-    print()
-    print("To fix this, activate your virtual environment:")
-    print("  source venv/bin/activate  (Linux/Mac)")
-    print("  venv\\Scripts\\activate   (Windows)")
-    print()
-    print("Then install dependencies:")
-    print("  pip install -r requirements.txt")
-    print()
-    print("Or install PySide6 directly:")
-    print("  pip install PySide6")
-    print("=" * 60)
-    sys.exit(1)
-
 # Add project root to sys.path so 'src.xxx' imports work correctly
 root_path = Path(__file__).resolve().parent.parent
 if str(root_path) not in sys.path:
@@ -48,6 +28,7 @@ from src.database import (
     GenreQueries,
     AuthorQueries,
 )
+from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QTimer
 import ctypes
 import threading

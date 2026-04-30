@@ -23,6 +23,9 @@ numpy<2.0
 # Image processing
 Pillow>=10.0.0
 
+# Screen reader detection (required for Windows JAWS/NVDA support, optional on Linux)
+psutil>=5.9.0
+
 # Development/Testing (optional)
 pytest>=7.4.0
 pytest-qt>=4.2.0
