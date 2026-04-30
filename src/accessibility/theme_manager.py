@@ -4,6 +4,7 @@ Manages color schemes and high contrast themes for accessibility.
 """
 
 import re
+import sys
 
 from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtGui import QPalette, QColor
@@ -361,10 +362,12 @@ class ThemeManager(QObject):
                 workaround_theme = Theme("Windows Light (Registry)", colors)
                 palette = workaround_theme.apply_to_palette(palette)
             else:
-                # Fallback to original system palette if registry fails
-                print(
-                    "ACCESSIBILITY: Registry detection failed, using Qt system palette"
-                )
+                # Fallback to original system palette if registry fails or on non-Windows
+                # Only print message on Windows (Linux doesn't have Windows registry)
+                if sys.platform == "win32":
+                    print(
+                        "ACCESSIBILITY: Registry detection failed, using Qt system palette"
+                    )
         else:
             # Apply custom theme colors
             palette = theme.apply_to_palette(palette)
