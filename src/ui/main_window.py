@@ -1045,7 +1045,7 @@ class MainWindow(QMainWindow):
         if self.duplicate_mode_active:
             return (
                 f"Duplicate mode: {len(self.books)} books shown. "
-                "Use normal selection. Alt+D Delete, Escape Cancel Dup Mode"
+                "Use normal selection. Escape Exit."
             )
 
         # Priority 3: Show search results if search is active
@@ -1056,11 +1056,11 @@ class MainWindow(QMainWindow):
             count = len(self.books)
             order_by = self._active_sort_key or "Title"
             if count == 0:
-                return f"No {order_by.lower()}s found matching '{search_text}'. Esc to exit search"
+                return f"No {order_by.lower()}s found matching '{search_text}'. Esc to exit Find."
             elif count == 1:
-                return f"Found 1 {order_by.lower()}: {search_text}. Esc to exit search"
+                return f"Found 1 {order_by.lower()}: {search_text}. Esc to exit Find"
             else:
-                return f"Found {count} {order_by.lower()}s matching '{search_text}'. Esc to exit search"
+                return f"Found {count} {order_by.lower()}s matching '{search_text}'. Esc to exit Find"
 
         # Priority 4: Show filtered book count with all active filters
         parts = [f"Showing {len(self.books)} books"]
@@ -2662,7 +2662,7 @@ class MainWindow(QMainWindow):
         """Handle Update button click."""
         if self.duplicate_mode_active:
             self.set_status(
-                "Selection cleared in duplicate mode. Escape to exit duplicate mode. Use Delete or Cancel Dup Mode.",
+                "Selection cleared in duplicate mode. Escape to exit duplicate mode.",
                 timeout_ms=3000,
             )
             return
@@ -3459,7 +3459,7 @@ class MainWindow(QMainWindow):
                 "Enter",
                 "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
             ),
-            ("Escape", "Clear selection/search/read filter"),
+            ("Escape", "Clear selection/Find/read filter"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),
