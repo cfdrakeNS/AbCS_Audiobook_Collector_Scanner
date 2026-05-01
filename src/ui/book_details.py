@@ -259,6 +259,7 @@ class BookDetailsWindow(QDialog):
         self.is_new = book is None
         self.sort_order = sort_order  # bd#8: Store for header display
         self._dirty = False  # bd#6: Track if form has unsaved changes
+        self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
         self._first_dirty_widget = None  # Track first field that changed
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
@@ -1241,6 +1242,14 @@ class BookDetailsWindow(QDialog):
         For existing books in view mode, show Update button.
         In edit mode, hide Update button.
         """
+        if self._in_edit_mode:
+            self.new_button.setVisible(False)
+            self.delete_button.setVisible(False)
+            self.save_button.setVisible(True)
+            self.edit_button.setVisible(False)
+            self.get_web_details_button.setVisible(False)
+            return
+
         save_active = self._dirty or self.is_new
         self.new_button.setVisible(not save_active)
         self.delete_button.setVisible((not self.is_new) and (not save_active))
@@ -1820,6 +1829,7 @@ class BookDetailsWindow(QDialog):
         self.load_combos()
 
         # Switch from labels to combos and unlock all fields
+        self._in_edit_mode = True
         self._hide_view_labels()
 
         # Now set combo values using the fast index maps
@@ -1864,6 +1874,8 @@ class BookDetailsWindow(QDialog):
             self._loading_fields = False
 
         # Hide edit button in edit mode, show save instead
+        self.new_button.setVisible(False)
+        self.delete_button.setVisible(False)
         self.edit_button.setVisible(False)
         self.save_button.setVisible(True)
         self.get_web_details_button.setVisible(False)
@@ -1882,6 +1894,7 @@ class BookDetailsWindow(QDialog):
         self.genre_combo.hide()
         self.collection_label_display.show()
         self.collection_combo.hide()
+        self._in_edit_mode = False
         # Make other fields read-only in view mode
         self._set_fields_read_only(True)
 
@@ -1919,7 +1932,7 @@ class BookDetailsWindow(QDialog):
         # Size
         self.size_edit.setReadOnly(read_only)
         # Format
-        self.format_combo.setEnabled(not read_only)
+        self.format_combo.setEnabled(True)
         # Path
         self.path_edit.setReadOnly(read_only)
         # Source

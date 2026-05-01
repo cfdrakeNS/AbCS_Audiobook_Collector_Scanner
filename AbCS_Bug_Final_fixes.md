@@ -88,12 +88,14 @@ when a collection is selected in main win other then "all collections" the impor
 85. complete - check all windows for accessibility - shortcuts and f1 menu to ensure they are following centralized standards. refer to the PySide6\_.. doc located in the docs folder. put your finding in abcs\_accessibility\_check.md
 86. complete statistics window - stop table row anouncment to screen readers, look at  f1 shortut style.
 87. read CLEANUP\_VULTURE\_FINDINGS noting the false positives that are document. Do a vulture scan of the code and update the doc with your finding. do not remove existing text add your finding under the heading April 24 2026 finding.
-88. complete - generate a user guide for the app keeping in mind that the app will be used both by sighted, low vision and blind users, who would use text magnifying or screen reader software. read AbCS_MSA_Guide located in the doc folder I  wrote this AbCS\_MSA\_Guide for the former version of AbCS which was written in MS Access. Keep in mind the functionality is similar the user interface is different with the the python version using menus and proper status bars.
+88. complete - generate a user guide for the app keeping in mind that the app will be used both by sighted, low vision and blind users, who would use text magnifying or screen reader software. read AbCS\_MSA\_Guide located in the doc folder I  wrote this AbCS\_MSA\_Guide for the former version of AbCS which was written in MS Access. Keep in mind the functionality is similar the user interface is different with the the python version using menus and proper status bars.
 89. complete - book detail and web metadata windows - plot need to expand more check the windows height setting
 90. complete - main window - when in duplicate mode and a export button that will export to csv file with author, title, year, collection and date added. simular to import window export.
-91. complete - book_detail window - 1. alt+t is set to both title and time should be only title alt+m is time check centalized shortcut in shortcut.py. When exiting update the save popup appears it should only appear if it is dirty 
-92. complete - when you run the abcs.ext created by the installer, exporting in import win and main win are defaulting to the program files\abcs folder - can this be changed to the user's documents folder or home folder?
-93. what is involved in fixing this? - linux version window icons and graphic in the about\_dialogue are not showing.
+91. complete - book\_detail window - 1. alt+t is set to both title and time should be only title alt+m is time check centalized shortcut in shortcut.py. When exiting update the save popup appears it should only appear if it is dirty
+92. complete - when you run the abcs.ext created by the installer, exporting in import win and main win are defaulting to the program files\\abcs folder - can this be changed to the user's documents folder or home folder?
+93. BOOK DETAIL WINDOW - 1. when you press update the new and delete button should be hidden just save button should be visible 2. can't tab to format fields in view/read mode.
+94. 
+95. what is involved in fixing this? - linux version window icons and graphic in the about\_dialogue are not showing.
 
 # performance tuining bugs
 
