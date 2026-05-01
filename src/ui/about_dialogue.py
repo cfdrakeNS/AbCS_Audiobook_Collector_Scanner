@@ -1,8 +1,42 @@
 """Accessible About Dialog for AbCS."""
 
+import os
+import sys
+
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
 from PySide6.QtCore import Qt, QTimer
+
+
+def _resolve_graphics_path(filename: str) -> str:
+    """
+    Resolve the path to a graphics file.
+    Handles both development mode and PyInstaller frozen bundles.
+    """
+    # Try PyInstaller bundle path first
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # Running in PyInstaller bundle
+        base_path = sys._MEIPASS
+        # Try lowercase 'graphics' first (Linux compatibility)
+        for graphics_dir in ["graphics", "Graphics"]:
+            full_path = os.path.join(base_path, graphics_dir, filename)
+            if os.path.exists(full_path):
+                return full_path
+        # Return default path even if not found
+        return os.path.join(base_path, "Graphics", filename)
+
+    # Development mode - resolve relative to this file
+    # Go up from src/ui/ to project root
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(this_dir))
+
+    for graphics_dir in ["Graphics", "graphics"]:
+        full_path = os.path.join(project_root, graphics_dir, filename)
+        if os.path.exists(full_path):
+            return full_path
+
+    # Return default path even if not found
+    return os.path.join(project_root, "Graphics", filename)
 
 
 class FocusAnnouncingLabel(QLabel):
