@@ -683,7 +683,7 @@ class BookDetailsWindow(QDialog):
         self.year_spin.setMaximumWidth(110)
         row3_layout.addWidget(self.year_spin)
 
-        time_label = QLabel("&Time:")
+        time_label = QLabel("Time:")
         time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.time_edit = QLineEdit()
         self.time_edit.setInputMask(
@@ -1316,36 +1316,44 @@ class BookDetailsWindow(QDialog):
         self._collection_index_map: Dict[int, int] = {}
 
         # Authors
+        self.author_combo.blockSignals(True)
         self.author_combo.clear()
         authors = self.author_queries.get_all()
         for idx, author in enumerate(authors):
             self.author_combo.addItem(author.name, author.author_id)
             self._author_index_map[author.author_id] = idx
         self.author_combo.setMaxVisibleItems(20)  # Limit dropdown size
+        self.author_combo.blockSignals(False)
 
         # Series
+        self.series_combo.blockSignals(True)
         self.series_combo.clear()
         series_list = self.series_queries.get_all()
         for idx, series in enumerate(series_list):
             self.series_combo.addItem(series.name, series.series_id)
             self._series_index_map[series.series_id] = idx
         self.series_combo.setMaxVisibleItems(20)
+        self.series_combo.blockSignals(False)
 
         # Genres
+        self.genre_combo.blockSignals(True)
         self.genre_combo.clear()
         genres = self.genre_queries.get_all()
         for idx, genre in enumerate(genres):
             self.genre_combo.addItem(genre.name, genre.genre_id)
             self._genre_index_map[genre.genre_id] = idx
         self.genre_combo.setMaxVisibleItems(20)
+        self.genre_combo.blockSignals(False)
 
         # Collections
+        self.collection_combo.blockSignals(True)
         self.collection_combo.clear()
         collections = self.collection_queries.get_all()
         for idx, coll in enumerate(collections):
             self.collection_combo.addItem(coll.name, coll.collection_id)
             self._collection_index_map[coll.collection_id] = idx
         self.collection_combo.setMaxVisibleItems(20)
+        self.collection_combo.blockSignals(False)
 
     def load_book_data(self):
         """Load book data into form, suppressing dirty tracking."""
@@ -1501,11 +1509,15 @@ class BookDetailsWindow(QDialog):
         validator.sanitize_metadata(temp)
         book_dict["author"] = temp["author"]
         # Update UI fields with sanitized values
-        self.title_edit.setText(book_dict["title"])
-        self.author_combo.setEditText(book_dict["author"])
-        self.series_combo.setEditText(book_dict["series"])
-        self.genre_combo.setEditText(book_dict["genre"])
-        self.reader_edit.setText(book_dict["reader"])
+        self._loading_fields = True
+        try:
+            self.title_edit.setText(book_dict["title"])
+            self.author_combo.setEditText(book_dict["author"])
+            self.series_combo.setEditText(book_dict["series"])
+            self.genre_combo.setEditText(book_dict["genre"])
+            self.reader_edit.setText(book_dict["reader"])
+        finally:
+            self._loading_fields = False
 
         # Validate
         if not book_dict["title"]:
@@ -1812,40 +1824,44 @@ class BookDetailsWindow(QDialog):
 
         # Now set combo values using the fast index maps
         # PHASE 2 OPTIMIZATION: Block signals to prevent slow event cascades
-        self.author_combo.blockSignals(True)
-        idx = self._author_index_map.get(self.book.author_id, -1)
-        if idx >= 0:
-            self.author_combo.setCurrentIndex(idx)
-        self.author_combo.blockSignals(False)
-
-        self.series_combo.blockSignals(True)
-        if self.book.series_id:
-            idx = self._series_index_map.get(self.book.series_id, -1)
+        self._loading_fields = True
+        try:
+            self.author_combo.blockSignals(True)
+            idx = self._author_index_map.get(self.book.author_id, -1)
             if idx >= 0:
-                self.series_combo.setCurrentIndex(idx)
-        else:
-            self.series_combo.setCurrentIndex(-1)
-            self.series_combo.clearEditText()
-        self.series_combo.blockSignals(False)
+                self.author_combo.setCurrentIndex(idx)
+            self.author_combo.blockSignals(False)
 
-        self.genre_combo.blockSignals(True)
-        if self.book.genre_id:
-            idx = self._genre_index_map.get(self.book.genre_id, -1)
-            if idx >= 0:
-                self.genre_combo.setCurrentIndex(idx)
-        else:
-            self.genre_combo.setCurrentIndex(-1)
-            self.genre_combo.clearEditText()
-        self.genre_combo.blockSignals(False)
+            self.series_combo.blockSignals(True)
+            if self.book.series_id:
+                idx = self._series_index_map.get(self.book.series_id, -1)
+                if idx >= 0:
+                    self.series_combo.setCurrentIndex(idx)
+            else:
+                self.series_combo.setCurrentIndex(-1)
+                self.series_combo.clearEditText()
+            self.series_combo.blockSignals(False)
 
-        self.collection_combo.blockSignals(True)
-        if self.book.collection_id:
-            idx = self._collection_index_map.get(self.book.collection_id, -1)
-            if idx >= 0:
-                self.collection_combo.setCurrentIndex(idx)
-        else:
-            self.collection_combo.setCurrentIndex(-1)
-        self.collection_combo.blockSignals(False)
+            self.genre_combo.blockSignals(True)
+            if self.book.genre_id:
+                idx = self._genre_index_map.get(self.book.genre_id, -1)
+                if idx >= 0:
+                    self.genre_combo.setCurrentIndex(idx)
+            else:
+                self.genre_combo.setCurrentIndex(-1)
+                self.genre_combo.clearEditText()
+            self.genre_combo.blockSignals(False)
+
+            self.collection_combo.blockSignals(True)
+            if self.book.collection_id:
+                idx = self._collection_index_map.get(self.book.collection_id, -1)
+                if idx >= 0:
+                    self.collection_combo.setCurrentIndex(idx)
+            else:
+                self.collection_combo.setCurrentIndex(-1)
+            self.collection_combo.blockSignals(False)
+        finally:
+            self._loading_fields = False
 
         # Hide edit button in edit mode, show save instead
         self.edit_button.setVisible(False)

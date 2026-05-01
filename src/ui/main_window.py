@@ -553,6 +553,8 @@ class MainWindow(QMainWindow):
         """
         self.update_button.setStyleSheet(button_stylesheet)
         self.delete_button.setStyleSheet(button_stylesheet)
+        if hasattr(self, "export_button"):
+            self.export_button.setStyleSheet(button_stylesheet)
 
         # Keep table fixed-content columns scaled without expensive content-size scans.
         if hasattr(self, "table"):
@@ -767,11 +769,12 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.delete_button)
 
         # Export button (only visible in duplicate mode)
-        self.export_button = QPushButton("Export Duplicates")
+        self.export_button = QPushButton("E&xport Duplicates")
         self.export_button.setAccessibleName("Export duplicate books to CSV")
         self.export_button.setAccessibleDescription("Export duplicate books to CSV - Alt+X")
         self.export_button.setFocusPolicy(Qt.StrongFocus)
         self.export_button.setAutoDefault(True)
+        self.export_button.setDefault(True)
         self.export_button.clicked.connect(self.on_export_duplicates)
         self.export_button.setVisible(False)
         layout.addWidget(self.export_button)
@@ -3448,6 +3451,7 @@ class MainWindow(QMainWindow):
             ("Shift+Down/Up", "Start selection or extend selection"),
             ("Alt+U", "Update selected"),
             ("Alt+D", "Delete selected"),
+            ("Alt+X", "Export duplicates (in duplicate mode)"),
             ("Ctrl+F", "Find"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),

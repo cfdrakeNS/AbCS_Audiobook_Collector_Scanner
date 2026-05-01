@@ -26,6 +26,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
+from pathlib import Path
 import os
 import time
 from typing import Optional
@@ -1893,12 +1894,20 @@ class ImportWindow(QDialog):
             self.set_status("No visible rows to export for current filter")
             return
 
+        # Get user's documents folder for default location
+        if hasattr(Path.home(), "Documents"):
+            default_path = Path.home() / "Documents"
+        else:
+            default_path = Path.home()
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"import_review_list_{timestamp}.csv"
+        default_file = str(default_path / default_name)
+        
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Export Import List",
-            default_name,
+            default_file,
             "CSV Files (*.csv);;All Files (*.*)",
         )
         if not file_path:

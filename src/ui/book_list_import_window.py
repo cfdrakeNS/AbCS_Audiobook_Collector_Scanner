@@ -1937,12 +1937,20 @@ class BookListImportWindow(QDialog):
             self.set_status("No errors to export")
             return
 
+        # Get user's documents folder for default location
+        if hasattr(Path.home(), "Documents"):
+            default_path = Path.home() / "Documents"
+        else:
+            default_path = Path.home()
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"Import_Book_list_errors_{timestamp}.csv"
+        default_file = str(default_path / default_name)
+        
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Export Import Errors",
-            default_name,
+            default_file,
             "CSV Files (*.csv);;All Files (*.*)",
         )
         if not file_path:

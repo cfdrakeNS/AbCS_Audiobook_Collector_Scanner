@@ -65,6 +65,7 @@ DUPLICATE_DIALOG_SHORTCUTS = {
 MAIN_WINDOW_SHORTCUTS = {
     "U": ("Update selected", "update_button"),
     "D": ("Delete selected", "delete_button"),
+    "X": ("Export duplicates", "export_button"),
     "A": ("Author filter", "author_filter_combo"),
     # Alt+1..7 handled in main_window.py for column jump
 }
