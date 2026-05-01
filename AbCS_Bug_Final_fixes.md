@@ -93,7 +93,7 @@ when a collection is selected in main win other then "all collections" the impor
 90. complete - main window - when in duplicate mode and a export button that will export to csv file with author, title, year, collection and date added. simular to import window export.
 91. complete - book\_detail window - 1. alt+t is set to both title and time should be only title alt+m is time check centalized shortcut in shortcut.py. When exiting update the save popup appears it should only appear if it is dirty
 92. complete - when you run the abcs.ext created by the installer, exporting in import win and main win are defaulting to the program files\\abcs folder - can this be changed to the user's documents folder or home folder?
-93. BOOK DETAIL WINDOW - 1. when you press update the new and delete button should be hidden just save button should be visible 2. can't tab to format fields in view/read mode.
+93. complete - BOOK DETAIL WINDOW - 1. when you press update the new and delete button should be hidden just save button should be visible 2. can't tab to format fields in view/read mode.
 94. 
 95. what is involved in fixing this? - linux version window icons and graphic in the about\_dialogue are not showing.
 
