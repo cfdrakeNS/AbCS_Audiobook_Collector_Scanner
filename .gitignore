@@ -1,6 +1,11 @@
 # Ignore graphics assets (all cases)
 data/Graphics/
 data/graphics/**
+graphics/
+graphics/**
+installer_graphics/
+installer_graphics/**
+
 # Virtual environment
 .venv/
 venv/
@@ -51,3 +56,9 @@ backups/
 
 # Archive folder
 archive/
+
+# releases 
+releases/
+releases/**
+ltr_demo/
+ltr_demo/**
