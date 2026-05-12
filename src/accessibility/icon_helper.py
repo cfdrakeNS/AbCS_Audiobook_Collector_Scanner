@@ -16,7 +16,7 @@ def resource_path():
         # PyInstaller bundle
         base = sys._MEIPASS
     else:
-        base = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        base = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     # Try lowercase graphics first, then fallback to capitalized
     icon_path = os.path.join(base, "graphics", "abcs_icon_256x256.ico")
     if not os.path.exists(icon_path):
