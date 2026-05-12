@@ -171,7 +171,7 @@ class ImportWindow(QDialog):
         "L",
         "S",
         "X",
-        "W", 
+        "W",
     }
 
     COL_AUTHOR = 0
@@ -742,8 +742,6 @@ class ImportWindow(QDialog):
             ("Alt+L", "Jump to table"),
             ("Alt+1", "Jump to Author "),
             ("Alt+2", "Jump to Title "),
-
-
             ("Alt+3-5", "Jump to Year..."),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
@@ -1350,8 +1348,6 @@ class ImportWindow(QDialog):
 
         folder_path = self.folder_edit.text().strip()
         if not folder_path:
-            from PySide6.QtWidgets import QMessageBox
-
             QMessageBox.warning(
                 self,
                 "Folder Required",
@@ -1903,7 +1899,7 @@ class ImportWindow(QDialog):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"import_review_list_{timestamp}.csv"
         default_file = str(default_path / default_name)
-        
+
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Export Import List",

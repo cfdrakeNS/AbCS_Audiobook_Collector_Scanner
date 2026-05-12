@@ -634,7 +634,8 @@ class MainWindow(QMainWindow):
         self.table.setAttribute(Qt.WA_Hover, False)
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
         # Apply centralized F1 popup style to table only
-        self.table.setStyleSheet("""
+        self.table.setStyleSheet(
+            """
             QTableView::item:hover {
                 background-color: palette(base);
                 color: palette(text);
@@ -647,7 +648,8 @@ class MainWindow(QMainWindow):
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
             }
-            """)
+            """
+        )
 
         # Resize columns - mw#22: Author, Title, Series, Genre stretch proportionally
         header = self.table.horizontalHeader()
@@ -771,7 +773,9 @@ class MainWindow(QMainWindow):
         # Export button (only visible in duplicate mode)
         self.export_button = QPushButton("E&xport Duplicates")
         self.export_button.setAccessibleName("Export duplicate books to CSV")
-        self.export_button.setAccessibleDescription("Export duplicate books to CSV - Alt+X")
+        self.export_button.setAccessibleDescription(
+            "Export duplicate books to CSV - Alt+X"
+        )
         self.export_button.setFocusPolicy(Qt.StrongFocus)
         self.export_button.setAutoDefault(True)
         self.export_button.setDefault(True)
@@ -1271,7 +1275,8 @@ class MainWindow(QMainWindow):
             "Same duplicate matching options as Preferences"
         )
         combo_height = max(self.scaler.get_scaled_size(24), 18)
-        mode_combo.setStyleSheet(f"""
+        mode_combo.setStyleSheet(
+            f"""
             QComboBox {{
                 min-height: {combo_height}px;
                 max-height: {combo_height}px;
@@ -1287,7 +1292,8 @@ class MainWindow(QMainWindow):
                 outline: none;
                 border: 1px solid palette(dark);
             }}
-            """)
+            """
+        )
         for label, data in self.DUPLICATE_MATCH_OPTIONS:
             mode_combo.addItem(label, data)
         preferred_index = mode_combo.findData(preferred_mode)
@@ -2832,7 +2838,9 @@ class MainWindow(QMainWindow):
                     # Get collection name
                     collection_name = ""
                     if book.collection_id and self.collection_queries:
-                        collection = self.collection_queries.get_by_id(book.collection_id)
+                        collection = self.collection_queries.get_by_id(
+                            book.collection_id
+                        )
                         if collection:
                             collection_name = collection.name or ""
 
@@ -2841,15 +2849,19 @@ class MainWindow(QMainWindow):
                     if book.date_added:
                         date_added_str = book.date_added.strftime("%Y-%m-%d")
 
-                    writer.writerow([
-                        book.author_name or "",
-                        book.title or "",
-                        book.year or "",
-                        collection_name,
-                        date_added_str,
-                    ])
+                    writer.writerow(
+                        [
+                            book.author_name or "",
+                            book.title or "",
+                            book.year or "",
+                            collection_name,
+                            date_added_str,
+                        ]
+                    )
 
-            self.set_status(f"Exported {len(self.books)} duplicates to {file_path}", announce=True)
+            self.set_status(
+                f"Exported {len(self.books)} duplicates to {file_path}", announce=True
+            )
         except Exception as e:
             self.set_status(f"Export failed: {str(e)}", announce=True)
 
@@ -2905,8 +2917,10 @@ class MainWindow(QMainWindow):
         web_data = None
         try:
             from src.web.web_book_api import WebBookAPI
+
             # Read import preferences via helper (handles legacy fallback)
             from src.utils.settings_helpers import get_import_preferences
+
             move_articles, flip_author = get_import_preferences()
 
             # Try to fetch web data once. WebBookAPI already cascades through

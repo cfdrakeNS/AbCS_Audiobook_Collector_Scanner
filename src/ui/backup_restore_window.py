@@ -645,8 +645,6 @@ class BackupRestoreWindow(QDialog):
         if backup_path is not None:
             self._select_backup_path(str(backup_path))
             self.set_status(f"Full reset complete. Backup created: {backup_path.name}")
-        else:
-            self.set_status("Full reset complete")
 
     def set_status(self, message: str, announce: bool = True):
         self._default_status_message = message

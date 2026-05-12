@@ -22,20 +22,18 @@ _FOCUS_ANNOUNCE_DEDUP_SECONDS = 0.9
 def announce_status_message(
     status_bar: QStatusBar,
     message: str,
-    _announcement_widget=None,
     move_focus: bool = False,
     force_focus_announce: bool = False,
 ) -> None:
     """
     Update status bar message and notify screen readers of the change.
 
-    Uses a dedicated announcement widget which screen readers read more reliably.
+    Uses focus manipulation which works reliably with JAWS.
 
     Args:
         status_bar: QStatusBar widget to update
         message: Message text to display and announce
-        announcement_widget: Optional hidden label for announcements (created if not provided)
-        move_focus: If True, briefly move focus to status bar so screen readers read it (workaround for event crashes)
+        move_focus: If True, briefly move focus to status bar so screen readers read it
         force_focus_announce: If True, bypass duplicate-suppression for focus announcements.
     """
     try:
@@ -88,26 +86,11 @@ def announce_status_message(
                         except RuntimeError:
                             pass
 
-                # Restore focus after 300ms (time for screen reader to read)
+                # Restore focus after 1500ms (enough time for NVDA to complete announcement)
                 from PySide6.QtCore import QTimer
 
-                QTimer.singleShot(300, restore_focus)
+                QTimer.singleShot(1500, restore_focus)
 
-        # TEMPORARILY DISABLED - QAccessibleEvent may be causing crashes
-        # if announcement_widget is not None:
-        #     # Change the accessible text - screen reader will announce this
-        #     announcement_widget.setAccessibleName(message)
-        #     announcement_widget.setAccessibleDescription(message)
-        #     announcement_widget.setText(message)
-
-        #     # Update accessibility to notify screen readers
-        #     if QAccessible.isActive():
-        #         try:
-        #             event = QAccessibleEvent(
-        #                 announcement_widget, QAccessible.Event.ValueChanged)
-        #             QAccessible.updateAccessibility(event)
-        #         except Exception:
-        #             pass
     except Exception:
         # Silently fail - don't let accessibility break the app
         pass
