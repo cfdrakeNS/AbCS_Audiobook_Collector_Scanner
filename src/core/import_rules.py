@@ -49,7 +49,7 @@ class ImportRulesEngine:
                 self._rule_author_non_alpha_start,
                 settings_key="author_non_alpha_start",
                 default_enabled=True,
-                default_severity="error",
+                default_severity="warning",
             ),
             ValidationRule(
                 "author_name_in_title",

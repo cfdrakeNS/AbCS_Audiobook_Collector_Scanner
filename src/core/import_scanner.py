@@ -13,8 +13,6 @@ class ImportScanner:
         "unknown",
         "unknown author",
         "no author",
-        "various",
-        "various artists",
         "n/a",
         "na",
         "none",
@@ -184,22 +182,9 @@ class ImportScanner:
     # Error/correction flagging now uses ImportValidator.append_flag_once
 
     def _extract_reader_from_comment(self, comment: str) -> str:
-        if not comment:
-            return ""
+        from src.core.tag_reader import TagReader
 
-        lines = [line.strip() for line in comment.splitlines() if line.strip()]
-        for line in lines:
-            lowered = line.lower()
-            for keyword in self.reader_keywords:
-                match = re.search(
-                    rf"\b{re.escape(keyword)}\b\s*[:\-]?\s*(.+)$", lowered
-                )
-                if match:
-                    start_idx = match.start(1)
-                    value = line[start_idx:].strip(" .:-")
-                    if value:
-                        return value
-        return ""
+        return TagReader.extract_reader_from_comment_text(comment, self.reader_keywords)
 
     @staticmethod
     def _parse_series_from_filename_text(text: str):
@@ -343,7 +328,10 @@ class ImportScanner:
                     updated = trimmed
 
             if self.strip_leading_punctuation:
-                stripped = re.sub(r"^[^A-Za-z0-9]+", "", updated)
+                if field == "author":
+                    stripped = re.sub(r"^[^A-Za-z]+", "", updated)
+                else:
+                    stripped = re.sub(r"^[^A-Za-z0-9]+", "", updated)
                 if stripped != updated:
                     corrections_applied.append("punctuation removed")
                     updated = stripped

@@ -569,6 +569,22 @@ class ImportWindow(QDialog):
         self.include_subfolders = self.settings.value(
             "import/include_subfolders", True, type=bool
         )
+        selected_extensions = set()
+        format_extension_map = {
+            "mp3": (".mp3",),
+            "m4a": (".m4a",),
+            "m4b": (".m4b",),
+            "flac": (".flac",),
+            "ogg": (".ogg", ".oga"),
+            "wav": (".wav",),
+            "wma": (".wma",),
+            "aac": (".aac",),
+            "opus": (".opus",),
+        }
+        for key, extensions in format_extension_map.items():
+            if self.settings.value(f"import/formats/{key}", True, type=bool):
+                selected_extensions.update(extensions)
+        self.allowed_extensions = selected_extensions
 
         shortcuts = [
             ("Alt+C", "Collection"),
@@ -605,9 +621,6 @@ class ImportWindow(QDialog):
             "import/reader_keywords",
             "reader, read by, narrator, narrated by",
             type=str,
-        )
-        keywords = self.settings.value(
-            "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
         )
         parsed_keywords = [
             key.strip().lower() for key in keywords.split(",") if key.strip()
@@ -991,7 +1004,6 @@ class ImportWindow(QDialog):
             or has_hard_error
             or has_warning
             or has_fallback
-            or has_correction
         )
 
     def _matches_error_filter(self, item: dict) -> bool:
@@ -1468,6 +1480,7 @@ class ImportWindow(QDialog):
                 folder_path,
                 include_subfolders=self.include_subfolders,
                 allowed_extensions=self.allowed_extensions,
+                reader_keywords=self.reader_keywords,
                 progress_callback=on_progress,
                 cancel_check=lambda: self._cancel_scan_requested,
             )
@@ -1603,7 +1616,6 @@ class ImportWindow(QDialog):
                     and not has_hard_error
                     and not has_warning
                     and not has_fallback
-                    and not has_correction
                 )
                 # Prevent auto-add if duplicate
                 if is_duplicate:

@@ -699,7 +699,7 @@ class StatisticsQueries:
                 LEFT JOIN books b ON b.collection_id = c.collection_id
                 GROUP BY c.collection_id, c.name, c.active
             )
-            WHERE book_count > 0
+            WHERE book_count > 0 OR sort_group = 1
             ORDER BY sort_group, sort_name
             """)
         stats.collection_breakdown = [

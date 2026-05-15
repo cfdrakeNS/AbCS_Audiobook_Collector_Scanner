@@ -4,6 +4,7 @@ Extracts metadata from audio files using mutagen library.
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
 from mutagen import File as MutagenFile
@@ -55,6 +56,67 @@ class TagReader:
     def __init__(self):
         """Initialize tag reader."""
         pass
+
+    @staticmethod
+    def _normalize_reader_keywords(reader_keywords: Optional[List[str]]) -> List[str]:
+        keywords = []
+        for keyword in reader_keywords or []:
+            normalized = " ".join(str(keyword or "").strip().lower().split())
+            if normalized and normalized not in keywords:
+                keywords.append(normalized)
+        return sorted(keywords, key=len, reverse=True)
+
+    @staticmethod
+    def split_comment_blocks(comment: str) -> List[str]:
+        blocks = []
+        for part in re.split(r"(?:\r?\n)+|\s\|\s", str(comment or "")):
+            text = " ".join(part.strip().split())
+            if text:
+                blocks.append(text)
+        return blocks
+
+    @classmethod
+    def extract_reader_from_comment_text(
+        cls, comment: str, reader_keywords: Optional[List[str]] = None
+    ) -> str:
+        for block in cls.split_comment_blocks(comment):
+            lowered = block.lower()
+            for keyword in cls._normalize_reader_keywords(reader_keywords):
+                match = re.search(
+                    rf"(?:^|\b){re.escape(keyword)}(?:\b)?\s*(?:[:\-]\s*)?(.+)$",
+                    lowered,
+                )
+                if match:
+                    start_idx = match.start(1)
+                    value = block[start_idx:].strip(" .:-")
+                    if value:
+                        return value
+        return ""
+
+    @classmethod
+    def is_reader_only_comment(
+        cls, comment: str, reader_keywords: Optional[List[str]] = None
+    ) -> bool:
+        text = " ".join(str(comment or "").strip().split())
+        if not text:
+            return False
+        lowered = text.lower()
+        for keyword in cls._normalize_reader_keywords(reader_keywords):
+            if re.fullmatch(
+                rf"{re.escape(keyword)}\s*(?::|\-|\s)\s*.+",
+                lowered,
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def format_accumulated_comments(comments: List[str]) -> str:
+        formatted_comments = []
+        for comment in comments:
+            text = " ".join(str(comment or "").strip().split())
+            if text:
+                formatted_comments.append(text)
+        return "; ".join(formatted_comments)
 
     def is_supported_file(self, file_path: str) -> bool:
         """
@@ -154,11 +216,29 @@ class TagReader:
                 info.genre = str(audio.tags["TCON"])
 
             # Comment
-            if "COMM" in audio.tags:
-                # COMM can have multiple values
-                comments = audio.tags.getall("COMM")
-                if comments:
-                    info.comment = str(comments[0])
+            comment_frames = [
+                frame
+                for key, frame in audio.tags.items()
+                if str(key).upper().startswith("COMM")
+            ]
+            if comment_frames:
+                unique_comments = []
+                for comment in comment_frames:
+                    for value in getattr(comment, "text", []) or []:
+                        text = str(value).strip()
+                        if text and text not in unique_comments:
+                            unique_comments.append(text)
+                unique_comments = [
+                    text
+                    for text in unique_comments
+                    if not any(
+                        other != text
+                        and len(other) > len(text)
+                        and other.casefold().startswith(text.casefold())
+                        for other in unique_comments
+                    )
+                ]
+                info.comment = "\n\n".join(unique_comments)
 
             # Composer (narrator)
             if "TCOM" in audio.tags:
@@ -174,7 +254,7 @@ class TagReader:
             info.artist = self._get_tag(audio, "artist")
             # Title tag is not used downstream.
             info.genre = self._get_tag(audio, "genre")
-            info.comment = self._get_tag(audio, "comment")
+            info.comment = self._get_tags_joined(audio, "comment")
             info.composer = self._get_tag(audio, "composer")
 
             # Year
@@ -195,7 +275,7 @@ class TagReader:
             info.artist = self._get_mp4_tag(audio, "©ART")
             # Title tag is not used downstream.
             info.genre = self._get_mp4_tag(audio, "©gen")
-            info.comment = self._get_mp4_tag(audio, "©cmt")
+            info.comment = self._get_mp4_tags_joined(audio, "©cmt")
             info.composer = self._get_mp4_tag(audio, "©wrt")
 
             # Year
@@ -216,15 +296,79 @@ class TagReader:
     def _read_generic_tags(self, audio, info: AudioFileInfo):
         """Try to read tags generically."""
         if hasattr(audio, "tags") and audio.tags:
-            # Try common tag names
-            for tag_name in ["album", "title", "artist", "genre"]:
-                if tag_name in audio.tags:
-                    value = audio.tags[tag_name]
-                    if isinstance(value, list) and value:
-                        value = str(value[0])
-                    else:
-                        value = str(value)
-                    setattr(info, tag_name, value)
+            info.album = self._get_any_tag(
+                audio,
+                ["album", "ALBUM", "TALB", "WM/AlbumTitle"],
+            )
+            info.album_artist = self._get_any_tag(
+                audio,
+                ["albumartist", "album artist", "ALBUMARTIST", "TPE2", "WM/AlbumArtist"],
+            )
+            info.artist = self._get_any_tag(
+                audio,
+                ["artist", "ARTIST", "TPE1", "Author", "WM/Author"],
+            )
+            info.genre = self._get_any_tag(
+                audio,
+                ["genre", "GENRE", "TCON", "WM/Genre"],
+            )
+            info.comment = self._get_any_tags_joined(
+                audio,
+                ["comment", "COMMENT", "description", "COMM", "Description"],
+            )
+            info.composer = self._get_any_tag(
+                audio,
+                ["composer", "COMPOSER", "TCOM", "WM/Composer"],
+            )
+
+            year_str = self._get_any_tag(
+                audio,
+                ["date", "year", "DATE", "YEAR", "TDRC", "TYER", "WM/Year"],
+            )
+            if year_str:
+                try:
+                    info.year = int(str(year_str)[:4])
+                except (ValueError, IndexError):
+                    pass
+
+    def _tag_to_text_values(self, value) -> List[str]:
+        if isinstance(value, list):
+            raw_values = value
+        else:
+            raw_values = [value]
+
+        values = []
+        for raw_value in raw_values:
+            frame_text = getattr(raw_value, "text", None)
+            if frame_text is not None:
+                if isinstance(frame_text, list):
+                    values.extend(str(item).strip() for item in frame_text)
+                else:
+                    values.append(str(frame_text).strip())
+            else:
+                values.append(str(raw_value).strip())
+        return [value for value in values if value]
+
+    def _get_any_tag(self, audio, tag_names: List[str]) -> str:
+        for tag_name in tag_names:
+            if tag_name in audio.tags:
+                values = self._tag_to_text_values(audio.tags[tag_name])
+                if values:
+                    return values[0]
+        return ""
+
+    def _get_any_tags_joined(self, audio, tag_names: List[str]) -> str:
+        unique_values = []
+        for key, value in audio.tags.items():
+            key_text = str(key)
+            if key_text not in tag_names and not any(
+                key_text.upper().startswith(tag_name.upper()) for tag_name in tag_names
+            ):
+                continue
+            for text in self._tag_to_text_values(value):
+                if text and text not in unique_values:
+                    unique_values.append(text)
+        return "\n\n".join(unique_values)
 
     def _get_tag(self, audio, tag_name: str) -> str:
         """Get tag value from FLAC/OGG."""
@@ -232,6 +376,17 @@ class TagReader:
             values = audio[tag_name]
             if values:
                 return str(values[0])
+        return ""
+
+    def _get_tags_joined(self, audio, tag_name: str) -> str:
+        if tag_name in audio:
+            values = audio[tag_name]
+            unique_values = []
+            for value in values:
+                text = str(value).strip()
+                if text and text not in unique_values:
+                    unique_values.append(text)
+            return "\n\n".join(unique_values)
         return ""
 
     def _get_mp4_tag(self, audio: MP4, tag_name: str) -> str:
@@ -242,7 +397,20 @@ class TagReader:
                 return str(values[0])
         return ""
 
-    def extract_narrator(self, comment: str, composer: str) -> str:
+    def _get_mp4_tags_joined(self, audio: MP4, tag_name: str) -> str:
+        if tag_name in audio.tags:
+            values = audio.tags[tag_name]
+            unique_values = []
+            for value in values:
+                text = str(value).strip()
+                if text and text not in unique_values:
+                    unique_values.append(text)
+            return "\n\n".join(unique_values)
+        return ""
+
+    def extract_narrator(
+        self, comment: str, composer: str, reader_keywords: Optional[List[str]] = None
+    ) -> str:
         """
         Extract narrator from comment or composer field.
         Looks for patterns like "Read by John Doe" or "Narrated by Jane Smith".
@@ -258,24 +426,9 @@ class TagReader:
         if composer:
             return composer
 
-        # Check comment for "read by", "narrated by", etc.
-        if comment:
-            comment_lower = comment.lower()
-            patterns = [
-                "read by ",
-                "narrated by ",
-                "narrator: ",
-                "reader: ",
-                "performed by ",
-            ]
-
-            for pattern in patterns:
-                if pattern in comment_lower:
-                    idx = comment_lower.index(pattern)
-                    narrator = comment[idx + len(pattern) :].strip()
-                    # Get first line/sentence
-                    narrator = narrator.split("\n")[0].split(".")[0]
-                    return narrator.strip()
+        narrator = self.extract_reader_from_comment_text(comment, reader_keywords)
+        if narrator:
+            return narrator
 
         return ""
 
@@ -294,6 +447,7 @@ class BookScanner:
         folder_path: str,
         include_subfolders: bool = True,
         allowed_extensions: Optional[set] = None,
+        reader_keywords: Optional[List[str]] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
     ) -> List[Dict[str, Any]]:
@@ -313,7 +467,13 @@ class BookScanner:
         """
         # Check if path is a single file (for single-item mode)
         if os.path.isfile(folder_path):
-            return self.scan_file(folder_path, progress_callback, cancel_check)
+            return self.scan_file(
+                folder_path,
+                allowed_extensions=allowed_extensions,
+                reader_keywords=reader_keywords,
+                progress_callback=progress_callback,
+                cancel_check=cancel_check,
+            )
 
         # Find all audio files
         audio_files = []
@@ -362,9 +522,10 @@ class BookScanner:
                     "year": info.year,
                     "genre": info.genre,
                     "narrator": self.tag_reader.extract_narrator(
-                        info.comment, info.composer
+                        info.comment, info.composer, reader_keywords
                     ),
                     "comments": [],
+                    "_comment_keys": set(),
                     "files": [],
                     "total_duration": 0.0,
                     "total_size": 0,
@@ -375,15 +536,25 @@ class BookScanner:
                 }
 
             book = books[book_key]
+            if not book.get("narrator"):
+                narrator = self.tag_reader.extract_narrator(
+                    info.comment, info.composer, reader_keywords
+                )
+                if narrator:
+                    book["narrator"] = narrator
 
             # Accumulate data
             book["files"].append(file_path)
             book["total_duration"] += info.duration_seconds
             book["total_size"] += info.file_size_bytes
 
-            # Collect unique comments
-            if info.comment and info.comment not in book["comments"]:
-                book["comments"].append(info.comment)
+            for comment in self.tag_reader.split_comment_blocks(info.comment):
+                if self.tag_reader.is_reader_only_comment(comment, reader_keywords):
+                    continue
+                normalized_comment = comment.casefold()
+                if normalized_comment not in book["_comment_keys"]:
+                    book["_comment_keys"].add(normalized_comment)
+                    book["comments"].append(comment)
 
             # Collect errors
             if info.read_error:
@@ -395,8 +566,11 @@ class BookScanner:
         result = []
         for book in books.values():
             # Combine comments
-            book["comment"] = "\n\n".join(book["comments"])
+            book["comment"] = self.tag_reader.format_accumulated_comments(
+                book["comments"]
+            )
             del book["comments"]
+            del book["_comment_keys"]
 
             # Convert duration to hours/minutes
             total_minutes = int(book["total_duration"] / 60)
@@ -416,6 +590,8 @@ class BookScanner:
     def scan_file(
         self,
         file_path: str,
+        allowed_extensions: Optional[set] = None,
+        reader_keywords: Optional[List[str]] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
     ) -> List[Dict[str, Any]]:
@@ -434,7 +610,11 @@ class BookScanner:
         if not file_path or not os.path.isfile(file_path):
             return []
 
-        if not self.tag_reader.is_supported_file(file_path):
+        file_ext = Path(file_path).suffix.lower()
+        if allowed_extensions is not None:
+            if file_ext not in allowed_extensions:
+                return []
+        elif not self.tag_reader.is_supported_file(file_path):
             return []
 
         if cancel_check is not None and cancel_check():
@@ -455,7 +635,9 @@ class BookScanner:
             "author": info.album_artist or info.artist,
             "year": info.year,
             "genre": info.genre,
-            "narrator": self.tag_reader.extract_narrator(info.comment, info.composer),
+            "narrator": self.tag_reader.extract_narrator(
+                info.comment, info.composer, reader_keywords
+            ),
             "comment": info.comment or "",
             "files": [file_path],
             "total_duration": info.duration_seconds,

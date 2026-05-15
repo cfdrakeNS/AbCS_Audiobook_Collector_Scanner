@@ -13,6 +13,7 @@ import time
 from PySide6.QtGui import QAccessible, QAccessibleEvent
 from PySide6.QtWidgets import QStatusBar, QDialog, QApplication
 from PySide6.QtCore import Qt
+from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
 
 # Guard repeated focus-based announcements per status bar.
 _LAST_FOCUS_ANNOUNCE: dict[int, tuple[str, float]] = {}
@@ -86,10 +87,12 @@ def announce_status_message(
                         except RuntimeError:
                             pass
 
-                # Restore focus after 1500ms (enough time for NVDA to complete announcement)
                 from PySide6.QtCore import QTimer
-
-                QTimer.singleShot(1500, restore_focus)
+                delay_ms = get_screen_reader_focus_delay_ms()
+                if delay_ms <= 0:
+                    restore_focus()
+                else:
+                    QTimer.singleShot(delay_ms, restore_focus)
 
     except Exception:
         # Silently fail - don't let accessibility break the app
