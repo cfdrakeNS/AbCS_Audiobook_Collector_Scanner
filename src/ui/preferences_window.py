@@ -464,6 +464,52 @@ class PreferencesWindow(QDialog):
         rules_layout.addWidget(min_title_label, 2, 2)
         rules_layout.addLayout(min_title_config_layout, 2, 3)
 
+        min_book_length_label = QLabel("Min Book Minutes:")
+        min_book_length_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        min_book_length_config_layout = QHBoxLayout()
+        min_book_length_config_layout.setContentsMargins(0, 0, 0, 0)
+        min_book_length_config_layout.setSpacing(6)
+        self.rule_min_book_length_value = QSpinBox()
+        self.rule_min_book_length_value.setRange(0, 10000)
+        self.rule_min_book_length_value.setAccessibleName(
+            "Minimum book length in minutes value"
+        )
+        self.rule_min_book_length_severity = QComboBox()
+        self.rule_min_book_length_severity.setAccessibleName(
+            "Minimum book length severity"
+        )
+        self.rule_min_book_length_severity.setAccessibleDescription(
+            "Set severity or None for minimum book length rule"
+        )
+        min_book_length_config_layout.addWidget(self.rule_min_book_length_value)
+        min_book_length_config_layout.addWidget(self.rule_min_book_length_severity)
+        min_book_length_label.setBuddy(self.rule_min_book_length_value)
+        rules_layout.addWidget(min_book_length_label, 3, 0)
+        rules_layout.addLayout(min_book_length_config_layout, 3, 1)
+
+        max_book_length_label = QLabel("Max Book Hours:")
+        max_book_length_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        max_book_length_config_layout = QHBoxLayout()
+        max_book_length_config_layout.setContentsMargins(0, 0, 0, 0)
+        max_book_length_config_layout.setSpacing(6)
+        self.rule_max_book_length_value = QSpinBox()
+        self.rule_max_book_length_value.setRange(0, 10000)
+        self.rule_max_book_length_value.setAccessibleName(
+            "Maximum book length in hours value"
+        )
+        self.rule_max_book_length_severity = QComboBox()
+        self.rule_max_book_length_severity.setAccessibleName(
+            "Maximum book length severity"
+        )
+        self.rule_max_book_length_severity.setAccessibleDescription(
+            "Set severity or None for maximum book length rule"
+        )
+        max_book_length_config_layout.addWidget(self.rule_max_book_length_value)
+        max_book_length_config_layout.addWidget(self.rule_max_book_length_severity)
+        max_book_length_label.setBuddy(self.rule_max_book_length_value)
+        rules_layout.addWidget(max_book_length_label, 3, 2)
+        rules_layout.addLayout(max_book_length_config_layout, 3, 3)
+
         duplicate_match_label = QLabel("Duplicate Match:")
         duplicate_match_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.duplicate_match_combo = QComboBox()
@@ -474,8 +520,8 @@ class PreferencesWindow(QDialog):
         self.duplicate_match_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.duplicate_match_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         duplicate_match_label.setBuddy(self.duplicate_match_combo)
-        rules_layout.addWidget(duplicate_match_label, 3, 0)
-        rules_layout.addWidget(self.duplicate_match_combo, 3, 1)
+        rules_layout.addWidget(duplicate_match_label, 4, 0)
+        rules_layout.addWidget(self.duplicate_match_combo, 4, 1)
 
         duplicate_fuzzy_label = QLabel("Fuzzy Duplicate (%):")
         duplicate_fuzzy_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -488,8 +534,8 @@ class PreferencesWindow(QDialog):
             "Optional fuzzy duplicate threshold percentage. 0 disables fuzzy duplicate matching"
         )
         duplicate_fuzzy_label.setBuddy(self.duplicate_fuzzy_spin)
-        rules_layout.addWidget(duplicate_fuzzy_label, 3, 2)
-        rules_layout.addWidget(self.duplicate_fuzzy_spin, 3, 3)
+        rules_layout.addWidget(duplicate_fuzzy_label, 4, 2)
+        rules_layout.addWidget(self.duplicate_fuzzy_spin, 4, 3)
 
         file_structure_label = QLabel("File Structure:")
         file_structure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -511,8 +557,8 @@ class PreferencesWindow(QDialog):
         file_structure_config_layout.addWidget(self.rule_file_structure_pattern)
         file_structure_config_layout.addWidget(self.rule_file_structure_severity)
         file_structure_label.setBuddy(self.rule_file_structure_pattern)
-        rules_layout.addWidget(file_structure_label, 4, 0)
-        rules_layout.addLayout(file_structure_config_layout, 4, 1)
+        rules_layout.addWidget(file_structure_label, 5, 0)
+        rules_layout.addLayout(file_structure_config_layout, 5, 1)
 
         year_quality_label = QLabel("Year Consistency:")
         year_quality_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -522,14 +568,16 @@ class PreferencesWindow(QDialog):
             "Set severity or None for year consistency rule (>1800 and <= current year)"
         )
         year_quality_label.setBuddy(self.rule_year_quality_severity)
-        rules_layout.addWidget(year_quality_label, 4, 2)
-        rules_layout.addWidget(self.rule_year_quality_severity, 4, 3)
+        rules_layout.addWidget(year_quality_label, 5, 2)
+        rules_layout.addWidget(self.rule_year_quality_severity, 5, 3)
 
         rule_severity_combos = (
             self.rule_author_in_title_severity,
             self.rule_title_in_author_severity,
             self.rule_unknown_author_severity,
             self.rule_min_title_severity,
+            self.rule_min_book_length_severity,
+            self.rule_max_book_length_severity,
             self.rule_file_structure_severity,
             self.rule_year_quality_severity,
         )
@@ -652,6 +700,8 @@ class PreferencesWindow(QDialog):
         self.rule_title_in_author_severity.setStyleSheet(combo_style)
         self.rule_unknown_author_severity.setStyleSheet(combo_style)
         self.rule_min_title_severity.setStyleSheet(combo_style)
+        self.rule_min_book_length_severity.setStyleSheet(combo_style)
+        self.rule_max_book_length_severity.setStyleSheet(combo_style)
         self.duplicate_match_combo.setStyleSheet(combo_style)
         self.duplicate_fuzzy_spin.setStyleSheet(combo_style)
         self.rule_file_structure_pattern.setStyleSheet(combo_style)
@@ -661,6 +711,8 @@ class PreferencesWindow(QDialog):
         self.import_dir_edit.setStyleSheet("")  # Clear local style
         self.reader_keywords_edit.setStyleSheet("")  # Clear local style
         self.rule_min_title_value.setStyleSheet(combo_style)
+        self.rule_min_book_length_value.setStyleSheet(combo_style)
+        self.rule_max_book_length_value.setStyleSheet(combo_style)
         self.browse_button.setStyleSheet(button_style)
         self.restore_defaults_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
@@ -830,6 +882,14 @@ class PreferencesWindow(QDialog):
                 self.rule_min_title_value.value(),
                 self.rule_min_title_severity.currentData(),
             ),
+            "rule_min_book_length": (
+                self.rule_min_book_length_value.value(),
+                self.rule_min_book_length_severity.currentData(),
+            ),
+            "rule_max_book_length": (
+                self.rule_max_book_length_value.value(),
+                self.rule_max_book_length_severity.currentData(),
+            ),
             "rule_file_structure": (
                 self.rule_file_structure_pattern.currentData(),
                 self.rule_file_structure_severity.currentData(),
@@ -952,6 +1012,8 @@ class PreferencesWindow(QDialog):
             self.rule_title_in_author_severity,
             self.rule_unknown_author_severity,
             self.rule_min_title_severity,
+            self.rule_min_book_length_severity,
+            self.rule_max_book_length_severity,
             self.rule_file_structure_severity,
             self.rule_year_quality_severity,
         ):
@@ -1068,6 +1130,50 @@ class PreferencesWindow(QDialog):
         index = self.rule_min_title_severity.findData(min_title_severity)
         self.rule_min_title_severity.setCurrentIndex(0 if index < 0 else index)
         self._update_min_title_warning()
+
+        min_book_length_enabled = self.settings.value(
+            "import/rules/minimum_book_length/enabled",
+            False,
+            type=bool,
+        )
+        self.rule_min_book_length_value.setValue(
+            self.settings.value(
+                "import/rules/minimum_book_length/value",
+                0,
+                type=int,
+            )
+        )
+        min_book_length_severity = self.settings.value(
+            "import/rules/minimum_book_length/severity",
+            "warning",
+            type=str,
+        )
+        if not min_book_length_enabled:
+            min_book_length_severity = "none"
+        index = self.rule_min_book_length_severity.findData(min_book_length_severity)
+        self.rule_min_book_length_severity.setCurrentIndex(0 if index < 0 else index)
+
+        max_book_length_enabled = self.settings.value(
+            "import/rules/maximum_book_length/enabled",
+            False,
+            type=bool,
+        )
+        self.rule_max_book_length_value.setValue(
+            self.settings.value(
+                "import/rules/maximum_book_length/value",
+                0,
+                type=int,
+            )
+        )
+        max_book_length_severity = self.settings.value(
+            "import/rules/maximum_book_length/severity",
+            "warning",
+            type=str,
+        )
+        if not max_book_length_enabled:
+            max_book_length_severity = "none"
+        index = self.rule_max_book_length_severity.findData(max_book_length_severity)
+        self.rule_max_book_length_severity.setCurrentIndex(0 if index < 0 else index)
 
         file_structure_enabled = self.settings.value(
             "import/rules/file_structure/enabled",
@@ -1537,7 +1643,6 @@ class PreferencesWindow(QDialog):
         self.settings.setValue("import/rules/title_in_author_name/enabled", True)
         self.settings.setValue("import/rules/title_in_author_name/severity", "error")
 
-        # Unknown author: error
         self.rule_unknown_author_severity.setCurrentIndex(
             self.rule_unknown_author_severity.findData("error")
         )
@@ -1554,6 +1659,22 @@ class PreferencesWindow(QDialog):
         self.settings.setValue("import/rules/minimum_title_length/enabled", True)
         self.settings.setValue("import/rules/minimum_title_length/value", 3)
         self.settings.setValue("import/rules/minimum_title_length/severity", "warning")
+
+        self.rule_min_book_length_value.setValue(0)
+        self.rule_min_book_length_severity.setCurrentIndex(
+            self.rule_min_book_length_severity.findData("none")
+        )
+        self.settings.setValue("import/rules/minimum_book_length/enabled", False)
+        self.settings.setValue("import/rules/minimum_book_length/value", 0)
+        self.settings.setValue("import/rules/minimum_book_length/severity", "warning")
+
+        self.rule_max_book_length_value.setValue(0)
+        self.rule_max_book_length_severity.setCurrentIndex(
+            self.rule_max_book_length_severity.findData("none")
+        )
+        self.settings.setValue("import/rules/maximum_book_length/enabled", False)
+        self.settings.setValue("import/rules/maximum_book_length/value", 0)
+        self.settings.setValue("import/rules/maximum_book_length/severity", "warning")
 
         # File structure: enabled, warning, pattern author_title
         self.rule_file_structure_pattern.setCurrentIndex(
@@ -1657,6 +1778,34 @@ class PreferencesWindow(QDialog):
         self.settings.setValue(
             "import/rules/minimum_title_length/value",
             self.rule_min_title_value.value(),
+        )
+
+        min_book_length_choice = self.rule_min_book_length_severity.currentData()
+        self.settings.setValue(
+            "import/rules/minimum_book_length/enabled",
+            min_book_length_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/minimum_book_length/severity",
+            "warning" if min_book_length_choice == "none" else min_book_length_choice,
+        )
+        self.settings.setValue(
+            "import/rules/minimum_book_length/value",
+            self.rule_min_book_length_value.value(),
+        )
+
+        max_book_length_choice = self.rule_max_book_length_severity.currentData()
+        self.settings.setValue(
+            "import/rules/maximum_book_length/enabled",
+            max_book_length_choice != "none",
+        )
+        self.settings.setValue(
+            "import/rules/maximum_book_length/severity",
+            "warning" if max_book_length_choice == "none" else max_book_length_choice,
+        )
+        self.settings.setValue(
+            "import/rules/maximum_book_length/value",
+            self.rule_max_book_length_value.value(),
         )
 
         file_structure_choice = self.rule_file_structure_severity.currentData()

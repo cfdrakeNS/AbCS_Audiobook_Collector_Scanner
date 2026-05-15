@@ -386,6 +386,8 @@ class ImportValidator:
             "author contains unknown or various",
             "title below minimum length",
             "folder path does not match expected structure",
+            "book length below minimum",
+            "book length above maximum",
         ]
         if any(warn in normalized_lower for warn in warning_errors):
             return "warning"

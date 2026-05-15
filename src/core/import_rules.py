@@ -87,6 +87,20 @@ class ImportRulesEngine:
                 default_severity="warning",
             ),
             ValidationRule(
+                "minimum_book_length",
+                self._rule_minimum_book_length,
+                settings_key="minimum_book_length",
+                default_enabled=False,
+                default_severity="warning",
+            ),
+            ValidationRule(
+                "maximum_book_length",
+                self._rule_maximum_book_length,
+                settings_key="maximum_book_length",
+                default_enabled=False,
+                default_severity="warning",
+            ),
+            ValidationRule(
                 "year_out_of_range",
                 self._rule_year_out_of_range,
                 settings_key="year_out_of_range",
@@ -105,10 +119,14 @@ class ImportRulesEngine:
             ("Author contains Unknown or Various", "unknown_or_various_author"),
             ("Title below minimum length", "minimum_title_length"),
             ("Folder path does not match expected structure", "file_structure"),
+            ("Book length below minimum", "minimum_book_length"),
+            ("Book length above maximum", "maximum_book_length"),
             ("Year is not a valid number", "year_out_of_range"),
             ("Year outside allowed range", "year_out_of_range"),
         )
         self.min_title_length = 3
+        self.min_book_length_minutes = 0
+        self.max_book_length_hours = 0
         self.file_structure_pattern = "author_title"
         self.min_year = 1801
         self.max_year = datetime.now().year
@@ -139,6 +157,16 @@ class ImportRulesEngine:
         self.min_title_length = self.settings.value(
             "import/rules/minimum_title_length/value",
             3,
+            type=int,
+        )
+        self.min_book_length_minutes = self.settings.value(
+            "import/rules/minimum_book_length/value",
+            0,
+            type=int,
+        )
+        self.max_book_length_hours = self.settings.value(
+            "import/rules/maximum_book_length/value",
+            0,
             type=int,
         )
         self.file_structure_pattern = self.settings.value(
@@ -220,7 +248,8 @@ class ImportRulesEngine:
             return ["Title in Author name"]
         return []
 
-    def _rule_unknown_or_various_author(self, book: Dict[str, Any]) -> List[str]:
+    @staticmethod
+    def _rule_unknown_or_various_author(book: Dict[str, Any]) -> List[str]:
         author = (book.get("author") or "").strip().lower()
         if not author:
             return []
@@ -236,6 +265,37 @@ class ImportRulesEngine:
             return [
                 f"Title below minimum length ({self.min_title_length})"
             ]
+        return []
+
+    @staticmethod
+    def _book_length_minutes(book: Dict[str, Any]) -> int:
+        try:
+            hours = int(book.get("time_hours") or 0)
+        except (TypeError, ValueError):
+            hours = 0
+        try:
+            minutes = int(book.get("time_minutes") or 0)
+        except (TypeError, ValueError):
+            minutes = 0
+        return max(0, hours * 60 + minutes)
+
+    def _rule_minimum_book_length(self, book: Dict[str, Any]) -> List[str]:
+        minimum = max(0, int(self.min_book_length_minutes or 0))
+        if minimum <= 0:
+            return []
+        length = self._book_length_minutes(book)
+        if length and length < minimum:
+            return [f"Book length below minimum ({minimum} minutes)"]
+        return []
+
+    def _rule_maximum_book_length(self, book: Dict[str, Any]) -> List[str]:
+        maximum_hours = max(0, int(self.max_book_length_hours or 0))
+        if maximum_hours <= 0:
+            return []
+        length = self._book_length_minutes(book)
+        maximum = maximum_hours * 60
+        if length > maximum:
+            return [f"Book length above maximum ({maximum_hours} hours)"]
         return []
 
     def _rule_file_structure(self, book: Dict[str, Any]) -> List[str]:

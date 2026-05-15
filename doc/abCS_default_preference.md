@@ -11,6 +11,8 @@
  - title in author: error
  - unknown/various: error
  - min title length: 3
+ - minimum book length in minutes: 0, disabled
+ - maximum book length in hours: 0, disabled
  - Duplicate match: title + author + year
  - fuzzy duplicate %: 90
  - File structure warning 
