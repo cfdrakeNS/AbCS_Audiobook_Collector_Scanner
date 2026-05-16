@@ -20,7 +20,7 @@ class MinimalTestWindow(QDialog):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Accessibility Test")
+        self.setWindowTitle("Accessibility Test Window")
         self.setAccessibleName("Accessibility Test Window")
         
         # Basic setup - need app instance for UIScaler
@@ -50,7 +50,7 @@ class MinimalTestWindow(QDialog):
         
         # Set initial status
         self.set_status("Ready")
-        announce_dialog_opened(self, "Accessibility Test")
+        announce_dialog_opened(self, "Accessibility Test Window")
     
     def setup_shortcuts(self):
         """Setup shortcuts - exact copy from import_detail."""

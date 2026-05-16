@@ -33,7 +33,7 @@ def window(qapp):
 
 
 def test_minimal_accessibility_window_constructs(window):
-    assert window.windowTitle() == "Accessibility Test"
+    assert window.windowTitle() == "Accessibility Test Window"
     assert window.accessibleName() == "Accessibility Test Window"
     assert hasattr(window, "status_bar")
 

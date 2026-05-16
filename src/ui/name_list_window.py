@@ -76,6 +76,9 @@ class NameListWindow(QDialog):
             announce=True,
         )
 
+    def on_alt_f_pressed(self):
+        self.on_clear_find()
+
     def on_find_text_changed(self, text):
         # Real-time filtering as user types - manual implementation for QTableWidget
         search_text = text.strip().lower()
@@ -409,6 +412,9 @@ class NameListWindow(QDialog):
 
         if source == self.table and event.type() == QEvent.KeyPress:
             key = event.key()
+            if key in (Qt.Key_Return, Qt.Key_Enter):
+                event.accept()
+                return True
             if key == Qt.Key_Tab and not (event.modifiers() & Qt.ShiftModifier):
                 next_footer_button = self.edit_button
                 for button in (

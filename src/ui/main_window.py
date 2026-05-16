@@ -384,9 +384,9 @@ class MainWindow(QMainWindow):
         else:
             msg = key
         if direction:
-            self.sort_label.setText(f"Sorted: {msg} ({direction})")
+            self.sort_label.setText(f"Sorted by: {msg} ({direction})")
         else:
-            self.sort_label.setText(f"Sorted: {msg}")
+            self.sort_label.setText(f"Sorted by: {msg}")
 
     def __init__(
         self, db: DatabaseManager, scaler: UIScaler, theme_manager: ThemeManager
@@ -468,6 +468,11 @@ class MainWindow(QMainWindow):
         # Window settings
         version_str = get_app_version()
         self.setWindowTitle(f"AbCS - Audio Book Collector Scanner {version_str}")
+        self.setAccessibleName("AbCS Audio Book Collector Scanner main window")
+        self.setAccessibleDescription(
+            "Main window for browsing and managing the audiobook collection"
+        )
+        self.setFocusPolicy(Qt.StrongFocus)
         # Larger default size for better column visibility
         self.resize(1400, 800)
         # mw#22: Minimum size to prevent columns from being cut off
@@ -520,6 +525,19 @@ class MainWindow(QMainWindow):
 
         # Menu bar
         self.create_menu_bar()
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused_widget = self.focusWidget()
+            if focused_widget in (
+                self.update_button,
+                self.delete_button,
+                self.export_button,
+            ):
+                focused_widget.click()
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def create_header(self) -> QHBoxLayout:
         """Create header with filters and search."""
@@ -607,6 +625,7 @@ class MainWindow(QMainWindow):
     def create_table(self):
         """Create books table."""
         self.table = BookTableView()
+        self.book_list = self.table
         self.table.setAccessibleName("Audio books")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
@@ -752,8 +771,8 @@ class MainWindow(QMainWindow):
         self.update_button.setAccessibleName("Update selected books")
         self.update_button.setAccessibleDescription("Update selected books - Alt+U")
         self.update_button.setFocusPolicy(Qt.StrongFocus)
-        self.update_button.setAutoDefault(True)
-        self.update_button.setDefault(True)
+        self.update_button.setAutoDefault(False)
+        self.update_button.setDefault(False)
         self.update_button.clicked.connect(self.on_update_clicked)
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
@@ -764,21 +783,21 @@ class MainWindow(QMainWindow):
         self.delete_button.setAccessibleName("Delete selected books")
         self.delete_button.setAccessibleDescription("Delete selected books - Alt+D")
         self.delete_button.setFocusPolicy(Qt.StrongFocus)
-        self.delete_button.setAutoDefault(True)
-        self.delete_button.setDefault(True)
+        self.delete_button.setAutoDefault(False)
+        self.delete_button.setDefault(False)
         self.delete_button.clicked.connect(self.on_delete_clicked)
         self.delete_button.setVisible(False)
         layout.addWidget(self.delete_button)
 
         # Export button (only visible in duplicate mode)
-        self.export_button = QPushButton("E&xport Duplicates")
+        self.export_button = QPushButton("Export Duplicates")
         self.export_button.setAccessibleName("Export duplicate books to CSV")
         self.export_button.setAccessibleDescription(
             "Export duplicate books to CSV - Alt+X"
         )
         self.export_button.setFocusPolicy(Qt.StrongFocus)
-        self.export_button.setAutoDefault(True)
-        self.export_button.setDefault(True)
+        self.export_button.setAutoDefault(False)
+        self.export_button.setDefault(False)
         self.export_button.clicked.connect(self.on_export_duplicates)
         self.export_button.setVisible(False)
         layout.addWidget(self.export_button)
@@ -867,7 +886,7 @@ class MainWindow(QMainWindow):
         self._rebuild_read_filter_menu()
 
         # Phase 2: Reading History (accessed via menu Alt+V then H)
-        reading_history_action = QAction("Reading &History", self)
+        reading_history_action = QAction("Reading &History (Reading History)", self)
         reading_history_action.triggered.connect(self.on_reading_history)
         self.view_menu.addAction(reading_history_action)
 
@@ -953,8 +972,11 @@ class MainWindow(QMainWindow):
 
         # Alt+Key shortcuts (centralized)
         callback_map = {
+            "book_list": lambda: self.table.setFocus(Qt.ShortcutFocusReason),
             "update_button": self.on_update_clicked,  # Alt+U
             "delete_button": self.on_delete_clicked,  # Alt+D
+            "export_button": self.on_export_duplicates,  # Alt+X
+            "cancel_button": self.on_escape_pressed,
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.MAIN_WINDOW, callback_map

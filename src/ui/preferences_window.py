@@ -474,6 +474,9 @@ class PreferencesWindow(QDialog):
         self.rule_min_book_length_value.setAccessibleName(
             "Minimum book length in minutes value"
         )
+        self.rule_min_book_length_value.setAccessibleDescription(
+            "Minimum audiobook length in minutes. Zero disables the length threshold when severity is None"
+        )
         self.rule_min_book_length_severity = QComboBox()
         self.rule_min_book_length_severity.setAccessibleName(
             "Minimum book length severity"
@@ -496,6 +499,9 @@ class PreferencesWindow(QDialog):
         self.rule_max_book_length_value.setRange(0, 10000)
         self.rule_max_book_length_value.setAccessibleName(
             "Maximum book length in hours value"
+        )
+        self.rule_max_book_length_value.setAccessibleDescription(
+            "Maximum audiobook length in hours. Zero disables the length threshold when severity is None"
         )
         self.rule_max_book_length_severity = QComboBox()
         self.rule_max_book_length_severity.setAccessibleName(
@@ -622,7 +628,7 @@ class PreferencesWindow(QDialog):
         self.status_bar.setSizeGripEnabled(False)
         footer_layout.addWidget(self.status_bar, 1)
 
-        self.restore_defaults_button = QPushButton("Restore D&efaults")
+        self.restore_defaults_button = QPushButton("Restore Defaults")
         self.restore_defaults_button.setAccessibleName("Restore Defaults")
         self.restore_defaults_button.setAccessibleDescription(
             "Reset all preferences to default values - Alt+R"
@@ -634,8 +640,8 @@ class PreferencesWindow(QDialog):
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
         self.save_button.setAccessibleDescription("Save preferences and close - Alt+S")
-        self.save_button.setDefault(True)
-        self.save_button.setAutoDefault(True)
+        self.save_button.setDefault(False)
+        self.save_button.setAutoDefault(False)
         footer_layout.addWidget(self.save_button)
 
         layout.addLayout(footer_layout)

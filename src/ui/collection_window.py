@@ -218,6 +218,8 @@ class CollectionWindow(QDialog):
             self.delete_button,
         ):
             button.setStyleSheet(button_style)
+            button.setDefault(False)
+            button.setAutoDefault(False)
             button.installEventFilter(self)
 
             self.installEventFilter(self)
@@ -749,6 +751,9 @@ class CollectionWindow(QDialog):
 
     def accessible_table_key_press(self, event):
         """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            event.accept()
+            return
         if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
             self.focusNextChild()
             event.accept()

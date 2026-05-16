@@ -1029,7 +1029,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.year_spin)
         row3_layout.addSpacing(40)
 
-        time_label = QLabel("&Time:")
+        time_label = QLabel("Ti&me:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setInputMask("99:99;_")

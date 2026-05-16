@@ -108,7 +108,7 @@ class BackupRestoreWindow(QDialog):
         layout.addWidget(self.backup_list, 1)
 
         browse_layout = QHBoxLayout()
-        self.browse_button = QPushButton("Br&owse")
+        self.browse_button = QPushButton("Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
             "Browse for a backup file to restore - Alt+W"
@@ -193,7 +193,6 @@ class BackupRestoreWindow(QDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             "backup_list": lambda: self.focus_backup_list(),
-            "browse_button": lambda: self.on_browse(),
             "backup_button": lambda: self.on_backup(),
             "restore_path_edit": lambda: self.focus_restore_file(),
             "restore_button": lambda: self.on_restore(),
@@ -214,6 +213,13 @@ class BackupRestoreWindow(QDialog):
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+    def keyPressEvent(self, event):
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+            self.on_browse()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def install_event_filters(self):
         """Install key event filters on dialog and key child controls."""

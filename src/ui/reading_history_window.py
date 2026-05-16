@@ -80,6 +80,7 @@ class ReadingHistoryWindow(QDialog):
         self.setAccessibleDescription(
             "Window showing reading statistics and history with tabs for General, Year, Month, and Date Range views"
         )
+        self.setFocusPolicy(Qt.StrongFocus)
         self.setMinimumSize(800, 600)
         self.resize(1200, 800)
 
@@ -109,6 +110,10 @@ class ReadingHistoryWindow(QDialog):
 
         # Status bar
         self.status_bar = QStatusBar()
+        self.status_bar.setAccessibleName("Reading history status")
+        self.status_bar.setAccessibleDescription(
+            "Current Reading History window status message"
+        )
         main_layout.addWidget(self.status_bar)
 
         # Connect signals
@@ -211,7 +216,7 @@ class ReadingHistoryWindow(QDialog):
         self.general_tab_layout.addWidget(stats_group)
         self.general_tab_layout.addStretch()
 
-        self.tab_widget.addTab(general_widget, "&General")
+        self.tab_widget.addTab(general_widget, "General")
 
     def create_year_tab(self):
         """Create Year tab with yearly breakdown."""
@@ -254,7 +259,7 @@ class ReadingHistoryWindow(QDialog):
         self.year_table.setColumnWidth(2, 80)  # Total Hours
 
         year_layout.addWidget(self.year_table)
-        self.tab_widget.addTab(year_widget, "&Year")
+        self.tab_widget.addTab(year_widget, "Year")
 
     def create_month_tab(self):
         """Create Month tab with monthly breakdown."""
@@ -299,7 +304,7 @@ class ReadingHistoryWindow(QDialog):
         self.month_table.setColumnWidth(3, 80)  # Total Hours
 
         month_layout.addWidget(self.month_table)
-        self.tab_widget.addTab(month_widget, "&Month")
+        self.tab_widget.addTab(month_widget, "Month")
 
     def create_date_range_tab(self):
         """Create Date Range tab with filtering."""
@@ -412,7 +417,7 @@ class ReadingHistoryWindow(QDialog):
 
         range_layout.addWidget(self.range_table)
 
-        self.tab_widget.addTab(range_widget, "Date &Range")
+        self.tab_widget.addTab(range_widget, "Date Range")
 
         # Set explicit tab order for predictable screen reader navigation
         self.setTabOrder(self.start_date_edit, self.end_date_edit)
@@ -612,6 +617,9 @@ class ReadingHistoryWindow(QDialog):
 
         monthly_data = stats.get("monthly_breakdown", [])
         self.populate_month_table(monthly_data)
+
+    def load_general_stats(self):
+        return self.load_summary_data()
 
     def update_general_stats(self, stats):
         """Update general statistics table."""

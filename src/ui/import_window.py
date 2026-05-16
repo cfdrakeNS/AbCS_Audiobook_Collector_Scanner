@@ -386,12 +386,13 @@ class ImportWindow(QDialog):
         header_layout.addWidget(folder_label)
         header_layout.addWidget(self.folder_edit, 1)
 
-        self.browse_button = QPushButton("Bro&wse")
+        self.browse_button = QPushButton("Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
             "Browse for a folder to scan - Alt+W"
         )
         self.browse_button.setDefault(False)
+        self.browse_button.setAutoDefault(False)
         header_layout.addWidget(self.browse_button)
 
         self.scan_button = QPushButton("Import")
@@ -400,7 +401,7 @@ class ImportWindow(QDialog):
             "Import audio files from the selected folder - Alt+I"
         )
         self.scan_button.setDefault(False)
-        self.scan_button.setAutoDefault(True)
+        self.scan_button.setAutoDefault(False)
         self.scan_button.setEnabled(False)
         header_layout.addWidget(self.scan_button)
 
@@ -489,16 +490,16 @@ class ImportWindow(QDialog):
             "Add selected valid items - Alt+S"
         )
         self.import_selected_button.setDefault(False)
-        self.import_selected_button.setAutoDefault(True)
+        self.import_selected_button.setAutoDefault(False)
         footer_layout.addWidget(self.import_selected_button)
 
-        self.export_button = QPushButton("E&xport")
+        self.export_button = QPushButton("Export")
         self.export_button.setAccessibleName("Export")
         self.export_button.setAccessibleDescription(
             "Export current import review list to CSV spreadsheet - Alt+X"
         )
         self.export_button.setDefault(False)
-        self.export_button.setAutoDefault(True)
+        self.export_button.setAutoDefault(False)
         footer_layout.addWidget(self.export_button)
 
         layout.addLayout(footer_layout)
@@ -1348,8 +1349,6 @@ class ImportWindow(QDialog):
 
         target_collection_id = self._get_target_collection_id()
         if target_collection_id is None:
-            from PySide6.QtWidgets import QMessageBox
-
             QMessageBox.warning(
                 self,
                 "Collection Required",
