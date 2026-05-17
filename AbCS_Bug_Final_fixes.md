@@ -1,43 +1,23 @@
 # Final bug fixes
-
 1. complete - update window - shortcut alt=b replace with alt+l jump to list update shortcuts.py and centralized chortcuts
-
 2. complete - readh_history - check the layout and formatting it has issues with the tab Selector and buttons not following theme
-
 3. complete - main centre justify win read date
-
 4. complete - Book detail 1. After save or delete move focus to title. 2 after fetch web info is successful move focus to plot if not successful move focus to title.
-
 5. complete - web metadata win when web info is returned set the focus to plot if no data returned set the focus to title.
-
 6. complete - read history win date range tab -  when 1st open set start date previous 3 month date from current date. Set end date to current
-
 7. complete - read history win change alt+b to be alt+l update centralized shortcuts anf f1 menu
-
 8. complete - main win view->collection not updating after return from backup/h_restore or book/h_list/h_import windows
-
 9. complete - book/h_list/h_import win - read date tester say his date are dd-mm-yy add logic to check date format
-
 10. complete - import detail make files, bitrate, size, path read only. Time fields needs a mask e.g. 12:34 as if you type in 1234 and move focus no msg. remove the msg "there are no changes to save" and change the save button so it is hidden until the window is dirty. like book/h_detail works
-
 11. complete - book detail - Time fields needs same format fix as in import detail
-
 12. complete - preferences and book list import win - dark themes were not showing qboxes text
-
 13. complete - read history win - remove lengh column
-
 14. complete - queries.py - collection active mot being applied.  when active is false the books in the collection to the app they don't exist.
-
 15. collection win save button not working for alt+s
-
 16. complete - Issue status bar announcing twice same with alt+/ reading status bar twice. the centralized routine must being called twice check all calls in all windows
-
 17. complete - read history win general tab has showing the status bar for date range
-
 18. complete - webh_metadata when called from main and no data found now shows popup again (No Web Data Found) and restores focus to table.
-
 19. complete - webh_metadata source checking optimized: removed redundant refresh retry loop from main/bookh_details call path. now one call uses WebBookAPI's internal cascade (Google -> Open Library -> WikiData), reducing repeated network waits.
-
 20. complete - main window F1/help/status hint now shows Escape for cancel (not Alt+L) check other shortcuts that are centralized in shortcuts.py
 
 21. complete - reading history window: month tab month field widened, date range tab date field widened for accessibility
@@ -191,19 +171,18 @@
 95. Accessible events – change timing from hard coded 300ms to be based on screen reader; jaws 300ms, nvda 1500ms, orca 800ms. No screen reader 0ms. See screen_reader as it check for a screen reader.
 
 96. import window –
-
     1. the import should be applying the format filter prior to scanning the file when it creates the directory list. Improve import time in some cases.  
-
     2. check to see why there is hard coded “reader” text. Reader should be found by checking the composer tag then if empty look in comments for the words defined in the reader keywords in preferences window.
-
     3. 2. Comment are not accumulating. If not the same they should be accumulated. Some books have plot in comments.
-
 97. Statistic window -
-
     1. collection that have zero books are not showing
-
     2. change the table so that the label and the value speak as you arrow up/down
 
+98. import window 
+   1. selecting not working 
+   2. table row are being announced by jaws 
+   3. alt+x is not working for export button 
+   4. don't include trimmed author or title in corrected list 
 
 # performance tuining bugs
 

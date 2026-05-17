@@ -1,6 +1,6 @@
 # Plan
 
-## Goal
+## Go.al
 
 Improve the visual_appeal_sighted_users **without weakening screen reader accessibility**.
 
