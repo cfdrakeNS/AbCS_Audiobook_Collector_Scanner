@@ -47,6 +47,12 @@ This gives the app more visual structure while keeping:
 - **Import window**
 - **Preferences window**
 
+## Shortcut consistency notes
+
+- **List/table focus**
+  - Use `Alt+L` as the app-standard shortcut for moving focus to the primary list or table.
+  - Reading History should not use `Alt+B` for table focus.
+
 # Phase 2: Icons Without Accessibility Regression
 
 ## What will change

@@ -110,10 +110,8 @@ class ReadingHistoryWindow(QDialog):
 
         # Status bar
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("Reading history status")
-        self.status_bar.setAccessibleDescription(
-            "Current Reading History window status message"
-        )
+        self.status_bar.setAccessibleName(self._default_status_message)
+        self.status_bar.setAccessibleDescription("")
         main_layout.addWidget(self.status_bar)
 
         # Connect signals
@@ -802,6 +800,8 @@ class ReadingHistoryWindow(QDialog):
         """Read only the currently visible status bar message (Alt+/)."""
         if QAccessible.isActive():
             status_text = self.status_bar.currentMessage()
+            self.status_bar.setAccessibleName(status_text)
+            self.status_bar.setAccessibleDescription("")
             announce_status_message(
                 self.status_bar,
                 status_text,
@@ -881,6 +881,8 @@ class ReadingHistoryWindow(QDialog):
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
         self._default_status_message = message
+        self.status_bar.setAccessibleName(message)
+        self.status_bar.setAccessibleDescription("")
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def keyPressEvent(self, event):

@@ -451,6 +451,7 @@ class MainWindow(QMainWindow):
 
         # Setup UI
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.setup_shortcuts()
 
         # Connect to scaler changes to update header control heights
@@ -522,6 +523,15 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
+        self.status_bar.setStyleSheet(
+            """
+            QStatusBar {
+                border-top: 1px solid palette(mid);
+                padding: 2px 6px;
+                background-color: palette(base);
+            }
+            """
+        )
 
         # Menu bar
         self.create_menu_bar()
@@ -556,12 +566,14 @@ class MainWindow(QMainWindow):
         # Button sizing - compact height
         button_stylesheet = f"""
             QPushButton {{
-                padding: 4px 12px;
+                padding: 5px 14px;
                 min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
+                border: 1px solid palette(mid);
+                border-radius: 5px;
                 background-color: palette(button);
+            }}
+            QPushButton:hover {{
+                border: 1px solid palette(highlight);
             }}
             QPushButton:focus {{
                 background-color: palette(highlight);
@@ -655,6 +667,17 @@ class MainWindow(QMainWindow):
         # Apply centralized F1 popup style to table only
         self.table.setStyleSheet(
             """
+            QHeaderView::section {
+                border: 1px solid palette(mid);
+                padding: 4px;
+                background-color: palette(button);
+                font-weight: bold;
+            }
+            QTableView {
+                border: 1px solid palette(mid);
+                border-radius: 5px;
+                gridline-color: palette(mid);
+            }
             QTableView::item:hover {
                 background-color: palette(base);
                 color: palette(text);
@@ -803,6 +826,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.export_button)
 
         return layout
+
+    def apply_visual_tooltips(self):
+        tooltip_map = {
+            self.table: "Browse the audiobook collection",
+            self.update_button: "Update selected books",
+            self.delete_button: "Delete selected books",
+            self.export_button: "Export duplicate books to CSV",
+            self.status_bar: "Current application status",
+        }
+        if hasattr(self, "sort_label"):
+            tooltip_map[self.sort_label] = "Current sort order"
+        for widget, tooltip in tooltip_map.items():
+            widget.setToolTip(tooltip)
 
     def create_menu_bar(self):
         """Create menu bar."""

@@ -57,7 +57,8 @@ def test_main_window_shortcut_registry_removes_legacy_alt_keys():
 
     assert "R" not in keys
     assert "O" not in keys
-    assert "B" in keys
+    assert "B" not in keys
+    assert "L" in keys
     assert "U" in keys
 
 

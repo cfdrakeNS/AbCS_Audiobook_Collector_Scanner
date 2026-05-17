@@ -112,6 +112,7 @@ class PreferencesWindow(QDialog):
         self._default_status_message = "Ready"
 
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.install_alt_key_filters()
         self.apply_control_styles()
         self.load_settings()
@@ -620,6 +621,15 @@ class PreferencesWindow(QDialog):
         self.autocorrect_layout.addStretch(1)
 
         self.content_layout.addWidget(import_group)
+        self._card_groups = (
+            display_group,
+            import_group,
+            source_scope_group,
+            fallback_group,
+            validation_group,
+            rules_group,
+            self.autocorrect_group,
+        )
 
         # Footer section: Status bar and action buttons
         footer_layout = QHBoxLayout()
@@ -646,6 +656,41 @@ class PreferencesWindow(QDialog):
 
         layout.addLayout(footer_layout)
 
+    def apply_visual_tooltips(self):
+        tooltip_map = {
+            self.theme_combo: "Choose the application color theme",
+            self.preset_combo: "Choose a preset font scaling level",
+            self.zoom_spin: "Set the interface zoom percentage",
+            self.import_dir_edit: "Default folder used for audiobook imports",
+            self.browse_button: "Choose an import folder",
+            self.import_scenario_combo: "Choose how imports are interpreted",
+            self.scenario_description_edit: "Summary of the selected import scenario",
+            self.author_fallback_checkbox: "Use folder names when author metadata is missing",
+            self.title_fallback_checkbox: "Use file names when title metadata is missing",
+            self.reader_keywords_edit: "Comma-separated words used to detect narrators in comments",
+            self.rules_section_text: "Summary of validation rules",
+            self.rule_author_in_title_severity: "Set how Author in Title findings are reported",
+            self.rule_title_in_author_severity: "Set how Title in Author findings are reported",
+            self.rule_unknown_author_severity: "Set how Unknown or Various author findings are reported",
+            self.rule_min_title_value: "Minimum allowed title length",
+            self.rule_min_title_severity: "Set how minimum title length findings are reported",
+            self.rule_min_book_length_value: "Flag books shorter than this many minutes",
+            self.rule_min_book_length_severity: "Set how short book findings are reported",
+            self.rule_max_book_length_value: "Flag books longer than this many hours",
+            self.rule_max_book_length_severity: "Set how long book findings are reported",
+            self.duplicate_match_combo: "Choose how duplicate checks compare collections",
+            self.duplicate_fuzzy_spin: "Set fuzzy duplicate matching threshold",
+            self.rule_file_structure_pattern: "Choose the expected import folder structure",
+            self.rule_file_structure_severity: "Set how file structure findings are reported",
+            self.rule_year_quality_severity: "Set how year consistency findings are reported",
+            self.restore_defaults_button: "Restore recommended default settings",
+            self.save_button: "Save preferences and close",
+        }
+        for widget, tooltip in tooltip_map.items():
+            widget.setToolTip(tooltip)
+        for key, checkbox in self.format_checks.items():
+            checkbox.setToolTip(f"Include {key.upper()} files in scans")
+
     def _apply_compact_combo_widths(self):
         """Apply content-fit width to all combo boxes in Preferences."""
         # This method is now a no-op because _fit_combo_to_text is missing
@@ -671,21 +716,57 @@ class PreferencesWindow(QDialog):
             }}
         """
 
+        card_style = f"""
+            QGroupBox {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(8)}px;
+                margin-top: {self.scaler.get_scaled_size(12)}px;
+                padding: {self.scaler.get_scaled_size(10)}px;
+                background-color: palette(base);
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {self.scaler.get_scaled_size(12)}px;
+                padding: 0 {self.scaler.get_scaled_size(6)}px;
+                color: palette(window-text);
+            }}
+        """
+
         button_style = f"""
             QPushButton {{
-                padding: 4px 12px;
-                min-height: {max(scaled_height - 4, 14)}px;
-                max-height: {max(scaled_height - 4, 14)}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
+                padding: 5px 14px;
+                min-height: {max(scaled_height, 18)}px;
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
                 background-color: palette(button);
+            }}
+            QPushButton:hover {{
+                border: 1px solid palette(highlight);
             }}
             QPushButton:focus {{
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
                 border: 2px solid palette(dark);
             }}
+            QPushButton#primaryActionButton {{
+                font-weight: bold;
+            }}
         """
+
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        for group in getattr(self, "_card_groups", ()):
+            group.setStyleSheet(card_style)
+
+        self.save_button.setObjectName("primaryActionButton")
+        self.status_bar.setStyleSheet(status_style)
 
         self.theme_combo.setStyleSheet(combo_style)
         self.preset_combo.setStyleSheet(combo_style)

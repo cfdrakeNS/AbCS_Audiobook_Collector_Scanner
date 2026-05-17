@@ -133,7 +133,7 @@ IMPORT_WINDOW_SHORTCUTS = {
     "I": ("Import", "scan_button"),
     "S": ("Import Selected", "import_selected_button"),
     "L": ("Focus import list table", "import_list_table"),
-    "X": ("Export list to CSV", "export_csv_button"),
+    "X": ("Export list to CSV", "export_button"),
 }
 
 # Book List Import Window

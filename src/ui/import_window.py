@@ -20,7 +20,6 @@ from PySide6.QtCore import (
     Qt,
     QSettings,
     QTimer,
-    QItemSelectionModel,
     QEvent,
     QModelIndex,
 )
@@ -259,8 +258,8 @@ class ImportWindow(QDialog):
         self._last_header_sort_column = self.COL_AUTHOR
         self._last_header_sort_order = Qt.AscendingOrder
         self.setup_ui()
-        # Set default window size to 1300x800 (March 11)
         self.resize(1400, 800)
+        self.apply_visual_tooltips()
         self.install_alt_key_filters()
         self.apply_control_styles()
         self.load_preferences()
@@ -440,15 +439,14 @@ class ImportWindow(QDialog):
 
         # Use SelectItems so left/right arrow only highlights cell, not row
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.table.setSelectionMode(QAbstractItemView.NoSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setSectionsClickable(False)
         self.table.verticalHeader().setHighlightSections(False)
-        self.table.verticalHeader().setAccessibleName(
-            ""
-        )  # Prevent JAWS row announcements
+        self.table.verticalHeader().setAccessibleName("")
+        self.table.verticalHeader().setAccessibleDescription("")
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         header = self.table.horizontalHeader()
@@ -457,6 +455,8 @@ class ImportWindow(QDialog):
         header.setSectionsClickable(True)
         header.setSortIndicatorShown(True)
         header.setSortIndicator(self.COL_AUTHOR, Qt.AscendingOrder)
+        header.setAccessibleName("")
+        header.setAccessibleDescription("")
         # Disable Qt's built-in sorting - we handle sorting manually via header clicks
         self.table.setSortingEnabled(False)
 
@@ -512,6 +512,20 @@ class ImportWindow(QDialog):
         self.setTabOrder(self.table, self.import_selected_button)
         self.setTabOrder(self.import_selected_button, self.export_button)
 
+    def apply_visual_tooltips(self):
+        tooltip_map = {
+            self.collection_combo: "Choose the collection to receive imported books",
+            self.folder_edit: "Folder selected for scanning",
+            self.browse_button: "Choose an import folder",
+            self.scan_button: "Scan the selected folder for audiobooks",
+            self.error_filter_combo: "Filter the import review list by issue type",
+            self.table: "Review scanned books before adding them",
+            self.import_selected_button: "Add selected books to the collection",
+            self.export_button: "Export the current import review list to CSV",
+        }
+        for widget, tooltip in tooltip_map.items():
+            widget.setToolTip(tooltip)
+
     def apply_control_styles(self):
         """Apply consistent styling to inputs and buttons."""
         scale_pct = self.scaler.current_scale
@@ -525,19 +539,37 @@ class ImportWindow(QDialog):
 
         button_style = f"""
             QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
+                padding: 5px 14px;
+                min-height: {max(scaled_height, 18)}px;
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
                 background-color: palette(button);
+            }}
+            QPushButton:hover {{
+                border: 1px solid palette(highlight);
             }}
             QPushButton:focus {{
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
                 border: 2px solid palette(dark);
             }}
+            QPushButton#primaryActionButton {{
+                font-weight: bold;
+            }}
         """
+
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.scan_button.setObjectName("primaryActionButton")
+        self.import_selected_button.setObjectName("primaryActionButton")
+        self.status_bar.setStyleSheet(status_style)
 
         # Use theme manager styling for text boxes and combo boxes
         for widget in self.findChildren(QLineEdit):
@@ -553,7 +585,27 @@ class ImportWindow(QDialog):
 
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
-        self.table.setStyleSheet(build_accessible_f1_popup_style())
+        table_style = (
+            build_accessible_f1_popup_style()
+            + f"""
+            QHeaderView::section {{
+                border: 1px solid palette(mid);
+                padding: {self.scaler.get_scaled_size(4)}px;
+                background-color: palette(button);
+                font-weight: bold;
+            }}
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                gridline-color: palette(mid);
+            }}
+            QTableWidget::item:selected {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+            }}
+            """
+        )
+        self.table.setStyleSheet(table_style)
 
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
@@ -899,20 +951,16 @@ class ImportWindow(QDialog):
         # Repopulate with sorted data
         for row, item in enumerate(self.scanned_items):
             self.table.setItem(
-                row, self.COL_AUTHOR, QTableWidgetItem(item.get("author", ""))
+                row, self.COL_AUTHOR, self._cell_item(item.get("author", ""))
             )
             self.table.setItem(
-                row, self.COL_TITLE, QTableWidgetItem(item.get("title", ""))
+                row, self.COL_TITLE, self._cell_item(item.get("title", ""))
             )
+            self.table.setItem(row, self.COL_YEAR, self._cell_item(item.get("year") or ""))
             self.table.setItem(
-                row, self.COL_YEAR, QTableWidgetItem(str(item.get("year") or ""))
+                row, self.COL_ERROR, self._cell_item(item.get("error_summary", ""))
             )
-            self.table.setItem(
-                row, self.COL_ERROR, QTableWidgetItem(item.get("error_summary", ""))
-            )
-            self.table.setItem(
-                row, self.COL_PATH, QTableWidgetItem(item.get("folder", ""))
-            )
+            self.table.setItem(row, self.COL_PATH, self._cell_item(item.get("folder", "")))
 
         # PHASE 1 OPTIMIZATION: Re-enable updates
         self.table.setUpdatesEnabled(True)
@@ -973,6 +1021,13 @@ class ImportWindow(QDialog):
     @staticmethod
     def _is_fallback_error(error: str) -> bool:
         return str(error).strip().upper().startswith("F:")
+
+    @staticmethod
+    def _cell_item(text) -> QTableWidgetItem:
+        item = QTableWidgetItem(str(text or ""))
+        item.setData(Qt.AccessibleTextRole, item.text())
+        item.setData(Qt.AccessibleDescriptionRole, "")
+        return item
 
     @staticmethod
     def _is_correction_error(error: str) -> bool:
@@ -1658,26 +1713,26 @@ class ImportWindow(QDialog):
                     self.table.setItem(
                         table_row,
                         self.COL_AUTHOR,
-                        QTableWidgetItem(book.get("author", "")),
+                        self._cell_item(book.get("author", "")),
                     )
                     self.table.setItem(
                         table_row,
                         self.COL_TITLE,
-                        QTableWidgetItem(book.get("title", "")),
+                        self._cell_item(book.get("title", "")),
                     )
                     self.table.setItem(
                         table_row,
                         self.COL_YEAR,
-                        QTableWidgetItem(str(book.get("year") or "")),
+                        self._cell_item(book.get("year") or ""),
                     )
                     error_summary = self._format_error_summary(errors)
                     self.table.setItem(
-                        table_row, self.COL_ERROR, QTableWidgetItem(error_summary)
+                        table_row, self.COL_ERROR, self._cell_item(error_summary)
                     )
                     self.table.setItem(
                         table_row,
                         self.COL_PATH,
-                        QTableWidgetItem(book.get("folder", "")),
+                        self._cell_item(book.get("folder", "")),
                     )
 
                     self.scanned_items.append(
@@ -2089,7 +2144,7 @@ class ImportWindow(QDialog):
                         error_text + "; " if error_text else ""
                     ) + f"E: {str(exc)}"
                     self.table.setItem(
-                        row, self.COL_ERROR, QTableWidgetItem(combined_error)
+                        row, self.COL_ERROR, self._cell_item(combined_error)
                     )
 
                 if self.progress_window:
@@ -2188,23 +2243,23 @@ class ImportWindow(QDialog):
         self.table.setItem(
             row,
             self.COL_TITLE,
-            QTableWidgetItem(detail_window.book_data.get("title", "")),
+            self._cell_item(detail_window.book_data.get("title", "")),
         )
         self.table.setItem(
             row,
             self.COL_AUTHOR,
-            QTableWidgetItem(detail_window.book_data.get("author", "")),
+            self._cell_item(detail_window.book_data.get("author", "")),
         )
         self.table.setItem(
             row,
             self.COL_YEAR,
-            QTableWidgetItem(str(detail_window.book_data.get("year") or "")),
+            self._cell_item(detail_window.book_data.get("year") or ""),
         )
 
         row_errors = list(item.get("errors", []))
 
         error_summary = self._format_error_summary(row_errors) if row_errors else ""
-        self.table.setItem(row, self.COL_ERROR, QTableWidgetItem(error_summary))
+        self.table.setItem(row, self.COL_ERROR, self._cell_item(error_summary))
 
         if refresh_view:
             self._refresh_summary_from_items()
@@ -2443,29 +2498,23 @@ class ImportWindow(QDialog):
                 return
 
             if modifiers & Qt.ControlModifier:
-                col_count = self.table.columnCount()
-                model = self.table.selectionModel()
-                row_indexes = [
-                    self.table.model().index(row, col) for col in range(col_count)
-                ]
-
-                is_row_selected = all(model.isSelected(idx) for idx in row_indexes)
-
                 self._updating_selection_ui = True
-                flag = (
-                    QItemSelectionModel.Deselect
-                    if is_row_selected
-                    else QItemSelectionModel.Select
-                )
-                for idx in row_indexes:
-                    model.select(idx, flag)
+                self.table.clearSelection()
+                self.table.selectionModel().clearSelection()
                 self.table.setCurrentCell(row, index.column())
                 self._updating_selection_ui = False
 
-                if self.selection_anchor_row is None and not is_row_selected:
-                    self.selection_anchor_row = row
+                if row in self.selected_rows:
+                    self.selected_rows.remove(row)
+                else:
+                    self.selected_rows.add(row)
+                    if self.selection_anchor_row is None:
+                        self.selection_anchor_row = row
 
-                self.on_table_selection_changed()
+                if self.selected_rows:
+                    self.announce_selection()
+                else:
+                    self.restore_summary_status()
                 event.accept()
                 return
 
@@ -2676,7 +2725,7 @@ class ImportWindow(QDialog):
         self.announce_selection()
 
     def _select_row_range(self, anchor_row: int, target_row: int, current_col: int = 0):
-        """Select full rows between anchor and target using item selection mode."""
+        """Track selected rows without selecting full table rows in Qt."""
         row_count = self.table.rowCount()
         visible_rows = [r for r in range(row_count) if not self.table.isRowHidden(r)]
         if not visible_rows:
@@ -2691,25 +2740,15 @@ class ImportWindow(QDialog):
 
         self._updating_selection_ui = True
         self.table.selectionModel().clearSelection()
-
-        col_count = self.table.columnCount()
-        for row in range(start_row, end_row + 1):
-            if self.table.isRowHidden(row):
-                continue
-            for col in range(col_count):
-                index = self.table.model().index(row, col)
-                self.table.selectionModel().select(index, QItemSelectionModel.Select)
-
-        self.table.setCurrentCell(target_row, current_col)
-        self.table.setCurrentIndex(self.table.model().index(target_row, current_col))
-        self.table.scrollTo(self.table.model().index(target_row, current_col))
-        self._updating_selection_ui = False
-
         self.selected_rows = {
             row
             for row in range(start_row, end_row + 1)
             if not self.table.isRowHidden(row)
         }
+
+        self.table.setCurrentCell(target_row, current_col)
+        self.table.setCurrentIndex(self.table.model().index(target_row, current_col))
+        self._updating_selection_ui = False
         self.announce_selection()
 
     def resizeEvent(self, event):
