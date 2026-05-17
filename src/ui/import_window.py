@@ -889,7 +889,6 @@ class ImportWindow(QDialog):
             return
 
         # PHASE 1 OPTIMIZATION: Block updates and pre-size table
-        repopulate_start = time.perf_counter()
         self.table.setUpdatesEnabled(False)
         self.table.setSortingEnabled(False)
 
@@ -1517,12 +1516,10 @@ class ImportWindow(QDialog):
 
         # PHASE 2 OPTIMIZATION: Build optimized duplicate index once before loop
         # This replaces O(n²) checking with O(1) exact + O(k) fuzzy where k << n
-        index_build_start = time.perf_counter()
         dup_index = self.validator.build_duplicate_index(
             existing_list,
             target_collection_id=target_collection_id,
         )
-        index_build_time = time.perf_counter() - index_build_start
 
         fuzzy_enabled = self.validator.duplicate_fuzzy_threshold > 0
 
@@ -1540,7 +1537,6 @@ class ImportWindow(QDialog):
             # Only start transaction if not already in one (WAL mode may have implicit transaction)
             if not conn.in_transaction:
                 conn.execute("BEGIN")
-            auto_add_start = time.perf_counter()
             transaction_open = True
 
             # Update progress window to show add phase starting.
@@ -1555,7 +1551,6 @@ class ImportWindow(QDialog):
                 QApplication.processEvents()
 
             # PHASE 1 OPTIMIZATION: Block table repaint and sorting during batch load
-            table_opt_start = time.perf_counter()
             self.table.setUpdatesEnabled(False)
             self.table.setSortingEnabled(False)
 
@@ -1738,12 +1733,10 @@ class ImportWindow(QDialog):
             # PHASE 1 OPTIMIZATION: Re-enable table updates after batch load
             self.table.setUpdatesEnabled(True)
             # Note: Qt sorting stays disabled - we handle sorting manually
-            table_opt_elapsed = time.perf_counter() - table_opt_start
 
             if transaction_open:
                 conn.commit()
                 transaction_open = False
-                auto_add_elapsed = time.perf_counter() - auto_add_start
         except Exception:
             if transaction_open:
                 conn.rollback()
@@ -1835,8 +1828,6 @@ class ImportWindow(QDialog):
             duplicates=duplicate_count,
             added=added_count,
         )
-
-        total_elapsed = time.perf_counter() - scan_start
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
@@ -2024,7 +2015,6 @@ class ImportWindow(QDialog):
         failed = 0
         processed_valid = 0
         rows_to_remove = []
-        manual_add_start = time.perf_counter()
         conn = self.db.connect()
         transaction_open = False
 
@@ -2122,7 +2112,6 @@ class ImportWindow(QDialog):
             if transaction_open:
                 conn.commit()
                 transaction_open = False
-                manual_add_elapsed = time.perf_counter() - manual_add_start
 
             if rows_to_remove:
                 sorted_rows_to_remove = sorted(set(rows_to_remove))
