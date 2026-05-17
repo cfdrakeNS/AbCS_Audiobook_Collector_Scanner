@@ -3,55 +3,35 @@
 1. Read this document noting the false positives that are documented.
 2. Do a vulture scan of the code.
 3. Update the doc with your findings.
-4. Do not remove existing text; add your findings under the 'Actionable Items' section.
+4. Remove stale actionable entries after confirming they were already addressed; keep history and false-positive notes.
 
 ---
 
-# Actionable Items (Current - April 26, 2026)
+# Actionable Items (Current - May 17, 2026)
 
 Items that need verification or cleanup, organized by file:
 
-## src/build_config.py
-- **Line 2**: `TRIAL_BUILD` - Removed from build_trial.bat (unused legacy flag)
-- **Line 3**: `TRIAL_DAYS` - Removed from build_trial.bat (unused legacy flag)
+## Production Code
+- No current production cleanup items after the May 17 Import Window timing-variable cleanup.
+- Source-only scan still reports several callback, compatibility, and reserved-helper items outside Import Window; these are listed under Review Notes / False Positives and should not be removed without manual UI verification.
 
-## src/database/queries.py
-- **Line 669**: `total_time_hours` attribute - Keep (used by statistics display)
-- **Line 675**: `total_hours_read` attribute - Keep (used by statistics display)
-
-## src/ui/book_list_import_window.py
-- **Line 2043**: `get_or_create_book_list_collection` method - Not found in current code (may have been removed already)
-- **Line 1294**: `on_headers_toggled` method - Removed (orphaned slot method, never connected to checkbox)
-
-## src/ui/import_window.py
-- **Line 522**: `checkbox_style` variable - Removed (unused stylesheet definition)
-- **Line 563**: `table_style` variable - Removed (unused stylesheet definition)
-
-## src/ui/preferences_window.py
-- **Line 738**: `_sync_fallback_visual_alignment` method - Not found in current code (may have been removed already)
-- **Line 1199**: `focus_autocorrect_section` method - Removed (not connected to any keyboard shortcuts)
-
-## src/utils/book_helpers.py
-- **Line 14**: `apply_web_field` function - File deleted (entire module unused)
-- **Line 55**: `apply_author_field` function - File deleted (entire module unused)
-- **Line 90**: `apply_series_field` function - File deleted (entire module unused)
-
-## src/utils/text_utils.py
-- **Line 104**: `is_fuzzy_match` function - Removed (unused fuzzy matching utility)
-
-## src/web/web_book_api.py
-- **Line 65**: `_title_matches` method - Keep (well-tested helper, intentionally reserved for future use)
-- **Line 578**: `page_id` variable - Removed (changed loop to `for _, page_data in pages.items():`)
+## Tests
+- `test/test_reading_history_accessibility.py`: `date_range_layout` variable - Test-only Vulture finding; review before changing.
+- `test/test_reading_history_final_integration.py`: `alt_slush_works` and `operation_works` variables - Test-only findings; review before changing.
+- `test/test_shortcut_integration.py`: `shortcut_manager` fixture/variable - Test-only finding; may be pytest fixture behavior.
+- `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`, and repeated `isolated_qsettings` parameters - Test-only findings; likely pytest fixtures and should be handled carefully.
 
 ## Review Notes
-- `src/build_config.py` uses `TRIAL_BUILD_DATE` in `build_trial.bat`; do not remove.
-- `src/database/queries.py` attributes `total_time_hours` and `total_hours_read` are used by statistics display logic; keep.
-- `src/ui/book_list_import_window.py` `on_headers_toggled` is a real checkbox slot and is confirmed not to be a false positive. `get_or_create_book_list_collection` still requires dynamic usage search.
-- `src/ui/import_window.py` `checkbox_style` is used by `apply_control_styles()` and should remain.
-- `src/ui/preferences_window.py` methods `_sync_fallback_visual_alignment` and `focus_autocorrect_section` both appear to support layout/focus behavior and should be verified before removal.
-- `src/utils/book_helpers.py` helper functions are probably used as shared metadata helpers; reference search is required.
-- `src/utils/text_utils.py` `is_fuzzy_match` is a valid fuzzy matching utility; confirm call sites before deleting.
-- `src/web/web_book_api.py` `_title_matches` is an internal matching helper; `page_id` is a lint-only unused loop variable.
+- `src/build_config.py` uses `TRIAL_BUILD_DATE` in `src/main.py`; do not remove.
+- `src/database/queries.py` attributes `total_time_hours` and `total_hours_read` are used by statistics display/model logic; keep.
+- `src/ui/book_list_import_window.py` pandas fallback `DataFrame` remains a valid false positive.
+- `src/ui/import_window.py` `scan_files_processed` and `scan_total_files` are used through nested progress callback state; keep unless the scan progress logic is refactored.
+- `src/accessibility/shortcuts.py` `READING_HISTORY_SHORTCUTS` is a compatibility alias; verify callers before removing.
+- `src/ui/main_window.py` `book_list` is a compatibility/accessibility alias for the table; keep unless all tests and callers are updated.
+- `src/ui/name_list_window.py` `on_alt_f_pressed` is a shortcut callback; do not remove without keyboard testing.
+- `src/ui/reading_history_window.py` `load_general_stats` supports compatibility/general-tab behavior; verify before removing.
+- `src/web/web_book_api.py` `_title_matches` remains a reserved/tested helper; keep unless web matching tests and callers are updated.
+- Test-only Vulture findings should not be removed without confirming pytest fixture use and test intent.
 
 ---
 
@@ -69,9 +49,47 @@ These items are flagged by vulture but are actually used or required:
 ## src/ui/import_window.py
 - **Lines 1455-1465**: `scan_files_processed`, `scan_total_files` - Used via `nonlocal` in nested `on_progress` function
 
+## Tests
+- **pytest fixtures and fixture parameters**: Vulture may report fixtures or fixture arguments as unused even when pytest injects them for setup side effects.
+
+## Compatibility and callback references
+- **`src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS`** - Compatibility alias.
+- **`src/ui/main_window.py`: `book_list`** - Compatibility/accessibility alias for the main table.
+- **`src/ui/name_list_window.py`: `on_alt_f_pressed`** - Shortcut callback.
+- **`src/ui/reading_history_window.py`: `load_general_stats`** - Compatibility/general stats method.
+- **`src/web/web_book_api.py`: `_title_matches`** - Reserved/tested matching helper.
+
 ---
 
 # Cleanup History
+
+### May 17, 2026 — Vulture Findings Document Refresh
+
+**Scan run:**
+- `python -m vulture src test --min-confidence 60`
+- `python -m vulture src --min-confidence 60`
+
+**Actionable section refreshed:**
+- Removed stale actionable entries that were already documented as removed or already verified as keep/do-not-remove.
+- Removed current production findings from `src/ui/import_window.py` where timing variables were assigned but not read.
+- Kept test-only findings separate because pytest fixtures and test setup variables can be false positives.
+
+**Existing false positives confirmed:**
+- `src/database/connection.py`: `row_factory` remains a required SQLite idiom.
+- `src/ui/book_list_import_window.py`: fallback `DataFrame` class remains required when pandas is unavailable.
+- `src/ui/import_window.py`: `scan_files_processed` and `scan_total_files` remain part of nested scan-progress state.
+- `src/build_config.py`: `TRIAL_BUILD_DATE` remains active startup/trial logic and is used by `src/main.py`.
+- `src/database/models.py` / `src/database/queries.py`: `total_time_hours` and `total_hours_read` remain active statistics fields.
+- Source-only scan callback/compatibility findings were documented as keep/review items instead of removed.
+
+**Items already addressed and removed from Actionable Items:**
+- May 17 Import Window timing variables: `repopulate_start`, `index_build_time`, `table_opt_elapsed`, `auto_add_elapsed`, `total_elapsed`, `manual_add_elapsed`, `auto_add_start`, `table_opt_start`, and `manual_add_start`.
+- Legacy trial flags `TRIAL_BUILD` and `TRIAL_DAYS`.
+- Deleted `src/utils/book_helpers.py` module.
+- Removed `src/utils/text_utils.py:is_fuzzy_match`.
+- Removed old Import Window style/focus variables and methods documented below in cleanup history.
+- Removed old Preferences and Book List Import methods documented below in cleanup history.
+- Removed production `src/web/web_book_api.py:page_id`; remaining `page_id` references are in test/debug code.
 
 ### April 27, 2026 — Web Fetch Bug Fix
 
