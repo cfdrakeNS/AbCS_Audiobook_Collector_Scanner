@@ -269,6 +269,10 @@ Track accessibility and shortcut issues by window so fixes can be implemented an
 - **Fixed:** Browse button text no longer uses a Qt mnemonic.
 - **Fixed:** Export button text no longer uses a Qt mnemonic.
 - **Fixed:** Import Window action buttons are no longer auto-default buttons.
+- **Fixed:** Author/title corrected rows are no longer auto-added during scan.
+- **Result:** Author/title corrected rows remain in the import list with `C:` flags for review.
+- **Result:** Added counter counts clean auto-added books only; corrected counter includes corrected rows without inflating Errors/Warnings.
+- **Fixed:** Removed stale `Valid:` segment from final scan status because it no longer reflects the current import summary counters.
 - **Verified:** Targeted import regression tests passed.
 
 ---
@@ -299,22 +303,17 @@ These controls still use `&` in button or dialog button text. They need keyboard
 
 ## Import Detail Window
 
-- **Control:** `&Save`
-- **Expected shortcut:** `Alt+S`
-- **Planned check:** Verify `Alt+S` saves directly and does not only move focus.
-- **Possible fix:** Remove `&` from button text and rely on centralized shortcut handling.
-
-- **Control:** `&Discard`
-- **Expected shortcut:** `Alt+D`
-- **Planned check:** Verify `Alt+D` discards directly and does not only move focus.
-- **Possible fix:** Remove `&` from button text and rely on centralized shortcut handling.
+- **Status:** Fixed in current pass. Save and Discard no longer use `&` in button text.
+- **Result:** `Alt+S` and `Alt+D` are handled by a dedicated Import Detail shortcut context and trigger the button actions directly.
+- **Also fixed:** Save, Discard, Page Up, and Page Down return focus to the Title field for clearer screen reader context.
 
 ## Dialog Buttons
 
 - **Controls found:** `&Yes`, `&No`, `&Cancel`, `&Yes - Save`, `&No - Continue editing`, `Cance&l - Discard and close`
 - **Files observed:** `name_list_window.py`, `import_detail_window.py`
-- **Planned check:** Verify dialog mnemonics behave as expected inside modal message boxes.
-- **Possible fix:** Usually keep standard dialog mnemonics unless they conflict with window-level accessibility rules.
+- **Status:** Checked in current pass. Standard modal dialog mnemonics are retained.
+- **Result:** Dialog mnemonics remain local to modal message boxes and do not replace window-level shortcut handling.
+- **Fixed:** Added shared dialog-button accessibility helper and applied clear accessible names/descriptions to observed Name List and Import Detail unsaved-changes dialogs.
 
 ---
 

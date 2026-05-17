@@ -974,7 +974,10 @@ class NameListWindow(QDialog):
             return
 
         # If editing, show save changes dialog like other windows
-        from src.accessibility.style_helpers import build_accessible_message_box_style
+        from src.accessibility.style_helpers import (
+            build_accessible_message_box_style,
+            set_message_box_button_accessibility,
+        )
 
         from src.accessibility.icon_helper import get_app_icon
 
@@ -994,6 +997,17 @@ class NameListWindow(QDialog):
         msg.button(QMessageBox.Yes).setText("&Yes")
         msg.button(QMessageBox.No).setText("&No")
         msg.button(QMessageBox.Cancel).setText("&Cancel")
+        set_message_box_button_accessibility(
+            msg,
+            {
+                QMessageBox.Yes: ("Yes, save and close", "Save changes and close"),
+                QMessageBox.No: ("No, continue editing", "Return to editing"),
+                QMessageBox.Cancel: (
+                    "Cancel, discard changes and close",
+                    "Discard changes and close",
+                ),
+            },
+        )
 
         reply = msg.exec()
 

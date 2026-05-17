@@ -20,6 +20,7 @@ class ShortcutContext(Enum):
     NAMELIST_WINDOW = "namelist_window"
     READING_HISTORY_WINDOW = "reading_history_window"
     BOOK_LIST_IMPORT_WINDOW = "book_list_import_window"
+    IMPORT_DETAIL_WINDOW = "import_detail_window"
 
 
 COLLECTION_WINDOW_SHORTCUTS = {
@@ -90,6 +91,25 @@ BOOK_DETAILS_SHORTCUTS = {
     "W": ("Get web info", "get_web_details_button"),
     # "U" shortcut handled locally in book_details.py to trigger action
     "F1": ("Show help", "show_help"),
+}
+
+IMPORT_DETAIL_WINDOW_SHORTCUTS = {
+    "T": ("Title", "title_edit"),
+    "A": ("Author", "author_combo"),
+    "P": ("Plot", "comments_edit"),
+    "Y": ("Year", "year_spin"),
+    "M": ("Time", "time_edit"),
+    "R": ("Reader", "reader_edit"),
+    "I": ("Series", "series_combo"),
+    "G": ("Genre", "genre_combo"),
+    "C": ("Collection", "collection_combo"),
+    "F": ("Files", "files_edit"),
+    "B": ("Bitrate", "bitrate_edit"),
+    "Z": ("Size", "size_edit"),
+    "E": ("Errors", "errors_edit"),
+    "H": ("Path", "path_edit"),
+    "S": ("Save", "save_return_button"),
+    "D": ("Discard", "skip_button"),
 }
 
 WEB_METADATA_SHORTCUTS = {
@@ -171,6 +191,7 @@ class ShortcutManager(QObject):
     DUPLICATE_DIALOG_SHORTCUTS = DUPLICATE_DIALOG_SHORTCUTS
     MAIN_WINDOW_SHORTCUTS = MAIN_WINDOW_SHORTCUTS
     BOOK_DETAILS_SHORTCUTS = BOOK_DETAILS_SHORTCUTS
+    IMPORT_DETAIL_WINDOW_SHORTCUTS = IMPORT_DETAIL_WINDOW_SHORTCUTS
     WEB_METADATA_SHORTCUTS = WEB_METADATA_SHORTCUTS
     IMPORT_WINDOW_SHORTCUTS = IMPORT_WINDOW_SHORTCUTS
     BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = BOOK_LIST_IMPORT_WINDOW_SHORTCUTS
@@ -202,6 +223,8 @@ class ShortcutManager(QObject):
             shortcuts = MAIN_WINDOW_SHORTCUTS
         elif context == ShortcutContext.BOOK_DETAILS:
             shortcuts = BOOK_DETAILS_SHORTCUTS
+        elif context == ShortcutContext.IMPORT_DETAIL_WINDOW:
+            shortcuts = IMPORT_DETAIL_WINDOW_SHORTCUTS
         elif context == ShortcutContext.WEB_METADATA:
             shortcuts = WEB_METADATA_SHORTCUTS
         elif context == ShortcutContext.IMPORT_WINDOW:

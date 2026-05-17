@@ -41,6 +41,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     build_accessible_message_box_style,
     exec_styled_message_box,
+    set_message_box_button_accessibility,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -83,6 +84,16 @@ class ImportDetailWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
             button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            button_accessibility={
+                QMessageBox.Yes: (
+                    "Yes, save and continue",
+                    "Save changes and continue navigation",
+                ),
+                QMessageBox.No: (
+                    "No, stay and edit",
+                    "Return to editing this import item",
+                ),
+            },
             window_icon=get_app_icon(),
         )
         if reply == QMessageBox.Yes:
@@ -237,6 +248,9 @@ class ImportDetailWindow(QDialog):
         if current_focus is None:
             self.title_edit.setFocus(Qt.TabFocusReason)
 
+    def _focus_title_field(self):
+        QTimer.singleShot(0, lambda: self.title_edit.setFocus(Qt.TabFocusReason))
+
     def set_status(self, message: str, announce: bool = False):
         """Set status message on this dialog and mirror to parent import window."""
         self._default_status_message = message
@@ -355,6 +369,17 @@ class ImportDetailWindow(QDialog):
             msg.button(QMessageBox.Yes).setText("&Yes")
             msg.button(QMessageBox.No).setText("&No")
             msg.button(QMessageBox.Cancel).setText("&Cancel")
+            set_message_box_button_accessibility(
+                msg,
+                {
+                    QMessageBox.Yes: ("Yes, save and close", "Save changes and close"),
+                    QMessageBox.No: ("No, continue editing", "Return to editing"),
+                    QMessageBox.Cancel: (
+                        "Cancel, discard and close",
+                        "Discard changes and close",
+                    ),
+                },
+            )
             reply = msg.exec()
 
             if reply == QMessageBox.Yes:
@@ -747,7 +772,7 @@ class ImportDetailWindow(QDialog):
 
         def do_nav():
             navigated = self._navigate_without_close(self.current_index - 1)
-            QTimer.singleShot(0, self.title_edit.setFocus)
+            self._focus_title_field()
             if navigated:
                 return
             QApplication.beep()
@@ -764,7 +789,7 @@ class ImportDetailWindow(QDialog):
 
         def do_nav():
             navigated = self._navigate_without_close(self.current_index + 1)
-            QTimer.singleShot(0, self.title_edit.setFocus)
+            self._focus_title_field()
             if navigated:
                 return
             QApplication.beep()
@@ -1170,7 +1195,7 @@ class ImportDetailWindow(QDialog):
         # Row 5: Action buttons
         button_layout = QHBoxLayout()
 
-        self.save_return_button = QPushButton("&Save")
+        self.save_return_button = QPushButton("Save")
         self.save_return_button.setAccessibleName("Save")
         self.save_return_button.setAccessibleDescription(
             "Save edits and continue editing - Alt+S"
@@ -1182,7 +1207,7 @@ class ImportDetailWindow(QDialog):
         self.save_return_button.setVisible(False)
         button_layout.addWidget(self.save_return_button)
 
-        self.skip_button = QPushButton("&Discard")
+        self.skip_button = QPushButton("Discard")
         self.skip_button.setAccessibleName("Discard")
         self.skip_button.setAccessibleDescription(
             "Discard this import item and advance to next available item - Alt+D"
@@ -1240,7 +1265,9 @@ class ImportDetailWindow(QDialog):
             "save_return_button": lambda: self.save_return_button.click(),  # Alt+S
             "skip_button": lambda: self.skip_button.click(),  # Alt+D
         }
-        mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.IMPORT_DETAIL_WINDOW, callback_map
+        )
 
         # Local shortcuts (not centralized): Alt+/, F1, Escape, PageUp/PageDown
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -1382,6 +1409,7 @@ class ImportDetailWindow(QDialog):
                 self.setAccessibleName(title)
                 self.load_book_data()
                 self.set_status("Import item discarded")
+                self._focus_title_field()
                 return
 
             if hasattr(parent, "table") and parent.table.rowCount() == 0:
@@ -1431,6 +1459,7 @@ class ImportDetailWindow(QDialog):
     def on_save(self):
         """Save edits in-place and keep dialog open. Returns True if save succeeded, False if validation failed."""
         if not self._dirty:
+            self._focus_title_field()
             return True
 
         # Normalize time field before saving (in case user hasn't lost focus from time field)
@@ -1447,6 +1476,7 @@ class ImportDetailWindow(QDialog):
         resolve_errors = bool(self.errors)
         self._save_to_parent(resolve_errors=resolve_errors)
         self.set_status("Changes saved")
+        self._focus_title_field()
         return True
 
     def accept(self):
@@ -1478,6 +1508,17 @@ class ImportDetailWindow(QDialog):
             msg.button(QMessageBox.Yes).setText("&Yes - Save")
             msg.button(QMessageBox.No).setText("&No - Continue editing")
             msg.button(QMessageBox.Cancel).setText("Cance&l - Discard and close")
+            set_message_box_button_accessibility(
+                msg,
+                {
+                    QMessageBox.Yes: ("Yes, save", "Save changes and close"),
+                    QMessageBox.No: ("No, continue editing", "Return to editing"),
+                    QMessageBox.Cancel: (
+                        "Cancel, discard and close",
+                        "Discard changes and close",
+                    ),
+                },
+            )
             reply = msg.exec()
 
             if reply == QMessageBox.Yes:

@@ -73,6 +73,17 @@ def build_accessible_message_box_style(scaled_height: int) -> str:
     )
 
 
+def set_message_box_button_accessibility(
+    msg: QMessageBox,
+    button_roles: dict,
+):
+    for role, (name, description) in button_roles.items():
+        button = msg.button(role)
+        if button is not None:
+            button.setAccessibleName(name)
+            button.setAccessibleDescription(description)
+
+
 def exec_styled_message_box(
     parent,
     scaled_height: int,
@@ -83,6 +94,7 @@ def exec_styled_message_box(
     buttons=QMessageBox.Ok,
     default_button=None,
     button_texts=None,
+    button_accessibility=None,
     window_icon=None,
 ) -> int:
     """Show a styled QMessageBox and return the exec result."""
@@ -113,6 +125,9 @@ def exec_styled_message_box(
             button = msg.button(button_role)
             if button is not None:
                 button.setText(button_text)
+
+    if button_accessibility:
+        set_message_box_button_accessibility(msg, button_accessibility)
 
     msg.setStyleSheet(build_accessible_message_box_style(scaled_height))
     return msg.exec()

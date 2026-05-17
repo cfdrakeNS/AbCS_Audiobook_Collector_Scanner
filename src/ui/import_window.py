@@ -1005,6 +1005,7 @@ class ImportWindow(QDialog):
             or has_hard_error
             or has_warning
             or has_fallback
+            or has_correction
         )
 
     def _matches_error_filter(self, item: dict) -> bool:
@@ -1615,6 +1616,7 @@ class ImportWindow(QDialog):
                     and not has_hard_error
                     and not has_warning
                     and not has_fallback
+                    and not has_correction
                 )
                 # Prevent auto-add if duplicate
                 if is_duplicate:
@@ -1839,17 +1841,8 @@ class ImportWindow(QDialog):
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
 
-        # Defensive: ensure valid_segment is always defined
-        valid_segment = ""
-        if hasattr(self, "auto_add_clean_books") and getattr(
-            self, "auto_add_clean_books", False
-        ):
-            try:
-                valid_segment = f"Valid: {valid_count} | "
-            except Exception:
-                valid_segment = ""
         final_status = (
-            f"Scanned: {scanned_total} | Added: {added_count} | {valid_segment}"
+            f"Scanned: {scanned_total} | Added: {added_count} | "
             f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | "
             f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
         )

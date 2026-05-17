@@ -8,12 +8,15 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from src.accessibility.scaling import UIScaler
+from src.accessibility.shortcuts import ShortcutManager
+from src.accessibility.style_helpers import set_message_box_button_accessibility
 from src.accessibility.theme_manager import ThemeManager
 from src.database.connection import DatabaseManager
 from src.ui.import_window import ImportWindow
+from src.ui.import_detail_window import ImportDetailWindow
 from src.ui.import_progress_window import ImportProgressWindow
 from src.ui.update_window import UpdateWindow
 from src.database.queries import CollectionQueries
@@ -201,6 +204,88 @@ def test_import_summary_uses_errors_warnings_label(
     cleanup_window(window)
 
 
+def test_message_box_button_accessibility_helper(qapp):
+    """Dialog buttons should keep mnemonics but expose clear accessible text."""
+    msg = QMessageBox()
+    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+
+    set_message_box_button_accessibility(
+        msg,
+        {
+            QMessageBox.Yes: ("Yes, save", "Save changes"),
+            QMessageBox.No: ("No, continue editing", "Return to editing"),
+        },
+    )
+
+    assert msg.button(QMessageBox.Yes).accessibleName() == "Yes, save"
+    assert msg.button(QMessageBox.Yes).accessibleDescription() == "Save changes"
+    assert msg.button(QMessageBox.No).accessibleName() == "No, continue editing"
+    assert msg.button(QMessageBox.No).accessibleDescription() == "Return to editing"
+
+
+def test_import_detail_save_discard_shortcuts_are_explicit(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Import Detail Save/Discard should not rely on Qt button mnemonics."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportDetailWindow(
+        temp_db,
+        scaler,
+        theme_manager,
+        book_data={"title": "Example", "author": "Author"},
+    )
+    qtbot.addWidget(window)
+
+    shortcuts = ShortcutManager.IMPORT_DETAIL_WINDOW_SHORTCUTS
+
+    assert window.save_return_button.text() == "Save"
+    assert window.skip_button.text() == "Discard"
+    assert shortcuts["S"] == ("Save", "save_return_button")
+    assert shortcuts["D"] == ("Discard", "skip_button")
+
+    cleanup_window(window)
+
+
+def test_import_detail_actions_return_focus_to_title(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    """Save, discard, and page navigation should return focus to Title."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportDetailWindow(
+        temp_db,
+        scaler,
+        theme_manager,
+        book_data={"title": "Example", "author": "Author"},
+    )
+    qtbot.addWidget(window)
+
+    focus_requests = []
+    monkeypatch.setattr(window, "_focus_title_field", lambda: focus_requests.append(1))
+
+    window.on_save()
+    monkeypatch.setattr(window, "_navigate_without_close", lambda target_index: True)
+    window.on_prev()
+    window.on_next()
+
+    class ParentStub:
+        scanned_items = [{"book": {"title": "Next Example", "author": "Author"}}]
+
+        def _discard_scanned_item(self, row):
+            return 0
+
+        def set_status(self, message, announce=False):
+            pass
+
+    monkeypatch.setattr(window, "parent", lambda: ParentStub())
+    window.on_skip_discard()
+
+    assert len(focus_requests) == 4
+
+    cleanup_window(window)
+
+
 def test_import_fixed_counter_counts_fallback_and_autocorrect(
     qapp, qtbot, temp_db, isolated_qsettings
 ):
@@ -319,6 +404,99 @@ def test_scan_keeps_fixed_warning_rows_for_manual_add(
     assert window._summary_counts["fixed"] >= 1
 
     # Cleanup: use helper to close all windows properly
+    cleanup_window(window)
+
+
+def test_scan_keeps_author_title_corrected_rows_for_manual_add(
+    qapp, qtbot, temp_db, isolated_qsettings, tmp_path, monkeypatch
+):
+    """Author/title corrected rows should stay in review list with C: flags."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    cq = CollectionQueries(temp_db)
+    if window.collection_combo.count() == 0:
+        collection_id = cq.insert(Collection(name="Default", active=True))
+        window._load_collection_options()
+        target_index = window.collection_combo.findData(collection_id)
+        if target_index >= 0:
+            window.collection_combo.setCurrentIndex(target_index)
+    elif window.collection_combo.currentData() is None:
+        window.collection_combo.setCurrentIndex(1)
+
+    scan_dir = Path(tmp_path)
+    scan_dir.mkdir(parents=True, exist_ok=True)
+    window.folder_edit.setText(str(scan_dir))
+    window.import_scanner.trim_whitespace = True
+
+    corrected_book = {
+        "title": "  Corrected Example  ",
+        "author": "Author One",
+        "year": 2022,
+        "genre": "Fiction",
+        "narrator": "",
+        "comment": "",
+        "folder": str(scan_dir),
+        "files": [str(scan_dir / "corrected.mp3")],
+        "errors": [],
+        "time_hours": 1,
+        "time_minutes": 0,
+        "tracks": 1,
+        "size_mb": 1.0,
+        "bitrate": 128,
+        "format": "MP3",
+    }
+    clean_book = {
+        "title": "Clean Example",
+        "author": "Author Two",
+        "year": 2021,
+        "genre": "Fiction",
+        "narrator": "",
+        "comment": "",
+        "folder": str(scan_dir),
+        "files": [str(scan_dir / "clean.mp3")],
+        "errors": [],
+        "time_hours": 1,
+        "time_minutes": 0,
+        "tracks": 1,
+        "size_mb": 1.0,
+        "bitrate": 128,
+        "format": "MP3",
+    }
+
+    monkeypatch.setattr(
+        window.scanner,
+        "scan_folder",
+        lambda *args, **kwargs: [corrected_book, clean_book],
+    )
+
+    window.on_scan()
+    qtbot.wait(200)
+    QApplication.processEvents()
+
+    corrected_items = [
+        item
+        for item in window.scanned_items
+        if item.get("book", {}).get("title") == "Corrected Example"
+    ]
+    assert len(corrected_items) == 1
+    assert corrected_items[0]["error_summary"].startswith("C:")
+    assert not any(
+        (item.get("book", {}).get("title") == "Clean Example")
+        for item in window.scanned_items
+    )
+    assert window._summary_counts["fixed"] == 1
+    assert window._summary_counts["added"] == 1
+    assert window._summary_counts["errors"] == 0
+    assert window._summary_counts["warnings"] == 0
+    status_text = window.status_bar.currentMessage()
+    assert "Added: 1" in status_text
+    assert "Corrected: 1" in status_text
+    assert "Errors/Warnings: 0" in status_text
+    assert "Valid:" not in status_text
+
     cleanup_window(window)
 
 
