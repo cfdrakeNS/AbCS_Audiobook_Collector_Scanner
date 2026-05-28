@@ -39,6 +39,122 @@ def build_accessible_button_style(
     """
 
 
+def build_modern_button_style(
+    scaled_height: int,
+    selector: str = "QPushButton",
+    primary_selector: str = "QPushButton#primaryActionButton",
+    destructive_selector: str = "QPushButton#destructiveActionButton",
+) -> str:
+    button_height = max(scaled_height, 18)
+    radius = max(int(button_height * 0.22), 4)
+    return f"""
+        {selector} {{
+            padding: 5px 14px;
+            min-height: {button_height}px;
+            border: 1px solid palette(mid);
+            border-radius: {radius}px;
+            background-color: palette(button);
+            color: palette(button-text);
+            outline: none;
+        }}
+        {selector}:hover {{
+            border: 1px solid palette(highlight);
+        }}
+        {selector}:focus {{
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
+            border: 2px solid palette(dark);
+            outline: none;
+        }}
+        {selector}:pressed {{
+            border: 2px solid palette(dark);
+        }}
+        {primary_selector} {{
+            font-weight: bold;
+            border: 2px solid palette(highlight);
+        }}
+        {destructive_selector} {{
+            font-weight: bold;
+        }}
+    """
+
+
+def build_card_group_box_style(selector: str = "QGroupBox") -> str:
+    return f"""
+        {selector} {{
+            color: palette(window-text);
+            border: 1px solid palette(mid);
+            border-radius: 6px;
+            margin-top: 12px;
+            padding: 12px 8px 8px 8px;
+            background-color: palette(window);
+        }}
+        {selector}::title {{
+            subcontrol-origin: margin;
+            left: 12px;
+            padding: 0 6px 0 6px;
+            color: palette(window-text);
+        }}
+    """
+
+
+def build_table_polish_style(selector: str = "QTableView") -> str:
+    return f"""
+        {selector} {{
+            gridline-color: palette(mid);
+            selection-background-color: palette(highlight);
+            selection-color: palette(highlighted-text);
+            alternate-background-color: palette(window);
+        }}
+        {selector}:focus {{
+            border: 2px solid palette(highlight);
+            outline: none;
+        }}
+        {selector}::item:selected {{
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
+        }}
+        QHeaderView::section {{
+            background-color: palette(button);
+            color: palette(button-text);
+            border: 1px solid palette(mid);
+            padding: 4px;
+            font-weight: bold;
+        }}
+    """
+
+
+def build_toolbar_button_style(
+    scaled_height: int,
+    selector: str = "QToolButton",
+) -> str:
+    button_height = max(scaled_height + 6, 24)
+    return f"""
+        {selector} {{
+            padding: 4px 10px;
+            min-height: {button_height}px;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            background-color: transparent;
+            color: palette(window-text);
+        }}
+        {selector}:hover {{
+            border: 1px solid palette(mid);
+            background-color: palette(button);
+        }}
+        {selector}:focus {{
+            border: 2px solid palette(highlight);
+            background-color: palette(button);
+            outline: none;
+        }}
+    """
+
+
+def apply_tooltip_accessibility(widget, tooltip: str, description: str | None = None):
+    widget.setToolTip(tooltip)
+    if description:
+        widget.setAccessibleDescription(description)
+
 def build_accessible_message_box_style(scaled_height: int) -> str:
     """Return a shared QMessageBox style with theme-aware colors."""
     return "\n".join(

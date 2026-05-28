@@ -35,7 +35,11 @@ from shiboken6 import isValid
 from datetime import datetime
 
 from src.accessibility.scaling import UIScaler
-from src.accessibility.style_helpers import build_accessible_message_box_style
+from src.accessibility.style_helpers import (
+    build_accessible_message_box_style,
+    build_card_group_box_style,
+    build_modern_button_style,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
@@ -384,10 +388,10 @@ class PreferencesWindow(QDialog):
         self.rules_section_text = QTextEdit()
         self.rules_section_text.setReadOnly(True)
         self.rules_section_text.setTabChangesFocus(True)
-        # self.rules_section_text.setAccessibleName(
-        #     "Author and title rules description")
-        # self.rules_section_text.setAccessibleDescription(
-        #     "")
+        self.rules_section_text.setAccessibleName("Author and title rules description")
+        self.rules_section_text.setAccessibleDescription(
+            "Summary of configurable author and title validation rules"
+        )
         self.rules_section_text.setFocusPolicy(Qt.StrongFocus)
         self.rules_section_text.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
         self.rules_section_text.setPlainText(
@@ -600,6 +604,10 @@ class PreferencesWindow(QDialog):
         self.autocorrect_section_text = QTextEdit()
         self.autocorrect_section_text.setReadOnly(True)
         self.autocorrect_section_text.setTabChangesFocus(True)
+        self.autocorrect_section_text.setAccessibleName("Auto-correction rules description")
+        self.autocorrect_section_text.setAccessibleDescription(
+            "Summary of metadata auto-correction behavior"
+        )
         self.autocorrect_section_text.setFocusPolicy(Qt.StrongFocus)
         self.autocorrect_section_text.setTextInteractionFlags(
             Qt.TextSelectableByKeyboard
@@ -716,42 +724,8 @@ class PreferencesWindow(QDialog):
             }}
         """
 
-        card_style = f"""
-            QGroupBox {{
-                border: 1px solid palette(mid);
-                border-radius: {self.scaler.get_scaled_size(8)}px;
-                margin-top: {self.scaler.get_scaled_size(12)}px;
-                padding: {self.scaler.get_scaled_size(10)}px;
-                background-color: palette(base);
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                left: {self.scaler.get_scaled_size(12)}px;
-                padding: 0 {self.scaler.get_scaled_size(6)}px;
-                color: palette(window-text);
-            }}
-        """
-
-        button_style = f"""
-            QPushButton {{
-                padding: 5px 14px;
-                min-height: {max(scaled_height, 18)}px;
-                border: 1px solid palette(mid);
-                border-radius: {self.scaler.get_scaled_size(5)}px;
-                background-color: palette(button);
-            }}
-            QPushButton:hover {{
-                border: 1px solid palette(highlight);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-            QPushButton#primaryActionButton {{
-                font-weight: bold;
-            }}
-        """
+        card_style = build_card_group_box_style()
+        button_style = build_modern_button_style(scaled_height)
 
         status_style = f"""
             QStatusBar {{

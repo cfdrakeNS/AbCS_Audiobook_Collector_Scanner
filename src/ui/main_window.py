@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QTextEdit,
+    QToolBar,
 )
 from src.ui.license_dialogue import LicenseDialog
 from PySide6.QtCore import (
@@ -65,6 +66,9 @@ from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.style_helpers import (
     exec_styled_message_box,
     build_accessible_button_style,
+    build_modern_button_style,
+    build_table_polish_style,
+    build_toolbar_button_style,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
@@ -535,6 +539,7 @@ class MainWindow(QMainWindow):
 
         # Menu bar
         self.create_menu_bar()
+        self.create_action_toolbar()
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
@@ -564,27 +569,15 @@ class MainWindow(QMainWindow):
         scaled_height = int(base_height * (scale_percentage / 100.0))
 
         # Button sizing - compact height
-        button_stylesheet = f"""
-            QPushButton {{
-                padding: 5px 14px;
-                min-height: {scaled_height}px;
-                border: 1px solid palette(mid);
-                border-radius: 5px;
-                background-color: palette(button);
-            }}
-            QPushButton:hover {{
-                border: 1px solid palette(highlight);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
+        button_stylesheet = build_modern_button_style(scaled_height)
         self.update_button.setStyleSheet(button_stylesheet)
         self.delete_button.setStyleSheet(button_stylesheet)
         if hasattr(self, "export_button"):
             self.export_button.setStyleSheet(button_stylesheet)
+        if hasattr(self, "action_toolbar"):
+            self.action_toolbar.setStyleSheet(
+                build_toolbar_button_style(scaled_height)
+            )
 
         # Keep table fixed-content columns scaled without expensive content-size scans.
         if hasattr(self, "table"):
@@ -666,25 +659,15 @@ class MainWindow(QMainWindow):
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
         # Apply centralized F1 popup style to table only
         self.table.setStyleSheet(
-            """
-            QHeaderView::section {
-                border: 1px solid palette(mid);
-                padding: 4px;
-                background-color: palette(button);
-                font-weight: bold;
-            }
+            build_table_polish_style("QTableView")
+            + """
             QTableView {
                 border: 1px solid palette(mid);
                 border-radius: 5px;
-                gridline-color: palette(mid);
             }
             QTableView::item:hover {
                 background-color: palette(base);
                 color: palette(text);
-            }
-            QTableView::item:selected {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
             }
             QTableView::item:selected:focus {
                 background-color: palette(highlight);
@@ -839,6 +822,39 @@ class MainWindow(QMainWindow):
             tooltip_map[self.sort_label] = "Current sort order"
         for widget, tooltip in tooltip_map.items():
             widget.setToolTip(tooltip)
+
+    def create_action_toolbar(self):
+        """Create a simple labeled action toolbar using existing handlers."""
+        self.action_toolbar = QToolBar("Main actions", self)
+        self.action_toolbar.setMovable(False)
+        self.action_toolbar.setFloatable(False)
+        self.action_toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.action_toolbar.setAccessibleName("Main actions toolbar")
+        self.action_toolbar.setAccessibleDescription(
+            "Toolbar for common audiobook collection actions"
+        )
+
+        toolbar_actions = [
+            ("Add Book", "Create a new audiobook entry", self.on_new_book),
+            ("Import", "Import audiobooks from files or folders", self.on_import),
+            (
+                "Search Web",
+                "Search web metadata for the focused book",
+                self.on_get_web_info_clicked,
+            ),
+            ("Statistics", "Show library statistics", self.on_show_splash),
+            ("Preferences", "Open application preferences", self.on_preferences),
+            ("Help", "Show keyboard shortcuts", self.on_show_shortcuts),
+        ]
+
+        for text, tooltip, handler in toolbar_actions:
+            action = QAction(text, self)
+            action.setToolTip(tooltip)
+            action.setStatusTip(tooltip)
+            action.triggered.connect(handler)
+            self.action_toolbar.addAction(action)
+
+        self.addToolBar(Qt.TopToolBarArea, self.action_toolbar)
 
     def create_menu_bar(self):
         """Create menu bar."""

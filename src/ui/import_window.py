@@ -45,6 +45,8 @@ from src.core import BookScanner, ImportValidator, ImportScanner
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     build_accessible_message_box_style,
+    build_modern_button_style,
+    build_table_polish_style,
     exec_styled_message_box,
 )
 from src.accessibility.theme_manager import ThemeManager
@@ -538,26 +540,7 @@ class ImportWindow(QDialog):
         font.setPointSize(base_font_size)
         self.setFont(font)
 
-        button_style = f"""
-            QPushButton {{
-                padding: 5px 14px;
-                min-height: {max(scaled_height, 18)}px;
-                border: 1px solid palette(mid);
-                border-radius: {self.scaler.get_scaled_size(5)}px;
-                background-color: palette(button);
-            }}
-            QPushButton:hover {{
-                border: 1px solid palette(highlight);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-            QPushButton#primaryActionButton {{
-                font-weight: bold;
-            }}
-        """
+        button_style = build_modern_button_style(scaled_height)
 
         status_style = f"""
             QStatusBar {{
@@ -588,21 +571,11 @@ class ImportWindow(QDialog):
 
         table_style = (
             build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
             + f"""
-            QHeaderView::section {{
-                border: 1px solid palette(mid);
-                padding: {self.scaler.get_scaled_size(4)}px;
-                background-color: palette(button);
-                font-weight: bold;
-            }}
             QTableWidget {{
                 border: 1px solid palette(mid);
                 border-radius: {self.scaler.get_scaled_size(5)}px;
-                gridline-color: palette(mid);
-            }}
-            QTableWidget::item:selected {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
             }}
             """
         )
