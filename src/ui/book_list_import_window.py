@@ -1492,9 +1492,9 @@ class BookListImportWindow(QDialog):
                 result_text = f"{success_count} books added to {selected_collection_name} collection"
                 status_text = f"{success_count} books added to {selected_collection_name} collection, {error_count} errors"
             else:
-                result_text = f"{success_count} read dates added to books"
+                result_text = f"{success_count} read dates added to books in {selected_collection_name} collection"
                 status_text = (
-                    f"{success_count} read dates added to books, {error_count} errors"
+                    f"{success_count} read dates added to books in {selected_collection_name} collection, {error_count} errors"
                 )
             if error_count > 0:
                 result_text += f"\n{error_count} books had errors"
@@ -1780,6 +1780,12 @@ class BookListImportWindow(QDialog):
         error_count = 0
         self.import_errors = []  # Reset errors
 
+        # Get selected collection from combo box
+        selected_collection_id = self.collection_combo.currentData()
+        if selected_collection_id is None:
+            self.set_status("Error: No collection selected")
+            return 0, 1
+
         for index, row in self.file_data.iterrows():
             try:
                 # Extract required fields
@@ -1832,12 +1838,12 @@ class BookListImportWindow(QDialog):
 
                 # Prepare import title for comparison: use full normalization
                 import_title_for_compare = normalize_title(title_for_save, aggressive=True)
-                # Fetch all books by this author (case-insensitive, trimmed)
+                # Fetch all books by this author in the selected collection (case-insensitive, trimmed)
                 candidate_rows = self.db.fetch_all(
                     "SELECT b.book_id, b.title, a.name FROM books b "
                     "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE lower(trim(a.name)) = ?",
-                    (author.strip().lower(),),
+                    "WHERE lower(trim(a.name)) = ? AND b.collection_id = ?",
+                    (author.strip().lower(), selected_collection_id),
                 )
                 found_book_id = None
                 for db_row in candidate_rows:
@@ -1852,7 +1858,7 @@ class BookListImportWindow(QDialog):
                             "row": index + 1,
                             "title": title_for_save,
                             "author": author,
-                            "reason": "Book not found in database",
+                            "reason": f"Book not found in selected collection: {self.collection_combo.currentText()}",
                         }
                     )
                     error_count += 1

@@ -486,17 +486,26 @@ class BookScanner:
                 return ext in allowed_extensions
             return self.tag_reader.is_supported_file(file_path)
 
+        seen_files = set()
+
+        def add_audio_file(file_path: str):
+            normalized_path = os.path.normcase(os.path.abspath(file_path))
+            if normalized_path in seen_files:
+                return
+            seen_files.add(normalized_path)
+            audio_files.append(file_path)
+
         if include_subfolders:
             for root, _dirs, files in os.walk(folder_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     if is_allowed(file_path):
-                        audio_files.append(file_path)
+                        add_audio_file(file_path)
         else:
             for entry in os.scandir(folder_path):
                 if entry.is_file():
                     if is_allowed(entry.path):
-                        audio_files.append(entry.path)
+                        add_audio_file(entry.path)
 
         # Group by album (book)
         books = {}

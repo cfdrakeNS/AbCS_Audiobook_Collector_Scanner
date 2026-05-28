@@ -1142,8 +1142,6 @@ class MainWindow(QMainWindow):
 
         return " • ".join(parts)
 
-    # Removed status shortcut hint text for accessibility
-
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
         normalized = (mode or "").strip()
@@ -1619,7 +1617,7 @@ class MainWindow(QMainWindow):
             ("Year", "&Year", 2, False),
             ("Series", "&Series", 3, True),
             ("Genre", "&Genre", 4, True),
-            ("Length", "&Length", 5, False),
+            ("Time", "Ti&me", 5, False),
             ("Read Date", "Read &Date", 6, False),
         ]
 
@@ -1647,7 +1645,7 @@ class MainWindow(QMainWindow):
             2: "Year",
             3: "Series",
             4: "Genre",
-            5: "Length",
+            5: "Time",
             6: "Read Date",
         }
         return mapping.get(column, "Title")
@@ -2857,7 +2855,15 @@ class MainWindow(QMainWindow):
             self.set_status("Export only available in duplicate mode", announce=True)
             return
 
-        if not self.books:
+        export_books = [
+            book
+            for book in self.book_queries.get_all(
+                SearchFilter(order_by=self.current_filter.order_by)
+            )
+            if book.book_id in self.duplicate_mode_book_ids
+        ]
+
+        if not export_books:
             self.set_status("No duplicate books to export", announce=True)
             return
 
@@ -2890,35 +2896,33 @@ class MainWindow(QMainWindow):
             with open(file_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 # Write header
-                writer.writerow(["Author", "Title", "Year", "Collection", "Date Added"])
+                writer.writerow(
+                    ["Author", "Title", "Year", "Time", "Collection", "Date Added"]
+                )
                 # Write data for each duplicate book
-                for book in self.books:
-                    # Get collection name
-                    collection_name = ""
-                    if book.collection_id and self.collection_queries:
-                        collection = self.collection_queries.get_by_id(
-                            book.collection_id
-                        )
-                        if collection:
-                            collection_name = collection.name or ""
+                for book in export_books:
+                    collection_name = book.collection_name or ""
 
-                    # Format date added
                     date_added_str = ""
                     if book.date_added:
-                        date_added_str = book.date_added.strftime("%Y-%m-%d")
+                        if hasattr(book.date_added, "strftime"):
+                            date_added_str = book.date_added.strftime("%Y-%m-%d")
+                        else:
+                            date_added_str = str(book.date_added).split(" ")[0]
 
                     writer.writerow(
                         [
                             book.author_name or "",
                             book.title or "",
                             book.year or "",
+                            book.time_display,
                             collection_name,
                             date_added_str,
                         ]
                     )
 
             self.set_status(
-                f"Exported {len(self.books)} duplicates to {file_path}", announce=True
+                f"Exported {len(export_books)} duplicates to {file_path}", announce=True
             )
         except Exception as e:
             self.set_status(f"Export failed: {str(e)}", announce=True)

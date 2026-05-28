@@ -22,6 +22,7 @@ from PySide6.QtCore import (
     QTimer,
     QEvent,
     QModelIndex,
+    QItemSelectionModel,
 )
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
@@ -439,7 +440,7 @@ class ImportWindow(QDialog):
 
         # Use SelectItems so left/right arrow only highlights cell, not row
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.table.setSelectionMode(QAbstractItemView.NoSelection)
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
@@ -947,6 +948,7 @@ class ImportWindow(QDialog):
         # Clear and pre-size table (allocate once instead of per-row)
         total_rows = len(self.scanned_items)
         self.table.setRowCount(total_rows)
+        self._clear_table_row_accessible_headers()
 
         # Repopulate with sorted data
         for row, item in enumerate(self.scanned_items):
@@ -1028,6 +1030,11 @@ class ImportWindow(QDialog):
         item.setData(Qt.AccessibleTextRole, item.text())
         item.setData(Qt.AccessibleDescriptionRole, "")
         return item
+
+    def _clear_table_row_accessible_headers(self):
+        row_count = self.table.rowCount()
+        if row_count > 0:
+            self.table.setVerticalHeaderLabels([""] * row_count)
 
     @staticmethod
     def _is_correction_error(error: str) -> bool:
@@ -1710,6 +1717,7 @@ class ImportWindow(QDialog):
                 if not auto_added:
                     table_row = self.table.rowCount()
                     self.table.insertRow(table_row)
+                    self._clear_table_row_accessible_headers()
                     self.table.setItem(
                         table_row,
                         self.COL_AUTHOR,
@@ -1748,16 +1756,11 @@ class ImportWindow(QDialog):
                         }
                     )
 
-                    # Only count as warning if it is a true warning (not fallback/correction)
-                    if not is_duplicate and not has_hard_error:
-                        if has_warning and not has_fallback and not has_correction:
-                            warning_count += 1
-                    elif is_duplicate:
-                        pass  # already counted
-                    else:
-                        # Only count as error if it is a true error (not fallback/correction)
-                        if has_hard_error and not has_fallback and not has_correction:
+                    if not is_duplicate:
+                        if has_hard_error:
                             error_count += 1
+                        elif has_warning:
+                            warning_count += 1
 
                 # Track all scan outcomes
                 self.scan_outcomes.append(
@@ -2511,6 +2514,9 @@ class ImportWindow(QDialog):
                     if self.selection_anchor_row is None:
                         self.selection_anchor_row = row
 
+                self._updating_selection_ui = True
+                self._sync_table_selection_to_selected_rows()
+                self._updating_selection_ui = False
                 if self.selected_rows:
                     self.announce_selection()
                 else:
@@ -2554,6 +2560,23 @@ class ImportWindow(QDialog):
             return
         elif event.key() == Qt.Key_Backtab:
             self.focusPreviousChild()
+            event.accept()
+            return
+
+        # Ctrl+A: Select all visible rows
+        if event.key() == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
+            row_count = self.table.rowCount()
+            if row_count > 0:
+                visible_rows = [r for r in range(row_count) if not self.table.isRowHidden(r)]
+                if visible_rows:
+                    self._updating_selection_ui = True
+                    self.selected_rows = set(visible_rows)
+                    self.selection_anchor_row = visible_rows[0]
+                    col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+                    self.table.setCurrentCell(visible_rows[0], col)
+                    self._sync_table_selection_to_selected_rows()
+                    self._updating_selection_ui = False
+                    self.announce_selection()
             event.accept()
             return
 
@@ -2724,6 +2747,20 @@ class ImportWindow(QDialog):
         self._select_row_range(self.selection_anchor_row, target_row, col)
         self.announce_selection()
 
+    def _sync_table_selection_to_selected_rows(self):
+        model = self.table.selectionModel()
+        if model is None:
+            return
+
+        model.clearSelection()
+        col_count = self.table.columnCount()
+        for row in sorted(self.selected_rows):
+            if self.table.isRowHidden(row):
+                continue
+            for col in range(col_count):
+                index = self.table.model().index(row, col)
+                model.select(index, QItemSelectionModel.Select)
+
     def _select_row_range(self, anchor_row: int, target_row: int, current_col: int = 0):
         """Track selected rows without selecting full table rows in Qt."""
         row_count = self.table.rowCount()
@@ -2748,6 +2785,7 @@ class ImportWindow(QDialog):
 
         self.table.setCurrentCell(target_row, current_col)
         self.table.setCurrentIndex(self.table.model().index(target_row, current_col))
+        self._sync_table_selection_to_selected_rows()
         self._updating_selection_ui = False
         self.announce_selection()
 
