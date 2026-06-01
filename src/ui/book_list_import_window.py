@@ -80,6 +80,7 @@ from src.accessibility.accessible_events import announce_status_message
 from src.accessibility.style_helpers import (
     exec_styled_message_box,
     build_accessible_message_box_style,
+    build_modern_button_style,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
@@ -433,22 +434,7 @@ class BookListImportWindow(QDialog):
     def apply_button_styling(self):
         """Apply button styling to match book_details window."""
         scaled_height = self.scaler.get_scaled_size(24)
-
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
+        button_style = build_modern_button_style(scaled_height)
 
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)

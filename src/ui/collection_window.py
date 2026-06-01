@@ -33,6 +33,7 @@ from src.accessibility.accessible_events import (
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     build_accessible_button_style,
+    build_modern_button_style,
     exec_styled_message_box,
 )
 from src.accessibility.theme_manager import ThemeManager
@@ -210,7 +211,7 @@ class CollectionWindow(QDialog):
         )
         footer_layout.addWidget(self.delete_button)
 
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        button_style = build_modern_button_style(self.scaler.get_scaled_size(20))
         for button in (
             self.new_button,
             self.edit_button,

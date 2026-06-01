@@ -1,4 +1,8 @@
-from src.accessibility.style_helpers import exec_styled_message_box
+from src.accessibility.style_helpers import (
+    exec_styled_message_box,
+    build_modern_button_style,
+    build_table_polish_style,
+)
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import announce_status_message
 from src.database import (
@@ -635,21 +639,7 @@ class UpdateWindow(QDialog):
         self.setFont(font)
 
         # Stylesheet for QPushButton
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
+        button_style = build_modern_button_style(scaled_height)
 
         # Stylesheet for QLabel in header - bold
         label_style = """
@@ -658,16 +648,7 @@ class UpdateWindow(QDialog):
             }
         """
 
-        table_style = """
-            QTableWidget:focus {
-                border: none;
-                outline: none;
-            }
-            QTableWidget::item:focus {
-                border: none;
-                outline: none;
-            }
-        """
+        table_style = build_table_polish_style("QTableWidget")
 
         # Apply styles
         # Combo boxes use theme manager styling - don't override

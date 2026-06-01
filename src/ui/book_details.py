@@ -17,6 +17,7 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     build_accessible_message_box_style,
+    build_modern_button_style,
     exec_styled_message_box,
 )
 from src.accessibility.accessible_events import (
@@ -585,21 +586,7 @@ class BookDetailsWindow(QDialog):
         """
 
         # Stylesheet for QPushButton - compact height, visible border, inverted focus
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
+        button_style = build_modern_button_style(scaled_height)
 
         # Stylesheet for QLabel - bold text for form labels
         label_style = """
