@@ -1819,7 +1819,6 @@ class ImportWindow(QDialog):
                     elapsed_text=elapsed_text,
                     files_scanned=scanned_total,
                     books_added=added_count,
-                    valid_books=valid_count,
                     read_errors=read_error_count,
                     summary_text=summary_text,
                 )
