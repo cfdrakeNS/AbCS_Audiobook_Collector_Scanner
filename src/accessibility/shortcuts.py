@@ -165,15 +165,14 @@ UPDATE_WINDOW_SHORTCUTS = {
 
 
 PREFERENCES_WINDOW_SHORTCUTS = {
-    "D": ("Display section", "theme_combo"),
-    "P": ("Path & Scope section", "import_dir_edit"),
+    "D": ("Display Settings tab", "theme_picker"),
+    "P": ("Import Settings tab", "import_dir_edit"),
     "W": ("Browse", "browse_button"),
-    "F": ("Fallback section", "author_fallback_checkbox"),
-    "V": ("Validation Rules section", "rules_section_text"),
+    "F": ("Fallback and Parsing tab", "author_fallback_checkbox"),
+    "V": ("Validation Rules tab", "rules_section_text"),
     "R": ("Restore Defaults", "restore_defaults_button"),
     "S": ("Save", "save_button"),
     "/": ("Status bar", "status_bar"),
-    "C": ("Collection", "collection_combo"),
 }
 
 

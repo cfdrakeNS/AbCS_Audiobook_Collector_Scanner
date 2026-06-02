@@ -13,7 +13,7 @@ Items that need verification or cleanup, organized by file:
 
 ## Production Code
 
-- No current production cleanup items after the June 2 Import Window scan-counter cleanup.
+- No current production cleanup items after the June 2 dead-code cleanup.
 
 ## Tests
 - `test/test_reading_history_accessibility.py`: `date_range_layout` variable - Test-only Vulture finding; review before changing.
@@ -31,6 +31,7 @@ Items that need verification or cleanup, organized by file:
 - `src/ui/name_list_window.py` `on_alt_f_pressed` wraps `on_clear_find`; shortcut wiring uses `on_clear_find` directly but tests assert the alias exists.
 - `src/ui/name_list_window.py` `_format_status_message` is exercised by `test/test_name_list_status_formatting.py`, not from production callers.
 - `src/ui/reading_history_window.py` `load_general_stats` is a compatibility alias for `load_summary_data`; keep unless tests and callers are updated.
+- `src/accessibility/theme_picker.py` `paintEvent` on `ThemeMiniPreview` is a Qt widget override invoked by the framework, not application code.
 - Test-only Vulture findings should not be removed without confirming pytest fixture use and test intent.
 
 ---
@@ -56,9 +57,54 @@ These items are flagged by vulture but are actually used or required:
 - **`src/ui/name_list_window.py`: `_format_status_message`** - Static helper called from unit tests.
 - **`src/ui/reading_history_window.py`: `load_general_stats`** - Compatibility alias for `load_summary_data`.
 
+## Qt framework callbacks
+- **`src/accessibility/theme_picker.py`: `ThemeMiniPreview.paintEvent`** - Qt paint callback; not called directly from app code.
+
 ---
 
 # Cleanup History
+
+### June 2, 2026 — Dead-code cleanup (vulture actionable items)
+
+**Removed:**
+- `src/ui/book_details.py`: `_navigation_announce_message` (orphaned after paging moved to `_focus_title_after_navigation`).
+- `src/accessibility/theme_picker.py`: `ThemeMiniPreview.set_colors` (colors set only in `__init__`).
+- `src/ui/preferences_window.py`: `focus_source_scope_section` (orphan alias; `focus_import_section` remains wired).
+
+**Post-cleanup scan:** production actionable items cleared; `paintEvent` remains documented false positive.
+
+### June 2, 2026 — Vulture Scan (post book-details / theme-picker changes)
+
+**Scan run:**
+- `python -m vulture src test --min-confidence 60`
+- `python -m vulture src --min-confidence 60`
+
+**New actionable items (production):**
+- `src/ui/book_details.py`: `_navigation_announce_message` — dead helper after Page Up/Down paging moved to `_focus_title_after_navigation`.
+- `src/accessibility/theme_picker.py`: `ThemeMiniPreview.set_colors` — unused; colors passed at construction only.
+- `src/ui/preferences_window.py`: `focus_source_scope_section` — orphan shortcut alias; `focus_import_section` is wired instead.
+
+**New false positives documented:**
+- `src/accessibility/theme_picker.py`: `ThemeMiniPreview.paintEvent` — Qt framework callback.
+
+**Existing actionable items unchanged (tests):**
+- `test/test_reading_history_accessibility.py`: `date_range_layout`
+- `test/test_reading_history_final_integration.py`: `alt_slush_works`, `operation_works`
+- `test/test_shortcut_integration.py`: `shortcut_manager` fixture
+- `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`
+- `test/test_web_book_api_matching.py`: mock `return_value` attributes
+
+**Existing false positives confirmed:**
+- `src/database/connection.py`: `row_factory`
+- `src/ui/book_list_import_window.py`: fallback `DataFrame`
+- `src/build_config.py`: `TRIAL_BUILD_DATE` (used by `src/main.py`)
+- `src/database/queries.py`: `total_time_hours`, `total_hours_read`
+- `src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS`
+- `src/ui/main_window.py`: `book_list`
+- `src/ui/name_list_window.py`: `on_alt_f_pressed`, `_format_status_message`
+- `src/ui/reading_history_window.py`: `load_general_stats`
+
+**`.vultureignore`:** no changes required this scan.
 
 ### June 2, 2026 — Vulture Findings Document Refresh
 

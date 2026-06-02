@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QTextEdit,
     QToolBar,
+    QSizePolicy,
 )
 from src.ui.license_dialogue import LicenseDialog
 from PySide6.QtCore import (
@@ -385,26 +386,47 @@ class MainWindow(QMainWindow):
     _SETTINGS_APP = "AudioBookCollector"
     _SETTINGS_KEY_COLLECTION_FILTER_ID = "main/collection_filter_id"
 
+    _SORT_KEY_TO_COLUMN = {
+        "Author": 0,
+        "Title": 1,
+        "Year": 2,
+        "Series": 3,
+        "Genre": 4,
+        "Time": 5,
+        "Read Date": 6,
+    }
+    _DIRECTION_SORT_KEYS = frozenset({"Year", "Time"})
+    _SORT_HEADER_TO_KEY = {"Read": "Read Date"}
+
+    def _normalize_sort_key(self, value: str | None) -> str | None:
+        """Map table header labels and sort keys to canonical sort key names."""
+        if not value:
+            return None
+        if value in self._SORT_KEY_TO_COLUMN:
+            return value
+        return self._SORT_HEADER_TO_KEY.get(value)
+
+    def _effective_sort_key(self) -> str:
+        """Return the sort key currently reflected in the summary and book details."""
+        return self._active_sort_key or self.current_filter.order_by or "Title"
+
     def _set_sort_label(self, order_by=None, direction=None):
-        """Set the sort label with custom message for Author, Genre, Series."""
-        key = order_by or self.current_filter.order_by
-        if key == "Author":
-            msg = "Author, Year, Title"
-        elif key == "Series":
-            msg = "Series, Year, Title"
-        elif key == "Genre":
-            msg = "Genre, Title"
-        else:
-            msg = key
-        if direction:
-            self.sort_label.setText(f"Sorted by: {msg} ({direction})")
-        else:
-            self.sort_label.setText(f"Sorted by: {msg}")
+        """Update tracked sort state and refresh the header filter summary."""
+        normalized = self._normalize_sort_key(order_by)
+        if normalized:
+            self._active_sort_key = normalized
+        if direction is not None:
+            self._active_sort_direction = direction
+        elif order_by is not None:
+            if normalized in self._DIRECTION_SORT_KEYS:
+                self._active_sort_direction = "Ascending"
+            else:
+                self._active_sort_direction = None
         self._update_filter_summary_label()
 
     def _sort_display_name(self, order_by=None) -> str:
         """Human-readable sort label for filter summary and footer."""
-        key = order_by or self._active_sort_key or self.current_filter.order_by
+        key = order_by or self._effective_sort_key()
         if key == "Author":
             return "Author, Year, Title"
         if key == "Series":
@@ -438,8 +460,32 @@ class MainWindow(QMainWindow):
                 search_text = search_text[1:]
             parts.append(f"Find: {search_text}")
 
-        parts.append(f"Sort: {self._sort_display_name()}")
+        parts.append(self._sort_summary_part())
         return "  |  ".join(parts)
+
+    def _sort_shows_direction(self, key=None) -> bool:
+        """Only Year/Time (and header-only Read Date) show ascending/descending."""
+        key = key or self._effective_sort_key()
+        if key in self._DIRECTION_SORT_KEYS:
+            return True
+        return key == "Read Date" and self.current_filter.order_by != "Read Date"
+
+    def _sort_summary_part(self) -> str:
+        """Sort text for filter summary and Alt+/ readback."""
+        key = self._effective_sort_key()
+        name = self._sort_display_name(key)
+        if self._sort_shows_direction(key):
+            direction = getattr(self, "_active_sort_direction", None)
+            if direction:
+                return f"Sort: {name} ({direction})"
+        return f"Sort: {name}"
+
+    def _active_sort_display_text(self) -> str:
+        """Active sort label for book details header (no 'Sort:' prefix)."""
+        return self._sort_summary_part().removeprefix("Sort: ")
+
+    def _column_for_sort_key(self, key: str) -> int:
+        return self._SORT_KEY_TO_COLUMN.get(key, 1)
 
     def _update_filter_summary_label(self):
         """Refresh header filter/sort summary for sighted users."""
@@ -540,6 +586,7 @@ class MainWindow(QMainWindow):
         self._last_header_sort_column = -1
         self._last_header_sort_order = Qt.AscendingOrder
         self._active_sort_key = "Title"
+        self._active_sort_direction = None
 
         # Setup UI
         self.setup_ui()
@@ -596,12 +643,14 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        # Header section
+        # Header section — full-width summary bar above the book table
         header_layout = self.create_header()
-        # Wrap header layout in a widget with left alignment to prevent center stretching
         header_widget = QWidget()
         header_widget.setLayout(header_layout)
-        layout.addWidget(header_widget, 0, Qt.AlignLeft | Qt.AlignTop)
+        header_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        layout.addWidget(header_widget, 0)
 
         # Table for books
         self.create_table()
@@ -653,11 +702,17 @@ class MainWindow(QMainWindow):
 
         self.filter_summary_panel = QWidget()
         self.filter_summary_panel.setObjectName("filterSummaryPanel")
+        self.filter_summary_panel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
         panel_layout = QHBoxLayout(self.filter_summary_panel)
         panel_layout.setContentsMargins(10, 6, 10, 6)
 
         self.filter_summary_label = QLabel("")
         self.filter_summary_label.setWordWrap(True)
+        self.filter_summary_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
         self.filter_summary_label.setAccessibleName("Active filters and sort summary")
         self.filter_summary_label.setAccessibleDescription(
             "Shows collection, read status, find text, sort order, and book count"
@@ -864,17 +919,12 @@ class MainWindow(QMainWindow):
             self.table.setColumnWidth(col, max(int(base_width * scale), 48))
 
     def create_footer(self) -> QWidget:
-        """Create footer card with sort label and action buttons."""
+        """Create footer card with action buttons."""
         self.footer_panel = QWidget()
         self.footer_panel.setObjectName("footerActionPanel")
         layout = QHBoxLayout(self.footer_panel)
         layout.setContentsMargins(10, 6, 10, 6)
 
-        # Sort order label (on left side)
-        self.sort_label = QLabel("Sorted by: Title")
-        layout.addWidget(self.sort_label)
-
-        # Spacer to push buttons to the right
         layout.addStretch()
 
         # Update button (hidden initially)
@@ -930,8 +980,6 @@ class MainWindow(QMainWindow):
             self.delete_button: "Delete selected books",
             self.export_button: "Export duplicate books to CSV",
         }
-        if hasattr(self, "sort_label"):
-            tooltip_map[self.sort_label] = "Current sort order"
         if hasattr(self, "filter_summary_label"):
             tooltip_map[self.filter_summary_label] = (
                 "Active collection, read, find, and sort filters"
@@ -1719,12 +1767,22 @@ class MainWindow(QMainWindow):
         self.set_status(self.get_default_status(), timeout_ms=0, announce=announce)
 
     def on_read_status_bar(self):
-        """mw#24: Alt+/ reads status bar. Do nothing if no screen reader active."""
+        """mw#24: Alt+/ reads status bar. Include filter/sort summary when idle."""
         visible = (self.status_bar.currentMessage() or "").strip()
-        read_status_bar_message(
-            self.status_bar,
-            fallback=visible or self.get_default_status(),
-        )
+        default = (self.get_default_status() or "").strip()
+        summary = self._filter_summary_text()
+
+        if visible and visible != default:
+            read_status_bar_message(
+                self.status_bar,
+                fallback=visible or default,
+            )
+        else:
+            read_status_bar_message(
+                self.status_bar,
+                fallback=summary or visible or default,
+                announce_text=summary or visible or default,
+            )
 
     def on_open_book_details(self):
         """mw#17,19: Open book details for current book (Enter)."""
@@ -1898,16 +1956,10 @@ class MainWindow(QMainWindow):
 
     def _sort_key_for_column(self, column: int) -> str:
         """Return Sort menu key for a table column index."""
-        mapping = {
-            0: "Author",
-            1: "Title",
-            2: "Year",
-            3: "Series",
-            4: "Genre",
-            5: "Time",
-            6: "Read Date",
-        }
-        return mapping.get(column, "Title")
+        for key, col in self._SORT_KEY_TO_COLUMN.items():
+            if col == column:
+                return key
+        return "Title"
 
     def _sync_sort_menu_selection(self, key: str):
         """Keep Sort menu checked item synced with current active sort."""
@@ -2063,8 +2115,10 @@ class MainWindow(QMainWindow):
             self.table.setSortingEnabled(False)
 
             focus_ctx = self._capture_table_focus_context()
+            self._reapply_active_sort_to_books()
             self.book_model.set_books(self.books)
             self._restore_table_focus_context(focus_ctx)
+            self._sync_sort_header_from_active_state()
 
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
@@ -2112,6 +2166,8 @@ class MainWindow(QMainWindow):
         target = text if text in self._primary_sort_options else "Title"
         self.current_filter.order_by = target
         self._active_sort_key = target
+        self._last_header_sort_column = -1
+        self._last_header_sort_order = Qt.AscendingOrder
         self._set_sort_label(order_by=target)
         self._set_primary_sort_indicator(target)
         self._sync_sort_menu_selection(target)
@@ -2119,14 +2175,10 @@ class MainWindow(QMainWindow):
 
     def on_table_header_clicked(self, column: int):
         """Handle table header clicks with combo-aligned sorting for key columns."""
-        # Custom sort for Author and Series columns
-        if column == 0:  # Author
-            self.on_order_changed("Author")
+        if column in (0, 1, 3, 4):  # Author, Title, Series, Genre — fixed SQL sort
+            key = self._sort_key_for_column(column)
+            self.on_order_changed(key)
             return
-        elif column == 3:  # Series
-            self.on_order_changed("Series")
-            return
-        # Title and Genre use default logic
 
         if self._last_header_sort_column == column:
             next_order = (
@@ -2143,20 +2195,13 @@ class MainWindow(QMainWindow):
         self._sort_books_in_memory(column, next_order)
         self.table.horizontalHeader().setSortIndicator(column, next_order)
 
-        header_text = (
-            self.book_model.headerData(column, Qt.Horizontal, Qt.DisplayRole) or "Field"
-        )
+        sort_key = self._sort_key_for_column(column)
         direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
-        self._active_sort_key = self._sort_key_for_column(column)
-        self._set_sort_label(order_by=header_text, direction=direction)
-        self._sync_sort_menu_selection(self._active_sort_key)
+        self._set_sort_label(order_by=sort_key, direction=direction)
+        self._sync_sort_menu_selection(sort_key)
 
-    def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
-        """Sort books list for non-primary columns without SQL roundtrip."""
-        if not self.books:
-            return
-
-        focus_ctx = self._capture_table_focus_context()
+    def _in_memory_sort_key(self, column: int):
+        """Return sort key function for in-memory column sorts."""
 
         def sort_key(book: Book):
             if column == 2:  # Year
@@ -2167,19 +2212,64 @@ class MainWindow(QMainWindow):
                 return book.read_date or ""
             return ""
 
-        self.books.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
+        return sort_key
+
+    def _apply_in_memory_sort_to_books(self, column: int, order: Qt.SortOrder):
+        """Sort self.books in place for non-primary columns."""
+        if not self.books:
+            return
+        self.books.sort(
+            key=self._in_memory_sort_key(column),
+            reverse=(order == Qt.DescendingOrder),
+        )
+
+    def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
+        """Sort books list for non-primary columns without SQL roundtrip."""
+        if not self.books:
+            return
+
+        focus_ctx = self._capture_table_focus_context()
+        self._apply_in_memory_sort_to_books(column, order)
         self.book_model.set_books(self.books)
         self._restore_table_focus_context(focus_ctx)
 
+    def _qt_order_for_active_direction(self) -> Qt.SortOrder:
+        if self._active_sort_direction == "Descending":
+            return Qt.DescendingOrder
+        return Qt.AscendingOrder
+
+    def _reapply_active_sort_to_books(self):
+        """Reapply in-memory sort after SQL refresh when active sort is Year/Time/etc."""
+        key = self._active_sort_key or self.current_filter.order_by
+        if key in self._DIRECTION_SORT_KEYS:
+            column = self._column_for_sort_key(key)
+            order = self._qt_order_for_active_direction()
+            self._apply_in_memory_sort_to_books(column, order)
+        elif key == "Read Date" and self.current_filter.order_by != "Read Date":
+            order = self._qt_order_for_active_direction()
+            self._apply_in_memory_sort_to_books(6, order)
+
+    def _sync_sort_header_from_active_state(self):
+        """Align header sort indicator with tracked sort state."""
+        key = self._active_sort_key or self.current_filter.order_by
+        if key in self._DIRECTION_SORT_KEYS or (
+            key == "Read Date" and self.current_filter.order_by != "Read Date"
+        ):
+            column = self._column_for_sort_key(key)
+            order = self._qt_order_for_active_direction()
+            self._last_header_sort_column = column
+            self._last_header_sort_order = order
+            self.table.horizontalHeader().setSortIndicator(column, order)
+        else:
+            indicator_key = (
+                key if key in self._primary_sort_options else self.current_filter.order_by
+            )
+            self._set_primary_sort_indicator(indicator_key)
+            self._sync_sort_menu_selection(key)
+
     def _set_primary_sort_indicator(self, order_by: str):
         """Keep sort indicator aligned with Order By combo for primary columns."""
-        order_to_column = {
-            "Author": 0,
-            "Title": 1,
-            "Series": 3,
-            "Genre": 4,
-        }
-        column = order_to_column.get(order_by)
+        column = self._SORT_KEY_TO_COLUMN.get(order_by)
         if column is None:
             return
 
@@ -2960,7 +3050,6 @@ class MainWindow(QMainWindow):
         # status_hint_label removed for accessibility; no longer updated
         # Removed status shortcut hint text update for accessibility
 
-        self.sort_label.setVisible(not show_action_buttons)
         self._apply_footer_button_roles()
 
         # Enable/disable Edit menu items based on selection
@@ -3455,11 +3544,10 @@ class MainWindow(QMainWindow):
     def on_new_book(self):
         """Open book details for new book."""
         # bd#8: Pass current sort order to show in header
-        sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
             self.db,
             self.scaler,
-            sort_order=sort_order,
+            sort_order=self._active_sort_display_text(),
             parent=self,
             current_collection_id=self.current_filter.collection_id,
         )
@@ -3594,7 +3682,7 @@ class MainWindow(QMainWindow):
 
     def open_book_details(self, book: Book):
         """Open book details window."""
-        sort_order = self.current_filter.order_by
+        sort_order = self._active_sort_display_text()
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
         current_index = 0

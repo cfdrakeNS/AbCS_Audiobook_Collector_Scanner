@@ -25,7 +25,6 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.accessible_events import (
     announce_status_message,
-    announce_dialog_opened,
     announce_dialog_closed,
     configure_status_bar_accessibility,
     read_status_bar_message,
@@ -97,11 +96,13 @@ class BookDetailsWindow(QDialog):
         self._default_status_message = message
         announce_status_message(self.status_bar, message, move_focus=announce)
 
-    def on_read_status_bar(self):
+    def on_read_status_bar(self, *, announce_text: str | None = None):
         """Read current status bar message (Alt+/)."""
+        fallback = announce_text or self._idle_status_message()
         read_status_bar_message(
             self.status_bar,
-            fallback=getattr(self, "_default_status_message", "") or "Ready",
+            fallback=fallback,
+            announce_text=announce_text,
         )
 
     def on_cancel_edit(self):
@@ -317,13 +318,12 @@ class BookDetailsWindow(QDialog):
         self._setup_dirty_tracking()
         self._update_save_button_visibility()
 
-        # Window settings
+        # Window settings (title bar only; no accessible name/description noise for SR)
         title = "New Book" if self.is_new else "Book Details"
         self.setWindowTitle(title)
-        self.setAccessibleName(title)
-        self.setAccessibleDescription("Form for viewing and editing book information")
+        self.setAccessibleName("")
+        self.setAccessibleDescription("")
         self.resize(850, 650)
-        announce_dialog_opened(self, title)
         self._show_idle_status(announce=False)
         QTimer.singleShot(0, self.title_edit.setFocus)
 
@@ -633,7 +633,11 @@ class BookDetailsWindow(QDialog):
         # bd#8: Header section showing sort order
         header_layout = QHBoxLayout()
         self.sort_order_label = QLabel(f"Sorted by: {self.sort_order}")
-        self.sort_order_label.setAccessibleName(f"Books sorted by {self.sort_order}")
+        self.sort_order_label.setAccessibleName("")
+        self.sort_order_label.setAccessibleDescription("")
+        self.sort_order_label.setFocusPolicy(Qt.NoFocus)
+        if QAccessible.isActive():
+            self.sort_order_label.hide()
         header_layout.addWidget(self.sort_order_label)
         header_layout.addStretch()
         layout.addLayout(header_layout)
@@ -645,8 +649,13 @@ class BookDetailsWindow(QDialog):
 
         # bd#3 Row 1: Title + Author (side by side)
         row1_layout = QHBoxLayout()
+        title_label = QLabel("Title:")
+        title_label.setAccessibleName("")
+        title_label.setAccessibleDescription("")
+        row1_layout.addWidget(title_label)
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("Book title")
+        self.title_edit.setAccessibleName("")
+        self.title_edit.setAccessibleDescription("")
         row1_layout.addWidget(self.title_edit, 2)  # stretch=2
 
         # bd#3 Author with View/Edit mode support
@@ -666,9 +675,7 @@ class BookDetailsWindow(QDialog):
         row1_layout.addWidget(self.author_label_display, 1)
         row1_layout.addWidget(self.author_combo, 1)  # stretch=1
 
-        title_label = QLabel("&Title:")
-        title_label.setBuddy(self.title_edit)
-        form.addRow(title_label, row1_layout)
+        form.addRow(row1_layout)
 
         # bd#3 Row 2: Plot (expand to fit, hide when empty)
         self.comments_label = QLabel("Plot:")
@@ -706,7 +713,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(time_label)
         row3_layout.addWidget(self.time_edit)
 
-        reader_label = QLabel("&Reader:")
+        reader_label = QLabel("Reader:")
         reader_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
@@ -715,7 +722,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(reader_label)
         row3_layout.addWidget(self.reader_edit)
 
-        read_label = QLabel("R&ead:")
+        read_label = QLabel("Read:")
         read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.read_date = QDateEdit()
         self._null_read_date = QDate(2000, 1, 1)
@@ -777,7 +784,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(read_label)
         row3_layout.addWidget(self.read_date)
 
-        year_label = QLabel("&Year:")
+        year_label = QLabel("Year:")
         year_label.setBuddy(self.year_spin)
         form.addRow(year_label, row3_layout)
 
@@ -837,7 +844,7 @@ class BookDetailsWindow(QDialog):
         # bd#3 Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
 
-        files_label = QLabel("&Files:")
+        files_label = QLabel("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(False)
         self.files_edit.setAccessibleName("Number of files")
@@ -845,7 +852,7 @@ class BookDetailsWindow(QDialog):
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
-        bitrate_label = QLabel("&Bitrate:")
+        bitrate_label = QLabel("Bitrate:")
         bitrate_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(False)
@@ -855,7 +862,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
 
-        size_label = QLabel("Si&ze:")
+        size_label = QLabel("Size:")
         size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(False)
@@ -911,7 +918,7 @@ class BookDetailsWindow(QDialog):
         row6_layout.addWidget(added_label)
         row6_layout.addWidget(self.added_edit, 1)
 
-        path_label = QLabel("Pat&h:")
+        path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
         form.addRow(path_label, row6_layout)
 
@@ -1027,7 +1034,7 @@ class BookDetailsWindow(QDialog):
             {
                 self.title_edit: (
                     "Book title",
-                    "Title of the audiobook",
+                    "",
                 ),
                 self.author_combo: (
                     "Author name",
@@ -1131,7 +1138,55 @@ class BookDetailsWindow(QDialog):
                 ),
             }
         )
-        apply_status_bar_tooltip(self.status_bar, "Current status")
+        apply_status_bar_tooltip(self.status_bar, "")
+
+    def _idle_status_message(self) -> str:
+        """Default status text when the form is idle (view or new-book mode)."""
+        if self.is_new:
+            return "New book entry."
+        title = (getattr(self, "title_edit", None) and self.title_edit.text() or "").strip()
+        if not title:
+            title = (getattr(self.book, "title", None) or "").strip()
+        title = title or "(Untitled)"
+        author = (
+            getattr(self, "author_label_display", None)
+            and self.author_label_display.text()
+            or ""
+        ).strip()
+        if not author:
+            author = (getattr(self.book, "author_name", None) or "").strip()
+        author = author or "(Unknown author)"
+        return f"{title} by {author}."
+
+    def _blur_title_before_navigation_load(self):
+        """Move focus off title so setText during load does not trigger SR."""
+        for widget in (self.edit_button, self.save_button, self.new_button, self.delete_button):
+            if widget.isVisible():
+                widget.setFocus(Qt.OtherFocusReason)
+                return
+
+    def _focus_title_after_navigation(self):
+        """Speak title only after Page Up/Down (same pattern as import detail)."""
+        was_read_only = self.title_edit.isReadOnly()
+        in_edit_mode = self.author_combo.isVisible()
+
+        def focus_title():
+            if was_read_only and not in_edit_mode:
+                self.title_edit.setReadOnly(False)
+            self.title_edit.setAccessibleName("")
+            self.title_edit.setAccessibleDescription("")
+            self.title_edit.setFocus(Qt.OtherFocusReason)
+
+            def restore_read_only():
+                if was_read_only and not in_edit_mode:
+                    self.title_edit.setReadOnly(True)
+
+            from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
+            delay = max(get_screen_reader_focus_delay_ms(), 400)
+            QTimer.singleShot(delay, restore_read_only)
+
+        QTimer.singleShot(0, focus_title)
 
     def setup_shortcuts(self):
         """bd#4: Setup keyboard shortcuts for buttons."""
@@ -1189,6 +1244,7 @@ class BookDetailsWindow(QDialog):
 
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
         # PageUp/PageDown for navigation (like import_detail_window)
@@ -1346,16 +1402,7 @@ class BookDetailsWindow(QDialog):
 
     def _show_idle_status(self, announce: bool = False):
         """Show default status when form is not in edit/save mode."""
-        if self.is_new:
-            self.set_status(
-                "New book entry.",
-                announce=announce,
-            )
-        else:
-            self.set_status(
-                "",
-                announce=announce,
-            )
+        self.set_status(self._idle_status_message(), announce=announce)
 
     def _update_save_button_visibility(self):
         """
@@ -1799,7 +1846,6 @@ class BookDetailsWindow(QDialog):
             self._original_series = self.series_combo.currentText()
             self._original_genre = self.genre_combo.currentText()
             self.setWindowTitle("Book Details")
-            self.setAccessibleName("Book Details")
 
             # Switch back to view mode (hide combos, show labels)
             self._show_view_labels()
@@ -1885,7 +1931,6 @@ class BookDetailsWindow(QDialog):
                 self._clear_dirty()
                 self.update_navigation_state()
                 self.setWindowTitle("Book Details")
-                self.setAccessibleName("Book Details")
                 exec_styled_message_box(
                     self,
                     self.scaler.get_scaled_size(20),
@@ -1933,7 +1978,6 @@ class BookDetailsWindow(QDialog):
 
         # Update window title
         self.setWindowTitle("New Book")
-        self.setAccessibleName("New Book")
 
         # Update button states
         self.delete_button.setVisible(False)
@@ -2349,15 +2393,14 @@ class BookDetailsWindow(QDialog):
 
         def do_nav():
             if self.books_list and self.current_index > 0:
+                self._blur_title_before_navigation_load()
                 self.current_index -= 1
                 self.book = self.books_list[self.current_index]
                 self.is_new = False
                 self.load_book_data()
-                self._clear_dirty()
+                self._clear_dirty(preserve_status=True)
                 self.update_navigation_state()
-                self.setWindowTitle("Book Details")
-                self.setAccessibleName("Book Details")
-                QTimer.singleShot(0, self.title_edit.setFocus)
+                self._focus_title_after_navigation()
 
         if self._dirty:
             self._confirm_save_or_cancel(do_nav)
@@ -2369,15 +2412,14 @@ class BookDetailsWindow(QDialog):
 
         def do_nav():
             if self.books_list and self.current_index < len(self.books_list) - 1:
+                self._blur_title_before_navigation_load()
                 self.current_index += 1
                 self.book = self.books_list[self.current_index]
                 self.is_new = False
                 self.load_book_data()
-                self._clear_dirty()
+                self._clear_dirty(preserve_status=True)
                 self.update_navigation_state()
-                self.setWindowTitle("Book Details")
-                self.setAccessibleName("Book Details")
-                QTimer.singleShot(0, self.title_edit.setFocus)
+                self._focus_title_after_navigation()
 
         if self._dirty:
             self._confirm_save_or_cancel(do_nav)

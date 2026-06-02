@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QWidget,
     QFrame,
+    QTabWidget,
 )
 from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
@@ -43,6 +44,7 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.theme_picker import ThemePreviewPicker
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
@@ -58,11 +60,29 @@ class PreferencesWindow(QDialog):
     Preferences dialog for display and import settings.
     """
 
-    def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
-        super().__init__(parent)
-        from src.accessibility.icon_helper import get_app_icon
+    TAB_DISPLAY = 0
+    TAB_IMPORT = 1
+    TAB_FALLBACK = 2
+    TAB_VALIDATION = 3
 
-        self.setWindowIcon(get_app_icon())
+    TAB_DESCRIPTIONS = {
+        TAB_DISPLAY: (
+            "Choose how AbCS looks: color theme, font scaling preset, and zoom level. "
+            "Changes to theme and zoom apply immediately so you can preview before saving."
+        ),
+        TAB_IMPORT: (
+            "Set defaults used when you open the Import window: where to scan, "
+            "which audio formats to include, and which import scenario matches your folder layout."
+        ),
+        TAB_FALLBACK: (
+            "Control how missing metadata is filled in during import and how narrator "
+            "names are detected from file tags and comments."
+        ),
+        TAB_VALIDATION: (
+            "Configure import validation severity: duplicate matching, title and author "
+            "consistency, book length limits, folder structure, and year checks."
+        ),
+    }
 
     def keyPressEvent(self, event):
         # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
@@ -107,6 +127,9 @@ class PreferencesWindow(QDialog):
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
+        from src.accessibility.icon_helper import get_app_icon
+
+        self.setWindowIcon(get_app_icon())
 
         self.scaler = scaler
         self.theme_manager = theme_manager
@@ -136,7 +159,7 @@ class PreferencesWindow(QDialog):
         self.setAccessibleDescription(
             "Application preferences for display and import settings"
         )
-        self.resize(994, 747)
+        self.resize(994, 680)
         QTimer.singleShot(0, self.update_scenario_description_height)
 
         announce_dialog_opened(self, title)
@@ -148,44 +171,103 @@ class PreferencesWindow(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(18)
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setAccessibleName("Preferences sections")
+        self._tab_scroll_areas = {}
 
-        content_widget = QWidget()
-        self.content_layout = QVBoxLayout(content_widget)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-        self.content_layout.setSpacing(20)
-        self.scroll_area.setWidget(content_widget)
-        layout.addWidget(self.scroll_area, 1)
+        self.tab_widget.addTab(
+            self._build_display_tab(), "Display Settings"
+        )
+        self.tab_widget.addTab(self._build_import_tab(), "Import Settings")
+        self.tab_widget.addTab(
+            self._build_fallback_tab(), "Fallback and Parsing"
+        )
+        self.tab_widget.addTab(
+            self._build_validation_tab(), "Validation Rules"
+        )
 
-        # Header section: Display settings
-        display_group = QGroupBox("Display Settings")
+        layout.addWidget(self.tab_widget, 1)
 
-        # Apply scaled font to group box title
+        # Footer section: Status bar and action buttons
+        footer_layout = QHBoxLayout()
+
+        self.status_bar = QStatusBar()
+        self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
+        footer_layout.addWidget(self.status_bar, 1)
+
+        self.restore_defaults_button = QPushButton("Restore Defaults")
+        self.restore_defaults_button.setAccessibleName("Restore Defaults")
+        self.restore_defaults_button.setAccessibleDescription(
+            "Reset all preferences to default values - Alt+R"
+        )
+        self.restore_defaults_button.setDefault(False)
+        self.restore_defaults_button.setAutoDefault(False)
+        footer_layout.addWidget(self.restore_defaults_button)
+
+        self.save_button = QPushButton("Save")
+        self.save_button.setAccessibleName("Save")
+        self.save_button.setAccessibleDescription("Save preferences and close - Alt+S")
+        self.save_button.setDefault(False)
+        self.save_button.setAutoDefault(False)
+        footer_layout.addWidget(self.save_button)
+
+        layout.addLayout(footer_layout)
+
+    def _section_font(self):
         from PySide6.QtGui import QFont
 
-        display_font = QFont()
-        display_font.setPointSize(self.scaler.get_scaled_size(14))
-        display_font.setBold(True)
-        display_group.setFont(display_font)
-        display_layout = QHBoxLayout(display_group)
-        display_layout.setSpacing(18)
-        display_layout.addSpacing(6)
+        section_font = QFont()
+        section_font.setPointSize(self.scaler.get_scaled_size(14))
+        section_font.setBold(True)
+        return section_font
+
+    def _make_tab_page(self, tab_index: int, description: str):
+        """Create a tab page with description label and scrollable content."""
+        page = QWidget()
+        page.setAutoFillBackground(True)
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(12)
+
+        desc_label = QLabel(description)
+        desc_label.setWordWrap(True)
+        desc_label.setObjectName("preferencesTabDescription")
+        desc_label.setAccessibleName("Tab description")
+        desc_label.setAccessibleDescription(description)
+        page.setAccessibleDescription(description)
+        page_layout.addWidget(desc_label)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        content = QWidget()
+        content.setAutoFillBackground(True)
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(16)
+        scroll.setWidget(content)
+        page_layout.addWidget(scroll, 1)
+
+        self._tab_scroll_areas[tab_index] = scroll
+        return page, content_layout
+
+    def _build_display_tab(self) -> QWidget:
+        page, content_layout = self._make_tab_page(
+            self.TAB_DISPLAY, self.TAB_DESCRIPTIONS[self.TAB_DISPLAY]
+        )
+
+        display_group = QGroupBox("Theme and Zoom")
+        display_group.setFont(self._section_font())
+        display_layout = QVBoxLayout(display_group)
+        display_layout.setSpacing(14)
+
+        preset_row = QHBoxLayout()
+        preset_row.setSpacing(18)
         display_label_width = 72
-
-        theme_label = QLabel("Theme:")
-        theme_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        theme_label.setMinimumWidth(display_label_width)
-        self.theme_combo = QComboBox()
-        self.theme_combo.setAccessibleName("Theme")
-        self.theme_combo.setAccessibleDescription("Select application theme")
-        theme_label.setBuddy(self.theme_combo)
-        display_layout.addWidget(theme_label)
-        display_layout.addWidget(self.theme_combo)
-
         preset_label = QLabel("Preset:")
         preset_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         preset_label.setMinimumWidth(display_label_width)
@@ -193,11 +275,10 @@ class PreferencesWindow(QDialog):
         self.preset_combo.setAccessibleName("Font scaling preset")
         self.preset_combo.setAccessibleDescription("Select font scaling preset")
         preset_label.setBuddy(self.preset_combo)
-        display_layout.addWidget(preset_label)
-        display_layout.addWidget(self.preset_combo)
+        preset_row.addWidget(preset_label)
+        preset_row.addWidget(self.preset_combo)
 
-        # Reduce spacing between preset and zoom by 1/2 (was 18)
-        display_layout.addSpacing(9)
+        preset_row.addSpacing(9)
 
         zoom_label = QLabel("Zoom (%):")
         zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -208,47 +289,34 @@ class PreferencesWindow(QDialog):
         self.zoom_spin.setAccessibleName("Zoom level")
         self.zoom_spin.setAccessibleDescription("Set zoom level percentage")
         zoom_label.setBuddy(self.zoom_spin)
-        display_layout.addWidget(zoom_label)
-        display_layout.addWidget(self.zoom_spin)
+        preset_row.addWidget(zoom_label)
+        preset_row.addWidget(self.zoom_spin)
+        preset_row.addStretch(1)
+        display_layout.addLayout(preset_row)
 
-        self.content_layout.addWidget(display_group)
+        theme_label = QLabel("Theme:")
+        theme_label.setAccessibleName("Theme")
+        display_layout.addWidget(theme_label)
 
-        # Detail section: Import settings
-        import_group = QGroupBox("Import Settings")
+        self.theme_picker = ThemePreviewPicker(self.theme_manager, self)
+        display_layout.addWidget(self.theme_picker)
 
-        import_group.setFont(display_font)
-        import_group.setFont(display_font)
-        import_layout = QVBoxLayout(import_group)
-        import_layout.setSpacing(11)
+        content_layout.addWidget(display_group)
+        content_layout.addStretch(1)
+
+        self._card_groups = [display_group]
+        return page
+
+    def _build_import_tab(self) -> QWidget:
+        page, content_layout = self._make_tab_page(
+            self.TAB_IMPORT, self.TAB_DESCRIPTIONS[self.TAB_IMPORT]
+        )
         import_label_width = 180
 
-        source_scope_group = QGroupBox("Path & Scope")
-
-        source_scope_group.setFont(display_font)
-        source_scope_group.setFont(display_font)
+        source_scope_group = QGroupBox("Path and Scope")
+        source_scope_group.setFont(self._section_font())
         source_scope_layout = QVBoxLayout(source_scope_group)
         source_scope_layout.setSpacing(8)
-
-        fallback_group = QGroupBox("Fallback and Parsing Behavior")
-
-        fallback_group.setFont(display_font)
-        fallback_group.setFont(display_font)
-        fallback_layout = QVBoxLayout(fallback_group)
-        fallback_layout.setContentsMargins(8, 8, 8, 8)
-        fallback_layout.setSpacing(8)
-
-        fallback_checks_layout = QGridLayout()
-        self.fallback_checks_layout = fallback_checks_layout
-        fallback_checks_layout.setContentsMargins(0, 0, 0, 0)
-        fallback_checks_layout.setHorizontalSpacing(20)
-        fallback_checks_layout.setVerticalSpacing(0)
-
-        validation_group = QGroupBox("Validation Rules")
-
-        validation_group.setFont(display_font)
-        validation_group.setFont(display_font)
-        validation_layout = QVBoxLayout(validation_group)
-        validation_layout.setSpacing(8)
 
         dir_layout = QHBoxLayout()
         dir_label = QLabel("Directory:")
@@ -338,7 +406,31 @@ class PreferencesWindow(QDialog):
         scenario_desc_layout.addWidget(self.scenario_description_edit, 1)
         source_scope_layout.addLayout(scenario_desc_layout)
 
-        import_layout.addWidget(source_scope_group)
+        content_layout.addWidget(source_scope_group)
+        content_layout.addStretch(1)
+
+        if not hasattr(self, "_card_groups"):
+            self._card_groups = []
+        self._card_groups.append(source_scope_group)
+        return page
+
+    def _build_fallback_tab(self) -> QWidget:
+        page, content_layout = self._make_tab_page(
+            self.TAB_FALLBACK, self.TAB_DESCRIPTIONS[self.TAB_FALLBACK]
+        )
+        import_label_width = 180
+
+        fallback_group = QGroupBox("Fallback and Parsing Behavior")
+        fallback_group.setFont(self._section_font())
+        fallback_layout = QVBoxLayout(fallback_group)
+        fallback_layout.setContentsMargins(8, 8, 8, 8)
+        fallback_layout.setSpacing(8)
+
+        fallback_checks_layout = QGridLayout()
+        self.fallback_checks_layout = fallback_checks_layout
+        fallback_checks_layout.setContentsMargins(0, 0, 0, 0)
+        fallback_checks_layout.setHorizontalSpacing(20)
+        fallback_checks_layout.setVerticalSpacing(0)
 
         self.author_fallback_checkbox = QCheckBox("Author fallback to folder?")
         self.author_fallback_checkbox.setAccessibleName("Author fallback to folder")
@@ -385,9 +477,21 @@ class PreferencesWindow(QDialog):
         reader_keywords_layout.addWidget(self.reader_keywords_edit)
         reader_keywords_layout.addStretch(1)
         fallback_layout.addLayout(reader_keywords_layout)
-        import_layout.addWidget(fallback_group)
 
-        import_layout.addSpacing(self.scaler.get_scaled_size(8))
+        content_layout.addWidget(fallback_group)
+        content_layout.addStretch(1)
+        self._card_groups.append(fallback_group)
+        return page
+
+    def _build_validation_tab(self) -> QWidget:
+        page, content_layout = self._make_tab_page(
+            self.TAB_VALIDATION, self.TAB_DESCRIPTIONS[self.TAB_VALIDATION]
+        )
+
+        validation_group = QGroupBox("Validation Rules")
+        validation_group.setFont(self._section_font())
+        validation_layout = QVBoxLayout(validation_group)
+        validation_layout.setSpacing(8)
 
         self.rules_section_text = QTextEdit()
         self.rules_section_text.setReadOnly(True)
@@ -475,6 +579,14 @@ class PreferencesWindow(QDialog):
         min_title_label.setBuddy(self.rule_min_title_value)
         rules_layout.addWidget(min_title_label, 2, 2)
         rules_layout.addLayout(min_title_config_layout, 2, 3)
+
+        self.min_title_warning_label = QLabel(
+            "Minimum title length is not checked when severity is None."
+        )
+        self.min_title_warning_label.setWordWrap(True)
+        self.min_title_warning_label.setAccessibleName("Minimum title length notice")
+        self.min_title_warning_label.setVisible(False)
+        rules_layout.addWidget(self.min_title_warning_label, 6, 0, 1, 4)
 
         min_book_length_label = QLabel("Min Book Minutes:")
         min_book_length_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -605,76 +717,15 @@ class PreferencesWindow(QDialog):
 
         validation_layout.addWidget(self.rules_section_text)
         validation_layout.addWidget(rules_group, 0, Qt.AlignLeft)
-        import_layout.addWidget(validation_group)
-        import_layout.addSpacing(self.scaler.get_scaled_size(8))
+        content_layout.addWidget(validation_group)
+        content_layout.addStretch(1)
 
-        self.autocorrect_section_text = QTextEdit()
-        self.autocorrect_section_text.setReadOnly(True)
-        self.autocorrect_section_text.setTabChangesFocus(True)
-        self.autocorrect_section_text.setAccessibleName("Auto-correction rules description")
-        self.autocorrect_section_text.setAccessibleDescription(
-            "Summary of metadata auto-correction behavior"
-        )
-        self.autocorrect_section_text.setFocusPolicy(Qt.StrongFocus)
-        self.autocorrect_section_text.setTextInteractionFlags(
-            Qt.TextSelectableByKeyboard
-        )
-        self.autocorrect_section_text.setPlainText(
-            "Auto-Correction: applies to Author, Series, Genre, and Narrator."
-        )
-        self._fit_readonly_section_text_height(self.autocorrect_section_text)
-        self._sync_section_label_heights()
-
-        self.autocorrect_group = QGroupBox("")
-        self.autocorrect_group.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred
-        )
-        self.autocorrect_layout = QHBoxLayout(self.autocorrect_group)
-        self.autocorrect_layout.setContentsMargins(4, 2, 4, 2)
-        self.autocorrect_layout.setSpacing(35)
-
-        self.autocorrect_layout.addStretch(1)
-
-        self.content_layout.addWidget(import_group)
-        self._card_groups = (
-            display_group,
-            import_group,
-            source_scope_group,
-            fallback_group,
-            validation_group,
-            rules_group,
-            self.autocorrect_group,
-        )
-
-        # Footer section: Status bar and action buttons
-        footer_layout = QHBoxLayout()
-
-        self.status_bar = QStatusBar()
-        self.status_bar.setSizeGripEnabled(False)
-        configure_status_bar_accessibility(self.status_bar)
-        footer_layout.addWidget(self.status_bar, 1)
-
-        self.restore_defaults_button = QPushButton("Restore Defaults")
-        self.restore_defaults_button.setAccessibleName("Restore Defaults")
-        self.restore_defaults_button.setAccessibleDescription(
-            "Reset all preferences to default values - Alt+R"
-        )
-        self.restore_defaults_button.setDefault(False)
-        self.restore_defaults_button.setAutoDefault(False)
-        footer_layout.addWidget(self.restore_defaults_button)
-
-        self.save_button = QPushButton("Save")
-        self.save_button.setAccessibleName("Save")
-        self.save_button.setAccessibleDescription("Save preferences and close - Alt+S")
-        self.save_button.setDefault(False)
-        self.save_button.setAutoDefault(False)
-        footer_layout.addWidget(self.save_button)
-
-        layout.addLayout(footer_layout)
+        self._card_groups.extend((validation_group, rules_group))
+        return page
 
     def apply_visual_tooltips(self):
         tooltip_map = {
-            self.theme_combo: "Choose the application color theme",
+            self.theme_picker: "Choose the application color theme",
             self.preset_combo: "Choose a preset font scaling level",
             self.zoom_spin: "Set the interface zoom percentage",
             self.import_dir_edit: "Default folder used for audiobook imports",
@@ -727,6 +778,15 @@ class PreferencesWindow(QDialog):
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
 
+        self.setStyleSheet(
+            """
+            QDialog {
+                background-color: palette(window);
+                color: palette(windowText);
+            }
+            """
+        )
+
         combo_style = f"""
             QComboBox {{
                 min-height: {scaled_height}px;
@@ -756,10 +816,62 @@ class PreferencesWindow(QDialog):
         for group in getattr(self, "_card_groups", ()):
             group.setStyleSheet(card_style)
 
+        tab_style = """
+            QTabWidget::pane {
+                border: 1px solid palette(mid);
+                background-color: palette(window);
+                top: -1px;
+            }
+            QTabBar::tab {
+                background-color: palette(button);
+                color: palette(windowText);
+                border: 1px solid palette(mid);
+                border-bottom: none;
+                padding: 6px 14px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: palette(window);
+                color: palette(windowText);
+            }
+            QTabBar::tab:hover {
+                background-color: palette(light);
+            }
+        """
+        if hasattr(self, "tab_widget"):
+            self.tab_widget.setStyleSheet(tab_style)
+
+        scroll_style = """
+            QScrollArea {
+                background-color: palette(window);
+                border: none;
+            }
+            QScrollArea > QWidget > QWidget {
+                background-color: palette(window);
+            }
+        """
+        for scroll in getattr(self, "_tab_scroll_areas", {}).values():
+            scroll.setStyleSheet(scroll_style)
+            scroll.viewport().setStyleSheet("background-color: palette(window);")
+
+        desc_style = """
+            QLabel#preferencesTabDescription {
+                color: palette(windowText);
+                background-color: transparent;
+                padding: 4px 2px 8px 2px;
+            }
+        """
+        for desc in self.findChildren(QLabel):
+            if desc.objectName() == "preferencesTabDescription":
+                desc.setStyleSheet(desc_style)
+
+        if hasattr(self, "theme_picker"):
+            self.theme_picker.setStyleSheet("background-color: transparent;")
+            self.theme_picker.refresh_selection_styles()
+
         self.save_button.setObjectName("primaryActionButton")
         self.status_bar.setStyleSheet(status_style)
 
-        self.theme_combo.setStyleSheet(combo_style)
         self.preset_combo.setStyleSheet(combo_style)
         self.zoom_spin.setStyleSheet(combo_style)
         self.import_scenario_combo.setStyleSheet(combo_style)
@@ -821,8 +933,6 @@ class PreferencesWindow(QDialog):
         """
         if hasattr(self, "rules_section_text"):
             self.rules_section_text.setStyleSheet(section_text_style)
-        if hasattr(self, "autocorrect_section_text"):
-            self.autocorrect_section_text.setStyleSheet(section_text_style)
 
     def _apply_action_button_icons(self):
         """Decorative icons beside footer and browse button text."""
@@ -839,26 +949,7 @@ class PreferencesWindow(QDialog):
         self._sync_fallback_column_alignment()
         if hasattr(self, "rules_section_text"):
             self._fit_readonly_section_text_height(self.rules_section_text)
-        if hasattr(self, "autocorrect_section_text"):
-            self._fit_readonly_section_text_height(self.autocorrect_section_text)
-        self._sync_section_label_heights()
-        self._sync_autocorrect_group_width()
         self.update_scenario_description_height()
-
-    def _sync_autocorrect_group_width(self):
-        """Set Auto-Correction frame width so column spacing is visible."""
-        if not hasattr(self, "autocorrect_group") or not hasattr(
-            self, "autocorrect_layout"
-        ):
-            return
-
-        content_width = self.autocorrect_layout.sizeHint().width()
-        target_width = content_width + self.scaler.get_scaled_size(24)
-        min_width = self.scaler.get_scaled_size(420)
-        target_width = max(min_width, target_width)
-
-        self.autocorrect_group.setMinimumWidth(target_width)
-        self.autocorrect_group.setMaximumWidth(target_width)
 
     def _sync_fallback_column_alignment(self):
         """Align fallback checkbox columns with Options checkbox columns."""
@@ -872,20 +963,8 @@ class PreferencesWindow(QDialog):
 
     def _update_min_title_warning(self):
         """Show/hide warning when min title length severity is 'none' (disabled)."""
-        if hasattr(self, "min_title_warning_label"):
-            is_disabled = self.rule_min_title_severity.currentData() == "none"
-            self.min_title_warning_label.setVisible(is_disabled)
-
-    def _sync_section_label_heights(self):
-        """Keep section label boxes the same height for visual consistency."""
-        if not hasattr(self, "rules_section_text") or not hasattr(
-            self, "autocorrect_section_text"
-        ):
-            return
-
-        target_height = self.rules_section_text.height()
-        self.autocorrect_section_text.setMinimumHeight(target_height)
-        self.autocorrect_section_text.setMaximumHeight(target_height)
+        is_disabled = self.rule_min_title_severity.currentData() == "none"
+        self.min_title_warning_label.setVisible(is_disabled)
 
     def _fit_readonly_section_text_height(self, widget: QTextEdit):
         """Size a read-only section textbox to just fit its content."""
@@ -951,7 +1030,7 @@ class PreferencesWindow(QDialog):
     def _capture_state(self) -> dict:
         """Capture current UI state for unsaved-change detection."""
         return {
-            "theme": self.theme_combo.currentData(),
+            "theme": self.theme_picker.current_theme_id(),
             "scale": self.zoom_spin.value(),
             "import_directory": self.import_dir_edit.text().strip(),
             "formats": tuple(
@@ -1029,15 +1108,11 @@ class PreferencesWindow(QDialog):
     def load_settings(self):
         """Load settings from QSettings into the UI."""
         self._loading = True
+        self.theme_picker.set_loading(True)
 
         # Theme options
-        self.theme_combo.clear()
-        for display_name, theme_id in self.theme_manager.get_theme_names():
-            self.theme_combo.addItem(display_name, theme_id)
         current_theme = self.theme_manager.current_theme_name
-        index = self.theme_combo.findData(current_theme)
-        if index >= 0:
-            self.theme_combo.setCurrentIndex(index)
+        self.theme_picker.set_selected_theme_id(current_theme)
 
         # Scale presets
         self.preset_combo.clear()
@@ -1316,10 +1391,11 @@ class PreferencesWindow(QDialog):
         QTimer.singleShot(0, self._sync_fallback_column_alignment)
 
         self._loading = False
+        self.theme_picker.set_loading(False)
 
     def connect_signals(self):
         """Connect signals to handlers."""
-        self.theme_combo.currentIndexChanged.connect(self.on_theme_changed)
+        self.theme_picker.theme_changed.connect(self.on_theme_changed)
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
         self.zoom_spin.valueChanged.connect(self.on_zoom_changed)
         self.import_scenario_combo.currentIndexChanged.connect(
@@ -1338,8 +1414,8 @@ class PreferencesWindow(QDialog):
 
         mgr = get_shortcut_manager()
         callback_map = {
-            "theme_combo": self.focus_display_section,
-            "import_dir_edit": self.focus_source_scope_section,
+            "theme_picker": self.focus_display_section,
+            "import_dir_edit": self.focus_import_section,
             "browse_button": self.on_browse,
             "author_fallback_checkbox": self.focus_fallback_section,
             "rules_section_text": self.focus_validation_section,  # Alt+V
@@ -1360,21 +1436,34 @@ class PreferencesWindow(QDialog):
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_cancel)
 
-    def _focus_section_widget(self, widget, section_name: str):
+    def _switch_to_tab(self, tab_index: int) -> None:
+        if hasattr(self, "tab_widget"):
+            self.tab_widget.setCurrentIndex(tab_index)
+
+    def _focus_section_widget(self, widget, section_name: str, tab_index: int | None = None):
         """Focus first widget in a section and announce context."""
         if widget is None or not isValid(widget):
             return
-        self.scroll_area.ensureWidgetVisible(widget)
+        if tab_index is not None:
+            self._switch_to_tab(tab_index)
+        scroll = None
+        if tab_index is not None and hasattr(self, "_tab_scroll_areas"):
+            scroll = self._tab_scroll_areas.get(tab_index)
+        if scroll is not None:
+            scroll.ensureWidgetVisible(widget)
         widget.setFocus()
         self.set_status(f"{section_name} section")
 
     def focus_display_section(self):
         """Focus first control in Display section."""
-        self._focus_section_widget(self.theme_combo, "Display")
+        first = self.preset_combo
+        self._focus_section_widget(first, "Display Settings", self.TAB_DISPLAY)
 
-    def focus_source_scope_section(self):
-        """Focus first control in Path & Scope section."""
-        self._focus_section_widget(self.import_dir_edit, "Path & Scope")
+    def focus_import_section(self):
+        """Focus first control in Import Settings tab."""
+        self._focus_section_widget(
+            self.import_dir_edit, "Import Settings", self.TAB_IMPORT
+        )
 
     def focus_options_section(self):
         """Focus first control in Options section."""
@@ -1382,12 +1471,16 @@ class PreferencesWindow(QDialog):
     def focus_fallback_section(self):
         """Focus first control in Fallback and Parsing section."""
         self._focus_section_widget(
-            self.author_fallback_checkbox, "Fallback and Parsing Behavior"
+            self.author_fallback_checkbox,
+            "Fallback and Parsing Behavior",
+            self.TAB_FALLBACK,
         )
 
     def focus_validation_section(self):
         """Focus first control in Validation Rules section."""
-        self._focus_section_widget(self.rules_section_text, "Validation Rules")
+        self._focus_section_widget(
+            self.rules_section_text, "Validation Rules", self.TAB_VALIDATION
+        )
 
     def set_status(self, message: str, announce: bool = False):
         """Set status bar message with optional screen reader announcement."""
@@ -1413,11 +1506,11 @@ class PreferencesWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Alt+D", "Display section"),
-            ("Alt+P", "Path & Scope section"),
+            ("Alt+D", "Display Settings tab"),
+            ("Alt+P", "Import Settings tab"),
             ("Alt+W", "Browse for default import directory"),
-            ("Alt+F", "Fallback and Parsing Behavior section"),
-            ("Alt+V", "Validation Rules section"),
+            ("Alt+F", "Fallback and Parsing tab"),
+            ("Alt+V", "Validation Rules tab"),
             ("Alt+R", "Restore Defaults"),
             ("Alt+S", "Save"),
             ("Alt+/", "Read status bar"),
@@ -1547,11 +1640,12 @@ class PreferencesWindow(QDialog):
         except RuntimeError:
             pass
 
-    def on_theme_changed(self):
+    def on_theme_changed(self, theme_id=None):
         """Apply theme change immediately."""
         if self._loading:
             return
-        theme_id = self.theme_combo.currentData()
+        if theme_id is None:
+            theme_id = self.theme_picker.current_theme_id()
         if theme_id:
             self.theme_manager.set_theme(theme_id)
 
@@ -1569,6 +1663,9 @@ class PreferencesWindow(QDialog):
     def on_application_theme_changed(self, _theme_name: str):
         """Refresh controls immediately when any window changes the app theme."""
         self.apply_control_styles()
+
+        if hasattr(self, "theme_picker"):
+            self.theme_picker.refresh_selection_styles()
 
         for widget in [self, *self.findChildren(QWidget)]:
             style = widget.style()
@@ -1675,17 +1772,10 @@ class PreferencesWindow(QDialog):
 
         # Reset all settings to defaults (from AbCS_default_preference.md)
         # Display settings
-        # Theme: repopulate combo and select "Default (System)"
-        self.theme_combo.clear()
-        for display_name, theme_id in self.theme_manager.get_theme_names():
-            self.theme_combo.addItem(display_name, theme_id)
         self.theme_manager.set_theme("default")
-        index = self.theme_combo.findData("default")
-        if index >= 0:
-            self.theme_combo.setCurrentIndex(index)
-        else:
-            # Fallback: find by display name
-            self.theme_combo.setCurrentText("Default (System)")
+        self.theme_picker.set_loading(True)
+        self.theme_picker.set_selected_theme_id("default")
+        self.theme_picker.set_loading(False)
 
         self.scaler.set_scale(150)
         self.preset_combo.setCurrentText("Custom")
@@ -1733,11 +1823,11 @@ class PreferencesWindow(QDialog):
         self.settings.setValue("import/rules/title_in_author_name/severity", "error")
 
         self.rule_unknown_author_severity.setCurrentIndex(
-            self.rule_unknown_author_severity.findData("error")
+            self.rule_unknown_author_severity.findData("warning")
         )
         self.settings.setValue("import/rules/unknown_or_various_author/enabled", True)
         self.settings.setValue(
-            "import/rules/unknown_or_various_author/severity", "error"
+            "import/rules/unknown_or_various_author/severity", "warning"
         )
 
         # Min title length: value 3, severity warning (enabled)

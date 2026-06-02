@@ -110,7 +110,9 @@
 100. complete book list import - when adding date read collection that is selected is ignored.
 101. complete web metadata.py  - change google books to be the 2nd look up not the first. Review the logic for matching as sometimes the author returned is not even close to the db author. The match should check that at least the authors last name is in the web author. At least 50%% of the words in the db title should match the web title. 
 102. complete - Alt+/ status readback: centralized `read_status_bar_message` clears generic accessible description/name noise; status bar tooltips are sighted-only; all windows with Alt+/ read visible `currentMessage()` only.
-
+103. complete - `min_title_warning_label` is referenced in code but **never created**, so that warning never shows.
+104. complete - preferences unknown/various severity should default to warning not error 
+105. complete - preferences  move the preset and zoom control above the theme selection 
 
 
 

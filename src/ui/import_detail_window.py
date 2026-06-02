@@ -132,15 +132,15 @@ class ImportDetailWindow(QDialog):
         "E",  # Errors
         "F",  # Files
         "G",  # Genre
-        "H",  # Path (Pat&h)
-        "I",  # Series (Ser&ies)
-        "M",  # Length (Length (&M))
-        "O",  # Comments (C&omments)
+        "H",  # Path
+        "I",  # Series
+        "M",  # Length
+        "O",  # Comments
         "R",  # Reader
         "S",  # Save
         "T",  # Title
         "Y",  # Year
-        "Z",  # Size (Si&ze)
+        "Z",  # Size
         # Add any additional used keys here
     }
 
@@ -1007,11 +1007,12 @@ class ImportDetailWindow(QDialog):
         # Row 1: Title + Author (side by side)
         row1_layout = QHBoxLayout()
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("Book title")
+        self.title_edit.setAccessibleName("")
+        self.title_edit.setAccessibleDescription("")
         self.title_edit.setReadOnly(False)
         row1_layout.addWidget(self.title_edit, 2)
 
-        author_label = QLabel("&Author:")
+        author_label = QLabel("Author:")
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
@@ -1020,12 +1021,13 @@ class ImportDetailWindow(QDialog):
         row1_layout.addWidget(author_label)
         row1_layout.addWidget(self.author_combo, 1)
 
-        title_label = QLabel("&Title:")
-        title_label.setBuddy(self.title_edit)
+        title_label = QLabel("Title:")
+        title_label.setAccessibleName("")
+        title_label.setAccessibleDescription("")
         form.addRow(title_label, row1_layout)
 
         # Row 2: Plot
-        self.comments_label = QLabel("Pl&ot:")
+        self.comments_label = QLabel("Plot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
         self.comments_edit.setTabChangesFocus(True)
@@ -1048,7 +1050,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.year_spin)
         row3_layout.addSpacing(40)
 
-        time_label = QLabel("Ti&me:")
+        time_label = QLabel("Time:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setInputMask("99:99;_")
@@ -1060,7 +1062,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.time_edit)
         row3_layout.addSpacing(40)
 
-        reader_label = QLabel("&Reader:")
+        reader_label = QLabel("Reader:")
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
         self.reader_edit.setMaximumWidth(220)
@@ -1069,7 +1071,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.reader_edit)
         row3_layout.addStretch(1)
 
-        year_label = QLabel("&Year:")
+        year_label = QLabel("Year:")
         year_label.setBuddy(self.year_spin)
         form.addRow(year_label, row3_layout)
 
@@ -1082,7 +1084,7 @@ class ImportDetailWindow(QDialog):
         self.series_combo.setMaximumWidth(260)
         row4_layout.addWidget(self.series_combo, 1)
 
-        genre_label = QLabel("&Genre:")
+        genre_label = QLabel("Genre:")
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
@@ -1091,7 +1093,7 @@ class ImportDetailWindow(QDialog):
         row4_layout.addWidget(genre_label)
         row4_layout.addWidget(self.genre_combo, 1)
 
-        collection_label = QLabel("&Collection:")
+        collection_label = QLabel("Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
@@ -1101,14 +1103,14 @@ class ImportDetailWindow(QDialog):
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
 
-        series_label = QLabel("Ser&ies:")
+        series_label = QLabel("Series:")
         series_label.setBuddy(self.series_combo)
         form.addRow(series_label, row4_layout)
 
         # Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
 
-        files_label = QLabel("&Files:")
+        files_label = QLabel("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
@@ -1116,7 +1118,7 @@ class ImportDetailWindow(QDialog):
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
-        bitrate_label = QLabel("&Bitrate:")
+        bitrate_label = QLabel("Bitrate:")
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
@@ -1124,7 +1126,7 @@ class ImportDetailWindow(QDialog):
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
 
-        size_label = QLabel("Si&ze:")
+        size_label = QLabel("Size:")
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(True)
         self.size_edit.setAccessibleName("File size in megabytes")
@@ -1154,7 +1156,7 @@ class ImportDetailWindow(QDialog):
         # Row 6: Errors
         row6_layout = QHBoxLayout()
 
-        self.errors_label = QLabel("&Errors:")
+        self.errors_label = QLabel("Errors:")
         self.errors_edit = QTextEdit()
         self.errors_edit.setReadOnly(True)
         self.errors_edit.setAccessibleName("Validation errors")
@@ -1175,7 +1177,7 @@ class ImportDetailWindow(QDialog):
         self.path_edit.setAccessibleName("File path")
         row7_layout.addWidget(self.path_edit, 1)
 
-        path_label = QLabel("Pat&h:")
+        path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
         form.addRow(path_label, row7_layout)
 
@@ -1283,7 +1285,7 @@ class ImportDetailWindow(QDialog):
         callback_map = {
             "title_edit": lambda: self.title_edit.setFocus(),  # Alt+T
             "author_combo": lambda: self.author_combo.setFocus(),  # Alt+A
-            "comments_edit": lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
+            "comments_edit": lambda: self.comments_edit.setFocus(),  # Alt+P
             "year_spin": lambda: self.year_spin.setFocus(),  # Alt+Y
             "time_edit": lambda: self.time_edit.setFocus(),  # Alt+M
             "reader_edit": lambda: self.reader_edit.setFocus(),  # Alt+R
