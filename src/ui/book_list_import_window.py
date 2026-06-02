@@ -75,9 +75,16 @@ from src.database import (
     GenreQueries,
 )
 from src.database.models import Collection
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.scaling import UIScaler
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
 from src.accessibility.style_helpers import (
+    build_card_group_box_style,
+    apply_visual_tooltip_map,
     exec_styled_message_box,
     build_accessible_message_box_style,
     build_modern_button_style,
@@ -229,6 +236,7 @@ class BookListImportWindow(QDialog):
         self.resize(350, 200)
 
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.apply_theme()
 
         # Keep this window responsive to runtime zoom changes.
@@ -246,8 +254,15 @@ class BookListImportWindow(QDialog):
         # Setup shortcuts using centralized ShortcutManager
         self.setup_shortcuts()
 
+    def _apply_action_button_icons(self):
+        """Decorative icons beside header and footer button text."""
+        apply_decorative_action_icon(self.browse_button, "browse", self.scaler)
+        apply_decorative_action_icon(self.import_button, "import", self.scaler)
+        apply_decorative_action_icon(self.export_button, "export", self.scaler)
+
     def on_scale_changed(self, _scale_percentage: int):
         """Recompute fixed metrics so this window scales like the rest of the app."""
+        self.apply_button_styling()
         if not hasattr(self, "mapping_table"):
             return
 
@@ -432,14 +447,27 @@ class BookListImportWindow(QDialog):
         super().keyPressEvent(event)
 
     def apply_button_styling(self):
-        """Apply button styling to match book_details window."""
+        """Apply button and card panel styling consistent with other windows."""
         scaled_height = self.scaler.get_scaled_size(24)
         button_style = build_modern_button_style(scaled_height)
+        card_style = build_card_group_box_style()
+
+        for group in (
+            getattr(self, "instructions_group", None),
+            getattr(self, "mapping_group", None),
+        ):
+            if group is not None:
+                group.setStyleSheet(card_style)
+
+        self.import_button.setObjectName("primaryActionButton")
+        self.export_button.setObjectName("")
 
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
             widget.setDefault(False)
             widget.setAutoDefault(False)
+
+        self._apply_action_button_icons()
 
     def setup_ui(self):
         """Setup the user interface."""
@@ -491,6 +519,7 @@ class BookListImportWindow(QDialog):
 
         # Left side - Instructions
         instructions_group = QGroupBox("Instructions")
+        self.instructions_group = instructions_group
         instructions_group.setAccessibleName("Instructions group")
         instructions_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         instructions_layout = QVBoxLayout(instructions_group)
@@ -746,8 +775,7 @@ class BookListImportWindow(QDialog):
 
         # Status bar
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("")
-        self.status_bar.setAccessibleDescription("")
+        configure_status_bar_accessibility(self.status_bar)
         main_layout.addWidget(self.status_bar)
 
         # Set initial status
@@ -776,6 +804,25 @@ class BookListImportWindow(QDialog):
         else:
             self.setTabOrder(self.instructions_label, self.import_button)
         self.setTabOrder(self.import_button, self.export_button)
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.collection_combo: "Choose the collection for imported books",
+                self.file_edit: "Spreadsheet file selected for import",
+                self.browse_button: "Choose a spreadsheet file to import",
+                self.mapping_table: "Map spreadsheet columns to book fields",
+                self.load_books_check: "Import new books from the spreadsheet",
+                self.add_read_date_check: "Import read dates from the spreadsheet",
+                self.file_has_header_check: (
+                    "First row of the file contains column headers"
+                ),
+                self.import_button: "Import books using the current mapping",
+                self.export_button: "Export import errors to a CSV file",
+                self.status_bar: "Current import status",
+            }
+        )
 
     def _load_collection_options(self):
         """Load target collection options for imports."""
@@ -1039,10 +1086,10 @@ class BookListImportWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read status bar message for screen readers (matches main window pattern)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
-        if QAccessible.isActive():
-            announce_status_message(self.status_bar, status_text, move_focus=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
 
     def browse_file(self):
         """Browse for spreadsheet file."""

@@ -57,9 +57,10 @@ def test_reading_history_period_message_accessibility(reading_history_window):
     assert hasattr(window, 'status_bar')
     status_widget = window.status_bar
     
-    # Status bar should expose only the current message text to screen readers
-    assert status_widget.accessibleName() != ""
+    # Status bar starts with no generic SR labels (bug 102)
+    assert status_widget.accessibleName() == ""
     assert status_widget.accessibleDescription() == ""
+    assert (window._default_status_message or "").strip() != ""
     
     # Status bar typically doesn't have StrongFocus, but should be accessible via announcements
     assert hasattr(window, 'set_status')

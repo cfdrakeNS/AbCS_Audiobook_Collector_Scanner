@@ -36,16 +36,20 @@ from datetime import datetime
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
     build_accessible_message_box_style,
     build_card_group_box_style,
     build_modern_button_style,
 )
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 
 
@@ -458,6 +462,9 @@ class PreferencesWindow(QDialog):
         self.rule_min_title_value = QSpinBox()
         self.rule_min_title_value.setRange(1, 100)
         self.rule_min_title_value.setAccessibleName("Minimum title length value")
+        self.rule_min_title_value.setAccessibleDescription(
+            "Minimum allowed title length in characters for import validation"
+        )
         self.rule_min_title_severity = QComboBox()
         self.rule_min_title_severity.setAccessibleName("Minimum title length severity")
         self.rule_min_title_severity.setAccessibleDescription(
@@ -644,6 +651,7 @@ class PreferencesWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         footer_layout.addWidget(self.status_bar, 1)
 
         self.restore_defaults_button = QPushButton("Restore Defaults")
@@ -680,7 +688,10 @@ class PreferencesWindow(QDialog):
             self.rule_author_in_title_severity: "Set how Author in Title findings are reported",
             self.rule_title_in_author_severity: "Set how Title in Author findings are reported",
             self.rule_unknown_author_severity: "Set how Unknown or Various author findings are reported",
-            self.rule_min_title_value: "Minimum allowed title length",
+            self.rule_min_title_value: (
+                "Minimum allowed title length",
+                "Minimum allowed title length in characters for import validation",
+            ),
             self.rule_min_title_severity: "Set how minimum title length findings are reported",
             self.rule_min_book_length_value: "Flag books shorter than this many minutes",
             self.rule_min_book_length_severity: "Set how short book findings are reported",
@@ -694,10 +705,16 @@ class PreferencesWindow(QDialog):
             self.restore_defaults_button: "Restore recommended default settings",
             self.save_button: "Save preferences and close",
         }
-        for widget, tooltip in tooltip_map.items():
-            widget.setToolTip(tooltip)
+        apply_visual_tooltip_map(tooltip_map)
         for key, checkbox in self.format_checks.items():
-            checkbox.setToolTip(f"Include {key.upper()} files in scans")
+            apply_visual_tooltip_map(
+                {
+                    checkbox: (
+                        f"Include {key.upper()} files in scans",
+                        f"Include {key.upper()} files in scan",
+                    )
+                }
+            )
 
     def _apply_compact_combo_widths(self):
         """Apply content-fit width to all combo boxes in Preferences."""
@@ -777,6 +794,7 @@ class PreferencesWindow(QDialog):
         self.browse_button.setStyleSheet(button_style)
         self.restore_defaults_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
+        self._apply_action_button_icons()
 
         format_checkbox_style = f"""
             QCheckBox {{
@@ -805,6 +823,14 @@ class PreferencesWindow(QDialog):
             self.rules_section_text.setStyleSheet(section_text_style)
         if hasattr(self, "autocorrect_section_text"):
             self.autocorrect_section_text.setStyleSheet(section_text_style)
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside footer and browse button text."""
+        apply_decorative_action_icon(self.browse_button, "browse", self.scaler)
+        apply_decorative_action_icon(
+            self.restore_defaults_button, "restore", self.scaler
+        )
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
 
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
@@ -1370,8 +1396,10 @@ class PreferencesWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
-        self.set_status(status_text, announce=True)
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""

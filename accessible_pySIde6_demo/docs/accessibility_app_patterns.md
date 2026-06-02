@@ -15,24 +15,23 @@ Scope: these are implementation conventions already used in this codebase.
 
 ### Standard behavior
 1. Each major window exposes a status method (`set_status(...)` or `show_status(...)`).
-2. `Alt+/` reads the current status message on demand.
-3. When `announce=True`, status is announced using one of two approved paths:
-   - `announce_status_message(...)` helper (preferred where stable)
-   - local focus-trick path (status bar temporarily focusable, then restore)
-4. Focus is restored safely after announcement.
-5. Default status text is stored for reliable readback.
+2. `Alt+/` calls `read_status_bar_message(status_bar, fallback=...)` — reads **only** `currentMessage()` (or fallback), no popup when no screen reader is active.
+3. At status bar creation, call `configure_status_bar_accessibility(status_bar)` (empty name/description, no focus).
+4. Sighted tooltips on status bars use `apply_status_bar_tooltip(...)` only — **never** set `accessibleDescription` on a status bar.
+5. When `announce=True`, use `announce_status_message(...)` (clears description and sets accessible name before focus move).
+6. Focus is restored safely after announcement.
+7. Default status text may be stored as `_default_status_message` for fallback when the bar is empty.
 
 ### Reference implementations
-- `src/accessibility/accessible_events.py` → `announce_status_message(...)`
-- `src/ui/import_progress_window.py` → `set_status(...)`, `on_read_status_bar(...)`
-- `src/ui/import_detail_window.py` → status mirror to parent + local read summary
-- `src/ui/main_window.py` → local `set_status(...)` + `Alt+/`
-- `src/ui/book_details.py` and `src/ui/update_window.py` → local status announce pattern
+- `src/accessibility/accessible_events.py` → `read_status_bar_message`, `prepare_status_bar_for_readback`, `announce_status_message`
+- `src/accessibility/style_helpers.py` → `apply_status_bar_tooltip`
+- Any window with `on_read_status_bar` / `on_read_status` (main, import, import detail, import progress, preferences, book details, book list import, collection, name list, backup/restore, reading history, update, web metadata)
 
 ### Implementation notes
 - Do not fire announcements for every passive refresh.
 - Use `announce=True` only for meaningful state changes (selection changes, validation outcomes, mode transitions).
 - Keep one concise status sentence; avoid long paragraphs in status text.
+- Do not prefix Alt+/ readback with labels like "Status messages for this window" or synthetic summaries not shown in the bar.
 
 ---
 

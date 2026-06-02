@@ -29,7 +29,11 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
 
 
 class ImportProgressWindow(QDialog):
@@ -124,6 +128,7 @@ class ImportProgressWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         self.status_bar.setContentsMargins(0, 10, 0, 0)
         layout.addWidget(self.status_bar)
 
@@ -238,16 +243,11 @@ class ImportProgressWindow(QDialog):
 
     def on_read_status_bar(self):
         status_text = self.status_bar.currentMessage() or self._default_status_message
-        if QAccessible.isActive():
-            self._status_read_until = time.monotonic() + 1.2
-            self._default_status_message = status_text
-            announce_status_message(
-                self.status_bar,
-                status_text,
-                move_focus=True,
-                force_focus_announce=True,
-            )
-        # else: do nothing (no popup)
+        self._status_read_until = time.monotonic() + 1.2
+        read_status_bar_message(
+            self.status_bar,
+            fallback=status_text or "Ready",
+        )
 
     def update_scan_progress(
         self,

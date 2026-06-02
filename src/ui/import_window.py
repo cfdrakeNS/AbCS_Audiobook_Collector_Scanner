@@ -44,17 +44,21 @@ from src.database import (
 from src.core import BookScanner, ImportValidator, ImportScanner
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
     build_accessible_message_box_style,
     build_modern_button_style,
     build_table_polish_style,
     exec_styled_message_box,
 )
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 from src.ui.import_detail_window import ImportDetailWindow
 from src.ui.import_progress_window import ImportProgressWindow
@@ -428,7 +432,9 @@ class ImportWindow(QDialog):
         # Detail section: import list table
         self.table = QTableWidget()
         self.table.setAccessibleName("Import list")
-        self.table.setAccessibleDescription("Browse for a folder to scan - Alt+W")
+        self.table.setAccessibleDescription(
+            "Review scanned import items before adding them - Alt+L"
+        )
 
         columns = [
             "Author",
@@ -485,6 +491,7 @@ class ImportWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         footer_layout.addWidget(self.status_bar, 1)
 
         self.import_selected_button = QPushButton("Add Selected")
@@ -526,8 +533,7 @@ class ImportWindow(QDialog):
             self.import_selected_button: "Add selected books to the collection",
             self.export_button: "Export the current import review list to CSV",
         }
-        for widget, tooltip in tooltip_map.items():
-            widget.setToolTip(tooltip)
+        apply_visual_tooltip_map(tooltip_map)
 
     def apply_control_styles(self):
         """Apply consistent styling to inputs and buttons."""
@@ -563,6 +569,8 @@ class ImportWindow(QDialog):
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
 
+        self._apply_action_button_icons()
+
         self.table.setColumnWidth(
             self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56)
         )
@@ -580,6 +588,15 @@ class ImportWindow(QDialog):
             """
         )
         self.table.setStyleSheet(table_style)
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside header/footer button text."""
+        apply_decorative_action_icon(self.browse_button, "browse", self.scaler)
+        apply_decorative_action_icon(self.scan_button, "import", self.scaler)
+        apply_decorative_action_icon(
+            self.import_selected_button, "add", self.scaler
+        )
+        apply_decorative_action_icon(self.export_button, "export", self.scaler)
 
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
@@ -946,10 +963,10 @@ class ImportWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
-        status_text = self._default_status_message
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
 
     def jump_to_column(self, column: int):
         """Jump to a column in the import table for the current row."""
@@ -1468,17 +1485,13 @@ class ImportWindow(QDialog):
         self.set_status("Scan started")
         scan_start = time.perf_counter()
         elapsed_text = "00:00"
-        scan_files_processed = 0
-        scan_total_files = 0
         progress_update_interval = 0.15
         counters_update_interval = 0.15
         next_progress_ui_update = scan_start
         next_counters_ui_update = scan_start
 
         def on_progress(processed: int, total: int, file_path: str):
-            nonlocal scan_files_processed, scan_total_files, next_progress_ui_update
-            scan_files_processed = int(processed)
-            scan_total_files = int(total)
+            nonlocal next_progress_ui_update
             if self.progress_window and self.progress_window.cancel_requested:
                 self._cancel_scan_requested = True
 
@@ -1791,9 +1804,7 @@ class ImportWindow(QDialog):
             self.update_summary(scanned_total, 0, 0, 0, added=added_count)
             self.set_status(final_status)
             if self.progress_window:
-                valid_segment = (
-                    f"Valid: {valid_count} | " if self.auto_add_clean_books else ""
-                )
+                valid_segment = f"Valid: {valid_count} | "
                 summary_text = (
                     f"Scanned: {scanned_total} | Added: {added_count} | Corrected: 0 | Issues: 0 | "
                     f"{valid_segment}"

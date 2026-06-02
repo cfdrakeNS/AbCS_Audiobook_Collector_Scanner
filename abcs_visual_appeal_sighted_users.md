@@ -99,6 +99,7 @@ Use a single-row action toolbar with labeled buttons:
 
 - **Add Book**
 - **Import**
+- **FInd**
 - **Search Web**
 - **Statistics**
 - **Preferences**

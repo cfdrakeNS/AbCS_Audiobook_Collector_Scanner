@@ -40,10 +40,16 @@ from src.accessibility.accessible_events import (
     announce_dialog_opened,
     announce_dialog_closed,
     announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-from src.accessibility.style_helpers import build_accessible_button_style
+from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
+    build_modern_button_style,
+)
 
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
@@ -123,6 +129,7 @@ class WebMetadataWindow(QDialog):
         self.web_data = None
         self.field_differences = {}
         self.status_bar = QStatusBar()
+        configure_status_bar_accessibility(self.status_bar)
         # Initialize query helpers
         self.book_queries = BookQueries(self.db) if self.db else None
         self.author_queries = AuthorQueries(self.db) if self.db else None
@@ -132,8 +139,10 @@ class WebMetadataWindow(QDialog):
         # Main layout
         layout = QVBoxLayout(self)
         self.setup_ui(layout)
+        self.apply_visual_tooltips()
         self.apply_field_styling()
-        # Theme is applied globally via ThemeManager; do not call apply_theme (private). If you want to change theme, use set_theme().
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.setup_shortcuts()
         # Add status bar at the very bottom (after all layouts)
         layout.addWidget(self.status_bar)
@@ -458,6 +467,32 @@ class WebMetadataWindow(QDialog):
         # Set explicit tab order for logical keyboard navigation
         self.set_tab_order()
 
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.save_button: "Save selected web metadata to the book",
+                self.title_edit: "Current book title",
+                self.title_web_edit: "Title from web search",
+                self.title_checkbox: "Keep the web title",
+                self.author_edit: "Current author",
+                self.author_web_edit: "Author from web search",
+                self.author_checkbox: "Keep the web author",
+                self.year_edit: "Current publication year",
+                self.year_web_edit: "Year from web search",
+                self.year_checkbox: "Keep the web year",
+                self.series_edit: "Current series",
+                self.series_web_edit: "Series from web search",
+                self.series_checkbox: "Keep the web series",
+                self.genre_edit: "Current genre",
+                self.genre_web_edit: "Genre from web search",
+                self.genre_checkbox: "Keep the web genre",
+                self.plot_edit: "Current plot or description",
+                self.rating_edit: "Current rating",
+                self.status_bar: "Web metadata status",
+            }
+        )
+
     def set_tab_order(self):
         """Set explicit tab order for logical keyboard navigation."""
         # Define tab order following the actual layout:
@@ -505,10 +540,29 @@ class WebMetadataWindow(QDialog):
         for field in self.findChildren(QTextEdit):
             field.setStyleSheet(field_style)
 
-        # Apply consistent button styling like other windows
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.save_button.setObjectName("primaryActionButton")
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
+
+        self.status_bar.setStyleSheet(status_style)
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        self.apply_field_styling()
+
+    def on_theme_changed(self, _theme_name: str):
+        self.apply_field_styling()
 
     def load_book_data(self):
         """Load book data into fields and fetch web data."""
@@ -897,10 +951,7 @@ class WebMetadataWindow(QDialog):
 
     def on_read_status_bar(self):
         """Alt+/ shortcut - read status. Do nothing if no screen reader active."""
-        status_text = self.status_bar.currentMessage()
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(self.status_bar, fallback="Ready")
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
         """Set status message with centralized status helper."""

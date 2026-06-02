@@ -38,8 +38,12 @@ from src.database import (
     CollectionQueries,
 )
 from src.accessibility.scaling import UIScaler
+from src.accessibility.icon_helper import apply_decorative_action_icon, get_app_icon
 from src.accessibility.style_helpers import (
+    apply_status_bar_tooltip,
+    apply_visual_tooltip_map,
     build_accessible_message_box_style,
+    build_modern_button_style,
     exec_styled_message_box,
     set_message_box_button_accessibility,
 )
@@ -49,6 +53,8 @@ from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 
 
@@ -215,8 +221,13 @@ class ImportDetailWindow(QDialog):
         self.collection_queries = CollectionQueries(db)
 
         # Setup UI
+        self.setWindowIcon(get_app_icon())
+
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.apply_control_styles()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.install_focus_filters()
         self.load_combos()
         self.load_book_data()
@@ -324,10 +335,13 @@ class ImportDetailWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status (Alt+/)."""
-        status_text = self.get_status_summary()
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        fallback = (getattr(self, "_default_status_message", "") or "").strip()
+        parent = self.parent()
+        if parent and hasattr(parent, "status_bar"):
+            parent_msg = (parent.status_bar.currentMessage() or "").strip()
+            if parent_msg and not (self.status_bar.currentMessage() or "").strip():
+                fallback = parent_msg
+        read_status_bar_message(self.status_bar, fallback=fallback or "Ready")
 
     def on_cancel_edit(self):
         """
@@ -938,51 +952,13 @@ class ImportDetailWindow(QDialog):
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
 
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-        """
-
-        spinbox_style = f"""
-            QSpinBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QSpinBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-        """
-
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
+        button_style = build_modern_button_style(scaled_height)
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
             }}
         """
 
@@ -992,12 +968,30 @@ class ImportDetailWindow(QDialog):
             }
         """
 
+        self.save_return_button.setObjectName("primaryActionButton")
+        self.skip_button.setObjectName("")
+
         # Apply styles to widgets that need local styling
         # Text boxes, combo boxes, and spin boxes use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
+        self.status_bar.setStyleSheet(status_style)
+        self._apply_action_button_icons()
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside Save and Discard button text."""
+        apply_decorative_action_icon(self.save_return_button, "save", self.scaler)
+        apply_decorative_action_icon(self.skip_button, "cancel", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        """Refresh styles when zoom changes."""
+        self.apply_control_styles()
+
+    def on_theme_changed(self, _theme_name: str):
+        """Refresh styles when application theme changes."""
+        self.apply_control_styles()
 
     def setup_ui(self):
         """Setup user interface."""
@@ -1190,6 +1184,7 @@ class ImportDetailWindow(QDialog):
         # Footer: status bar + buttons
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
         # Row 5: Action buttons
@@ -1241,6 +1236,44 @@ class ImportDetailWindow(QDialog):
         self.setTabOrder(self.save_return_button, self.skip_button)
 
         self.setup_shortcuts()
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.title_edit: ("Book title", "Title of the scanned audiobook"),
+                self.author_combo: ("Author", "Author of the scanned audiobook"),
+                self.comments_edit: ("Plot or comments", "Plot or comments from scan"),
+                self.year_spin: ("Publication year", "Publication year"),
+                self.time_edit: ("Length", "Audiobook length in hours and minutes"),
+                self.reader_edit: ("Narrator", "Narrator or reader name"),
+                self.series_combo: ("Series", "Series for this audiobook"),
+                self.genre_combo: ("Genre", "Genre for this audiobook"),
+                self.collection_combo: (
+                    "Collection",
+                    "Target collection for import",
+                ),
+                self.files_edit: ("File count", "Number of audio files"),
+                self.bitrate_edit: ("Bitrate", "Bitrate in kilobits per second"),
+                self.size_edit: ("File size", "Total size in megabytes"),
+                self.format_edit: ("Format", "Audio file format"),
+                self.source_edit: ("Source", "How this item was discovered"),
+                self.path_edit: ("Path", "Folder path for this audiobook"),
+                self.errors_edit: (
+                    "Validation issues",
+                    "Import validation errors for this item",
+                ),
+                self.save_return_button: (
+                    "Save edits",
+                    "Save edits and continue editing - Alt+S",
+                ),
+                self.skip_button: (
+                    "Discard item",
+                    "Discard this import item and advance - Alt+D",
+                ),
+            }
+        )
+        apply_status_bar_tooltip(self.status_bar, "Status")
 
     def setup_shortcuts(self):
         """Centralized Alt+letter shortcut registration using ShortcutManager."""

@@ -13,9 +13,12 @@ from src.database import (
     GenreQueries,
     CollectionQueries,
 )
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
+    apply_status_bar_tooltip,
+    apply_visual_tooltip_map,
     build_accessible_message_box_style,
     build_modern_button_style,
     exec_styled_message_box,
@@ -24,6 +27,8 @@ from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
 import getpass
@@ -94,10 +99,10 @@ class BookDetailsWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
 
     def on_cancel_edit(self):
         """
@@ -286,6 +291,7 @@ class BookDetailsWindow(QDialog):
 
         # Setup UI
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.apply_control_styles()  # bd#1: Uniform control heights
         self.disable_hover_highlight()
         self.install_focus_filters()  # bd#2: Prevent text auto-select on focus
@@ -595,12 +601,28 @@ class BookDetailsWindow(QDialog):
             }
         """
 
+        self.save_button.setObjectName("primaryActionButton")
+        self.delete_button.setObjectName("destructiveActionButton")
+        self.edit_button.setObjectName("")
+        self.new_button.setObjectName("")
+
         # Apply styles to widgets that need local styling
         # Text boxes, combo boxes, spin boxes, and date edits use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
+        self._apply_action_button_icons()
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside action button text."""
+        apply_decorative_action_icon(self.new_button, "new", self.scaler)
+        apply_decorative_action_icon(self.edit_button, "update", self.scaler)
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
+        apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
+        apply_decorative_action_icon(
+            self.get_web_details_button, "search_web", self.scaler
+        )
 
     def setup_ui(self):
         """Setup user interface."""
@@ -965,6 +987,7 @@ class BookDetailsWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
         # Set explicit tab order for predictable screen reader navigation
@@ -997,6 +1020,118 @@ class BookDetailsWindow(QDialog):
 
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.title_edit: (
+                    "Book title",
+                    "Title of the audiobook",
+                ),
+                self.author_combo: (
+                    "Author name",
+                    "Author of the audiobook",
+                ),
+                self.author_label_display: (
+                    "Author name",
+                    "Author name - press Alt+A to focus, Alt+U to edit",
+                ),
+                self.comments_edit: (
+                    "Plot or comments",
+                    "Plot summary or comments for this book",
+                ),
+                self.year_spin: (
+                    "Publication year",
+                    "Publication year of the audiobook",
+                ),
+                self.time_edit: (
+                    "Audiobook length",
+                    "Length in hours and minutes",
+                ),
+                self.reader_edit: (
+                    "Narrator or reader",
+                    "Narrator or reader name",
+                ),
+                self.read_date: (
+                    "Date read",
+                    "Date this book was marked as read",
+                ),
+                self.series_combo: (
+                    "Series name",
+                    "Series this book belongs to",
+                ),
+                self.series_label_display: (
+                    "Series name",
+                    "Series name - press Alt+I to focus, Alt+U to edit",
+                ),
+                self.genre_combo: (
+                    "Genre",
+                    "Genre classification for this book",
+                ),
+                self.genre_label_display: (
+                    "Genre",
+                    "Genre - press Alt+G to focus, Alt+U to edit",
+                ),
+                self.collection_combo: (
+                    "Collection",
+                    "Collection that owns this book",
+                ),
+                self.collection_label_display: (
+                    "Collection",
+                    "Collection - press Alt+C to focus, Alt+U to edit",
+                ),
+                self.files_edit: (
+                    "Number of audio files",
+                    "Number of files in this audiobook",
+                ),
+                self.bitrate_edit: (
+                    "Audio bitrate",
+                    "Bitrate in kilobits per second",
+                ),
+                self.size_edit: (
+                    "Total file size",
+                    "Combined file size in megabytes",
+                ),
+                self.format_combo: (
+                    "Audio file format",
+                    "Primary audio file format",
+                ),
+                self.source_edit: (
+                    "Import source",
+                    "How this book was added to the library",
+                ),
+                self.path_edit: (
+                    "Folder or file path",
+                    "Location of audiobook files on disk",
+                ),
+                self.added_edit: (
+                    "Date added",
+                    "Date this book was added to the collection",
+                ),
+                self.new_button: (
+                    "Start a new book entry",
+                    "Clear form for new book entry",
+                ),
+                self.edit_button: (
+                    "Edit book details",
+                    "Enable editing of book details",
+                ),
+                self.save_button: (
+                    "Save changes",
+                    "Save changes to this book",
+                ),
+                self.delete_button: (
+                    "Delete this book",
+                    "Delete this book from the collection",
+                ),
+                self.get_web_details_button: (
+                    "Fetch metadata from the web",
+                    "Fetch book info from web",
+                ),
+            }
+        )
+        apply_status_bar_tooltip(self.status_bar, "Current status")
 
     def setup_shortcuts(self):
         """bd#4: Setup keyboard shortcuts for buttons."""
@@ -1588,6 +1723,7 @@ class BookDetailsWindow(QDialog):
         year_value = None if year_value == self.year_spin.minimum() else year_value
 
         # Removed legacy normalization methods (_to_proper_case, _is_proper_case_enabled, _normalize_name_field)
+        self.book.year = year_value
         self.book.title = book_dict["title"]
         self.book.author_name = book_dict["author"]
         self.book.author_id = author_id
@@ -2059,8 +2195,8 @@ class BookDetailsWindow(QDialog):
                     "import/autocorrect/move_leading_the_title", False, type=bool
                 )
 
-            # Try to fetch web data once. WebBookAPI already cascades through
-            # Google Books -> Open Library -> WikiData for refresh=0.
+            # Try to fetch web data once. WebBookAPI cascades Open Library ->
+            # Google Books -> WikiData for refresh=0.
             api = WebBookAPI()
             web_data = None
             last_error = None

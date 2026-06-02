@@ -20,6 +20,55 @@ _LAST_FOCUS_ANNOUNCE: dict[int, tuple[str, float]] = {}
 _FOCUS_ANNOUNCE_DEDUP_SECONDS = 0.9
 
 
+def configure_status_bar_accessibility(status_bar: QStatusBar) -> None:
+    """Initialize status bar for screen readers: no generic name/description noise."""
+    try:
+        status_bar.setAccessibleName("")
+        status_bar.setAccessibleDescription("")
+        status_bar.setFocusPolicy(Qt.NoFocus)
+    except Exception:
+        pass
+
+
+def prepare_status_bar_for_readback(
+    status_bar: QStatusBar, message: str | None = None
+) -> str:
+    """
+    Set accessible metadata so focus-based readback speaks only the status text.
+
+    Returns the resolved message string.
+    """
+    try:
+        resolved = (message or status_bar.currentMessage() or "").strip()
+        status_bar.setAccessibleDescription("")
+        status_bar.setAccessibleName(resolved)
+        return resolved
+    except Exception:
+        return (message or "").strip()
+
+
+def read_status_bar_message(status_bar: QStatusBar, fallback: str = "") -> None:
+    """
+    Alt+/ handler: read current status bar text with no generic SR prefixes.
+
+    Does nothing when no screen reader is active (no popup).
+    """
+    if not QAccessible.isActive():
+        return
+    try:
+        visible = (status_bar.currentMessage() or "").strip()
+        text = visible or (fallback or "").strip() or "Ready"
+        prepare_status_bar_for_readback(status_bar, text)
+        announce_status_message(
+            status_bar,
+            text,
+            move_focus=True,
+            force_focus_announce=True,
+        )
+    except Exception:
+        pass
+
+
 def announce_status_message(
     status_bar: QStatusBar,
     message: str,
@@ -47,6 +96,7 @@ def announce_status_message(
         # Workaround: Briefly move focus to status bar so screen readers read the message
         # This is more reliable than QAccessibleEvent which can cause crashes
         if move_focus and QAccessible.isActive():
+            prepare_status_bar_for_readback(status_bar, message)
             status_key = id(status_bar)
             now = time.monotonic()
             last_message, last_ts = _LAST_FOCUS_ANNOUNCE.get(status_key, ("", 0.0))

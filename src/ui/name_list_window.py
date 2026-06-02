@@ -24,10 +24,18 @@ from PySide6.QtWidgets import (
     QHeaderView,
 )
 
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
 from src.accessibility.scaling import UIScaler
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.style_helpers import (
-    build_accessible_button_style,
+    apply_status_bar_tooltip,
+    apply_visual_tooltip_map,
+    build_modern_button_style,
+    build_table_polish_style,
     exec_styled_message_box,
 )
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
@@ -147,6 +155,10 @@ class NameListWindow(QDialog):
         self._configure_type_metadata()
 
         self.setup_ui()
+        self.apply_visual_tooltips()
+        self.apply_control_styles()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.setup_shortcuts()
         self.load_items(populate_editor=False)
         self._finalize_initial_collection_ui_state()
@@ -271,7 +283,6 @@ class NameListWindow(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
-        self.table.setStyleSheet(build_accessible_f1_popup_style())
         self.table.verticalHeader().setVisible(False)
         self.table.setVerticalHeaderLabels([])
         self.table.horizontalHeader().setStretchLastSection(False)
@@ -295,6 +306,7 @@ class NameListWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         footer_layout.addWidget(self.status_bar, 1)
 
         self.edit_button = QPushButton("Edit")
@@ -311,17 +323,66 @@ class NameListWindow(QDialog):
         )
         footer_layout.addWidget(self.save_button)
 
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
-
-        for button in (
-            self.edit_button,
-            self.save_button,
-        ):
-            button.setStyleSheet(button_style)
-
         layout.addLayout(footer_layout)
 
         QTimer.singleShot(0, self._apply_tab_order)
+
+    def apply_control_styles(self):
+        """Modern buttons, table polish, and status bar styling."""
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.save_button.setObjectName("primaryActionButton")
+        self.edit_button.setObjectName("")
+
+        for button in (self.edit_button, self.save_button):
+            button.setStyleSheet(button_style)
+
+        self.table.setStyleSheet(table_style)
+        self.status_bar.setStyleSheet(status_style)
+        self._apply_action_button_icons()
+
+    def _apply_action_button_icons(self):
+        apply_decorative_action_icon(self.edit_button, "edit", self.scaler)
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        self.apply_control_styles()
+
+    def on_theme_changed(self, _theme_name: str):
+        self.apply_control_styles()
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        tooltip_map = {
+            self.find_edit: f"Search {self.entity_plural.lower()}",
+            self.name_edit: f"{self.entity_singular} name to add or edit",
+            self.table: f"List of {self.entity_plural.lower()}",
+            self.edit_button: f"Edit highlighted {self.entity_singular.lower()}",
+            self.save_button: f"Save current {self.entity_singular.lower()}",
+        }
+        if hasattr(self, "active_check"):
+            tooltip_map[self.active_check] = "Whether this collection is active"
+        apply_visual_tooltip_map(tooltip_map)
+        apply_status_bar_tooltip(self.status_bar, "Manager status")
 
     def _apply_tab_order(self):
         """Apply tab order safely for current mode and visible controls."""
@@ -504,6 +565,34 @@ class NameListWindow(QDialog):
         if hasattr(self, "active_check"):
             self.active_check.setFocus(Qt.ShortcutFocusReason)
 
+    @staticmethod
+    def _format_status_message(window, message: str) -> str:
+        """Append Alt+E hint in browse mode; skip find results and edit mode."""
+        msg = (message or "").strip()
+        if not msg:
+            return msg
+
+        save_button = getattr(window, "save_button", None)
+        name_edit = getattr(window, "name_edit", None)
+        in_edit_mode = (
+            save_button is not None
+            and name_edit is not None
+            and save_button.isVisible()
+            and name_edit.isEnabled()
+        )
+        if in_edit_mode:
+            return msg
+
+        lower = msg.lower()
+        if "no matching" in lower:
+            return msg
+        if "enter for next" in lower:
+            return msg
+        if "alt+e" in lower:
+            return msg
+
+        return f"{msg} Alt+E"
+
     def set_status(self, message: str, announce: bool = False):
         # Accessibility: forcibly remove ALL shortcut hints from status bar
         msg = (message or "").strip()
@@ -526,8 +615,6 @@ class NameListWindow(QDialog):
         parent = self.parent()
         if parent and hasattr(parent, "set_status"):
             parent.set_status(msg, announce=False)
-
-    # _format_status_message removed: no longer needed (no Alt+E hint)
 
     def _book_count_for_item(self, item_id: int) -> int:
         query = f"SELECT COUNT(*) FROM books WHERE {self.book_fk_column} = ?"
@@ -864,10 +951,7 @@ class NameListWindow(QDialog):
         # Note: focus is handled by the main __init__ logic
 
     def on_read_status(self):
-        message = self._build_read_status_message()
-        if QAccessible.isActive():
-            self.set_status(message, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(self.status_bar, fallback="Ready")
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -948,23 +1032,6 @@ class NameListWindow(QDialog):
 
         layout.addWidget(table)
         dlg.exec()
-
-    def _build_read_status_message(self) -> str:
-        row = self.table.currentRow()
-        if row < 0:
-            return self.status_bar.currentMessage().strip() or "Ready"
-
-        name_item = self.table.item(row, self.COL_NAME)
-        usage_item = self.table.item(row, self._usage_column())
-
-        name_text = (name_item.text() if name_item else "").strip()
-        usage_text = (usage_item.text() if usage_item else "0").strip() or "0"
-
-        if not name_text:
-            return self.status_bar.currentMessage().strip() or "Ready"
-
-        # Only announce the name and usage, no shortcut hints
-        return f"{name_text} - books {usage_text}"
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode, or close window."""

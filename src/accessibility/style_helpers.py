@@ -1,5 +1,6 @@
 """Shared stylesheet helpers for consistent accessible control styling."""
 
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
 
@@ -79,6 +80,18 @@ def build_modern_button_style(
     """
 
 
+def build_card_panel_style(panel_object_name: str) -> str:
+    """Card-style border for QWidget panels identified by objectName."""
+    return f"""
+        QWidget#{panel_object_name} {{
+            color: palette(window-text);
+            border: 1px solid palette(mid);
+            border-radius: 6px;
+            background-color: palette(window);
+        }}
+    """
+
+
 def build_card_group_box_style(selector: str = "QGroupBox") -> str:
     return f"""
         {selector} {{
@@ -150,10 +163,41 @@ def build_toolbar_button_style(
     """
 
 
+def apply_status_bar_tooltip(status_bar, tooltip: str) -> None:
+    """Sighted-user tooltip only; never set accessible description on status bars."""
+    status_bar.setToolTip(tooltip)
+
+
 def apply_tooltip_accessibility(widget, tooltip: str, description: str | None = None):
+    """Apply tooltip; set accessible description on widgets, status tip on QAction."""
     widget.setToolTip(tooltip)
-    if description:
+    if isinstance(widget, QAction):
+        # QAction has no setAccessibleDescription in PySide6; status tip is the fallback.
+        widget.setStatusTip(description or tooltip)
+        return
+    if description and hasattr(widget, "setAccessibleDescription"):
         widget.setAccessibleDescription(description)
+
+
+def apply_visual_tooltip_map(tooltip_map) -> None:
+    """Apply short tooltips to widgets or actions.
+
+    Map values may be a tooltip string (uses existing accessible description when set)
+    or a (tooltip, description) tuple.
+    """
+    for widget, spec in tooltip_map.items():
+        if isinstance(spec, tuple):
+            tooltip, description = spec[0], spec[1] if len(spec) > 1 else None
+        else:
+            tooltip = spec
+            description = None
+            if not isinstance(widget, QAction) and hasattr(
+                widget, "accessibleDescription"
+            ):
+                existing = widget.accessibleDescription()
+                if existing:
+                    description = existing
+        apply_tooltip_accessibility(widget, tooltip, description)
 
 def build_accessible_message_box_style(scaled_height: int) -> str:
     """Return a shared QMessageBox style with theme-aware colors."""

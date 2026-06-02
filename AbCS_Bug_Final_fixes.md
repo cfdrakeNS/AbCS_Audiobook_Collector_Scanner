@@ -102,12 +102,16 @@
 97. complete Statistic window -
     1. collection that have zero books are not showing
     2. change the table so that the label and the value speak as you arrow up/down
-98. import window
+98. complete import window
 2. check import files \& time are sometimes doubled maybe happening when only 1 files is present for a book 
 3. table row are being announced by jaws
 5. don't include trimmed author or title in corrected list
-99. main window - export button not working just exporting heading
-100. book list import - when adding date read collection that is selected is ignored.
+99. complete main window - export button not working just exporting heading
+100. complete book list import - when adding date read collection that is selected is ignored.
+101. complete web metadata.py  - change google books to be the 2nd look up not the first. Review the logic for matching as sometimes the author returned is not even close to the db author. The match should check that at least the authors last name is in the web author. At least 50%% of the words in the db title should match the web title. 
+102. complete - Alt+/ status readback: centralized `read_status_bar_message` clears generic accessible description/name noise; status bar tooltips are sighted-only; all windows with Alt+/ read visible `currentMessage()` only.
+
+
 
 
 

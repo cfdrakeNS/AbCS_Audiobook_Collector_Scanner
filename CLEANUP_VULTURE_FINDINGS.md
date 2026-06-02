@@ -7,30 +7,30 @@
 
 ---
 
-# Actionable Items (Current - May 17, 2026)
+# Actionable Items (Current - June 2, 2026)
 
 Items that need verification or cleanup, organized by file:
 
 ## Production Code
-- No current production cleanup items after the May 17 Import Window timing-variable cleanup.
-- Source-only scan still reports several callback, compatibility, and reserved-helper items outside Import Window; these are listed under Review Notes / False Positives and should not be removed without manual UI verification.
+
+- No current production cleanup items after the June 2 Import Window scan-counter cleanup.
 
 ## Tests
 - `test/test_reading_history_accessibility.py`: `date_range_layout` variable - Test-only Vulture finding; review before changing.
 - `test/test_reading_history_final_integration.py`: `alt_slush_works` and `operation_works` variables - Test-only findings; review before changing.
 - `test/test_shortcut_integration.py`: `shortcut_manager` fixture/variable - Test-only finding; may be pytest fixture behavior.
 - `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`, and repeated `isolated_qsettings` parameters - Test-only findings; likely pytest fixtures and should be handled carefully.
+- `test/test_web_book_api_matching.py`: `return_value` attributes on `@patch.object` mocks (lines 55, 71, 87, 91) - Test-only mock configuration; do not remove.
 
 ## Review Notes
 - `src/build_config.py` uses `TRIAL_BUILD_DATE` in `src/main.py`; do not remove.
 - `src/database/queries.py` attributes `total_time_hours` and `total_hours_read` are used by statistics display/model logic; keep.
 - `src/ui/book_list_import_window.py` pandas fallback `DataFrame` remains a valid false positive.
-- `src/ui/import_window.py` `scan_files_processed` and `scan_total_files` are used through nested progress callback state; keep unless the scan progress logic is refactored.
-- `src/accessibility/shortcuts.py` `READING_HISTORY_SHORTCUTS` is a compatibility alias; verify callers before removing.
-- `src/ui/main_window.py` `book_list` is a compatibility/accessibility alias for the table; keep unless all tests and callers are updated.
-- `src/ui/name_list_window.py` `on_alt_f_pressed` is a shortcut callback; do not remove without keyboard testing.
-- `src/ui/reading_history_window.py` `load_general_stats` supports compatibility/general-tab behavior; verify before removing.
-- `src/web/web_book_api.py` `_title_matches` remains a reserved/tested helper; keep unless web matching tests and callers are updated.
+- `src/accessibility/shortcuts.py` `READING_HISTORY_SHORTCUTS` is a compatibility alias; used by `test/test_shortcut_integration.py`.
+- `src/ui/main_window.py` `book_list` is a compatibility/accessibility alias for the table; used by `test/test_accessibility_regression.py`.
+- `src/ui/name_list_window.py` `on_alt_f_pressed` wraps `on_clear_find`; shortcut wiring uses `on_clear_find` directly but tests assert the alias exists.
+- `src/ui/name_list_window.py` `_format_status_message` is exercised by `test/test_name_list_status_formatting.py`, not from production callers.
+- `src/ui/reading_history_window.py` `load_general_stats` is a compatibility alias for `load_summary_data`; keep unless tests and callers are updated.
 - Test-only Vulture findings should not be removed without confirming pytest fixture use and test intent.
 
 ---
@@ -44,24 +44,52 @@ These items are flagged by vulture but are actually used or required:
 
 ## src/ui/book_list_import_window.py
 - **Line 21**: `DataFrame` class - Fallback for missing pandas
-- **Line 1294**: `on_headers_toggled` method - Required for header toggle functionality
-
-## src/ui/import_window.py
-- **Lines 1455-1465**: `scan_files_processed`, `scan_total_files` - Used via `nonlocal` in nested `on_progress` function
 
 ## Tests
 - **pytest fixtures and fixture parameters**: Vulture may report fixtures or fixture arguments as unused even when pytest injects them for setup side effects.
+- **`test/test_web_book_api_matching.py`: mock `return_value` attributes** - Standard unittest.mock patch configuration.
 
 ## Compatibility and callback references
 - **`src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS`** - Compatibility alias.
 - **`src/ui/main_window.py`: `book_list`** - Compatibility/accessibility alias for the main table.
-- **`src/ui/name_list_window.py`: `on_alt_f_pressed`** - Shortcut callback.
-- **`src/ui/reading_history_window.py`: `load_general_stats`** - Compatibility/general stats method.
-- **`src/web/web_book_api.py`: `_title_matches`** - Reserved/tested matching helper.
+- **`src/ui/name_list_window.py`: `on_alt_f_pressed`** - Shortcut callback alias; tests assert presence.
+- **`src/ui/name_list_window.py`: `_format_status_message`** - Static helper called from unit tests.
+- **`src/ui/reading_history_window.py`: `load_general_stats`** - Compatibility alias for `load_summary_data`.
 
 ---
 
 # Cleanup History
+
+### June 2, 2026 — Vulture Findings Document Refresh
+
+**Scan run:**
+- `python -m vulture src test --min-confidence 60`
+- `python -m vulture src --min-confidence 60`
+
+**New actionable items:**
+- None after removing `src/ui/import_window.py` `scan_files_processed` and `scan_total_files` dead state.
+
+**Items addressed during this refresh:**
+- `src/ui/import_window.py`: removed `scan_files_processed` and `scan_total_files` (assigned-only dead state in nested `on_progress`).
+
+**New test-only findings:**
+- `test/test_web_book_api_matching.py`: mock `return_value` attributes on patched fetch methods.
+
+**New false positives documented:**
+- `src/ui/name_list_window.py`: `_format_status_message` (called from `test/test_name_list_status_formatting.py`).
+
+**Items addressed and removed from False Positives / Review Notes:**
+- `src/ui/book_list_import_window.py`: `on_headers_toggled` — method no longer present in source.
+- `src/web/web_book_api.py`: `_title_matches` — no longer reported by source-only scan; confirmed used internally by `get_book_metadata`.
+
+**Existing false positives confirmed:**
+- `src/database/connection.py`: `row_factory` remains a required SQLite idiom.
+- `src/ui/book_list_import_window.py`: fallback `DataFrame` class remains required when pandas is unavailable.
+- `src/build_config.py`: `TRIAL_BUILD_DATE` remains active startup/trial logic and is used by `src/main.py`.
+- `src/database/models.py` / `src/database/queries.py`: `total_time_hours` and `total_hours_read` remain active statistics fields.
+- Source-only scan callback/compatibility findings remain documented as keep/review items.
+
+**`.vultureignore` updated:** removed stale `on_headers_toggled` entry.
 
 ### May 17, 2026 — Vulture Findings Document Refresh
 
@@ -77,7 +105,6 @@ These items are flagged by vulture but are actually used or required:
 **Existing false positives confirmed:**
 - `src/database/connection.py`: `row_factory` remains a required SQLite idiom.
 - `src/ui/book_list_import_window.py`: fallback `DataFrame` class remains required when pandas is unavailable.
-- `src/ui/import_window.py`: `scan_files_processed` and `scan_total_files` remain part of nested scan-progress state.
 - `src/build_config.py`: `TRIAL_BUILD_DATE` remains active startup/trial logic and is used by `src/main.py`.
 - `src/database/models.py` / `src/database/queries.py`: `total_time_hours` and `total_hours_read` remain active statistics fields.
 - Source-only scan callback/compatibility findings were documented as keep/review items instead of removed.
@@ -90,6 +117,8 @@ These items are flagged by vulture but are actually used or required:
 - Removed old Import Window style/focus variables and methods documented below in cleanup history.
 - Removed old Preferences and Book List Import methods documented below in cleanup history.
 - Removed production `src/web/web_book_api.py:page_id`; remaining `page_id` references are in test/debug code.
+
+**Note (corrected June 2, 2026):** `scan_files_processed` and `scan_total_files` were previously documented as false positives but are assigned-only dead state; see June 2 actionable items.
 
 ### April 27, 2026 — Web Fetch Bug Fix
 
@@ -130,7 +159,7 @@ These items are flagged by vulture but are actually used or required:
 - `total_time_hours`, `total_hours_read` (statistics display)
 
 **src/web/web_book_api.py**
-- `_title_matches` method (well-tested helper, reserved for future use)
+- `_title_matches` method (well-tested helper, used by `get_book_metadata`)
 
 **src/build_config.py**
 - `TRIAL_BUILD_DATE` (active trial mechanism)

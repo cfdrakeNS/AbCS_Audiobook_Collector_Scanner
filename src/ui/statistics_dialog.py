@@ -12,12 +12,18 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
+from src.accessibility.icon_helper import get_app_icon
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+from src.accessibility.style_helpers import (
+    apply_tooltip_accessibility,
+    build_table_polish_style,
+)
 
 
 class StatisticsDialog(QDialog):
     def __init__(self, stats, scaler, parent=None):
         super().__init__(parent)
+        self.setWindowIcon(get_app_icon())
         self.setWindowTitle("Library Statistics")
         self.setAccessibleName("Library Statistics Dialog")
         self.setAccessibleDescription(
@@ -33,6 +39,11 @@ class StatisticsDialog(QDialog):
         table.setAccessibleName("Library Statistics Table")
         table.setAccessibleDescription(
             "Table showing library statistics and their values. First column is the statistic name, second column is the value."
+        )
+        apply_tooltip_accessibility(
+            table,
+            "Library statistics summary",
+            "Table showing library statistics and their values",
         )
         table.setColumnCount(2)
         table.setHorizontalHeaderLabels(["Statistic", "Value"])
@@ -56,7 +67,6 @@ class StatisticsDialog(QDialog):
         vh.setEnabled(False)
         table.setShowGrid(False)
         table.clearSelection()
-        table.setStyleSheet(build_accessible_f1_popup_style())
         table.setMouseTracking(False)
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WA_Hover, False)
@@ -118,7 +128,27 @@ class StatisticsDialog(QDialog):
         self.setLayout(layout)
         self.table = table
         self.scaler = scaler
+        self.apply_control_styles()
+        if hasattr(scaler, "scale_changed"):
+            scaler.scale_changed.connect(self.on_scale_changed)
         self.setup_shortcuts()
+
+    def apply_control_styles(self):
+        """Table polish consistent with other statistic windows."""
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+        self.table.setStyleSheet(table_style)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        self.apply_control_styles()
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""

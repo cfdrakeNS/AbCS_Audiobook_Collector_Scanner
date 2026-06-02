@@ -1,6 +1,6 @@
 """
 Web Book API - Audio Book Collection
-Fetches book metadata from Google Books, Open Library, and WikiData APIs.
+Fetches book metadata from Open Library, Google Books, and WikiData APIs (in that order).
 """
 
 import json
@@ -41,10 +41,14 @@ class WebBookAPI:
         return parts[-1] if parts else ""
 
     def _author_matches(self, db_author: str, web_author: str) -> bool:
-        """Check if web author contains DB author's last name."""
+        """Check that web author contains the DB author's last name."""
+        db_author = (db_author or "").strip()
+        web_author = (web_author or "").strip()
+        if not db_author or not web_author:
+            return False
         last_name = self._extract_last_name(db_author)
         if not last_name:
-            return True  # Can't verify, allow it
+            return False
         return last_name.lower() in web_author.lower()
 
     def _title_word_match_score(self, db_title: str, web_title: str) -> float:
@@ -66,6 +70,21 @@ class WebBookAPI:
         """Check if at least 50% of DB title words appear in web title."""
         return self._title_word_match_score(db_title, web_title) >= 0.5
 
+    def _metadata_matches_db(
+        self, db_title: str, db_author: str, metadata: Optional[Dict]
+    ) -> bool:
+        """Require title word match and DB last name present in web author."""
+        if not metadata:
+            return False
+        web_title = (metadata.get("title") or "").strip()
+        if not web_title:
+            return False
+        if not self._title_matches(db_title, web_title):
+            return False
+        if not self._author_matches(db_author, metadata.get("author", "")):
+            return False
+        return True
+
     def __init__(self):
         """Initialize the API client."""
         self.google_books_url = "https://www.googleapis.com/books/v1/volumes"
@@ -76,6 +95,7 @@ class WebBookAPI:
         # Wikipedia API for plot summaries
         self.wikipedia_url = "https://en.wikipedia.org/w/api.php"
         self._cache = {}  # Initialize cache to avoid hasattr checks
+        self.CACHE_DURATION = 300  # seconds
 
     def get_book_metadata(
         self,
@@ -94,7 +114,9 @@ class WebBookAPI:
             title: Book title
             author: Author name (optional)
             year: Publication year (optional)
-            refresh: 0=first attempt, 1=skip first source, 2=skip first two sources
+            refresh: 0=Open Library then Google Books then WikiData;
+                     1=Google Books then WikiData (skip Open Library);
+                     2=WikiData only
             move_articles: Move 'The', 'A', 'An' to end of title for search
             flip_author: Flip author name format for search
 
@@ -128,120 +150,153 @@ class WebBookAPI:
         # Author transformation: clean only, never flip
         search_author = self._apply_author_transformations(author)
 
-        # Try Google Books first (fast and reliable)
+        def _finish_metadata(
+            metadata: Dict,
+            source: str,
+            first_attempt: bool,
+        ) -> Dict:
+            if append_series_to_title and series_number:
+                if not metadata["title"].rstrip().endswith(f"- {series_number}"):
+                    metadata["title"] = (
+                        f"{metadata['title']} - {series_number}".strip()
+                    )
+            metadata["source"] = source
+            metadata["first_attempt"] = first_attempt
+            self._cache[cache_key] = (current_time, metadata)
+            return metadata
+
+        # 1. Open Library (first when refresh=0)
         if refresh == 0:
-            try:
-                metadata = self._fetch_from_google_books(
-                    search_title, search_author, year
-                )
-                # Tiered confidence matching - plot not required
-                is_real_match = False
-                if metadata:
-                    title_score = self._title_word_match_score(
-                        search_title, metadata.get("title", "")
-                    )
-                    author_match = self._author_matches(
-                        search_author, metadata.get("author", "")
-                    )
-
-                    # Check for any useful metadata (not just plot)
-                    has_metadata = any(
-                        [
-                            metadata.get("plot"),
-                            metadata.get("rating"),
-                            metadata.get("genre"),
-                            metadata.get("series"),
-                        ]
-                    )
-
-                    # Check if titles contain each other
-                    web_title_lower = metadata.get("title", "").lower()
-                    search_title_lower = (search_title or "").lower()
-                    title_contains = search_title_lower and (
-                        search_title_lower in web_title_lower
-                        or web_title_lower in search_title_lower
-                    )
-
-                    # Tier 1: Both title (>=50%) and author match
-                    if title_score >= 0.5 and author_match:
-                        is_real_match = True
-                    # Tier 2: Perfect title match + has metadata
-                    elif title_score >= 1.0 and has_metadata:
-                        is_real_match = True
-                    # Tier 3: Author match + title contains search
-                    elif author_match and title_contains:
-                        is_real_match = True
-                    # Tier 4: Good title match + has metadata
-                    elif title_score >= 0.5 and has_metadata:
-                        is_real_match = True
-
-                if metadata and is_real_match:
-                    # Try to fetch missing plot from alternative sources
-                    if not metadata.get("plot"):
-                        # Try Open Library first
-                        plot = self._fetch_plot_from_open_library(
-                            metadata.get("title", ""), metadata.get("author", "")
-                        )
-                        # Fallback to Wikipedia if Open Library has no plot
-                        if not plot:
-                            plot = self._fetch_plot_from_wikipedia(
-                                metadata.get("title", ""), metadata.get("author", "")
-                            )
-                        if plot and not (metadata.get("series") and plot.strip().lower() == metadata["series"].strip().lower()):
-                            metadata["plot"] = plot
-
-                    # Ensure title in metadata is normalized and series number is appended if needed
-                    if append_series_to_title and series_number:
-                        if (
-                            not metadata["title"]
-                            .rstrip()
-                            .endswith(f"- {series_number}")
-                        ):
-                            metadata["title"] = (
-                                f"{metadata['title']} - {series_number}".strip()
-                            )
-                    metadata["source"] = "google_books"
-                    metadata["first_attempt"] = True
-                    # Cache the result
-                    self._cache[cache_key] = (current_time, metadata)
-                    return metadata
-                elif metadata and not is_real_match:
-                    pass
-            except Exception as e:
-                # Continue to next source
-                pass
-
-        # Try Open Library second (always try when refresh=0, or when refresh=1 and Google Books failed)
-        if refresh == 0 or refresh == 1:
             try:
                 metadata = self._fetch_from_open_library(
                     search_title, search_author, year
                 )
-                if metadata:
-                    metadata["source"] = "open_library"
-                    metadata["first_attempt"] = refresh == 0
-                    # Cache the result
-                    self._cache[cache_key] = (current_time, metadata)
-                    return metadata
-            except Exception as e:
-                # Continue to next source instead of failing
+                if metadata and self._metadata_matches_db(
+                    search_title, search_author, metadata
+                ):
+                    return _finish_metadata(metadata, "open_library", True)
+            except Exception:
                 pass
 
-        # Try WikiData third (great for series and author data)
-        try:
-            metadata = self._fetch_from_wikidata(search_title, search_author, year)
-            if metadata:
-                metadata["source"] = "wikidata"
-                metadata["first_attempt"] = False
-                # Cache the result
-                self._cache[cache_key] = (current_time, metadata)
-                return metadata
-        except Exception as e:
-            pass
+        # 2. Google Books (second when refresh=0; first when refresh=1)
+        if refresh <= 1:
+            try:
+                metadata = self._fetch_from_google_books(
+                    search_title, search_author, year
+                )
+                if metadata and self._metadata_matches_db(
+                    search_title, search_author, metadata
+                ):
+                    if not metadata.get("plot"):
+                        plot = self._fetch_plot_from_open_library(
+                            metadata.get("title", ""), metadata.get("author", "")
+                        )
+                        if not plot:
+                            plot = self._fetch_plot_from_wikipedia(
+                                metadata.get("title", ""), metadata.get("author", "")
+                            )
+                        if plot and not (
+                            metadata.get("series")
+                            and plot.strip().lower()
+                            == metadata["series"].strip().lower()
+                        ):
+                            metadata["plot"] = plot
+                    return _finish_metadata(
+                        metadata,
+                        "google_books",
+                        first_attempt=refresh >= 1,
+                    )
+            except Exception:
+                pass
 
-        # Cache the failure too to avoid repeated failed requests
+        # 3. WikiData (third when refresh=0; second when refresh=1; only when refresh=2)
+        if refresh <= 2:
+            try:
+                metadata = self._fetch_from_wikidata(
+                    search_title, search_author, year
+                )
+                if metadata and self._metadata_matches_db(
+                    search_title, search_author, metadata
+                ):
+                    return _finish_metadata(
+                        metadata,
+                        "wikidata",
+                        first_attempt=refresh >= 2,
+                    )
+            except Exception:
+                pass
+
         self._cache[cache_key] = (current_time, None)
         return None
+
+    def _google_item_to_metadata(self, item: dict) -> Optional[Dict]:
+        """Build metadata dict from one Google Books API item."""
+        volume_info = item.get("volumeInfo", {})
+        if not volume_info.get("title"):
+            return None
+
+        series = ""
+        series_number = ""
+
+        series_info = volume_info.get("seriesInfo", {})
+        if series_info:
+            series_number = series_info.get("bookDisplayNumber", "")
+            volume_series = series_info.get("volumeSeries", [])
+            if volume_series:
+                series = (
+                    volume_series[0]
+                    .get("seriesId", "")
+                    .replace("_", " ")
+                    .title()
+                )
+
+        subtitle = volume_info.get("subtitle", "")
+        if subtitle and not series_number:
+            patterns = [
+                r"(?:book|volume|#)\s*(\d+)",
+                r"(?:part|novel)\s*(\w+)",
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, subtitle, re.IGNORECASE)
+                if match:
+                    series_number = match.group(1)
+                    series = re.sub(
+                        pattern, "", subtitle, flags=re.IGNORECASE
+                    ).strip(" -")
+                    break
+
+        description = volume_info.get("description", "")
+        if description and not series_number:
+            patterns = [
+                r"(?:book|volume|#)\s*(\d+)\s+(?:in\s+)?(?:the\s+)?(.+?)(?:\s+series|\s+trilogy|\s+quartet|$)",
+                r"(.+?)\s+(?:book|volume|#)\s*(\d+)",
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, description, re.IGNORECASE)
+                if match:
+                    if pattern.startswith(r"(?:book|volume|#)"):
+                        series_number = match.group(1)
+                        series = match.group(2).strip()
+                    else:
+                        series = match.group(1).strip()
+                        series_number = match.group(2)
+                    break
+
+        return {
+            "title": volume_info.get("title", ""),
+            "author": self._format_authors(volume_info.get("authors", [])),
+            "year": self._extract_year(volume_info.get("publishedDate", "")),
+            "publisher": volume_info.get("publisher", ""),
+            "plot": volume_info.get("description", ""),
+            "genre": self._format_categories(volume_info.get("categories", [])),
+            "isbn": self._extract_isbn(volume_info.get("industryIdentifiers", [])),
+            "rating": volume_info.get("averageRating", 0),
+            "ratings_count": volume_info.get("ratingsCount", 0),
+            "series": series,
+            "series_number": series_number,
+            "source": "Google Books",
+            "confidence": 0.9,
+        }
 
     def _fetch_from_google_books(
         self, title: str, author: str = None, year: str = None
@@ -269,116 +324,24 @@ class WebBookAPI:
                 data = json.loads(response.read().decode("utf-8"))
 
             if "items" in data and data["items"]:
-                # Find the best match among returned items
-                best_item = None
-                best_score = -1
+                best_metadata = None
+                best_title_score = -1.0
 
                 for item in data["items"]:
-                    volume_info = item.get("volumeInfo", {})
-                    item_title = volume_info.get("title", "").lower()
-                    item_subtitle = volume_info.get("subtitle", "").lower()
+                    candidate = self._google_item_to_metadata(item)
+                    if not candidate:
+                        continue
+                    if not self._metadata_matches_db(title, author, candidate):
+                        continue
+                    title_score = self._title_word_match_score(
+                        title, candidate.get("title", "")
+                    )
+                    if title_score > best_title_score:
+                        best_title_score = title_score
+                        best_metadata = candidate
 
-                    # Score based on title match
-                    score = 0
-                    if title and title.lower() in item_title:
-                        score += 10
-                    if title and title.lower() in item_subtitle:
-                        score += 5
-                    if author:
-                        item_authors = [
-                            a.lower() for a in volume_info.get("authors", [])
-                        ]
-                        if any(author.lower() in a for a in item_authors):
-                            score += 5
-
-                    if score > best_score:
-                        best_score = score
-                        best_item = item
-
-                if best_item:
-                    volume_info = best_item.get("volumeInfo", {})
-
-                    # Extract series and series number from multiple sources
-                    series = ""
-                    series_number = ""
-
-                    # 1. Check seriesInfo (primarily for comics/manga)
-                    series_info = volume_info.get("seriesInfo", {})
-                    if series_info:
-                        series_number = series_info.get("bookDisplayNumber", "")
-                        # Try to get series name from volumeSeries
-                        volume_series = series_info.get("volumeSeries", [])
-                        if volume_series:
-                            series = (
-                                volume_series[0]
-                                .get("seriesId", "")
-                                .replace("_", " ")
-                                .title()
-                            )
-
-                    # 2. Check subtitle for series info (common for novels)
-                    subtitle = volume_info.get("subtitle", "")
-                    if subtitle and not series_number:
-                        import re
-
-                        # Look for patterns like "Book 1", "Volume 2", "#3", etc.
-                        patterns = [
-                            r"(?:book|volume|#)\s*(\d+)",
-                            r"(?:part|novel)\s*(\w+)",
-                        ]
-                        for pattern in patterns:
-                            match = re.search(pattern, subtitle, re.IGNORECASE)
-                            if match:
-                                series_number = match.group(1)
-                                # Use subtitle without the book number as series name
-                                series = re.sub(
-                                    pattern, "", subtitle, flags=re.IGNORECASE
-                                ).strip(" -")
-                                break
-
-                    # 3. Check description for series info
-                    description = volume_info.get("description", "")
-                    if description and not series_number:
-                        import re
-
-                        # Look for series mentions in description
-                        patterns = [
-                            r"(?:book|volume|#)\s*(\d+)\s+(?:in\s+)?(?:the\s+)?(.+?)(?:\s+series|\s+trilogy|\s+quartet|$)",
-                            r"(.+?)\s+(?:book|volume|#)\s*(\d+)",
-                        ]
-                        for pattern in patterns:
-                            match = re.search(pattern, description, re.IGNORECASE)
-                            if match:
-                                if pattern.startswith(r"(?:book|volume|#)"):
-                                    series_number = match.group(1)
-                                    series = match.group(2).strip()
-                                else:
-                                    series = match.group(1).strip()
-                                    series_number = match.group(2)
-                                break
-
-                    # Return the metadata with enhanced series info
-                    return {
-                        "title": volume_info.get("title", ""),
-                        "author": self._format_authors(volume_info.get("authors", [])),
-                        "year": self._extract_year(
-                            volume_info.get("publishedDate", "")
-                        ),
-                        "publisher": volume_info.get("publisher", ""),
-                        "plot": volume_info.get("description", ""),
-                        "genre": self._format_categories(
-                            volume_info.get("categories", [])
-                        ),
-                        "isbn": self._extract_isbn(
-                            volume_info.get("industryIdentifiers", [])
-                        ),
-                        "rating": volume_info.get("averageRating", 0),
-                        "ratings_count": volume_info.get("ratingsCount", 0),
-                        "series": series,
-                        "series_number": series_number,
-                        "source": "Google Books",
-                        "confidence": 0.9,
-                    }
+                if best_metadata:
+                    return best_metadata
         except Exception as e:
             pass
         return None
@@ -416,7 +379,7 @@ class WebBookAPI:
             for query in queries_to_try[:2]:  # Try at most 2 queries
                 params = {
                     "q": query,
-                    "limit": 1,
+                    "limit": 5,
                     "fields": "key,title,author_name,first_publish_year,publisher,subject,cover_i,isbn,ratings_average,ratings_count",
                 }
 
@@ -433,20 +396,32 @@ class WebBookAPI:
                     data = json.loads(response.read().decode("utf-8"))
 
                 if data.get("docs"):
-                    doc = data["docs"][0]
-                    return {
-                        "title": doc.get("title", ""),
-                        "author": ", ".join(doc.get("author_name", [])),
-                        "year": str(doc.get("first_publish_year", "")),
-                        "publisher": ", ".join(doc.get("publisher", [])),
-                        "plot": self._get_open_library_description(doc.get("key", "")),
-                        "genre": ", ".join(
-                            doc.get("subject", [])[:3]
-                        ),  # Limit to first 3 genres
-                        "rating": str(doc.get("ratings_average", "")),
-                        "ratings_count": str(doc.get("ratings_count", "")),
-                        "source": "open_library",
-                    }
+                    best_metadata = None
+                    best_title_score = -1.0
+                    for doc in data["docs"]:
+                        candidate = {
+                            "title": doc.get("title", ""),
+                            "author": ", ".join(doc.get("author_name", [])),
+                            "year": str(doc.get("first_publish_year", "")),
+                            "publisher": ", ".join(doc.get("publisher", [])),
+                            "plot": self._get_open_library_description(
+                                doc.get("key", "")
+                            ),
+                            "genre": ", ".join(doc.get("subject", [])[:3]),
+                            "rating": str(doc.get("ratings_average", "")),
+                            "ratings_count": str(doc.get("ratings_count", "")),
+                            "source": "open_library",
+                        }
+                        if not self._metadata_matches_db(title, author, candidate):
+                            continue
+                        title_score = self._title_word_match_score(
+                            title, candidate.get("title", "")
+                        )
+                        if title_score > best_title_score:
+                            best_title_score = title_score
+                            best_metadata = candidate
+                    if best_metadata:
+                        return best_metadata
 
             return None
         except Exception as e:
@@ -751,17 +726,27 @@ class WebBookAPI:
             # Parse results
             results = data.get("results", {}).get("bindings", [])
 
-            if results:
-                result = results[0]  # Take first result
-
-                # Extract basic metadata
+            best_metadata = None
+            best_title_score = -1.0
+            for result in results:
                 metadata = {
                     "title": self._get_sparql_value(result, "bookLabel"),
                     "author": self._get_sparql_value(result, "authorLabel"),
                     "source": "WikiData",
                 }
+                if not metadata.get("title"):
+                    continue
+                if not self._metadata_matches_db(title, author, metadata):
+                    continue
+                title_score = self._title_word_match_score(
+                    title, metadata.get("title", "")
+                )
+                if title_score > best_title_score:
+                    best_title_score = title_score
+                    best_metadata = metadata
 
-                return metadata if metadata["title"] else None
+            if best_metadata:
+                return best_metadata
         except Exception as e:
             return None
 
