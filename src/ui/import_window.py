@@ -49,6 +49,8 @@ from src.accessibility.style_helpers import (
     build_modern_button_style,
     build_table_polish_style,
     exec_styled_message_box,
+    apply_message_box_button_icons,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
 )
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
@@ -66,6 +68,20 @@ from src.ui.import_progress_window import ImportProgressWindow
 """Import Window
     Main interface for scanning folders and importing audiobooks.
 """
+
+# Book fields copied from Import detail back into scanned_items.
+_DETAIL_BOOK_FIELD_KEYS = (
+    "title",
+    "author",
+    "year",
+    "narrator",
+    "genre",
+    "series",
+    "collection",
+    "comment",
+    "time_hours",
+    "time_minutes",
+)
 
 
 class ImportWindow(QDialog):
@@ -769,6 +785,10 @@ class ImportWindow(QDialog):
             text="\n\n".join(message_lines),
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            button_icon_roles={
+                QMessageBox.Yes: "close",
+                QMessageBox.No: "cancel",
+            },
         )
         return reply == QMessageBox.Yes
 
@@ -1004,11 +1024,16 @@ class ImportWindow(QDialog):
                 return row
         return -1
 
-    def _style_message_box(self, msg: QMessageBox):
-        """Apply consistent button styling to message-box buttons."""
+    def _style_message_box(
+        self,
+        msg: QMessageBox,
+        button_icon_roles: dict | None = None,
+    ):
+        """Apply consistent styling and decorative icons to message-box buttons."""
         msg.setStyleSheet(
             build_accessible_message_box_style(self.scaler.get_scaled_size(20))
         )
+        apply_message_box_button_icons(msg, self.scaler, button_icon_roles)
 
     @staticmethod
     def _is_fallback_error(error: str) -> bool:
@@ -1152,12 +1177,12 @@ class ImportWindow(QDialog):
             self.current_collection_name = ""
             self.settings.setValue("import/collection_id", 0)
             self._update_scan_enabled_state()
-            from PySide6.QtWidgets import QMessageBox
-
-            QMessageBox.information(
+            exec_styled_message_box(
                 self,
-                "Collection Selection",
-                "Please select a collection to import books.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Collection Selection",
+                text="Please select a collection to import books.",
             )
             return
 
@@ -1249,12 +1274,14 @@ class ImportWindow(QDialog):
         duplicates: int = 0,
         warnings: int = 0,
         added: int | None = None,
+        valid: int | None = None,
         announce: bool = False,
     ):
-        """Update status bar summary (no valid counter, Phase 3)."""
+        """Update status bar summary from scan and review-list counters."""
         if added is None:
             added = self._summary_counts.get("added", 0)
-        issues = errors + warnings
+        if valid is None:
+            valid = self._summary_counts.get("valid", 0)
         self._summary_counts = {
             "scanned": scanned,
             "fixed": fixed,
@@ -1262,12 +1289,13 @@ class ImportWindow(QDialog):
             "warnings": warnings,
             "duplicates": duplicates,
             "added": added,
+            "valid": valid,
         }
         filtered = self._get_filtered_count()
         filter_value = self.error_filter_combo.currentData()
         message = (
-            f"Scanned: {scanned} | Added: {added} | "
-            f"Corrected: {fixed} | Errors/Warnings: {issues} | "
+            f"Scanned: {scanned} | Added: {added} | Valid: {valid} | "
+            f"Corrected: {fixed} | Errors: {errors} | Warnings: {warnings} | "
             f"Duplicates: {duplicates} | "
             f"Filtered: {filtered}"
         )
@@ -1331,15 +1359,101 @@ class ImportWindow(QDialog):
         item["status"] = status
         item["is_duplicate"] = is_duplicate
         item["error_summary"] = self._format_error_summary(errors)
+        self._sync_scan_outcome_for_scanned_item(item)
+
+    def _find_scan_outcome_index(self, book_data: dict) -> int | None:
+        """Locate scan_outcomes entry for a scanned book dict."""
+        if not book_data:
+            return None
+        for index, outcome in enumerate(self.scan_outcomes):
+            if outcome.get("book") is book_data:
+                return index
+
+        title = (book_data.get("title") or "").strip()
+        author = (book_data.get("author") or "").strip()
+        year = book_data.get("year")
+        folder = str(book_data.get("folder") or "")
+        for index, outcome in enumerate(self.scan_outcomes):
+            outcome_book = outcome.get("book") or {}
+            if (
+                (outcome_book.get("title") or "").strip() == title
+                and (outcome_book.get("author") or "").strip() == author
+                and outcome_book.get("year") == year
+                and str(outcome_book.get("folder") or "") == folder
+            ):
+                return index
+        return None
+
+    def _derive_item_outcomes(self, item: dict) -> tuple[str, set[str], bool]:
+        """Return status, outcome tags, and duplicate flag for a review-list item."""
+        errors = list(item.get("errors", []) or [])
+        status = str(item.get("status", "")).strip()
+        is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+        has_hard_error = any(
+            self.validator.categorize_error(err) in ("read", "parse") for err in errors
+        ) or status in ("Error", "Failed")
+        has_warning = self._has_non_fixed_warning(errors) or (
+            status == "Warning" and not is_duplicate and not has_hard_error
+        )
+        has_fallback = any(self._is_fallback_error(err) for err in errors)
+        has_correction = any(self._is_correction_error(err) for err in errors)
+
+        outcomes: set[str] = set()
+        if is_duplicate:
+            outcomes.add("duplicate")
+        if has_hard_error:
+            outcomes.add("error")
+        elif has_warning:
+            outcomes.add("warning")
+        if has_fallback:
+            outcomes.add("fallback_used")
+        if has_correction:
+            outcomes.add("autocorrect_used")
+
+        if is_duplicate:
+            derived_status = "Duplicate"
+        elif has_hard_error:
+            derived_status = "Error"
+        elif has_warning:
+            derived_status = "Warning"
+        else:
+            derived_status = "OK"
+        return derived_status, outcomes, is_duplicate
+
+    def _sync_scan_outcome_for_scanned_item(self, item: dict) -> None:
+        """Keep scan_outcomes aligned with an edited review-list row."""
+        book_data = item.get("book", {})
+        index = self._find_scan_outcome_index(book_data)
+        if index is None:
+            return
+
+        outcome = self.scan_outcomes[index]
+        if outcome.get("status") == "Added":
+            return
+
+        derived_status, outcomes, is_duplicate = self._derive_item_outcomes(item)
+        outcome["status"] = derived_status
+        outcome["errors"] = list(item.get("errors", []) or [])
+        outcome["is_duplicate"] = is_duplicate
+        outcome["outcomes"] = sorted(outcomes)
+
+    def _remove_scan_outcome_for_scanned_item(self, item: dict) -> None:
+        """Remove scan_outcomes entry when a review row is discarded."""
+        book_data = item.get("book", {})
+        index = self._find_scan_outcome_index(book_data)
+        if index is not None:
+            del self.scan_outcomes[index]
 
     def restore_summary_status(self):
-        """Restore scan summary message after transient selection messages (no valid counter, Phase 3)."""
+        """Restore scan summary message after transient selection messages."""
         self.update_summary(
             scanned=self._summary_counts["scanned"],
             fixed=self._summary_counts["fixed"],
             errors=self._summary_counts["errors"],
             warnings=self._summary_counts.get("warnings", 0),
             duplicates=self._summary_counts["duplicates"],
+            added=self._summary_counts.get("added", 0),
+            valid=self._summary_counts.get("valid", 0),
         )
 
     def _show_info_popup(self, title: str, message: str):
@@ -1401,20 +1515,24 @@ class ImportWindow(QDialog):
 
         target_collection_id = self._get_target_collection_id()
         if target_collection_id is None:
-            QMessageBox.warning(
+            exec_styled_message_box(
                 self,
-                "Collection Required",
-                "Please select a collection before scanning.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Collection Required",
+                text="Please select a collection before scanning.",
             )
             self.collection_combo.setFocus(Qt.TabFocusReason)
             return
 
         folder_path = self.folder_edit.text().strip()
         if not folder_path:
-            QMessageBox.warning(
+            exec_styled_message_box(
                 self,
-                "Folder Required",
-                "Please select a folder or file before scanning.",
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Folder Required",
+                text="Please select a folder or file before scanning.",
             )
             self.folder_edit.setFocus()
             return
@@ -1826,39 +1944,32 @@ class ImportWindow(QDialog):
 
         self._apply_error_filter()
 
-        issues_count = warning_count + error_count
         scanned_total = len(self.scan_outcomes)
+        valid_count = sum(
+            1 for item in self.scanned_items if self._is_clean_valid_item(item)
+        )
+        scan_summary = (
+            f"Scanned: {scanned_total} | Added: {added_count} | Valid: {valid_count} | "
+            f"Corrected: {fixed_count} | Errors: {error_count} | Warnings: {warning_count} | "
+            f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
+        )
         if scan_was_canceled:
             self.set_status("Scan canceled", announce=True)
-            self.set_status(
-                f"Scan canceled | Scanned: {scanned_total} | Added: {added_count} | "
-                f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
-                f"Elapsed: {elapsed_text}"
-            )
+            self.set_status(f"Scan canceled | {scan_summary}")
         else:
-            self.set_status(
-                f"Scanned: {scanned_total} | Added: {added_count} | "
-                f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | Duplicates: {duplicate_count} | "
-                f"Elapsed: {elapsed_text}"
-            )
+            self.set_status(scan_summary)
 
         if self.progress_window:
-            summary_text = (
-                f"Scanned: {scanned_total} | Added: {added_count} | "
-                f"Corrected: {fixed_count} | "
-                f"Errors/Warnings: {issues_count} | "
-                f"Duplicates: {duplicate_count} | "
-                f"Elapsed: {elapsed_text}"
-            )
+            progress_summary = scan_summary
             if scan_was_canceled:
-                summary_text = f"Scan canceled | {summary_text}"
+                progress_summary = f"Scan canceled | {progress_summary}"
             self.progress_window.mark_scan_complete(
                 canceled=scan_was_canceled,
                 elapsed_text=elapsed_text,
                 files_scanned=scanned_total,
                 books_added=added_count,
                 read_errors=read_error_count,
-                summary_text=summary_text,
+                summary_text=progress_summary,
             )
 
         self.update_summary(
@@ -1868,19 +1979,11 @@ class ImportWindow(QDialog):
             warnings=warning_count,
             duplicates=duplicate_count,
             added=added_count,
+            valid=valid_count,
         )
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
-
-        final_status = (
-            f"Scanned: {scanned_total} | Added: {added_count} | "
-            f"Corrected: {fixed_count} | Errors/Warnings: {issues_count} | "
-            f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
-        )
-        if scan_was_canceled:
-            final_status = f"Scan canceled | {final_status}"
-        self.set_status(final_status)
 
     def on_import_selected(self):
         """Add selected valid items."""
@@ -1975,7 +2078,7 @@ class ImportWindow(QDialog):
         )
 
     def _refresh_summary_from_items(self):
-        """Recalculate summary counters from current scanned items."""
+        """Recalculate summary counters from scan_outcomes and current review rows."""
         scanned = len(self.scan_outcomes)
         fixed = 0
         errors = 0
@@ -1984,22 +2087,35 @@ class ImportWindow(QDialog):
         valid = 0
         added = 0
 
-        for item in self.scan_outcomes:
-            status = item.get("status")
-            outcomes = item.get("outcomes", []) or []
+        for outcome in self.scan_outcomes:
+            status = outcome.get("status")
+            outcome_tags = set(outcome.get("outcomes", []) or [])
 
             if status == "Added":
                 added += 1
-            if item.get("is_duplicate"):
-                duplicates += 1
-            elif status in ("Error", "Failed") or "error" in outcomes:
-                errors += 1
-            elif status == "Warning" or "warning" in outcomes:
-                warnings += 1
-            if "fallback_used" in outcomes or "autocorrect_used" in outcomes:
-                fixed += 1
+                if "fallback_used" in outcome_tags or "autocorrect_used" in outcome_tags:
+                    fixed += 1
 
         for item in self.scanned_items:
+            status = str(item.get("status", "")).strip()
+            row_errors = list(item.get("errors", []) or [])
+            is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+
+            if is_duplicate:
+                duplicates += 1
+            elif status in ("Error", "Failed") or any(
+                self.validator.categorize_error(err) in ("read", "parse")
+                for err in row_errors
+            ):
+                errors += 1
+            elif status == "Warning" or self._has_non_fixed_warning(row_errors):
+                warnings += 1
+
+            if any(self._is_fallback_error(err) for err in row_errors) or any(
+                self._is_correction_error(err) for err in row_errors
+            ):
+                fixed += 1
+
             if self._is_clean_valid_item(item):
                 valid += 1
 
@@ -2010,6 +2126,7 @@ class ImportWindow(QDialog):
             warnings=warnings,
             duplicates=duplicates,
             added=added,
+            valid=valid,
         )
         self._apply_error_filter()
 
@@ -2211,18 +2328,14 @@ class ImportWindow(QDialog):
     ):
         """Apply edits returned from ImportDetailWindow to scanned item + table."""
         item = self.scanned_items[row]
-        for key in [
-            "title",
-            "author",
-            "year",
-            "narrator",
-            "genre",
-            "series",
-            "collection",
-            "comment",
-        ]:
+        book_data = item.setdefault("book", {})
+        for key in _DETAIL_BOOK_FIELD_KEYS:
             if key in detail_window.book_data:
-                item["book"][key] = detail_window.book_data[key]
+                book_data[key] = detail_window.book_data[key]
+
+        item["author"] = book_data.get("author", "")
+        item["title"] = book_data.get("title", "")
+        item["year"] = book_data.get("year")
 
         self._revalidate_scanned_item(item)
 
@@ -2247,17 +2360,7 @@ class ImportWindow(QDialog):
         error_summary = self._format_error_summary(row_errors) if row_errors else ""
         self.table.setItem(row, self.COL_ERROR, self._cell_item(error_summary))
 
-        if refresh_view:
-            self._refresh_summary_from_items()
-        else:
-            self.update_summary(
-                scanned=self._summary_counts["scanned"],
-                fixed=self._summary_counts["fixed"],
-                errors=self._summary_counts["errors"],
-                warnings=self._summary_counts.get("warnings", 0),
-                duplicates=self._summary_counts["duplicates"],
-                added=self._summary_counts.get("added", 0),
-            )
+        self._refresh_summary_from_items()
 
     def _focus_import_row(self, row: int):
         """Restore focus to a row in the import list after closing detail."""
@@ -2274,6 +2377,8 @@ class ImportWindow(QDialog):
         if row < 0 or row >= len(self.scanned_items):
             return None
 
+        item = self.scanned_items[row]
+        self._remove_scan_outcome_for_scanned_item(item)
         del self.scanned_items[row]
         self.table.removeRow(row)
         self.selected_rows.clear()
@@ -2448,6 +2553,7 @@ class ImportWindow(QDialog):
                     ),
                     buttons=QMessageBox.Yes | QMessageBox.No,
                     default_button=QMessageBox.No,
+                    button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
                 )
                 if reply == QMessageBox.Yes:
                     self._cancel_add_requested = True

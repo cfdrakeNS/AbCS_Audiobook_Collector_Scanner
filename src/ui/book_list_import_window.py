@@ -85,6 +85,7 @@ from src.accessibility.accessible_events import (
 from src.accessibility.style_helpers import (
     build_card_group_box_style,
     apply_visual_tooltip_map,
+    apply_message_box_button_icons,
     exec_styled_message_box,
     build_accessible_message_box_style,
     build_modern_button_style,
@@ -1504,6 +1505,7 @@ class BookListImportWindow(QDialog):
         msg.setStyleSheet(
             build_accessible_message_box_style(self.scaler.get_scaled_size(20))
         )
+        apply_message_box_button_icons(msg, self.scaler)
         reply = msg.exec()
 
         if reply != QMessageBox.Yes:

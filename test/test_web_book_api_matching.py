@@ -1,5 +1,6 @@
 """Tests for WebBookAPI match gate and source lookup order."""
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -40,6 +41,79 @@ def test_metadata_matches_db_rejects_title_only_bypass(api):
     assert not api._metadata_matches_db(
         "The Great Gatsby", "F. Scott Fitzgerald", meta
     )
+    assert api._metadata_matches_db(
+        "The Great Gatsby",
+        "F. Scott Fitzgerald",
+        meta,
+        require_author_match=False,
+    )
+
+
+def test_strip_author_honorifics_for_search(api):
+    assert api._strip_author_honorifics("Sir Arthur Conan Doyle") == "Arthur Conan Doyle"
+    assert api._extract_last_name("Sir Arthur Conan Doyle") == "Doyle"
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_sherlock_holmes_with_sir_author_finds_open_library(ol_mock, _gb_mock, _wd_mock, api):
+    ol_mock.return_value = {
+        "title": "The Adventures of Sherlock Holmes",
+        "author": "Arthur Conan Doyle",
+        "plot": "Short stories featuring Sherlock Holmes.",
+        "source": "open_library",
+    }
+    result = api.get_book_metadata(
+        "The Adventures Of Sherlock Holmes",
+        "Sir Arthur Conan Doyle",
+        refresh=0,
+    )
+    assert result is not None
+    assert "Sherlock" in result["title"]
+    assert "Doyle" in result["author"]
+    ol_mock.assert_called()
+    call_author = ol_mock.call_args[0][1]
+    assert call_author == "Arthur Conan Doyle"
+
+
+def test_should_use_title_only_for_librivox_and_narrator(api):
+    assert api._likely_librivox_source(path=r"C:\Audio\librivox\book")
+    assert api._should_use_title_only_fallback(
+        "Charles Dickens",
+        narrator="Charles Dickens",
+    )
+    assert api._should_use_title_only_fallback(
+        "Jane Reader",
+        path=r"D:\LibriVox\pride_and_prejudice",
+    )
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_title_only_fallback_when_author_search_fails(ol_mock, _gb_mock, _wd_mock, api):
+    """After strict author search fails, title-only search can return a match."""
+
+    def open_library_side_effect(title, author=None, year=None, **kwargs):
+        if author:
+            return None
+        return {
+            "title": "Oliver Twist",
+            "author": "Charles Dickens",
+            "source": "open_library",
+        }
+
+    ol_mock.side_effect = open_library_side_effect
+    result = api.get_book_metadata(
+        "Oliver Twist",
+        "John Volunteer",
+        narrator="John Volunteer",
+        refresh=0,
+    )
+    assert result is not None
+    assert result.get("title_only_search") is True
+    assert any(call.args[1] is None for call in ol_mock.call_args_list)
 
 
 def test_metadata_matches_db_rejects_empty_db_author(api):
@@ -93,6 +167,70 @@ def test_refresh_one_skips_open_library(ol_mock, gb_mock, wd_mock, api):
     assert result is not None
     ol_mock.assert_not_called()
     gb_mock.assert_called_once()
+
+
+@patch("src.web.web_book_api.urllib.request.urlopen")
+def test_open_library_never_filters_by_db_year(urlopen_mock, api):
+    """Library year must not be sent to Open Library (often birth/import date, not publication)."""
+
+    doc = {
+        "title": "The Adventures of Sherlock Holmes",
+        "author_name": ["Arthur Conan Doyle"],
+        "first_publish_year": 1892,
+        "key": "/works/OL123W",
+    }
+
+    class FakeResponse:
+        def read(self):
+            return json.dumps({"docs": [doc]}).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    urlopen_mock.return_value = FakeResponse()
+    with patch.object(api, "_get_open_library_description", return_value=""):
+        result = api.get_book_metadata(
+            "The Adventures Of Sherlock Holmes",
+            "Sir Arthur Conan Doyle",
+            year="1867",
+            refresh=0,
+        )
+    assert result is not None
+    for call in urlopen_mock.call_args_list:
+        assert "first_publish_year=1867" not in call.args[0].full_url
+
+
+def test_get_book_metadata_same_result_with_or_without_db_year(api):
+    """Search uses title and author only; a wrong DB year must not change the outcome."""
+    with (
+        patch.object(api, "_fetch_from_wikidata", return_value=None),
+        patch.object(api, "_fetch_from_google_books", return_value=None),
+        patch.object(api, "_fetch_from_open_library") as ol_mock,
+    ):
+        ol_mock.return_value = {
+            "title": "The Hound of the Baskervilles",
+            "author": "Arthur Conan Doyle",
+            "source": "open_library",
+        }
+        with_year = api.get_book_metadata(
+            "The Hound Of The Baskervilles",
+            "Sir Arthur Conan Doyle",
+            year="1867",
+            refresh=0,
+        )
+        api._cache = {}
+        without_year = api.get_book_metadata(
+            "The Hound Of The Baskervilles",
+            "Sir Arthur Conan Doyle",
+            year=None,
+            refresh=0,
+        )
+    assert with_year is not None
+    assert without_year is not None
+    assert with_year["title"] == without_year["title"]
 
 
 def test_google_item_picker_rejects_wrong_author(api):

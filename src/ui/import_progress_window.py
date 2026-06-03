@@ -26,6 +26,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     build_accessible_button_style,
     exec_styled_message_box,
+    MESSAGE_BOX_CANCEL_SCAN_ICONS,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -332,6 +333,7 @@ class ImportProgressWindow(QDialog):
                 ),
                 buttons=QMessageBox.Yes | QMessageBox.No,
                 default_button=QMessageBox.No,
+                button_icon_roles=MESSAGE_BOX_CANCEL_SCAN_ICONS,
             )
             if reply == QMessageBox.Yes:
                 self._cancel_requested = True

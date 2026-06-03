@@ -50,6 +50,7 @@ def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:
         "help": QStyle.StandardPixmap.SP_DialogHelpButton,
         "import": QStyle.StandardPixmap.SP_DriveNetIcon,
         "new": QStyle.StandardPixmap.SP_FileDialogNewFolder,
+        "ok": QStyle.StandardPixmap.SP_DialogOkButton,
         "preferences": QStyle.StandardPixmap.SP_FileDialogInfoView,
         "restore": QStyle.StandardPixmap.SP_BrowserReload,
         "save": QStyle.StandardPixmap.SP_DialogSaveButton,

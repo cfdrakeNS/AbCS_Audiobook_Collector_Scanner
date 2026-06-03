@@ -87,6 +87,13 @@ class ImportRulesEngine:
                 default_severity="warning",
             ),
             ValidationRule(
+                "unreadable_audio_length",
+                self._rule_unreadable_audio_length,
+                settings_key="unreadable_audio_length",
+                default_enabled=True,
+                default_severity="warning",
+            ),
+            ValidationRule(
                 "minimum_book_length",
                 self._rule_minimum_book_length,
                 settings_key="minimum_book_length",
@@ -119,6 +126,7 @@ class ImportRulesEngine:
             ("Author contains Unknown or Various", "unknown_or_various_author"),
             ("Title below minimum length", "minimum_title_length"),
             ("Folder path does not match expected structure", "file_structure"),
+            ("Could not read length from audio files", "unreadable_audio_length"),
             ("Book length below minimum", "minimum_book_length"),
             ("Book length above maximum", "maximum_book_length"),
             ("Year is not a valid number", "year_out_of_range"),
@@ -279,12 +287,24 @@ class ImportRulesEngine:
             minutes = 0
         return max(0, hours * 60 + minutes)
 
+    def _rule_unreadable_audio_length(self, book: Dict[str, Any]) -> List[str]:
+        """Warn when files were found but total playable length is zero."""
+        files = book.get("files") or []
+        if not files:
+            return []
+        length = self._book_length_minutes(book)
+        if length <= 0:
+            return ["Could not read length from audio files"]
+        return []
+
     def _rule_minimum_book_length(self, book: Dict[str, Any]) -> List[str]:
         minimum = max(0, int(self.min_book_length_minutes or 0))
         if minimum <= 0:
             return []
         length = self._book_length_minutes(book)
-        if length and length < minimum:
+        if length <= 0:
+            return []
+        if length < minimum:
             return [f"Book length below minimum ({minimum} minutes)"]
         return []
 

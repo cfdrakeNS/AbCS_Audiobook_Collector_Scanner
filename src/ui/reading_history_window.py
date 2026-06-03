@@ -632,12 +632,16 @@ class ReadingHistoryWindow(QDialog):
         except Exception as e:
             from src.accessibility.icon_helper import get_app_icon
 
-            box = QMessageBox(self)
-            box.setIcon(QMessageBox.Critical)
-            box.setWindowTitle("Error")
-            box.setText(f"Failed to load reading history: {str(e)}")
-            box.setWindowIcon(get_app_icon())
-            box.exec()
+            from src.accessibility.style_helpers import exec_styled_message_box
+
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Critical,
+                title="Error",
+                text=f"Failed to load reading history: {str(e)}",
+                window_icon=get_app_icon(),
+            )
         finally:
             self._loading = False
 

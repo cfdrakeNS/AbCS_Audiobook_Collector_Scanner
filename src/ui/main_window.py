@@ -73,6 +73,7 @@ from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
     apply_visual_tooltip_map,
     exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
     build_accessible_button_style,
     build_card_panel_style,
     build_modern_button_style,
@@ -342,14 +343,14 @@ class MainWindow(QMainWindow):
                     )
                 else:
                     # Date is changing - ask for confirmation
-                    from PySide6.QtWidgets import QMessageBox
-
-                    reply = QMessageBox.question(
+                    reply = exec_styled_message_box(
                         self,
-                        "Confirm Read Date",
-                        f"Mark '{book.title}' as read on {new_date}?",
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.No,
+                        self.scaler.get_scaled_size(20),
+                        icon=QMessageBox.Question,
+                        title="Confirm Read Date",
+                        text=f"Mark '{book.title}' as read on {new_date}?",
+                        buttons=QMessageBox.Yes | QMessageBox.No,
+                        default_button=QMessageBox.No,
                     )
                     if reply == QMessageBox.Yes:
                         book.read_date = new_date
@@ -3163,6 +3164,7 @@ class MainWindow(QMainWindow):
                 buttons=QMessageBox.Yes | QMessageBox.No,
                 default_button=QMessageBox.No,
                 window_icon=get_app_icon(),
+                button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
             )
 
             if reply == QMessageBox.Yes:
@@ -3318,8 +3320,6 @@ class MainWindow(QMainWindow):
         popup.setLayout(layout)
         popup.resize(400, 100)
 
-        # Auto-close after 1.8 seconds (same as book details)
-        QTimer.singleShot(1800, popup.accept)
         popup.show()
         QApplication.processEvents()
 
@@ -3354,54 +3354,35 @@ class MainWindow(QMainWindow):
                     refresh=0,
                     move_articles=move_articles,
                     flip_author=flip_author,
+                    narrator=book.reader or "",
+                    path=book.path or "",
+                    source=book.source or "",
+                    comments=book.comments or "",
                 )
             except Exception as e:
                 last_error = str(e)
 
         except Exception:
             pass  # Silently fail if web fetch fails
+        finally:
+            popup.close()
 
-        # Close the popup after web search is complete
-        popup.close()
-
-        # Check if we got real data (not just empty placeholders)
-        is_real_match = False
         if web_data:
-            # Check if any field has meaningful content
-            meaningful_fields = [
-                web_data.get("plot"),  # API returns "plot", not "description"
-                web_data.get("publisher"),
-                web_data.get("year"),  # API returns "year", not "published_year"
-                web_data.get("isbn"),
-                web_data.get("rating"),  # API includes rating
-                web_data.get("ratings_count"),  # API includes ratings count
-            ]
-            is_real_match = any(
-                field
-                and str(field).strip()
-                and str(field) not in ["Unknown", "N/A", "None", ""]
-                for field in meaningful_fields
+            focus_ctx = self._capture_table_focus_context(row, 1)
+            dialog = WebMetadataWindow(
+                self.db,
+                book,
+                self.scaler,
+                self.theme_manager,
+                parent=self,
+                refresh_callback=self.refresh_books,
+                web_data=web_data,
             )
+            dialog.exec()
+            self._restore_table_focus_context(focus_ctx)
+            return
 
-            if is_real_match:
-                # Only open window if real data found
-                focus_ctx = self._capture_table_focus_context(
-                    row, 1
-                )  # Focus title column
-                dialog = WebMetadataWindow(
-                    self.db,
-                    book,
-                    self.scaler,
-                    self.theme_manager,
-                    parent=self,
-                    refresh_callback=self.refresh_books,
-                    web_data=web_data,
-                )
-                dialog.exec()
-                self._restore_table_focus_context(focus_ctx)
-                return
-
-        # If no real data found, show popup and status, then return.
+        # If no data found, show popup and status, then return.
         no_data_text = "No information found for this book in any web source."
         if last_error:
             no_data_text = f"{no_data_text}\n\nLast error: {last_error}"

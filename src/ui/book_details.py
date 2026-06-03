@@ -22,6 +22,9 @@ from src.accessibility.style_helpers import (
     build_accessible_message_box_style,
     build_modern_button_style,
     exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+    MESSAGE_BOX_UNSAVED_THREE_ICONS,
+    MESSAGE_BOX_UNSAVED_TWO_ICONS,
 )
 from src.accessibility.accessible_events import (
     announce_status_message,
@@ -148,6 +151,7 @@ class BookDetailsWindow(QDialog):
                     QMessageBox.Cancel: "&Cancel",
                 },
                 window_icon=get_app_icon(),
+                button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
             )
 
             if reply == QMessageBox.Yes:
@@ -1896,6 +1900,7 @@ class BookDetailsWindow(QDialog):
             text=confirm_text,
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
         )
         if reply != QMessageBox.Yes:
             self.set_status("Delete canceled.")
@@ -2201,10 +2206,10 @@ class BookDetailsWindow(QDialog):
         layout.addWidget(label)
         popup.setLayout(layout)
         popup.resize(350, 80)
-        QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
         popup.show()
         QApplication.processEvents()
         if not self.book:
+            popup.close()
             self.set_status("No book selected for web lookup")
             return
         try:
@@ -2253,101 +2258,49 @@ class BookDetailsWindow(QDialog):
                     refresh=0,
                     move_articles=move_articles,
                     flip_author=flip_author,
+                    narrator=self.book.reader or "",
+                    path=self.book.path or "",
+                    source=self.book.source or "",
+                    comments=self.book.comments or "",
                 )
             except Exception as e:
                 last_error = str(e)
+            finally:
+                popup.close()
 
             if web_data:
-                # Check if the returned data is actually meaningful (has plot or matches search)
-                title_match = web_data.get("title", "").lower()
-                search_title_lower = title.lower()
-                author_match = web_data.get("author", "").lower()
-                search_author_lower = author.lower() if author else ""
-
-                # Check if it's a real match (title contains search terms OR has plot)
-                is_real_match = False
-                if web_data.get("plot"):
-                    # Has plot content - likely a real match
-                    is_real_match = True
-                elif search_title_lower and title_match:
-                    # Check if title similarity (contains at least part of search title)
-                    if (
-                        search_title_lower in title_match
-                        or title_match in search_title_lower
-                        or any(
-                            word in title_match
-                            for word in search_title_lower.split()
-                            if len(word) > 2
-                        )
-                    ):
-                        is_real_match = True
-                elif search_author_lower and author_match:
-                    # Check author match
-                    if (
-                        search_author_lower in author_match
-                        or author_match in search_author_lower
-                    ):
-                        is_real_match = True
-
-                if is_real_match:
-                    # Create web details window with pre-fetched data
-                    web_window = WebMetadataWindow(
-                        self.db,
-                        self.book,
-                        self.scaler,
-                        self.theme_manager,
-                        self,
-                        refresh_callback=self.load_book_data,  # Refresh book data after save
-                        web_data=web_data,
+                web_window = WebMetadataWindow(
+                    self.db,
+                    self.book,
+                    self.scaler,
+                    self.theme_manager,
+                    self,
+                    refresh_callback=self.load_book_data,
+                    web_data=web_data,
+                )
+                result = web_window.exec()
+                if result == QDialog.Accepted:
+                    self.set_status(
+                        "Web details applied successfully", announce=True
                     )
-                    # Show window modally
-                    result = web_window.exec()
-                    if result == QDialog.Accepted:
-                        # User accepted changes - would implement actual update here
-                        self.set_status(
-                            "Web details applied successfully", announce=True
-                        )
-                        QTimer.singleShot(0, self.comments_edit.setFocus)
-                else:
-                    # Show popup if no meaningful data found
-                    from PySide6.QtWidgets import QMessageBox
-                    from src.accessibility.style_helpers import (
-                        build_accessible_message_box_style,
-                    )
-
-                    msg = QMessageBox(self)
-                    msg.setIcon(QMessageBox.Information)
-                    msg.setWindowTitle("No Web Data Found")
-                    msg.setText("No information found for this book in any web source.")
-                    msg.setStyleSheet(
-                        build_accessible_message_box_style(
-                            self.scaler.get_scaled_size(20)
-                        )
-                    )
-                    msg.setStandardButtons(QMessageBox.Ok)
-                    msg.exec()
-                    QTimer.singleShot(0, self.title_edit.setFocus)
+                    QTimer.singleShot(0, self.comments_edit.setFocus)
             else:
-                # Show popup if no data found
-                from PySide6.QtWidgets import QMessageBox
-                from src.accessibility.style_helpers import (
-                    build_accessible_message_box_style,
-                )
-
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Information)
-                msg.setWindowTitle("No Web Data Found")
                 if last_error:
-                    msg.setText(
-                        f"No information found for this book in any web source.\n\nLast error: {last_error}"
+                    no_web_text = (
+                        f"No information found for this book in any web source.\n\n"
+                        f"Last error: {last_error}"
                     )
                 else:
-                    msg.setText("No information found for this book in any web source.")
-                msg.setStyleSheet(
-                    build_accessible_message_box_style(self.scaler.get_scaled_size(20))
+                    no_web_text = (
+                        "No information found for this book in any web source."
+                    )
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Information,
+                    title="No Web Data Found",
+                    text=no_web_text,
                 )
-                msg.setStandardButtons(QMessageBox.Ok)
-                msg.exec()
                 QTimer.singleShot(0, self.title_edit.setFocus)
         except Exception as e:
             import traceback
@@ -2381,6 +2334,7 @@ class BookDetailsWindow(QDialog):
             default_button=QMessageBox.No,
             button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
         if reply == QMessageBox.Yes:
             self.on_save()

@@ -72,7 +72,9 @@ class PreferencesWindow(QDialog):
         ),
         TAB_IMPORT: (
             "Set defaults used when you open the Import window: where to scan, "
-            "which audio formats to include, and which import scenario matches your folder layout."
+            "which audio formats to include, and which import scenario matches your folder layout. "
+            "During scan, length and file count come from audio tags. Books are grouped by album tag; "
+            "use album for the book title and album artist for the author (not the narrator) when possible."
         ),
         TAB_FALLBACK: (
             "Control how missing metadata is filled in during import and how narrator "
@@ -1075,6 +1077,8 @@ class PreferencesWindow(QDialog):
         from src.accessibility.style_helpers import exec_styled_message_box
         from src.accessibility.icon_helper import get_app_icon
 
+        from src.accessibility.style_helpers import MESSAGE_BOX_UNSAVED_THREE_ICONS
+
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
@@ -1087,6 +1091,7 @@ class PreferencesWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             default_button=QMessageBox.Yes,
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
         )
         return reply
 
@@ -1759,7 +1764,14 @@ class PreferencesWindow(QDialog):
         msg_box.button(QMessageBox.Yes).setAccessibleName("Yes, restore defaults")
         msg_box.button(QMessageBox.No).setAccessibleName("No, keep current settings")
 
-        # Apply accessible styling
+        from src.accessibility.style_helpers import (
+            apply_message_box_button_icons,
+            MESSAGE_BOX_RESTORE_CONFIRM_ICONS,
+        )
+
+        apply_message_box_button_icons(
+            msg_box, self.scaler, MESSAGE_BOX_RESTORE_CONFIRM_ICONS
+        )
         msg_box.setStyleSheet(
             build_accessible_message_box_style(self.scaler.current_scale)
         )

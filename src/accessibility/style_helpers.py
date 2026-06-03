@@ -244,6 +244,62 @@ def set_message_box_button_accessibility(
             button.setAccessibleDescription(description)
 
 
+DEFAULT_MESSAGE_BOX_BUTTON_ICONS = {
+    QMessageBox.Ok: "ok",
+    QMessageBox.Yes: "save",
+    QMessageBox.No: "cancel",
+    QMessageBox.Cancel: "cancel",
+    QMessageBox.Save: "save",
+    QMessageBox.Discard: "delete",
+    QMessageBox.Close: "close",
+    QMessageBox.Apply: "save",
+}
+
+# Per-dialog overrides (action-style icons matching main-window buttons).
+MESSAGE_BOX_DELETE_CONFIRM_ICONS = {
+    QMessageBox.Yes: "delete",
+    QMessageBox.No: "cancel",
+}
+MESSAGE_BOX_UNSAVED_THREE_ICONS = {
+    QMessageBox.Yes: "save",
+    QMessageBox.No: "edit",
+    QMessageBox.Cancel: "cancel",
+}
+MESSAGE_BOX_UNSAVED_TWO_ICONS = {
+    QMessageBox.Yes: "save",
+    QMessageBox.No: "edit",
+}
+MESSAGE_BOX_CANCEL_SCAN_ICONS = {
+    QMessageBox.Yes: "cancel",
+    QMessageBox.No: "close",
+}
+MESSAGE_BOX_RESTORE_CONFIRM_ICONS = {
+    QMessageBox.Yes: "restore",
+    QMessageBox.No: "cancel",
+}
+
+
+def _parent_scaler(parent):
+    if parent is None:
+        return None
+    return getattr(parent, "scaler", None)
+
+
+def apply_message_box_button_icons(
+    msg: QMessageBox,
+    scaler=None,
+    button_icon_roles: dict | None = None,
+) -> None:
+    """Apply decorative action icons to QMessageBox standard buttons."""
+    from src.accessibility.icon_helper import apply_decorative_action_icon
+
+    roles = {**DEFAULT_MESSAGE_BOX_BUTTON_ICONS, **(button_icon_roles or {})}
+    for std_button, icon_role in roles.items():
+        button = msg.button(std_button)
+        if button is not None:
+            apply_decorative_action_icon(button, icon_role, scaler)
+
+
 def exec_styled_message_box(
     parent,
     scaled_height: int,
@@ -256,6 +312,8 @@ def exec_styled_message_box(
     button_texts=None,
     button_accessibility=None,
     window_icon=None,
+    scaler=None,
+    button_icon_roles: dict | None = None,
 ) -> int:
     """Show a styled QMessageBox and return the exec result."""
     msg = QMessageBox(parent)
@@ -288,6 +346,12 @@ def exec_styled_message_box(
 
     if button_accessibility:
         set_message_box_button_accessibility(msg, button_accessibility)
+
+    apply_message_box_button_icons(
+        msg,
+        scaler if scaler is not None else _parent_scaler(parent),
+        button_icon_roles,
+    )
 
     msg.setStyleSheet(build_accessible_message_box_style(scaled_height))
     return msg.exec()

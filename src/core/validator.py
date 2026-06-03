@@ -386,6 +386,7 @@ class ImportValidator:
             "author contains unknown or various",
             "title below minimum length",
             "folder path does not match expected structure",
+            "could not read length from audio files",
             "book length below minimum",
             "book length above maximum",
         ]

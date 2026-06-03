@@ -1042,8 +1042,10 @@ class NameListWindow(QDialog):
 
         # If editing, show save changes dialog like other windows
         from src.accessibility.style_helpers import (
+            apply_message_box_button_icons,
             build_accessible_message_box_style,
             set_message_box_button_accessibility,
+            MESSAGE_BOX_UNSAVED_THREE_ICONS,
         )
 
         from src.accessibility.icon_helper import get_app_icon
@@ -1075,6 +1077,7 @@ class NameListWindow(QDialog):
                 ),
             },
         )
+        apply_message_box_button_icons(msg, self.scaler, MESSAGE_BOX_UNSAVED_THREE_ICONS)
 
         reply = msg.exec()
 

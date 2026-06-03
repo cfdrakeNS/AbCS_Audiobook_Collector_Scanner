@@ -185,19 +185,22 @@ def test_import_warning_filter_excludes_fallback_and_corrected(
 def test_import_summary_uses_errors_warnings_label(
     qapp, qtbot, temp_db, isolated_qsettings
 ):
-    """Status summary should display combined Errors/Warnings count label."""
+    """Status summary should display separate Errors and Warnings counts."""
     scaler = UIScaler(qapp)
     theme_manager = ThemeManager(qapp)
     window = ImportWindow(temp_db, scaler, theme_manager)
     qtbot.addWidget(window)
 
     window.update_summary(
-        scanned=10, fixed=3, errors=2, warnings=4, duplicates=1, added=5
+        scanned=10, fixed=3, errors=2, warnings=4, duplicates=1, added=5, valid=2
     )
     status_text = window.status_bar.currentMessage()
 
     assert "Corrected: 3" in status_text
-    assert "Errors/Warnings: 6" in status_text
+    assert "Valid: 2" in status_text
+    assert "Errors: 2" in status_text
+    assert "Warnings: 4" in status_text
+    assert "Errors/Warnings:" not in status_text
     assert "Issues:" not in status_text
 
     # Cleanup
@@ -282,6 +285,136 @@ def test_import_detail_actions_return_focus_to_title(
     window.on_skip_discard()
 
     assert len(focus_requests) == 4
+
+    cleanup_window(window)
+
+
+def test_refresh_summary_updates_after_revalidate(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Editing a review row should refresh Errors/Warnings counts from current status."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    book = {
+        "title": "Short",
+        "author": "Author One",
+        "year": 2020,
+        "folder": "/tmp/book-a",
+        "errors": ["Title below minimum length (8)"],
+    }
+    item = {
+        "book": book,
+        "status": "Warning",
+        "errors": list(book["errors"]),
+        "is_duplicate": False,
+        "error_summary": "",
+        "author": book["author"],
+        "title": book["title"],
+        "year": book["year"],
+        "folder": book["folder"],
+    }
+    window.scanned_items = [item]
+    window.scan_outcomes = [
+        {
+            "book": book,
+            "status": "Warning",
+            "errors": list(book["errors"]),
+            "is_duplicate": False,
+            "outcomes": ["warning"],
+        }
+    ]
+
+    window._refresh_summary_from_items()
+    assert window._summary_counts["warnings"] == 1
+    assert window._summary_counts["errors"] == 0
+
+    book["title"] = "A Proper Long Title"
+    book["errors"] = []
+    window._revalidate_scanned_item(item)
+    window._refresh_summary_from_items()
+
+    assert window._summary_counts["warnings"] == 0
+    assert window._summary_counts["valid"] == 1
+    assert window.scan_outcomes[0]["status"] == "OK"
+    assert "warning" not in window.scan_outcomes[0]["outcomes"]
+
+    cleanup_window(window)
+
+
+def test_refresh_summary_drops_discarded_row_from_scanned_total(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Discarding a review row should reduce Scanned and issue counters."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    warning_book = {
+        "title": "Short",
+        "author": "Warn Author",
+        "year": 2020,
+        "folder": "/tmp/warn",
+        "errors": ["Title below minimum length (8)"],
+    }
+    ok_book = {
+        "title": "Good Title Here",
+        "author": "Ok Author",
+        "year": 2020,
+        "folder": "/tmp/ok",
+        "errors": [],
+    }
+    window.scanned_items = [
+        {
+            "book": warning_book,
+            "status": "Warning",
+            "errors": list(warning_book["errors"]),
+            "is_duplicate": False,
+            "error_summary": "",
+            "author": warning_book["author"],
+            "title": warning_book["title"],
+            "year": None,
+            "folder": warning_book["folder"],
+        },
+        {
+            "book": ok_book,
+            "status": "OK",
+            "errors": [],
+            "is_duplicate": False,
+            "error_summary": "",
+            "author": ok_book["author"],
+            "title": ok_book["title"],
+            "year": None,
+            "folder": ok_book["folder"],
+        },
+    ]
+    window.scan_outcomes = [
+        {
+            "book": warning_book,
+            "status": "Warning",
+            "errors": list(warning_book["errors"]),
+            "is_duplicate": False,
+            "outcomes": ["warning"],
+        },
+        {
+            "book": ok_book,
+            "status": "OK",
+            "errors": [],
+            "is_duplicate": False,
+            "outcomes": [],
+        },
+    ]
+    window.table.setRowCount(2)
+
+    window._discard_scanned_item(0)
+    assert len(window.scanned_items) == 1
+    assert len(window.scan_outcomes) == 1
+    assert window._summary_counts["scanned"] == 1
+    assert window._summary_counts["warnings"] == 0
+    assert window._summary_counts["valid"] == 1
 
     cleanup_window(window)
 
@@ -479,12 +612,12 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(
     corrected_items = [
         item
         for item in window.scanned_items
-        if item.get("book", {}).get("title") == "Corrected Example"
+        if (item.get("book", {}).get("title") or "").strip() == "Corrected Example"
     ]
     assert len(corrected_items) == 1
     assert corrected_items[0]["error_summary"].startswith("C:")
     assert not any(
-        (item.get("book", {}).get("title") == "Clean Example")
+        (item.get("book", {}).get("title") or "").strip() == "Clean Example"
         for item in window.scanned_items
     )
     assert window._summary_counts["fixed"] == 1
@@ -494,10 +627,160 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(
     status_text = window.status_bar.currentMessage()
     assert "Added: 1" in status_text
     assert "Corrected: 1" in status_text
-    assert "Errors/Warnings: 0" in status_text
-    assert "Valid:" not in status_text
+    assert "Errors: 0" in status_text
+    assert "Warnings: 0" in status_text
+    assert "Valid: 0" in status_text
 
     cleanup_window(window)
+
+
+def test_apply_detail_edits_persists_time_fields(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Time edited in Import detail should remain on the scanned book."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    cq = CollectionQueries(temp_db)
+    if window.collection_combo.count() == 0:
+        collection_id = cq.insert(Collection(name="Default", active=True))
+        window._load_collection_options()
+        idx = window.collection_combo.findData(collection_id)
+        if idx >= 0:
+            window.collection_combo.setCurrentIndex(idx)
+    elif window.collection_combo.currentData() is None and window.collection_combo.count() > 1:
+        window.collection_combo.setCurrentIndex(1)
+
+    book = {
+        "title": "Time Test Book",
+        "author": "Author One",
+        "year": 2020,
+        "folder": "/tmp/time-test",
+        "files": ["/tmp/time-test/part1.mp3", "/tmp/time-test/part2.mp3"],
+        "time_hours": 0,
+        "time_minutes": 0,
+        "tracks": 2,
+        "errors": [],
+    }
+    item = {
+        "book": book,
+        "status": "OK",
+        "errors": [],
+        "is_duplicate": False,
+        "error_summary": "",
+        "author": book["author"],
+        "title": book["title"],
+        "year": book["year"],
+        "folder": book["folder"],
+    }
+    window.scanned_items = [item]
+    window.scan_outcomes = [
+        {
+            "book": book,
+            "status": "OK",
+            "errors": [],
+            "is_duplicate": False,
+            "outcomes": [],
+        }
+    ]
+    window.table.setRowCount(1)
+
+    detail = ImportDetailWindow(
+        temp_db,
+        scaler,
+        theme_manager,
+        book_data=book.copy(),
+        errors=[],
+        current_index=0,
+        total_count=1,
+        parent=window,
+    )
+    qtbot.addWidget(detail)
+    detail.time_edit.setText("02:30")
+    detail._collect_form_data()
+    window._apply_detail_edits(0, detail)
+
+    assert book["time_hours"] == 2
+    assert book["time_minutes"] == 30
+    assert book["tracks"] == 2
+
+    saved = window._build_book_from_scan(book)
+    assert saved.time_hours == 2
+    assert saved.time_minutes == 30
+    assert saved.tracks == 2
+
+    cleanup_window(detail)
+    cleanup_window(window)
+
+
+def test_build_book_from_scan_uses_scanned_time_and_tracks(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Books added from scan should keep hours, minutes, and track count."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    cq = CollectionQueries(temp_db)
+    if window.collection_combo.count() == 0:
+        collection_id = cq.insert(Collection(name="Default", active=True))
+        window._load_collection_options()
+        idx = window.collection_combo.findData(collection_id)
+        if idx >= 0:
+            window.collection_combo.setCurrentIndex(idx)
+    elif window.collection_combo.currentData() is None and window.collection_combo.count() > 1:
+        window.collection_combo.setCurrentIndex(1)
+
+    book = {
+        "title": "Scan Length Book",
+        "author": "Author Two",
+        "year": 2019,
+        "folder": "/tmp/scan",
+        "files": ["/tmp/scan/a.mp3", "/tmp/scan/b.mp3", "/tmp/scan/c.mp3"],
+        "time_hours": 5,
+        "time_minutes": 15,
+        "tracks": 3,
+        "size_mb": 12.5,
+        "bitrate": 128,
+        "format": "MP3",
+        "comment": "",
+    }
+    saved = window._build_book_from_scan(book)
+    assert saved.time_hours == 5
+    assert saved.time_minutes == 15
+    assert saved.tracks == 3
+
+    cleanup_window(window)
+
+
+def test_unreadable_length_warning_when_files_have_no_duration(
+    qapp, isolated_qsettings
+):
+    """Zero length with files present should warn about unreadable length, not minimum."""
+    from src.core.validator import ImportValidator
+
+    validator = ImportValidator()
+    validator.rules_engine.min_book_length_minutes = 60
+    book = {
+        "title": "No Duration",
+        "author": "Author",
+        "year": 2020,
+        "files": ["/tmp/a.mp3"],
+        "time_hours": 0,
+        "time_minutes": 0,
+        "tracks": 1,
+    }
+    errors = validator.validate_book(book)
+    assert any("Could not read length" in err for err in errors)
+    assert not any("below minimum" in err.lower() for err in errors)
+
+    book["time_hours"] = 1
+    book["time_minutes"] = 30
+    errors = validator.validate_book(book)
+    assert not any("Could not read length" in err for err in errors)
 
 
 def test_import_progress_add_phase_resets_then_increments(qapp, qtbot):

@@ -40,6 +40,7 @@ from src.accessibility.style_helpers import (
     build_modern_button_style,
     build_table_polish_style,
     exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -726,6 +727,7 @@ class CollectionWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
         )
         if answer != QMessageBox.Yes:
             self.set_status("Delete canceled.")

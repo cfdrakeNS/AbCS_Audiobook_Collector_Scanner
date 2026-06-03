@@ -45,7 +45,10 @@ from src.accessibility.style_helpers import (
     build_accessible_message_box_style,
     build_modern_button_style,
     exec_styled_message_box,
+    apply_message_box_button_icons,
     set_message_box_button_accessibility,
+    MESSAGE_BOX_UNSAVED_THREE_ICONS,
+    MESSAGE_BOX_UNSAVED_TWO_ICONS,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -101,6 +104,7 @@ class ImportDetailWindow(QDialog):
                 ),
             },
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
         if reply == QMessageBox.Yes:
             if self.on_save():
@@ -393,6 +397,9 @@ class ImportDetailWindow(QDialog):
                         "Discard changes and close",
                     ),
                 },
+            )
+            apply_message_box_button_icons(
+                msg, self.scaler, MESSAGE_BOX_UNSAVED_THREE_ICONS
             )
             reply = msg.exec()
 
@@ -1247,7 +1254,10 @@ class ImportDetailWindow(QDialog):
                 self.author_combo: ("Author", "Author of the scanned audiobook"),
                 self.comments_edit: ("Plot or comments", "Plot or comments from scan"),
                 self.year_spin: ("Publication year", "Publication year"),
-                self.time_edit: ("Length", "Audiobook length in hours and minutes"),
+                self.time_edit: (
+                    "Length",
+                    "Audiobook length in hours and minutes; saved when you leave this screen",
+                ),
                 self.reader_edit: ("Narrator", "Narrator or reader name"),
                 self.series_combo: ("Series", "Series for this audiobook"),
                 self.genre_combo: ("Genre", "Genre for this audiobook"),
@@ -1255,7 +1265,10 @@ class ImportDetailWindow(QDialog):
                     "Collection",
                     "Target collection for import",
                 ),
-                self.files_edit: ("File count", "Number of audio files"),
+                self.files_edit: (
+                    "File count",
+                    "Number of audio files from scan; set album tag on files to fix grouping",
+                ),
                 self.bitrate_edit: ("Bitrate", "Bitrate in kilobits per second"),
                 self.size_edit: ("File size", "Total size in megabytes"),
                 self.format_edit: ("Format", "Audio file format"),
@@ -1553,6 +1566,9 @@ class ImportDetailWindow(QDialog):
                         "Discard changes and close",
                     ),
                 },
+            )
+            apply_message_box_button_icons(
+                msg, self.scaler, MESSAGE_BOX_UNSAVED_THREE_ICONS
             )
             reply = msg.exec()
 

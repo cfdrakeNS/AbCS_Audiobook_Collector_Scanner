@@ -109,3 +109,44 @@ def test_set_status_updates_status_bar(window):
     msg = "Web data found - Difference - Title, Author"
     window.set_status(msg)
     assert window.status_bar.currentMessage() == msg
+
+
+def test_series_row_hidden_when_db_and_web_empty(window):
+    assert window.series_row.isHidden()
+
+
+def test_series_row_visible_when_web_has_series(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "series": "Modern Classics",
+            "series_number": "2",
+        }
+    )
+    assert not window.series_row.isHidden()
+    assert not window.series_web_edit.isHidden()
+
+
+def test_series_row_visible_when_db_has_series(qapp):
+    book = Book(
+        book_id=2,
+        title="Book Two",
+        author_name="Author",
+        series_name="Test Saga",
+        genre_name="Fiction",
+    )
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    dlg = WebMetadataWindow(
+        db=None,
+        book=book,
+        scaler=scaler,
+        theme_manager=theme_manager,
+        web_data=None,
+    )
+    try:
+        assert not dlg.series_row.isHidden()
+        assert dlg.series_edit.text() == "Test Saga"
+    finally:
+        dlg.close()

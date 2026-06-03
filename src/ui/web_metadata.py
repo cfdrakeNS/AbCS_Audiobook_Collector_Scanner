@@ -493,36 +493,50 @@ class WebMetadataWindow(QDialog):
             }
         )
 
+    def _update_series_row_visibility(self, web_data: dict | None = None) -> None:
+        """Hide the series row when DB and web have no series name or number."""
+        db_name = (self.series_edit.text() or "").strip()
+        db_num = (self.series_number_edit.text() or "").strip()
+        web_name = (self.series_web_edit.text() or "").strip()
+        web_num = (self.series_number_web_edit.text() or "").strip()
+        if web_data:
+            web_name = web_name or str(web_data.get("series") or "").strip()
+            web_num = web_num or str(web_data.get("series_number") or "").strip()
+        self.series_row.setVisible(bool(db_name or db_num or web_name or web_num))
+        self.set_tab_order()
+
     def set_tab_order(self):
         """Set explicit tab order for logical keyboard navigation."""
-        # Define tab order following the actual layout:
-        # Current Title → Web Title → Title Checkbox → Current Author → Web Author → Author Checkbox
-        # → Current Year → Web Year → Year Checkbox → Current Series → Series # → Web Series → Web # → Series Checkbox
-        # → Current Genre → Web Genre → Genre Checkbox → Plot → Rating → Save
         tab_widgets = [
-            self.title_edit,  # Current title
-            self.title_web_edit,  # Web title
-            self.title_checkbox,  # Title checkbox
-            self.author_edit,  # Current author
-            self.author_web_edit,  # Web author
-            self.author_checkbox,  # Author checkbox
-            self.year_edit,  # Current year
-            self.year_web_edit,  # Web year
-            self.year_checkbox,  # Year checkbox
-            self.series_edit,  # Current series
-            self.series_number_edit,  # Current series number
-            self.series_web_edit,  # Web series
-            self.series_number_web_edit,  # Web series number
-            self.series_checkbox,  # Series checkbox
-            self.genre_edit,  # Current genre
-            self.genre_web_edit,  # Web genre
-            self.genre_checkbox,  # Genre checkbox
-            self.plot_edit,  # Plot field
-            self.rating_edit,  # Rating field
-            self.save_button,  # Save button
+            self.title_edit,
+            self.title_web_edit,
+            self.title_checkbox,
+            self.author_edit,
+            self.author_web_edit,
+            self.author_checkbox,
+            self.year_edit,
+            self.year_web_edit,
+            self.year_checkbox,
         ]
-
-        # Set tab order sequentially
+        if not self.series_row.isHidden():
+            tab_widgets.append(self.series_edit)
+            tab_widgets.append(self.series_number_edit)
+            if self.series_web_edit.isVisible():
+                tab_widgets.append(self.series_web_edit)
+            if self.series_number_web_edit.isVisible():
+                tab_widgets.append(self.series_number_web_edit)
+            if self.series_checkbox.isVisible():
+                tab_widgets.append(self.series_checkbox)
+        tab_widgets.extend(
+            [
+                self.genre_edit,
+                self.genre_web_edit,
+                self.genre_checkbox,
+                self.plot_edit,
+                self.rating_edit,
+                self.save_button,
+            ]
+        )
         for i in range(len(tab_widgets) - 1):
             self.setTabOrder(tab_widgets[i], tab_widgets[i + 1])
 
@@ -599,6 +613,8 @@ class WebMetadataWindow(QDialog):
                 if hasattr(row, "_web_number_edit"):
                     row._web_number_edit.setVisible(False)
                 row._checkbox.setVisible(False)
+
+            self._update_series_row_visibility()
 
         # Auto-fetch web data when window opens (only if not pre-fetched)
         if self.pre_fetched_web_data:
@@ -780,6 +796,8 @@ class WebMetadataWindow(QDialog):
                 self.field_differences["series_number"] = series_number
         else:
             self.series_number_web_edit.setVisible(False)
+
+        self._update_series_row_visibility(web_data)
 
         # Genre
         handle_field_comparison(
