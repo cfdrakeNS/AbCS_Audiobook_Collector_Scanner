@@ -1489,11 +1489,7 @@ class ImportDetailWindow(QDialog):
 
         parent = self.parent()
         if parent and hasattr(parent, "_apply_detail_edits"):
-            parent._apply_detail_edits(
-                self.current_index,
-                self,
-                refresh_view=False,
-            )
+            parent._apply_detail_edits(self.current_index, self)
 
         if resolve_errors:
             self.errors = []

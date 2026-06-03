@@ -275,16 +275,6 @@ class ThemePreviewPicker(QWidget):
         for card in self._cards:
             card.set_selected(card.theme_id == theme_id)
 
-    def focus_first_card(self) -> Optional[ThemePreviewCard]:
-        for card in self._cards:
-            if card.is_selected():
-                card.setFocus(Qt.TabFocusReason)
-                return card
-        if self._cards:
-            self._cards[0].setFocus(Qt.TabFocusReason)
-            return self._cards[0]
-        return None
-
     def _on_card_activated(self, theme_id: str) -> None:
         if self._loading:
             return

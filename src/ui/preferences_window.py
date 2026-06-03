@@ -143,6 +143,7 @@ class PreferencesWindow(QDialog):
         self._initial_state = {}
         self._closing_via_handler = False
         self._default_status_message = "Ready"
+        self._tab_description_labels: dict[int, QLabel] = {}
 
         self.setup_ui()
         self.apply_visual_tooltips()
@@ -187,6 +188,8 @@ class PreferencesWindow(QDialog):
         self.tab_widget.addTab(
             self._build_validation_tab(), "Validation Rules"
         )
+        self.tab_widget.currentChanged.connect(self._on_preferences_tab_changed)
+        self._wire_tab_focus_order()
 
         layout.addWidget(self.tab_widget, 1)
 
@@ -224,6 +227,85 @@ class PreferencesWindow(QDialog):
         section_font.setBold(True)
         return section_font
 
+    def _tab_description_stylesheet(self) -> str:
+        """Match book list import instructions panel (tab-focusable, screen-reader friendly)."""
+        return (
+            "QLabel#preferencesTabDescription {"
+            "  background-color: palette(base);"
+            "  border: 1px solid palette(mid);"
+            "  padding: 5px;"
+            "}"
+        )
+
+    def _create_tab_description_label(self, tab_index: int, description: str) -> QLabel:
+        """Instructions-style blurb at top of each tab (tabbable, reads as one block)."""
+        tab_names = {
+            self.TAB_DISPLAY: "Display Settings",
+            self.TAB_IMPORT: "Import Settings",
+            self.TAB_FALLBACK: "Fallback and Parsing",
+            self.TAB_VALIDATION: "Validation Rules",
+        }
+        section_name = tab_names.get(tab_index, "Preferences")
+
+        desc_label = QLabel(description)
+        desc_label.setWordWrap(True)
+        desc_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        desc_label.setObjectName("preferencesTabDescription")
+        desc_label.setFocusPolicy(Qt.TabFocus)
+        desc_label.setAccessibleName(description)
+        desc_label.setAccessibleDescription(
+            f"{section_name} tab instructions"
+        )
+        desc_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        desc_label.setStyleSheet(self._tab_description_stylesheet())
+        self._tab_description_labels[tab_index] = desc_label
+        return desc_label
+
+    def _fit_tab_description_heights(self):
+        """Size each tab description to its wrapped text."""
+        for tab_index, label in self._tab_description_labels.items():
+            text = self.TAB_DESCRIPTIONS.get(tab_index, label.text() or " ")
+            if not text.strip():
+                text = " "
+            width = max(label.width(), self.tab_widget.width() - 40, 280)
+            metrics = label.fontMetrics()
+            rect = metrics.boundingRect(0, 0, width, 2000, Qt.TextWordWrap, text)
+            padding = self.scaler.get_scaled_size(16)
+            target_height = rect.height() + padding
+            min_height = self.scaler.get_scaled_size(48)
+            max_height = self.scaler.get_scaled_size(220)
+            target_height = max(min_height, min(target_height, max_height))
+            label.setMinimumHeight(target_height)
+            label.setMaximumHeight(target_height)
+
+    def _focus_tab_description(self, tab_index: int | None = None):
+        """Focus the instructions blurb for the active preferences tab."""
+        if tab_index is None and hasattr(self, "tab_widget"):
+            tab_index = self.tab_widget.currentIndex()
+        label = self._tab_description_labels.get(tab_index)
+        if label is None or not isValid(label):
+            return
+        label.setFocus(Qt.TabFocusReason)
+        tab_names = {
+            self.TAB_DISPLAY: "Display Settings",
+            self.TAB_IMPORT: "Import Settings",
+            self.TAB_FALLBACK: "Fallback and Parsing",
+            self.TAB_VALIDATION: "Validation Rules",
+        }
+        self.set_status(f"{tab_names.get(tab_index, 'Preferences')} instructions")
+
+    def _on_preferences_tab_changed(self, tab_index: int):
+        """When user switches tabs, read the tab instructions first."""
+        QTimer.singleShot(0, lambda: self._focus_tab_description(tab_index))
+
+    def showEvent(self, event):
+        """Focus tab instructions when the window opens."""
+        super().showEvent(event)
+        if hasattr(self, "tab_widget"):
+            QTimer.singleShot(0, lambda: self._focus_tab_description(
+                self.tab_widget.currentIndex()
+            ))
+
     def _make_tab_page(self, tab_index: int, description: str):
         """Create a tab page with description label and scrollable content."""
         page = QWidget()
@@ -232,11 +314,7 @@ class PreferencesWindow(QDialog):
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(12)
 
-        desc_label = QLabel(description)
-        desc_label.setWordWrap(True)
-        desc_label.setObjectName("preferencesTabDescription")
-        desc_label.setAccessibleName("Tab description")
-        desc_label.setAccessibleDescription(description)
+        desc_label = self._create_tab_description_label(tab_index, description)
         page.setAccessibleDescription(description)
         page_layout.addWidget(desc_label)
 
@@ -245,8 +323,10 @@ class PreferencesWindow(QDialog):
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFocusPolicy(Qt.NoFocus)
 
         content = QWidget()
+        content.setFocusPolicy(Qt.NoFocus)
         content.setAutoFillBackground(True)
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
@@ -256,6 +336,19 @@ class PreferencesWindow(QDialog):
 
         self._tab_scroll_areas[tab_index] = scroll
         return page, content_layout
+
+    def _wire_tab_focus_order(self):
+        """One Tab from tab blurb to first setting (skip scroll area)."""
+        chains = (
+            (self.TAB_DISPLAY, self.preset_combo),
+            (self.TAB_IMPORT, self.import_dir_edit),
+            (self.TAB_FALLBACK, self.author_fallback_checkbox),
+            (self.TAB_VALIDATION, self.rules_section_text),
+        )
+        for tab_index, first_widget in chains:
+            desc = self._tab_description_labels.get(tab_index)
+            if desc is not None and first_widget is not None:
+                QWidget.setTabOrder(desc, first_widget)
 
     def _build_display_tab(self) -> QWidget:
         page, content_layout = self._make_tab_page(
@@ -856,16 +949,10 @@ class PreferencesWindow(QDialog):
             scroll.setStyleSheet(scroll_style)
             scroll.viewport().setStyleSheet("background-color: palette(window);")
 
-        desc_style = """
-            QLabel#preferencesTabDescription {
-                color: palette(windowText);
-                background-color: transparent;
-                padding: 4px 2px 8px 2px;
-            }
-        """
-        for desc in self.findChildren(QLabel):
-            if desc.objectName() == "preferencesTabDescription":
-                desc.setStyleSheet(desc_style)
+        desc_style = self._tab_description_stylesheet()
+        for desc in self._tab_description_labels.values():
+            desc.setStyleSheet(desc_style)
+        self._fit_tab_description_heights()
 
         if hasattr(self, "theme_picker"):
             self.theme_picker.setStyleSheet("background-color: transparent;")
@@ -996,6 +1083,7 @@ class PreferencesWindow(QDialog):
         super().resizeEvent(event)
         self._sync_fallback_column_alignment()
         self.update_scenario_description_height()
+        self._fit_tab_description_heights()
 
     def update_scenario_description_height(self):
         """Set description height based on current width."""

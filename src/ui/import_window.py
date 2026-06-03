@@ -2324,7 +2324,6 @@ class ImportWindow(QDialog):
         row: int,
         detail_window: ImportDetailWindow,
         resolve_errors: bool = False,
-        refresh_view: bool = True,
     ):
         """Apply edits returned from ImportDetailWindow to scanned item + table."""
         item = self.scanned_items[row]

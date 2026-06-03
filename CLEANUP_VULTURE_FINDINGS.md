@@ -7,20 +7,20 @@
 
 ---
 
-# Actionable Items (Current - June 2, 2026)
+# Actionable Items (Current - June 3, 2026)
 
 Items that need verification or cleanup, organized by file:
 
 ## Production Code
 
-- No current production cleanup items after the June 2 dead-code cleanup.
+- No current production cleanup items after removing `refresh_view` and `focus_first_card` (see Cleanup History).
 
 ## Tests
 - `test/test_reading_history_accessibility.py`: `date_range_layout` variable - Test-only Vulture finding; review before changing.
 - `test/test_reading_history_final_integration.py`: `alt_slush_works` and `operation_works` variables - Test-only findings; review before changing.
 - `test/test_shortcut_integration.py`: `shortcut_manager` fixture/variable - Test-only finding; may be pytest fixture behavior.
 - `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`, and repeated `isolated_qsettings` parameters - Test-only findings; likely pytest fixtures and should be handled carefully.
-- `test/test_web_book_api_matching.py`: `return_value` attributes on `@patch.object` mocks (lines 55, 71, 87, 91) - Test-only mock configuration; do not remove.
+- `test/test_web_book_api_matching.py`: `return_value` and `side_effect` attributes on `@patch.object` mocks — Test-only mock configuration; do not remove.
 
 ## Review Notes
 - `src/build_config.py` uses `TRIAL_BUILD_DATE` in `src/main.py`; do not remove.
@@ -48,7 +48,8 @@ These items are flagged by vulture but are actually used or required:
 
 ## Tests
 - **pytest fixtures and fixture parameters**: Vulture may report fixtures or fixture arguments as unused even when pytest injects them for setup side effects.
-- **`test/test_web_book_api_matching.py`: mock `return_value` attributes** - Standard unittest.mock patch configuration.
+- **`test/test_web_book_api_matching.py`: mock `return_value` and `side_effect` attributes** - Standard unittest.mock patch configuration.
+- **`test/test_message_box_button_icons.py`: inner `Parent` class** - Minimal stub used only to satisfy a test signature pattern; not production code.
 
 ## Compatibility and callback references
 - **`src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS`** - Compatibility alias.
@@ -63,6 +64,57 @@ These items are flagged by vulture but are actually used or required:
 ---
 
 # Cleanup History
+
+### June 3, 2026 — Dead-code cleanup (vulture actionable items)
+
+**Removed:**
+- `src/ui/import_window.py`: `_apply_detail_edits` unused parameter `refresh_view`.
+- `src/ui/import_detail_window.py`: `refresh_view=False` keyword at `_save_to_parent` call site.
+- `src/accessibility/theme_picker.py`: `ThemePreviewPicker.focus_first_card` (unused; no callers).
+
+**Post-cleanup:** production actionable section cleared; `paintEvent` remains documented false positive.
+
+### June 3, 2026 — Vulture Scan
+
+**Scan run:**
+- `python -m vulture src test --min-confidence 60`
+- `python -m vulture src --min-confidence 60`
+
+**New actionable items (production):**
+- `src/ui/import_window.py`: `_apply_detail_edits` unused parameter `refresh_view` (100% confidence).
+- `src/accessibility/theme_picker.py`: `ThemePreviewPicker.focus_first_card` — unused method (60% confidence).
+
+**New actionable items (tests):**
+- None beyond existing test-only list; scan still reports the same pytest/mock patterns.
+
+**New test-only findings (document as false positives / do not remove):**
+- `test/test_message_box_button_icons.py`: inner class `Parent` (60% confidence) — harmless test stub.
+- `test/test_web_book_api_matching.py`: additional `side_effect` mock attributes (line ~107) alongside existing `return_value` reports.
+
+**Stale actionable items removed from Production section:**
+- June 2 note “No current production cleanup items” — superseded by `refresh_view` and `focus_first_card` above.
+
+**Existing actionable items unchanged (tests):**
+- `test/test_reading_history_accessibility.py`: `date_range_layout`
+- `test/test_reading_history_final_integration.py`: `alt_slush_works`, `operation_works`
+- `test/test_shortcut_integration.py`: `shortcut_manager` fixture
+- `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`
+- `test/test_web_book_api_matching.py`: mock `return_value` / `side_effect` attributes
+
+**Existing false positives confirmed (src-only scan):**
+- `src/database/connection.py`: `row_factory`
+- `src/ui/book_list_import_window.py`: fallback `DataFrame`
+- `src/accessibility/theme_picker.py`: `ThemeMiniPreview.paintEvent` (Qt callback)
+- `src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS` (compatibility alias; used by shortcut tests)
+- `src/ui/main_window.py`: `book_list` (compatibility alias)
+- `src/ui/name_list_window.py`: `on_alt_f_pressed`, `_format_status_message`
+- `src/ui/reading_history_window.py`: `load_general_stats`
+
+**Review notes still valid (not reported this scan):**
+- `src/build_config.py`: `TRIAL_BUILD_DATE` (used by `src/main.py`)
+- `src/database/queries.py`: `total_time_hours`, `total_hours_read`
+
+**`.vultureignore`:** no changes required this scan (`set_preset`, `get_current_theme_display_name`, `row_factory`, `DataFrame` entries remain).
 
 ### June 2, 2026 — Dead-code cleanup (vulture actionable items)
 
