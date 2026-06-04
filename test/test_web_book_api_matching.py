@@ -116,6 +116,20 @@ def test_title_only_fallback_when_author_search_fails(ol_mock, _gb_mock, _wd_moc
     assert any(call.args[1] is None for call in ol_mock.call_args_list)
 
 
+
+def test_metadata_matches_db_rejects_deaver_issue_cases(api):
+    assert not api._metadata_matches_db(
+        "Cause Of Death",
+        "Jeffery Deaver",
+        {"title": "Cause Of Death", "author": "Patricia Cornwell"},
+    )
+    assert not api._metadata_matches_db(
+        "Date Night",
+        "Jeffery Deaver",
+        {"title": "Date Night Club", "author": "Saxon Bennett"},
+    )
+
+
 def test_metadata_matches_db_rejects_empty_db_author(api):
     meta = {"title": "Dune", "author": "Frank Herbert"}
     assert not api._metadata_matches_db("Dune", "", meta)
@@ -233,6 +247,171 @@ def test_get_book_metadata_same_result_with_or_without_db_year(api):
     assert with_year["title"] == without_year["title"]
 
 
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_deaver_cause_of_death_rejects_cornwell_without_title_only_fallback(
+    ol_mock, _gb_mock, _wd_mock, api
+):
+    def open_library_side_effect(title, author=None, **kwargs):
+        # Mock bypasses picker; no OL hit survives author filter for Deaver.
+        return None
+
+    ol_mock.side_effect = open_library_side_effect
+    result = api.get_book_metadata(
+        "Cause Of Death",
+        "Jeffery Deaver",
+        refresh=0,
+        path=r"C:\Audiobooks\cause_of_death",
+        narrator="",
+    )
+    assert result is None
+    assert any(call.args[1] for call in ol_mock.call_args_list)
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_deaver_date_night_rejects_wrong_author_and_title_extension(
+    ol_mock, _gb_mock, _wd_mock, api
+):
+    def open_library_side_effect(title, author=None, **kwargs):
+        return None
+
+    ol_mock.side_effect = open_library_side_effect
+    result = api.get_book_metadata(
+        "Date Night",
+        "Jeffery Deaver",
+        refresh=0,
+        path=r"C:\Audiobooks\date_night",
+        narrator="",
+    )
+    assert result is None
+
+
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_pride_and_prejudice_jane_austen_via_broadened_search(
+    ol_mock, _gb_mock, _wd_mock, api
+):
+    def open_library_side_effect(title, author=None, **kwargs):
+        if author:
+            return None
+        return {
+            "title": "Pride and Prejudice",
+            "author": "Jane Austen",
+            "source": "open_library",
+        }
+
+    ol_mock.side_effect = open_library_side_effect
+    result = api.get_book_metadata(
+        "Pride And Prejudice",
+        "Jane Austen",
+        refresh=0,
+        path=r"C:\Audiobooks\pride",
+        narrator="",
+    )
+    assert result is not None
+    assert "Austen" in result["author"]
+    assert result.get("broadened_search") is True
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
+def test_google_intitle_retry_finds_austen_when_inauthor_empty(gb_mock, _ol_mock, api):
+    def google_side_effect(title, author=None, **kwargs):
+        db_author = kwargs.get("match_author") or author
+        if author:
+            return None
+        if db_author and "Austen" in db_author:
+            return {
+                "title": "Pride and Prejudice",
+                "author": "Jane Austen",
+                "source": "Google Books",
+            }
+        return None
+
+    gb_mock.side_effect = google_side_effect
+    with patch.object(api, "_fetch_plot_from_open_library", return_value=""):
+        with patch.object(api, "_fetch_plot_from_wikipedia", return_value=""):
+            result = api.get_book_metadata(
+                "Pride And Prejudice",
+                "Jane Austen",
+                refresh=0,
+                path=r"C:\Audiobooks\pride",
+                narrator="",
+            )
+    assert result is not None
+    assert "Austen" in result["author"]
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_open_library_broadened_pass_uses_match_author(ol_mock, _gb_mock, _wd_mock, api):
+    captured = []
+
+    def open_library_side_effect(title, author=None, **kwargs):
+        captured.append((author, kwargs.get("match_author")))
+        return None
+
+    ol_mock.side_effect = open_library_side_effect
+    api.get_book_metadata(
+        "Cause Of Death",
+        "Jeffery Deaver",
+        refresh=0,
+        path=r"C:\Audiobooks\cause",
+        narrator="",
+    )
+    assert (None, "Jeffery Deaver") in captured
+
+
+
+
+def test_plot_is_adequate_threshold(api):
+    assert not api._plot_is_adequate("short")
+    assert api._plot_is_adequate("x" * 80)
+
+
+def test_strip_html_removes_tags(api):
+    raw = "<p>Hello <b>world</b> &amp; friends</p>"
+    assert "<" not in api._strip_html(raw)
+    assert "Hello" in api._strip_html(raw)
+
+
+def test_enrich_metadata_plot_fills_from_wikipedia_when_ol_plot_short(api):
+    metadata = {
+        "title": "Pride and Prejudice",
+        "author": "Jane Austen",
+        "source": "open_library",
+        "plot": "Short.",
+        "open_library_work_key": "/works/OL123W",
+    }
+    wiki_text = "A" * 120
+    with patch.object(api, "_get_open_library_description", return_value="Tiny"):
+        with patch.object(api, "_fetch_plot_from_wikipedia", return_value=wiki_text):
+            api._enrich_metadata_plot(metadata, "Pride And Prejudice", "Jane Austen")
+    assert metadata["plot"] == wiki_text
+    assert metadata["plot_source"] == "wikipedia"
+
+
+def test_enrich_metadata_plot_keeps_adequate_open_library_plot(api):
+    long_plot = "A" * 100
+    metadata = {
+        "title": "Dune",
+        "author": "Frank Herbert",
+        "source": "open_library",
+        "plot": long_plot,
+    }
+    with patch.object(api, "_fetch_plot_from_wikipedia") as wiki_mock:
+        api._enrich_metadata_plot(metadata, "Dune", "Frank Herbert")
+        wiki_mock.assert_not_called()
+    assert metadata["plot"] == long_plot
+
 def test_google_item_picker_rejects_wrong_author(api):
     items = [
         {
@@ -266,3 +445,27 @@ def test_google_item_picker_rejects_wrong_author(api):
                 best = candidate
     assert best is not None
     assert "Herbert" in best["author"]
+
+
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
+def test_progress_callback_order_refresh_zero(
+    _ol_mock, _gb_mock, _wd_mock, _enrich_mock, api
+):
+    """Progress callback reports sources in Open Library -> Google -> WikiData order."""
+    messages: list[str] = []
+    api.get_book_metadata(
+        "Test Title",
+        "Test Author",
+        refresh=0,
+        progress_callback=messages.append,
+    )
+    ol_idx = next(i for i, m in enumerate(messages) if "Open Library" in m)
+    gb_idx = next(i for i, m in enumerate(messages) if "Google Books" in m)
+    wd_idx = next(i for i, m in enumerate(messages) if "WikiData" in m)
+    assert ol_idx < gb_idx < wd_idx
+    assert messages[ol_idx].startswith("Trying source 1:")
+    assert messages[gb_idx].startswith("Trying source 2:")
+    assert messages[wd_idx].startswith("Trying source 3:")

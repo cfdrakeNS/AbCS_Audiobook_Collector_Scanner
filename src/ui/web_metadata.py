@@ -60,19 +60,12 @@ class WebMetadataWindow(QDialog):
 
     @staticmethod
     def normalize_db_title(title: str) -> str:
-        """Normalize DB title for search/compare: move article to beginning, trim, lowercase, remove embedded spaces."""
-        if not title:
-            return ""
-        # Move trailing article to beginning (e.g., 'moon the' -> 'the moon')
-        import re
+        """Normalize DB title for search/compare.
 
-        t = title.strip()
-        match = re.match(r"^(.*?)[,\s]+(the|a|an)$", t, re.IGNORECASE)
-        if match:
-            base = match.group(1).strip()
-            article = match.group(2).lower()
-            t = f"{article} {base}"
-        return "".join(t.lower().split())
+        Delegates to the shared normalize_title function in web_book_api.
+        """
+        from src.web.web_book_api import normalize_title
+        return normalize_title(title)
 
     """
     Web metadata window with PROVEN accessibility foundation.
@@ -82,7 +75,7 @@ class WebMetadataWindow(QDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
-    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "I", "N", "G", "S", "R", "/", "F1"}
+    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "I", "N", "G", "S", "R", "F", "/", "F1"}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -109,6 +102,8 @@ class WebMetadataWindow(QDialog):
 
         # Store pre-fetched web data if provided
         self.pre_fetched_web_data = web_data
+        # Store original query info for the Re-fetch button
+        self._refetch_book = book
 
         # Always set parent_window, even if None
         self.parent_window = None
@@ -449,6 +444,18 @@ class WebMetadataWindow(QDialog):
         # Stretch first to push buttons to the right
         button_layout.addStretch()
 
+        self.refetch_button = QPushButton("Re-fetch (Alt+F)")
+        self.refetch_button.setAccessibleName("Re-fetch web metadata")
+        self.refetch_button.setAccessibleDescription(
+            "Fetch fresh web data, skipping Open Library - Alt+F"
+        )
+        self.refetch_button.setFocusPolicy(Qt.StrongFocus)
+        self.refetch_button.setDefault(False)
+        self.refetch_button.setAutoDefault(False)
+        self.refetch_button.clicked.connect(self.on_refetch_clicked)
+        self.refetch_button.setObjectName("refetch_button")
+        button_layout.addWidget(self.refetch_button)
+
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
@@ -471,6 +478,7 @@ class WebMetadataWindow(QDialog):
         """Short sighted-user tooltips paired with screen reader descriptions."""
         apply_visual_tooltip_map(
             {
+                self.refetch_button: "Re-fetch web data from alternative sources",
                 self.save_button: "Save selected web metadata to the book",
                 self.title_edit: "Current book title",
                 self.title_web_edit: "Title from web search",
@@ -534,6 +542,7 @@ class WebMetadataWindow(QDialog):
                 self.genre_checkbox,
                 self.plot_edit,
                 self.rating_edit,
+                self.refetch_button,
                 self.save_button,
             ]
         )
@@ -571,6 +580,7 @@ class WebMetadataWindow(QDialog):
 
         self.status_bar.setStyleSheet(status_style)
         apply_decorative_action_icon(self.save_button, "save", self.scaler)
+        apply_decorative_action_icon(self.refetch_button, "search_web", self.scaler)
 
     def on_scale_changed(self, _scale_percentage: int):
         self.apply_field_styling()
@@ -620,8 +630,8 @@ class WebMetadataWindow(QDialog):
         if self.pre_fetched_web_data:
             # Use pre-fetched data and apply transformations
             move_articles, flip_author = self._read_user_preferences()
-            api = WebBookAPI()
-            cleaned_web_data = api.clean_web_data_for_storage(
+            from src.web.web_book_api import clean_web_data
+            cleaned_web_data = clean_web_data(
                 self.pre_fetched_web_data, move_articles, flip_author
             )
             self.update_fields_with_web_data(cleaned_web_data)
@@ -644,8 +654,13 @@ class WebMetadataWindow(QDialog):
             QTimer.singleShot(100, self.title_edit.setFocus)
 
     def set_focus_to_first_differing_field(self):
-        """Set focus to first field that has web differences, fallback to title."""
-        # Always start with title field for accessibility
+        """Set focus to the title field when the window opens.
+
+        This is intentional for screen reader users: title is always the first
+        meaningful field and gives a consistent, predictable starting point
+        regardless of which fields differ.  The screen reader can then tab or
+        use Alt+key shortcuts to navigate to any differing field.
+        """
         self.title_edit.setFocus()
         return
 
@@ -675,6 +690,78 @@ class WebMetadataWindow(QDialog):
         return move_articles, flip_author
 
     # fetch_web_data removed - now handled in main_window.py
+
+    def on_refetch_clicked(self):
+        """Re-fetch web data using alternative sources (skip Open Library, refresh=1).
+
+        Allows the user to try Google Books / WikiData when Open Library returned
+        nothing useful, without leaving the window.  Announces result via status bar.
+        """
+        if not self._refetch_book:
+            self._finish_refetch_ui("No book loaded for re-fetch.", self.title_edit)
+            return
+
+        from src.web.web_book_api import WebBookAPI
+
+        self.set_status("Re-fetching web data…", announce=False)
+        self.refetch_button.setEnabled(False)
+        status_msg = "Re-fetch complete"
+        focus_after = self.title_edit
+        try:
+            book = self._refetch_book
+            move_articles, flip_author = self._read_user_preferences()
+            api = WebBookAPI()
+            new_data = api.get_book_metadata(
+                book.title or "",
+                getattr(book, "author_name", "") or "",
+                str(book.year) if getattr(book, "year", None) else None,
+                refresh=1,
+                move_articles=move_articles,
+                flip_author=flip_author,
+                narrator=getattr(book, "reader", "") or "",
+                path=getattr(book, "path", "") or "",
+                source=getattr(book, "source", "") or "",
+                comments=getattr(book, "comments", "") or "",
+                progress_callback=lambda msg: self.set_status(msg, announce=False),
+            )
+            if new_data and not new_data.get("_no_result"):
+                from src.web.web_book_api import clean_web_data
+
+                cleaned = clean_web_data(new_data, move_articles, flip_author)
+                self.update_fields_with_web_data(cleaned)
+                diff_fields = [k.capitalize() for k in self.field_differences.keys()]
+                diff_str = (
+                    f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
+                )
+                status_msg = f"Re-fetch complete{diff_str}"
+                plot_text = cleaned.get("plot")
+                focus_after = (
+                    self.plot_edit
+                    if plot_text and str(plot_text).strip()
+                    else self.title_edit
+                )
+            else:
+                errors = (new_data or {}).get("_fetch_errors", [])
+                if errors:
+                    status_msg = f"Re-fetch failed: {errors[0]}"
+                else:
+                    status_msg = "Re-fetch: no data found."
+        except Exception as exc:
+            status_msg = f"Re-fetch error: {exc}"
+        finally:
+            self.refetch_button.setEnabled(True)
+            self._finish_refetch_ui(status_msg, focus_after)
+
+    def _finish_refetch_ui(self, status_msg: str, focus_widget) -> None:
+        """Set refetch status without focus fight; restore focus and support Alt+/ readback."""
+        self.set_status(status_msg, announce=False)
+
+        def _restore_and_announce():
+            if focus_widget:
+                focus_widget.setFocus()
+            read_status_bar_message(self.status_bar, fallback="Ready")
+
+        QTimer.singleShot(0, _restore_and_announce)
 
     def update_fields_with_web_data(self, web_data):
         """Update UI fields with web data and track differences. Show web columns and checkboxes only for changed fields."""
@@ -886,6 +973,7 @@ class WebMetadataWindow(QDialog):
             "save_button": lambda: (
                 self.on_save_clicked() if self.save_button.isVisible() else None
             ),
+            "refetch_button": lambda: self.on_refetch_clicked(),
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map
@@ -943,6 +1031,7 @@ class WebMetadataWindow(QDialog):
             ("Alt+N", "Series #"),
             ("Alt+G", "Genre"),
             ("Alt+R", "Rating"),
+            ("Alt+F", "Re-fetch web data"),
             ("Alt+S", "Save"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),

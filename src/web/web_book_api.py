@@ -4,14 +4,29 @@ Fetches book metadata from Open Library, Google Books, and WikiData APIs (in tha
 """
 
 import json
+import os
 import urllib.request
 import urllib.parse
 import re
 import time
-from typing import Optional, Dict, List
+from typing import Callable, Optional, Dict, List
 
 # Common stopwords to ignore in title matching
 STOPWORDS = {"the", "a", "an", "and", "or", "of", "in", "on", "to", "for"}
+
+# Plot enrichment: treat shorter text as needing a better source
+PLOT_MIN_LENGTH = 80
+PLOT_MAX_WIKIPEDIA_SENTENCES = 20
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+# Persistent cache file (JSON) in the app data folder
+WEB_CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data", "web_cache.json")
+WEB_CACHE_MAX_ENTRIES = 200
+
+# Network timeout constants (seconds)
+TIMEOUT_SEARCH = 10    # primary title/author searches
+TIMEOUT_DETAIL = 6     # secondary calls (work description, extract)
+TIMEOUT_RETRY_DELAY = 1  # pause before one retry on URLError
 
 # Leading honorifics to strip from author search (Sir Arthur Conan Doyle -> Arthur Conan Doyle)
 AUTHOR_HONORIFIC_PREFIX = re.compile(
@@ -58,7 +73,13 @@ class WebBookAPI:
         return parts[-1] if parts else ""
 
     def _author_matches(self, db_author: str, web_author: str) -> bool:
-        """Check that web author contains the DB author's last name."""
+        """Check that web author contains the DB author's last name.
+
+        When both sides have more than one word, also require that at least one
+        non-last-name token (first name or initial) from the DB author appears
+        in the web author string.  Falls back to last-name-only when either
+        side is a single word (e.g. a pen-name or initials-only entry).
+        """
         db_author = (db_author or "").strip()
         web_author = (web_author or "").strip()
         if not db_author or not web_author:
@@ -66,22 +87,46 @@ class WebBookAPI:
         last_name = self._extract_last_name(db_author)
         if not last_name:
             return False
-        return last_name.lower() in web_author.lower()
+        if last_name.lower() not in web_author.lower():
+            return False
+
+        # Additional check: first-name/initial overlap when both have >1 word
+        db_parts = db_author.split()
+        web_lower = web_author.lower()
+        if len(db_parts) > 1 and len(web_author.split()) > 1:
+            non_last = db_parts[:-1]  # everything before the last name
+            if not any(part.lower().rstrip(".") in web_lower for part in non_last):
+                return False
+
+        return True
 
     def _title_word_match_score(self, db_title: str, web_title: str) -> float:
-        """Calculate percentage of DB title words found in web title."""
+        """Calculate percentage of DB title words found in web title.
+
+        Applies a soft length penalty when the web title is more than twice as
+        long (by meaningful words) as the DB title.  A penalty of 0.15 is
+        subtracted so that a title like "Date Night Club" (3 words) still
+        reaches the 0.5 threshold for "Date Night" (2 words) only when the
+        overlap is 100 %, but more exotic expansions fail.
+        """
         if not db_title or not web_title:
             return 0.0
 
         # Clean and split titles
         db_words = set(re.findall(r"\b\w+\b", db_title.lower())) - STOPWORDS
-        web_words = set(re.findall(r"\b\w+\b", web_title.lower()))
+        web_words = set(re.findall(r"\b\w+\b", web_title.lower())) - STOPWORDS
 
         if not db_words:
             return 1.0  # No meaningful words to match
 
         matches = len(db_words & web_words)
-        return matches / len(db_words)
+        score = matches / len(db_words)
+
+        # Soft penalty: web title has significantly more words than DB title
+        if len(web_words) > len(db_words) * 2:
+            score -= 0.15
+
+        return score
 
     def _title_matches(self, db_title: str, web_title: str) -> bool:
         """Check if at least 50% of DB title words appear in web title."""
@@ -108,6 +153,112 @@ class WebBookAPI:
         if not self._author_matches(db_author, metadata.get("author", "")):
             return False
         return True
+
+
+    @staticmethod
+    def _plot_is_adequate(plot: str) -> bool:
+        return len((plot or "").strip()) >= PLOT_MIN_LENGTH
+
+    @staticmethod
+    def _strip_html(text: str) -> str:
+        if not text:
+            return ""
+        cleaned = HTML_TAG_RE.sub(" ", text)
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        return cleaned.strip()
+
+    def _clean_plot_text(self, plot: str) -> str:
+        return self._strip_html((plot or "").strip())
+
+    def _apply_plot_to_metadata(
+        self,
+        metadata: Dict,
+        plot: str,
+        plot_source: str,
+        db_title: str,
+        db_author: str,
+    ) -> bool:
+        """Set plot on metadata when text is long enough and not a series label."""
+        plot = self._clean_plot_text(plot)
+        if not self._plot_is_adequate(plot):
+            return False
+        if self._is_redundant_plot(plot, metadata.get("series", "")):
+            return False
+        metadata["plot"] = plot
+        metadata["plot_source"] = plot_source
+        return True
+
+    def _enrich_metadata_plot(
+        self,
+        metadata: Dict,
+        db_title: str,
+        db_author: str,
+    ) -> None:
+        """Fill plot after metadata match: Open Library work, Wikipedia, then Google text."""
+        if not metadata:
+            return
+
+        existing = self._clean_plot_text(metadata.get("plot", ""))
+        if self._plot_is_adequate(existing):
+            source = metadata.get("source") or metadata.get("_resolved_source", "")
+            metadata["plot"] = existing
+            metadata["plot_source"] = metadata.get("plot_source") or source
+            return
+
+        work_key = metadata.get("open_library_work_key", "")
+        if work_key:
+            ol_plot = self._clean_plot_text(
+                self._get_open_library_description(work_key)
+            )
+            if self._apply_plot_to_metadata(
+                metadata, ol_plot, "open_library", db_title, db_author
+            ):
+                return
+        elif metadata.get("_resolved_source") != "open_library":
+            # No work key (Google/WikiData win): try a loose OL search for description
+            fallback_plot = self._clean_plot_text(
+                self._fetch_plot_from_open_library(
+                    db_title or metadata.get("title", ""), db_author
+                )
+            )
+            if self._apply_plot_to_metadata(
+                metadata, fallback_plot, "open_library", db_title, db_author
+            ):
+                return
+
+        wiki_title = metadata.get("title") or db_title
+        wiki_author = db_author or metadata.get("author", "")
+
+        # Fast path: WikiData wins can use Wikipedia REST summary endpoint directly
+        if metadata.get("_resolved_source") == "wikidata" and wiki_title:
+            rest_plot = self._clean_plot_text(
+                self._fetch_wikipedia_rest_summary(wiki_title)
+            )
+            if self._apply_plot_to_metadata(
+                metadata, rest_plot, "wikipedia", db_title, db_author
+            ):
+                return
+
+        wiki_plot = self._fetch_plot_from_wikipedia(
+            wiki_title,
+            wiki_author,
+            db_title=db_title,
+            db_author=db_author,
+        )
+        if self._apply_plot_to_metadata(
+            metadata, wiki_plot, "wikipedia", db_title, db_author
+        ):
+            return
+
+        google_plot = self._clean_plot_text(metadata.get("plot", ""))
+        if self._plot_is_adequate(google_plot):
+            self._apply_plot_to_metadata(
+                metadata,
+                google_plot,
+                "google_books",
+                db_title,
+                db_author,
+            )
 
     @staticmethod
     def _normalize_person_name(value: str) -> str:
@@ -158,12 +309,110 @@ class WebBookAPI:
         self.google_books_url = "https://www.googleapis.com/books/v1/volumes"
         self.open_library_url = "https://openlibrary.org/search.json"
         self.open_library_work_url = "https://openlibrary.org/works"
+        self.open_library_isbn_url = "https://openlibrary.org/isbn"
         # WikiData SPARQL endpoint
         self.wikidata_url = "https://query.wikidata.org/sparql"
         # Wikipedia API for plot summaries
         self.wikipedia_url = "https://en.wikipedia.org/w/api.php"
-        self._cache = {}  # Initialize cache to avoid hasattr checks
-        self.CACHE_DURATION = 300  # seconds
+        self._cache = {}
+        self.CACHE_DURATION = 300  # seconds for in-memory TTL
+        self._load_persistent_cache()
+
+    def _load_persistent_cache(self) -> None:
+        """Load the persistent cache from web_cache.json if it exists."""
+        try:
+            cache_path = os.path.normpath(WEB_CACHE_FILE)
+            if not os.path.exists(cache_path):
+                return
+            with open(cache_path, encoding="utf-8") as f:
+                raw = json.load(f)
+            loaded = 0
+            for key, entry in raw.items():
+                if isinstance(entry, list) and len(entry) == 2:
+                    self._cache[key] = (entry[0], entry[1])
+                    loaded += 1
+        except Exception:
+            pass  # Corrupt or missing cache is non-fatal
+
+    def _save_persistent_cache(self) -> None:
+        """Persist the in-memory cache to web_cache.json (max WEB_CACHE_MAX_ENTRIES)."""
+        try:
+            cache_path = os.path.normpath(WEB_CACHE_FILE)
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            entries = list(self._cache.items())
+            if len(entries) > WEB_CACHE_MAX_ENTRIES:
+                # Evict oldest entries by fetch timestamp
+                entries.sort(key=lambda x: x[1][0] if isinstance(x[1], (list, tuple)) and len(x[1]) > 0 else 0)
+                entries = entries[-WEB_CACHE_MAX_ENTRIES:]
+            serialisable = {k: [v[0], v[1]] for k, v in entries}
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(serialisable, f, ensure_ascii=False, separators=(",", ":"))
+        except Exception:
+            pass  # Cache write failure is non-fatal
+
+    def _fetch_by_isbn(self, isbn: str) -> "Optional[Dict]":
+        """Exact Open Library lookup by ISBN.
+
+        Returns a metadata dict on success, or None.  ISBN lookups skip all
+        title/author matching because the result is unambiguous.
+        """
+        if not isbn:
+            return None
+        try:
+            clean_isbn = re.sub(r"[^0-9X]", "", isbn.upper())
+            if len(clean_isbn) not in (10, 13):
+                return None
+            url = f"{self.open_library_isbn_url}/{clean_isbn}.json"
+            req = urllib.request.Request(url)
+            req.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
+            with urllib.request.urlopen(req, timeout=TIMEOUT_DETAIL) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+
+            if "error" in data:
+                return None
+
+            title = data.get("title", "")
+            if not title:
+                return None
+
+            # Authors are stored as keys like {"key": "/authors/OL1234A"}
+            author = ""
+            raw_authors = data.get("authors", [])
+            if raw_authors:
+                try:
+                    author_key = raw_authors[0].get("key", "")
+                    if author_key:
+                        author_url = f"https://openlibrary.org{author_key}.json"
+                        req_a = urllib.request.Request(author_url)
+                        req_a.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
+                        with urllib.request.urlopen(req_a, timeout=TIMEOUT_DETAIL) as r_a:
+                            author_data = json.loads(r_a.read().decode("utf-8"))
+                        author = author_data.get("name", "") or author_data.get("personal_name", "")
+                except Exception:
+                    pass
+
+            year = ""
+            pub_date = str(data.get("publish_date", ""))
+            year_match = re.search(r"\d{4}", pub_date)
+            if year_match:
+                year = year_match.group(0)
+
+            work_key = ""
+            works = data.get("works", [])
+            if works:
+                work_key = works[0].get("key", "")
+
+            metadata: Dict = {
+                "title": title,
+                "author": author,
+                "year": year,
+                "isbn": clean_isbn,
+                "open_library_work_key": work_key,
+                "_resolved_source": "open_library",
+            }
+            return metadata
+        except Exception:
+            return None
 
     def get_book_metadata(
         self,
@@ -180,6 +429,8 @@ class WebBookAPI:
         source: str | None = None,
         comments: str | None = None,
         search_without_author: bool = False,
+        isbn: str | None = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> Optional[Dict]:
         """
         Fetch book metadata from multiple web sources.
@@ -198,6 +449,8 @@ class WebBookAPI:
             source: Book source field (Librivox detection)
             comments: Book comments (Librivox detection)
             search_without_author: Force title-only matching after author search fails
+            isbn: ISBN-10 or ISBN-13 if available; tried first as an exact lookup
+            progress_callback: Optional callable invoked with human-readable status text
 
         Returns:
             Dictionary with book metadata and source info, or None if not found
@@ -237,11 +490,16 @@ class WebBookAPI:
             self._apply_author_transformations(author)
         )
 
+        def _report_progress(message: str) -> None:
+            if progress_callback:
+                progress_callback(message)
+
         def _finish_metadata(
             metadata: Dict,
             source: str,
             first_attempt: bool,
         ) -> Dict:
+            _report_progress("Enriching plot description…")
             if append_series_to_title and series_number:
                 if not metadata["title"].rstrip().endswith(f"- {series_number}"):
                     metadata["title"] = (
@@ -249,21 +507,37 @@ class WebBookAPI:
                     )
             metadata["source"] = source
             metadata["first_attempt"] = first_attempt
+            self._enrich_metadata_plot(metadata, search_title, search_author or "")
+            metadata.pop("open_library_work_key", None)
             self._cache[cache_key] = (current_time, metadata)
+            self._save_persistent_cache()
             return metadata
+
+        # ISBN pre-pass: exact lookup via Open Library, skips title/author matching
+        if isbn:
+            _report_progress("Looking up ISBN on Open Library…")
+            isbn_meta = self._fetch_by_isbn(isbn)
+            if isbn_meta and not isbn_meta.get("_no_result"):
+                return _finish_metadata(
+                    isbn_meta,
+                    "open_library_isbn",
+                    first_attempt=True,
+                )
 
         metadata = self._search_metadata_sources(
             search_title,
             search_author,
             refresh,
             require_author_match=True,
+            progress_callback=progress_callback,
         )
-        if metadata:
+        if metadata and not metadata.get("_no_result"):
             return _finish_metadata(
                 metadata,
                 metadata.pop("_resolved_source", metadata.get("source", "")),
                 first_attempt=True,
             )
+        _errors: list[str] = (metadata or {}).get("_fetch_errors", [])
 
         use_title_only = self._should_use_title_only_fallback(
             search_author,
@@ -273,87 +547,119 @@ class WebBookAPI:
             comments=comments,
             search_without_author=search_without_author,
         )
-        if search_title and (use_title_only or search_author):
+        if search_title and search_author and not use_title_only:
+            _report_progress("Trying broader title search…")
+            metadata = self._search_metadata_sources(
+                search_title,
+                None,
+                refresh,
+                require_author_match=True,
+                match_author=search_author,
+                progress_callback=progress_callback,
+            )
+            if metadata and not metadata.get("_no_result"):
+                metadata["broadened_search"] = True
+                return _finish_metadata(
+                    metadata,
+                    metadata.pop("_resolved_source", metadata.get("source", "")),
+                    first_attempt=True,
+                )
+            if metadata:
+                _errors.extend(metadata.get("_fetch_errors", []))
+
+        if search_title and use_title_only:
+            _report_progress("Trying title-only search…")
             metadata = self._search_metadata_sources(
                 search_title,
                 None,
                 refresh,
                 require_author_match=False,
+                progress_callback=progress_callback,
             )
-            if metadata:
+            if metadata and not metadata.get("_no_result"):
                 metadata["title_only_search"] = True
                 return _finish_metadata(
                     metadata,
                     metadata.pop("_resolved_source", metadata.get("source", "")),
                     first_attempt=refresh >= 1,
                 )
+            if metadata:
+                _errors.extend(metadata.get("_fetch_errors", []))
 
+        if _errors:
+            return {"_fetch_errors": _errors, "_no_result": True}
         return None
 
     def _search_metadata_sources(
         self,
         search_title: str,
-        search_author: str | None,
+        query_author: str | None,
         refresh: int,
         *,
         require_author_match: bool,
+        match_author: str | None = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> Optional[Dict]:
         """Query Open Library, Google Books, and WikiData with shared match rules."""
-        query_author = search_author if require_author_match else None
+        db_author = match_author if match_author is not None else query_author
+        fetch_errors: list[str] = []
+
+        def _report(message: str) -> None:
+            if progress_callback:
+                progress_callback(message)
+
+        source_step = 0
 
         if refresh == 0:
+            source_step += 1
+            _report(f"Trying source {source_step}: Open Library…")
             try:
                 metadata = self._fetch_from_open_library(
                     search_title,
                     query_author,
                     require_author_match=require_author_match,
+                    match_author=db_author,
                 )
                 if metadata:
                     metadata["_resolved_source"] = "open_library"
                     return metadata
-            except Exception:
-                pass
+            except Exception as exc:
+                fetch_errors.append(f"open_library: {exc}")
 
         if refresh <= 1:
+            source_step += 1
+            _report(f"Trying source {source_step}: Google Books…")
             try:
                 metadata = self._fetch_from_google_books(
                     search_title,
                     query_author,
                     require_author_match=require_author_match,
+                    match_author=db_author,
                 )
                 if metadata:
-                    if not metadata.get("plot"):
-                        plot = self._fetch_plot_from_open_library(
-                            metadata.get("title", ""), metadata.get("author", "")
-                        )
-                        if not plot:
-                            plot = self._fetch_plot_from_wikipedia(
-                                metadata.get("title", ""), metadata.get("author", "")
-                            )
-                        if plot and not (
-                            metadata.get("series")
-                            and plot.strip().lower()
-                            == metadata["series"].strip().lower()
-                        ):
-                            metadata["plot"] = plot
                     metadata["_resolved_source"] = "google_books"
                     return metadata
-            except Exception:
-                pass
+            except Exception as exc:
+                fetch_errors.append(f"google_books: {exc}")
 
         if refresh <= 2:
+            source_step += 1
+            _report(f"Trying source {source_step}: WikiData…")
             try:
                 metadata = self._fetch_from_wikidata(
                     search_title,
                     query_author,
                     require_author_match=require_author_match,
+                    match_author=db_author,
                 )
                 if metadata:
                     metadata["_resolved_source"] = "wikidata"
                     return metadata
-            except Exception:
-                pass
+            except Exception as exc:
+                fetch_errors.append(f"wikidata: {exc}")
 
+        if fetch_errors:
+            return {"_fetch_errors": fetch_errors, "_no_result": True}
         return None
 
     def _google_item_to_metadata(self, item: dict) -> Optional[Dict]:
@@ -414,7 +720,7 @@ class WebBookAPI:
             "author": self._format_authors(volume_info.get("authors", [])),
             "year": self._extract_year(volume_info.get("publishedDate", "")),
             "publisher": volume_info.get("publisher", ""),
-            "plot": volume_info.get("description", ""),
+            "plot": self._strip_html(volume_info.get("description", "") or ""),
             "genre": self._format_categories(volume_info.get("categories", [])),
             "isbn": self._extract_isbn(volume_info.get("industryIdentifiers", [])),
             "rating": volume_info.get("averageRating", 0),
@@ -425,63 +731,81 @@ class WebBookAPI:
             "confidence": 0.9,
         }
 
+    def _pick_best_google_match(
+        self,
+        items: list,
+        title: str,
+        db_author: str | None,
+        *,
+        require_author_match: bool,
+    ) -> Optional[Dict]:
+        best_metadata = None
+        best_title_score = -1.0
+        for item in items:
+            candidate = self._google_item_to_metadata(item)
+            if not candidate:
+                continue
+            if not self._metadata_matches_db(
+                title,
+                db_author,
+                candidate,
+                require_author_match=require_author_match,
+            ):
+                continue
+            title_score = self._title_word_match_score(
+                title, candidate.get("title", "")
+            )
+            if title_score > best_title_score:
+                best_title_score = title_score
+                best_metadata = candidate
+        return best_metadata
+
     def _fetch_from_google_books(
         self,
         title: str,
         author: str = None,
         *,
         require_author_match: bool = True,
+        match_author: str | None = None,
     ) -> Optional[Dict]:
         """Fetch metadata from Google Books API."""
-        try:
-            # Build search query - use intitle and inauthor for better results
-            query_parts = []
-            if title:
-                query_parts.append(f"intitle:{title}")
-            if author:
-                query_parts.append(f"inauthor:{author}")
-            elif not require_author_match and title:
-                query_parts = [title]
-            query = " ".join(query_parts)
+        db_author = match_author if match_author is not None else author
+        queries: list[str] = []
+        if title and author:
+            queries.append(f"intitle:{title} inauthor:{author}")
+        if title and (author or require_author_match):
+            queries.append(f"intitle:{title}")
+        elif not require_author_match and title:
+            queries.append(title)
 
-            # Include more fields to get series info and subtitle
-            params = {
-                "q": query,
-                "maxResults": 10,
-                "fields": "items(id,volumeInfo(title,subtitle,authors,publisher,publishedDate,description,industryIdentifiers,categories,averageRating,ratingsCount,seriesInfo))",
-            }
-            url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
-            req = urllib.request.Request(url)
-            req.add_header("User-Agent", "AudiobookCollectorScanner/1.0")
-            with urllib.request.urlopen(req, timeout=6) as response:
-                data = json.loads(response.read().decode("utf-8"))
-
-            if "items" in data and data["items"]:
-                best_metadata = None
-                best_title_score = -1.0
-
-                for item in data["items"]:
-                    candidate = self._google_item_to_metadata(item)
-                    if not candidate:
-                        continue
-                    if not self._metadata_matches_db(
+        seen: set[str] = set()
+        for q_idx, query in enumerate(queries):
+            if not query or query in seen:
+                continue
+            seen.add(query)
+            try:
+                max_results = 5 if q_idx > 0 else 10
+                params = {
+                    "q": query,
+                    "maxResults": max_results,
+                    "fields": "items(id,volumeInfo(title,subtitle,authors,publisher,publishedDate,description,industryIdentifiers,categories,averageRating,ratingsCount,seriesInfo))",
+                }
+                url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
+                req = urllib.request.Request(url)
+                req.add_header("User-Agent", "AudiobookCollectorScanner/1.0")
+                with urllib.request.urlopen(req, timeout=TIMEOUT_DETAIL) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                if "items" in data and data["items"]:
+                    best = self._pick_best_google_match(
+                        data["items"],
                         title,
-                        author,
-                        candidate,
+                        db_author,
                         require_author_match=require_author_match,
-                    ):
-                        continue
-                    title_score = self._title_word_match_score(
-                        title, candidate.get("title", "")
                     )
-                    if title_score > best_title_score:
-                        best_title_score = title_score
-                        best_metadata = candidate
-
-                if best_metadata:
-                    return best_metadata
-        except Exception as e:
-            pass
+                    if best:
+                        return best
+            except Exception:
+                continue
         return None
 
     def _fetch_from_open_library(
@@ -490,8 +814,10 @@ class WebBookAPI:
         author: str = None,
         *,
         require_author_match: bool = True,
+        match_author: str | None = None,
     ) -> Optional[Dict]:
         """Fetch metadata from Open Library API (title and author only; no DB year filter)."""
+        db_author = match_author if match_author is not None else author
         try:
             # Build search query - combine title and author properly
             queries_to_try = []
@@ -532,7 +858,7 @@ class WebBookAPI:
 
                 url = f"{self.open_library_url}?{urllib.parse.urlencode(params)}"
                 req = urllib.request.Request(url)
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=TIMEOUT_SEARCH) as response:
                     data = json.loads(response.read().decode("utf-8"))
 
                 if data.get("docs"):
@@ -553,7 +879,7 @@ class WebBookAPI:
                         }
                         if not self._metadata_matches_db(
                             title,
-                            author,
+                            db_author,
                             candidate,
                             require_author_match=require_author_match,
                         ):
@@ -567,6 +893,7 @@ class WebBookAPI:
                             best_work_key = doc.get("key", "") or ""
                     if best_metadata:
                         if best_work_key:
+                            best_metadata["open_library_work_key"] = best_work_key
                             best_metadata["plot"] = self._get_open_library_description(
                                 best_work_key
                             )
@@ -584,19 +911,22 @@ class WebBookAPI:
 
             url = f"{self.open_library_work_url}/{work_id}.json"
             req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=6) as response:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_DETAIL) as response:
                 data = json.loads(response.read().decode("utf-8"))
                 return self._extract_description(data.get("description", ""))
         except Exception:
             return ""
 
     def _fetch_plot_from_open_library(self, title: str, author: str = None) -> str:
-        """Search Open Library for a book and return its plot/description."""
+        """Search Open Library by title/author to find a work description.
+
+        This is only called from _enrich_metadata_plot when no open_library_work_key
+        is available on the metadata (e.g. after a Google Books or WikiData win).
+        """
         try:
             if not title:
                 return ""
 
-            # Build search query
             query = title
             if author:
                 query += f" author:{author}"
@@ -611,13 +941,12 @@ class WebBookAPI:
             req = urllib.request.Request(url)
             req.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
 
-            with urllib.request.urlopen(req, timeout=8) as response:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_SEARCH) as response:
                 data = json.loads(response.read().decode("utf-8"))
 
             if not data.get("docs"):
                 return ""
 
-            # Find best match with plot
             for doc in data["docs"]:
                 work_key = doc.get("key", "")
                 if work_key:
@@ -629,25 +958,59 @@ class WebBookAPI:
         except Exception:
             return ""
 
-    def _fetch_plot_from_wikipedia(self, title: str, author: str = None) -> str:
+    def _fetch_wikipedia_rest_summary(self, title: str) -> str:
+        """Fetch a plain-text extract from the Wikipedia REST summary endpoint.
+
+        A single call returns the introduction section as clean text without
+        requiring a separate search step.  Used as a fast path when the winning
+        metadata source is WikiData and the title is already known.
+        """
+        if not title:
+            return ""
+        try:
+            encoded_title = urllib.parse.quote(title.replace(" ", "_"))
+            url = (
+                f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded_title}"
+            )
+            req = urllib.request.Request(url)
+            req.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
+            with urllib.request.urlopen(req, timeout=TIMEOUT_DETAIL) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            extract = data.get("extract", "")
+            if data.get("type") in ("disambiguation", "standard"):
+                if data.get("type") == "disambiguation":
+                    return ""
+                return self._strip_html(extract)
+            return self._strip_html(extract)
+        except Exception:
+            return ""
+
+    def _fetch_plot_from_wikipedia(
+        self,
+        title: str,
+        author: str | None = None,
+        *,
+        db_title: str | None = None,
+        db_author: str | None = None,
+    ) -> str:
         """Search Wikipedia for a book and return its summary/extract."""
+        match_title = db_title or title
+        match_author = db_author or author
         try:
             if not title:
                 return ""
 
-            # Build search query - be more specific to find book pages
             search_terms = [f"{title} novel", f"{title} book"]
             if author:
                 search_terms.insert(0, f"{title} {author} novel")
                 search_terms.insert(1, f"{title} {author} book")
 
             for search_query in search_terms:
-                # Search for the page
                 search_params = {
                     "action": "query",
                     "list": "search",
                     "srsearch": search_query,
-                    "srlimit": 3,
+                    "srlimit": 5,
                     "format": "json",
                     "origin": "*",
                 }
@@ -658,32 +1021,32 @@ class WebBookAPI:
                 req = urllib.request.Request(search_url)
                 req.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
 
-                with urllib.request.urlopen(req, timeout=8) as response:
+                with urllib.request.urlopen(req, timeout=TIMEOUT_SEARCH) as response:
                     search_data = json.loads(response.read().decode("utf-8"))
 
                 if not search_data.get("query", {}).get("search"):
                     continue
 
-                # Try each search result
-                for result in search_data["query"]["search"][:2]:
+                for result in search_data["query"]["search"][:3]:
                     page_title = result.get("title", "")
                     if not page_title:
                         continue
 
-                    # Skip author biography pages (e.g., "John Connolly (author)")
+                    if match_title and not self._title_matches(match_title, page_title):
+                        continue
+
                     if author:
                         author_parts = author.lower().split()
-                        # If page title is just the author name, skip it
                         if all(part in page_title.lower() for part in author_parts):
                             if "(" in page_title or "author" in page_title.lower():
                                 continue
 
-                    # Get the extract/summary for this page
                     extract_params = {
                         "action": "query",
                         "prop": "extracts",
                         "explaintext": True,
-                        "exsentences": 10,
+                        "exintro": True,
+                        "exsentences": PLOT_MAX_WIKIPEDIA_SENTENCES,
                         "titles": page_title,
                         "format": "json",
                         "origin": "*",
@@ -695,25 +1058,23 @@ class WebBookAPI:
                     req2 = urllib.request.Request(extract_url)
                     req2.add_header("User-Agent", "AbCS-Audiobook-Collector/1.0")
 
-                    with urllib.request.urlopen(req2, timeout=8) as response2:
+                    with urllib.request.urlopen(req2, timeout=TIMEOUT_DETAIL) as response2:
                         extract_data = json.loads(response2.read().decode("utf-8"))
 
                     pages = extract_data.get("query", {}).get("pages", {})
                     for _, page_data in pages.items():
-                        extract = page_data.get("extract", "")
-                        # Filter out disambiguation pages and short extracts
-                        if extract and len(extract) > 50:
-                            # Skip if it's a disambiguation page
-                            if "may refer to" in extract.lower()[:100]:
-                                continue
-                            if "disambiguation" in page_data.get("title", "").lower():
-                                continue
-                            # Verify author appears in extract (if author provided)
-                            if author:
-                                author_last = author.split()[-1].lower()
-                                if author_last not in extract.lower():
-                                    continue
-                            return extract
+                        extract = self._clean_plot_text(page_data.get("extract", ""))
+                        if not self._plot_is_adequate(extract):
+                            continue
+                        if "may refer to" in extract.lower()[:120]:
+                            continue
+                        if "disambiguation" in page_data.get("title", "").lower():
+                            continue
+                        if match_author and not self._author_matches(
+                            match_author, extract
+                        ):
+                            continue
+                        return extract
 
             return ""
         except Exception:
@@ -783,8 +1144,10 @@ class WebBookAPI:
         author: str = None,
         *,
         require_author_match: bool = True,
+        match_author: str | None = None,
     ) -> Optional[Dict]:
         """Fetch metadata from WikiData SPARQL endpoint."""
+        db_author = match_author if match_author is not None else author
         try:
             # Build a very simple SPARQL query that should work
             # Use basic title search without complex conditions
@@ -867,7 +1230,7 @@ class WebBookAPI:
             )
             req.add_header("Accept", "application/sparql-results+json")
 
-            with urllib.request.urlopen(req, timeout=6) as response:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_DETAIL) as response:
                 response_text = response.read().decode("utf-8")
 
                 # Check if we got JSON
@@ -891,7 +1254,7 @@ class WebBookAPI:
                     continue
                 if not self._metadata_matches_db(
                     title,
-                    author,
+                    db_author,
                     metadata,
                     require_author_match=require_author_match,
                 ):
@@ -1086,3 +1449,35 @@ class WebBookAPI:
                 cleaned_data["plot"] = ""
 
         return cleaned_data
+
+
+def clean_web_data(
+    web_data: dict,
+    move_articles: bool = False,
+    flip_author: bool = False,
+) -> dict:
+    """Module-level convenience wrapper for WebBookAPI.clean_web_data_for_storage.
+
+    Allows callers (e.g. web_metadata.py) to clean web data without constructing
+    a full WebBookAPI instance purely for that purpose.
+    """
+    return WebBookAPI().clean_web_data_for_storage(web_data, move_articles, flip_author)
+
+
+def normalize_title(title: str) -> str:
+    """Normalize a title for search/comparison.
+
+    Moves trailing articles ('Title, The' -> 'The Title'), trims, lowercases,
+    and removes embedded spaces.  Shared between WebBookAPI matching logic
+    and WebMetadataWindow field comparison.
+    """
+    import re as _re
+    if not title:
+        return ""
+    t = title.strip()
+    match = _re.match(r"^(.*?)[,\s]+(the|a|an)$", t, _re.IGNORECASE)
+    if match:
+        base = match.group(1).strip()
+        article = match.group(2).lower()
+        t = f"{article} {base}"
+    return "".join(t.lower().split())

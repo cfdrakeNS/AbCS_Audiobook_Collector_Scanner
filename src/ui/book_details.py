@@ -2193,21 +2193,11 @@ class BookDetailsWindow(QDialog):
 
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""
-        # Show auto-closing popup dialog while fetching web info
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
         from PySide6.QtCore import QTimer
+        from src.ui.web_fetch_progress import WebFetchProgressDialog
 
-        popup = QDialog(self)
-        popup.setWindowTitle("Please wait")
-        popup.setModal(True)
-        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
-        layout = QVBoxLayout(popup)
-        label = QLabel("Fetching book info from web, please wait!")
-        layout.addWidget(label)
-        popup.setLayout(layout)
-        popup.resize(350, 80)
+        popup = WebFetchProgressDialog(self)
         popup.show()
-        QApplication.processEvents()
         if not self.book:
             popup.close()
             self.set_status("No book selected for web lookup")
@@ -2262,13 +2252,14 @@ class BookDetailsWindow(QDialog):
                     path=self.book.path or "",
                     source=self.book.source or "",
                     comments=self.book.comments or "",
+                    progress_callback=popup.update_message,
                 )
             except Exception as e:
                 last_error = str(e)
             finally:
                 popup.close()
 
-            if web_data:
+            if web_data and not web_data.get("_no_result"):
                 web_window = WebMetadataWindow(
                     self.db,
                     self.book,
@@ -2285,15 +2276,27 @@ class BookDetailsWindow(QDialog):
                     )
                     QTimer.singleShot(0, self.comments_edit.setFocus)
             else:
-                if last_error:
+                fetch_errors = (web_data or {}).get("_fetch_errors", [])
+                if fetch_errors:
+                    status_msg = "Web fetch failed: unable to reach web sources."
+                    if fetch_errors:
+                        status_msg = f"{status_msg} {fetch_errors[0]}"
+                    no_web_text = (
+                        "Unable to reach one or more web sources.\n\n"
+                        + "\n".join(f"  \u2022 {e}" for e in fetch_errors[:3])
+                    )
+                elif last_error:
+                    status_msg = f"No web data found for this book. {last_error}"
                     no_web_text = (
                         f"No information found for this book in any web source.\n\n"
                         f"Last error: {last_error}"
                     )
                 else:
+                    status_msg = "No web data found for this book."
                     no_web_text = (
                         "No information found for this book in any web source."
                     )
+                self.set_status(status_msg, announce=True)
                 exec_styled_message_box(
                     self,
                     self.scaler.get_scaled_size(20),

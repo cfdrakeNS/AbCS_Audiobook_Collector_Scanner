@@ -3306,22 +3306,10 @@ class MainWindow(QMainWindow):
 
         book = self.books[row]
 
-        # Show auto-closing popup dialog while fetching web info
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
-        from PySide6.QtCore import QTimer
+        from src.ui.web_fetch_progress import WebFetchProgressDialog
 
-        popup = QDialog(self)
-        popup.setWindowTitle("Please wait")
-        popup.setModal(True)
-        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
-        layout = QVBoxLayout(popup)
-        label = QLabel("Fetching book info from web, please wait...")
-        layout.addWidget(label)
-        popup.setLayout(layout)
-        popup.resize(400, 100)
-
+        popup = WebFetchProgressDialog(self)
         popup.show()
-        QApplication.processEvents()
 
         # Check web data first before opening window
         from src.ui.web_metadata import WebMetadataWindow
@@ -3358,6 +3346,7 @@ class MainWindow(QMainWindow):
                     path=book.path or "",
                     source=book.source or "",
                     comments=book.comments or "",
+                    progress_callback=popup.update_message,
                 )
             except Exception as e:
                 last_error = str(e)
@@ -3367,7 +3356,7 @@ class MainWindow(QMainWindow):
         finally:
             popup.close()
 
-        if web_data:
+        if web_data and not web_data.get("_no_result"):
             focus_ctx = self._capture_table_focus_context(row, 1)
             dialog = WebMetadataWindow(
                 self.db,
@@ -3382,8 +3371,15 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
-        # If no data found, show popup and status, then return.
-        no_data_text = "No information found for this book in any web source."
+        # Build "No Web Data Found" message: distinguish network errors from clean misses.
+        fetch_errors = (web_data or {}).get("_fetch_errors", [])
+        if fetch_errors:
+            no_data_text = (
+                "Unable to reach one or more web sources.\n\n"
+                + "\n".join(f"  • {e}" for e in fetch_errors[:3])
+            )
+        else:
+            no_data_text = "No information found for this book in any web source."
         if last_error:
             no_data_text = f"{no_data_text}\n\nLast error: {last_error}"
 

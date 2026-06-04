@@ -121,6 +121,7 @@ WEB_METADATA_SHORTCUTS = {
     "N": ("Series number", "series_number_edit"),
     "G": ("Genre", "genre_edit"),
     "R": ("Rating", "rating_edit"),
+    "F": ("Re-fetch web data", "refetch_button"),
     "S": ("Save", "save_button"),
 }
 
