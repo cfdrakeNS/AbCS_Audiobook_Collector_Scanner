@@ -171,4 +171,20 @@ TIMEOUT_RETRY_DELAY = 1  # seconds before one retry
 
 ---
 
-*Document created June 4, 2026. Updated June 4, 2026 — 14 of 19 items implemented.*
+## Section 4 — Series retrieval (June 4, 2026)
+
+Series was rarely shown because Open Library (the usual winning source) did not map `series` from work JSON, WikiData queried `seriesLabel` but dropped it from the result dict, and Google `seriesInfo` only applied when Google won the primary match.
+
+**Implemented pipeline:**
+
+1. **Open Library** — `_get_open_library_work_fields` reads `series[]` from work JSON (name + optional `#` / `Book N` parsing). Used in search, ISBN lookup, and enrichment.
+2. **WikiData** — SPARQL includes `?seriesLabel` (P179) and `?seriesOrdinal` (P1545); both map into metadata.
+3. **Google Books** — `_extract_google_series` prefers `seriesTitle`, subtitle patterns like `(Book 3 of X)`, and description fallbacks.
+4. **Enrichment** — After plot enrichment in `_finish_metadata`, `_enrich_metadata_series` fills empty series: OL work key → Google → WikiData (skipped if WikiData already won).
+5. **UI** — `web_metadata.py` apply path reads `series_number_web_edit` when `series_number` is in `field_differences`.
+
+**Tests:** `test/test_web_series.py` (mocked HTTP / binding parsing).
+
+---
+
+*Document created June 4, 2026. Updated June 4, 2026 — 14 of 19 items implemented; series retrieval added June 4, 2026.*

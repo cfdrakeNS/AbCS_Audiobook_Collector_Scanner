@@ -128,6 +128,54 @@ def test_series_row_visible_when_web_has_series(window):
     assert not window.series_web_edit.isHidden()
 
 
+def test_series_web_number_visible_when_name_matches_db(qapp):
+    book = Book(
+        book_id=3,
+        title="Book Three",
+        author_name="Author",
+        series_name="Gamache",
+        genre_name="Fiction",
+    )
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    dlg = WebMetadataWindow(
+        db=None,
+        book=book,
+        scaler=scaler,
+        theme_manager=theme_manager,
+        web_data=None,
+    )
+    try:
+        dlg.update_fields_with_web_data(
+            {
+                "title": book.title,
+                "author": book.author_name,
+                "series": "Gamache",
+                "series_number": "9",
+            }
+        )
+        assert dlg.series_web_edit.isHidden()
+        assert not dlg.series_number_web_edit.isHidden()
+        assert dlg.series_number_web_edit.text() == "9"
+        assert "series_number" in dlg.field_differences
+    finally:
+        dlg.close()
+
+
+def test_series_web_number_visible_when_only_number_returned(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "series_number": "4",
+        }
+    )
+    assert not window.series_row.isHidden()
+    assert window.series_web_edit.isHidden()
+    assert not window.series_number_web_edit.isHidden()
+    assert window.series_number_web_edit.text() == "4"
+
+
 def test_series_row_visible_when_db_has_series(qapp):
     book = Book(
         book_id=2,

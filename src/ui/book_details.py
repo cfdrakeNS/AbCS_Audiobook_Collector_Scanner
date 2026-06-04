@@ -2198,6 +2198,7 @@ class BookDetailsWindow(QDialog):
 
         popup = WebFetchProgressDialog(self)
         popup.show()
+        QApplication.processEvents()
         if not self.book:
             popup.close()
             self.set_status("No book selected for web lookup")

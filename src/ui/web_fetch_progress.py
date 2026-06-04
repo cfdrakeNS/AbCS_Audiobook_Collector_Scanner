@@ -93,8 +93,12 @@ class WebFetchProgressDialog(QDialog):
         self._message_label.setAccessibleDescription(text)
         self.setAccessibleDescription(text)
         self._initial_announced = True
+        self._message_label.update()
+        self.repaint()
         QApplication.processEvents()
-        QTimer.singleShot(0, lambda t=text: self._speak_status(t, force=True))
+        # Announce immediately: deferred timers would not run until blocking
+        # network calls in get_book_metadata return on the UI thread.
+        self._speak_status(text, force=True)
 
     def _speak_status(self, text: str, *, force: bool = False) -> None:
         """Use focus-based readback; blur first so JAWS re-reads each new message."""

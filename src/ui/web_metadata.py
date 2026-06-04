@@ -513,6 +513,18 @@ class WebMetadataWindow(QDialog):
         self.series_row.setVisible(bool(db_name or db_num or web_name or web_num))
         self.set_tab_order()
 
+    def _series_number_from_web_apply(self) -> int | None:
+        """Read web series number field when it was offered as a difference."""
+        if "series_number" not in self.field_differences:
+            return None
+        text = self.series_number_web_edit.text().strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+
     def set_tab_order(self):
         """Set explicit tab order for logical keyboard navigation."""
         tab_widgets = [
@@ -847,40 +859,42 @@ class WebMetadataWindow(QDialog):
             self.year_row,
         )
 
-        # Series (handle series name and number separately)
-        series_name = web_data.get("series", "")
-        series_number = web_data.get("series_number", "")
+        # Series (name via shared helper; number uses same row chrome)
+        series_name_shown = handle_field_comparison(
+            web_data.get("series"),
+            self.book.series_name,
+            self.series_web_edit,
+            self.series_checkbox,
+            "series",
+            self.series_row,
+        )
 
-        # Handle series name
-        current_series = self.book.series_name or ""
-        if series_name and (
-            not current_series or series_name.lower() != current_series.lower()
-        ):
-            self.series_web_edit.setText(series_name)
-            self.series_row._web_label.setVisible(True)
-            self.series_web_edit.setVisible(True)
-            self.series_checkbox.setVisible(True)
-            self.series_checkbox.setChecked(True)
-            self.field_differences["series"] = series_name
-        else:
-            self.series_row._web_label.setVisible(False)
-            self.series_web_edit.setVisible(False)
-            self.series_checkbox.setVisible(False)
-
-        # Handle series number
         current_series_number = ""
         if hasattr(self.book, "series_number") and self.book.series_number:
             current_series_number = str(self.book.series_number)
-        if series_number and (
-            not current_series_number or series_number != current_series_number
-        ):
-            self.series_number_web_edit.setText(series_number)
-            # Show web number field if series name is also showing
-            if self.series_row._web_label.isVisible():
-                self.series_number_web_edit.setVisible(True)
-            # Add to field differences if different
-            if "series" in self.field_differences:
-                self.field_differences["series_number"] = series_number
+        web_num_str = str(web_data.get("series_number") or "").strip()
+        cur_num_str = current_series_number.strip()
+        number_differs = bool(
+            web_num_str and (not cur_num_str or web_num_str != cur_num_str)
+        )
+
+        if number_differs:
+            self.series_number_web_edit.setText(web_num_str)
+            self.series_number_web_edit.setVisible(True)
+            self.field_differences["series_number"] = web_num_str
+            if not series_name_shown:
+                self.series_row._web_label.setVisible(True)
+                db_series_empty = not (self.book.series_name or "").strip()
+                if db_series_empty:
+                    self.series_checkbox.setVisible(False)
+                else:
+                    self.series_checkbox.setVisible(True)
+                    self.series_checkbox.setChecked(True)
+        elif series_name_shown and web_num_str:
+            self.series_number_web_edit.setText(web_num_str)
+            self.series_number_web_edit.setVisible(True)
+            if web_num_str != cur_num_str:
+                self.field_differences["series_number"] = web_num_str
         else:
             self.series_number_web_edit.setVisible(False)
 
@@ -1175,42 +1189,15 @@ class WebMetadataWindow(QDialog):
                         except ValueError:
                             self.book.year = None
 
-                # Series
-                if "series" in self.field_differences:
-                    if self.series_row._checkbox.isVisible():
-                        # Field differs - apply if checked
-                        if self.series_checkbox.isChecked():
-                            series_text = self.series_web_edit.text().strip()
-                            series_id = None
-                            series_number = None
-                            if series_text:
-                                if " - " in series_text:
-                                    parts = series_text.split(" - ")
-                                    series_name = parts[0].strip()
-                                    try:
-                                        series_number = int(parts[1].strip())
-                                    except ValueError:
-                                        series_number = None
-                                else:
-                                    series_name = series_text
-                                if series_name:
-                                    series = self.series_queries.get_by_name(
-                                        series_name
-                                    )
-                                    if not series:
-                                        series_id = self.series_queries.insert(
-                                            series_name
-                                        )
-                                    else:
-                                        series_id = series.series_id
-                            self.book.series_id = series_id
-                            self.book.series_number = series_number
-                            applied_fields.append("Series")
-                    else:
-                        # DB field was empty - auto-apply web data
+                # Series (name and/or number from web)
+                if "series" in self.field_differences or "series_number" in self.field_differences:
+                    apply_series = not self.series_row._checkbox.isVisible() or (
+                        self.series_checkbox.isChecked()
+                    )
+                    if apply_series:
                         series_text = self.series_web_edit.text().strip()
-                        series_id = None
-                        series_number = None
+                        series_id = getattr(self.book, "series_id", None)
+                        series_number = getattr(self.book, "series_number", None)
                         if series_text:
                             if " - " in series_text:
                                 parts = series_text.split(" - ")
@@ -1227,8 +1214,13 @@ class WebMetadataWindow(QDialog):
                                     series_id = self.series_queries.insert(series_name)
                                 else:
                                     series_id = series.series_id
-                        self.book.series_id = series_id
-                        self.book.series_number = series_number
+                        web_num = self._series_number_from_web_apply()
+                        if web_num is not None:
+                            series_number = web_num
+                        if series_id is not None:
+                            self.book.series_id = series_id
+                        if series_number is not None:
+                            self.book.series_number = series_number
                         applied_fields.append("Series")
 
                 # Genre

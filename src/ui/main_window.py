@@ -3310,6 +3310,7 @@ class MainWindow(QMainWindow):
 
         popup = WebFetchProgressDialog(self)
         popup.show()
+        QApplication.processEvents()
 
         # Check web data first before opening window
         from src.ui.web_metadata import WebMetadataWindow
