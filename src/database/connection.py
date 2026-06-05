@@ -21,6 +21,41 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+DEFAULT_SQLITE_CACHE_KB = -32768  # 32 MB (32 * 1024 KiB)
+DEFAULT_SQLITE_MMAP_BYTES = 134217728  # 128 MB
+
+
+def _compute_sqlite_pragmas(db_path: str) -> tuple[int, int]:
+    """Return (cache_size_kb_negative, mmap_size_bytes) tuned to DB size and RAM."""
+    db_bytes = 0
+    if os.path.exists(db_path):
+        db_bytes = os.path.getsize(db_path)
+        wal_path = db_path + "-wal"
+        if os.path.exists(wal_path):
+            db_bytes += os.path.getsize(wal_path)
+
+    ram_mb = 8192  # fallback when psutil unavailable
+    try:
+        import psutil
+
+        ram_mb = psutil.virtual_memory().total / (1024 * 1024)
+    except Exception:
+        pass
+
+    if db_bytes == 0:
+        return DEFAULT_SQLITE_CACHE_KB, DEFAULT_SQLITE_MMAP_BYTES
+
+    db_mb = db_bytes / (1024 * 1024)
+    cache_mb = max(8, min(db_mb * 2, 128, ram_mb * 0.05))
+    mmap_mb = max(64, min(db_mb * 4, 256, ram_mb * 0.10))
+
+    # Keep desktop defaults on 8 GB+ machines so small DBs do not regress
+    if ram_mb >= 8192:
+        cache_mb = max(cache_mb, 32)
+        mmap_mb = max(mmap_mb, 128)
+
+    return -int(cache_mb * 1024), int(mmap_mb * 1024 * 1024)
+
 
 class DatabaseManager:
     """
@@ -79,6 +114,11 @@ class DatabaseManager:
             # PHASE 1 OPTIMIZATION: Enable WAL mode for better concurrency and performance
             # WAL allows readers and writers to proceed concurrently
             self._connection.execute("PRAGMA journal_mode=WAL")
+            # Keep hot pages in memory across repeated reads in long sessions
+            cache_kb, mmap_bytes = _compute_sqlite_pragmas(self.db_path)
+            self._connection.execute(f"PRAGMA cache_size = {cache_kb}")
+            self._connection.execute("PRAGMA temp_store = MEMORY")
+            self._connection.execute(f"PRAGMA mmap_size = {mmap_bytes}")
         return self._connection
 
     def close(self):

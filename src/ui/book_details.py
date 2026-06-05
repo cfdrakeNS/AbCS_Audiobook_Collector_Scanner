@@ -270,6 +270,7 @@ class BookDetailsWindow(QDialog):
         self.is_new = book is None
         self.sort_order = sort_order  # bd#8: Store for header display
         self._dirty = False  # bd#6: Track if form has unsaved changes
+        self._data_was_changed = False  # True after save/delete/web apply; gates list refresh
         self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
         self._first_dirty_widget = None  # Track first field that changed
         self._pending_dirty_widgets = set()
@@ -1559,11 +1560,7 @@ class BookDetailsWindow(QDialog):
                 else:
                     self.collection_label_display.setText("")
             else:
-                if self.book.collection_id:
-                    coll_name = self.collection_queries.get_by_id(self.book.collection_id)
-                    self.collection_label_display.setText(coll_name.name if coll_name else "")
-                else:
-                    self.collection_label_display.setText("")
+                self.collection_label_display.setText(self.book.collection_name or "")
             self.time_edit.setText(self.book.time_display)
             self.files_edit.setText(str(self.book.tracks) if self.book.tracks else "")
             self.size_edit.setText(self.book.size_display if self.book.size_mb else "")
@@ -1844,6 +1841,8 @@ class BookDetailsWindow(QDialog):
                     self.books_list[self.current_index] = self.book
                 self.set_status("Book updated successfully")
 
+            self._data_was_changed = True
+
             # Clear dirty and update original values (don't close window)
             self._clear_dirty(preserve_status=True)
             self._original_author = self.author_combo.currentText()
@@ -1908,6 +1907,7 @@ class BookDetailsWindow(QDialog):
         try:
             deleted_index = self.current_index
             self.book_queries.delete(self.book.book_id)
+            self._data_was_changed = True
 
             # Remove from books_list and navigate
             if self.books_list:
@@ -2272,6 +2272,7 @@ class BookDetailsWindow(QDialog):
                 )
                 result = web_window.exec()
                 if result == QDialog.Accepted:
+                    self._data_was_changed = True
                     self.set_status(
                         "Web details applied successfully", announce=True
                     )

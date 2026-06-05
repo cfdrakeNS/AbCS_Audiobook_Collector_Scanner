@@ -3693,11 +3693,13 @@ class MainWindow(QMainWindow):
         # The dialog object still exists after exec() returns (just hidden),
         # so we can read its current book state before it's garbage collected
         last_book_id = details.book.book_id if details.book else None
+        data_changed = details._data_was_changed
 
         # PHASE 2 OPTIMIZATION: Force dialog cleanup to prevent accumulation
         details.deleteLater()
 
-        self.refresh_books()
+        if data_changed:
+            self.refresh_books()
 
         # bd#7: Focus the table on the book that was viewed in details window
         if last_book_id:
