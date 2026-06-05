@@ -135,8 +135,6 @@ class ImportProgressWindow(QDialog):
 
         self._apply_tab_order()
 
-    # set_show_valid_counter removed (Phase 3: always auto-add valid books)
-
     def _apply_tab_order(self):
         return
 
@@ -290,6 +288,49 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setFormat("Adding...")
             self.set_status("Adding started.", announce=True)
 
+    @staticmethod
+    def _format_counter_status(
+        *,
+        scanned: int,
+        added: int,
+        fixed: int,
+        errors: int,
+        warnings: int,
+        duplicates: int,
+    ) -> str:
+        return (
+            f"Scanned: {scanned} | Added: {added} | "
+            f"Corrected: {fixed} | Errors: {errors} | Warnings: {warnings} | "
+            f"Duplicates: {duplicates}"
+        )
+
+    def update_counters(
+        self,
+        *,
+        scanned: int,
+        added: int,
+        fixed: int,
+        errors: int,
+        warnings: int,
+        duplicates: int,
+        elapsed_text: str | None = None,
+        progress_note: str | None = None,
+    ):
+        """Update status bar with live import counters."""
+        status_text = self._format_counter_status(
+            scanned=scanned,
+            added=added,
+            fixed=fixed,
+            errors=errors,
+            warnings=warnings,
+            duplicates=duplicates,
+        )
+        if progress_note:
+            status_text = f"{progress_note} | {status_text}"
+        if elapsed_text is not None:
+            status_text = f"{status_text} | Elapsed {elapsed_text}"
+        self.set_status(status_text)
+
     def update_add_progress(
         self,
         *,
@@ -297,6 +338,11 @@ class ImportProgressWindow(QDialog):
         total: int,
         books_added: int | None = None,
         elapsed_text: str | None = None,
+        scanned: int | None = None,
+        fixed: int | None = None,
+        errors: int | None = None,
+        warnings: int | None = None,
+        duplicates: int | None = None,
     ):
         """Update progress during add/processing phase."""
         safe_total = max(0, int(total))
@@ -306,18 +352,29 @@ class ImportProgressWindow(QDialog):
             percent = int((safe_processed / safe_total) * 100)
             self.scan_progress.setValue(percent)
             self.scan_progress.setFormat(f"Adding... {safe_processed}/{safe_total}")
-            status_text = f"Adding {safe_processed}/{safe_total}"
+            progress_note = f"Adding {safe_processed}/{safe_total}"
         else:
             self.scan_progress.setValue(0)
             self.scan_progress.setFormat("Adding...")
-            status_text = "Adding"
+            progress_note = "Adding"
 
+        if scanned is not None:
+            self.update_counters(
+                scanned=scanned,
+                added=books_added if books_added is not None else 0,
+                fixed=fixed or 0,
+                errors=errors or 0,
+                warnings=warnings or 0,
+                duplicates=duplicates or 0,
+                elapsed_text=elapsed_text,
+                progress_note=progress_note,
+            )
+            return
+
+        status_text = progress_note
         if elapsed_text is not None:
             status_text = f"{status_text} | Elapsed {elapsed_text}"
-
         self.set_status(status_text)
-
-    # update_counters removed (Phase 3: always auto-add valid books)
 
     def on_close_requested(self):
         if self._scan_active and not self._cancel_requested:
@@ -353,8 +410,7 @@ class ImportProgressWindow(QDialog):
         read_errors: int,
         summary_text: str | None = None,
     ):
-        """Mark scan phase as complete (no valid counter, Phase 3)."""
-        # Focus remains on progress bar; status bar always visible
+        """Mark scan phase as complete."""
         self.mark_complete(
             canceled=canceled,
             elapsed_text=elapsed_text,
@@ -375,7 +431,6 @@ class ImportProgressWindow(QDialog):
         summary_text: str | None = None,
     ):
         self._scan_active = False
-        # update_counters removed (Phase 3)
 
         if canceled:
             self.scan_progress.setFormat(f"Scan canceled ({elapsed_text})")
@@ -406,6 +461,23 @@ class ImportProgressWindow(QDialog):
             self.set_status(
                 f"Scan complete. Elapsed: {elapsed_text}. Esc to close.", announce=True
             )
+
+    def mark_add_phase_complete(self, *, books_added: int, elapsed_text: str):
+        """Mark manual add phase as complete."""
+        self._scan_active = False
+        self.scan_progress.setValue(100)
+        elapsed_segment = f" ({elapsed_text})" if elapsed_text else ""
+        self.scan_progress.setFormat(
+            f"Add complete - {books_added} book(s) added{elapsed_segment}"
+        )
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.raise_()
+        self.activateWindow()
+        self.setFocus(Qt.TabFocusReason)
+        self.set_status(
+            f"Add complete. {books_added} book(s) added. Esc to close.",
+            announce=True,
+        )
 
     def on_show_shortcuts(self):
         dlg = QDialog(self)

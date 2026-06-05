@@ -192,12 +192,12 @@ def test_import_summary_uses_errors_warnings_label(
     qtbot.addWidget(window)
 
     window.update_summary(
-        scanned=10, fixed=3, errors=2, warnings=4, duplicates=1, added=5, valid=2
+        scanned=10, fixed=3, errors=2, warnings=4, duplicates=1, added=5
     )
     status_text = window.status_bar.currentMessage()
 
     assert "Corrected: 3" in status_text
-    assert "Valid: 2" in status_text
+    assert "Valid:" not in status_text
     assert "Errors: 2" in status_text
     assert "Warnings: 4" in status_text
     assert "Errors/Warnings:" not in status_text
@@ -633,7 +633,7 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(
     assert "Corrected: 1" in status_text
     assert "Errors: 0" in status_text
     assert "Warnings: 0" in status_text
-    assert "Valid: 0" in status_text
+    assert "Valid:" not in status_text
 
     cleanup_window(window)
 
@@ -782,5 +782,22 @@ def test_import_progress_add_phase_resets_then_increments(qapp, qtbot):
     assert window.scan_progress.format() == "Adding... 2/4"
     assert "Adding 2/4" in window.status_bar.currentMessage()
     assert "Elapsed 00:05" in window.status_bar.currentMessage()
+
+    window.update_add_progress(
+        processed=3,
+        total=4,
+        books_added=2,
+        elapsed_text="00:08",
+        scanned=10,
+        fixed=1,
+        errors=2,
+        warnings=1,
+        duplicates=0,
+    )
+    status_text = window.status_bar.currentMessage()
+    assert "Adding 3/4" in status_text
+    assert "Valid:" not in status_text
+    assert "Added: 2" in status_text
+    assert "Elapsed 00:08" in status_text
 
     cleanup_window(window)

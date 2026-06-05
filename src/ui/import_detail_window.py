@@ -299,15 +299,6 @@ class ImportDetailWindow(QDialog):
     def _get_import_list_valid_count(self) -> int:
         """Return current valid-books count from parent Import Window when available."""
         parent = self.parent()
-        if parent and hasattr(parent, "_summary_counts"):
-            summary = getattr(parent, "_summary_counts", {}) or {}
-            try:
-                summary_valid = int(summary.get("valid", 0))
-                if summary_valid:
-                    return summary_valid
-            except (TypeError, ValueError):
-                pass
-
         if parent and hasattr(parent, "scanned_items"):
             valid_count = 0
             for item in getattr(parent, "scanned_items", []) or []:

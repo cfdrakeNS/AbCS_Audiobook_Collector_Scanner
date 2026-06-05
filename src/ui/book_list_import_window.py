@@ -155,10 +155,12 @@ class BookListImportWindow(QDialog):
                 else:
                     continue
 
-            # Apply match mode rules
-            if match_mode == "title_author":
-                # Match by title + author only
+            # Apply match mode rules (strictest modes checked first in preferences)
+            if match_mode == "title_author_only":
                 return True
+            elif match_mode == "title_author":
+                if db_collection_id == collection_id:
+                    return True
             elif match_mode == "title_author_year":
                 # Match by title + author + year
                 if year is not None and db_year is not None and year == db_year:

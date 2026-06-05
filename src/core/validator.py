@@ -52,7 +52,7 @@ class ImportValidator:
         elif duplicate_mode == "title_author_year_ignore_collection":
             duplicate_mode = "title_author_year"
         elif duplicate_mode == "title_author_ignore_collection":
-            duplicate_mode = "title_author_year"
+            duplicate_mode = "title_author_only"
         self.duplicate_match_mode = duplicate_mode
         threshold = self.settings.value(
             "import/rules/duplicate/fuzzy_threshold",

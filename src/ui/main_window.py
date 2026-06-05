@@ -378,9 +378,10 @@ class MainWindow(QMainWindow):
     FIND_ALLOWED_ALT_LETTERS = {"I", "T", "X"}
 
     DUPLICATE_MATCH_OPTIONS = [
-        ("Title + Author + Collection", "title_author"),
-        ("Title + Author + Year", "title_author_year"),
         ("Title + Author + Year + Collection", "title_author_year_collection"),
+        ("Title + Author + Year", "title_author_year"),
+        ("Title + Author + Collection", "title_author"),
+        ("Title + Author", "title_author_only"),
     ]
 
     _SETTINGS_ORG = "AbCS"
@@ -1424,7 +1425,7 @@ class MainWindow(QMainWindow):
         if normalized == "title_author_year_ignore_collection":
             return "title_author_year"
         if normalized == "title_author_ignore_collection":
-            return "title_author_year"
+            return "title_author_only"
         valid_modes = {option[1] for option in self.DUPLICATE_MATCH_OPTIONS}
         if normalized in valid_modes:
             return normalized
@@ -1475,8 +1476,10 @@ class MainWindow(QMainWindow):
         year_key = book.year or 0
         collection_key = book.collection_id or 0
 
-        if normalized_mode == "title_author":
+        if normalized_mode == "title_author_only":
             return (title_key, author_key)
+        if normalized_mode == "title_author":
+            return (title_key, author_key, collection_key)
         if normalized_mode == "title_author_year":
             return (title_key, author_key, year_key)
         return (title_key, author_key, year_key, collection_key)
@@ -1575,7 +1578,7 @@ class MainWindow(QMainWindow):
 
     def on_duplicate_check(self):
         """Start duplicate mode by prompting for duplicate match type."""
-        settings = QSettings("AbCS", "AbCS")
+        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
         preferred_mode = self._normalize_duplicate_mode(
             settings.value(
                 "import/rules/duplicate/match_mode",
@@ -3544,6 +3547,9 @@ class MainWindow(QMainWindow):
         """Open book list import window with collection defaulting logic matching ImportWindow."""
         from src.ui.book_list_import_window import BookListImportWindow
 
+        if self.duplicate_mode_active:
+            self.exit_duplicate_mode(message="Duplicate mode canceled", announce=False)
+
         # Determine which collection to default in BookListImportWindow
         collection_id = self.current_filter.collection_id
         dialog = BookListImportWindow(
@@ -3572,6 +3578,9 @@ class MainWindow(QMainWindow):
 
     def on_import(self):
         """Open import window with collection defaulting logic matching BookDetailsWindow."""
+        if self.duplicate_mode_active:
+            self.exit_duplicate_mode(message="Duplicate mode canceled", announce=False)
+
         # Determine which collection to default in ImportWindow
         collection_id = self.current_filter.collection_id
         dialog = ImportWindow(self.db, self.scaler, self.theme_manager, parent=self)

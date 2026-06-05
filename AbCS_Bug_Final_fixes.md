@@ -113,11 +113,12 @@
 103. complete - `min_title_warning_label` is referenced in code but **never created**, so that warning never shows.
 104. complete - preferences unknown/various severity should default to warning not error 
 105. complete - preferences  move the preset and zoom control above the theme selection 
-106. complete book list import -- when open focus should be on collection 
-107. complete preferences window - make the text blurb at the top of the tabs to be the same as the instructions text box on book list import window and make them tabible for screen readers. Set them as the default focus when switching tabs and when the window opens 
-
-
-
+106. complete - book list import -- when open focus should be on collection 
+107. complete - preferences window - make the text blurb at the top of the tabs to be the same as the instructions text box on book list import window and make them tabible for screen readers. Set them as the default focus when switching tabs and when the window opens 
+108. import window & import progress window remove valid counter from status bar. not left over from older process.
+109. complete - preference window f1 help add: Move between tabs Ccontrol+tab / control+shift+tab.
+110. complete - main window - duplicate mode matching by title + Author + Collection is not working correctly. check and fix duplicate function 
+111. complete - main window - if import is selected and in duplicate mode exit duplicate mode before opening import window or book list import 
 
 # performance tuining bugs
 

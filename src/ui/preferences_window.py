@@ -1286,12 +1286,15 @@ class PreferencesWindow(QDialog):
 
         self.duplicate_match_combo.clear()
         self.duplicate_match_combo.addItem(
-            "Title + Author + Collection", "title_author"
-        )
-        self.duplicate_match_combo.addItem("Title + Author + Year", "title_author_year")
-        self.duplicate_match_combo.addItem(
             "Title + Author + Year + Collection", "title_author_year_collection"
         )
+        self.duplicate_match_combo.addItem(
+            "Title + Author + Year", "title_author_year"
+        )
+        self.duplicate_match_combo.addItem(
+            "Title + Author + Collection", "title_author"
+        )
+        self.duplicate_match_combo.addItem("Title + Author", "title_author_only")
         duplicate_mode = self.settings.value(
             "import/rules/duplicate/match_mode",
             "title_author_year_collection",
@@ -1304,7 +1307,7 @@ class PreferencesWindow(QDialog):
         elif duplicate_mode == "title_author_year_ignore_collection":
             duplicate_mode = "title_author_year"
         elif duplicate_mode == "title_author_ignore_collection":
-            duplicate_mode = "title_author_year"
+            duplicate_mode = "title_author_only"
         duplicate_index = self.duplicate_match_combo.findData(duplicate_mode)
         self.duplicate_match_combo.setCurrentIndex(
             0 if duplicate_index < 0 else duplicate_index
@@ -1521,6 +1524,15 @@ class PreferencesWindow(QDialog):
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        self.next_tab_shortcut = QShortcut(QKeySequence("Ctrl+Tab"), self)
+        self.next_tab_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.next_tab_shortcut.activated.connect(lambda: self._cycle_tab(+1))
+
+        self.prev_tab_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+        self.prev_tab_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.prev_tab_shortcut.activated.connect(lambda: self._cycle_tab(-1))
+
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
@@ -1532,6 +1544,16 @@ class PreferencesWindow(QDialog):
     def _switch_to_tab(self, tab_index: int) -> None:
         if hasattr(self, "tab_widget"):
             self.tab_widget.setCurrentIndex(tab_index)
+
+    def _cycle_tab(self, step: int) -> None:
+        """Move to next/previous preferences tab with wraparound."""
+        if not hasattr(self, "tab_widget"):
+            return
+        count = self.tab_widget.count()
+        if count <= 0:
+            return
+        target = (self.tab_widget.currentIndex() + step) % count
+        self.tab_widget.setCurrentIndex(target)
 
     def _focus_section_widget(self, widget, section_name: str, tab_index: int | None = None):
         """Focus first widget in a section and announce context."""
@@ -1608,6 +1630,7 @@ class PreferencesWindow(QDialog):
             ("Alt+S", "Save"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
+            ("Ctrl+Tab / Ctrl+Shift+Tab", "Move between tabs"),
             ("Tab/Shift+Tab", "Move between controls in the current section"),
         ]
         from src.accessibility.shortcut_helpers import (
