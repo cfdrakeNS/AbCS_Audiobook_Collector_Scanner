@@ -109,11 +109,20 @@ class WebBookAPI:
             return False
 
         # Additional check: first-name/initial overlap when both have >1 word
-        db_parts = db_author.split()
         web_lower = web_author.lower()
-        if len(db_parts) > 1 and len(web_author.split()) > 1:
-            non_last = db_parts[:-1]  # everything before the last name
-            if not any(part.lower().rstrip(".") in web_lower for part in non_last):
+        if len(web_author.split()) > 1:
+            if "," in db_author:
+                given_parts = [
+                    part.strip()
+                    for part in db_author.split(",", 1)[1].split()
+                    if part.strip()
+                ]
+            else:
+                db_parts = db_author.split()
+                given_parts = db_parts[:-1] if len(db_parts) > 1 else []
+            if given_parts and not any(
+                part.lower().rstrip(".") in web_lower for part in given_parts
+            ):
                 return False
 
         return True

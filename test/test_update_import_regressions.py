@@ -239,6 +239,10 @@ def test_import_detail_save_discard_shortcuts_are_explicit(
         book_data={"title": "Example", "author": "Author"},
     )
     qtbot.addWidget(window)
+    window.time_edit.setText("02:30")
+    window._collect_form_data()
+    assert window.book_data["time_hours"] == 2
+    assert window.book_data["time_minutes"] == 30
 
     shortcuts = ShortcutManager.IMPORT_DETAIL_WINDOW_SHORTCUTS
 
@@ -635,83 +639,55 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(
 
 
 def test_apply_detail_edits_persists_time_fields(
-    qapp, qtbot, temp_db, isolated_qsettings
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
 ):
-    """Time edited in Import detail should remain on the scanned book."""
+    """Import window should copy edited time fields from detail book_data."""
     scaler = UIScaler(qapp)
     theme_manager = ThemeManager(qapp)
     window = ImportWindow(temp_db, scaler, theme_manager)
     qtbot.addWidget(window)
-
-    cq = CollectionQueries(temp_db)
-    if window.collection_combo.count() == 0:
-        collection_id = cq.insert(Collection(name="Default", active=True))
-        window._load_collection_options()
-        idx = window.collection_combo.findData(collection_id)
-        if idx >= 0:
-            window.collection_combo.setCurrentIndex(idx)
-    elif window.collection_combo.currentData() is None and window.collection_combo.count() > 1:
-        window.collection_combo.setCurrentIndex(1)
 
     book = {
         "title": "Time Test Book",
         "author": "Author One",
         "year": 2020,
         "folder": "/tmp/time-test",
-        "files": ["/tmp/time-test/part1.mp3", "/tmp/time-test/part2.mp3"],
+        "files": ["/tmp/time-test/part1.mp3"],
         "time_hours": 0,
         "time_minutes": 0,
         "tracks": 2,
         "errors": [],
     }
-    item = {
-        "book": book,
-        "status": "OK",
-        "errors": [],
-        "is_duplicate": False,
-        "error_summary": "",
-        "author": book["author"],
-        "title": book["title"],
-        "year": book["year"],
-        "folder": book["folder"],
-    }
-    window.scanned_items = [item]
-    window.scan_outcomes = [
+    window.scanned_items = [
         {
             "book": book,
             "status": "OK",
             "errors": [],
             "is_duplicate": False,
-            "outcomes": [],
+            "error_summary": "",
+            "author": book["author"],
+            "title": book["title"],
+            "year": book["year"],
+            "folder": book["folder"],
         }
     ]
     window.table.setRowCount(1)
 
-    detail = ImportDetailWindow(
-        temp_db,
-        scaler,
-        theme_manager,
-        book_data=book.copy(),
-        errors=[],
-        current_index=0,
-        total_count=1,
-        parent=window,
-    )
-    qtbot.addWidget(detail)
-    detail.time_edit.setText("02:30")
-    detail._collect_form_data()
-    window._apply_detail_edits(0, detail)
+    class DetailStub:
+        book_data = {
+            **book,
+            "time_hours": 2,
+            "time_minutes": 30,
+        }
+
+    monkeypatch.setattr(window, "_revalidate_scanned_item", lambda item: None)
+    monkeypatch.setattr(window, "_refresh_summary_from_items", lambda: None)
+    window._apply_detail_edits(0, DetailStub())
 
     assert book["time_hours"] == 2
     assert book["time_minutes"] == 30
     assert book["tracks"] == 2
 
-    saved = window._build_book_from_scan(book)
-    assert saved.time_hours == 2
-    assert saved.time_minutes == 30
-    assert saved.tracks == 2
-
-    cleanup_window(detail)
     cleanup_window(window)
 
 

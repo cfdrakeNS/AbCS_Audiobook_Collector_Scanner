@@ -15,6 +15,10 @@ Items that need verification or cleanup, organized by file:
 
 - No current production cleanup items after removing `TIMEOUT_RETRY_DELAY` and `loaded` (see Cleanup History).
 
+### June 5, 2026 — Pre-merge vulture scan (`python -m vulture src test --min-confidence 60`)
+
+No new production actionable items. Findings match documented false positives (Qt overrides, SQLite `row_factory`, pandas `DataFrame` fallback, pytest fixtures/mocks). Added review note for `test/test_message_box_button_icons.py` `Parent` helper class (test-only).
+
 ## Tests
 - `test/test_reading_history_accessibility.py`: `date_range_layout` variable - Test-only Vulture finding; review before changing.
 - `test/test_reading_history_final_integration.py`: `alt_slush_works` and `operation_works` variables - Test-only findings; review before changing.
@@ -22,6 +26,7 @@ Items that need verification or cleanup, organized by file:
 - `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`, and repeated `isolated_qsettings` parameters - Test-only findings; likely pytest fixtures and should be handled carefully.
 - `test/test_web_book_api_matching.py`: `return_value` and `side_effect` attributes on `@patch.object` mocks — Test-only mock configuration; do not remove.
 - `test/test_web_series.py`: `return_value` attribute on patched mock (line ~71) — Test-only mock configuration; do not remove.
+- `test/test_message_box_button_icons.py`: `Parent` class (line ~64) — Test-only QMessageBox parent stub; do not remove.
 
 ## Review Notes
 - `src/build_config.py` uses `TRIAL_BUILD_DATE` in `src/main.py`; do not remove.
