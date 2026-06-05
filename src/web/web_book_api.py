@@ -241,8 +241,7 @@ class WebBookAPI:
         wiki_title = metadata.get("title") or db_title
         wiki_author = db_author or metadata.get("author", "")
 
-        # Fast path: WikiData wins can use Wikipedia REST summary endpoint directly
-        if metadata.get("_resolved_source") == "wikidata" and wiki_title:
+        if wiki_title:
             rest_plot = self._clean_plot_text(
                 self._fetch_wikipedia_rest_summary(wiki_title)
             )
@@ -261,6 +260,20 @@ class WebBookAPI:
             metadata, wiki_plot, "wikipedia", db_title, db_author
         ):
             return
+
+        discovered_isbn = metadata.get("isbn", "")
+        if discovered_isbn and not self._plot_is_adequate(
+            self._clean_plot_text(metadata.get("plot", ""))
+        ):
+            gb_hit = self._fetch_google_by_isbn(discovered_isbn)
+            if gb_hit and self._apply_plot_to_metadata(
+                metadata,
+                gb_hit.get("plot", ""),
+                "google_books",
+                db_title,
+                db_author,
+            ):
+                return
 
         google_plot = self._clean_plot_text(metadata.get("plot", ""))
         if self._plot_is_adequate(google_plot):
@@ -416,20 +429,6 @@ class WebBookAPI:
             ):
                 changed = True
 
-        if not metadata.get("series"):
-            google_hit = self._fetch_series_from_google(
-                db_title or metadata.get("title", ""),
-                db_author or metadata.get("author", ""),
-            )
-            if google_hit and self._apply_series_to_metadata(
-                metadata,
-                google_hit.get("series", ""),
-                google_hit.get("series_number", ""),
-                db_title=db_title,
-                db_plot=metadata.get("plot", ""),
-            ):
-                changed = True
-
         if not metadata.get("series") and metadata.get("_resolved_source") != "wikidata":
             wiki_hit = self._fetch_series_from_wikidata(
                 db_title or metadata.get("title", ""),
@@ -439,6 +438,32 @@ class WebBookAPI:
                 metadata,
                 wiki_hit.get("series", ""),
                 wiki_hit.get("series_number", ""),
+                db_title=db_title,
+                db_plot=metadata.get("plot", ""),
+            ):
+                changed = True
+
+        discovered_isbn = metadata.get("isbn", "")
+        if not metadata.get("series") and discovered_isbn:
+            gb_isbn_hit = self._fetch_series_from_google_by_isbn(discovered_isbn)
+            if gb_isbn_hit and self._apply_series_to_metadata(
+                metadata,
+                gb_isbn_hit.get("series", ""),
+                gb_isbn_hit.get("series_number", ""),
+                db_title=db_title,
+                db_plot=metadata.get("plot", ""),
+            ):
+                changed = True
+
+        if not metadata.get("series"):
+            google_hit = self._fetch_series_from_google(
+                db_title or metadata.get("title", ""),
+                db_author or metadata.get("author", ""),
+            )
+            if google_hit and self._apply_series_to_metadata(
+                metadata,
+                google_hit.get("series", ""),
+                google_hit.get("series_number", ""),
                 db_title=db_title,
                 db_plot=metadata.get("plot", ""),
             ):
@@ -454,6 +479,17 @@ class WebBookAPI:
         hit = self._fetch_from_google_books(
             title, author, require_author_match=bool(author)
         )
+        if not hit:
+            return None
+        series = hit.get("series", "")
+        series_number = hit.get("series_number", "")
+        if series or series_number:
+            return {"series": series, "series_number": series_number}
+        return None
+
+    def _fetch_series_from_google_by_isbn(self, isbn: str) -> Optional[Dict]:
+        """Return series fields from a Google Books ISBN lookup, or None."""
+        hit = self._fetch_google_by_isbn(isbn)
         if not hit:
             return None
         series = hit.get("series", "")
@@ -567,6 +603,87 @@ class WebBookAPI:
         except Exception:
             pass  # Cache write failure is non-fatal
 
+    @staticmethod
+    def _normalize_isbn(isbn: str) -> str:
+        """Return a normalized ISBN-10/13 string, or empty when invalid."""
+        if not isbn:
+            return ""
+        clean = re.sub(r"[^0-9X]", "", str(isbn).upper())
+        if len(clean) in (10, 13):
+            return clean
+        return ""
+
+    def _first_isbn_from_list(self, isbn_list) -> str:
+        """Pick the first valid ISBN from an Open Library search doc list."""
+        for raw in isbn_list or []:
+            clean = self._normalize_isbn(str(raw))
+            if clean:
+                return clean
+        return ""
+
+    def _fetch_google_by_isbn(self, isbn: str) -> Optional[Dict]:
+        """Fetch metadata from Google Books using an exact ISBN query."""
+        clean_isbn = self._normalize_isbn(isbn)
+        if not clean_isbn:
+            return None
+        try:
+            params = {
+                "q": f"isbn:{clean_isbn}",
+                "maxResults": 1,
+                "fields": (
+                    "items(id,volumeInfo(title,subtitle,authors,publisher,"
+                    "publishedDate,description,industryIdentifiers,categories,"
+                    "averageRating,ratingsCount,seriesInfo))"
+                ),
+            }
+            url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
+            req = urllib.request.Request(url)
+            req.add_header("User-Agent", "AudiobookCollectorScanner/1.0")
+            with urllib.request.urlopen(req, timeout=TIMEOUT_DETAIL) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            items = data.get("items") or []
+            if not items:
+                return None
+            metadata = self._google_item_to_metadata(items[0])
+            if metadata:
+                metadata["isbn"] = clean_isbn
+            return metadata
+        except Exception:
+            return None
+
+    def _fetch_metadata_by_isbn(self, isbn: str) -> Optional[Dict]:
+        """Exact ISBN lookup: Google Books first, Open Library for gaps."""
+        clean_isbn = self._normalize_isbn(isbn)
+        if not clean_isbn:
+            return None
+
+        gb_meta = self._fetch_google_by_isbn(clean_isbn)
+        ol_meta = self._fetch_by_isbn(clean_isbn)
+        if not gb_meta and not ol_meta:
+            return None
+
+        metadata: Dict = dict(ol_meta) if ol_meta else {}
+        if gb_meta:
+            if not metadata:
+                metadata = dict(gb_meta)
+            else:
+                for key in ("title", "author", "year", "publisher", "rating", "ratings_count"):
+                    if gb_meta.get(key) and not metadata.get(key):
+                        metadata[key] = gb_meta[key]
+                for key in ("plot", "series", "series_number"):
+                    if gb_meta.get(key):
+                        metadata[key] = gb_meta[key]
+                if gb_meta.get("genre") and not metadata.get("genre"):
+                    metadata["genre"] = gb_meta["genre"]
+            if ol_meta and ol_meta.get("open_library_work_key"):
+                metadata["open_library_work_key"] = ol_meta["open_library_work_key"]
+            metadata["_resolved_source"] = "google_books"
+        else:
+            metadata["_resolved_source"] = "open_library"
+
+        metadata["isbn"] = clean_isbn
+        return metadata
+
     def _fetch_by_isbn(self, isbn: str) -> "Optional[Dict]":
         """Exact Open Library lookup by ISBN.
 
@@ -576,8 +693,8 @@ class WebBookAPI:
         if not isbn:
             return None
         try:
-            clean_isbn = re.sub(r"[^0-9X]", "", isbn.upper())
-            if len(clean_isbn) not in (10, 13):
+            clean_isbn = self._normalize_isbn(isbn)
+            if not clean_isbn:
                 return None
             url = f"{self.open_library_isbn_url}/{clean_isbn}.json"
             req = urllib.request.Request(url)
@@ -677,7 +794,7 @@ class WebBookAPI:
 
         cache_key = (
             f"{title}|{author}|{refresh}|{narrator}|{path}|{source}|"
-            f"{search_without_author}"
+            f"{search_without_author}|{isbn or ''}"
         )
         current_time = time.time()
 
@@ -744,14 +861,14 @@ class WebBookAPI:
             if cached_time and (current_time - cached_time) >= self.CACHE_DURATION:
                 del self._cache[cache_key]
 
-        # ISBN pre-pass: exact lookup via Open Library, skips title/author matching
+        # ISBN pre-pass: exact lookup via Google Books and Open Library
         if isbn:
-            _report_progress("Looking up ISBN on Open Library…")
-            isbn_meta = self._fetch_by_isbn(isbn)
+            _report_progress("Looking up ISBN…")
+            isbn_meta = self._fetch_metadata_by_isbn(isbn)
             if isbn_meta and not isbn_meta.get("_no_result"):
                 return _finish_metadata(
                     isbn_meta,
-                    "open_library_isbn",
+                    "open_library_isbn" if isbn_meta.get("_resolved_source") == "open_library" else "google_books_isbn",
                     first_attempt=True,
                 )
 
@@ -1130,6 +1247,7 @@ class WebBookAPI:
                     best_metadata = None
                     best_title_score = -1.0
                     best_work_key = ""
+                    best_isbn = ""
                     for doc in data["docs"]:
                         candidate = {
                             "title": doc.get("title", ""),
@@ -1156,7 +1274,10 @@ class WebBookAPI:
                             best_title_score = title_score
                             best_metadata = candidate
                             best_work_key = doc.get("key", "") or ""
+                            best_isbn = self._first_isbn_from_list(doc.get("isbn"))
                     if best_metadata:
+                        if best_isbn:
+                            best_metadata["isbn"] = best_isbn
                         if best_work_key:
                             best_metadata["open_library_work_key"] = best_work_key
                             work_fields = self._get_open_library_work_fields(
@@ -1257,8 +1378,7 @@ class WebBookAPI:
         """Fetch a plain-text extract from the Wikipedia REST summary endpoint.
 
         A single call returns the introduction section as clean text without
-        requiring a separate search step.  Used as a fast path when the winning
-        metadata source is WikiData and the title is already known.
+        requiring a separate search step.
         """
         if not title:
             return ""

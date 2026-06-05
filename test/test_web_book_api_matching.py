@@ -410,9 +410,10 @@ def test_enrich_metadata_plot_fills_from_wikipedia_when_ol_plot_short(api):
         "open_library_work_key": "/works/OL123W",
     }
     wiki_text = "A" * 120
-    with patch.object(api, "_get_open_library_description", return_value="Tiny"):
-        with patch.object(api, "_fetch_plot_from_wikipedia", return_value=wiki_text):
-            api._enrich_metadata_plot(metadata, "Pride And Prejudice", "Jane Austen")
+    with patch.object(api, "_get_open_library_work_fields", return_value={"description": "Tiny"}):
+        with patch.object(api, "_fetch_wikipedia_rest_summary", return_value=""):
+            with patch.object(api, "_fetch_plot_from_wikipedia", return_value=wiki_text):
+                api._enrich_metadata_plot(metadata, "Pride And Prejudice", "Jane Austen")
     assert metadata["plot"] == wiki_text
     assert metadata["plot_source"] == "wikipedia"
 
@@ -487,3 +488,127 @@ def test_progress_callback_order_refresh_zero(
     assert messages[ol_idx].startswith("Trying source 1:")
     assert messages[gb_idx].startswith("Trying source 2:")
     assert messages[wd_idx].startswith("Trying source 3:")
+
+
+def test_discovered_isbn_used_for_google_series_enrichment(api):
+    metadata = {
+        "title": "The Way of Kings",
+        "author": "Brandon Sanderson",
+        "isbn": "9780765326355",
+        "_resolved_source": "open_library",
+    }
+    with patch.object(api, "_get_open_library_work_fields", return_value={}):
+        with patch.object(
+            api,
+            "_fetch_series_from_google_by_isbn",
+            return_value={"series": "The Stormlight Archive", "series_number": "1"},
+        ) as isbn_mock:
+            with patch.object(api, "_fetch_series_from_google") as title_mock:
+                with patch.object(api, "_fetch_series_from_wikidata", return_value=None):
+                    api._enrich_metadata_series(
+                        metadata, "The Way of Kings", "Brandon Sanderson"
+                    )
+    isbn_mock.assert_called_once_with("9780765326355")
+    title_mock.assert_not_called()
+    assert metadata["series"] == "The Stormlight Archive"
+
+
+def test_series_enrichment_wikidata_before_google_title(api):
+    metadata = {
+        "title": "How the Light Gets In",
+        "author": "Louise Penny",
+        "_resolved_source": "open_library",
+    }
+    call_order: list[str] = []
+
+    def wikidata_side_effect(*args, **kwargs):
+        call_order.append("wikidata")
+        return {"series": "Chief Inspector Gamache", "series_number": "9"}
+
+    def google_side_effect(*args, **kwargs):
+        call_order.append("google_title")
+        return None
+
+    with patch.object(api, "_get_open_library_work_fields", return_value={}):
+        with patch.object(
+            api, "_fetch_series_from_wikidata", side_effect=wikidata_side_effect
+        ):
+            with patch.object(
+                api, "_fetch_series_from_google", side_effect=google_side_effect
+            ):
+                with patch.object(api, "_fetch_series_from_google_by_isbn", return_value=None):
+                    api._enrich_metadata_series(
+                        metadata, "How the Light Gets In", "Louise Penny"
+                    )
+    assert call_order == ["wikidata"]
+    assert metadata["series"] == "Chief Inspector Gamache"
+
+
+def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
+    metadata = {
+        "title": "Pride and Prejudice",
+        "author": "Jane Austen",
+        "source": "open_library",
+        "plot": "Short.",
+        "open_library_work_key": "/works/OL123W",
+    }
+    rest_text = "B" * 120
+    with patch.object(
+        api, "_get_open_library_work_fields", return_value={"description": "Tiny"}
+    ):
+        with patch.object(
+            api, "_fetch_wikipedia_rest_summary", return_value=rest_text
+        ) as rest_mock:
+            with patch.object(api, "_fetch_plot_from_wikipedia") as wiki_mock:
+                api._enrich_metadata_plot(
+                    metadata, "Pride And Prejudice", "Jane Austen"
+                )
+    rest_mock.assert_called_once()
+    wiki_mock.assert_not_called()
+    assert metadata["plot"] == rest_text
+    assert metadata["plot_source"] == "wikipedia"
+
+
+def test_cache_key_includes_isbn_param(api):
+    with patch.object(api, "_fetch_metadata_by_isbn") as isbn_fetch:
+        isbn_fetch.return_value = {
+            "title": "Dune",
+            "author": "Frank Herbert",
+            "_resolved_source": "open_library",
+        }
+        with patch.object(api, "_enrich_metadata_plot"):
+            with patch.object(api, "_fill_series_fields"):
+                with patch.object(api, "_save_persistent_cache"):
+                    api.get_book_metadata(
+                        "Dune", "Frank Herbert", isbn="9780441172719"
+                    )
+    assert any("9780441172719" in key for key in api._cache)
+
+
+def test_google_isbn_lookup_returns_series_info(api):
+    item = {
+        "volumeInfo": {
+            "title": "The Way of Kings",
+            "authors": ["Brandon Sanderson"],
+            "seriesInfo": {
+                "bookDisplayNumber": "1",
+                "volumeSeries": [{"seriesTitle": "The Stormlight Archive"}],
+            },
+        }
+    }
+
+    class FakeResponse:
+        def read(self):
+            return json.dumps({"items": [item]}).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    with patch("urllib.request.urlopen", return_value=FakeResponse()):
+        result = api._fetch_google_by_isbn("9780765326355")
+    assert result is not None
+    assert result["series"] == "The Stormlight Archive"
+    assert result["series_number"] == "1"
