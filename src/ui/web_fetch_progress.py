@@ -3,14 +3,36 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QApplication, QDialog, QLabel, QStatusBar, QVBoxLayout
+from PySide6.QtGui import QAccessible, QAccessibleEvent
+from PySide6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
 
 from src.accessibility.accessible_events import (
     announce_dialog_opened,
-    announce_status_message,
     configure_status_bar_accessibility,
 )
-from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+from src.accessibility.screen_reader import (
+    get_screen_reader_focus_delay_ms,
+    is_screen_reader_active,
+)
+
+
+class FetchStatusLabel(QLabel):
+    """Status line that announces text changes to screen readers."""
+
+    def set_status_text(self, text: str) -> None:
+        text = (text or "").strip()
+        if not text:
+            return
+        self.setText(text)
+        self.setAccessibleName(text)
+        self.setAccessibleDescription(text)
+        if QAccessible.isActive():
+            QAccessible.updateAccessibility(
+                QAccessibleEvent(self, QAccessible.Event.NameChanged)
+            )
+            QAccessible.updateAccessibility(
+                QAccessibleEvent(self, QAccessible.Event.DescriptionChanged)
+            )
 
 
 class WebFetchProgressDialog(QDialog):
@@ -19,6 +41,7 @@ class WebFetchProgressDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         from src.accessibility.icon_helper import get_app_icon
+        from PySide6.QtWidgets import QStatusBar
 
         self.setWindowIcon(get_app_icon())
         self.setWindowTitle("Please wait")
@@ -33,7 +56,7 @@ class WebFetchProgressDialog(QDialog):
         layout.setContentsMargins(16, 14, 16, 6)
         layout.setSpacing(8)
 
-        self._message_label = QLabel("Preparing web search…")
+        self._message_label = FetchStatusLabel("Preparing web search…")
         self._message_label.setAccessibleName("Web fetch status")
         self._message_label.setAccessibleDescription(self._message_label.text())
         self._message_label.setWordWrap(True)
@@ -47,15 +70,11 @@ class WebFetchProgressDialog(QDialog):
 
         self.resize(400, 110)
         self._initial_announced = False
+        self._last_spoken = ""
+        self._initial_timer = QTimer(self)
+        self._initial_timer.setSingleShot(True)
+        self._initial_timer.timeout.connect(self._announce_initial)
         self.setFocusPolicy(Qt.StrongFocus)
-
-    def _blur_status_focus(self) -> None:
-        """Move focus off the status bar so the next announce triggers a focus-in."""
-        app = QApplication.instance()
-        if not app or app.focusWidget() != self.status_bar:
-            return
-        self.setFocus(Qt.OtherFocusReason)
-        QApplication.processEvents()
 
     def show(self):
         super().show()
@@ -64,7 +83,7 @@ class WebFetchProgressDialog(QDialog):
         QApplication.processEvents()
         announce_dialog_opened(self, "Fetching web book information")
         delay = max(300, get_screen_reader_focus_delay_ms())
-        QTimer.singleShot(delay, self._announce_initial)
+        self._initial_timer.start(delay)
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -79,35 +98,43 @@ class WebFetchProgressDialog(QDialog):
         if self._initial_announced:
             return
         self._initial_announced = True
-        text = (
-            f"Fetching web book information. {self._message_label.text().strip()}"
-        )
-        self._speak_status(text, force=True)
+        self._speak_status(self._message_label.text(), force=True)
 
     def update_message(self, text: str) -> None:
-        """Update visible status and announce via focus-based readback for JAWS/NVDA."""
+        """Update visible status and announce for JAWS/NVDA."""
         text = (text or "").strip()
         if not text:
             return
-        self._message_label.setText(text)
-        self._message_label.setAccessibleDescription(text)
+        if self._initial_timer.isActive():
+            self._initial_timer.stop()
+        self._message_label.set_status_text(text)
         self.setAccessibleDescription(text)
+        self.status_bar.showMessage(text)
         self._initial_announced = True
         self._message_label.update()
         self.repaint()
         QApplication.processEvents()
-        # Announce immediately: deferred timers would not run until blocking
-        # network calls in get_book_metadata return on the UI thread.
         self._speak_status(text, force=True)
 
     def _speak_status(self, text: str, *, force: bool = False) -> None:
-        """Use focus-based readback; blur first so JAWS re-reads each new message."""
-        self._blur_status_focus()
-        announce_status_message(
-            self.status_bar,
-            text,
-            move_focus=True,
-            force_focus_announce=force,
-            restore_focus=False,
-            update_visible=True,
-        )
+        """Announce via the status label; each source change gets a focus pulse."""
+        text = (text or "").strip()
+        if not text:
+            return
+        if not force and text == self._last_spoken:
+            return
+        if not (QAccessible.isActive() or is_screen_reader_active()):
+            self._last_spoken = text
+            return
+
+        self._last_spoken = text
+        self._message_label.setFocusPolicy(Qt.StrongFocus)
+        self._message_label.setFocus(Qt.OtherFocusReason)
+        QApplication.processEvents()
+        if QAccessible.isActive():
+            QAccessible.updateAccessibility(
+                QAccessibleEvent(self._message_label, QAccessible.Event.Focus)
+            )
+        self.setFocus(Qt.OtherFocusReason)
+        self._message_label.setFocusPolicy(Qt.NoFocus)
+        QApplication.processEvents()

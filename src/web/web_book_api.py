@@ -41,10 +41,16 @@ _SOURCE_PROGRESS_LABELS = {
 }
 
 
-def _source_progress_message(source_key: str) -> str:
-    """Human-readable progress text with stable source number in the cascade."""
+def _source_progress_message(source_key: str, *, phase: str = "primary") -> str:
+    """Human-readable progress text for the metadata source cascade."""
     step, name = _SOURCE_PROGRESS_LABELS[source_key]
-    return f"Trying source {step}: {name}…"
+    if phase == "primary":
+        return f"Trying source {step}: {name}…"
+    if phase == "broadened":
+        return f"Broadened search, {name}…"
+    if phase == "title_only":
+        return f"Title-only search, {name}…"
+    return f"Trying {name}…"
 
 
 class WebBookAPI:
@@ -904,6 +910,7 @@ class WebBookAPI:
                 require_author_match=True,
                 match_author=search_author,
                 progress_callback=progress_callback,
+                search_phase="broadened",
             )
             if metadata and not metadata.get("_no_result"):
                 metadata["broadened_search"] = True
@@ -923,6 +930,7 @@ class WebBookAPI:
                 refresh,
                 require_author_match=False,
                 progress_callback=progress_callback,
+                search_phase="title_only",
             )
             if metadata and not metadata.get("_no_result"):
                 metadata["title_only_search"] = True
@@ -947,6 +955,7 @@ class WebBookAPI:
         require_author_match: bool,
         match_author: str | None = None,
         progress_callback: Callable[[str], None] | None = None,
+        search_phase: str = "primary",
     ) -> Optional[Dict]:
         """Query Open Library, Google Books, and WikiData with shared match rules."""
         db_author = match_author if match_author is not None else query_author
@@ -957,7 +966,7 @@ class WebBookAPI:
                 progress_callback(message)
 
         if refresh == 0:
-            _report(_source_progress_message("open_library"))
+            _report(_source_progress_message("open_library", phase=search_phase))
             try:
                 metadata = self._fetch_from_open_library(
                     search_title,
@@ -972,7 +981,7 @@ class WebBookAPI:
                 fetch_errors.append(f"open_library: {exc}")
 
         if refresh <= 1:
-            _report(_source_progress_message("google_books"))
+            _report(_source_progress_message("google_books", phase=search_phase))
             try:
                 metadata = self._fetch_from_google_books(
                     search_title,
@@ -987,7 +996,7 @@ class WebBookAPI:
                 fetch_errors.append(f"google_books: {exc}")
 
         if refresh <= 2:
-            _report(_source_progress_message("wikidata"))
+            _report(_source_progress_message("wikidata", phase=search_phase))
             try:
                 metadata = self._fetch_from_wikidata(
                     search_title,

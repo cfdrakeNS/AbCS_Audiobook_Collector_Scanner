@@ -173,6 +173,11 @@ class WebMetadataWindow(QDialog):
 
         return super().eventFilter(source, event)
 
+    def showEvent(self, event):
+        """Rebuild tab order once the dialog is visible (required for Qt tab chain)."""
+        super().showEvent(event)
+        self.set_tab_order()
+
     def setup_ui(self, layout):
         # Main layout with two-column structure
         self.main_layout = QVBoxLayout()
@@ -396,6 +401,7 @@ class WebMetadataWindow(QDialog):
         self.plot_edit.setFocusPolicy(
             Qt.StrongFocus
         )  # Ensure it can receive focus for tabbing
+        self.plot_edit.setTabChangesFocus(True)
         self.plot_edit.setObjectName("plot_edit")  # For shortcut manager
         self.plot_edit.setMinimumHeight(150)  # Give plot more vertical space
         plot_label.setBuddy(self.plot_edit)
@@ -525,9 +531,9 @@ class WebMetadataWindow(QDialog):
         except ValueError:
             return None
 
-    def set_tab_order(self):
-        """Set explicit tab order for logical keyboard navigation."""
-        tab_widgets = [
+    def _tab_candidate_widgets(self) -> list:
+        """All widgets that may participate in tab order, in navigation sequence."""
+        widgets: list = [
             self.title_edit,
             self.title_web_edit,
             self.title_checkbox,
@@ -539,15 +545,16 @@ class WebMetadataWindow(QDialog):
             self.year_checkbox,
         ]
         if not self.series_row.isHidden():
-            tab_widgets.append(self.series_edit)
-            tab_widgets.append(self.series_number_edit)
-            if self.series_web_edit.isVisible():
-                tab_widgets.append(self.series_web_edit)
-            if self.series_number_web_edit.isVisible():
-                tab_widgets.append(self.series_number_web_edit)
-            if self.series_checkbox.isVisible():
-                tab_widgets.append(self.series_checkbox)
-        tab_widgets.extend(
+            widgets.extend(
+                [
+                    self.series_edit,
+                    self.series_number_edit,
+                    self.series_web_edit,
+                    self.series_number_web_edit,
+                    self.series_checkbox,
+                ]
+            )
+        widgets.extend(
             [
                 self.genre_edit,
                 self.genre_web_edit,
@@ -558,8 +565,42 @@ class WebMetadataWindow(QDialog):
                 self.save_button,
             ]
         )
+        return widgets
+
+    def _widget_takes_tab_focus(self, widget) -> bool:
+        """True when widget should be included in the tab chain."""
+        if widget is None or not widget.isVisible():
+            return False
+        if widget in (
+            self.series_edit,
+            self.series_number_edit,
+            self.series_web_edit,
+            self.series_number_web_edit,
+            self.series_checkbox,
+        ):
+            return not self.series_row.isHidden()
+        return True
+
+    def _iter_tab_widgets(self) -> list:
+        """Return focusable widgets in keyboard navigation order (visible only)."""
+        visible: list = []
+        for widget in self._tab_candidate_widgets():
+            if not self._widget_takes_tab_focus(widget):
+                widget.setFocusPolicy(Qt.NoFocus)
+                continue
+            if isinstance(widget, (QLineEdit, QTextEdit, QCheckBox, QPushButton)):
+                widget.setFocusPolicy(Qt.StrongFocus)
+            visible.append(widget)
+        return visible
+
+    def set_tab_order(self):
+        """Set explicit tab order for logical keyboard navigation."""
+        for widget in self._tab_candidate_widgets():
+            widget.setFocusPolicy(Qt.NoFocus)
+        tab_widgets = self._iter_tab_widgets()
         for i in range(len(tab_widgets) - 1):
             self.setTabOrder(tab_widgets[i], tab_widgets[i + 1])
+        self.status_bar.setFocusPolicy(Qt.NoFocus)
 
     # ...existing code...
     def apply_field_styling(self):
@@ -899,6 +940,7 @@ class WebMetadataWindow(QDialog):
             self.series_number_web_edit.setVisible(False)
 
         self._update_series_row_visibility(web_data)
+        self.set_tab_order()
 
         # Genre
         handle_field_comparison(

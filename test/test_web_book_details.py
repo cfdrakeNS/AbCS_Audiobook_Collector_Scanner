@@ -176,6 +176,72 @@ def test_series_web_number_visible_when_only_number_returned(window):
     assert window.series_number_web_edit.text() == "4"
 
 
+def test_tab_order_web_series_fields_before_buttons(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "year": "1926",
+            "series": "Modern Classics",
+            "series_number": "2",
+            "genre": "Literary Fiction",
+            "plot": "A portrait of wealth, illusion, and longing in the Jazz Age.",
+        }
+    )
+    window.show()
+    chain = window._iter_tab_widgets()
+    assert window.series_web_edit in chain
+    assert window.series_number_web_edit in chain
+    assert chain.index(window.series_web_edit) < chain.index(window.refetch_button)
+    assert chain.index(window.series_number_web_edit) < chain.index(window.save_button)
+
+
+def _tab_focus_names(widget, qapp, *, start_widget, steps: int) -> list[str]:
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    start_widget.setFocus()
+    qapp.processEvents()
+    names: list[str] = []
+    for _ in range(steps):
+        fw = qapp.focusWidget()
+        names.append(fw.accessibleName() if fw else "")
+        target = qapp.focusWidget() or widget
+        qapp.sendEvent(
+            target,
+            QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier),
+        )
+        qapp.processEvents()
+    return names
+
+
+def test_tab_order_genre_web_and_checkbox_after_show(qapp, sample_book):
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    dlg = WebMetadataWindow(
+        db=None,
+        book=sample_book,
+        scaler=scaler,
+        theme_manager=theme_manager,
+        web_data={
+            "title": sample_book.title,
+            "author": sample_book.author_name,
+            "year": "1926",
+            "genre": "Literary Fiction",
+            "plot": "A portrait of wealth, illusion, and longing in the Jazz Age.",
+        },
+    )
+    try:
+        dlg.show()
+        qapp.processEvents()
+        chain = _tab_focus_names(dlg, qapp, start_widget=dlg.genre_edit, steps=3)
+        assert chain[0] == "Current Genre"
+        assert chain[1] == "Web Genre"
+        assert chain[2] == "Keep Web Genre"
+    finally:
+        dlg.close()
+
+
 def test_series_row_visible_when_db_has_series(qapp):
     book = Book(
         book_id=2,
