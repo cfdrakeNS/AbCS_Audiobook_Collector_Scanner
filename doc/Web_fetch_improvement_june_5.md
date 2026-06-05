@@ -289,13 +289,15 @@ if isbn_list and not metadata.get("series"):
 
 ### 6.8 Optional: parallel enrichment (Future / larger refactor)
 
-**What:** Run plot enrichment and series enrichment concurrently (`ThreadPoolExecutor`) since they hit different endpoints.
+**What:** Run plot enrichment and series enrichment concurrently (`ThreadPoolExecutor`) since they hit different endpoints, or move the entire `get_book_metadata` call off the UI thread via `QThread` / `QRunnable`.
 
-**Why:** Could cut enrichment wall-clock time roughly in half.
+**Why:** Could cut enrichment wall-clock time roughly in half and prevent UI freezes during long cascades.
 
-**Caution:** Qt UI thread constraints; would need careful threading or moving fetch off UI thread entirely.
+**Caution:** Qt UI thread constraints; progress callbacks must marshal back to the main thread for `WebFetchProgressDialog` updates. Screen reader announcements depend on focus timing on the dialog.
 
-**Effort:** Large — out of scope for a quick win.
+**Status:** Deferred post-merge. Current synchronous design is acceptable for typical fetches; revisit if users report timeouts or unresponsive UI during web lookup.
+
+**Effort:** Large — out of scope for the polished branch merge.
 
 ---
 
@@ -337,13 +339,20 @@ Add or extend tests in `test/test_web_book_api_matching.py` and `test/test_web_s
 
 ## 10. Summary
 
-The current web fetch pipeline is well structured for **comparison and safe matching**, with strong fallbacks for audiobook-specific catalog quirks. Its main gaps relative to the goals (plot + series) are:
+The web fetch pipeline is structured for **comparison and safe matching**, with strong fallbacks for audiobook-specific catalog quirks.
 
-- **ISBN pre-pass exists in code but is unreachable** — the UI has no ISBN to pass and the DB stores none.
-- **ISBNs returned in search responses are discarded** — reusing them for targeted enrichment would improve series and plot quality with no schema change.
-- **Series and plot rely on repeated fuzzy searches** where a single ISBN-targeted Google Books query would be more accurate.
-- **Plot enrichment skips the fast Wikipedia REST path** for the common case where Open Library or Google Books wins.
+**Implemented (June 2026):**
 
-The practical near-term improvement is a **hybrid approach**: use text search to find the book, then reuse any ISBN that appears in the matched response to sharpen series and plot enrichment — all in-flight, no schema changes required.
+- **6.2** — In-flight ISBN reuse from Open Library / Google Books search hits for targeted series and plot enrichment
+- **6.4** — Wikipedia REST summary attempted early for all winning sources (not only WikiData)
+- **6.5** — Series enrichment order: Open Library work → WikiData → Google by ISBN → Google by title
+- **6.6 / 6.7** — ISBN included in cache key; unified “Looking up ISBN…” progress text
+- **6.1** — ISBN pre-pass orchestrator tries Google Books first, then Open Library (hook only; UI does not pass ISBN)
 
-Implementing improvements 6.2, 6.4, and 6.5 delivers the largest quality gain for plot and series with minimal architectural change.
+**Still open / future:**
+
+- **6.8** — Move network fetch and enrichment off the UI thread (parallel or worker-based); see §6.8
+- **ISBN pre-pass from UI** — No DB ISBN column; direct `isbn=` pre-pass remains unreachable until import/tags supply one
+- **Rating field** — Web rating shown in UI but stored only inside comments text, not a dedicated DB column
+
+The hybrid approach in production: text search to find the book, then reuse any ISBN from the matched response to sharpen series and plot enrichment — all in-flight, no schema changes required.

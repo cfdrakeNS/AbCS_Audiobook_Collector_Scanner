@@ -754,9 +754,12 @@ class WebMetadataWindow(QDialog):
             self._finish_refetch_ui("No book loaded for re-fetch.", self.title_edit)
             return
 
+        from src.ui.web_fetch_progress import WebFetchProgressDialog
         from src.web.web_book_api import WebBookAPI
 
-        self.set_status("Re-fetching web data…", announce=False)
+        popup = WebFetchProgressDialog(self)
+        popup.show()
+        QApplication.processEvents()
         self.refetch_button.setEnabled(False)
         status_msg = "Re-fetch complete"
         focus_after = self.title_edit
@@ -775,7 +778,7 @@ class WebMetadataWindow(QDialog):
                 path=getattr(book, "path", "") or "",
                 source=getattr(book, "source", "") or "",
                 comments=getattr(book, "comments", "") or "",
-                progress_callback=lambda msg: self.set_status(msg, announce=False),
+                progress_callback=popup.update_message,
             )
             if new_data and not new_data.get("_no_result"):
                 from src.web.web_book_api import clean_web_data
@@ -802,6 +805,7 @@ class WebMetadataWindow(QDialog):
         except Exception as exc:
             status_msg = f"Re-fetch error: {exc}"
         finally:
+            popup.close()
             self.refetch_button.setEnabled(True)
             self._finish_refetch_ui(status_msg, focus_after)
 
@@ -1121,6 +1125,12 @@ class WebMetadataWindow(QDialog):
         self.status_bar.showMessage(message)
         if announce:
             announce_status_message(self.status_bar, message, move_focus=True)
+            from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
+            QTimer.singleShot(
+                max(350, get_screen_reader_focus_delay_ms() + 50),
+                self.set_tab_order,
+            )
 
         # Auto-clear status after timeout if specified
         if timeout_ms > 0:

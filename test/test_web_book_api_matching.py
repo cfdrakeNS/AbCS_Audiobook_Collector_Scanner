@@ -585,6 +585,36 @@ def test_cache_key_includes_isbn_param(api):
     assert any("9780441172719" in key for key in api._cache)
 
 
+@patch("src.web.web_book_api.urllib.request.urlopen")
+def test_open_library_search_stores_discovered_isbn(urlopen_mock, api):
+    """OL search docs with isbn field should be kept for in-flight enrichment."""
+    doc = {
+        "title": "The Way of Kings",
+        "author_name": ["Brandon Sanderson"],
+        "first_publish_year": 2010,
+        "key": "/works/OL123W",
+        "isbn": ["9780765326355"],
+    }
+
+    class FakeResponse:
+        def read(self):
+            return json.dumps({"docs": [doc]}).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    urlopen_mock.return_value = FakeResponse()
+    with patch.object(api, "_get_open_library_work_fields", return_value={}):
+        result = api._fetch_from_open_library(
+            "The Way of Kings", "Brandon Sanderson"
+        )
+    assert result is not None
+    assert result.get("isbn") == "9780765326355"
+
+
 def test_google_isbn_lookup_returns_series_info(api):
     item = {
         "volumeInfo": {
