@@ -16,38 +16,16 @@ from PySide6.QtCore import Qt
 # Check announce_status_message function directly
 def test_announce_function():
     """Test the announce_status_message function signature."""
-    try:
-        from src.accessibility.accessible_events import announce_status_message
+    from src.accessibility.accessible_events import announce_status_message
+    import inspect
 
-        print("OK: announce_status_message imported successfully")
-
-        # Test the function signature
-        import inspect
-
-        sig = inspect.signature(announce_status_message)
-        print(f"Function signature: {sig}")
-
-        # Show parameters
-        for param_name, param in sig.parameters.items():
-            default = (
-                param.default
-                if param.default != inspect.Parameter.empty
-                else "required"
-            )
-            print(f"  Parameter: {param_name} = {default}")
-
-        return True
-
-    except Exception as e:
-        print(f"ERROR: announce_status_message failed: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return False
+    sig = inspect.signature(announce_status_message)
+    assert "status_bar" in sig.parameters
+    assert "message" in sig.parameters
 
 
-def test_book_import_window():
-    """Test the book list import window in isolation."""
+def run_manual_import_window_test():
+    """Manual interactive test — not collected by pytest."""
     app = QApplication(sys.argv)
 
     # Set up accessibility
@@ -91,4 +69,4 @@ def test_book_import_window():
 
 
 if __name__ == "__main__":
-    test_book_import_window()
+    sys.exit(run_manual_import_window_test())

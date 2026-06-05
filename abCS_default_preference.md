@@ -9,7 +9,7 @@
  - reader keywords: reader, read by, narrator, narrated by
  - author in title: warning 
  - title in author: error
- - unknown/various: error
+ - unknown/various: warning
  - min title length: 3 warning
  - Duplicate match: title + author + year
  - fuzzy duplicate %: 90

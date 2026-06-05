@@ -38,10 +38,17 @@ from src.database import (
     CollectionQueries,
 )
 from src.accessibility.scaling import UIScaler
+from src.accessibility.icon_helper import apply_decorative_action_icon, get_app_icon
 from src.accessibility.style_helpers import (
+    apply_status_bar_tooltip,
+    apply_visual_tooltip_map,
     build_accessible_message_box_style,
+    build_modern_button_style,
     exec_styled_message_box,
+    apply_message_box_button_icons,
     set_message_box_button_accessibility,
+    MESSAGE_BOX_UNSAVED_THREE_ICONS,
+    MESSAGE_BOX_UNSAVED_TWO_ICONS,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -49,6 +56,8 @@ from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 
 
@@ -95,6 +104,7 @@ class ImportDetailWindow(QDialog):
                 ),
             },
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
         if reply == QMessageBox.Yes:
             if self.on_save():
@@ -126,15 +136,15 @@ class ImportDetailWindow(QDialog):
         "E",  # Errors
         "F",  # Files
         "G",  # Genre
-        "H",  # Path (Pat&h)
-        "I",  # Series (Ser&ies)
-        "M",  # Length (Length (&M))
-        "O",  # Comments (C&omments)
+        "H",  # Path
+        "I",  # Series
+        "M",  # Length
+        "O",  # Comments
         "R",  # Reader
         "S",  # Save
         "T",  # Title
         "Y",  # Year
-        "Z",  # Size (Si&ze)
+        "Z",  # Size
         # Add any additional used keys here
     }
 
@@ -215,8 +225,13 @@ class ImportDetailWindow(QDialog):
         self.collection_queries = CollectionQueries(db)
 
         # Setup UI
+        self.setWindowIcon(get_app_icon())
+
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.apply_control_styles()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.install_focus_filters()
         self.load_combos()
         self.load_book_data()
@@ -284,15 +299,6 @@ class ImportDetailWindow(QDialog):
     def _get_import_list_valid_count(self) -> int:
         """Return current valid-books count from parent Import Window when available."""
         parent = self.parent()
-        if parent and hasattr(parent, "_summary_counts"):
-            summary = getattr(parent, "_summary_counts", {}) or {}
-            try:
-                summary_valid = int(summary.get("valid", 0))
-                if summary_valid:
-                    return summary_valid
-            except (TypeError, ValueError):
-                pass
-
         if parent and hasattr(parent, "scanned_items"):
             valid_count = 0
             for item in getattr(parent, "scanned_items", []) or []:
@@ -324,10 +330,13 @@ class ImportDetailWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status (Alt+/)."""
-        status_text = self.get_status_summary()
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        fallback = (getattr(self, "_default_status_message", "") or "").strip()
+        parent = self.parent()
+        if parent and hasattr(parent, "status_bar"):
+            parent_msg = (parent.status_bar.currentMessage() or "").strip()
+            if parent_msg and not (self.status_bar.currentMessage() or "").strip():
+                fallback = parent_msg
+        read_status_bar_message(self.status_bar, fallback=fallback or "Ready")
 
     def on_cancel_edit(self):
         """
@@ -379,6 +388,9 @@ class ImportDetailWindow(QDialog):
                         "Discard changes and close",
                     ),
                 },
+            )
+            apply_message_box_button_icons(
+                msg, self.scaler, MESSAGE_BOX_UNSAVED_THREE_ICONS
             )
             reply = msg.exec()
 
@@ -938,51 +950,13 @@ class ImportDetailWindow(QDialog):
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
 
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-        """
-
-        spinbox_style = f"""
-            QSpinBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QSpinBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-        """
-
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
+        button_style = build_modern_button_style(scaled_height)
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
             }}
         """
 
@@ -992,12 +966,30 @@ class ImportDetailWindow(QDialog):
             }
         """
 
+        self.save_return_button.setObjectName("primaryActionButton")
+        self.skip_button.setObjectName("")
+
         # Apply styles to widgets that need local styling
         # Text boxes, combo boxes, and spin boxes use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
+        self.status_bar.setStyleSheet(status_style)
+        self._apply_action_button_icons()
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside Save and Discard button text."""
+        apply_decorative_action_icon(self.save_return_button, "save", self.scaler)
+        apply_decorative_action_icon(self.skip_button, "cancel", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        """Refresh styles when zoom changes."""
+        self.apply_control_styles()
+
+    def on_theme_changed(self, _theme_name: str):
+        """Refresh styles when application theme changes."""
+        self.apply_control_styles()
 
     def setup_ui(self):
         """Setup user interface."""
@@ -1013,11 +1005,12 @@ class ImportDetailWindow(QDialog):
         # Row 1: Title + Author (side by side)
         row1_layout = QHBoxLayout()
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("Book title")
+        self.title_edit.setAccessibleName("")
+        self.title_edit.setAccessibleDescription("")
         self.title_edit.setReadOnly(False)
         row1_layout.addWidget(self.title_edit, 2)
 
-        author_label = QLabel("&Author:")
+        author_label = QLabel("Author:")
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
@@ -1026,12 +1019,13 @@ class ImportDetailWindow(QDialog):
         row1_layout.addWidget(author_label)
         row1_layout.addWidget(self.author_combo, 1)
 
-        title_label = QLabel("&Title:")
-        title_label.setBuddy(self.title_edit)
+        title_label = QLabel("Title:")
+        title_label.setAccessibleName("")
+        title_label.setAccessibleDescription("")
         form.addRow(title_label, row1_layout)
 
         # Row 2: Plot
-        self.comments_label = QLabel("Pl&ot:")
+        self.comments_label = QLabel("Plot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
         self.comments_edit.setTabChangesFocus(True)
@@ -1054,7 +1048,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.year_spin)
         row3_layout.addSpacing(40)
 
-        time_label = QLabel("Ti&me:")
+        time_label = QLabel("Time:")
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setInputMask("99:99;_")
@@ -1066,7 +1060,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.time_edit)
         row3_layout.addSpacing(40)
 
-        reader_label = QLabel("&Reader:")
+        reader_label = QLabel("Reader:")
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
         self.reader_edit.setMaximumWidth(220)
@@ -1075,7 +1069,7 @@ class ImportDetailWindow(QDialog):
         row3_layout.addWidget(self.reader_edit)
         row3_layout.addStretch(1)
 
-        year_label = QLabel("&Year:")
+        year_label = QLabel("Year:")
         year_label.setBuddy(self.year_spin)
         form.addRow(year_label, row3_layout)
 
@@ -1088,7 +1082,7 @@ class ImportDetailWindow(QDialog):
         self.series_combo.setMaximumWidth(260)
         row4_layout.addWidget(self.series_combo, 1)
 
-        genre_label = QLabel("&Genre:")
+        genre_label = QLabel("Genre:")
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
@@ -1097,7 +1091,7 @@ class ImportDetailWindow(QDialog):
         row4_layout.addWidget(genre_label)
         row4_layout.addWidget(self.genre_combo, 1)
 
-        collection_label = QLabel("&Collection:")
+        collection_label = QLabel("Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setMaximumWidth(220)
@@ -1107,14 +1101,14 @@ class ImportDetailWindow(QDialog):
         row4_layout.addWidget(collection_label)
         row4_layout.addWidget(self.collection_combo, 1)
 
-        series_label = QLabel("Ser&ies:")
+        series_label = QLabel("Series:")
         series_label.setBuddy(self.series_combo)
         form.addRow(series_label, row4_layout)
 
         # Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
 
-        files_label = QLabel("&Files:")
+        files_label = QLabel("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
@@ -1122,7 +1116,7 @@ class ImportDetailWindow(QDialog):
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
-        bitrate_label = QLabel("&Bitrate:")
+        bitrate_label = QLabel("Bitrate:")
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
@@ -1130,7 +1124,7 @@ class ImportDetailWindow(QDialog):
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
 
-        size_label = QLabel("Si&ze:")
+        size_label = QLabel("Size:")
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(True)
         self.size_edit.setAccessibleName("File size in megabytes")
@@ -1160,7 +1154,7 @@ class ImportDetailWindow(QDialog):
         # Row 6: Errors
         row6_layout = QHBoxLayout()
 
-        self.errors_label = QLabel("&Errors:")
+        self.errors_label = QLabel("Errors:")
         self.errors_edit = QTextEdit()
         self.errors_edit.setReadOnly(True)
         self.errors_edit.setAccessibleName("Validation errors")
@@ -1181,7 +1175,7 @@ class ImportDetailWindow(QDialog):
         self.path_edit.setAccessibleName("File path")
         row7_layout.addWidget(self.path_edit, 1)
 
-        path_label = QLabel("Pat&h:")
+        path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
         form.addRow(path_label, row7_layout)
 
@@ -1190,6 +1184,7 @@ class ImportDetailWindow(QDialog):
         # Footer: status bar + buttons
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
         # Row 5: Action buttons
@@ -1242,6 +1237,50 @@ class ImportDetailWindow(QDialog):
 
         self.setup_shortcuts()
 
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.title_edit: ("Book title", "Title of the scanned audiobook"),
+                self.author_combo: ("Author", "Author of the scanned audiobook"),
+                self.comments_edit: ("Plot or comments", "Plot or comments from scan"),
+                self.year_spin: ("Publication year", "Publication year"),
+                self.time_edit: (
+                    "Length",
+                    "Audiobook length in hours and minutes; saved when you leave this screen",
+                ),
+                self.reader_edit: ("Narrator", "Narrator or reader name"),
+                self.series_combo: ("Series", "Series for this audiobook"),
+                self.genre_combo: ("Genre", "Genre for this audiobook"),
+                self.collection_combo: (
+                    "Collection",
+                    "Target collection for import",
+                ),
+                self.files_edit: (
+                    "File count",
+                    "Number of audio files from scan; set album tag on files to fix grouping",
+                ),
+                self.bitrate_edit: ("Bitrate", "Bitrate in kilobits per second"),
+                self.size_edit: ("File size", "Total size in megabytes"),
+                self.format_edit: ("Format", "Audio file format"),
+                self.source_edit: ("Source", "How this item was discovered"),
+                self.path_edit: ("Path", "Folder path for this audiobook"),
+                self.errors_edit: (
+                    "Validation issues",
+                    "Import validation errors for this item",
+                ),
+                self.save_return_button: (
+                    "Save edits",
+                    "Save edits and continue editing - Alt+S",
+                ),
+                self.skip_button: (
+                    "Discard item",
+                    "Discard this import item and advance - Alt+D",
+                ),
+            }
+        )
+        apply_status_bar_tooltip(self.status_bar, "Status")
+
     def setup_shortcuts(self):
         """Centralized Alt+letter shortcut registration using ShortcutManager."""
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
@@ -1250,7 +1289,7 @@ class ImportDetailWindow(QDialog):
         callback_map = {
             "title_edit": lambda: self.title_edit.setFocus(),  # Alt+T
             "author_combo": lambda: self.author_combo.setFocus(),  # Alt+A
-            "comments_edit": lambda: self.comments_edit.setFocus(),  # Alt+P (from Pl&ot label)
+            "comments_edit": lambda: self.comments_edit.setFocus(),  # Alt+P
             "year_spin": lambda: self.year_spin.setFocus(),  # Alt+Y
             "time_edit": lambda: self.time_edit.setFocus(),  # Alt+M
             "reader_edit": lambda: self.reader_edit.setFocus(),  # Alt+R
@@ -1441,11 +1480,7 @@ class ImportDetailWindow(QDialog):
 
         parent = self.parent()
         if parent and hasattr(parent, "_apply_detail_edits"):
-            parent._apply_detail_edits(
-                self.current_index,
-                self,
-                refresh_view=False,
-            )
+            parent._apply_detail_edits(self.current_index, self)
 
         if resolve_errors:
             self.errors = []
@@ -1518,6 +1553,9 @@ class ImportDetailWindow(QDialog):
                         "Discard changes and close",
                     ),
                 },
+            )
+            apply_message_box_button_icons(
+                msg, self.scaler, MESSAGE_BOX_UNSAVED_THREE_ICONS
             )
             reply = msg.exec()
 

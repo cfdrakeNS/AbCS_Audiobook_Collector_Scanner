@@ -1,6 +1,16 @@
-from src.accessibility.style_helpers import exec_styled_message_box
+from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
+    exec_styled_message_box,
+    build_modern_button_style,
+    build_table_polish_style,
+)
+from src.accessibility.icon_helper import get_app_icon
 from src.accessibility.scaling import UIScaler
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
 from src.database import (
     DatabaseManager,
     Book,
@@ -127,8 +137,12 @@ class UpdateWindow(QDialog):
         self.has_multiple_collections = len(self.collections) > 1
 
         # Setup UI
+        self.setWindowIcon(get_app_icon())
+
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.apply_control_styles()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
         self.load_combos()
         self.load_books_table()
         self.setup_shortcuts()
@@ -147,6 +161,18 @@ class UpdateWindow(QDialog):
         )
         self.resize(1200, 500)  # Wider window for larger columns
         self.setMinimumWidth(900)  # Ensure minimum width
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.series_combo: "Apply a series to all selected books",
+                self.genre_combo: "Apply a genre to all selected books",
+                self.collection_combo: "Apply a collection to all selected books",
+                self.table: "Preview books that will be updated",
+                self.status_bar: "Bulk update status",
+            }
+        )
 
     def _load_selected_books(self) -> List[Book]:
         """Load Book objects for all selected book IDs."""
@@ -264,6 +290,7 @@ class UpdateWindow(QDialog):
         # Status bar for messages
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         footer_layout.addWidget(self.status_bar, 1)
 
         layout.addLayout(footer_layout)
@@ -635,21 +662,7 @@ class UpdateWindow(QDialog):
         self.setFont(font)
 
         # Stylesheet for QPushButton
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
+        button_style = build_modern_button_style(scaled_height)
 
         # Stylesheet for QLabel in header - bold
         label_style = """
@@ -658,15 +671,22 @@ class UpdateWindow(QDialog):
             }
         """
 
-        table_style = """
-            QTableWidget:focus {
-                border: none;
-                outline: none;
-            }
-            QTableWidget::item:focus {
-                border: none;
-                outline: none;
-            }
+        table_style = (
+            build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
         """
 
         # Apply styles
@@ -676,7 +696,12 @@ class UpdateWindow(QDialog):
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
         self.table.setStyleSheet(table_style)
+        self.status_bar.setStyleSheet(status_style)
         self._apply_header_combo_widths()
+
+    def on_scale_changed(self, _scale_percentage: int):
+        """Refresh styles when zoom changes."""
+        self.apply_control_styles()
 
     def _apply_header_combo_widths(self):
         """Keep Series and Genre combos visually aligned with same width."""
@@ -788,10 +813,10 @@ class UpdateWindow(QDialog):
 
     def on_read_status_bar(self):
         """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
-        if QAccessible.isActive():
-            self.show_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
 
     def keyPressEvent(self, event):
         """Override to prevent Enter from closing the dialog."""

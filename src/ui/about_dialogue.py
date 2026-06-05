@@ -3,7 +3,14 @@
 import os
 import sys
 
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
+from PySide6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
 from PySide6.QtCore import Qt, QTimer
 
@@ -13,20 +20,14 @@ def _resolve_graphics_path(filename: str) -> str:
     Resolve the path to a graphics file.
     Handles both development mode and PyInstaller frozen bundles.
     """
-    # Try PyInstaller bundle path first
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        # Running in PyInstaller bundle
         base_path = sys._MEIPASS
-        # Try lowercase 'graphics' first (Linux compatibility)
         for graphics_dir in ["graphics", "Graphics"]:
             full_path = os.path.join(base_path, graphics_dir, filename)
             if os.path.exists(full_path):
                 return full_path
-        # Return default path even if not found
         return os.path.join(base_path, "Graphics", filename)
 
-    # Development mode - resolve relative to this file
-    # Go up from src/ui/ to project root
     this_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(this_dir))
 
@@ -35,8 +36,16 @@ def _resolve_graphics_path(filename: str) -> str:
         if os.path.exists(full_path):
             return full_path
 
-    # Return default path even if not found
     return os.path.join(project_root, "Graphics", filename)
+
+
+def _get_app_version() -> str:
+    try:
+        from src.build_config import APP_VERSION
+
+        return f"v{APP_VERSION}"
+    except ImportError:
+        return "v?.?.?"
 
 
 class FocusAnnouncingLabel(QLabel):
@@ -50,6 +59,7 @@ class AboutDialog(QDialog):
 
     def __init__(self, scaler, parent=None):
         from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.style_helpers import build_accessible_button_style
 
         super().__init__(parent)
         self.setWindowIcon(get_app_icon())
@@ -65,63 +75,26 @@ class AboutDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
             self.scaler.get_scaled_size(24),
-            self.scaler.get_scaled_size(6),  # Tighter top margin
+            self.scaler.get_scaled_size(6),
             self.scaler.get_scaled_size(24),
             self.scaler.get_scaled_size(18),
         )
-
-    def get_app_version(self):
-        try:
-            from src.build_config import APP_VERSION
-
-            return f"v{APP_VERSION}"
-        except ImportError:
-            return "v?.?.?"
-
-    def __init__(self, scaler, parent=None):
-        super().__init__(parent)
-
-        self.scaler = scaler
-        self.setWindowTitle("About AbCS")
-        self.setAccessibleName("About AbCS")
-        self.setModal(True)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setMinimumWidth(self.scaler.get_scaled_size(400))
-        self.setMinimumHeight(self.scaler.get_scaled_size(520))
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(
-            self.scaler.get_scaled_size(24),
-            self.scaler.get_scaled_size(6),  # Tighter top margin
-            self.scaler.get_scaled_size(24),
-            self.scaler.get_scaled_size(18),
-        )
-        layout.setSpacing(self.scaler.get_scaled_size(8))  # Tighter spacing
-
-        # --- Graphic and About text in a zero-spacing container ---
-        from PySide6.QtWidgets import QWidget, QVBoxLayout as QVBoxLayout2
+        layout.setSpacing(self.scaler.get_scaled_size(8))
 
         content_widget = QWidget(self)
-        content_layout = QVBoxLayout2(content_widget)
+        content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        filename = "abcs_app_splash.png"
-        pixmap_path = _resolve_graphics_path(filename)
-        pixmap = QPixmap(pixmap_path)
+        pixmap = QPixmap(_resolve_graphics_path("abcs_app_splash.png"))
         if not pixmap.isNull():
-            from PySide6.QtWidgets import (
-                QVBoxLayout as QVBoxLayout3,
-                QWidget as QWidget2,
-            )
-
-            graphic_container = QWidget2(self)
-            graphic_layout = QVBoxLayout3(graphic_container)
+            graphic_container = QWidget(self)
+            graphic_layout = QVBoxLayout(graphic_container)
             graphic_layout.setContentsMargins(0, 0, 0, 0)
             graphic_layout.setSpacing(0)
             graphic_layout.addStretch(1)
             graphic_label = QLabel(self)
-            graphic_label.setPixmap(pixmap)  # Show at native size (500x162)
+            graphic_label.setPixmap(pixmap)
             graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
             graphic_label.setFocusPolicy(Qt.NoFocus)
             graphic_label.setContentsMargins(0, 0, 0, 0)
@@ -129,7 +102,7 @@ class AboutDialog(QDialog):
             graphic_layout.addStretch(1)
             content_layout.addWidget(graphic_container)
 
-        version = self.get_app_version()
+        version = _get_app_version()
         about_text = (
             f"AbCS - Audio Book Collector Scanner    {version}\n"
             "A cross-platform audiobook collection manager with full accessibility support.\n\n"
@@ -152,7 +125,6 @@ class AboutDialog(QDialog):
             "Press F1 or use Help menu for Keyboard Shortcuts."
         )
 
-        # Tabstop 1: the text content
         about_label = FocusAnnouncingLabel(about_text, self)
         about_label.setWordWrap(True)
         about_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
@@ -171,16 +143,12 @@ class AboutDialog(QDialog):
 
         layout.addWidget(content_widget)
 
-        # Tabstop 2: Close button — styled and right-aligned
-        from PySide6.QtWidgets import QHBoxLayout, QWidget
-
         btn_row = QHBoxLayout()
         btn_row.addStretch(1)
         ok_btn = QPushButton("OK", self)
         ok_btn.setAccessibleName("OK")
         ok_btn.setDefault(True)
         ok_btn.clicked.connect(self.accept)
-        from src.accessibility.style_helpers import build_accessible_button_style
 
         base_height = 20
         scale_pct = (
@@ -199,5 +167,4 @@ class AboutDialog(QDialog):
         self.about_label = about_label
         self.ok_btn = ok_btn
 
-        # Start focus on about_label so the screen reader reads the text first
         QTimer.singleShot(100, lambda: about_label.setFocus(Qt.TabFocusReason))

@@ -46,6 +46,7 @@ data/*.sqlite3
 data/*.sql
 data/*.csv
 data/*.xls
+data/web_cache.json
 
 # Backup folder
 backups/
@@ -62,3 +63,4 @@ releases/
 releases/**
 ltr_demo/
 ltr_demo/**
+.aider*

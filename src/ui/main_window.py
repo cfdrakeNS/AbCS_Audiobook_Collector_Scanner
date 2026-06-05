@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QTextEdit,
+    QToolBar,
+    QSizePolicy,
 )
 from src.ui.license_dialogue import LicenseDialog
 from PySide6.QtCore import (
@@ -61,11 +63,24 @@ from src.database import (
 )
 from src.ui.statistics_dialog import StatisticsDialog
 from src.accessibility.scaling import UIScaler
-from src.accessibility.accessible_events import announce_status_message
-from src.accessibility.style_helpers import (
-    exec_styled_message_box,
-    build_accessible_button_style,
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
+from src.accessibility.style_helpers import (
+    apply_status_bar_tooltip,
+    apply_tooltip_accessibility,
+    apply_visual_tooltip_map,
+    exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+    build_accessible_button_style,
+    build_card_panel_style,
+    build_modern_button_style,
+    build_table_polish_style,
+    build_toolbar_button_style,
+)
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -328,14 +343,14 @@ class MainWindow(QMainWindow):
                     )
                 else:
                     # Date is changing - ask for confirmation
-                    from PySide6.QtWidgets import QMessageBox
-
-                    reply = QMessageBox.question(
+                    reply = exec_styled_message_box(
                         self,
-                        "Confirm Read Date",
-                        f"Mark '{book.title}' as read on {new_date}?",
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.No,
+                        self.scaler.get_scaled_size(20),
+                        icon=QMessageBox.Question,
+                        title="Confirm Read Date",
+                        text=f"Mark '{book.title}' as read on {new_date}?",
+                        buttons=QMessageBox.Yes | QMessageBox.No,
+                        default_button=QMessageBox.No,
                     )
                     if reply == QMessageBox.Yes:
                         book.read_date = new_date
@@ -363,30 +378,155 @@ class MainWindow(QMainWindow):
     FIND_ALLOWED_ALT_LETTERS = {"I", "T", "X"}
 
     DUPLICATE_MATCH_OPTIONS = [
-        ("Title + Author + Collection", "title_author"),
-        ("Title + Author + Year", "title_author_year"),
         ("Title + Author + Year + Collection", "title_author_year_collection"),
+        ("Title + Author + Year", "title_author_year"),
+        ("Title + Author + Collection", "title_author"),
+        ("Title + Author", "title_author_only"),
     ]
 
     _SETTINGS_ORG = "AbCS"
     _SETTINGS_APP = "AudioBookCollector"
     _SETTINGS_KEY_COLLECTION_FILTER_ID = "main/collection_filter_id"
 
+    _SORT_KEY_TO_COLUMN = {
+        "Author": 0,
+        "Title": 1,
+        "Year": 2,
+        "Series": 3,
+        "Genre": 4,
+        "Time": 5,
+        "Read Date": 6,
+    }
+    _DIRECTION_SORT_KEYS = frozenset({"Year", "Time"})
+    _SORT_HEADER_TO_KEY = {"Read": "Read Date"}
+
+    def _normalize_sort_key(self, value: str | None) -> str | None:
+        """Map table header labels and sort keys to canonical sort key names."""
+        if not value:
+            return None
+        if value in self._SORT_KEY_TO_COLUMN:
+            return value
+        return self._SORT_HEADER_TO_KEY.get(value)
+
+    def _effective_sort_key(self) -> str:
+        """Return the sort key currently reflected in the summary and book details."""
+        return self._active_sort_key or self.current_filter.order_by or "Title"
+
     def _set_sort_label(self, order_by=None, direction=None):
-        """Set the sort label with custom message for Author, Genre, Series."""
-        key = order_by or self.current_filter.order_by
+        """Update tracked sort state and refresh the header filter summary."""
+        normalized = self._normalize_sort_key(order_by)
+        if normalized:
+            self._active_sort_key = normalized
+        if direction is not None:
+            self._active_sort_direction = direction
+        elif order_by is not None:
+            if normalized in self._DIRECTION_SORT_KEYS:
+                self._active_sort_direction = "Ascending"
+            else:
+                self._active_sort_direction = None
+        self._update_filter_summary_label()
+
+    def _sort_display_name(self, order_by=None) -> str:
+        """Human-readable sort label for filter summary and footer."""
+        key = order_by or self._effective_sort_key()
         if key == "Author":
-            msg = "Author, Year, Title"
-        elif key == "Series":
-            msg = "Series, Year, Title"
-        elif key == "Genre":
-            msg = "Genre, Title"
+            return "Author, Year, Title"
+        if key == "Series":
+            return "Series, Year, Title"
+        if key == "Genre":
+            return "Genre, Title"
+        return key or "Title"
+
+    def _filter_summary_text(self) -> str:
+        """Build compact sighted-user summary of active filters and sort."""
+        if self.duplicate_mode_active:
+            return (
+                f"Duplicate check: {self._duplicate_mode_label(self.duplicate_mode_match_mode)}"
+                f"  |  {len(self.books)} books shown"
+            )
+
+        parts = [f"{len(self.books)} books"]
+        collection_label = self._current_collection_label()
+        if self.current_filter.collection_id is not None:
+            parts.append(f"Collection: {collection_label}")
         else:
-            msg = key
-        if direction:
-            self.sort_label.setText(f"Sorted by: {msg} ({direction})")
-        else:
-            self.sort_label.setText(f"Sorted by: {msg}")
+            parts.append("Collection: All")
+
+        read_filter = self.current_filter.read_filter or "All"
+        if read_filter != "All":
+            parts.append(f"Read: {read_filter}")
+
+        if self.current_filter.search_text:
+            search_text = self.current_filter.search_text
+            if search_text.startswith("?"):
+                search_text = search_text[1:]
+            parts.append(f"Find: {search_text}")
+
+        parts.append(self._sort_summary_part())
+        return "  |  ".join(parts)
+
+    def _sort_shows_direction(self, key=None) -> bool:
+        """Only Year/Time (and header-only Read Date) show ascending/descending."""
+        key = key or self._effective_sort_key()
+        if key in self._DIRECTION_SORT_KEYS:
+            return True
+        return key == "Read Date" and self.current_filter.order_by != "Read Date"
+
+    def _sort_summary_part(self) -> str:
+        """Sort text for filter summary and Alt+/ readback."""
+        key = self._effective_sort_key()
+        name = self._sort_display_name(key)
+        if self._sort_shows_direction(key):
+            direction = getattr(self, "_active_sort_direction", None)
+            if direction:
+                return f"Sort: {name} ({direction})"
+        return f"Sort: {name}"
+
+    def _active_sort_display_text(self) -> str:
+        """Active sort label for book details header (no 'Sort:' prefix)."""
+        return self._sort_summary_part().removeprefix("Sort: ")
+
+    def _column_for_sort_key(self, key: str) -> int:
+        return self._SORT_KEY_TO_COLUMN.get(key, 1)
+
+    def _update_filter_summary_label(self):
+        """Refresh header filter/sort summary for sighted users."""
+        if not hasattr(self, "filter_summary_label"):
+            return
+        summary = self._filter_summary_text()
+        self.filter_summary_label.setText(summary)
+        self.filter_summary_label.setAccessibleDescription(summary)
+
+    def _apply_main_panel_styles(self):
+        """Apply card-style panels and footer button hierarchy styles."""
+        if hasattr(self, "filter_summary_panel"):
+            self.filter_summary_panel.setStyleSheet(
+                build_card_panel_style("filterSummaryPanel")
+            )
+        if hasattr(self, "footer_panel"):
+            self.footer_panel.setStyleSheet(
+                build_card_panel_style("footerActionPanel")
+            )
+        self._apply_footer_button_roles()
+
+    def _apply_footer_button_roles(self):
+        """Set primary/destructive object names for modern button styling."""
+        if not hasattr(self, "delete_button"):
+            return
+
+        self.delete_button.setObjectName("destructiveActionButton")
+        self.update_button.setObjectName("")
+        self.export_button.setObjectName("")
+
+        if self.duplicate_mode_active and self.export_button.isVisible():
+            self.export_button.setObjectName("primaryActionButton")
+        elif self.update_button.isVisible():
+            self.update_button.setObjectName("primaryActionButton")
+
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        button_stylesheet = build_modern_button_style(scaled_height)
+        for button in (self.update_button, self.delete_button, self.export_button):
+            button.setStyleSheet(button_stylesheet)
 
     def __init__(
         self, db: DatabaseManager, scaler: UIScaler, theme_manager: ThemeManager
@@ -448,9 +588,11 @@ class MainWindow(QMainWindow):
         self._last_header_sort_column = -1
         self._last_header_sort_order = Qt.AscendingOrder
         self._active_sort_key = "Title"
+        self._active_sort_direction = None
 
         # Setup UI
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.setup_shortcuts()
 
         # Connect to scaler changes to update header control heights
@@ -503,28 +645,43 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        # Header section
+        # Header section — full-width summary bar above the book table
         header_layout = self.create_header()
-        # Wrap header layout in a widget with left alignment to prevent center stretching
         header_widget = QWidget()
         header_widget.setLayout(header_layout)
-        layout.addWidget(header_widget, 0, Qt.AlignLeft | Qt.AlignTop)
+        header_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        layout.addWidget(header_widget, 0)
 
         # Table for books
         self.create_table()
         layout.addWidget(self.table)
 
-        # Footer section
-        footer_layout = self.create_footer()
-        layout.addLayout(footer_layout)
+        # Footer section (card panel with sort label and action buttons)
+        self.footer_panel = self.create_footer()
+        layout.addWidget(self.footer_panel)
 
         # Status bar (no Alt+key shortcut hints for accessibility)
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
+        configure_status_bar_accessibility(self.status_bar)
+        self.status_bar.setStyleSheet(
+            """
+            QStatusBar {
+                border-top: 1px solid palette(mid);
+                padding: 2px 6px;
+                background-color: palette(base);
+            }
+            """
+        )
 
         # Menu bar
         self.create_menu_bar()
+        self.create_action_toolbar()
+        self._apply_main_panel_styles()
+        self._update_filter_summary_label()
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
@@ -540,10 +697,30 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def create_header(self) -> QHBoxLayout:
-        """Create header with filters and search."""
+        """Create header with active filter and sort summary."""
         layout = QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)  # Remove layout margins
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+
+        self.filter_summary_panel = QWidget()
+        self.filter_summary_panel.setObjectName("filterSummaryPanel")
+        self.filter_summary_panel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        panel_layout = QHBoxLayout(self.filter_summary_panel)
+        panel_layout.setContentsMargins(10, 6, 10, 6)
+
+        self.filter_summary_label = QLabel("")
+        self.filter_summary_label.setWordWrap(True)
+        self.filter_summary_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+        self.filter_summary_label.setAccessibleName("Active filters and sort summary")
+        self.filter_summary_label.setAccessibleDescription(
+            "Shows collection, read status, find text, sort order, and book count"
+        )
+        panel_layout.addWidget(self.filter_summary_label, 1)
+        layout.addWidget(self.filter_summary_panel, 1)
 
         return layout
 
@@ -553,26 +730,13 @@ class MainWindow(QMainWindow):
         base_height = 20
         scaled_height = int(base_height * (scale_percentage / 100.0))
 
-        # Button sizing - compact height
-        button_stylesheet = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
-        self.update_button.setStyleSheet(button_stylesheet)
-        self.delete_button.setStyleSheet(button_stylesheet)
-        if hasattr(self, "export_button"):
-            self.export_button.setStyleSheet(button_stylesheet)
+        if hasattr(self, "action_toolbar"):
+            self.action_toolbar.setStyleSheet(
+                build_toolbar_button_style(scaled_height)
+            )
+            self._apply_toolbar_action_icons()
+
+        self._apply_main_panel_styles()
 
         # Keep table fixed-content columns scaled without expensive content-size scans.
         if hasattr(self, "table"):
@@ -621,6 +785,7 @@ class MainWindow(QMainWindow):
     def on_theme_changed(self, _theme_name: str):
         """Refresh main window controls/table when application theme changes."""
         self.apply_control_styles()
+        self._apply_main_panel_styles()
 
     def create_table(self):
         """Create books table."""
@@ -654,14 +819,15 @@ class MainWindow(QMainWindow):
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
         # Apply centralized F1 popup style to table only
         self.table.setStyleSheet(
-            """
+            build_table_polish_style("QTableView")
+            + """
+            QTableView {
+                border: 1px solid palette(mid);
+                border-radius: 5px;
+            }
             QTableView::item:hover {
                 background-color: palette(base);
                 color: palette(text);
-            }
-            QTableView::item:selected {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
             }
             QTableView::item:selected:focus {
                 background-color: palette(highlight);
@@ -754,15 +920,13 @@ class MainWindow(QMainWindow):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
             self.table.setColumnWidth(col, max(int(base_width * scale), 48))
 
-    def create_footer(self) -> QHBoxLayout:
-        """Create footer with action buttons and info."""
-        layout = QHBoxLayout()
+    def create_footer(self) -> QWidget:
+        """Create footer card with action buttons."""
+        self.footer_panel = QWidget()
+        self.footer_panel.setObjectName("footerActionPanel")
+        layout = QHBoxLayout(self.footer_panel)
+        layout.setContentsMargins(10, 6, 10, 6)
 
-        # Sort order label (on left side)
-        self.sort_label = QLabel("Sorted by: Title")
-        layout.addWidget(self.sort_label)
-
-        # Spacer to push buttons to the right
         layout.addStretch()
 
         # Update button (hidden initially)
@@ -802,7 +966,150 @@ class MainWindow(QMainWindow):
         self.export_button.setVisible(False)
         layout.addWidget(self.export_button)
 
-        return layout
+        self._apply_footer_action_icons()
+        return self.footer_panel
+
+    def _apply_footer_action_icons(self):
+        """Decorative icons beside footer button text (accessible names unchanged)."""
+        apply_decorative_action_icon(self.update_button, "update", self.scaler)
+        apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
+        apply_decorative_action_icon(self.export_button, "export", self.scaler)
+
+    def apply_visual_tooltips(self):
+        tooltip_map = {
+            self.table: "Browse the audiobook collection",
+            self.update_button: "Update selected books",
+            self.delete_button: "Delete selected books",
+            self.export_button: "Export duplicate books to CSV",
+        }
+        if hasattr(self, "filter_summary_label"):
+            tooltip_map[self.filter_summary_label] = (
+                "Active collection, read, find, and sort filters"
+            )
+        apply_visual_tooltip_map(tooltip_map)
+        apply_status_bar_tooltip(self.status_bar, "Current application status")
+        self._apply_menu_action_tooltips()
+
+    def _apply_menu_action_tooltips(self):
+        """Pair tooltips with menu and toolbar action accessible descriptions."""
+        static_actions = [
+            (getattr(self, "delete_action", None), "Delete selected books", None),
+            (getattr(self, "update_action", None), "Update selected books", None),
+            (
+                getattr(self, "get_web_info_action", None),
+                "Search web metadata for the focused book",
+                None,
+            ),
+            (
+                getattr(self, "find_action", None),
+                "Find books by title, author, or other fields",
+                "Find books by field. Enter text and press Enter to find.",
+            ),
+            (
+                getattr(self, "book_details_action", None),
+                "Open details for the focused book",
+                "Open book details for the focused row - Enter",
+            ),
+            (
+                getattr(self, "reading_history_action", None),
+                "Open reading history statistics",
+                "Open reading history window",
+            ),
+            (
+                getattr(self, "duplicate_check_action", None),
+                "Find duplicate books in the collection",
+                "Run duplicate check on the library",
+            ),
+            (
+                getattr(self, "book_list_import_action", None),
+                "Import books from a spreadsheet list",
+                "Import books from a CSV or spreadsheet file",
+            ),
+        ]
+        for action, tooltip, description in static_actions:
+            if action is None:
+                continue
+            apply_tooltip_accessibility(action, tooltip, description)
+
+    def create_action_toolbar(self):
+        """Create a simple labeled action toolbar using existing handlers."""
+        self.action_toolbar = QToolBar("Main actions", self)
+        self.action_toolbar.setMovable(False)
+        self.action_toolbar.setFloatable(False)
+        self.action_toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.action_toolbar.setAccessibleName("Main actions toolbar")
+        self.action_toolbar.setAccessibleDescription(
+            "Toolbar for common audiobook collection actions"
+        )
+
+        self._toolbar_actions = []
+        toolbar_actions = [
+            (
+                "Add Book",
+                "add_book",
+                "Create a new audiobook entry",
+                "Create a new audiobook entry - Ctrl+N",
+                self.on_new_book,
+            ),
+            (
+                "Import",
+                "import",
+                "Import audiobooks from files or folders",
+                "Import audiobooks from files or folders - Ctrl+I",
+                self.on_import,
+            ),
+            (
+                "Find",
+                "find",
+                "Find books by title, author, or other fields",
+                "Find books by field. Ctrl+F",
+                self.on_find,
+            ),
+            (
+                "Search Web",
+                "search_web",
+                "Search web metadata for the focused book",
+                "Search web metadata for the focused book",
+                self.on_get_web_info_clicked,
+            ),
+            (
+                "Statistics",
+                "statistics",
+                "Show library statistics",
+                "Show library statistics",
+                self.on_show_splash,
+            ),
+            (
+                "Preferences",
+                "preferences",
+                "Open application preferences",
+                "Open application preferences",
+                self.on_preferences,
+            ),
+            (
+                "Help",
+                "help",
+                "Show keyboard shortcuts",
+                "Show keyboard shortcuts for this window",
+                self.on_show_shortcuts,
+            ),
+        ]
+
+        for text, role, tooltip, description, handler in toolbar_actions:
+            action = QAction(text, self)
+            apply_tooltip_accessibility(action, tooltip, description)
+            action.setStatusTip(tooltip)
+            action.triggered.connect(handler)
+            apply_decorative_action_icon(action, role, self.scaler)
+            self.action_toolbar.addAction(action)
+            self._toolbar_actions.append((action, role))
+
+        self.addToolBar(Qt.TopToolBarArea, self.action_toolbar)
+
+    def _apply_toolbar_action_icons(self):
+        """Refresh toolbar icon sizes when zoom changes."""
+        for action, role in getattr(self, "_toolbar_actions", ()):
+            apply_decorative_action_icon(action, role, self.scaler)
 
     def create_menu_bar(self):
         """Create menu bar."""
@@ -814,22 +1121,22 @@ class MainWindow(QMainWindow):
         # Import is registered via setup_shortcuts
 
         # mw#15: New Book with Ctrl+N shortcut displayed
-        new_action = QAction("&New Book\tCtrl+N", self)
-        new_action.triggered.connect(self.on_new_book)
-        file_menu.addAction(new_action)
+        self.new_book_action = QAction("&New Book\tCtrl+N", self)
+        self.new_book_action.triggered.connect(self.on_new_book)
+        file_menu.addAction(self.new_book_action)
 
-        new_action = QAction("&Import", self)
-        new_action.setShortcut("Ctrl+I")
-        new_action.setShortcutContext(Qt.ApplicationShortcut)
-        new_action.triggered.connect(self.on_import)
-        file_menu.addAction(new_action)
+        self.import_action = QAction("&Import", self)
+        self.import_action.setShortcut("Ctrl+I")
+        self.import_action.setShortcutContext(Qt.ApplicationShortcut)
+        self.import_action.triggered.connect(self.on_import)
+        file_menu.addAction(self.import_action)
 
         # Book List Import
-        book_list_import_action = QAction("Import Book &List", self)
-        book_list_import_action.setShortcut("Ctrl+Shift+I")
-        book_list_import_action.setShortcutContext(Qt.ApplicationShortcut)
-        book_list_import_action.triggered.connect(self.on_book_list_import)
-        file_menu.addAction(book_list_import_action)
+        self.book_list_import_action = QAction("Import Book &List", self)
+        self.book_list_import_action.setShortcut("Ctrl+Shift+I")
+        self.book_list_import_action.setShortcutContext(Qt.ApplicationShortcut)
+        self.book_list_import_action.triggered.connect(self.on_book_list_import)
+        file_menu.addAction(self.book_list_import_action)
 
         file_menu.addSeparator()
 
@@ -863,14 +1170,14 @@ class MainWindow(QMainWindow):
         self.view_menu = menubar.addMenu("&View")
 
         # mw#17: Context-sensitive open at top of View menu
-        book_details_action = QAction("&Open Focused Item\tEnter", self)
-        book_details_action.triggered.connect(self.on_open_book_details)
-        self.view_menu.addAction(book_details_action)
+        self.book_details_action = QAction("&Open Focused Item\tEnter", self)
+        self.book_details_action.triggered.connect(self.on_open_book_details)
+        self.view_menu.addAction(self.book_details_action)
 
-        find_action = QAction("&Find...\tCtrl+F", self)
-        find_action.setShortcuts([QKeySequence("Ctrl+F")])
-        find_action.triggered.connect(self.on_find)
-        self.view_menu.addAction(find_action)
+        self.find_action = QAction("&Find...\tCtrl+F", self)
+        self.find_action.setShortcuts([QKeySequence("Ctrl+F")])
+        self.find_action.triggered.connect(self.on_find)
+        self.view_menu.addAction(self.find_action)
 
         self.view_menu.addSeparator()
 
@@ -886,9 +1193,11 @@ class MainWindow(QMainWindow):
         self._rebuild_read_filter_menu()
 
         # Phase 2: Reading History (accessed via menu Alt+V then H)
-        reading_history_action = QAction("Reading &History (Reading History)", self)
-        reading_history_action.triggered.connect(self.on_reading_history)
-        self.view_menu.addAction(reading_history_action)
+        self.reading_history_action = QAction(
+            "Reading &History (Reading History)", self
+        )
+        self.reading_history_action.triggered.connect(self.on_reading_history)
+        self.view_menu.addAction(self.reading_history_action)
 
         # Separator after reading history, before zoom controls
         self.view_menu.addSeparator()
@@ -935,9 +1244,9 @@ class MainWindow(QMainWindow):
 
         view_menu.addSeparator()
 
-        duplicate_action = QAction("&Duplicate Check...", self)
-        duplicate_action.triggered.connect(self.on_duplicate_check)
-        view_menu.addAction(duplicate_action)
+        self.duplicate_check_action = QAction("&Duplicate Check...", self)
+        self.duplicate_check_action.triggered.connect(self.on_duplicate_check)
+        view_menu.addAction(self.duplicate_check_action)
 
         prefs_action = QAction("&Preferences...", self)
         prefs_action.triggered.connect(self.on_preferences)
@@ -1106,8 +1415,6 @@ class MainWindow(QMainWindow):
 
         return " • ".join(parts)
 
-    # Removed status shortcut hint text for accessibility
-
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
         normalized = (mode or "").strip()
@@ -1118,7 +1425,7 @@ class MainWindow(QMainWindow):
         if normalized == "title_author_year_ignore_collection":
             return "title_author_year"
         if normalized == "title_author_ignore_collection":
-            return "title_author_year"
+            return "title_author_only"
         valid_modes = {option[1] for option in self.DUPLICATE_MATCH_OPTIONS}
         if normalized in valid_modes:
             return normalized
@@ -1148,6 +1455,7 @@ class MainWindow(QMainWindow):
 
         self._active_sort_key = self.current_filter.order_by
         self._set_sort_label()
+        self._update_filter_summary_label()
 
         self._sync_collection_menu_selection()
         self._sync_read_menu_selection()
@@ -1168,8 +1476,10 @@ class MainWindow(QMainWindow):
         year_key = book.year or 0
         collection_key = book.collection_id or 0
 
-        if normalized_mode == "title_author":
+        if normalized_mode == "title_author_only":
             return (title_key, author_key)
+        if normalized_mode == "title_author":
+            return (title_key, author_key, collection_key)
         if normalized_mode == "title_author_year":
             return (title_key, author_key, year_key)
         return (title_key, author_key, year_key, collection_key)
@@ -1268,7 +1578,7 @@ class MainWindow(QMainWindow):
 
     def on_duplicate_check(self):
         """Start duplicate mode by prompting for duplicate match type."""
-        settings = QSettings("AbCS", "AbCS")
+        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
         preferred_mode = self._normalize_duplicate_mode(
             settings.value(
                 "import/rules/duplicate/match_mode",
@@ -1461,11 +1771,22 @@ class MainWindow(QMainWindow):
         self.set_status(self.get_default_status(), timeout_ms=0, announce=announce)
 
     def on_read_status_bar(self):
-        """mw#24: Alt+/ reads status bar. Do nothing if no screen reader active."""
-        if QAccessible.isActive():
-            # Announce status bar to screen reader
-            self.set_status(self.get_default_status(), timeout_ms=0, announce=True)
-        # else: do nothing (no popup)
+        """mw#24: Alt+/ reads status bar. Include filter/sort summary when idle."""
+        visible = (self.status_bar.currentMessage() or "").strip()
+        default = (self.get_default_status() or "").strip()
+        summary = self._filter_summary_text()
+
+        if visible and visible != default:
+            read_status_bar_message(
+                self.status_bar,
+                fallback=visible or default,
+            )
+        else:
+            read_status_bar_message(
+                self.status_bar,
+                fallback=summary or visible or default,
+                announce_text=summary or visible or default,
+            )
 
     def on_open_book_details(self):
         """mw#17,19: Open book details for current book (Enter)."""
@@ -1540,6 +1861,20 @@ class MainWindow(QMainWindow):
         self.read_filter_group = QActionGroup(self)
         self.read_filter_group.setExclusive(True)
 
+        read_filter_tooltips = {
+            "All": (
+                "Show all books",
+                "Show read and unread books",
+            ),
+            "Read": (
+                "Show only read books",
+                "Filter to books marked as read",
+            ),
+            "Unread": (
+                "Show only unread books",
+                "Filter to books not yet marked as read",
+            ),
+        }
         for label in self._read_filter_options:
             action = QAction(label, self)
             action.setCheckable(True)
@@ -1547,6 +1882,10 @@ class MainWindow(QMainWindow):
             action.triggered.connect(
                 lambda _checked=False, value=label: self.on_read_menu_selected(value)
             )
+            tooltip, description = read_filter_tooltips.get(
+                label, (f"Filter to {label} books", f"Show {label.lower()} books")
+            )
+            apply_tooltip_accessibility(action, tooltip, description)
             self.read_filter_group.addAction(action)
             self.view_read_menu.addAction(action)
 
@@ -1583,12 +1922,24 @@ class MainWindow(QMainWindow):
             ("Year", "&Year", 2, False),
             ("Series", "&Series", 3, True),
             ("Genre", "&Genre", 4, True),
-            ("Length", "&Length", 5, False),
+            ("Time", "Ti&me", 5, False),
             ("Read Date", "Read &Date", 6, False),
         ]
 
         self._sort_actions_by_key = {}
 
+        sort_tooltips = {
+            "Author": ("Sort by author", "Sort the book list by author name"),
+            "Title": ("Sort by title", "Sort the book list by title"),
+            "Year": ("Sort by year", "Sort the book list by publication year"),
+            "Series": ("Sort by series", "Sort the book list by series name"),
+            "Genre": ("Sort by genre", "Sort the book list by genre"),
+            "Time": ("Sort by length", "Sort the book list by audiobook length"),
+            "Read Date": (
+                "Sort by read date",
+                "Sort the book list by date read",
+            ),
+        }
         for key, menu_text, column, is_primary in self._sort_menu_options:
             action = QAction(menu_text, self)
             action.setCheckable(True)
@@ -1597,6 +1948,10 @@ class MainWindow(QMainWindow):
                     key, col, primary
                 )
             )
+            tooltip, description = sort_tooltips.get(
+                key, (f"Sort by {key.lower()}", f"Sort the book list by {key.lower()}")
+            )
+            apply_tooltip_accessibility(action, tooltip, description)
             self.sort_action_group.addAction(action)
             self.sort_menu.addAction(action)
             self._sort_actions_by_key[key] = action
@@ -1605,16 +1960,10 @@ class MainWindow(QMainWindow):
 
     def _sort_key_for_column(self, column: int) -> str:
         """Return Sort menu key for a table column index."""
-        mapping = {
-            0: "Author",
-            1: "Title",
-            2: "Year",
-            3: "Series",
-            4: "Genre",
-            5: "Length",
-            6: "Read Date",
-        }
-        return mapping.get(column, "Title")
+        for key, col in self._SORT_KEY_TO_COLUMN.items():
+            if col == column:
+                return key
+        return "Title"
 
     def _sync_sort_menu_selection(self, key: str):
         """Keep Sort menu checked item synced with current active sort."""
@@ -1666,7 +2015,6 @@ class MainWindow(QMainWindow):
         self.collection_filter_group.setExclusive(True)
 
         for label, collection_id in self._collection_filter_items:
-
             action = QAction(label, self)
             action.setCheckable(True)
             action.setData(collection_id)
@@ -1675,6 +2023,13 @@ class MainWindow(QMainWindow):
                     cid
                 )
             )
+            if collection_id is None:
+                tooltip = "Show books from all collections"
+                description = "Clear collection filter and show all collections"
+            else:
+                tooltip = f"Filter to {label}"
+                description = f"Show only books in collection {label}"
+            apply_tooltip_accessibility(action, tooltip, description)
             self.collection_filter_group.addAction(action)
             self.view_collections_menu.addAction(action)
 
@@ -1764,13 +2119,16 @@ class MainWindow(QMainWindow):
             self.table.setSortingEnabled(False)
 
             focus_ctx = self._capture_table_focus_context()
+            self._reapply_active_sort_to_books()
             self.book_model.set_books(self.books)
             self._restore_table_focus_context(focus_ctx)
+            self._sync_sort_header_from_active_state()
 
             # RE-ENABLE UPDATES
             self.table.setUpdatesEnabled(True)
 
             self.set_default_status(announce=False)
+            self._update_filter_summary_label()
 
         except Exception as e:
             self.table.setUpdatesEnabled(True)
@@ -1812,6 +2170,8 @@ class MainWindow(QMainWindow):
         target = text if text in self._primary_sort_options else "Title"
         self.current_filter.order_by = target
         self._active_sort_key = target
+        self._last_header_sort_column = -1
+        self._last_header_sort_order = Qt.AscendingOrder
         self._set_sort_label(order_by=target)
         self._set_primary_sort_indicator(target)
         self._sync_sort_menu_selection(target)
@@ -1819,14 +2179,10 @@ class MainWindow(QMainWindow):
 
     def on_table_header_clicked(self, column: int):
         """Handle table header clicks with combo-aligned sorting for key columns."""
-        # Custom sort for Author and Series columns
-        if column == 0:  # Author
-            self.on_order_changed("Author")
+        if column in (0, 1, 3, 4):  # Author, Title, Series, Genre — fixed SQL sort
+            key = self._sort_key_for_column(column)
+            self.on_order_changed(key)
             return
-        elif column == 3:  # Series
-            self.on_order_changed("Series")
-            return
-        # Title and Genre use default logic
 
         if self._last_header_sort_column == column:
             next_order = (
@@ -1843,20 +2199,13 @@ class MainWindow(QMainWindow):
         self._sort_books_in_memory(column, next_order)
         self.table.horizontalHeader().setSortIndicator(column, next_order)
 
-        header_text = (
-            self.book_model.headerData(column, Qt.Horizontal, Qt.DisplayRole) or "Field"
-        )
+        sort_key = self._sort_key_for_column(column)
         direction = "Descending" if next_order == Qt.DescendingOrder else "Ascending"
-        self._active_sort_key = self._sort_key_for_column(column)
-        self._set_sort_label(order_by=header_text, direction=direction)
-        self._sync_sort_menu_selection(self._active_sort_key)
+        self._set_sort_label(order_by=sort_key, direction=direction)
+        self._sync_sort_menu_selection(sort_key)
 
-    def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
-        """Sort books list for non-primary columns without SQL roundtrip."""
-        if not self.books:
-            return
-
-        focus_ctx = self._capture_table_focus_context()
+    def _in_memory_sort_key(self, column: int):
+        """Return sort key function for in-memory column sorts."""
 
         def sort_key(book: Book):
             if column == 2:  # Year
@@ -1867,19 +2216,64 @@ class MainWindow(QMainWindow):
                 return book.read_date or ""
             return ""
 
-        self.books.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
+        return sort_key
+
+    def _apply_in_memory_sort_to_books(self, column: int, order: Qt.SortOrder):
+        """Sort self.books in place for non-primary columns."""
+        if not self.books:
+            return
+        self.books.sort(
+            key=self._in_memory_sort_key(column),
+            reverse=(order == Qt.DescendingOrder),
+        )
+
+    def _sort_books_in_memory(self, column: int, order: Qt.SortOrder):
+        """Sort books list for non-primary columns without SQL roundtrip."""
+        if not self.books:
+            return
+
+        focus_ctx = self._capture_table_focus_context()
+        self._apply_in_memory_sort_to_books(column, order)
         self.book_model.set_books(self.books)
         self._restore_table_focus_context(focus_ctx)
 
+    def _qt_order_for_active_direction(self) -> Qt.SortOrder:
+        if self._active_sort_direction == "Descending":
+            return Qt.DescendingOrder
+        return Qt.AscendingOrder
+
+    def _reapply_active_sort_to_books(self):
+        """Reapply in-memory sort after SQL refresh when active sort is Year/Time/etc."""
+        key = self._active_sort_key or self.current_filter.order_by
+        if key in self._DIRECTION_SORT_KEYS:
+            column = self._column_for_sort_key(key)
+            order = self._qt_order_for_active_direction()
+            self._apply_in_memory_sort_to_books(column, order)
+        elif key == "Read Date" and self.current_filter.order_by != "Read Date":
+            order = self._qt_order_for_active_direction()
+            self._apply_in_memory_sort_to_books(6, order)
+
+    def _sync_sort_header_from_active_state(self):
+        """Align header sort indicator with tracked sort state."""
+        key = self._active_sort_key or self.current_filter.order_by
+        if key in self._DIRECTION_SORT_KEYS or (
+            key == "Read Date" and self.current_filter.order_by != "Read Date"
+        ):
+            column = self._column_for_sort_key(key)
+            order = self._qt_order_for_active_direction()
+            self._last_header_sort_column = column
+            self._last_header_sort_order = order
+            self.table.horizontalHeader().setSortIndicator(column, order)
+        else:
+            indicator_key = (
+                key if key in self._primary_sort_options else self.current_filter.order_by
+            )
+            self._set_primary_sort_indicator(indicator_key)
+            self._sync_sort_menu_selection(key)
+
     def _set_primary_sort_indicator(self, order_by: str):
         """Keep sort indicator aligned with Order By combo for primary columns."""
-        order_to_column = {
-            "Author": 0,
-            "Title": 1,
-            "Series": 3,
-            "Genre": 4,
-        }
-        column = order_to_column.get(order_by)
+        column = self._SORT_KEY_TO_COLUMN.get(order_by)
         if column is None:
             return
 
@@ -1957,6 +2351,7 @@ class MainWindow(QMainWindow):
 
         dialog_status = QStatusBar(dialog)
         dialog_status.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
             "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
         )
@@ -1998,8 +2393,7 @@ class MainWindow(QMainWindow):
         find_status_shortcut = QShortcut(QKeySequence("Alt+/"), dialog)
 
         def read_find_status():
-            status_text = dialog_status.currentMessage() or "Find dialog ready"
-            announce_status_message(dialog_status, status_text, move_focus=True)
+            read_status_bar_message(dialog_status, fallback="Find dialog ready")
 
         find_status_shortcut.activated.connect(read_find_status)
 
@@ -2660,7 +3054,7 @@ class MainWindow(QMainWindow):
         # status_hint_label removed for accessibility; no longer updated
         # Removed status shortcut hint text update for accessibility
 
-        self.sort_label.setVisible(not show_action_buttons)
+        self._apply_footer_button_roles()
 
         # Enable/disable Edit menu items based on selection
         if hasattr(self, "delete_action"):
@@ -2773,6 +3167,7 @@ class MainWindow(QMainWindow):
                 buttons=QMessageBox.Yes | QMessageBox.No,
                 default_button=QMessageBox.No,
                 window_icon=get_app_icon(),
+                button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
             )
 
             if reply == QMessageBox.Yes:
@@ -2821,7 +3216,15 @@ class MainWindow(QMainWindow):
             self.set_status("Export only available in duplicate mode", announce=True)
             return
 
-        if not self.books:
+        export_books = [
+            book
+            for book in self.book_queries.get_all(
+                SearchFilter(order_by=self.current_filter.order_by)
+            )
+            if book.book_id in self.duplicate_mode_book_ids
+        ]
+
+        if not export_books:
             self.set_status("No duplicate books to export", announce=True)
             return
 
@@ -2854,35 +3257,33 @@ class MainWindow(QMainWindow):
             with open(file_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 # Write header
-                writer.writerow(["Author", "Title", "Year", "Collection", "Date Added"])
+                writer.writerow(
+                    ["Author", "Title", "Year", "Time", "Collection", "Date Added"]
+                )
                 # Write data for each duplicate book
-                for book in self.books:
-                    # Get collection name
-                    collection_name = ""
-                    if book.collection_id and self.collection_queries:
-                        collection = self.collection_queries.get_by_id(
-                            book.collection_id
-                        )
-                        if collection:
-                            collection_name = collection.name or ""
+                for book in export_books:
+                    collection_name = book.collection_name or ""
 
-                    # Format date added
                     date_added_str = ""
                     if book.date_added:
-                        date_added_str = book.date_added.strftime("%Y-%m-%d")
+                        if hasattr(book.date_added, "strftime"):
+                            date_added_str = book.date_added.strftime("%Y-%m-%d")
+                        else:
+                            date_added_str = str(book.date_added).split(" ")[0]
 
                     writer.writerow(
                         [
                             book.author_name or "",
                             book.title or "",
                             book.year or "",
+                            book.time_display,
                             collection_name,
                             date_added_str,
                         ]
                     )
 
             self.set_status(
-                f"Exported {len(self.books)} duplicates to {file_path}", announce=True
+                f"Exported {len(export_books)} duplicates to {file_path}", announce=True
             )
         except Exception as e:
             self.set_status(f"Export failed: {str(e)}", announce=True)
@@ -2908,22 +3309,9 @@ class MainWindow(QMainWindow):
 
         book = self.books[row]
 
-        # Show auto-closing popup dialog while fetching web info
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
-        from PySide6.QtCore import QTimer
+        from src.ui.web_fetch_progress import WebFetchProgressDialog
 
-        popup = QDialog(self)
-        popup.setWindowTitle("Please wait")
-        popup.setModal(True)
-        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
-        layout = QVBoxLayout(popup)
-        label = QLabel("Fetching book info from web, please wait...")
-        layout.addWidget(label)
-        popup.setLayout(layout)
-        popup.resize(400, 100)
-
-        # Auto-close after 1.8 seconds (same as book details)
-        QTimer.singleShot(1800, popup.accept)
+        popup = WebFetchProgressDialog(self)
         popup.show()
         QApplication.processEvents()
 
@@ -2945,8 +3333,8 @@ class MainWindow(QMainWindow):
 
             move_articles, flip_author = get_import_preferences()
 
-            # Try to fetch web data once. WebBookAPI already cascades through
-            # Google Books -> Open Library -> WikiData for refresh=0.
+            # Try to fetch web data once. WebBookAPI cascades Open Library ->
+            # Google Books -> WikiData for refresh=0.
             api = WebBookAPI()
             last_error = None
 
@@ -2958,55 +3346,44 @@ class MainWindow(QMainWindow):
                     refresh=0,
                     move_articles=move_articles,
                     flip_author=flip_author,
+                    narrator=book.reader or "",
+                    path=book.path or "",
+                    source=book.source or "",
+                    comments=book.comments or "",
+                    progress_callback=popup.update_message,
                 )
             except Exception as e:
                 last_error = str(e)
 
         except Exception:
             pass  # Silently fail if web fetch fails
+        finally:
+            popup.close()
 
-        # Close the popup after web search is complete
-        popup.close()
-
-        # Check if we got real data (not just empty placeholders)
-        is_real_match = False
-        if web_data:
-            # Check if any field has meaningful content
-            meaningful_fields = [
-                web_data.get("plot"),  # API returns "plot", not "description"
-                web_data.get("publisher"),
-                web_data.get("year"),  # API returns "year", not "published_year"
-                web_data.get("isbn"),
-                web_data.get("rating"),  # API includes rating
-                web_data.get("ratings_count"),  # API includes ratings count
-            ]
-            is_real_match = any(
-                field
-                and str(field).strip()
-                and str(field) not in ["Unknown", "N/A", "None", ""]
-                for field in meaningful_fields
+        if web_data and not web_data.get("_no_result"):
+            focus_ctx = self._capture_table_focus_context(row, 1)
+            dialog = WebMetadataWindow(
+                self.db,
+                book,
+                self.scaler,
+                self.theme_manager,
+                parent=self,
+                refresh_callback=self.refresh_books,
+                web_data=web_data,
             )
+            dialog.exec()
+            self._restore_table_focus_context(focus_ctx)
+            return
 
-            if is_real_match:
-                # Only open window if real data found
-                focus_ctx = self._capture_table_focus_context(
-                    row, 1
-                )  # Focus title column
-                dialog = WebMetadataWindow(
-                    self.db,
-                    book,
-                    self.scaler,
-                    self.theme_manager,
-                    parent=self,
-                    refresh_callback=self.refresh_books,
-                    web_data=web_data,
-                )
-                dialog.exec()
-                self._restore_table_focus_context(focus_ctx)
-                return
-
-        # If no real data found, show popup and status, then return.
-        no_data_text = "No information found for this book in any web source."
+        # Build "No Web Data Found" message: distinguish network errors from clean misses.
+        fetch_errors = (web_data or {}).get("_fetch_errors", [])
+        if fetch_errors:
+            no_data_text = (
+                "Unable to reach one or more web sources.\n\n"
+                + "\n".join(f"  • {e}" for e in fetch_errors[:3])
+            )
+        else:
+            no_data_text = "No information found for this book in any web source."
         if last_error:
             no_data_text = f"{no_data_text}\n\nLast error: {last_error}"
 
@@ -3148,11 +3525,10 @@ class MainWindow(QMainWindow):
     def on_new_book(self):
         """Open book details for new book."""
         # bd#8: Pass current sort order to show in header
-        sort_order = self.current_filter.order_by
         details = BookDetailsWindow(
             self.db,
             self.scaler,
-            sort_order=sort_order,
+            sort_order=self._active_sort_display_text(),
             parent=self,
             current_collection_id=self.current_filter.collection_id,
         )
@@ -3170,6 +3546,9 @@ class MainWindow(QMainWindow):
     def on_book_list_import(self):
         """Open book list import window with collection defaulting logic matching ImportWindow."""
         from src.ui.book_list_import_window import BookListImportWindow
+
+        if self.duplicate_mode_active:
+            self.exit_duplicate_mode(message="Duplicate mode canceled", announce=False)
 
         # Determine which collection to default in BookListImportWindow
         collection_id = self.current_filter.collection_id
@@ -3199,6 +3578,9 @@ class MainWindow(QMainWindow):
 
     def on_import(self):
         """Open import window with collection defaulting logic matching BookDetailsWindow."""
+        if self.duplicate_mode_active:
+            self.exit_duplicate_mode(message="Duplicate mode canceled", announce=False)
+
         # Determine which collection to default in ImportWindow
         collection_id = self.current_filter.collection_id
         dialog = ImportWindow(self.db, self.scaler, self.theme_manager, parent=self)
@@ -3287,7 +3669,7 @@ class MainWindow(QMainWindow):
 
     def open_book_details(self, book: Book):
         """Open book details window."""
-        sort_order = self.current_filter.order_by
+        sort_order = self._active_sort_display_text()
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
         current_index = 0
@@ -3311,11 +3693,13 @@ class MainWindow(QMainWindow):
         # The dialog object still exists after exec() returns (just hidden),
         # so we can read its current book state before it's garbage collected
         last_book_id = details.book.book_id if details.book else None
+        data_changed = details._data_was_changed
 
         # PHASE 2 OPTIMIZATION: Force dialog cleanup to prevent accumulation
         details.deleteLater()
 
-        self.refresh_books()
+        if data_changed:
+            self.refresh_books()
 
         # bd#7: Focus the table on the book that was viewed in details window
         if last_book_id:

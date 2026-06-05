@@ -13,8 +13,8 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.ui.reading_history_window import ReadingHistoryWindow
 
-def test_window():
-    """Test reading history window opening."""
+def run_manual_window_test():
+    """Manual interactive test — not collected by pytest."""
     app = QApplication(sys.argv)
     
     print("Creating database connection...")
@@ -42,6 +42,6 @@ def test_window():
 
 if __name__ == "__main__":
     print("=== Reading History Window Test ===")
-    exit_code = test_window()
+    exit_code = run_manual_window_test()
     print(f"Exit code: {exit_code}")
     sys.exit(exit_code)

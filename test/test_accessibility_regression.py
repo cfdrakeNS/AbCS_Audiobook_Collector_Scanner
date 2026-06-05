@@ -61,10 +61,9 @@ def test_shortcut_registry_regression():
     
     # Critical shortcuts that must exist
     critical_shortcuts = {
-        'B': ('Book list focus', 'book_list'),
+        'L': ('Jump to list', 'book_list'),
         'U': ('Update selected', 'update_button'),
         'D': ('Delete selected', 'delete_button'),
-        'L': ('Cancel selection', 'cancel_button'),
     }
     
     for key, expected_value in critical_shortcuts.items():
@@ -76,7 +75,7 @@ def test_shortcut_registry_regression():
     
     reading_critical = {
         'S': ('Search', 'refresh_button'),
-        'B': ('Focus table', 'table'),
+        'L': ('Jump to list', 'table'),
     }
     
     for key, expected_value in reading_critical.items():

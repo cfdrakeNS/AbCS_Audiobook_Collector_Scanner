@@ -51,7 +51,7 @@ class TestReadingHistoryFinalIntegration:
         window = reading_history_window
         tab_widget = window.tab_widget
         
-        expected_tabs = ["&General", "&Year", "&Month", "Date &Range"]
+        expected_tabs = ["General", "Year", "Month", "Date Range"]
         actual_tabs = [tab_widget.tabText(i) for i in range(tab_widget.count())]
         
         # Check all expected tabs exist

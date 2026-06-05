@@ -121,6 +121,7 @@ WEB_METADATA_SHORTCUTS = {
     "N": ("Series number", "series_number_edit"),
     "G": ("Genre", "genre_edit"),
     "R": ("Rating", "rating_edit"),
+    "F": ("Re-fetch web data", "refetch_button"),
     "S": ("Save", "save_button"),
 }
 
@@ -133,7 +134,7 @@ IMPORT_WINDOW_SHORTCUTS = {
     "I": ("Import", "scan_button"),
     "S": ("Import Selected", "import_selected_button"),
     "L": ("Focus import list table", "import_list_table"),
-    "X": ("Export list to CSV", "export_csv_button"),
+    "X": ("Export list to CSV", "export_button"),
 }
 
 # Book List Import Window
@@ -165,15 +166,14 @@ UPDATE_WINDOW_SHORTCUTS = {
 
 
 PREFERENCES_WINDOW_SHORTCUTS = {
-    "D": ("Display section", "theme_combo"),
-    "P": ("Path & Scope section", "import_dir_edit"),
+    "D": ("Display Settings tab", "theme_picker"),
+    "P": ("Import Settings tab", "import_dir_edit"),
     "W": ("Browse", "browse_button"),
-    "F": ("Fallback section", "author_fallback_checkbox"),
-    "V": ("Validation Rules section", "rules_section_text"),
+    "F": ("Fallback and Parsing tab", "author_fallback_checkbox"),
+    "V": ("Validation Rules tab", "rules_section_text"),
     "R": ("Restore Defaults", "restore_defaults_button"),
     "S": ("Save", "save_button"),
     "/": ("Status bar", "status_bar"),
-    "C": ("Collection", "collection_combo"),
 }
 
 

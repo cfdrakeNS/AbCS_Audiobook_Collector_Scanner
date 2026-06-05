@@ -28,10 +28,21 @@ from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.database import BookQueries, ReadingQueries
 from src.accessibility.scaling import UIScaler
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
+    build_card_group_box_style,
+    build_modern_button_style,
+    build_table_polish_style,
+)
 
 
 class ReadingHistoryWindow(QDialog):
@@ -85,6 +96,9 @@ class ReadingHistoryWindow(QDialog):
         self.resize(1200, 800)
 
         self.setup_ui()
+        self.apply_visual_tooltips()
+        self.apply_accessible_styling()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
         self.setup_shortcuts()
         self.load_reading_data()
 
@@ -110,10 +124,7 @@ class ReadingHistoryWindow(QDialog):
 
         # Status bar
         self.status_bar = QStatusBar()
-        self.status_bar.setAccessibleName("Reading history status")
-        self.status_bar.setAccessibleDescription(
-            "Current Reading History window status message"
-        )
+        configure_status_bar_accessibility(self.status_bar)
         main_layout.addWidget(self.status_bar)
 
         # Connect signals
@@ -130,6 +141,7 @@ class ReadingHistoryWindow(QDialog):
 
         # Statistics section
         stats_group = QGroupBox("Reading Statistics")
+        self.stats_group = stats_group
         stats_layout = QVBoxLayout(stats_group)
 
         # Create a table for screen reader accessibility
@@ -423,6 +435,22 @@ class ReadingHistoryWindow(QDialog):
         self.setTabOrder(self.start_date_edit, self.end_date_edit)
         self.setTabOrder(self.end_date_edit, self.refresh_button)
 
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.tab_widget: "Switch between reading history views",
+                self.general_table: "Overall reading statistics",
+                self.year_table: "Books read by year",
+                self.month_table: "Books read by month",
+                self.start_date_edit: "Start of the date range to search",
+                self.end_date_edit: "End of the date range to search",
+                self.refresh_button: "Search reading history for the selected dates",
+                self.range_table: "Books read within the selected date range",
+                self.status_bar: "Reading history status",
+            }
+        )
+
     def setup_shortcuts(self):
         """Setup keyboard shortcuts using ShortcutManager."""
         mgr = get_shortcut_manager()
@@ -503,30 +531,27 @@ class ReadingHistoryWindow(QDialog):
             self.range_table.setFocus(Qt.TabFocusReason)
 
     def apply_accessible_styling(self):
-        """Apply accessible styling following import window pattern."""
-        # Keep button sizing while honoring active theme palette colors.
-        button_height = max(self.scaler.get_scaled_size(20) - 4, 14)
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {button_height}px;
-                max-height: {button_height}px;
-                color: palette(button-text);
-                background-color: palette(button);
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                outline: none;
-            }}
-            QPushButton:focus {{
-                color: palette(highlighted-text);
-                background-color: palette(highlight);
-                border: 2px solid palette(dark);
-                outline: none;
+        """Apply modern buttons, table polish, and tab styling."""
+        scale_pct = self.scaler.current_scale
+        scaled_height = int(20 * (scale_pct / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        card_style = build_card_group_box_style()
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
             }}
         """
 
+        self.refresh_button.setObjectName("primaryActionButton")
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
+        self.status_bar.setStyleSheet(status_style)
+        if hasattr(self, "stats_group"):
+            self.stats_group.setStyleSheet(card_style)
+        self._apply_action_button_icons()
 
         tab_padding_v = max(self.scaler.get_scaled_size(4), 3)
         tab_padding_h = max(self.scaler.get_scaled_size(12), 8)
@@ -555,12 +580,25 @@ class ReadingHistoryWindow(QDialog):
             }}
             """)
 
-        # Table styling - use centralized F1 popup style
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
-        table_style = build_accessible_f1_popup_style()
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
 
-        for table in [self.year_table, self.month_table, self.range_table]:
+        for table in [
+            self.general_table,
+            self.year_table,
+            self.month_table,
+            self.range_table,
+        ]:
             if table:
                 table.setStyleSheet(table_style)
                 # Disable hover highlighting for low-vision comfort
@@ -594,12 +632,16 @@ class ReadingHistoryWindow(QDialog):
         except Exception as e:
             from src.accessibility.icon_helper import get_app_icon
 
-            box = QMessageBox(self)
-            box.setIcon(QMessageBox.Critical)
-            box.setWindowTitle("Error")
-            box.setText(f"Failed to load reading history: {str(e)}")
-            box.setWindowIcon(get_app_icon())
-            box.exec()
+            from src.accessibility.style_helpers import exec_styled_message_box
+
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Critical,
+                title="Error",
+                text=f"Failed to load reading history: {str(e)}",
+                window_icon=get_app_icon(),
+            )
         finally:
             self._loading = False
 
@@ -794,21 +836,24 @@ class ReadingHistoryWindow(QDialog):
             if index == 3:  # Date Range tab
                 self.start_date_edit.setFocus()
 
-    def on_theme_changed(self):
+    def _apply_action_button_icons(self):
+        """Decorative icon beside Search button text."""
+        apply_decorative_action_icon(self.refresh_button, "find", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        """Refresh styles when zoom changes."""
+        self.apply_accessible_styling()
+
+    def on_theme_changed(self, _theme_name=None):
         """Handle theme change."""
         self.apply_accessible_styling()
 
     def on_read_status_bar(self):
         """Read only the currently visible status bar message (Alt+/)."""
-        if QAccessible.isActive():
-            status_text = self.status_bar.currentMessage()
-            announce_status_message(
-                self.status_bar,
-                status_text,
-                move_focus=True,
-                force_focus_announce=True,
-            )
-        # If no screen reader active, do nothing (Alt+/ hidden from F1 menu by get_accessible_shortcuts_list)
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""

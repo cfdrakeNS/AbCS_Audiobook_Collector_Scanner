@@ -57,9 +57,10 @@ def test_reading_history_period_message_accessibility(reading_history_window):
     assert hasattr(window, 'status_bar')
     status_widget = window.status_bar
     
-    # Status bar should have accessibility properties
-    assert status_widget.accessibleName() != ""
-    assert status_widget.accessibleDescription() != ""
+    # Status bar starts with no generic SR labels (bug 102)
+    assert status_widget.accessibleName() == ""
+    assert status_widget.accessibleDescription() == ""
+    assert (window._default_status_message or "").strip() != ""
     
     # Status bar typically doesn't have StrongFocus, but should be accessible via announcements
     assert hasattr(window, 'set_status')
@@ -81,15 +82,15 @@ def test_alt_s_shortcut_functionality(reading_history_window):
     assert search_button.isEnabled()
 
 
-def test_alt_b_table_focus_shortcut(reading_history_window):
-    """Test Alt+B shortcut focuses on appropriate table."""
+def test_alt_l_table_focus_shortcut(reading_history_window):
+    """Test Alt+L shortcut focuses on appropriate table."""
     window = reading_history_window
     
-    # Test each tab - Alt+B should focus on current table
+    # Test each tab - Alt+L should focus on current table
     for tab_index in range(4):
         window.tab_widget.setCurrentIndex(tab_index)
         
-        # Simulate Alt+B (this would need actual shortcut testing in UI)
+        # Simulate Alt+L (this would need actual shortcut testing in UI)
         # For now, just verify focus_current_table method works
         try:
             window.focus_current_table()

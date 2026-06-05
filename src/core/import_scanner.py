@@ -324,7 +324,7 @@ class ImportScanner:
             if self.trim_whitespace:
                 trimmed = " ".join(updated.split())
                 if trimmed != updated:
-                    corrections_applied.append("trimmed")
+                    corrections_applied.append("whitespace trimmed")
                     updated = trimmed
 
             if self.strip_leading_punctuation:

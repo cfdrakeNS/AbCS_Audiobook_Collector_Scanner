@@ -40,10 +40,16 @@ from src.accessibility.accessible_events import (
     announce_dialog_opened,
     announce_dialog_closed,
     announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
-from src.accessibility.style_helpers import build_accessible_button_style
+from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
+    build_modern_button_style,
+)
 
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
@@ -54,19 +60,12 @@ class WebMetadataWindow(QDialog):
 
     @staticmethod
     def normalize_db_title(title: str) -> str:
-        """Normalize DB title for search/compare: move article to beginning, trim, lowercase, remove embedded spaces."""
-        if not title:
-            return ""
-        # Move trailing article to beginning (e.g., 'moon the' -> 'the moon')
-        import re
+        """Normalize DB title for search/compare.
 
-        t = title.strip()
-        match = re.match(r"^(.*?)[,\s]+(the|a|an)$", t, re.IGNORECASE)
-        if match:
-            base = match.group(1).strip()
-            article = match.group(2).lower()
-            t = f"{article} {base}"
-        return "".join(t.lower().split())
+        Delegates to the shared normalize_title function in web_book_api.
+        """
+        from src.web.web_book_api import normalize_title
+        return normalize_title(title)
 
     """
     Web metadata window with PROVEN accessibility foundation.
@@ -76,7 +75,7 @@ class WebMetadataWindow(QDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
-    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "I", "N", "G", "S", "R", "/", "F1"}
+    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "I", "N", "G", "S", "R", "F", "/", "F1"}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -103,6 +102,8 @@ class WebMetadataWindow(QDialog):
 
         # Store pre-fetched web data if provided
         self.pre_fetched_web_data = web_data
+        # Store original query info for the Re-fetch button
+        self._refetch_book = book
 
         # Always set parent_window, even if None
         self.parent_window = None
@@ -123,6 +124,7 @@ class WebMetadataWindow(QDialog):
         self.web_data = None
         self.field_differences = {}
         self.status_bar = QStatusBar()
+        configure_status_bar_accessibility(self.status_bar)
         # Initialize query helpers
         self.book_queries = BookQueries(self.db) if self.db else None
         self.author_queries = AuthorQueries(self.db) if self.db else None
@@ -132,8 +134,10 @@ class WebMetadataWindow(QDialog):
         # Main layout
         layout = QVBoxLayout(self)
         self.setup_ui(layout)
+        self.apply_visual_tooltips()
         self.apply_field_styling()
-        # Theme is applied globally via ThemeManager; do not call apply_theme (private). If you want to change theme, use set_theme().
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.setup_shortcuts()
         # Add status bar at the very bottom (after all layouts)
         layout.addWidget(self.status_bar)
@@ -168,6 +172,11 @@ class WebMetadataWindow(QDialog):
                 return True  # Consume the event
 
         return super().eventFilter(source, event)
+
+    def showEvent(self, event):
+        """Rebuild tab order once the dialog is visible (required for Qt tab chain)."""
+        super().showEvent(event)
+        self.set_tab_order()
 
     def setup_ui(self, layout):
         # Main layout with two-column structure
@@ -392,6 +401,7 @@ class WebMetadataWindow(QDialog):
         self.plot_edit.setFocusPolicy(
             Qt.StrongFocus
         )  # Ensure it can receive focus for tabbing
+        self.plot_edit.setTabChangesFocus(True)
         self.plot_edit.setObjectName("plot_edit")  # For shortcut manager
         self.plot_edit.setMinimumHeight(150)  # Give plot more vertical space
         plot_label.setBuddy(self.plot_edit)
@@ -440,6 +450,18 @@ class WebMetadataWindow(QDialog):
         # Stretch first to push buttons to the right
         button_layout.addStretch()
 
+        self.refetch_button = QPushButton("Re-fetch (Alt+F)")
+        self.refetch_button.setAccessibleName("Re-fetch web metadata")
+        self.refetch_button.setAccessibleDescription(
+            "Fetch fresh web data, skipping Open Library - Alt+F"
+        )
+        self.refetch_button.setFocusPolicy(Qt.StrongFocus)
+        self.refetch_button.setDefault(False)
+        self.refetch_button.setAutoDefault(False)
+        self.refetch_button.clicked.connect(self.on_refetch_clicked)
+        self.refetch_button.setObjectName("refetch_button")
+        button_layout.addWidget(self.refetch_button)
+
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
         self.save_button.setAccessibleDescription("Save changes - Alt+S")
@@ -458,38 +480,127 @@ class WebMetadataWindow(QDialog):
         # Set explicit tab order for logical keyboard navigation
         self.set_tab_order()
 
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.refetch_button: "Re-fetch web data from alternative sources",
+                self.save_button: "Save selected web metadata to the book",
+                self.title_edit: "Current book title",
+                self.title_web_edit: "Title from web search",
+                self.title_checkbox: "Keep the web title",
+                self.author_edit: "Current author",
+                self.author_web_edit: "Author from web search",
+                self.author_checkbox: "Keep the web author",
+                self.year_edit: "Current publication year",
+                self.year_web_edit: "Year from web search",
+                self.year_checkbox: "Keep the web year",
+                self.series_edit: "Current series",
+                self.series_web_edit: "Series from web search",
+                self.series_checkbox: "Keep the web series",
+                self.genre_edit: "Current genre",
+                self.genre_web_edit: "Genre from web search",
+                self.genre_checkbox: "Keep the web genre",
+                self.plot_edit: "Current plot or description",
+                self.rating_edit: "Current rating",
+                self.status_bar: "Web metadata status",
+            }
+        )
+
+    def _update_series_row_visibility(self, web_data: dict | None = None) -> None:
+        """Hide the series row when DB and web have no series name or number."""
+        db_name = (self.series_edit.text() or "").strip()
+        db_num = (self.series_number_edit.text() or "").strip()
+        web_name = (self.series_web_edit.text() or "").strip()
+        web_num = (self.series_number_web_edit.text() or "").strip()
+        if web_data:
+            web_name = web_name or str(web_data.get("series") or "").strip()
+            web_num = web_num or str(web_data.get("series_number") or "").strip()
+        self.series_row.setVisible(bool(db_name or db_num or web_name or web_num))
+        self.set_tab_order()
+
+    def _series_number_from_web_apply(self) -> int | None:
+        """Read web series number field when it was offered as a difference."""
+        if "series_number" not in self.field_differences:
+            return None
+        text = self.series_number_web_edit.text().strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+
+    def _tab_candidate_widgets(self) -> list:
+        """All widgets that may participate in tab order, in navigation sequence."""
+        widgets: list = [
+            self.title_edit,
+            self.title_web_edit,
+            self.title_checkbox,
+            self.author_edit,
+            self.author_web_edit,
+            self.author_checkbox,
+            self.year_edit,
+            self.year_web_edit,
+            self.year_checkbox,
+        ]
+        if not self.series_row.isHidden():
+            widgets.extend(
+                [
+                    self.series_edit,
+                    self.series_number_edit,
+                    self.series_web_edit,
+                    self.series_number_web_edit,
+                    self.series_checkbox,
+                ]
+            )
+        widgets.extend(
+            [
+                self.genre_edit,
+                self.genre_web_edit,
+                self.genre_checkbox,
+                self.plot_edit,
+                self.rating_edit,
+                self.refetch_button,
+                self.save_button,
+            ]
+        )
+        return widgets
+
+    def _widget_takes_tab_focus(self, widget) -> bool:
+        """True when widget should be included in the tab chain."""
+        if widget is None or not widget.isVisible():
+            return False
+        if widget in (
+            self.series_edit,
+            self.series_number_edit,
+            self.series_web_edit,
+            self.series_number_web_edit,
+            self.series_checkbox,
+        ):
+            return not self.series_row.isHidden()
+        return True
+
+    def _iter_tab_widgets(self) -> list:
+        """Return focusable widgets in keyboard navigation order (visible only)."""
+        visible: list = []
+        for widget in self._tab_candidate_widgets():
+            if not self._widget_takes_tab_focus(widget):
+                widget.setFocusPolicy(Qt.NoFocus)
+                continue
+            if isinstance(widget, (QLineEdit, QTextEdit, QCheckBox, QPushButton)):
+                widget.setFocusPolicy(Qt.StrongFocus)
+            visible.append(widget)
+        return visible
+
     def set_tab_order(self):
         """Set explicit tab order for logical keyboard navigation."""
-        # Define tab order following the actual layout:
-        # Current Title → Web Title → Title Checkbox → Current Author → Web Author → Author Checkbox
-        # → Current Year → Web Year → Year Checkbox → Current Series → Series # → Web Series → Web # → Series Checkbox
-        # → Current Genre → Web Genre → Genre Checkbox → Plot → Rating → Save
-        tab_widgets = [
-            self.title_edit,  # Current title
-            self.title_web_edit,  # Web title
-            self.title_checkbox,  # Title checkbox
-            self.author_edit,  # Current author
-            self.author_web_edit,  # Web author
-            self.author_checkbox,  # Author checkbox
-            self.year_edit,  # Current year
-            self.year_web_edit,  # Web year
-            self.year_checkbox,  # Year checkbox
-            self.series_edit,  # Current series
-            self.series_number_edit,  # Current series number
-            self.series_web_edit,  # Web series
-            self.series_number_web_edit,  # Web series number
-            self.series_checkbox,  # Series checkbox
-            self.genre_edit,  # Current genre
-            self.genre_web_edit,  # Web genre
-            self.genre_checkbox,  # Genre checkbox
-            self.plot_edit,  # Plot field
-            self.rating_edit,  # Rating field
-            self.save_button,  # Save button
-        ]
-
-        # Set tab order sequentially
+        for widget in self._tab_candidate_widgets():
+            widget.setFocusPolicy(Qt.NoFocus)
+        tab_widgets = self._iter_tab_widgets()
         for i in range(len(tab_widgets) - 1):
             self.setTabOrder(tab_widgets[i], tab_widgets[i + 1])
+        self.status_bar.setFocusPolicy(Qt.NoFocus)
 
     # ...existing code...
     def apply_field_styling(self):
@@ -505,10 +616,30 @@ class WebMetadataWindow(QDialog):
         for field in self.findChildren(QTextEdit):
             field.setStyleSheet(field_style)
 
-        # Apply consistent button styling like other windows
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.save_button.setObjectName("primaryActionButton")
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
+
+        self.status_bar.setStyleSheet(status_style)
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
+        apply_decorative_action_icon(self.refetch_button, "search_web", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        self.apply_field_styling()
+
+    def on_theme_changed(self, _theme_name: str):
+        self.apply_field_styling()
 
     def load_book_data(self):
         """Load book data into fields and fetch web data."""
@@ -546,12 +677,14 @@ class WebMetadataWindow(QDialog):
                     row._web_number_edit.setVisible(False)
                 row._checkbox.setVisible(False)
 
+            self._update_series_row_visibility()
+
         # Auto-fetch web data when window opens (only if not pre-fetched)
         if self.pre_fetched_web_data:
             # Use pre-fetched data and apply transformations
             move_articles, flip_author = self._read_user_preferences()
-            api = WebBookAPI()
-            cleaned_web_data = api.clean_web_data_for_storage(
+            from src.web.web_book_api import clean_web_data
+            cleaned_web_data = clean_web_data(
                 self.pre_fetched_web_data, move_articles, flip_author
             )
             self.update_fields_with_web_data(cleaned_web_data)
@@ -574,8 +707,13 @@ class WebMetadataWindow(QDialog):
             QTimer.singleShot(100, self.title_edit.setFocus)
 
     def set_focus_to_first_differing_field(self):
-        """Set focus to first field that has web differences, fallback to title."""
-        # Always start with title field for accessibility
+        """Set focus to the title field when the window opens.
+
+        This is intentional for screen reader users: title is always the first
+        meaningful field and gives a consistent, predictable starting point
+        regardless of which fields differ.  The screen reader can then tab or
+        use Alt+key shortcuts to navigate to any differing field.
+        """
         self.title_edit.setFocus()
         return
 
@@ -605,6 +743,82 @@ class WebMetadataWindow(QDialog):
         return move_articles, flip_author
 
     # fetch_web_data removed - now handled in main_window.py
+
+    def on_refetch_clicked(self):
+        """Re-fetch web data using alternative sources (skip Open Library, refresh=1).
+
+        Allows the user to try Google Books / WikiData when Open Library returned
+        nothing useful, without leaving the window.  Announces result via status bar.
+        """
+        if not self._refetch_book:
+            self._finish_refetch_ui("No book loaded for re-fetch.", self.title_edit)
+            return
+
+        from src.ui.web_fetch_progress import WebFetchProgressDialog
+        from src.web.web_book_api import WebBookAPI
+
+        popup = WebFetchProgressDialog(self)
+        popup.show()
+        QApplication.processEvents()
+        self.refetch_button.setEnabled(False)
+        status_msg = "Re-fetch complete"
+        focus_after = self.title_edit
+        try:
+            book = self._refetch_book
+            move_articles, flip_author = self._read_user_preferences()
+            api = WebBookAPI()
+            new_data = api.get_book_metadata(
+                book.title or "",
+                getattr(book, "author_name", "") or "",
+                str(book.year) if getattr(book, "year", None) else None,
+                refresh=1,
+                move_articles=move_articles,
+                flip_author=flip_author,
+                narrator=getattr(book, "reader", "") or "",
+                path=getattr(book, "path", "") or "",
+                source=getattr(book, "source", "") or "",
+                comments=getattr(book, "comments", "") or "",
+                progress_callback=popup.update_message,
+            )
+            if new_data and not new_data.get("_no_result"):
+                from src.web.web_book_api import clean_web_data
+
+                cleaned = clean_web_data(new_data, move_articles, flip_author)
+                self.update_fields_with_web_data(cleaned)
+                diff_fields = [k.capitalize() for k in self.field_differences.keys()]
+                diff_str = (
+                    f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
+                )
+                status_msg = f"Re-fetch complete{diff_str}"
+                plot_text = cleaned.get("plot")
+                focus_after = (
+                    self.plot_edit
+                    if plot_text and str(plot_text).strip()
+                    else self.title_edit
+                )
+            else:
+                errors = (new_data or {}).get("_fetch_errors", [])
+                if errors:
+                    status_msg = f"Re-fetch failed: {errors[0]}"
+                else:
+                    status_msg = "Re-fetch: no data found."
+        except Exception as exc:
+            status_msg = f"Re-fetch error: {exc}"
+        finally:
+            popup.close()
+            self.refetch_button.setEnabled(True)
+            self._finish_refetch_ui(status_msg, focus_after)
+
+    def _finish_refetch_ui(self, status_msg: str, focus_widget) -> None:
+        """Set refetch status without focus fight; restore focus and support Alt+/ readback."""
+        self.set_status(status_msg, announce=False)
+
+        def _restore_and_announce():
+            if focus_widget:
+                focus_widget.setFocus()
+            read_status_bar_message(self.status_bar, fallback="Ready")
+
+        QTimer.singleShot(0, _restore_and_announce)
 
     def update_fields_with_web_data(self, web_data):
         """Update UI fields with web data and track differences. Show web columns and checkboxes only for changed fields."""
@@ -690,42 +904,47 @@ class WebMetadataWindow(QDialog):
             self.year_row,
         )
 
-        # Series (handle series name and number separately)
-        series_name = web_data.get("series", "")
-        series_number = web_data.get("series_number", "")
+        # Series (name via shared helper; number uses same row chrome)
+        series_name_shown = handle_field_comparison(
+            web_data.get("series"),
+            self.book.series_name,
+            self.series_web_edit,
+            self.series_checkbox,
+            "series",
+            self.series_row,
+        )
 
-        # Handle series name
-        current_series = self.book.series_name or ""
-        if series_name and (
-            not current_series or series_name.lower() != current_series.lower()
-        ):
-            self.series_web_edit.setText(series_name)
-            self.series_row._web_label.setVisible(True)
-            self.series_web_edit.setVisible(True)
-            self.series_checkbox.setVisible(True)
-            self.series_checkbox.setChecked(True)
-            self.field_differences["series"] = series_name
-        else:
-            self.series_row._web_label.setVisible(False)
-            self.series_web_edit.setVisible(False)
-            self.series_checkbox.setVisible(False)
-
-        # Handle series number
         current_series_number = ""
         if hasattr(self.book, "series_number") and self.book.series_number:
             current_series_number = str(self.book.series_number)
-        if series_number and (
-            not current_series_number or series_number != current_series_number
-        ):
-            self.series_number_web_edit.setText(series_number)
-            # Show web number field if series name is also showing
-            if self.series_row._web_label.isVisible():
-                self.series_number_web_edit.setVisible(True)
-            # Add to field differences if different
-            if "series" in self.field_differences:
-                self.field_differences["series_number"] = series_number
+        web_num_str = str(web_data.get("series_number") or "").strip()
+        cur_num_str = current_series_number.strip()
+        number_differs = bool(
+            web_num_str and (not cur_num_str or web_num_str != cur_num_str)
+        )
+
+        if number_differs:
+            self.series_number_web_edit.setText(web_num_str)
+            self.series_number_web_edit.setVisible(True)
+            self.field_differences["series_number"] = web_num_str
+            if not series_name_shown:
+                self.series_row._web_label.setVisible(True)
+                db_series_empty = not (self.book.series_name or "").strip()
+                if db_series_empty:
+                    self.series_checkbox.setVisible(False)
+                else:
+                    self.series_checkbox.setVisible(True)
+                    self.series_checkbox.setChecked(True)
+        elif series_name_shown and web_num_str:
+            self.series_number_web_edit.setText(web_num_str)
+            self.series_number_web_edit.setVisible(True)
+            if web_num_str != cur_num_str:
+                self.field_differences["series_number"] = web_num_str
         else:
             self.series_number_web_edit.setVisible(False)
+
+        self._update_series_row_visibility(web_data)
+        self.set_tab_order()
 
         # Genre
         handle_field_comparison(
@@ -814,6 +1033,7 @@ class WebMetadataWindow(QDialog):
             "save_button": lambda: (
                 self.on_save_clicked() if self.save_button.isVisible() else None
             ),
+            "refetch_button": lambda: self.on_refetch_clicked(),
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map
@@ -871,6 +1091,7 @@ class WebMetadataWindow(QDialog):
             ("Alt+N", "Series #"),
             ("Alt+G", "Genre"),
             ("Alt+R", "Rating"),
+            ("Alt+F", "Re-fetch web data"),
             ("Alt+S", "Save"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
@@ -897,16 +1118,19 @@ class WebMetadataWindow(QDialog):
 
     def on_read_status_bar(self):
         """Alt+/ shortcut - read status. Do nothing if no screen reader active."""
-        status_text = self.status_bar.currentMessage()
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(self.status_bar, fallback="Ready")
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
         """Set status message with centralized status helper."""
         self.status_bar.showMessage(message)
         if announce:
             announce_status_message(self.status_bar, message, move_focus=True)
+            from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
+            QTimer.singleShot(
+                max(350, get_screen_reader_focus_delay_ms() + 50),
+                self.set_tab_order,
+            )
 
         # Auto-clear status after timeout if specified
         if timeout_ms > 0:
@@ -1017,42 +1241,15 @@ class WebMetadataWindow(QDialog):
                         except ValueError:
                             self.book.year = None
 
-                # Series
-                if "series" in self.field_differences:
-                    if self.series_row._checkbox.isVisible():
-                        # Field differs - apply if checked
-                        if self.series_checkbox.isChecked():
-                            series_text = self.series_web_edit.text().strip()
-                            series_id = None
-                            series_number = None
-                            if series_text:
-                                if " - " in series_text:
-                                    parts = series_text.split(" - ")
-                                    series_name = parts[0].strip()
-                                    try:
-                                        series_number = int(parts[1].strip())
-                                    except ValueError:
-                                        series_number = None
-                                else:
-                                    series_name = series_text
-                                if series_name:
-                                    series = self.series_queries.get_by_name(
-                                        series_name
-                                    )
-                                    if not series:
-                                        series_id = self.series_queries.insert(
-                                            series_name
-                                        )
-                                    else:
-                                        series_id = series.series_id
-                            self.book.series_id = series_id
-                            self.book.series_number = series_number
-                            applied_fields.append("Series")
-                    else:
-                        # DB field was empty - auto-apply web data
+                # Series (name and/or number from web)
+                if "series" in self.field_differences or "series_number" in self.field_differences:
+                    apply_series = not self.series_row._checkbox.isVisible() or (
+                        self.series_checkbox.isChecked()
+                    )
+                    if apply_series:
                         series_text = self.series_web_edit.text().strip()
-                        series_id = None
-                        series_number = None
+                        series_id = getattr(self.book, "series_id", None)
+                        series_number = getattr(self.book, "series_number", None)
                         if series_text:
                             if " - " in series_text:
                                 parts = series_text.split(" - ")
@@ -1069,8 +1266,13 @@ class WebMetadataWindow(QDialog):
                                     series_id = self.series_queries.insert(series_name)
                                 else:
                                     series_id = series.series_id
-                        self.book.series_id = series_id
-                        self.book.series_number = series_number
+                        web_num = self._series_number_from_web_apply()
+                        if web_num is not None:
+                            series_number = web_num
+                        if series_id is not None:
+                            self.book.series_id = series_id
+                        if series_number is not None:
+                            self.book.series_number = series_number
                         applied_fields.append("Series")
 
                 # Genre

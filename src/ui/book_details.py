@@ -13,16 +13,24 @@ from src.database import (
     GenreQueries,
     CollectionQueries,
 )
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
+    apply_status_bar_tooltip,
+    apply_visual_tooltip_map,
     build_accessible_message_box_style,
+    build_modern_button_style,
     exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+    MESSAGE_BOX_UNSAVED_THREE_ICONS,
+    MESSAGE_BOX_UNSAVED_TWO_ICONS,
 )
 from src.accessibility.accessible_events import (
     announce_status_message,
-    announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
 import getpass
@@ -91,12 +99,14 @@ class BookDetailsWindow(QDialog):
         self._default_status_message = message
         announce_status_message(self.status_bar, message, move_focus=announce)
 
-    def on_read_status_bar(self):
+    def on_read_status_bar(self, *, announce_text: str | None = None):
         """Read current status bar message (Alt+/)."""
-        status_text = self.status_bar.currentMessage() or self._default_status_message
-        if QAccessible.isActive():
-            self.set_status(status_text, announce=True)
-        # else: do nothing (no popup)
+        fallback = announce_text or self._idle_status_message()
+        read_status_bar_message(
+            self.status_bar,
+            fallback=fallback,
+            announce_text=announce_text,
+        )
 
     def on_cancel_edit(self):
         """
@@ -141,6 +151,7 @@ class BookDetailsWindow(QDialog):
                     QMessageBox.Cancel: "&Cancel",
                 },
                 window_icon=get_app_icon(),
+                button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
             )
 
             if reply == QMessageBox.Yes:
@@ -259,6 +270,7 @@ class BookDetailsWindow(QDialog):
         self.is_new = book is None
         self.sort_order = sort_order  # bd#8: Store for header display
         self._dirty = False  # bd#6: Track if form has unsaved changes
+        self._data_was_changed = False  # True after save/delete/web apply; gates list refresh
         self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
         self._first_dirty_widget = None  # Track first field that changed
         self._pending_dirty_widgets = set()
@@ -285,6 +297,7 @@ class BookDetailsWindow(QDialog):
 
         # Setup UI
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.apply_control_styles()  # bd#1: Uniform control heights
         self.disable_hover_highlight()
         self.install_focus_filters()  # bd#2: Prevent text auto-select on focus
@@ -310,13 +323,12 @@ class BookDetailsWindow(QDialog):
         self._setup_dirty_tracking()
         self._update_save_button_visibility()
 
-        # Window settings
+        # Window settings (title bar only; no accessible name/description noise for SR)
         title = "New Book" if self.is_new else "Book Details"
         self.setWindowTitle(title)
-        self.setAccessibleName(title)
-        self.setAccessibleDescription("Form for viewing and editing book information")
+        self.setAccessibleName("")
+        self.setAccessibleDescription("")
         self.resize(850, 650)
-        announce_dialog_opened(self, title)
         self._show_idle_status(announce=False)
         QTimer.singleShot(0, self.title_edit.setFocus)
 
@@ -585,21 +597,7 @@ class BookDetailsWindow(QDialog):
         """
 
         # Stylesheet for QPushButton - compact height, visible border, inverted focus
-        button_style = f"""
-            QPushButton {{
-                padding: 4px 12px;
-                min-height: {scaled_height - 4}px;
-                max-height: {scaled_height - 4}px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                background-color: palette(button);
-            }}
-            QPushButton:focus {{
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-                border: 2px solid palette(dark);
-            }}
-        """
+        button_style = build_modern_button_style(scaled_height)
 
         # Stylesheet for QLabel - bold text for form labels
         label_style = """
@@ -608,12 +606,28 @@ class BookDetailsWindow(QDialog):
             }
         """
 
+        self.save_button.setObjectName("primaryActionButton")
+        self.delete_button.setObjectName("destructiveActionButton")
+        self.edit_button.setObjectName("")
+        self.new_button.setObjectName("")
+
         # Apply styles to widgets that need local styling
         # Text boxes, combo boxes, spin boxes, and date edits use theme manager styling - don't override
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):
             widget.setStyleSheet(label_style)
+        self._apply_action_button_icons()
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside action button text."""
+        apply_decorative_action_icon(self.new_button, "new", self.scaler)
+        apply_decorative_action_icon(self.edit_button, "update", self.scaler)
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
+        apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
+        apply_decorative_action_icon(
+            self.get_web_details_button, "search_web", self.scaler
+        )
 
     def setup_ui(self):
         """Setup user interface."""
@@ -624,7 +638,11 @@ class BookDetailsWindow(QDialog):
         # bd#8: Header section showing sort order
         header_layout = QHBoxLayout()
         self.sort_order_label = QLabel(f"Sorted by: {self.sort_order}")
-        self.sort_order_label.setAccessibleName(f"Books sorted by {self.sort_order}")
+        self.sort_order_label.setAccessibleName("")
+        self.sort_order_label.setAccessibleDescription("")
+        self.sort_order_label.setFocusPolicy(Qt.NoFocus)
+        if QAccessible.isActive():
+            self.sort_order_label.hide()
         header_layout.addWidget(self.sort_order_label)
         header_layout.addStretch()
         layout.addLayout(header_layout)
@@ -636,8 +654,13 @@ class BookDetailsWindow(QDialog):
 
         # bd#3 Row 1: Title + Author (side by side)
         row1_layout = QHBoxLayout()
+        title_label = QLabel("Title:")
+        title_label.setAccessibleName("")
+        title_label.setAccessibleDescription("")
+        row1_layout.addWidget(title_label)
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("Book title")
+        self.title_edit.setAccessibleName("")
+        self.title_edit.setAccessibleDescription("")
         row1_layout.addWidget(self.title_edit, 2)  # stretch=2
 
         # bd#3 Author with View/Edit mode support
@@ -657,9 +680,7 @@ class BookDetailsWindow(QDialog):
         row1_layout.addWidget(self.author_label_display, 1)
         row1_layout.addWidget(self.author_combo, 1)  # stretch=1
 
-        title_label = QLabel("&Title:")
-        title_label.setBuddy(self.title_edit)
-        form.addRow(title_label, row1_layout)
+        form.addRow(row1_layout)
 
         # bd#3 Row 2: Plot (expand to fit, hide when empty)
         self.comments_label = QLabel("Plot:")
@@ -697,7 +718,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(time_label)
         row3_layout.addWidget(self.time_edit)
 
-        reader_label = QLabel("&Reader:")
+        reader_label = QLabel("Reader:")
         reader_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
@@ -706,7 +727,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(reader_label)
         row3_layout.addWidget(self.reader_edit)
 
-        read_label = QLabel("R&ead:")
+        read_label = QLabel("Read:")
         read_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.read_date = QDateEdit()
         self._null_read_date = QDate(2000, 1, 1)
@@ -768,7 +789,7 @@ class BookDetailsWindow(QDialog):
         row3_layout.addWidget(read_label)
         row3_layout.addWidget(self.read_date)
 
-        year_label = QLabel("&Year:")
+        year_label = QLabel("Year:")
         year_label.setBuddy(self.year_spin)
         form.addRow(year_label, row3_layout)
 
@@ -828,7 +849,7 @@ class BookDetailsWindow(QDialog):
         # bd#3 Row 5: Files + Bitrate + Size + Format + Source
         row5_layout = QHBoxLayout()
 
-        files_label = QLabel("&Files:")
+        files_label = QLabel("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(False)
         self.files_edit.setAccessibleName("Number of files")
@@ -836,7 +857,7 @@ class BookDetailsWindow(QDialog):
         files_label.setBuddy(self.files_edit)
         row5_layout.addWidget(self.files_edit)
 
-        bitrate_label = QLabel("&Bitrate:")
+        bitrate_label = QLabel("Bitrate:")
         bitrate_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(False)
@@ -846,7 +867,7 @@ class BookDetailsWindow(QDialog):
         row5_layout.addWidget(bitrate_label)
         row5_layout.addWidget(self.bitrate_edit)
 
-        size_label = QLabel("Si&ze:")
+        size_label = QLabel("Size:")
         size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(False)
@@ -902,7 +923,7 @@ class BookDetailsWindow(QDialog):
         row6_layout.addWidget(added_label)
         row6_layout.addWidget(self.added_edit, 1)
 
-        path_label = QLabel("Pat&h:")
+        path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
         form.addRow(path_label, row6_layout)
 
@@ -978,6 +999,7 @@ class BookDetailsWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
         # Set explicit tab order for predictable screen reader navigation
@@ -1010,6 +1032,166 @@ class BookDetailsWindow(QDialog):
 
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.title_edit: (
+                    "Book title",
+                    "",
+                ),
+                self.author_combo: (
+                    "Author name",
+                    "Author of the audiobook",
+                ),
+                self.author_label_display: (
+                    "Author name",
+                    "Author name - press Alt+A to focus, Alt+U to edit",
+                ),
+                self.comments_edit: (
+                    "Plot or comments",
+                    "Plot summary or comments for this book",
+                ),
+                self.year_spin: (
+                    "Publication year",
+                    "Publication year of the audiobook",
+                ),
+                self.time_edit: (
+                    "Audiobook length",
+                    "Length in hours and minutes",
+                ),
+                self.reader_edit: (
+                    "Narrator or reader",
+                    "Narrator or reader name",
+                ),
+                self.read_date: (
+                    "Date read",
+                    "Date this book was marked as read",
+                ),
+                self.series_combo: (
+                    "Series name",
+                    "Series this book belongs to",
+                ),
+                self.series_label_display: (
+                    "Series name",
+                    "Series name - press Alt+I to focus, Alt+U to edit",
+                ),
+                self.genre_combo: (
+                    "Genre",
+                    "Genre classification for this book",
+                ),
+                self.genre_label_display: (
+                    "Genre",
+                    "Genre - press Alt+G to focus, Alt+U to edit",
+                ),
+                self.collection_combo: (
+                    "Collection",
+                    "Collection that owns this book",
+                ),
+                self.collection_label_display: (
+                    "Collection",
+                    "Collection - press Alt+C to focus, Alt+U to edit",
+                ),
+                self.files_edit: (
+                    "Number of audio files",
+                    "Number of files in this audiobook",
+                ),
+                self.bitrate_edit: (
+                    "Audio bitrate",
+                    "Bitrate in kilobits per second",
+                ),
+                self.size_edit: (
+                    "Total file size",
+                    "Combined file size in megabytes",
+                ),
+                self.format_combo: (
+                    "Audio file format",
+                    "Primary audio file format",
+                ),
+                self.source_edit: (
+                    "Import source",
+                    "How this book was added to the library",
+                ),
+                self.path_edit: (
+                    "Folder or file path",
+                    "Location of audiobook files on disk",
+                ),
+                self.added_edit: (
+                    "Date added",
+                    "Date this book was added to the collection",
+                ),
+                self.new_button: (
+                    "Start a new book entry",
+                    "Clear form for new book entry",
+                ),
+                self.edit_button: (
+                    "Edit book details",
+                    "Enable editing of book details",
+                ),
+                self.save_button: (
+                    "Save changes",
+                    "Save changes to this book",
+                ),
+                self.delete_button: (
+                    "Delete this book",
+                    "Delete this book from the collection",
+                ),
+                self.get_web_details_button: (
+                    "Fetch metadata from the web",
+                    "Fetch book info from web",
+                ),
+            }
+        )
+        apply_status_bar_tooltip(self.status_bar, "")
+
+    def _idle_status_message(self) -> str:
+        """Default status text when the form is idle (view or new-book mode)."""
+        if self.is_new:
+            return "New book entry."
+        title = (getattr(self, "title_edit", None) and self.title_edit.text() or "").strip()
+        if not title:
+            title = (getattr(self.book, "title", None) or "").strip()
+        title = title or "(Untitled)"
+        author = (
+            getattr(self, "author_label_display", None)
+            and self.author_label_display.text()
+            or ""
+        ).strip()
+        if not author:
+            author = (getattr(self.book, "author_name", None) or "").strip()
+        author = author or "(Unknown author)"
+        return f"{title} by {author}."
+
+    def _blur_title_before_navigation_load(self):
+        """Move focus off title so setText during load does not trigger SR."""
+        for widget in (self.edit_button, self.save_button, self.new_button, self.delete_button):
+            if widget.isVisible():
+                widget.setFocus(Qt.OtherFocusReason)
+                return
+
+    def _focus_title_after_navigation(self):
+        """Speak title only after Page Up/Down (same pattern as import detail)."""
+        was_read_only = self.title_edit.isReadOnly()
+        in_edit_mode = self.author_combo.isVisible()
+
+        def focus_title():
+            if was_read_only and not in_edit_mode:
+                self.title_edit.setReadOnly(False)
+            self.title_edit.setAccessibleName("")
+            self.title_edit.setAccessibleDescription("")
+            self.title_edit.setFocus(Qt.OtherFocusReason)
+
+            def restore_read_only():
+                if was_read_only and not in_edit_mode:
+                    self.title_edit.setReadOnly(True)
+
+            from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
+            delay = max(get_screen_reader_focus_delay_ms(), 400)
+            QTimer.singleShot(delay, restore_read_only)
+
+        QTimer.singleShot(0, focus_title)
 
     def setup_shortcuts(self):
         """bd#4: Setup keyboard shortcuts for buttons."""
@@ -1067,6 +1249,7 @@ class BookDetailsWindow(QDialog):
 
         # Alt+/ remains local for status bar read
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
         # PageUp/PageDown for navigation (like import_detail_window)
@@ -1224,16 +1407,7 @@ class BookDetailsWindow(QDialog):
 
     def _show_idle_status(self, announce: bool = False):
         """Show default status when form is not in edit/save mode."""
-        if self.is_new:
-            self.set_status(
-                "New book entry.",
-                announce=announce,
-            )
-        else:
-            self.set_status(
-                "",
-                announce=announce,
-            )
+        self.set_status(self._idle_status_message(), announce=announce)
 
     def _update_save_button_visibility(self):
         """
@@ -1386,11 +1560,7 @@ class BookDetailsWindow(QDialog):
                 else:
                     self.collection_label_display.setText("")
             else:
-                if self.book.collection_id:
-                    coll_name = self.collection_queries.get_by_id(self.book.collection_id)
-                    self.collection_label_display.setText(coll_name.name if coll_name else "")
-                else:
-                    self.collection_label_display.setText("")
+                self.collection_label_display.setText(self.book.collection_name or "")
             self.time_edit.setText(self.book.time_display)
             self.files_edit.setText(str(self.book.tracks) if self.book.tracks else "")
             self.size_edit.setText(self.book.size_display if self.book.size_mb else "")
@@ -1601,6 +1771,7 @@ class BookDetailsWindow(QDialog):
         year_value = None if year_value == self.year_spin.minimum() else year_value
 
         # Removed legacy normalization methods (_to_proper_case, _is_proper_case_enabled, _normalize_name_field)
+        self.book.year = year_value
         self.book.title = book_dict["title"]
         self.book.author_name = book_dict["author"]
         self.book.author_id = author_id
@@ -1670,13 +1841,14 @@ class BookDetailsWindow(QDialog):
                     self.books_list[self.current_index] = self.book
                 self.set_status("Book updated successfully")
 
+            self._data_was_changed = True
+
             # Clear dirty and update original values (don't close window)
             self._clear_dirty(preserve_status=True)
             self._original_author = self.author_combo.currentText()
             self._original_series = self.series_combo.currentText()
             self._original_genre = self.genre_combo.currentText()
             self.setWindowTitle("Book Details")
-            self.setAccessibleName("Book Details")
 
             # Switch back to view mode (hide combos, show labels)
             self._show_view_labels()
@@ -1727,6 +1899,7 @@ class BookDetailsWindow(QDialog):
             text=confirm_text,
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
         )
         if reply != QMessageBox.Yes:
             self.set_status("Delete canceled.")
@@ -1734,6 +1907,7 @@ class BookDetailsWindow(QDialog):
         try:
             deleted_index = self.current_index
             self.book_queries.delete(self.book.book_id)
+            self._data_was_changed = True
 
             # Remove from books_list and navigate
             if self.books_list:
@@ -1762,7 +1936,6 @@ class BookDetailsWindow(QDialog):
                 self._clear_dirty()
                 self.update_navigation_state()
                 self.setWindowTitle("Book Details")
-                self.setAccessibleName("Book Details")
                 exec_styled_message_box(
                     self,
                     self.scaler.get_scaled_size(20),
@@ -1810,7 +1983,6 @@ class BookDetailsWindow(QDialog):
 
         # Update window title
         self.setWindowTitle("New Book")
-        self.setAccessibleName("New Book")
 
         # Update button states
         self.delete_button.setVisible(False)
@@ -2021,23 +2193,14 @@ class BookDetailsWindow(QDialog):
 
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""
-        # Show auto-closing popup dialog while fetching web info
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
         from PySide6.QtCore import QTimer
+        from src.ui.web_fetch_progress import WebFetchProgressDialog
 
-        popup = QDialog(self)
-        popup.setWindowTitle("Please wait")
-        popup.setModal(True)
-        popup.setWindowFlags(popup.windowFlags() | Qt.WindowStaysOnTopHint)
-        layout = QVBoxLayout(popup)
-        label = QLabel("Fetching book info from web, please wait!")
-        layout.addWidget(label)
-        popup.setLayout(layout)
-        popup.resize(350, 80)
-        QTimer.singleShot(1800, popup.accept)  # Auto-close after 1.8 seconds
+        popup = WebFetchProgressDialog(self)
         popup.show()
         QApplication.processEvents()
         if not self.book:
+            popup.close()
             self.set_status("No book selected for web lookup")
             return
         try:
@@ -2072,8 +2235,8 @@ class BookDetailsWindow(QDialog):
                     "import/autocorrect/move_leading_the_title", False, type=bool
                 )
 
-            # Try to fetch web data once. WebBookAPI already cascades through
-            # Google Books -> Open Library -> WikiData for refresh=0.
+            # Try to fetch web data once. WebBookAPI cascades Open Library ->
+            # Google Books -> WikiData for refresh=0.
             api = WebBookAPI()
             web_data = None
             last_error = None
@@ -2086,101 +2249,63 @@ class BookDetailsWindow(QDialog):
                     refresh=0,
                     move_articles=move_articles,
                     flip_author=flip_author,
+                    narrator=self.book.reader or "",
+                    path=self.book.path or "",
+                    source=self.book.source or "",
+                    comments=self.book.comments or "",
+                    progress_callback=popup.update_message,
                 )
             except Exception as e:
                 last_error = str(e)
+            finally:
+                popup.close()
 
-            if web_data:
-                # Check if the returned data is actually meaningful (has plot or matches search)
-                title_match = web_data.get("title", "").lower()
-                search_title_lower = title.lower()
-                author_match = web_data.get("author", "").lower()
-                search_author_lower = author.lower() if author else ""
-
-                # Check if it's a real match (title contains search terms OR has plot)
-                is_real_match = False
-                if web_data.get("plot"):
-                    # Has plot content - likely a real match
-                    is_real_match = True
-                elif search_title_lower and title_match:
-                    # Check if title similarity (contains at least part of search title)
-                    if (
-                        search_title_lower in title_match
-                        or title_match in search_title_lower
-                        or any(
-                            word in title_match
-                            for word in search_title_lower.split()
-                            if len(word) > 2
-                        )
-                    ):
-                        is_real_match = True
-                elif search_author_lower and author_match:
-                    # Check author match
-                    if (
-                        search_author_lower in author_match
-                        or author_match in search_author_lower
-                    ):
-                        is_real_match = True
-
-                if is_real_match:
-                    # Create web details window with pre-fetched data
-                    web_window = WebMetadataWindow(
-                        self.db,
-                        self.book,
-                        self.scaler,
-                        self.theme_manager,
-                        self,
-                        refresh_callback=self.load_book_data,  # Refresh book data after save
-                        web_data=web_data,
+            if web_data and not web_data.get("_no_result"):
+                web_window = WebMetadataWindow(
+                    self.db,
+                    self.book,
+                    self.scaler,
+                    self.theme_manager,
+                    self,
+                    refresh_callback=self.load_book_data,
+                    web_data=web_data,
+                )
+                result = web_window.exec()
+                if result == QDialog.Accepted:
+                    self._data_was_changed = True
+                    self.set_status(
+                        "Web details applied successfully", announce=True
                     )
-                    # Show window modally
-                    result = web_window.exec()
-                    if result == QDialog.Accepted:
-                        # User accepted changes - would implement actual update here
-                        self.set_status(
-                            "Web details applied successfully", announce=True
-                        )
-                        QTimer.singleShot(0, self.comments_edit.setFocus)
-                else:
-                    # Show popup if no meaningful data found
-                    from PySide6.QtWidgets import QMessageBox
-                    from src.accessibility.style_helpers import (
-                        build_accessible_message_box_style,
-                    )
-
-                    msg = QMessageBox(self)
-                    msg.setIcon(QMessageBox.Information)
-                    msg.setWindowTitle("No Web Data Found")
-                    msg.setText("No information found for this book in any web source.")
-                    msg.setStyleSheet(
-                        build_accessible_message_box_style(
-                            self.scaler.get_scaled_size(20)
-                        )
-                    )
-                    msg.setStandardButtons(QMessageBox.Ok)
-                    msg.exec()
-                    QTimer.singleShot(0, self.title_edit.setFocus)
+                    QTimer.singleShot(0, self.comments_edit.setFocus)
             else:
-                # Show popup if no data found
-                from PySide6.QtWidgets import QMessageBox
-                from src.accessibility.style_helpers import (
-                    build_accessible_message_box_style,
-                )
-
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Information)
-                msg.setWindowTitle("No Web Data Found")
-                if last_error:
-                    msg.setText(
-                        f"No information found for this book in any web source.\n\nLast error: {last_error}"
+                fetch_errors = (web_data or {}).get("_fetch_errors", [])
+                if fetch_errors:
+                    status_msg = "Web fetch failed: unable to reach web sources."
+                    if fetch_errors:
+                        status_msg = f"{status_msg} {fetch_errors[0]}"
+                    no_web_text = (
+                        "Unable to reach one or more web sources.\n\n"
+                        + "\n".join(f"  \u2022 {e}" for e in fetch_errors[:3])
+                    )
+                elif last_error:
+                    status_msg = f"No web data found for this book. {last_error}"
+                    no_web_text = (
+                        f"No information found for this book in any web source.\n\n"
+                        f"Last error: {last_error}"
                     )
                 else:
-                    msg.setText("No information found for this book in any web source.")
-                msg.setStyleSheet(
-                    build_accessible_message_box_style(self.scaler.get_scaled_size(20))
+                    status_msg = "No web data found for this book."
+                    no_web_text = (
+                        "No information found for this book in any web source."
+                    )
+                self.set_status(status_msg, announce=True)
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Information,
+                    title="No Web Data Found",
+                    text=no_web_text,
                 )
-                msg.setStandardButtons(QMessageBox.Ok)
-                msg.exec()
                 QTimer.singleShot(0, self.title_edit.setFocus)
         except Exception as e:
             import traceback
@@ -2214,6 +2339,7 @@ class BookDetailsWindow(QDialog):
             default_button=QMessageBox.No,
             button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
         if reply == QMessageBox.Yes:
             self.on_save()
@@ -2226,15 +2352,14 @@ class BookDetailsWindow(QDialog):
 
         def do_nav():
             if self.books_list and self.current_index > 0:
+                self._blur_title_before_navigation_load()
                 self.current_index -= 1
                 self.book = self.books_list[self.current_index]
                 self.is_new = False
                 self.load_book_data()
-                self._clear_dirty()
+                self._clear_dirty(preserve_status=True)
                 self.update_navigation_state()
-                self.setWindowTitle("Book Details")
-                self.setAccessibleName("Book Details")
-                QTimer.singleShot(0, self.title_edit.setFocus)
+                self._focus_title_after_navigation()
 
         if self._dirty:
             self._confirm_save_or_cancel(do_nav)
@@ -2246,15 +2371,14 @@ class BookDetailsWindow(QDialog):
 
         def do_nav():
             if self.books_list and self.current_index < len(self.books_list) - 1:
+                self._blur_title_before_navigation_load()
                 self.current_index += 1
                 self.book = self.books_list[self.current_index]
                 self.is_new = False
                 self.load_book_data()
-                self._clear_dirty()
+                self._clear_dirty(preserve_status=True)
                 self.update_navigation_state()
-                self.setWindowTitle("Book Details")
-                self.setAccessibleName("Book Details")
-                QTimer.singleShot(0, self.title_edit.setFocus)
+                self._focus_title_after_navigation()
 
         if self._dirty:
             self._confirm_save_or_cancel(do_nav)

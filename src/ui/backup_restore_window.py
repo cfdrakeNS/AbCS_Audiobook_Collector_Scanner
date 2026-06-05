@@ -24,10 +24,19 @@ from PySide6.QtWidgets import (
 
 
 from src.accessibility.scaling import UIScaler
-from src.accessibility.accessible_events import announce_status_message
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
+from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.style_helpers import (
-    build_accessible_button_style,
+    apply_visual_tooltip_map,
+    build_modern_button_style,
+    build_table_polish_style,
     exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+    MESSAGE_BOX_RESTORE_CONFIRM_ICONS,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -68,9 +77,12 @@ class BackupRestoreWindow(QDialog):
         self._suppress_backup_selection_events = False
         self._restore_file_explicitly_selected = False
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.setup_shortcuts()
         self.install_event_filters()
         self.apply_control_styles()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.refresh_backup_list()
         self.setWindowTitle("Backup / Restore")
         self.setAccessibleName("Backup Restore")
@@ -102,7 +114,6 @@ class BackupRestoreWindow(QDialog):
         self.backup_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.backup_list.setShowGrid(False)
         self.backup_list.setAlternatingRowColors(False)
-        self.backup_list.setStyleSheet(build_accessible_f1_popup_style())
         backups_label.setBuddy(self.backup_list)
         layout.addWidget(backups_label)
         layout.addWidget(self.backup_list, 1)
@@ -165,6 +176,7 @@ class BackupRestoreWindow(QDialog):
         layout.addLayout(footer_layout)
 
         self.status_bar = QStatusBar()
+        configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
         self.backup_list.currentCellChanged.connect(self.on_backup_selected)
@@ -185,6 +197,21 @@ class BackupRestoreWindow(QDialog):
         self.setTabOrder(self.delete_button, self.full_reset_button)
 
         self._update_delete_button_visibility()
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.backup_list: "List of available database backups",
+                self.browse_button: "Choose a backup file to restore",
+                self.restore_path_edit: "Backup file selected for restore",
+                self.backup_button: "Create a new database backup",
+                self.restore_button: "Restore the selected backup file",
+                self.delete_button: "Delete the selected backup file",
+                self.full_reset_button: "Reset the database to empty",
+                self.status_bar: "Backup and restore status",
+            }
+        )
 
     def setup_shortcuts(self):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
@@ -259,9 +286,52 @@ class BackupRestoreWindow(QDialog):
         return super().eventFilter(source, event)
 
     def apply_control_styles(self):
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(34))
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.backup_button.setObjectName("primaryActionButton")
+        self.restore_button.setObjectName("")
+        self.delete_button.setObjectName("destructiveActionButton")
+        self.full_reset_button.setObjectName("destructiveActionButton")
+        self.browse_button.setObjectName("")
+
         for button in self.findChildren(QPushButton):
             button.setStyleSheet(button_style)
+
+        self.backup_list.setStyleSheet(table_style)
+        self.status_bar.setStyleSheet(status_style)
+        self._apply_action_button_icons()
+
+    def _apply_action_button_icons(self):
+        apply_decorative_action_icon(self.browse_button, "browse", self.scaler)
+        apply_decorative_action_icon(self.backup_button, "save", self.scaler)
+        apply_decorative_action_icon(self.restore_button, "restore", self.scaler)
+        apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
+        apply_decorative_action_icon(self.full_reset_button, "cancel", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        self.apply_control_styles()
+
+    def on_theme_changed(self, _theme_name: str):
+        self.apply_control_styles()
 
     def set_initial_focus(self):
         """Set initial focus to backup list table and select first row if available."""
@@ -342,15 +412,7 @@ class BackupRestoreWindow(QDialog):
         dlg.exec()
 
     def on_read_status_bar(self):
-        status_text = self.status_bar.currentMessage()
-        if QAccessible.isActive():
-            announce_status_message(
-                self.status_bar,
-                status_text,
-                move_focus=True,
-                force_focus_announce=True,
-            )
-        # else: do nothing (no popup)
+        read_status_bar_message(self.status_bar, fallback="Ready")
 
     def _set_restore_path(self, path_text: str):
         self.restore_path_edit.setText(path_text)
@@ -511,6 +573,7 @@ class BackupRestoreWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_RESTORE_CONFIRM_ICONS,
         )
         if confirm != QMessageBox.Yes:
             self.set_status("Restore canceled")
@@ -585,6 +648,7 @@ class BackupRestoreWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
         )
         if confirm != QMessageBox.Yes:
             self.set_status("Delete backup canceled")
@@ -624,6 +688,7 @@ class BackupRestoreWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
         )
         if confirm != QMessageBox.Yes:
             self.set_status("Full reset canceled")

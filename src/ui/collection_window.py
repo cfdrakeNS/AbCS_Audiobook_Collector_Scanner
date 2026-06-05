@@ -29,11 +29,18 @@ from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_opened,
     announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
 )
 from src.accessibility.scaling import UIScaler
+from src.accessibility.icon_helper import apply_decorative_action_icon, get_app_icon
 from src.accessibility.style_helpers import (
-    build_accessible_button_style,
+    apply_status_bar_tooltip,
+    apply_visual_tooltip_map,
+    build_modern_button_style,
+    build_table_polish_style,
     exec_styled_message_box,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
@@ -74,6 +81,7 @@ class CollectionWindow(QDialog):
         self._editor_locked = False
 
         self.setup_ui()
+        self.apply_visual_tooltips()
         self.setup_shortcuts()
         self.load_collections(populate_editor=False)
         self._set_editor_locked(True)
@@ -109,6 +117,7 @@ class CollectionWindow(QDialog):
         parent=None,
     ):
         super().__init__(parent)
+        self.setWindowIcon(get_app_icon())
 
         self.db = db
         self.scaler = scaler
@@ -120,6 +129,10 @@ class CollectionWindow(QDialog):
         self._editor_locked = False
 
         self.setup_ui()
+        self.apply_visual_tooltips()
+        self.apply_control_styles()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.setup_shortcuts()
         self.load_collections(populate_editor=False)
         self._set_editor_locked(True)
@@ -171,9 +184,6 @@ class CollectionWindow(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
-        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
-
-        self.table.setStyleSheet(build_accessible_f1_popup_style())
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setMinimumSectionSize(60)
@@ -186,6 +196,7 @@ class CollectionWindow(QDialog):
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
         footer_layout.addWidget(self.status_bar, 1)
 
         self.new_button = QPushButton("New")
@@ -210,7 +221,51 @@ class CollectionWindow(QDialog):
         )
         footer_layout.addWidget(self.delete_button)
 
-        button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
+        for button in (
+            self.new_button,
+            self.edit_button,
+            self.save_button,
+            self.delete_button,
+        ):
+            button.setDefault(False)
+            button.setAutoDefault(False)
+            button.installEventFilter(self)
+
+        self.installEventFilter(self)
+        layout.addLayout(footer_layout)
+
+        QTimer.singleShot(0, self._apply_tab_order)
+
+    def apply_control_styles(self):
+        """Modern buttons, table polish, and status bar styling."""
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.save_button.setObjectName("primaryActionButton")
+        self.delete_button.setObjectName("destructiveActionButton")
+        self.new_button.setObjectName("")
+        self.edit_button.setObjectName("")
+
         for button in (
             self.new_button,
             self.edit_button,
@@ -218,15 +273,38 @@ class CollectionWindow(QDialog):
             self.delete_button,
         ):
             button.setStyleSheet(button_style)
-            button.setDefault(False)
-            button.setAutoDefault(False)
-            button.installEventFilter(self)
 
-            self.installEventFilter(self)
+        self.table.setStyleSheet(table_style)
+        self.status_bar.setStyleSheet(status_style)
+        self._apply_action_button_icons()
 
-        layout.addLayout(footer_layout)
+    def _apply_action_button_icons(self):
+        """Decorative icons beside footer button text."""
+        apply_decorative_action_icon(self.new_button, "new", self.scaler)
+        apply_decorative_action_icon(self.edit_button, "edit", self.scaler)
+        apply_decorative_action_icon(self.save_button, "save", self.scaler)
+        apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
 
-        QTimer.singleShot(0, self._apply_tab_order)
+    def on_scale_changed(self, _scale_percentage: int):
+        self.apply_control_styles()
+
+    def on_theme_changed(self, _theme_name: str):
+        self.apply_control_styles()
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.name_edit: "Collection name to add or edit",
+                self.active_check: "Include this collection in filters when active",
+                self.table: "List of collections",
+                self.new_button: "Create a new collection",
+                self.edit_button: "Edit the highlighted collection",
+                self.save_button: "Save the current collection",
+                self.delete_button: "Delete the selected collection if unused",
+            }
+        )
+        apply_status_bar_tooltip(self.status_bar, "Collection manager status")
 
     def setup_shortcuts(self):
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
@@ -649,6 +727,7 @@ class CollectionWindow(QDialog):
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
             window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
         )
         if answer != QMessageBox.Yes:
             self.set_status("Delete canceled.")
@@ -663,10 +742,7 @@ class CollectionWindow(QDialog):
         QTimer.singleShot(100, self.focus_first_item)
 
     def on_read_status(self):
-        message = self.status_bar.currentMessage().strip() or "Ready"
-        if QAccessible.isActive():
-            self.set_status(message, announce=True)
-        # else: do nothing (no popup)
+        read_status_bar_message(self.status_bar, fallback="Ready")
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""

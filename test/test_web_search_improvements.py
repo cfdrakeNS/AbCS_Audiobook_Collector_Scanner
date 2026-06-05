@@ -5,9 +5,9 @@ Run with: python test/test_web_search_improvements.py
 
 import sys
 
-sys.path.insert(0, "c:/Users/cfran/PythonProjects/abcs/src")
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent))
 
-from web.web_book_api import WebBookAPI, STOPWORDS
+from src.web.web_book_api import WebBookAPI, STOPWORDS
 
 
 def test_stopwords():
@@ -50,8 +50,9 @@ def test_author_matches():
     assert api._author_matches("Agatha Christie", "Stephen King") == False
     assert api._author_matches("Agatha Christie", "Arthur Conan Doyle") == False
 
-    # Empty author - should allow (can't verify)
-    assert api._author_matches("", "Stephen King") == True
+    # Empty DB or web author must not match (collection always has an author)
+    assert api._author_matches("", "Stephen King") == False
+    assert api._author_matches("Agatha Christie", "") == False
 
     # Case insensitive
     assert api._author_matches("agatha christie", "AGATHA CHRISTIE") == True
@@ -101,6 +102,23 @@ def test_title_matches():
     print("[PASS] _title_matches works correctly")
 
 
+def test_metadata_matches_db():
+    """Test centralized match gate rejects wrong author with good title."""
+    api = WebBookAPI()
+    meta = {
+        "title": "The Great Gatsby",
+        "author": "Stephen King",
+        "plot": "Some plot",
+        "rating": 4.0,
+    }
+    assert api._metadata_matches_db("The Great Gatsby", "F. Scott Fitzgerald", meta) is False
+    assert api._metadata_matches_db(
+        "The Great Gatsby", "F. Scott Fitzgerald",
+        {"title": "The Great Gatsby", "author": "F. Scott Fitzgerald"},
+    ) is True
+    print("[PASS] _metadata_matches_db works correctly")
+
+
 def test_clean_web_data_for_storage_removes_series_plot():
     """Test that plot values equal to series names are cleared before UI update/db save."""
     api = WebBookAPI()
@@ -145,4 +163,5 @@ if __name__ == "__main__":
     test_author_matches()
     test_title_word_match_score()
     test_title_matches()
+    test_metadata_matches_db()
     print("\n[PASS] All tests passed!")

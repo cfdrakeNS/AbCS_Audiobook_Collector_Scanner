@@ -15,6 +15,7 @@ A cross-platform audiobook collection manager with full accessibility support.
   - High contrast themes
 - **Bulk Operations**: Select multiple books for update or deletion
 - **Backup/Restore**: Protect your data with easy backup management
+- **Web Metadata**: Fetch plot, series, and comparison fields from Open Library, Google Books, and WikiData
 
 ## Requirements
 
@@ -92,7 +93,7 @@ abcs_project/
 ├── resources/             # UI files, icons, themes
 ├── data/                  # Database location
 ├── backups/              # Backup files
-└── tests/                # Unit tests
+└── test/                 # Unit tests
 
 ```
 
@@ -110,7 +111,7 @@ The application uses SQLite with the following main tables:
 
 ### Running Tests
 ```bash
-pytest tests/
+python -m pytest test/
 ```
 
 ### Code Style

@@ -52,7 +52,7 @@ class ImportValidator:
         elif duplicate_mode == "title_author_year_ignore_collection":
             duplicate_mode = "title_author_year"
         elif duplicate_mode == "title_author_ignore_collection":
-            duplicate_mode = "title_author_year"
+            duplicate_mode = "title_author_only"
         self.duplicate_match_mode = duplicate_mode
         threshold = self.settings.value(
             "import/rules/duplicate/fuzzy_threshold",
@@ -386,6 +386,7 @@ class ImportValidator:
             "author contains unknown or various",
             "title below minimum length",
             "folder path does not match expected structure",
+            "could not read length from audio files",
             "book length below minimum",
             "book length above maximum",
         ]

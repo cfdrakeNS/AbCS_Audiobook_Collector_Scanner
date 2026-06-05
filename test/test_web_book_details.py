@@ -109,3 +109,158 @@ def test_set_status_updates_status_bar(window):
     msg = "Web data found - Difference - Title, Author"
     window.set_status(msg)
     assert window.status_bar.currentMessage() == msg
+
+
+def test_series_row_hidden_when_db_and_web_empty(window):
+    assert window.series_row.isHidden()
+
+
+def test_series_row_visible_when_web_has_series(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "series": "Modern Classics",
+            "series_number": "2",
+        }
+    )
+    assert not window.series_row.isHidden()
+    assert not window.series_web_edit.isHidden()
+
+
+def test_series_web_number_visible_when_name_matches_db(qapp):
+    book = Book(
+        book_id=3,
+        title="Book Three",
+        author_name="Author",
+        series_name="Gamache",
+        genre_name="Fiction",
+    )
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    dlg = WebMetadataWindow(
+        db=None,
+        book=book,
+        scaler=scaler,
+        theme_manager=theme_manager,
+        web_data=None,
+    )
+    try:
+        dlg.update_fields_with_web_data(
+            {
+                "title": book.title,
+                "author": book.author_name,
+                "series": "Gamache",
+                "series_number": "9",
+            }
+        )
+        assert dlg.series_web_edit.isHidden()
+        assert not dlg.series_number_web_edit.isHidden()
+        assert dlg.series_number_web_edit.text() == "9"
+        assert "series_number" in dlg.field_differences
+    finally:
+        dlg.close()
+
+
+def test_series_web_number_visible_when_only_number_returned(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "series_number": "4",
+        }
+    )
+    assert not window.series_row.isHidden()
+    assert window.series_web_edit.isHidden()
+    assert not window.series_number_web_edit.isHidden()
+    assert window.series_number_web_edit.text() == "4"
+
+
+def test_tab_order_web_series_fields_before_buttons(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "year": "1926",
+            "series": "Modern Classics",
+            "series_number": "2",
+            "genre": "Literary Fiction",
+            "plot": "A portrait of wealth, illusion, and longing in the Jazz Age.",
+        }
+    )
+    window.show()
+    chain = window._iter_tab_widgets()
+    assert window.series_web_edit in chain
+    assert window.series_number_web_edit in chain
+    assert chain.index(window.series_web_edit) < chain.index(window.refetch_button)
+    assert chain.index(window.series_number_web_edit) < chain.index(window.save_button)
+
+
+def _tab_focus_names(widget, qapp, *, start_widget, steps: int) -> list[str]:
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    start_widget.setFocus()
+    qapp.processEvents()
+    names: list[str] = []
+    for _ in range(steps):
+        fw = qapp.focusWidget()
+        names.append(fw.accessibleName() if fw else "")
+        target = qapp.focusWidget() or widget
+        qapp.sendEvent(
+            target,
+            QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier),
+        )
+        qapp.processEvents()
+    return names
+
+
+def test_tab_order_genre_web_and_checkbox_after_show(qapp, sample_book):
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    dlg = WebMetadataWindow(
+        db=None,
+        book=sample_book,
+        scaler=scaler,
+        theme_manager=theme_manager,
+        web_data={
+            "title": sample_book.title,
+            "author": sample_book.author_name,
+            "year": "1926",
+            "genre": "Literary Fiction",
+            "plot": "A portrait of wealth, illusion, and longing in the Jazz Age.",
+        },
+    )
+    try:
+        dlg.show()
+        qapp.processEvents()
+        chain = _tab_focus_names(dlg, qapp, start_widget=dlg.genre_edit, steps=3)
+        assert chain[0] == "Current Genre"
+        assert chain[1] == "Web Genre"
+        assert chain[2] == "Keep Web Genre"
+    finally:
+        dlg.close()
+
+
+def test_series_row_visible_when_db_has_series(qapp):
+    book = Book(
+        book_id=2,
+        title="Book Two",
+        author_name="Author",
+        series_name="Test Saga",
+        genre_name="Fiction",
+    )
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    dlg = WebMetadataWindow(
+        db=None,
+        book=book,
+        scaler=scaler,
+        theme_manager=theme_manager,
+        web_data=None,
+    )
+    try:
+        assert not dlg.series_row.isHidden()
+        assert dlg.series_edit.text() == "Test Saga"
+    finally:
+        dlg.close()

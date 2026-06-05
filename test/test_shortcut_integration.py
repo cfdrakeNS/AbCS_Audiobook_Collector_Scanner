@@ -37,9 +37,10 @@ def test_shortcut_manager_reading_history_context(shortcut_manager):
     assert 'S' in shortcuts
     assert shortcuts['S'] == ('Search', 'refresh_button')
     
-    # Should have table focus shortcut (Alt+B)
-    assert 'B' in shortcuts
-    assert shortcuts['B'] == ('Jump to list', 'table')
+    # Should have table focus shortcut (Alt+L)
+    assert 'L' in shortcuts
+    assert shortcuts['L'] == ('Jump to list', 'table')
+    assert 'B' not in shortcuts
 
 
 def test_main_window_shortcut_registry_no_conflicts(main_window):
@@ -54,7 +55,7 @@ def test_main_window_shortcut_registry_no_conflicts(main_window):
     conflicts = main_shortcuts.intersection(reading_shortcuts)
     
     # Alt+S should not conflict (main window uses different context)
-    # Alt+B should not conflict (main window uses different context)
+    # Alt+L is the app-standard list/table focus shortcut
     # Context system should handle this properly
     assert isinstance(conflicts, set)  # Just verify we can check for conflicts
 
@@ -186,7 +187,7 @@ def test_reading_history_window_shortcuts(qapp):
     # Should have search button for Alt+S
     assert hasattr(window, 'refresh_button')
     
-    # Should have focus management for Alt+B
+    # Should have focus management for Alt+L
     assert hasattr(window, 'focus_current_table')
     
     window.close()

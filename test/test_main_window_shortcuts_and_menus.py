@@ -57,7 +57,8 @@ def test_main_window_shortcut_registry_removes_legacy_alt_keys():
 
     assert "R" not in keys
     assert "O" not in keys
-    assert "B" in keys
+    assert "B" not in keys
+    assert "L" in keys
     assert "U" in keys
 
 
@@ -158,7 +159,8 @@ def test_sort_menu_primary_action_updates_order_by(qapp, qtbot, temp_db):
 
     assert window.current_filter.order_by == "Genre"
     assert window._active_sort_key == "Genre"
-    assert "Genre" in window.sort_label.text()
+    assert "Sort: Genre, Title" in window.filter_summary_label.text()
+    assert "(Ascending)" not in window.filter_summary_label.text()
     assert genre_action.isChecked()
 
     window.close()
@@ -176,7 +178,33 @@ def test_sort_menu_non_primary_year_updates_active_sort_and_label(qapp, qtbot, t
 
     assert window._active_sort_key == "Year"
     assert year_action.isChecked()
-    assert window.sort_label.text() == "Sorted by: Year (Ascending)"
+    assert "Sort: Year (Ascending)" in window.filter_summary_label.text()
+
+    window.close()
+
+
+def test_refresh_preserves_in_memory_time_sort(qapp, qtbot, temp_db):
+    """refresh_books should keep Year/Time in-memory sort order and direction."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = MainWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    time_action = window._sort_actions_by_key["Time"]
+    time_action.trigger()
+    time_action.trigger()
+
+    assert window._active_sort_key == "Time"
+    assert window._active_sort_direction == "Descending"
+    first_id = window.books[0].book_id if window.books else None
+
+    window.refresh_books()
+
+    assert window._active_sort_key == "Time"
+    assert window._active_sort_direction == "Descending"
+    assert "Sort: Time (Descending)" in window.filter_summary_label.text()
+    if window.books and first_id is not None:
+        assert window.books[0].book_id == first_id
 
     window.close()
 
