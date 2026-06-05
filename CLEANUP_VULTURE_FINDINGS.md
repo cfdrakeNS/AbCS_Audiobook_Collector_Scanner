@@ -7,13 +7,13 @@
 
 ---
 
-# Actionable Items (Current - June 3, 2026)
+# Actionable Items (Current - June 5, 2026)
 
 Items that need verification or cleanup, organized by file:
 
 ## Production Code
 
-- No current production cleanup items after removing `refresh_view` and `focus_first_card` (see Cleanup History).
+- No current production cleanup items after removing `TIMEOUT_RETRY_DELAY` and `loaded` (see Cleanup History).
 
 ## Tests
 - `test/test_reading_history_accessibility.py`: `date_range_layout` variable - Test-only Vulture finding; review before changing.
@@ -21,6 +21,7 @@ Items that need verification or cleanup, organized by file:
 - `test/test_shortcut_integration.py`: `shortcut_manager` fixture/variable - Test-only finding; may be pytest fixture behavior.
 - `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`, and repeated `isolated_qsettings` parameters - Test-only findings; likely pytest fixtures and should be handled carefully.
 - `test/test_web_book_api_matching.py`: `return_value` and `side_effect` attributes on `@patch.object` mocks — Test-only mock configuration; do not remove.
+- `test/test_web_series.py`: `return_value` attribute on patched mock (line ~71) — Test-only mock configuration; do not remove.
 
 ## Review Notes
 - `src/build_config.py` uses `TRIAL_BUILD_DATE` in `src/main.py`; do not remove.
@@ -30,6 +31,7 @@ Items that need verification or cleanup, organized by file:
 - `src/ui/main_window.py` `book_list` is a compatibility/accessibility alias for the table; used by `test/test_accessibility_regression.py`.
 - `src/ui/name_list_window.py` `on_alt_f_pressed` wraps `on_clear_find`; shortcut wiring uses `on_clear_find` directly but tests assert the alias exists.
 - `src/ui/name_list_window.py` `_format_status_message` is exercised by `test/test_name_list_status_formatting.py`, not from production callers.
+- `src/ui/name_list_window.py` `_is_find_match` is exercised by `test/test_name_list_find_matching.py`; production find uses `_find_match_rank` and `_row_visible_for_live_find`.
 - `src/ui/reading_history_window.py` `load_general_stats` is a compatibility alias for `load_summary_data`; keep unless tests and callers are updated.
 - `src/accessibility/theme_picker.py` `paintEvent` on `ThemeMiniPreview` is a Qt widget override invoked by the framework, not application code.
 - Test-only Vulture findings should not be removed without confirming pytest fixture use and test intent.
@@ -49,6 +51,7 @@ These items are flagged by vulture but are actually used or required:
 ## Tests
 - **pytest fixtures and fixture parameters**: Vulture may report fixtures or fixture arguments as unused even when pytest injects them for setup side effects.
 - **`test/test_web_book_api_matching.py`: mock `return_value` and `side_effect` attributes** - Standard unittest.mock patch configuration.
+- **`test/test_web_series.py`: mock `return_value` attribute** - Standard unittest.mock patch configuration.
 - **`test/test_message_box_button_icons.py`: inner `Parent` class** - Minimal stub used only to satisfy a test signature pattern; not production code.
 
 ## Compatibility and callback references
@@ -56,6 +59,7 @@ These items are flagged by vulture but are actually used or required:
 - **`src/ui/main_window.py`: `book_list`** - Compatibility/accessibility alias for the main table.
 - **`src/ui/name_list_window.py`: `on_alt_f_pressed`** - Shortcut callback alias; tests assert presence.
 - **`src/ui/name_list_window.py`: `_format_status_message`** - Static helper called from unit tests.
+- **`src/ui/name_list_window.py`: `_is_find_match`** - Static helper called from `test/test_name_list_find_matching.py`.
 - **`src/ui/reading_history_window.py`: `load_general_stats`** - Compatibility alias for `load_summary_data`.
 
 ## Qt framework callbacks
@@ -64,6 +68,60 @@ These items are flagged by vulture but are actually used or required:
 ---
 
 # Cleanup History
+
+### June 5, 2026 — Dead-code cleanup (vulture actionable items)
+
+**Removed:**
+- `src/web/web_book_api.py`: `TIMEOUT_RETRY_DELAY` unused module constant.
+- `src/web/web_book_api.py`: `loaded` assigned-only counter in `_load_persistent_cache`.
+- `src/ui/setup_dialogue.py`: duplicate `__init__` and duplicate unused `get_app_version` methods (Python kept only the second `__init__`, leaving dead code and no window icon); consolidated to single `__init__` with `get_app_icon` and `_resolve_graphics_path`.
+- `src/ui/about_dialogue.py`: same duplicate `__init__` pattern; consolidated to single `__init__` with `get_app_icon`; moved version lookup to module-level `_get_app_version()`.
+
+**Tests fixed:**
+- `test/test_web_book_api_matching.py`: refresh-order tests now stub post-match enrichment (`_enrich_metadata_plot`, `_fetch_series_from_google`, etc.) so `_fetch_from_google_books` is not called twice for series lookup.
+
+**Post-cleanup:** production actionable section cleared.
+
+### June 5, 2026 — Vulture Scan
+
+**Scan run:**
+- `python -m vulture src test --min-confidence 60`
+- `python -m vulture src --min-confidence 60`
+
+**New actionable items (production):**
+- `src/web/web_book_api.py`: `TIMEOUT_RETRY_DELAY` (line 29) — unused constant; documented in `abcs_Web_fetch_improvement.md` but not wired in code.
+- `src/web/web_book_api.py`: `loaded` (lines 549, 553) — assigned-only counter in `_load_persistent_cache`.
+
+**New actionable items (tests):**
+- None beyond existing test-only list.
+
+**New test-only findings (document as false positives / do not remove):**
+- `test/test_web_series.py`: mock `return_value` attribute (line ~71) — same pattern as `test_web_book_api_matching.py`.
+
+**New false positives documented:**
+- `src/ui/name_list_window.py`: `_is_find_match` — called from `test/test_name_list_find_matching.py`; not used from production callers after live-find refactor.
+
+**Existing actionable items unchanged (tests):**
+- `test/test_reading_history_accessibility.py`: `date_range_layout`
+- `test/test_reading_history_final_integration.py`: `alt_slush_works`, `operation_works`
+- `test/test_shortcut_integration.py`: `shortcut_manager` fixture
+- `test/test_update_import_regressions.py`: `suppress_import_confirmations`, `isolated_qsettings`
+- `test/test_web_book_api_matching.py`: mock `return_value` / `side_effect` attributes
+
+**Existing false positives confirmed (src-only scan):**
+- `src/database/connection.py`: `row_factory`
+- `src/ui/book_list_import_window.py`: fallback `DataFrame`
+- `src/accessibility/theme_picker.py`: `ThemeMiniPreview.paintEvent` (Qt callback)
+- `src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS` (compatibility alias)
+- `src/ui/main_window.py`: `book_list` (compatibility alias)
+- `src/ui/name_list_window.py`: `on_alt_f_pressed`, `_format_status_message`, `_is_find_match`
+- `src/ui/reading_history_window.py`: `load_general_stats`
+
+**Review notes still valid (not reported this scan):**
+- `src/build_config.py`: `TRIAL_BUILD_DATE` (used by `src/main.py`)
+- `src/database/queries.py`: `total_time_hours`, `total_hours_read`
+
+**`.vultureignore`:** no changes required this scan.
 
 ### June 3, 2026 — Dead-code cleanup (vulture actionable items)
 

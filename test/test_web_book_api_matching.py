@@ -136,10 +136,16 @@ def test_metadata_matches_db_rejects_empty_db_author(api):
     assert not api._metadata_matches_db("Dune", "Frank Herbert", {"title": "Dune", "author": ""})
 
 
+@patch.object(WebBookAPI, "_save_persistent_cache")
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
+@patch.object(WebBookAPI, "_fetch_series_from_google", return_value=None)
+@patch.object(WebBookAPI, "_get_open_library_work_fields", return_value={})
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books")
 @patch.object(WebBookAPI, "_fetch_from_open_library")
-def test_refresh_zero_open_library_before_google(ol_mock, gb_mock, _wd_mock, api):
+def test_refresh_zero_open_library_before_google(
+    ol_mock, gb_mock, _wd_mock, _ol_fields, _series, _plot, _save, api
+):
     ol_mock.return_value = {
         "title": "Dune",
         "author": "Frank Herbert",
@@ -152,10 +158,16 @@ def test_refresh_zero_open_library_before_google(ol_mock, gb_mock, _wd_mock, api
     gb_mock.assert_not_called()
 
 
+@patch.object(WebBookAPI, "_save_persistent_cache")
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
+@patch.object(WebBookAPI, "_fetch_series_from_google", return_value=None)
+@patch.object(WebBookAPI, "_get_open_library_work_fields", return_value={})
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books")
 @patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
-def test_refresh_zero_google_when_open_library_fails(ol_mock, gb_mock, _wd_mock, api):
+def test_refresh_zero_google_when_open_library_fails(
+    ol_mock, gb_mock, _wd_mock, _ol_fields, _series, _plot, _save, api
+):
     gb_mock.return_value = {
         "title": "Dune",
         "author": "Frank Herbert",
@@ -168,10 +180,16 @@ def test_refresh_zero_google_when_open_library_fails(ol_mock, gb_mock, _wd_mock,
     gb_mock.assert_called_once()
 
 
+@patch.object(WebBookAPI, "_save_persistent_cache")
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
+@patch.object(WebBookAPI, "_fetch_series_from_google", return_value=None)
+@patch.object(WebBookAPI, "_get_open_library_work_fields", return_value={})
 @patch.object(WebBookAPI, "_fetch_from_wikidata")
 @patch.object(WebBookAPI, "_fetch_from_google_books")
 @patch.object(WebBookAPI, "_fetch_from_open_library")
-def test_refresh_one_skips_open_library(ol_mock, gb_mock, wd_mock, api):
+def test_refresh_one_skips_open_library(
+    ol_mock, gb_mock, wd_mock, _ol_fields, _series, _plot, _save, api
+):
     gb_mock.return_value = {
         "title": "Dune",
         "author": "Frank Herbert",

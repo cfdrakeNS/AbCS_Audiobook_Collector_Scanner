@@ -26,7 +26,6 @@ WEB_CACHE_MAX_ENTRIES = 200
 # Network timeout constants (seconds)
 TIMEOUT_SEARCH = 10    # primary title/author searches
 TIMEOUT_DETAIL = 6     # secondary calls (work description, extract)
-TIMEOUT_RETRY_DELAY = 1  # pause before one retry on URLError
 
 # Leading honorifics to strip from author search (Sir Arthur Conan Doyle -> Arthur Conan Doyle)
 AUTHOR_HONORIFIC_PREFIX = re.compile(
@@ -546,11 +545,9 @@ class WebBookAPI:
                 return
             with open(cache_path, encoding="utf-8") as f:
                 raw = json.load(f)
-            loaded = 0
             for key, entry in raw.items():
                 if isinstance(entry, list) and len(entry) == 2:
                     self._cache[key] = (entry[0], entry[1])
-                    loaded += 1
         except Exception:
             pass  # Corrupt or missing cache is non-fatal
 
