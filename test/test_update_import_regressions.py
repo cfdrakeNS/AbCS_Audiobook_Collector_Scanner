@@ -341,7 +341,8 @@ def test_refresh_summary_updates_after_revalidate(
     window._refresh_summary_from_items()
 
     assert window._summary_counts["warnings"] == 0
-    assert window._summary_counts["valid"] == 1
+    assert window._summary_counts["errors"] == 0
+    assert window._summary_counts["scanned"] == 1
     assert window.scan_outcomes[0]["status"] == "OK"
     assert "warning" not in window.scan_outcomes[0]["outcomes"]
 
@@ -418,7 +419,7 @@ def test_refresh_summary_drops_discarded_row_from_scanned_total(
     assert len(window.scan_outcomes) == 1
     assert window._summary_counts["scanned"] == 1
     assert window._summary_counts["warnings"] == 0
-    assert window._summary_counts["valid"] == 1
+    assert window._summary_counts["errors"] == 0
 
     cleanup_window(window)
 
