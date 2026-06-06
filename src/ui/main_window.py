@@ -220,25 +220,6 @@ class BookTableModel(QAbstractTableModel):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        from src.accessibility.icon_helper import get_app_icon
-        import os
-
-        # Debug: print resolved icon path and existence
-        from src.accessibility import icon_helper
-
-        icon = get_app_icon()
-        print(
-            "[DEBUG] ICON_PATH:",
-            os.path.abspath(icon_helper.ICON_PATH),
-            "Exists:",
-            os.path.exists(icon_helper.ICON_PATH),
-            "Loaded:",
-            not icon.isNull(),
-        )
-        self.setWindowIcon(icon)
-
     def _selection_shortcuts_text(self) -> str:
         """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""
         # Only show Escape to cancel selection for accessibility
@@ -539,6 +520,10 @@ class MainWindow(QMainWindow):
         Initialize main window.
         """
         super().__init__()
+
+        from src.accessibility.icon_helper import get_app_icon
+
+        self.setWindowIcon(get_app_icon())
 
         # Store UI managers
         self.scaler = scaler
