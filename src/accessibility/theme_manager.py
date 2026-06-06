@@ -401,7 +401,7 @@ class ThemeManager(QObject):
         groupbox_style = build_group_box_style()
 
         # Menu styling for better theme consistency
-        menu_style = f"""
+        menu_style = """
             QMenu {
                 background-color: palette(base);
                 border: 1px solid palette(dark);
@@ -481,7 +481,9 @@ class ThemeManager(QObject):
             QPlainTextEdit:focus {
                 border: 2px solid palette(highlight);
             }
-            {build_theme_scrollbar_style()}
+        """
+        menu_style += build_theme_scrollbar_style()
+        menu_style += """
             QMessageBox {
                 background-color: palette(window);
                 color: palette(window-text);
