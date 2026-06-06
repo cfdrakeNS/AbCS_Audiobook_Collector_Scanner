@@ -15,6 +15,7 @@ from .style_helpers import (
     build_accessible_combo_box_style,
     build_accessible_date_edit_style,
     build_accessible_spinbox_style,
+    build_group_box_style,
 )
 from .windows_theme_detector import (
     detect_windows_dark_mode,
@@ -395,22 +396,7 @@ class ThemeManager(QObject):
         # Additional stylesheet tweaks for specific themes
         extra_style = ""
 
-        # Group box styling for proper text visibility in all themes
-        groupbox_style = """
-            QGroupBox {
-                color: palette(window-text);
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                padding-top: 10px;
-                margin-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 3px 0 3px;
-                color: palette(window-text);
-            }
-        """
+        groupbox_style = build_group_box_style()
 
         # Menu styling for better theme consistency
         menu_style = """

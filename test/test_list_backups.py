@@ -64,3 +64,41 @@ def test_list_backups_orders_newest_first(tmp_path: Path):
     backups = manager.list_backups()
 
     assert backups == [newer.resolve(), older.resolve()]
+
+
+def test_restore_from_backup_removes_wal_sidecars(tmp_path: Path):
+    import sqlite3
+
+    db_path = tmp_path / "abcs.db"
+    backup_path = tmp_path / "backups" / "abcs_backup_test.db"
+    backup_path.parent.mkdir(parents=True)
+
+    backup_conn = sqlite3.connect(backup_path)
+    backup_conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY)")
+    backup_conn.commit()
+    backup_conn.close()
+
+    active_conn = sqlite3.connect(db_path)
+    active_conn.execute("PRAGMA journal_mode=WAL")
+    active_conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY)")
+    active_conn.execute("INSERT INTO books (id) VALUES (99)")
+    active_conn.commit()
+    active_conn.close()
+
+    wal = Path(f"{db_path}-wal")
+    shm = Path(f"{db_path}-shm")
+    wal.write_bytes(b"stale-wal")
+    shm.write_bytes(b"stale-shm")
+
+    manager = DatabaseManager(str(db_path))
+    manager.restore_from_backup(backup_path)
+
+    restored_conn = sqlite3.connect(db_path)
+    row_count = restored_conn.execute("SELECT COUNT(*) FROM books").fetchone()[0]
+    restored_conn.close()
+    assert row_count == 0
+
+    if wal.exists():
+        assert wal.read_bytes() != b"stale-wal"
+    if shm.exists():
+        assert shm.read_bytes() != b"stale-shm"

@@ -540,8 +540,23 @@ class BackupRestoreWindow(QDialog):
         self._select_backup_path(str(backup_path))
         self.set_status(f"Backup created: {backup_path.name}")
 
-    def on_restore(self):
+    def _selected_backup_path(self) -> str:
         restore_path = self.restore_path_edit.text().strip()
+        if restore_path:
+            return restore_path
+
+        current_row = self.backup_list.currentRow()
+        if current_row < 0:
+            return ""
+
+        current_item = self.backup_list.item(current_row, 0)
+        if current_item is None:
+            return ""
+
+        return (current_item.data(Qt.UserRole) or "").strip()
+
+    def on_restore(self):
+        restore_path = self._selected_backup_path()
         if not restore_path:
             from src.accessibility.icon_helper import get_app_icon
 

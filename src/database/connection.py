@@ -127,6 +127,24 @@ class DatabaseManager:
             self._connection.close()
             self._connection = None
 
+    @staticmethod
+    def _remove_sqlite_sidecars(db_path: Path) -> None:
+        """Remove WAL/SHM files so a replaced database opens cleanly."""
+        for suffix in ("-wal", "-shm"):
+            sidecar = Path(f"{db_path}{suffix}")
+            if sidecar.exists():
+                sidecar.unlink()
+
+    def _checkpoint_wal(self) -> None:
+        """Flush WAL contents into the main database file before copying."""
+        if self._connection is None:
+            return
+        try:
+            self._connection.execute("PRAGMA wal_checkpoint(FULL)")
+            self._connection.commit()
+        except sqlite3.Error:
+            pass
+
     def execute(self, query: str, params: tuple = None) -> sqlite3.Cursor:
         """
         Execute a SQL query (INSERT, UPDATE, DELETE, etc.).
@@ -586,6 +604,7 @@ class DatabaseManager:
 
         conn = self.connect()
         conn.commit()
+        self._checkpoint_wal()
 
         timestamp = datetime.now().strftime("%A_%B_%d_%y_at_%H_%M")
         extension = db_file.suffix or ".db"
@@ -601,12 +620,15 @@ class DatabaseManager:
             raise FileNotFoundError(f"Backup file not found: {source}")
 
         destination = Path(self.db_path).resolve()
+        self._checkpoint_wal()
         self.close()
+        self._remove_sqlite_sidecars(destination)
 
         if source != destination:
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
 
+        self._remove_sqlite_sidecars(destination)
         self.initialize_database()
 
     def delete_backup_file(self, backup_file: str | Path) -> Path:
