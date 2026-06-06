@@ -71,3 +71,6 @@ echo
 echo "Build complete: dist/AbCS"
 echo "Test package: zip the dist/ folder (see dist/README.txt)"
 echo "Optional launcher: copy dist/AbCS.desktop to ~/.local/share/applications/ then run: update-desktop-database ~/.local/share/applications"
+echo
+echo "Expected PyInstaller warnings on Linux (safe to ignore):"
+echo "  - Library user32 / msvcrt not found (Windows-only ctypes checks)"

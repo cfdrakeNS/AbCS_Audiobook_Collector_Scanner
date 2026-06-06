@@ -20,16 +20,9 @@ abcs_pyinstaller_graphics_args() {
     echo "WARNING: graphics/ not found — window icons and About splash will be missing from the build." >&2
   fi
 
-  # Linux desktops read PNG icons reliably; ICO often fails to embed in the ELF binary.
-  if [[ -f "graphics/abcs_icon_256x256.png" ]]; then
-    args+=(--icon="graphics/abcs_icon_256x256.png")
-  elif [[ -f "Graphics/abcs_icon_256x256.png" ]]; then
-    args+=(--icon="Graphics/abcs_icon_256x256.png")
-  elif [[ -f "graphics/abcs_icon_256x256.ico" ]]; then
-    args+=(--icon="graphics/abcs_icon_256x256.ico")
-  elif [[ -f "Graphics/abcs_icon_256x256.ico" ]]; then
-    args+=(--icon="Graphics/abcs_icon_256x256.ico")
-  fi
+  # Do not pass --icon here. PyInstaller only embeds icons on Windows/macOS; on Linux it
+  # logs "Ignoring icon" and does nothing. Icons come from bundled graphics/ at runtime
+  # plus abcs_write_linux_dist_assets (sidecar PNG + AbCS.desktop).
 
   printf '%s\n' "${args[@]}"
 }
