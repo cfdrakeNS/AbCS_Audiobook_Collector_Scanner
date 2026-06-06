@@ -133,6 +133,25 @@ class UIScaler(QObject):
         font.setPointSize(scaled_size)
         self.app.setFont(font)
 
+        linux = sys.platform.startswith("linux")
+        header_hiding_style = ""
+        if not linux:
+            header_hiding_style = """
+            QHeaderView::section:vertical {
+                min-width: 0px;
+                max-width: 0px;
+                width: 0px;
+                padding: 0px;
+                margin: 0px;
+                border: none;
+            }
+
+            QTableCornerButton::section {
+                border: none;
+                background: transparent;
+            }
+            """
+
         # Update stylesheet for fine-tuned control
         stylesheet = f"""
             /* Base font scaling */
@@ -210,24 +229,11 @@ class UIScaler(QObject):
                 padding: {int(8 * self._current_scale / 100)}px;
             }}
 
-            /* Global default: hide vertical row header sections (row numbers) */
-            QHeaderView::section:vertical {{
-                min-width: 0px;
-                max-width: 0px;
-                width: 0px;
-                padding: 0px;
-                margin: 0px;
-                border: none;
-            }}
-
-            QTableCornerButton::section {{
-                border: none;
-                background: transparent;
-            }}
+            {header_hiding_style}
 
             /* Combo box dropdown — skip extra padding on Linux (hides Fusion arrow) */
             QComboBox {{
-                padding-right: {0 if sys.platform.startswith("linux") else int(20 * self._current_scale / 100)}px;
+                padding-right: {0 if linux else int(20 * self._current_scale / 100)}px;
             }}
 
             /* Status bar */

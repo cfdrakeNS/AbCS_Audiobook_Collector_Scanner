@@ -16,6 +16,8 @@ from .style_helpers import (
     build_accessible_date_edit_style,
     build_accessible_spinbox_style,
     build_group_box_style,
+    build_theme_combo_color_overrides,
+    build_theme_scrollbar_style,
 )
 from .windows_theme_detector import (
     detect_windows_dark_mode,
@@ -399,7 +401,7 @@ class ThemeManager(QObject):
         groupbox_style = build_group_box_style()
 
         # Menu styling for better theme consistency
-        menu_style = """
+        menu_style = f"""
             QMenu {
                 background-color: palette(base);
                 border: 1px solid palette(dark);
@@ -479,42 +481,7 @@ class ThemeManager(QObject):
             QPlainTextEdit:focus {
                 border: 2px solid palette(highlight);
             }
-            QScrollBar:vertical {
-                background-color: palette(base);
-                width: 15px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: palette(mid);
-                border-radius: 3px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: palette(highlight);
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                background: none;
-                border: none;
-            }
-            QScrollBar:horizontal {
-                background-color: palette(base);
-                height: 15px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }
-            QScrollBar::handle:horizontal {
-                background-color: palette(mid);
-                border-radius: 3px;
-                min-width: 20px;
-            }
-            QScrollBar::handle:horizontal:hover {
-                background-color: palette(highlight);
-            }
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-                background: none;
-                border: none;
-            }
+            {build_theme_scrollbar_style()}
             QMessageBox {
                 background-color: palette(window);
                 color: palette(window-text);
@@ -558,25 +525,7 @@ class ThemeManager(QObject):
                 {combo_style}
                 {spinbox_style}
                 {dateedit_style}
-                /* High contrast combo box fixes */
-                QComboBox {{
-                    background-color: palette(base) !important;
-                    color: palette(text) !important;
-                }}
-                QComboBox QAbstractItemView {{
-                    background-color: palette(base) !important;
-                    color: palette(text) !important;
-                    selection-background-color: palette(highlight) !important;
-                    selection-color: palette(highlighted-text) !important;
-                }}
-                QComboBox QAbstractItemView::item:selected {{
-                    background-color: palette(highlight) !important;
-                    color: palette(highlighted-text) !important;
-                }}
-                QComboBox QAbstractItemView::item:hover {{
-                    background-color: palette(highlight) !important;
-                    color: palette(highlighted-text) !important;
-                }}
+                {build_theme_combo_color_overrides()}
                 /* High contrast text box fixes */
                 QLineEdit {{
                     background-color: palette(base) !important;
@@ -608,25 +557,7 @@ class ThemeManager(QObject):
                 {combo_style}
                 {spinbox_style}
                 {dateedit_style}
-                /* Combo box fixes for all themes */
-                QComboBox {{
-                    background-color: palette(base) !important;
-                    color: palette(text) !important;
-                }}
-                QComboBox QAbstractItemView {{
-                    background-color: palette(base) !important;
-                    color: palette(text) !important;
-                    selection-background-color: palette(highlight) !important;
-                    selection-color: palette(highlighted-text) !important;
-                }}
-                QComboBox QAbstractItemView::item:selected {{
-                    background-color: palette(highlight) !important;
-                    color: palette(highlighted-text) !important;
-                }}
-                QComboBox QAbstractItemView::item:hover {{
-                    background-color: palette(highlight) !important;
-                    color: palette(highlighted-text) !important;
-                }}
+                {build_theme_combo_color_overrides()}
                 /* Text box fixes for all themes */
                 QLineEdit {{
                     background-color: palette(base) !important;
@@ -672,12 +603,14 @@ class ThemeManager(QObject):
 
     def _repolish_open_widgets(self):
         """Force immediate visual refresh of open windows after theme changes."""
+        linux = sys.platform.startswith("linux")
         for top_level in self.app.topLevelWidgets():
             if not isinstance(top_level, QWidget):
                 continue
 
             widgets = [top_level]
-            widgets.extend(top_level.findChildren(QWidget))
+            if not linux:
+                widgets.extend(top_level.findChildren(QWidget))
 
             for widget in widgets:
                 style = widget.style()

@@ -126,6 +126,78 @@ def _is_linux() -> bool:
     return sys.platform.startswith("linux")
 
 
+def build_theme_scrollbar_style() -> str:
+    """Scrollbar styling; omit subcontrol rules on Linux (Fusion QPainter bug)."""
+    if _is_linux():
+        return ""
+    return """
+            QScrollBar:vertical {
+                background-color: palette(base);
+                width: 15px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: palette(mid);
+                border-radius: 3px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: palette(highlight);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                background: none;
+                border: none;
+            }
+            QScrollBar:horizontal {
+                background-color: palette(base);
+                height: 15px;
+                border: 1px solid palette(dark);
+                border-radius: 3px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: palette(mid);
+                border-radius: 3px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: palette(highlight);
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                background: none;
+                border: none;
+            }
+    """
+
+
+def build_theme_combo_color_overrides() -> str:
+    """Extra combo colors for theme_manager; skip ::item sub-rules on Linux."""
+    base = """
+                QComboBox {
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                    selection-background-color: palette(highlight) !important;
+                    selection-color: palette(highlighted-text) !important;
+                }
+    """
+    if _is_linux():
+        return base
+    return base + """
+                QComboBox QAbstractItemView::item:selected {
+                    background-color: palette(highlight) !important;
+                    color: palette(highlighted-text) !important;
+                }
+                QComboBox QAbstractItemView::item:hover {
+                    background-color: palette(highlight) !important;
+                    color: palette(highlighted-text) !important;
+                }
+    """
+
+
 def _dropdown_arrow_css(selector: str) -> str:
     """Drop-down button styling; arrow handling is platform-specific."""
     # Any ::drop-down / ::down-arrow customization breaks Fusion's QPainter stack on Linux.
@@ -165,8 +237,19 @@ def build_accessible_combo_box_style(
             max-height: {scaled_height}px;
         """
 
-    popup_rule = "combobox-popup: 0;" if _is_linux() else ""
     radius_rule = "" if _is_linux() else "border-radius: 3px;"
+    item_rules = ""
+    if not _is_linux():
+        item_rules = f"""
+        {selector} QAbstractItemView::item {{
+            padding: 3px 8px;
+        }}
+        {selector} QAbstractItemView::item:selected,
+        {selector} QAbstractItemView::item:hover {{
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
+        }}
+        """
 
     return f"""
         {selector} {{
@@ -175,7 +258,6 @@ def build_accessible_combo_box_style(
             border: 1px solid palette(dark);
             {radius_rule}
             padding: 2px 4px;
-            {popup_rule}
             {height_rules}
         }}
         {selector}:focus {{
@@ -189,14 +271,7 @@ def build_accessible_combo_box_style(
             selection-background-color: palette(highlight);
             selection-color: palette(highlighted-text);
         }}
-        {selector} QAbstractItemView::item {{
-            padding: 3px 8px;
-        }}
-        {selector} QAbstractItemView::item:selected,
-        {selector} QAbstractItemView::item:hover {{
-            background-color: palette(highlight);
-            color: palette(highlighted-text);
-        }}
+        {item_rules}
         {_dropdown_arrow_css(selector)}
     """
 
@@ -213,12 +288,13 @@ def build_accessible_date_edit_style(
             max-height: {scaled_height}px;
         """
 
+    radius_rule = "" if _is_linux() else "border-radius: 3px;"
     return f"""
         {selector} {{
             background-color: palette(base);
             color: palette(text);
             border: 1px solid palette(dark);
-            border-radius: 3px;
+            {radius_rule}
             padding: 2px 4px;
             {height_rules}
         }}
@@ -250,10 +326,11 @@ def build_accessible_spinbox_style(
             min-height: {scaled_height}px;
             max-height: {scaled_height}px;
         """
+    radius_rule = "" if _is_linux() else "border-radius: 3px;"
     return f"""
         {selector} {{
             border: 1px solid palette(dark);
-            border-radius: 3px;
+            {radius_rule}
             padding: 1px;
             text-align: center;
             background-color: palette(base);
