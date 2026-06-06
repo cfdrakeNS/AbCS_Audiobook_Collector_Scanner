@@ -152,6 +152,21 @@ class UIScaler(QObject):
             }
             """
 
+        if linux:
+            focus_style = """
+            QLineEdit:focus {
+                border: 2px solid palette(highlight);
+                background-color: palette(base);
+            }
+            """
+        else:
+            focus_style = """
+            QComboBox:focus, QLineEdit:focus {
+                border: 2px solid palette(highlight);
+                background-color: palette(base);
+            }
+            """
+
         # Update stylesheet for fine-tuned control
         stylesheet = f"""
             /* Base font scaling */
@@ -159,11 +174,7 @@ class UIScaler(QObject):
                 font-size: {scaled_size}pt;
             }}
 
-            /* Clear focus indicators */
-            QComboBox:focus, QLineEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
+            {focus_style}
 
             /* Ensure minimum touch target size (44x44 at 100%) for buttons/checkboxes */
             QPushButton, QCheckBox {{

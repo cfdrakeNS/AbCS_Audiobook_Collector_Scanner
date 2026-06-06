@@ -170,8 +170,43 @@ def build_theme_scrollbar_style() -> str:
     """
 
 
+def build_preferences_tab_style() -> str:
+    """Tab bar styling for Preferences; use native Fusion tabs on Linux."""
+    if _is_linux():
+        return ""
+    return """
+            QTabWidget::pane {
+                border: 1px solid palette(mid);
+                background-color: palette(window);
+                top: -1px;
+            }
+            QTabBar::tab {
+                background-color: palette(button);
+                color: palette(windowText);
+                border: 1px solid palette(mid);
+                border-bottom: none;
+                padding: 6px 14px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: palette(window);
+                color: palette(windowText);
+            }
+            QTabBar::tab:hover {
+                background-color: palette(light);
+            }
+    """
+
+
 def build_theme_combo_color_overrides() -> str:
-    """Extra combo colors for theme_manager; skip ::item sub-rules on Linux."""
+    """Extra combo colors for theme_manager; skip popup rules on Linux."""
+    if _is_linux():
+        return """
+                QComboBox {
+                    background-color: palette(base) !important;
+                    color: palette(text) !important;
+                }
+        """
     base = """
                 QComboBox {
                     background-color: palette(base) !important;
@@ -184,8 +219,6 @@ def build_theme_combo_color_overrides() -> str:
                     selection-color: palette(highlighted-text) !important;
                 }
     """
-    if _is_linux():
-        return base
     return base + """
                 QComboBox QAbstractItemView::item:selected {
                     background-color: palette(highlight) !important;
@@ -239,7 +272,14 @@ def build_accessible_combo_box_style(
 
     radius_rule = "" if _is_linux() else "border-radius: 3px;"
     item_rules = ""
+    focus_rule = ""
     if not _is_linux():
+        focus_rule = f"""
+        {selector}:focus {{
+            border: 2px solid palette(highlight);
+            background-color: palette(base);
+        }}
+        """
         item_rules = f"""
         {selector} QAbstractItemView::item {{
             padding: 3px 8px;
@@ -260,10 +300,18 @@ def build_accessible_combo_box_style(
             padding: 2px 4px;
             {height_rules}
         }}
-        {selector}:focus {{
-            border: 2px solid palette(highlight);
-            background-color: palette(base);
-        }}
+        {focus_rule}
+        {_combo_popup_style(selector)}
+        {item_rules}
+        {_dropdown_arrow_css(selector)}
+    """
+
+
+def _combo_popup_style(selector: str) -> str:
+    """Popup list styling; omit on Linux where Fusion paints combos natively."""
+    if _is_linux():
+        return ""
+    return f"""
         {selector} QAbstractItemView {{
             background-color: palette(base);
             color: palette(text);
@@ -271,8 +319,6 @@ def build_accessible_combo_box_style(
             selection-background-color: palette(highlight);
             selection-color: palette(highlighted-text);
         }}
-        {item_rules}
-        {_dropdown_arrow_css(selector)}
     """
 
 

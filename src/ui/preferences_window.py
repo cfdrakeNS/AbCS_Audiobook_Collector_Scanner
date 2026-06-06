@@ -42,6 +42,8 @@ from src.accessibility.style_helpers import (
     build_accessible_spinbox_style,
     build_card_group_box_style,
     build_modern_button_style,
+    build_preferences_tab_style,
+    _is_linux,
 )
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
@@ -900,30 +902,8 @@ class PreferencesWindow(QDialog):
         for group in getattr(self, "_card_groups", ()):
             group.setStyleSheet(card_style)
 
-        tab_style = """
-            QTabWidget::pane {
-                border: 1px solid palette(mid);
-                background-color: palette(window);
-                top: -1px;
-            }
-            QTabBar::tab {
-                background-color: palette(button);
-                color: palette(windowText);
-                border: 1px solid palette(mid);
-                border-bottom: none;
-                padding: 6px 14px;
-                margin-right: 2px;
-            }
-            QTabBar::tab:selected {
-                background-color: palette(window);
-                color: palette(windowText);
-            }
-            QTabBar::tab:hover {
-                background-color: palette(light);
-            }
-        """
         if hasattr(self, "tab_widget"):
-            self.tab_widget.setStyleSheet(tab_style)
+            self.tab_widget.setStyleSheet(build_preferences_tab_style())
 
         scroll_style = """
             QScrollArea {
@@ -945,7 +925,8 @@ class PreferencesWindow(QDialog):
 
         if hasattr(self, "theme_picker"):
             self.theme_picker.setStyleSheet("background-color: transparent;")
-            self.theme_picker.refresh_selection_styles()
+            if not _is_linux():
+                self.theme_picker.refresh_selection_styles()
 
         self.save_button.setObjectName("primaryActionButton")
         self.status_bar.setStyleSheet(status_style)
@@ -1758,6 +1739,10 @@ class PreferencesWindow(QDialog):
 
         if hasattr(self, "theme_picker"):
             self.theme_picker.refresh_selection_styles()
+
+        if _is_linux():
+            self.update()
+            return
 
         for widget in [self, *self.findChildren(QWidget)]:
             style = widget.style()
