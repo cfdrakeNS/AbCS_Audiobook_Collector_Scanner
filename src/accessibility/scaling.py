@@ -4,6 +4,7 @@ Manages application-wide font and UI scaling for accessibility.
 """
 
 import re
+import sys
 
 from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtWidgets import QApplication
@@ -224,9 +225,9 @@ class UIScaler(QObject):
                 background: transparent;
             }}
 
-            /* Combo box dropdown */
+            /* Combo box dropdown — skip extra padding on Linux (hides Fusion arrow) */
             QComboBox {{
-                padding-right: {int(20 * self._current_scale / 100)}px;
+                padding-right: {0 if sys.platform.startswith("linux") else int(20 * self._current_scale / 100)}px;
             }}
 
             /* Status bar */

@@ -161,7 +161,15 @@ class AbCSApplication:
 
         self.qt_app = QApplication(sys.argv)
         if sys.platform.startswith("linux"):
-            self.qt_app.setStyle("Fusion")
+            from PySide6.QtWidgets import QStyleFactory
+
+            from src.accessibility.linux_fusion_style import LinuxFusionStyle
+
+            fusion = QStyleFactory.create("Fusion")
+            if fusion is not None:
+                self.qt_app.setStyle(LinuxFusionStyle(fusion))
+            else:
+                self.qt_app.setStyle("Fusion")
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")

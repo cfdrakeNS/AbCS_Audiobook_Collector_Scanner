@@ -113,8 +113,16 @@ def build_card_group_box_style(selector: str = "QGroupBox") -> str:
     """
 
 
+def _is_linux() -> bool:
+    return sys.platform.startswith("linux")
+
+
 def _dropdown_arrow_css(selector: str) -> str:
     """Drop-down button styling; arrow handling is platform-specific."""
+    # Any ::drop-down / ::down-arrow customization breaks Fusion's QPainter stack on Linux.
+    if _is_linux():
+        return ""
+
     drop_down = f"""
         {selector}::drop-down {{
             subcontrol-origin: padding;
@@ -124,10 +132,6 @@ def _dropdown_arrow_css(selector: str) -> str:
             background-color: palette(button);
         }}
     """
-    # Fusion on Linux breaks QPainter state when down-arrow uses border triangles.
-    if sys.platform.startswith("linux"):
-        return drop_down
-
     return drop_down + f"""
         {selector}::down-arrow {{
             width: 0;
@@ -152,13 +156,17 @@ def build_accessible_combo_box_style(
             max-height: {scaled_height}px;
         """
 
+    popup_rule = "combobox-popup: 0;" if _is_linux() else ""
+    radius_rule = "" if _is_linux() else "border-radius: 3px;"
+
     return f"""
         {selector} {{
             background-color: palette(base);
             color: palette(text);
             border: 1px solid palette(dark);
-            border-radius: 3px;
+            {radius_rule}
             padding: 2px 4px;
+            {popup_rule}
             {height_rules}
         }}
         {selector}:focus {{

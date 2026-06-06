@@ -33,7 +33,14 @@ Tracking: bug **#94** in `AbCS_Bug_Final_fixes.md` (deferred to this branch)
 
 **Symptom:** `QPainter::end: Painter ended with 3 saved states` when opening Preferences theme picker.
 
-**Fix:** `ThemeMiniPreview` no longer uses `QPainter` (child `QFrame` swatches instead). On Linux, combo `::down-arrow` CSS no longer uses border triangles — Fusion draws the native arrow (border triangles caused both the QPainter warning and invisible arrows).
+**Fix (ongoing):**
+- `ThemeMiniPreview` uses child `QFrame` swatches (no app `QPainter` code)
+- On Linux: **no** `::drop-down` / `::down-arrow` combo subcontrol CSS (Fusion draws the native arrow)
+- `combobox-popup: 0` on Linux combos
+- `LinuxFusionStyle` proxy sets `SH_ComboBox_Popup` to scrollable list mode
+- Scaling skips `padding-right` on Linux combos (was clipping the arrow)
+
+If the warning persists after `git pull`, note **when** it appears (app start, Preferences open, Import open) and run `git log -1 --oneline` to confirm you have the latest commit.
 
 ### 4. Qt xcb startup (system packages)
 
