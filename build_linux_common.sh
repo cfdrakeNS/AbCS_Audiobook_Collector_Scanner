@@ -92,7 +92,7 @@ Version: ${version}
 WHAT IS IN THIS FOLDER
   AbCS                  The application (single executable, no Python needed)
   abcs_icon_256x256.png Application icon — keep in this folder with AbCS
-  install_abcs.sh       Recommended setup script (menu icon, permissions, migration)
+  install_abcs.sh       Recommended setup script (menu icon and permissions)
   AbCS.desktop          Desktop launcher (updated automatically by install_abcs.sh)
   README.txt            This file
 
@@ -120,7 +120,6 @@ SHARING THIS BUILD
 
 SUPPORT NOTES
   - Database and backups: ~/.local/share/AbCS/
-  - Older test builds used ~/AppData/Local/AbCS — install_abcs.sh copies that data if found.
   - Help → About shows version and splash graphic when graphics are bundled.
 EOF
 

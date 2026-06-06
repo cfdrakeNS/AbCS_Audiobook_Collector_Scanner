@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install AbCS from this folder: menu launcher, permissions, optional data migration.
+# Install AbCS from this folder: menu launcher and permissions.
 # Run from the dist folder: ./install_abcs.sh
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,7 +9,6 @@ APP_BIN="${SCRIPT_DIR}/AbCS"
 APP_ICON="${SCRIPT_DIR}/abcs_icon_256x256.png"
 DESKTOP_SRC="${SCRIPT_DIR}/AbCS.desktop"
 DESKTOP_DEST="${HOME}/.local/share/applications/AbCS.desktop"
-LEGACY_DATA="${HOME}/AppData/Local/AbCS"
 USER_DATA="${HOME}/.local/share/AbCS"
 
 if [[ ! -f "${APP_BIN}" ]]; then
@@ -21,15 +20,6 @@ echo "AbCS install folder: ${SCRIPT_DIR}"
 
 chmod +x "${APP_BIN}"
 echo "Made AbCS executable."
-
-if [[ -d "${LEGACY_DATA}" && -f "${LEGACY_DATA}/abcs.db" && ! -f "${USER_DATA}/abcs.db" ]]; then
-  echo "Migrating database from legacy path:"
-  echo "  ${LEGACY_DATA}"
-  echo "  -> ${USER_DATA}"
-  mkdir -p "${USER_DATA}"
-  cp -a "${LEGACY_DATA}/." "${USER_DATA}/"
-  echo "Migration copy complete. The app also migrates on first run if needed."
-fi
 
 mkdir -p "${HOME}/.local/share/applications"
 
