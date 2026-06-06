@@ -174,6 +174,9 @@ class AbCSApplication:
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
         install_app_icon(self.qt_app)
+        if sys.platform.startswith("linux") and getattr(sys, "frozen", False):
+            # Helps Cinnamon/GNOME match the running app to AbCS.desktop for panel icons.
+            self.qt_app.setDesktopFileName("AbCS")
 
         self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
 

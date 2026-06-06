@@ -64,5 +64,9 @@ python -m PyInstaller \
   --noconsole \
   src/main.py
 
+chmod +x dist/AbCS
+abcs_write_linux_dist_assets dist
+
 echo
 echo "Build complete: dist/AbCS"
+echo "Optional launcher: copy dist/AbCS.desktop to ~/.local/share/applications/ then run: update-desktop-database ~/.local/share/applications"

@@ -30,14 +30,41 @@ def bundle_base() -> Path:
     return project_root()
 
 
+def _search_bases() -> list[Path]:
+    """Directories to search for bundled graphics (dev and frozen)."""
+    bases: list[Path] = []
+    seen: set[Path] = set()
+
+    def add_base(path: Path) -> None:
+        resolved = path.resolve()
+        if resolved in seen:
+            return
+        seen.add(resolved)
+        bases.append(resolved)
+
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            add_base(Path(meipass))
+        if getattr(sys, "executable", None):
+            add_base(Path(sys.executable).resolve().parent)
+            add_base(Path(sys.executable).resolve().parent / "graphics")
+
+    add_base(bundle_base())
+    root = project_root()
+    if root.resolve() not in seen:
+        add_base(root)
+
+    return bases
+
+
 def resolve_graphics_path(filename: str) -> str:
     """Return the best existing path for a graphics file, or a predictable fallback."""
-    bases = [bundle_base()]
     root = project_root()
-    if bundle_base() != root:
-        bases.append(root)
-
-    for base in bases:
+    for base in _search_bases():
+        direct = base / filename
+        if direct.is_file():
+            return str(direct.resolve())
         for graphics_dir in GRAPHICS_DIR_NAMES:
             candidate = base / graphics_dir / filename
             if candidate.is_file():

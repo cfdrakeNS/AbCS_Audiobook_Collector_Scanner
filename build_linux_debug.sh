@@ -81,6 +81,7 @@ python -m PyInstaller \
   src/main.py
 
 chmod +x dist/AbCS
+abcs_write_linux_dist_assets dist
 
 echo
 echo "Running dist/AbCS with logging..."

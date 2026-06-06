@@ -34,6 +34,28 @@ def test_resolve_app_icon_path_prefers_png_on_linux(tmp_path: Path, monkeypatch)
     assert graphics_paths.resolve_app_icon_path() == str(png.resolve())
 
 
+def test_resolve_graphics_path_checks_executable_dir_when_frozen(
+    tmp_path: Path, monkeypatch
+):
+    dist_dir = tmp_path / "dist"
+    dist_dir.mkdir()
+    icon = dist_dir / "abcs_icon_256x256.png"
+    icon.write_bytes(b"png")
+    fake_exe = dist_dir / "AbCS"
+    fake_exe.write_bytes(b"bin")
+
+    monkeypatch.setattr(graphics_paths.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(
+        graphics_paths.sys, "_MEIPASS", str(tmp_path / "missing"), raising=False
+    )
+    monkeypatch.setattr(graphics_paths.sys, "executable", str(fake_exe), raising=False)
+    monkeypatch.setattr(graphics_paths, "project_root", lambda: tmp_path)
+
+    assert graphics_paths.resolve_graphics_path("abcs_icon_256x256.png") == str(
+        icon.resolve()
+    )
+
+
 def test_resolve_app_icon_path_prefers_ico_on_windows(tmp_path: Path, monkeypatch):
     graphics_dir = tmp_path / "graphics"
     graphics_dir.mkdir()
