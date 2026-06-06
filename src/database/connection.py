@@ -556,16 +556,19 @@ class DatabaseManager:
         """Return known backup files ordered newest-first."""
         db_file = Path(self.db_path).resolve()
         backup_dir = self.get_backup_directory()
+        manual_prefix = "abcs_backup_"
+        schema_prefix = f"{db_file.stem}.backup_".lower()
 
         candidates: list[Path] = []
-        candidates.extend(
-            path for path in backup_dir.glob("AbCS_backup_*") if path.is_file()
-        )
-        candidates.extend(
-            path
-            for path in db_file.parent.glob(f"{db_file.stem}.backup_*")
-            if path.is_file()
-        )
+        if backup_dir.is_dir():
+            for path in backup_dir.iterdir():
+                if path.is_file() and path.name.lower().startswith(manual_prefix):
+                    candidates.append(path)
+
+        if db_file.parent.is_dir():
+            for path in db_file.parent.iterdir():
+                if path.is_file() and path.name.lower().startswith(schema_prefix):
+                    candidates.append(path)
 
         unique: dict[str, Path] = {}
         for path in candidates:
