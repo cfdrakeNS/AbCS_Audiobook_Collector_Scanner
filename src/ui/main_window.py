@@ -80,6 +80,7 @@ from src.accessibility.style_helpers import (
     build_modern_button_style,
     build_table_polish_style,
     build_toolbar_button_style,
+    _is_linux,
 )
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.theme_manager import ThemeManager
@@ -765,6 +766,11 @@ class MainWindow(QMainWindow):
         if hasattr(self, "get_web_info_button"):
             widgets_to_repolish.append(self.get_web_info_button)
 
+        if _is_linux():
+            if hasattr(self, "table"):
+                self.table.viewport().update()
+            return
+
         for widget in widgets_to_repolish:
             style = widget.style()
             style.unpolish(widget)
@@ -785,6 +791,11 @@ class MainWindow(QMainWindow):
 
     def on_theme_changed(self, _theme_name: str):
         """Refresh main window controls/table when application theme changes."""
+        if _is_linux():
+            self._apply_main_panel_styles()
+            if hasattr(self, "table"):
+                self.table.viewport().update()
+            return
         self.apply_control_styles()
         self._apply_main_panel_styles()
 

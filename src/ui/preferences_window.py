@@ -887,7 +887,7 @@ class PreferencesWindow(QDialog):
 
         spinbox_style = build_accessible_spinbox_style(scaled_height)
 
-        card_style = build_card_group_box_style()
+        card_style = "" if _is_linux() else build_card_group_box_style()
         button_style = build_modern_button_style(scaled_height)
 
         status_style = f"""
@@ -934,7 +934,7 @@ class PreferencesWindow(QDialog):
         for widget in self.findChildren(QComboBox):
             widget.setStyleSheet("")
         for widget in self.findChildren(QSpinBox):
-            widget.setStyleSheet(spinbox_style)
+            widget.setStyleSheet("" if _is_linux() else spinbox_style)
         format_checkbox_style = f"""
             QCheckBox {{
                 min-height: {max(int(scaled_height * 1.2), 22)}px;
@@ -1724,7 +1724,10 @@ class PreferencesWindow(QDialog):
 
             parent = self.parent()
             if parent:
-                if hasattr(parent, "apply_control_styles"):
+                if _is_linux():
+                    if hasattr(parent, "_apply_main_panel_styles"):
+                        parent._apply_main_panel_styles()
+                elif hasattr(parent, "apply_control_styles"):
                     parent.apply_control_styles()
                 if hasattr(parent, "refresh_books"):
                     parent.refresh_books()
@@ -1738,7 +1741,10 @@ class PreferencesWindow(QDialog):
         self.apply_control_styles()
 
         if hasattr(self, "theme_picker"):
-            self.theme_picker.refresh_selection_styles()
+            if _is_linux():
+                self.theme_picker.refresh_active_selection_styles()
+            else:
+                self.theme_picker.refresh_selection_styles()
 
         if _is_linux():
             self.update()

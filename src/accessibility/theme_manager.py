@@ -605,14 +605,15 @@ class ThemeManager(QObject):
 
     def _repolish_open_widgets(self):
         """Force immediate visual refresh of open windows after theme changes."""
-        linux = sys.platform.startswith("linux")
+        if sys.platform.startswith("linux"):
+            return
+
         for top_level in self.app.topLevelWidgets():
             if not isinstance(top_level, QWidget):
                 continue
 
             widgets = [top_level]
-            if not linux:
-                widgets.extend(top_level.findChildren(QWidget))
+            widgets.extend(top_level.findChildren(QWidget))
 
             for widget in widgets:
                 style = widget.style()

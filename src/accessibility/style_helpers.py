@@ -96,6 +96,16 @@ def build_card_panel_style(panel_object_name: str) -> str:
 
 def build_group_box_style(selector: str = "QGroupBox") -> str:
     """Group box styling; skip ::title subcontrol on Linux (Fusion QPainter bug)."""
+    if _is_linux():
+        return f"""
+        {selector} {{
+            color: palette(window-text);
+            border: 1px solid palette(mid);
+            margin-top: 12px;
+            padding: 12px 8px 8px 8px;
+            background-color: palette(window);
+        }}
+    """
     base = f"""
         {selector} {{
             color: palette(window-text);
@@ -106,8 +116,6 @@ def build_group_box_style(selector: str = "QGroupBox") -> str:
             background-color: palette(window);
         }}
     """
-    if _is_linux():
-        return base
     return base + f"""
         {selector}::title {{
             subcontrol-origin: margin;

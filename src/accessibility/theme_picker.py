@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.accessibility.style_helpers import _is_linux
 from src.accessibility.theme_manager import ThemeManager, ThemeName
 from src.accessibility.windows_theme_detector import (
     detect_windows_dark_mode,
@@ -74,12 +75,13 @@ class ThemeMiniPreview(QFrame):
             colors, "text", _color_hex(colors, "window_text", "#202020")
         )
 
+        radius = "" if _is_linux() else "border-radius: 2px;"
         self.setStyleSheet(
             f"""
             QFrame {{
                 background-color: {window};
                 border: 1px solid {text};
-                border-radius: 2px;
+                {radius}
             }}
             """
         )
@@ -90,21 +92,22 @@ class ThemeMiniPreview(QFrame):
 
         button_bar = QFrame()
         button_bar.setFixedHeight(10)
+        inner_radius = "" if _is_linux() else "border-radius: 1px;"
         button_bar.setStyleSheet(
-            f"background-color: {button}; border: none; border-radius: 1px;"
+            f"background-color: {button}; border: none; {inner_radius}"
         )
         layout.addWidget(button_bar)
 
         field_bar = QFrame()
         field_bar.setStyleSheet(
-            f"background-color: {base}; border: none; border-radius: 1px;"
+            f"background-color: {base}; border: none; {inner_radius}"
         )
         layout.addWidget(field_bar, 1)
 
         accent_bar = QFrame()
         accent_bar.setFixedHeight(4)
         accent_bar.setStyleSheet(
-            f"background-color: {highlight}; border: none; border-radius: 1px;"
+            f"background-color: {highlight}; border: none; {inner_radius}"
         )
         layout.addWidget(accent_bar)
 
@@ -127,7 +130,7 @@ class ThemePreviewCard(QFrame):
         self._selected = False
 
         self.setObjectName("themePreviewCard")
-        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShape(QFrame.NoFrame if _is_linux() else QFrame.StyledPanel)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setCursor(Qt.PointingHandCursor)
         self.setAccessibleName(display_name)
@@ -207,12 +210,13 @@ class ThemePreviewCard(QFrame):
             mid = QApplication.palette().color(QPalette.Mid).name()
             border = f"1px solid {mid}"
 
+        radius = "" if _is_linux() else "border-radius: 6px;"
         self.setStyleSheet(
             f"""
             QFrame#themePreviewCard {{
                 background-color: {window};
                 border: {border};
-                border-radius: 6px;
+                {radius}
             }}
             """
         )
@@ -270,6 +274,12 @@ class ThemePreviewPicker(QWidget):
         for card in self._cards:
             card.refresh_selection_style()
 
+    def refresh_active_selection_styles(self) -> None:
+        """Refresh only selected/focused cards (avoids Linux Fusion repaints)."""
+        for card in self._cards:
+            if card.is_selected() or card.hasFocus():
+                card.refresh_selection_style()
+
     def set_loading(self, loading: bool) -> None:
         self._loading = loading
 
@@ -281,7 +291,9 @@ class ThemePreviewPicker(QWidget):
 
     def set_selected_theme_id(self, theme_id: str) -> None:
         for card in self._cards:
-            card.set_selected(card.theme_id == theme_id)
+            should_select = card.theme_id == theme_id
+            if card.is_selected() != should_select:
+                card.set_selected(should_select)
 
     def _on_card_activated(self, theme_id: str) -> None:
         if self._loading:
