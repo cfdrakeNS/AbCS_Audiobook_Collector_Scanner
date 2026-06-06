@@ -318,6 +318,9 @@ class AbCSApplication:
 def main():
     """Application entry point."""
     _check_trial_expiry()
+    from src.accessibility.linux_qt_compat import install_linux_qt_compat
+
+    install_linux_qt_compat()
     app = AbCSApplication()
     sys.exit(app.run())
 

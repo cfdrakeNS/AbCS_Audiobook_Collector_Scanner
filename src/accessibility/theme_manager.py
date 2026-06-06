@@ -11,6 +11,7 @@ from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication, QWidget
 from typing import Dict, Optional
 from enum import Enum
+from .linux_qt_compat import build_linux_theme_stylesheet
 from .style_helpers import (
     build_accessible_combo_box_style,
     build_accessible_date_edit_style,
@@ -394,6 +395,12 @@ class ThemeManager(QObject):
             QTableWidget { alternate-background-color: transparent; }
             QTableView { alternate-background-color: transparent; }
         """
+
+        if sys.platform.startswith("linux"):
+            self.app.setStyleSheet(
+                build_linux_theme_stylesheet(table_hover_disable, scale_block)
+            )
+            return
 
         # Additional stylesheet tweaks for specific themes
         extra_style = ""

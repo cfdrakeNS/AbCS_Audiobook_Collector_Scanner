@@ -990,6 +990,14 @@ class PreferencesWindow(QDialog):
 
     def on_scale_changed(self, value: int):
         """Refresh control styles when zoom changes."""
+        if _is_linux():
+            self._apply_compact_combo_widths()
+            self._sync_fallback_column_alignment()
+            if hasattr(self, "rules_section_text"):
+                self._fit_readonly_section_text_height(self.rules_section_text)
+            self.update_scenario_description_height()
+            return
+
         self.apply_control_styles()
         self._apply_compact_combo_widths()
         self._sync_fallback_column_alignment()

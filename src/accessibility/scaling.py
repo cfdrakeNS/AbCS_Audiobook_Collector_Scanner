@@ -10,6 +10,7 @@ from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtWidgets import QApplication
 from typing import Optional
 
+from .linux_qt_compat import build_linux_scale_stylesheet
 from .style_helpers import build_accessible_button_style
 
 
@@ -134,6 +135,13 @@ class UIScaler(QObject):
         self.app.setFont(font)
 
         linux = sys.platform.startswith("linux")
+        if linux:
+            stylesheet = build_linux_scale_stylesheet(
+                scaled_size, self._current_scale
+            )
+            self._apply_scale_stylesheet(stylesheet)
+            return
+
         header_hiding_style = ""
         if not linux:
             header_hiding_style = """
