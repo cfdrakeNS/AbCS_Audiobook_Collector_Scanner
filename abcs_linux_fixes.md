@@ -33,7 +33,7 @@ Tracking: bug **#94** in `AbCS_Bug_Final_fixes.md` (deferred to this branch)
 
 **Symptom:** `QPainter::end: Painter ended with 3 saved states` when opening Preferences theme picker.
 
-**Fix:** `ThemeMiniPreview.paintEvent` in `theme_picker.py` now uses `with QPainter(self)`.
+**Fix:** `ThemeMiniPreview` no longer uses `QPainter` (child `QFrame` swatches instead). On Linux, combo `::down-arrow` CSS no longer uses border triangles — Fusion draws the native arrow (border triangles caused both the QPainter warning and invisible arrows).
 
 ### 4. Qt xcb startup (system packages)
 

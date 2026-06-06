@@ -1,5 +1,7 @@
 """Shared stylesheet helpers for consistent accessible control styling."""
 
+import sys
+
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
@@ -112,8 +114,8 @@ def build_card_group_box_style(selector: str = "QGroupBox") -> str:
 
 
 def _dropdown_arrow_css(selector: str) -> str:
-    """CSS triangle arrow that renders on Windows and Linux (unlike image:none hacks)."""
-    return f"""
+    """Drop-down button styling; arrow handling is platform-specific."""
+    drop_down = f"""
         {selector}::drop-down {{
             subcontrol-origin: padding;
             subcontrol-position: top right;
@@ -121,6 +123,12 @@ def _dropdown_arrow_css(selector: str) -> str:
             border-left: 1px solid palette(dark);
             background-color: palette(button);
         }}
+    """
+    # Fusion on Linux breaks QPainter state when down-arrow uses border triangles.
+    if sys.platform.startswith("linux"):
+        return drop_down
+
+    return drop_down + f"""
         {selector}::down-arrow {{
             width: 0;
             height: 0;

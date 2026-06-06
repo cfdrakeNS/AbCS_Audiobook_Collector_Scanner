@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPalette, QPen
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -56,8 +56,8 @@ def _color_hex(colors: Dict[str, str], key: str, fallback: str) -> str:
     return value if value.startswith("#") else fallback
 
 
-class ThemeMiniPreview(QWidget):
-    """Paint a small mock panel using a theme's own colors."""
+class ThemeMiniPreview(QFrame):
+    """Small mock panel using a theme's colors (no custom QPainter)."""
 
     def __init__(self, colors: Dict[str, str], parent=None):
         super().__init__(parent)
@@ -66,39 +66,47 @@ class ThemeMiniPreview(QWidget):
         self.setMinimumWidth(120)
         self.setAccessibleName("Theme color preview")
 
-    def paintEvent(self, _event):
-        colors = self._colors
-        window = QColor(_color_hex(colors, "window", "#f0f0f0"))
-        base = QColor(_color_hex(colors, "base", "#ffffff"))
-        button = QColor(_color_hex(colors, "button", "#e0e0e0"))
-        highlight = QColor(_color_hex(colors, "highlight", "#0078d4"))
-        text = QColor(
-            _color_hex(colors, "text", _color_hex(colors, "window_text", "#202020"))
+        window = _color_hex(colors, "window", "#f0f0f0")
+        base = _color_hex(colors, "base", "#ffffff")
+        button = _color_hex(colors, "button", "#e0e0e0")
+        highlight = _color_hex(colors, "highlight", "#0078d4")
+        text = _color_hex(
+            colors, "text", _color_hex(colors, "window_text", "#202020")
         )
 
-        with QPainter(self) as painter:
-            painter.setRenderHint(QPainter.Antialiasing, False)
+        self.setStyleSheet(
+            f"""
+            QFrame {{
+                background-color: {window};
+                border: 1px solid {text};
+                border-radius: 2px;
+            }}
+            """
+        )
 
-            w = self.width()
-            h = self.height()
-            margin = 4
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
 
-            painter.fillRect(0, 0, w, h, window)
+        button_bar = QFrame()
+        button_bar.setFixedHeight(10)
+        button_bar.setStyleSheet(
+            f"background-color: {button}; border: none; border-radius: 1px;"
+        )
+        layout.addWidget(button_bar)
 
-            btn_w = max(28, (w - margin * 2) // 3)
-            btn_h = max(10, h // 5)
-            painter.fillRect(margin, margin, btn_w, btn_h, button)
+        field_bar = QFrame()
+        field_bar.setStyleSheet(
+            f"background-color: {base}; border: none; border-radius: 1px;"
+        )
+        layout.addWidget(field_bar, 1)
 
-            field_top = margin + btn_h + 4
-            field_h = max(12, h - field_top - margin - 6)
-            field_w = w - margin * 2
-            painter.fillRect(margin, field_top, field_w, field_h, base)
-
-            accent_h = 4
-            painter.fillRect(margin, h - margin - accent_h, field_w, accent_h, highlight)
-
-            painter.setPen(QPen(text, 1))
-            painter.drawRect(0, 0, w - 1, h - 1)
+        accent_bar = QFrame()
+        accent_bar.setFixedHeight(4)
+        accent_bar.setStyleSheet(
+            f"background-color: {highlight}; border: none; border-radius: 1px;"
+        )
+        layout.addWidget(accent_bar)
 
 
 class ThemePreviewCard(QFrame):
