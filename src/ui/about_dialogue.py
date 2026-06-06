@@ -1,8 +1,5 @@
 """Accessible About Dialog for AbCS."""
 
-import os
-import sys
-
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -14,29 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
 from PySide6.QtCore import Qt, QTimer
 
-
-def _resolve_graphics_path(filename: str) -> str:
-    """
-    Resolve the path to a graphics file.
-    Handles both development mode and PyInstaller frozen bundles.
-    """
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        base_path = sys._MEIPASS
-        for graphics_dir in ["graphics", "Graphics"]:
-            full_path = os.path.join(base_path, graphics_dir, filename)
-            if os.path.exists(full_path):
-                return full_path
-        return os.path.join(base_path, "Graphics", filename)
-
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(this_dir))
-
-    for graphics_dir in ["Graphics", "graphics"]:
-        full_path = os.path.join(project_root, graphics_dir, filename)
-        if os.path.exists(full_path):
-            return full_path
-
-    return os.path.join(project_root, "Graphics", filename)
+from src.accessibility.graphics_paths import resolve_graphics_path
 
 
 def _get_app_version() -> str:
@@ -86,7 +61,7 @@ class AboutDialog(QDialog):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        pixmap = QPixmap(_resolve_graphics_path("abcs_app_splash.png"))
+        pixmap = QPixmap(resolve_graphics_path("abcs_app_splash.png"))
         if not pixmap.isNull():
             graphic_container = QWidget(self)
             graphic_layout = QVBoxLayout(graphic_container)

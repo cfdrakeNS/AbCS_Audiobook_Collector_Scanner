@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
 from PySide6.QtCore import Qt, QTimer
 
-from src.ui.about_dialogue import _resolve_graphics_path
+from src.accessibility.graphics_paths import resolve_graphics_path
 
 
 class FocusAnnouncingLabel(QLabel):
@@ -47,7 +47,7 @@ class SetupDialog(QDialog):
         )
         layout.setSpacing(self.scaler.get_scaled_size(8))
 
-        pixmap = QPixmap(_resolve_graphics_path("abcs_app_splash.png"))
+        pixmap = QPixmap(resolve_graphics_path("abcs_app_splash.png"))
         if not pixmap.isNull():
             graphic_label = QLabel(self)
             graphic_label.setPixmap(pixmap)

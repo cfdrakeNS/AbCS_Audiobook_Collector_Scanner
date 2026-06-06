@@ -53,9 +53,20 @@ sudo apt install -y libxcb-cursor0 libxkbcommon-x11-0 libgl1 libegl1
 sudo apt install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0
 ```
 
-### 5. Window icons / About splash (bug #94 — still open)
+### 5. Window icons / About splash (bug #94)
 
-**Status:** About splash works in dev when `graphics/` exists. Window title-bar icons still need the icon path / build bundling work from the original Linux plan (`icon_helper.py`, `build_linux.sh` graphics bundling).
+**Symptom:** No window title-bar icon on Linux; About splash missing in frozen build.
+
+**Cause:** `icon_helper.py` resolved paths under `src/graphics/` (wrong) and only tried `.ico` (poor on Linux). Linux PyInstaller scripts did not bundle `graphics/`.
+
+**Fix:**
+- `src/accessibility/graphics_paths.py` — shared resolver (project root + `_MEIPASS`, `graphics`/`Graphics`)
+- `icon_helper.py` — PNG-first icon candidates on Linux, ICO-first on Windows
+- `about_dialogue.py` / `setup_dialogue.py` — use shared resolver
+- `build_linux.sh`, `build_linux_debug.sh` — `--add-data=graphics:graphics` + `--icon` via `build_linux_common.sh`
+- `make_icon.py` — also writes `abcs_icon_256x256.png` for Linux
+
+**VM verify:** title-bar icon in dev and after `./build_linux_debug.sh`; About splash in both.
 
 ---
 
@@ -119,10 +130,8 @@ For packaged build test:
 
 ---
 
-## Remaining work (original Linux plan)
+## Remaining work
 
-1. Centralize graphics path resolution (`icon_helper` vs `about_dialogue`)
-2. Bundle `graphics/` in `build_linux.sh` / `build_linux_debug.sh`
-3. PNG + ICO icon fallback for window title bars
-4. Cross-platform user data dir (`XDG_DATA_HOME` on Linux)
-5. Mark bug #94 complete after VM verifies icons in dev + frozen build
+1. Cross-platform user data dir (`XDG_DATA_HOME` on Linux) for frozen builds
+2. Mark bug #94 complete after VM verifies icons in dev + frozen build
+3. Merge `Linux_fixes` → `main` after VM sign-off

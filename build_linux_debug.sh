@@ -47,6 +47,10 @@ python -m pip install pyinstaller
 echo "Cleaning old build artifacts..."
 rm -rf build dist
 
+# shellcheck disable=SC1091
+source "$(dirname "$0")/build_linux_common.sh"
+mapfile -t GRAPHICS_ARGS < <(abcs_pyinstaller_graphics_args)
+
 echo "Building Linux debug executable (dist/AbCS)..."
 python -m PyInstaller \
   --name="AbCS" \
@@ -56,6 +60,7 @@ python -m PyInstaller \
   --clean \
   --noconfirm \
   --add-data="data/abcdDB_def.sql:data" \
+  "${GRAPHICS_ARGS[@]}" \
   --hidden-import="PySide6.QtCore" \
   --hidden-import="PySide6.QtGui" \
   --hidden-import="PySide6.QtWidgets" \

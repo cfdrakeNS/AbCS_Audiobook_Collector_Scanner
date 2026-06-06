@@ -8,23 +8,17 @@ Icons are decorative; accessible names describe the action, not the icon.
 from __future__ import annotations
 
 import os
-import sys
 
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QApplication, QStyle
 
+from src.accessibility.graphics_paths import resolve_app_icon_path
 
-def resource_path():
-    """Get absolute path to resource, works for dev, PyInstaller, and installed."""
-    if hasattr(sys, "_MEIPASS"):
-        base = sys._MEIPASS
-    else:
-        base = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    icon_path = os.path.join(base, "graphics", "abcs_icon_256x256.ico")
-    if not os.path.exists(icon_path):
-        icon_path = os.path.join(base, "Graphics", "abcs_icon_256x256.ico")
-    return icon_path
+
+def resource_path() -> str:
+    """Get absolute path to the application window icon asset."""
+    return resolve_app_icon_path()
 
 
 ICON_PATH = resource_path()
@@ -32,7 +26,12 @@ ICON_PATH = resource_path()
 
 def get_app_icon() -> QIcon:
     """Return the QIcon for all setWindowIcon calls in windows and popups."""
-    return QIcon(ICON_PATH)
+    path = resolve_app_icon_path()
+    icon = QIcon(path)
+    if icon.isNull() and os.path.isfile(path):
+        # Some Linux builds load PNG paths more reliably via explicit addFile.
+        icon.addFile(path)
+    return icon
 
 
 def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:
