@@ -75,6 +75,7 @@ from src.accessibility.style_helpers import (
     exec_styled_message_box,
     MESSAGE_BOX_DELETE_CONFIRM_ICONS,
     build_accessible_button_style,
+    build_accessible_combo_box_style,
     build_card_panel_style,
     build_modern_button_style,
     build_table_polish_style,
@@ -1607,25 +1608,7 @@ class MainWindow(QMainWindow):
             "Same duplicate matching options as Preferences"
         )
         combo_height = max(self.scaler.get_scaled_size(24), 18)
-        mode_combo.setStyleSheet(
-            f"""
-            QComboBox {{
-                min-height: {combo_height}px;
-                max-height: {combo_height}px;
-                padding: 2px 6px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                outline: none;
-            }}
-            QComboBox QAbstractItemView {{
-                outline: none;
-                border: 1px solid palette(dark);
-            }}
-            """
-        )
+        mode_combo.setStyleSheet(build_accessible_combo_box_style(combo_height))
         for label, data in self.DUPLICATE_MATCH_OPTIONS:
             mode_combo.addItem(label, data)
         preferred_index = mode_combo.findData(preferred_mode)
@@ -2301,9 +2284,7 @@ class MainWindow(QMainWindow):
         field_combo.addItems(["Author", "Title", "Series", "Genre"])
         field_combo.setAccessibleName("Find field")
         combo_height = max(int(20 * (self.scaler.current_scale / 100.0)), 18)
-        field_combo.setStyleSheet(
-            f"QComboBox {{ min-height: {combo_height}px; max-height: {combo_height}px; }}"
-        )
+        field_combo.setStyleSheet(build_accessible_combo_box_style(combo_height))
         field_label.setBuddy(field_combo)
         field_row.addWidget(field_label)
         field_row.addWidget(field_combo, 1)

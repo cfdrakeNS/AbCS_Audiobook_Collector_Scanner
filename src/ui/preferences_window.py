@@ -39,6 +39,7 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     apply_visual_tooltip_map,
     build_accessible_message_box_style,
+    build_accessible_spinbox_style,
     build_card_group_box_style,
     build_modern_button_style,
 )
@@ -882,19 +883,7 @@ class PreferencesWindow(QDialog):
             """
         )
 
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(base);
-            }}
-        """
+        spinbox_style = build_accessible_spinbox_style(scaled_height)
 
         card_style = build_card_group_box_style()
         button_style = build_modern_button_style(scaled_height)
@@ -961,9 +950,10 @@ class PreferencesWindow(QDialog):
         self.save_button.setObjectName("primaryActionButton")
         self.status_bar.setStyleSheet(status_style)
 
-        self.preset_combo.setStyleSheet(combo_style)
-        self.zoom_spin.setStyleSheet(combo_style)
-        self.import_scenario_combo.setStyleSheet(combo_style)
+        for widget in self.findChildren(QComboBox):
+            widget.setStyleSheet("")
+        for widget in self.findChildren(QSpinBox):
+            widget.setStyleSheet(spinbox_style)
         format_checkbox_style = f"""
             QCheckBox {{
                 min-height: {max(int(scaled_height * 1.2), 22)}px;
@@ -975,23 +965,9 @@ class PreferencesWindow(QDialog):
         """
         self.author_fallback_checkbox.setStyleSheet(format_checkbox_style)
         self.title_fallback_checkbox.setStyleSheet(format_checkbox_style)
-        self.rule_author_in_title_severity.setStyleSheet(combo_style)
-        self.rule_title_in_author_severity.setStyleSheet(combo_style)
-        self.rule_unknown_author_severity.setStyleSheet(combo_style)
-        self.rule_min_title_severity.setStyleSheet(combo_style)
-        self.rule_min_book_length_severity.setStyleSheet(combo_style)
-        self.rule_max_book_length_severity.setStyleSheet(combo_style)
-        self.duplicate_match_combo.setStyleSheet(combo_style)
-        self.duplicate_fuzzy_spin.setStyleSheet(combo_style)
-        self.rule_file_structure_pattern.setStyleSheet(combo_style)
-        self.rule_file_structure_severity.setStyleSheet(combo_style)
-        self.rule_year_quality_severity.setStyleSheet(combo_style)
         # Use theme manager styling for text boxes and combo boxes
         self.import_dir_edit.setStyleSheet("")  # Clear local style
         self.reader_keywords_edit.setStyleSheet("")  # Clear local style
-        self.rule_min_title_value.setStyleSheet(combo_style)
-        self.rule_min_book_length_value.setStyleSheet(combo_style)
-        self.rule_max_book_length_value.setStyleSheet(combo_style)
         self.browse_button.setStyleSheet(button_style)
         self.restore_defaults_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)

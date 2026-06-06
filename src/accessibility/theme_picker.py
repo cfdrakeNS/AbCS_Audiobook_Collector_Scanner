@@ -76,29 +76,29 @@ class ThemeMiniPreview(QWidget):
             _color_hex(colors, "text", _color_hex(colors, "window_text", "#202020"))
         )
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, False)
+        with QPainter(self) as painter:
+            painter.setRenderHint(QPainter.Antialiasing, False)
 
-        w = self.width()
-        h = self.height()
-        margin = 4
+            w = self.width()
+            h = self.height()
+            margin = 4
 
-        painter.fillRect(0, 0, w, h, window)
+            painter.fillRect(0, 0, w, h, window)
 
-        btn_w = max(28, (w - margin * 2) // 3)
-        btn_h = max(10, h // 5)
-        painter.fillRect(margin, margin, btn_w, btn_h, button)
+            btn_w = max(28, (w - margin * 2) // 3)
+            btn_h = max(10, h // 5)
+            painter.fillRect(margin, margin, btn_w, btn_h, button)
 
-        field_top = margin + btn_h + 4
-        field_h = max(12, h - field_top - margin - 6)
-        field_w = w - margin * 2
-        painter.fillRect(margin, field_top, field_w, field_h, base)
+            field_top = margin + btn_h + 4
+            field_h = max(12, h - field_top - margin - 6)
+            field_w = w - margin * 2
+            painter.fillRect(margin, field_top, field_w, field_h, base)
 
-        accent_h = 4
-        painter.fillRect(margin, h - margin - accent_h, field_w, accent_h, highlight)
+            accent_h = 4
+            painter.fillRect(margin, h - margin - accent_h, field_w, accent_h, highlight)
 
-        painter.setPen(QPen(text, 1))
-        painter.drawRect(0, 0, w - 1, h - 1)
+            painter.setPen(QPen(text, 1))
+            painter.drawRect(0, 0, w - 1, h - 1)
 
 
 class ThemePreviewCard(QFrame):

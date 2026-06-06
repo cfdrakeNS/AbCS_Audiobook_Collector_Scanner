@@ -111,13 +111,149 @@ def build_card_group_box_style(selector: str = "QGroupBox") -> str:
     """
 
 
+def _dropdown_arrow_css(selector: str) -> str:
+    """CSS triangle arrow that renders on Windows and Linux (unlike image:none hacks)."""
+    return f"""
+        {selector}::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 20px;
+            border-left: 1px solid palette(dark);
+            background-color: palette(button);
+        }}
+        {selector}::down-arrow {{
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid palette(text);
+            margin-right: 4px;
+        }}
+    """
+
+
+def build_accessible_combo_box_style(
+    scaled_height: int | None = None,
+    selector: str = "QComboBox",
+) -> str:
+    """Cross-platform combo box style with visible dropdown arrow."""
+    height_rules = ""
+    if scaled_height is not None:
+        height_rules = f"""
+            min-height: {scaled_height}px;
+            max-height: {scaled_height}px;
+        """
+
+    return f"""
+        {selector} {{
+            background-color: palette(base);
+            color: palette(text);
+            border: 1px solid palette(dark);
+            border-radius: 3px;
+            padding: 2px 4px;
+            {height_rules}
+        }}
+        {selector}:focus {{
+            border: 2px solid palette(highlight);
+            background-color: palette(base);
+        }}
+        {selector} QAbstractItemView {{
+            background-color: palette(base);
+            color: palette(text);
+            border: 1px solid palette(dark);
+            selection-background-color: palette(highlight);
+            selection-color: palette(highlighted-text);
+        }}
+        {selector} QAbstractItemView::item {{
+            padding: 3px 8px;
+        }}
+        {selector} QAbstractItemView::item:selected,
+        {selector} QAbstractItemView::item:hover {{
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
+        }}
+        {_dropdown_arrow_css(selector)}
+    """
+
+
+def build_accessible_date_edit_style(
+    scaled_height: int | None = None,
+    selector: str = "QDateEdit",
+) -> str:
+    """Date edit style with the same visible dropdown arrow as combos."""
+    height_rules = ""
+    if scaled_height is not None:
+        height_rules = f"""
+            min-height: {scaled_height}px;
+            max-height: {scaled_height}px;
+        """
+
+    return f"""
+        {selector} {{
+            background-color: palette(base);
+            color: palette(text);
+            border: 1px solid palette(dark);
+            border-radius: 3px;
+            padding: 2px 4px;
+            {height_rules}
+        }}
+        {selector}:focus {{
+            border: 2px solid palette(highlight);
+        }}
+        {selector} QCalendarWidget {{
+            background-color: palette(window);
+            color: palette(window-text);
+        }}
+        {selector} QCalendarWidget QAbstractItemView {{
+            background-color: palette(base);
+            color: palette(text);
+            selection-background-color: palette(highlight);
+            selection-color: palette(highlighted-text);
+        }}
+        {_dropdown_arrow_css(selector)}
+    """
+
+
+def build_accessible_spinbox_style(
+    scaled_height: int | None = None,
+    selector: str = "QSpinBox",
+) -> str:
+    """Spin box height/border styling without affecting combo arrows."""
+    height_rules = ""
+    if scaled_height is not None:
+        height_rules = f"""
+            min-height: {scaled_height}px;
+            max-height: {scaled_height}px;
+        """
+    return f"""
+        {selector} {{
+            border: 1px solid palette(dark);
+            border-radius: 3px;
+            padding: 1px;
+            text-align: center;
+            background-color: palette(base);
+            color: palette(text);
+            {height_rules}
+        }}
+        {selector}:focus {{
+            border: 2px solid palette(highlight);
+        }}
+    """
+
+
 def build_table_polish_style(selector: str = "QTableView") -> str:
     return f"""
         {selector} {{
+            background-color: palette(base);
+            color: palette(text);
             gridline-color: palette(mid);
             selection-background-color: palette(highlight);
             selection-color: palette(highlighted-text);
             alternate-background-color: palette(window);
+        }}
+        {selector}::item {{
+            color: palette(text);
+            background-color: palette(base);
         }}
         {selector}:focus {{
             border: 2px solid palette(highlight);

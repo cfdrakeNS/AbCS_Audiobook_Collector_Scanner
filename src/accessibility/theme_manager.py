@@ -11,6 +11,11 @@ from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication, QWidget
 from typing import Dict, Optional
 from enum import Enum
+from .style_helpers import (
+    build_accessible_combo_box_style,
+    build_accessible_date_edit_style,
+    build_accessible_spinbox_style,
+)
 from .windows_theme_detector import (
     detect_windows_dark_mode,
     get_fallback_dark_theme_colors,
@@ -550,106 +555,9 @@ class ThemeManager(QObject):
             }
         """
 
-        # Spin box styling to match combo box height
-        spinbox_style = """
-            QSpinBox {
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                padding: 1px;
-                min-height: 18px;
-                max-height: 18px;
-                text-align: center;
-            }
-            QSpinBox:focus {
-                border: 2px solid palette(highlight);
-            }
-        """
-
-        # Date edit styling to match other controls
-        dateedit_style = """
-            QDateEdit {
-                background-color: palette(base);
-                color: palette(text);
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                padding: 2px 4px;
-                min-height: 18px;
-                max-height: 18px;
-            }
-            QDateEdit:focus {
-                border: 2px solid palette(highlight);
-            }
-            QDateEdit::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 15px;
-                border: none;
-            }
-            QDateEdit::down-arrow {
-                image: none;
-                border: none;
-                background-color: palette(dark);
-                width: 7px;
-                height: 7px;
-            }
-            QDateEdit QCalendarWidget {
-                background-color: palette(window);
-                color: palette(window-text);
-            }
-            QDateEdit QCalendarWidget QAbstractItemView {
-                background-color: palette(base);
-                color: palette(text);
-                selection-background-color: palette(highlight);
-                selection-color: palette(highlighted-text);
-            }
-        """
-
-        # Combo box styling for ALL themes to ensure proper highlight colors
-        combo_style = """
-            QComboBox {
-                background-color: palette(base);
-                color: palette(text);
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-                padding: 1px;
-                min-height: 18px;
-                max-height: 18px;
-            }
-            QComboBox:focus {
-                border: 2px solid palette(highlight);
-            }
-            QComboBox QAbstractItemView {
-                background-color: palette(base);
-                color: palette(text);
-                border: 1px solid palette(dark);
-                selection-background-color: palette(highlight);
-                selection-color: palette(highlighted-text);
-            }
-            QComboBox QAbstractItemView::item {
-                padding: 3px 8px;
-            }
-            QComboBox QAbstractItemView::item:selected {
-                background-color: palette(highlight) !important;
-                color: palette(highlighted-text) !important;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: palette(highlight) !important;
-                color: palette(highlighted-text) !important;
-            }
-            QComboBox::drop-down {
-                background-color: palette(button);
-                border: 1px solid palette(dark);
-                border-radius: 2px;
-                width: 15px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border: none;
-                background-color: palette(dark);
-                width: 7px;
-                height: 7px;
-            }
-        """
+        spinbox_style = build_accessible_spinbox_style(18)
+        dateedit_style = build_accessible_date_edit_style(18)
+        combo_style = build_accessible_combo_box_style(18)
 
         # Apply menu styling for ALL themes
         if theme_enum in [ThemeName.HIGH_CONTRAST_DARK, ThemeName.HIGH_CONTRAST_LIGHT]:

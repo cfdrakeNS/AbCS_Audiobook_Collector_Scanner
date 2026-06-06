@@ -547,55 +547,6 @@ class BookDetailsWindow(QDialog):
         scale_pct = self.scaler.current_scale
         scaled_height = int(base_height * (scale_pct / 100.0))
 
-        # Stylesheet for QComboBox controls (scaled height)
-        combo_style = f"""
-            QComboBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px 4px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QComboBox:focus {{
-                border: 2px solid palette(highlight);
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-            }}
-        """
-
-        # Stylesheet for QSpinBox controls
-        spinbox_style = f"""
-            QSpinBox {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QSpinBox:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-        """
-
-        # Stylesheet for QDateEdit controls
-        dateedit_style = f"""
-            QDateEdit {{
-                min-height: {scaled_height}px;
-                max-height: {scaled_height}px;
-                padding: 2px;
-                border: 1px solid palette(dark);
-                border-radius: 3px;
-            }}
-            QDateEdit:focus {{
-                border: 2px solid palette(highlight);
-                background-color: palette(light);
-            }}
-        """
-
         # Stylesheet for QPushButton - compact height, visible border, inverted focus
         button_style = build_modern_button_style(scaled_height)
 
@@ -613,6 +564,8 @@ class BookDetailsWindow(QDialog):
 
         # Apply styles to widgets that need local styling
         # Text boxes, combo boxes, spin boxes, and date edits use theme manager styling - don't override
+        for widget in self.findChildren(QComboBox):
+            widget.setStyleSheet("")
         for widget in self.findChildren(QPushButton):
             widget.setStyleSheet(button_style)
         for widget in self.findChildren(QLabel):

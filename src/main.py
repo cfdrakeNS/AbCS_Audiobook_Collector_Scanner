@@ -160,6 +160,8 @@ class AbCSApplication:
         from src.accessibility.icon_helper import get_app_icon
 
         self.qt_app = QApplication(sys.argv)
+        if sys.platform.startswith("linux"):
+            self.qt_app.setStyle("Fusion")
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
