@@ -67,6 +67,15 @@ python -m PyInstaller \
 chmod +x dist/AbCS
 abcs_write_linux_dist_assets dist
 
+if [[ ! -f dist/install_abcs.sh ]]; then
+  echo "ERROR: dist/install_abcs.sh was not created." >&2
+  exit 1
+fi
+
+echo
+echo "dist contents:"
+ls -la dist/
+
 echo
 echo "Build complete: dist/AbCS"
 echo "Test package: zip the dist/ folder; testers run ./install_abcs.sh (see dist/README.txt)"
