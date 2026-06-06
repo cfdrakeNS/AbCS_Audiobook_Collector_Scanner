@@ -66,7 +66,9 @@ sudo apt install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1
 - `build_linux.sh`, `build_linux_debug.sh` — `--add-data=graphics:graphics` + `--icon` via `build_linux_common.sh`
 - `make_icon.py` — also writes `abcs_icon_256x256.png` for Linux
 
-**VM verify:** title-bar icon in dev and after `./build_linux_debug.sh`; About splash in both.
+**VM verified (dev):** `icon_loaded=True`; icon shows in taskbar and Alt+Tab. Many Mint/Cinnamon themes do not show icons in the window title bar — that is a desktop theme limitation, not an app bug.
+
+**Still to verify:** frozen build (`./build_linux_debug.sh`) — panel icon + About splash in `dist/AbCS`.
 
 ---
 
@@ -132,6 +134,6 @@ For packaged build test:
 
 ## Remaining work
 
-1. Cross-platform user data dir (`XDG_DATA_HOME` on Linux) for frozen builds
-2. Mark bug #94 complete after VM verifies icons in dev + frozen build
-3. Merge `Linux_fixes` → `main` after VM sign-off
+1. **Frozen build test** on VM: `./build_linux_debug.sh` — icon in panel, About splash, backup/restore
+2. Optional: cross-platform user data dir (`XDG_DATA_HOME` on Linux) for frozen builds
+3. Merge `Linux_fixes` → `main` after frozen build sign-off

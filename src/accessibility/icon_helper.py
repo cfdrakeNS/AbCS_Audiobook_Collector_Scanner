@@ -71,12 +71,6 @@ def _load_icon_from_path(path: str) -> QIcon:
     if not icon.isNull():
         return icon
 
-    if sys.platform.startswith("linux"):
-        print(
-            f"[AbCS] Warning: could not load window icon from {path}"
-            f" ({reader.errorString() or 'unknown error'})",
-            file=sys.stderr,
-        )
     return QIcon()
 
 
@@ -98,38 +92,9 @@ def install_app_icon(app: QApplication) -> bool:
     """Set the application window icon; returns True when an icon loaded."""
     icon = get_app_icon()
     if icon.isNull():
-        log_icon_diagnostics(icon_loaded=False)
         return False
     app.setWindowIcon(icon)
-    log_icon_diagnostics(icon_loaded=True)
     return True
-
-
-def log_icon_diagnostics(icon_loaded: bool | None = None) -> None:
-    """Write icon path diagnostics to stderr and a log file (Linux)."""
-    paths = _icon_candidate_paths()
-    preferred = resource_path()
-    if icon_loaded is None:
-        icon_loaded = not get_app_icon().isNull()
-
-    lines = [
-        f"preferred_icon={preferred}",
-        f"preferred_exists={os.path.isfile(preferred)}",
-        f"icon_loaded={icon_loaded}",
-        f"candidate_files={paths or ['(none)']}",
-    ]
-    message = "[AbCS] Icon diagnostics: " + "; ".join(lines)
-    print(message, file=sys.stderr, flush=True)
-
-    if sys.platform.startswith("linux"):
-        from pathlib import Path
-
-        log_dir = Path.home() / ".local" / "share" / "AbCS"
-        try:
-            log_dir.mkdir(parents=True, exist_ok=True)
-            (log_dir / "startup.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
-        except OSError:
-            pass
 
 
 ICON_PATH = resource_path()

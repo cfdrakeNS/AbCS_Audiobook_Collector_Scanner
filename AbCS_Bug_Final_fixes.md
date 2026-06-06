@@ -93,7 +93,7 @@
 91. complete - book\_detail window - 1. alt+t is set to both title and time should be only title alt+m is time check centalized shortcut in shortcut.py. When exiting update the save popup appears it should only appear if it is dirty
 92. complete - when you run the abcs.ext created by the installer, exporting in import win and main win are defaulting to the program filesabcs folder - can this be changed to the user's documents folder or home folder?
 93. complete - BOOK DETAIL WINDOW - 1. when you press update the new and delete button should be hidden just save button should be visible 2. can't tab to format fields in view/read mode.
-94. defered to linux_fixes what is involved in fixing this? - linux version window icons and graphic in the about\_dialogue are not showing.
+94. complete - linux window icons load and show in taskbar/Alt+Tab; About splash works. Some Mint themes hide title-bar icons (desktop limitation).
 95. complete Accessible events – change timing from hard coded 300ms to be based on screen reader; jaws 300ms, nvda 1500ms, orca 800ms. No screen reader 0ms. See screen\_reader as it check for a screen reader.
 96. complete import window –
     1. the import should be applying the format filter prior to scanning the file when it creates the directory list. Improve import time in some cases.

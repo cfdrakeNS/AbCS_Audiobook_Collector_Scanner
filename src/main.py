@@ -173,13 +173,7 @@ class AbCSApplication:
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
-        # Set application icon for all windows (multi-size load for Linux WMs)
-        if not install_app_icon(self.qt_app):
-            print(
-                "AbCS: window icon not loaded — see stderr or ~/.local/share/AbCS/startup.log",
-                file=sys.stderr,
-                flush=True,
-            )
+        install_app_icon(self.qt_app)
 
         self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
 
