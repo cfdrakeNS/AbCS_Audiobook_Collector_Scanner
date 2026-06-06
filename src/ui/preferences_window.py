@@ -887,7 +887,7 @@ class PreferencesWindow(QDialog):
 
         spinbox_style = build_accessible_spinbox_style(scaled_height)
 
-        card_style = "" if _is_linux() else build_card_group_box_style()
+        card_style = build_card_group_box_style()
         button_style = build_modern_button_style(scaled_height)
 
         status_style = f"""
@@ -925,8 +925,7 @@ class PreferencesWindow(QDialog):
 
         if hasattr(self, "theme_picker"):
             self.theme_picker.setStyleSheet("background-color: transparent;")
-            if not _is_linux():
-                self.theme_picker.refresh_selection_styles()
+            self.theme_picker.refresh_selection_styles()
 
         self.save_button.setObjectName("primaryActionButton")
         self.status_bar.setStyleSheet(status_style)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.accessibility.style_helpers import _is_linux
 from src.accessibility.theme_manager import ThemeManager, ThemeName
 from src.accessibility.windows_theme_detector import (
     detect_windows_dark_mode,
@@ -57,13 +56,6 @@ def _color_hex(colors: Dict[str, str], key: str, fallback: str) -> str:
     return value if value.startswith("#") else fallback
 
 
-def _fill_frame(frame: QFrame, color_hex: str) -> None:
-    frame.setAutoFillBackground(True)
-    palette = frame.palette()
-    palette.setColor(QPalette.Window, QColor(color_hex))
-    frame.setPalette(palette)
-
-
 class ThemeMiniPreview(QFrame):
     """Small mock panel using a theme's colors (no custom QPainter)."""
 
@@ -73,6 +65,7 @@ class ThemeMiniPreview(QFrame):
         self.setFixedHeight(52)
         self.setMinimumWidth(120)
         self.setAccessibleName("Theme color preview")
+        self.setFrameShape(QFrame.NoFrame)
 
         window = _color_hex(colors, "window", "#f0f0f0")
         base = _color_hex(colors, "base", "#ffffff")
@@ -82,59 +75,40 @@ class ThemeMiniPreview(QFrame):
             colors, "text", _color_hex(colors, "window_text", "#202020")
         )
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
-
-        if _is_linux():
-            self.setFrameShape(QFrame.Box)
-            self.setLineWidth(1)
-            _fill_frame(self, window)
-
-            button_bar = QFrame()
-            button_bar.setFixedHeight(10)
-            _fill_frame(button_bar, button)
-            layout.addWidget(button_bar)
-
-            field_bar = QFrame()
-            _fill_frame(field_bar, base)
-            layout.addWidget(field_bar, 1)
-
-            accent_bar = QFrame()
-            accent_bar.setFixedHeight(4)
-            _fill_frame(accent_bar, highlight)
-            layout.addWidget(accent_bar)
-            return
-
-        radius = "border-radius: 2px;"
         self.setStyleSheet(
             f"""
             QFrame {{
                 background-color: {window};
                 border: 1px solid {text};
-                {radius}
+                border-radius: 2px;
             }}
             """
         )
 
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
+
         button_bar = QFrame()
         button_bar.setFixedHeight(10)
-        inner_radius = "border-radius: 1px;"
+        button_bar.setFrameShape(QFrame.NoFrame)
         button_bar.setStyleSheet(
-            f"background-color: {button}; border: none; {inner_radius}"
+            f"background-color: {button}; border: none; border-radius: 1px;"
         )
         layout.addWidget(button_bar)
 
         field_bar = QFrame()
+        field_bar.setFrameShape(QFrame.NoFrame)
         field_bar.setStyleSheet(
-            f"background-color: {base}; border: none; {inner_radius}"
+            f"background-color: {base}; border: none; border-radius: 1px;"
         )
         layout.addWidget(field_bar, 1)
 
         accent_bar = QFrame()
         accent_bar.setFixedHeight(4)
+        accent_bar.setFrameShape(QFrame.NoFrame)
         accent_bar.setStyleSheet(
-            f"background-color: {highlight}; border: none; {inner_radius}"
+            f"background-color: {highlight}; border: none; border-radius: 1px;"
         )
         layout.addWidget(accent_bar)
 
@@ -157,7 +131,7 @@ class ThemePreviewCard(QFrame):
         self._selected = False
 
         self.setObjectName("themePreviewCard")
-        self.setFrameShape(QFrame.Box if _is_linux() else QFrame.StyledPanel)
+        self.setFrameShape(QFrame.NoFrame)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setCursor(Qt.PointingHandCursor)
         self.setAccessibleName(display_name)
@@ -218,11 +192,6 @@ class ThemePreviewCard(QFrame):
         label_color = _color_hex(
             self._colors, "window_text", _color_hex(self._colors, "text", "#202020")
         )
-        if _is_linux():
-            palette = self.name_label.palette()
-            palette.setColor(QPalette.WindowText, QColor(label_color))
-            self.name_label.setPalette(palette)
-            return
         self.name_label.setStyleSheet(
             f"color: {label_color}; background: transparent; border: none;"
         )
@@ -231,27 +200,6 @@ class ThemePreviewCard(QFrame):
         if focused is None:
             focused = self.hasFocus()
         window = _color_hex(self._colors, "window", "#f0f0f0")
-
-        if _is_linux():
-            self.setStyleSheet("")
-            self.setAutoFillBackground(True)
-            _fill_frame(self, window)
-            if self._selected:
-                line_width = 3
-                border_color = QApplication.palette().color(QPalette.Highlight)
-            elif focused:
-                line_width = 2
-                border_color = QApplication.palette().color(QPalette.Highlight)
-            else:
-                line_width = 1
-                border_color = QApplication.palette().color(QPalette.Mid)
-            self.setFrameShape(QFrame.Box)
-            self.setLineWidth(line_width)
-            self.setMidLineWidth(0)
-            palette = self.palette()
-            palette.setColor(QPalette.WindowText, border_color)
-            self.setPalette(palette)
-            return
 
         if self._selected:
             highlight = QApplication.palette().color(QPalette.Highlight).name()
@@ -263,13 +211,12 @@ class ThemePreviewCard(QFrame):
             mid = QApplication.palette().color(QPalette.Mid).name()
             border = f"1px solid {mid}"
 
-        radius = "border-radius: 6px;"
         self.setStyleSheet(
             f"""
             QFrame#themePreviewCard {{
                 background-color: {window};
                 border: {border};
-                {radius}
+                border-radius: 6px;
             }}
             """
         )
@@ -328,7 +275,7 @@ class ThemePreviewPicker(QWidget):
             card.refresh_selection_style()
 
     def refresh_active_selection_styles(self) -> None:
-        """Refresh only selected/focused cards (avoids Linux Fusion repaints)."""
+        """Refresh only selected/focused cards after palette changes."""
         for card in self._cards:
             if card.is_selected() or card.hasFocus():
                 card.refresh_selection_style()
