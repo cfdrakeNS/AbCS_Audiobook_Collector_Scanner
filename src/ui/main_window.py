@@ -228,14 +228,16 @@ class MainWindow(QMainWindow):
         # Debug: print resolved icon path and existence
         from src.accessibility import icon_helper
 
+        icon = get_app_icon()
         print(
             "[DEBUG] ICON_PATH:",
             os.path.abspath(icon_helper.ICON_PATH),
             "Exists:",
             os.path.exists(icon_helper.ICON_PATH),
+            "Loaded:",
+            not icon.isNull(),
         )
-        # Set the window icon using centralized icon helper
-        self.setWindowIcon(get_app_icon())
+        self.setWindowIcon(icon)
 
     def _selection_shortcuts_text(self) -> str:
         """Return selection shortcut text for status bar (accessibility, no Alt+key noise)."""

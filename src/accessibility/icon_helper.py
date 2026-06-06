@@ -8,30 +8,108 @@ Icons are decorative; accessible names describe the action, not the icon.
 from __future__ import annotations
 
 import os
+import sys
 
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QAction, QIcon, QImageReader, QPixmap
 from PySide6.QtWidgets import QApplication, QStyle
 
-from src.accessibility.graphics_paths import resolve_app_icon_path
+from src.accessibility.graphics_paths import (
+    APP_ICON_CANDIDATES,
+    resolve_app_icon_path,
+    resolve_graphics_path,
+)
+
+
+def _icon_candidate_paths() -> list[str]:
+    if sys.platform.startswith("win32"):
+        candidates = (
+            "abcs_icon_256x256.ico",
+            "abcs_icon_256x256.png",
+            "abcs_source_256.png",
+            "AbCS_WinTitle.png",
+            "abcs_WinTitle.png",
+        )
+    else:
+        candidates = APP_ICON_CANDIDATES
+
+    paths: list[str] = []
+    seen: set[str] = set()
+    for filename in candidates:
+        path = os.path.abspath(resolve_graphics_path(filename))
+        if path in seen:
+            continue
+        seen.add(path)
+        if os.path.isfile(path):
+            paths.append(path)
+    return paths
+
+
+def _load_icon_from_path(path: str) -> QIcon:
+    """Build a multi-size QIcon; required for many Linux window managers."""
+    if not os.path.isfile(path):
+        return QIcon()
+
+    reader = QImageReader(path)
+    reader.setAutoTransform(True)
+    image = reader.read()
+    if not image.isNull():
+        pixmap = QPixmap.fromImage(image)
+        if not pixmap.isNull():
+            icon = QIcon()
+            for size in (16, 24, 32, 48, 64, 128, 256):
+                scaled = pixmap.scaled(
+                    QSize(size, size),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                icon.addPixmap(scaled)
+            if not icon.isNull():
+                return icon
+
+    icon = QIcon(path)
+    if not icon.isNull():
+        return icon
+
+    if sys.platform.startswith("linux"):
+        print(
+            f"[AbCS] Warning: could not load window icon from {path}"
+            f" ({reader.errorString() or 'unknown error'})",
+            file=sys.stderr,
+        )
+    return QIcon()
 
 
 def resource_path() -> str:
-    """Get absolute path to the application window icon asset."""
+    """Get absolute path to the preferred application window icon asset."""
     return resolve_app_icon_path()
-
-
-ICON_PATH = resource_path()
 
 
 def get_app_icon() -> QIcon:
     """Return the QIcon for all setWindowIcon calls in windows and popups."""
-    path = resolve_app_icon_path()
-    icon = QIcon(path)
-    if icon.isNull() and os.path.isfile(path):
-        # Some Linux builds load PNG paths more reliably via explicit addFile.
-        icon.addFile(path)
-    return icon
+    for path in _icon_candidate_paths():
+        icon = _load_icon_from_path(path)
+        if not icon.isNull():
+            return icon
+    return QIcon()
+
+
+def install_app_icon(app: QApplication) -> bool:
+    """Set the application window icon; returns True when an icon loaded."""
+    icon = get_app_icon()
+    if icon.isNull():
+        paths = _icon_candidate_paths()
+        print(
+            "[AbCS] Warning: no window icon loaded."
+            f" Checked: {paths or ['(no graphics files found)']}",
+            file=sys.stderr,
+        )
+        return False
+    app.setWindowIcon(icon)
+    return True
+
+
+ICON_PATH = resource_path()
 
 
 def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:

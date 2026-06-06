@@ -157,7 +157,7 @@ class AbCSApplication:
         # Create Qt application - this is the main event loop that handles all UI interactions
         # It must be created before any other Qt objects
 
-        from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.icon_helper import install_app_icon
 
         self.qt_app = QApplication(sys.argv)
         if sys.platform.startswith("linux"):
@@ -173,8 +173,8 @@ class AbCSApplication:
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
-        # Set application icon for all windows using centralized helper
-        self.qt_app.setWindowIcon(get_app_icon())
+        # Set application icon for all windows (multi-size load for Linux WMs)
+        install_app_icon(self.qt_app)
 
         self._spreadsheet_dependency_report = self._check_spreadsheet_dependencies()
 
