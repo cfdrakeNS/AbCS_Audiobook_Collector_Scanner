@@ -75,9 +75,9 @@ class DatabaseManager:
         """
         if db_path is None:
             if getattr(sys, "frozen", False):
-                local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home()))
-                data_dir = Path(local_app_data) / "AbCS"
-                data_dir.mkdir(parents=True, exist_ok=True)
+                from src.app_paths import get_user_data_dir
+
+                data_dir = get_user_data_dir()
                 db_path = str(data_dir / "abcs.db")
             else:
                 project_root = Path(__file__).parent.parent.parent

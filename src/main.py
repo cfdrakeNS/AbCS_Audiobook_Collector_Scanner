@@ -120,8 +120,9 @@ def get_database_path():
 
         # Copy bundled database to user directory if it doesn't exist
         # This allows the database to be writable
-        user_data_dir = Path.home() / "AppData" / "Local" / "AbCS"
-        user_data_dir.mkdir(parents=True, exist_ok=True)
+        from src.app_paths import get_user_data_dir
+
+        user_data_dir = get_user_data_dir()
         user_db = user_data_dir / "abcs.db"
         first_run_marker = user_data_dir / ".bundled_first_run_complete"
 

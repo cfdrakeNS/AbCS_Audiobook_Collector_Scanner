@@ -114,7 +114,7 @@ SHARING THIS BUILD
   Zip this entire folder and send it. Testers only need the contents of dist/.
 
 SUPPORT NOTES
-  - First run creates a local database in your home folder.
+  - Database and backups: ~/.local/share/AbCS/ (Linux standard location)
   - Help → About shows version and splash graphic when graphics are bundled.
 EOF
 
