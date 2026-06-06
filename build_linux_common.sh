@@ -77,7 +77,56 @@ Categories=Utility;Audio;Office;
 StartupWMClass=AbCS
 EOF
 
+  local version="unknown"
+  if [[ -f "src/build_config.py" ]]; then
+    version="$(grep -E '^APP_VERSION[[:space:]]*=' src/build_config.py | sed -E 's/.*"([^"]+)".*/\1/' || true)"
+    version="${version:-unknown}"
+  fi
+
+  cat >"${dist_dir}/README.txt" <<EOF
+AbCS (Audio Book Collector Scanner) — Linux test build
+Version: ${version}
+
+WHAT IS IN THIS FOLDER
+  AbCS                  The application (single executable, no Python needed)
+  abcs_icon_256x256.png Application icon — keep in this folder with AbCS
+  AbCS.desktop          Optional launcher for the desktop menu
+  README.txt            This file
+
+QUICK START
+  1. Open a terminal in this folder (the folder that contains AbCS).
+  2. Run:
+       chmod +x AbCS
+       ./AbCS
+
+  Keep all files in this folder together. Do not move AbCS without the PNG icon.
+
+OPTIONAL — ADD TO MENU (Linux Mint / Ubuntu)
+  1. Copy the launcher:
+       mkdir -p ~/.local/share/applications
+       cp AbCS.desktop ~/.local/share/applications/
+  2. If you unzipped this folder somewhere other than the build PC, edit
+     ~/.local/share/applications/AbCS.desktop and fix Exec= and Icon= to the
+     full paths where AbCS and abcs_icon_256x256.png live on your machine.
+  3. Refresh menus:
+       update-desktop-database ~/.local/share/applications
+
+REQUIREMENTS
+  - 64-bit Linux (x86_64). Built for Mint/Ubuntu-style desktops.
+  - Python is NOT required.
+  - On a fresh system, if AbCS does not start, install Qt libraries:
+       sudo apt install -y libxcb-cursor0 libxkbcommon-x11-0 libgl1 libegl1
+
+SHARING THIS BUILD
+  Zip this entire folder and send it. Testers only need the contents of dist/.
+
+SUPPORT NOTES
+  - First run creates a local database in your home folder.
+  - Help → About shows version and splash graphic when graphics are bundled.
+EOF
+
   echo "Wrote ${dist_dir}/AbCS.desktop"
+  echo "Wrote ${dist_dir}/README.txt"
   if [[ -f "${dist_dir}/${icon_name}" ]]; then
     echo "Copied ${dist_dir}/${icon_name} for launchers and file managers"
   fi
