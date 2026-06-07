@@ -119,7 +119,8 @@
 109. complete - preference window f1 help add: Move between tabs Ccontrol+tab / control+shift+tab.
 110. complete - main window - duplicate mode matching by title + Author + Collection is not working correctly. check and fix duplicate function 
 111. complete - main window - if import is selected and in duplicate mode exit duplicate mode before opening import window or book list import 
- 
+112. complete - main window status bar is inconsistent message e.g. when read filter is active it doesn't show collection. Review & suggest improvements to the status bar processing. It should show same info as msg bar above table. 
+
  # performance tuining bugs
 1. complete - if the timing prints are no longer required remove those
 2. complete - New book combos display works when you do ctrl+n from main win but not when in

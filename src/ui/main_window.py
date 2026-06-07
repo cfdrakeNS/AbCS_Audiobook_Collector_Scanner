@@ -1485,44 +1485,11 @@ class MainWindow(QMainWindow):
                     return f"{title} - {count} selected. {shortcuts}"
             return f"{count} selected. {shortcuts}"
 
-        # Priority 2: Duplicate mode active
-        if self.duplicate_mode_active:
-            return (
-                f"Duplicate mode: {len(self.books)} books shown. "
-                "Use normal selection. Escape Exit."
-            )
-
-        # Priority 3: Show search results if search is active
+        # Priority 2–4: Mirror filter summary label (collection, read, plot, find, sort)
+        summary = self._filter_summary_text()
         if self.current_filter.search_text:
-            search_text = self.current_filter.search_text
-            if search_text.startswith("?"):
-                search_text = search_text[1:]
-            count = len(self.books)
-            order_by = self._active_sort_key or "Title"
-            if count == 0:
-                return f"No {order_by.lower()}s found matching '{search_text}'. Esc to exit Find."
-            elif count == 1:
-                return f"Found 1 {order_by.lower()}: {search_text}. Esc to exit Find"
-            else:
-                return f"Found {count} {order_by.lower()}s matching '{search_text}'. Esc to exit Find"
-
-        # Priority 4: Show filtered book count with all active filters
-        parts = [f"Showing {len(self.books)} books"]
-
-        # mw#12: Show current sort order (especially Series/Genre)
-        # Remove 'BY xxx' and only show 'Showing XX books'
-
-        # Read filter
-        if self.current_filter.read_filter == "Read":
-            parts.append("Read")
-        elif self.current_filter.read_filter == "Unread":
-            parts.append("Unread")
-
-        # Collection filter
-        if self.current_filter.collection_id is not None:
-            parts.append(self._current_collection_label())
-
-        return " • ".join(parts)
+            return f"{summary}. Esc to exit Find."
+        return summary
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -1871,22 +1838,11 @@ class MainWindow(QMainWindow):
         self.set_status(self.get_default_status(), timeout_ms=0, announce=announce)
 
     def on_read_status_bar(self):
-        """mw#24: Alt+/ reads status bar. Include filter/sort summary when idle."""
-        visible = (self.status_bar.currentMessage() or "").strip()
-        default = (self.get_default_status() or "").strip()
-        summary = self._filter_summary_text()
-
-        if visible and visible != default:
-            read_status_bar_message(
-                self.status_bar,
-                fallback=visible or default,
-            )
-        else:
-            read_status_bar_message(
-                self.status_bar,
-                fallback=summary or visible or default,
-                announce_text=summary or visible or default,
-            )
+        """mw#24: Alt+/ reads status bar."""
+        read_status_bar_message(
+            self.status_bar,
+            fallback=self._filter_summary_text(),
+        )
 
     def on_open_book_details(self):
         """mw#17,19: Open book details for current book (Enter)."""
@@ -2120,10 +2076,7 @@ class MainWindow(QMainWindow):
         self._sync_plot_toolbar_toggle()
         self.refresh_books()
         if self.current_filter.plot_filter != "All":
-            self.set_status(
-                f"{len(self.books)} books  |  Plot: {self.current_filter.plot_filter}",
-                announce=True,
-            )
+            self.set_default_status(announce=True)
 
     def _rebuild_sort_menu(self):
         """Populate Sort menu with supported sort fields."""
@@ -2385,10 +2338,7 @@ class MainWindow(QMainWindow):
         self._sync_read_toolbar_toggle()
         self.refresh_books()
         if self.current_filter.read_filter != "All":
-            self.set_status(
-                f"{len(self.books)} books  |  Read: {self.current_filter.read_filter}",
-                announce=True,
-            )
+            self.set_default_status(announce=True)
 
     def on_order_changed(self, text: str):
         """Handle sort order change."""
