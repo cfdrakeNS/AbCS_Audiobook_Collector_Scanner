@@ -29,10 +29,14 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QToolBar,
     QSizePolicy,
+    QStyledItemDelegate,
+    QStyle,
+    QStyleOptionViewItem,
 )
 from src.ui.license_dialogue import LicenseDialog
 from PySide6.QtCore import (
     Qt,
+    QSize,
     QTimer,
     QItemSelectionModel,
     QEvent,
@@ -47,6 +51,10 @@ from PySide6.QtGui import (
     QShortcut,
     QKeySequence,
     QAccessible,
+    QPainter,
+    QBrush,
+    QPalette,
+    QIcon,
 )
 from PySide6.QtWidgets import QApplication
 
@@ -61,6 +69,7 @@ from src.database import (
     Book,
     StatisticsQueries,
 )
+from src.database.models import book_has_plot
 from src.ui.statistics_dialog import StatisticsDialog
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import (
@@ -134,6 +143,55 @@ class BookTableView(QTableView):
         self.setCurrentIndex(index)
 
 
+class TitlePlotDelegate(QStyledItemDelegate):
+    """Paint plot indicator dots without exposing decorations to screen readers."""
+
+    _DOT_SIZE = 10
+    _DOT_MARGIN = 4
+
+    def paint(self, painter, option, index):
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+
+        has_plot = False
+        if index.column() == 1:
+            model = index.model()
+            books = getattr(model, "_books", None)
+            if books and 0 <= index.row() < len(books):
+                has_plot = book_has_plot(books[index.row()].comments)
+
+        if has_plot:
+            dot_x = opt.rect.left() + 2
+            dot_y = opt.rect.center().y() - self._DOT_SIZE // 2
+            color = opt.palette.color(QPalette.Highlight)
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(dot_x, dot_y, self._DOT_SIZE, self._DOT_SIZE)
+            painter.restore()
+            opt.rect = opt.rect.adjusted(self._DOT_SIZE + self._DOT_MARGIN, 0, 0, 0)
+
+        opt.icon = QIcon()
+        widget = opt.widget
+        style = widget.style() if widget else QApplication.style()
+        style.drawControl(QStyle.CE_ItemViewItem, opt, painter, widget)
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        if index.column() != 1:
+            return size
+        model = index.model()
+        books = getattr(model, "_books", None)
+        if books and 0 <= index.row() < len(books):
+            if book_has_plot(books[index.row()].comments):
+                return QSize(
+                    size.width() + self._DOT_SIZE + self._DOT_MARGIN,
+                    size.height(),
+                )
+        return size
+
+
 class BookTableModel(QAbstractTableModel):
     """Model-backed view for large book lists."""
 
@@ -172,6 +230,12 @@ class BookTableModel(QAbstractTableModel):
             return None
 
         book = self._books[row]
+
+        if role == Qt.AccessibleTextRole and col == 1:
+            title = book.title or ""
+            if book_has_plot(book.comments):
+                return f"{title}, plot" if title else "plot"
+            return title
 
         if role in (Qt.DisplayRole, Qt.AccessibleTextRole):
             if col == 0:
@@ -441,6 +505,10 @@ class MainWindow(QMainWindow):
         if read_filter != "All":
             parts.append(f"Read: {read_filter}")
 
+        plot_filter = self.current_filter.plot_filter or "All"
+        if plot_filter != "All":
+            parts.append(f"Plot: {plot_filter}")
+
         if self.current_filter.search_text:
             search_text = self.current_filter.search_text
             if search_text.startswith("?"):
@@ -543,6 +611,7 @@ class MainWindow(QMainWindow):
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
         self._read_filter_options = ["All", "Read", "Unread"]
+        self._plot_filter_options = ["All", "With Plot", "Without Plot"]
         self._primary_sort_options = ["Title", "Author", "Genre", "Series", "Read Date"]
 
         # Selected books (for bulk operations)
@@ -785,6 +854,8 @@ class MainWindow(QMainWindow):
             return
         self.apply_control_styles()
         self._apply_main_panel_styles()
+        if hasattr(self, "table"):
+            self.table.viewport().update()
 
     def create_table(self):
         """Create books table."""
@@ -799,6 +870,7 @@ class MainWindow(QMainWindow):
         self.table.setColumnHidden(5, True)  # Time
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
+        self.table.setItemDelegateForColumn(1, TitlePlotDelegate(self.table))
         # Selection column removed; only text highlighting used
 
         # Table settings - SelectItems for cell-level focus, row selection handled manually
@@ -1103,6 +1175,37 @@ class MainWindow(QMainWindow):
             self.action_toolbar.addAction(action)
             self._toolbar_actions.append((action, role))
 
+            if role == "find":
+                self.plot_filter_action = QAction("Plot Filter", self)
+                self.plot_filter_action.setCheckable(True)
+                self.plot_filter_action.setChecked(False)
+                self.plot_filter_action.triggered.connect(self.on_plot_filter_toggled)
+                apply_tooltip_accessibility(
+                    self.plot_filter_action,
+                    "Toggle plot filter",
+                    "Show only books that have a plot synopsis. Toggle off to show all books - Alt+P",
+                )
+                apply_decorative_action_icon(
+                    self.plot_filter_action, "plot_filter", self.scaler
+                )
+                self.action_toolbar.addAction(self.plot_filter_action)
+                self._toolbar_actions.append((self.plot_filter_action, "plot_filter"))
+
+                self.read_filter_action = QAction("Read Filter", self)
+                self.read_filter_action.setCheckable(True)
+                self.read_filter_action.setChecked(False)
+                self.read_filter_action.triggered.connect(self.on_read_filter_toggled)
+                apply_tooltip_accessibility(
+                    self.read_filter_action,
+                    "Toggle read filter",
+                    "Show only books marked as read. Toggle off to show all books - Alt+R",
+                )
+                apply_decorative_action_icon(
+                    self.read_filter_action, "read_filter", self.scaler
+                )
+                self.action_toolbar.addAction(self.read_filter_action)
+                self._toolbar_actions.append((self.read_filter_action, "read_filter"))
+
         self.addToolBar(Qt.TopToolBarArea, self.action_toolbar)
 
     def _apply_toolbar_action_icons(self):
@@ -1185,7 +1288,12 @@ class MainWindow(QMainWindow):
         self.collection_filter_group = QActionGroup(self)
         self.collection_filter_group.setExclusive(True)
 
-        # Phase 3: read filter moved from header combo to View menu.
+        # Phase 3: plot and read filters moved from header combo to View menu.
+        self.view_plot_menu = self.view_menu.addMenu("&Plot")
+        self.plot_filter_group = QActionGroup(self)
+        self.plot_filter_group.setExclusive(True)
+        self._rebuild_plot_filter_menu()
+
         self.view_read_menu = self.view_menu.addMenu("&Read")
         self.read_filter_group = QActionGroup(self)
         self.read_filter_group.setExclusive(True)
@@ -1284,6 +1392,8 @@ class MainWindow(QMainWindow):
             "update_button": self.on_update_clicked,  # Alt+U
             "delete_button": self.on_delete_clicked,  # Alt+D
             "export_button": self.on_export_duplicates,  # Alt+X
+            "plot_filter_toggle": lambda: self.plot_filter_action.trigger(),
+            "read_filter_toggle": self.on_read_filter_shortcut,
             "cancel_button": self.on_escape_pressed,
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -1449,6 +1559,9 @@ class MainWindow(QMainWindow):
         if self.current_filter.read_filter not in self._read_filter_options:
             self.current_filter.read_filter = "All"
 
+        if self.current_filter.plot_filter not in self._plot_filter_options:
+            self.current_filter.plot_filter = "All"
+
         if self.current_filter.order_by not in self._primary_sort_options:
             self.current_filter.order_by = "Title"
 
@@ -1458,6 +1571,9 @@ class MainWindow(QMainWindow):
 
         self._sync_collection_menu_selection()
         self._sync_read_menu_selection()
+        self._sync_plot_menu_selection()
+        self._sync_plot_toolbar_toggle()
+        self._sync_read_toolbar_toggle()
         self._sync_sort_menu_selection(self.current_filter.order_by)
 
     def _current_collection_label(self) -> str:
@@ -1565,6 +1681,7 @@ class MainWindow(QMainWindow):
             self.current_filter = SearchFilter(
                 collection_id=saved_filter.collection_id,
                 read_filter=saved_filter.read_filter,
+                plot_filter=saved_filter.plot_filter,
                 order_by=saved_filter.order_by,
                 search_text=saved_filter.search_text,
                 is_keyword_search=saved_filter.is_keyword_search,
@@ -1677,6 +1794,7 @@ class MainWindow(QMainWindow):
             self._duplicate_saved_filter = SearchFilter(
                 collection_id=self.current_filter.collection_id,
                 read_filter=self.current_filter.read_filter,
+                plot_filter=self.current_filter.plot_filter,
                 order_by=self.current_filter.order_by,
                 search_text=self.current_filter.search_text,
                 is_keyword_search=self.current_filter.is_keyword_search,
@@ -1688,6 +1806,7 @@ class MainWindow(QMainWindow):
 
         self.current_filter.collection_id = None
         self.current_filter.read_filter = "All"
+        self.current_filter.plot_filter = "All"
         self.current_filter.search_text = ""
         self.current_filter.is_keyword_search = False
         self._apply_current_filter_to_controls()
@@ -1828,10 +1947,14 @@ class MainWindow(QMainWindow):
         self.current_filter.is_keyword_search = False
         self.current_filter.collection_id = None
         self.current_filter.read_filter = "All"
+        self.current_filter.plot_filter = "All"
         self._apply_current_filter_to_controls()
 
         self._sync_collection_menu_selection()
         self._sync_read_menu_selection()
+        self._sync_plot_menu_selection()
+        self._sync_plot_toolbar_toggle()
+        self._sync_read_toolbar_toggle()
 
     def _rebuild_read_filter_menu(self):
         """Populate View > Read submenu from read filter options."""
@@ -1887,6 +2010,120 @@ class MainWindow(QMainWindow):
         """Handle View > Read menu selection."""
         target = read_filter if read_filter in {"All", "Read", "Unread"} else "All"
         self.on_read_filter_changed(target)
+
+    def _sync_read_toolbar_toggle(self):
+        """Keep toolbar Read Filter toggle synced with current filter."""
+        if not hasattr(self, "read_filter_action"):
+            return
+
+        checked = self.current_filter.read_filter == "Read"
+        self.read_filter_action.blockSignals(True)
+        self.read_filter_action.setChecked(checked)
+        self.read_filter_action.blockSignals(False)
+
+    def on_read_filter_toggled(self, checked: bool):
+        """Handle toolbar Read Filter toggle."""
+        target = "Read" if checked else "All"
+        self.on_read_filter_changed(target)
+
+    def on_read_filter_shortcut(self):
+        """Handle Alt+R — always toggle toward read-books filter."""
+        if not hasattr(self, "read_filter_action"):
+            return
+        if self.current_filter.read_filter == "Unread":
+            self.current_filter.read_filter = "All"
+            self._sync_read_menu_selection()
+            self._sync_read_toolbar_toggle()
+        self.read_filter_action.trigger()
+
+    def _rebuild_plot_filter_menu(self):
+        """Populate View > Plot submenu from plot filter options."""
+        if not hasattr(self, "view_plot_menu"):
+            return
+
+        self.view_plot_menu.clear()
+        self.plot_filter_group = QActionGroup(self)
+        self.plot_filter_group.setExclusive(True)
+
+        plot_filter_tooltips = {
+            "All": (
+                "Show all books",
+                "Show books with and without a plot synopsis",
+            ),
+            "With Plot": (
+                "Show only books with a plot",
+                "Filter to books that have a plot synopsis",
+            ),
+            "Without Plot": (
+                "Show only books without a plot",
+                "Filter to books that do not have a plot synopsis",
+            ),
+        }
+        for label in self._plot_filter_options:
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(label)
+            action.triggered.connect(
+                lambda _checked=False, value=label: self.on_plot_menu_selected(value)
+            )
+            tooltip, description = plot_filter_tooltips.get(
+                label,
+                (f"Filter to {label} books", f"Show {label.lower()} books"),
+            )
+            apply_tooltip_accessibility(action, tooltip, description)
+            self.plot_filter_group.addAction(action)
+            self.view_plot_menu.addAction(action)
+
+        self._sync_plot_menu_selection()
+
+    def _sync_plot_menu_selection(self):
+        """Keep View > Plot checked item synced with current filter."""
+        if not hasattr(self, "plot_filter_group"):
+            return
+
+        current_value = self.current_filter.plot_filter or "All"
+        for action in self.plot_filter_group.actions():
+            action.blockSignals(True)
+            action.setChecked(action.data() == current_value)
+            action.blockSignals(False)
+
+    def _sync_plot_toolbar_toggle(self):
+        """Keep toolbar Plot Filter toggle synced with current filter."""
+        if not hasattr(self, "plot_filter_action"):
+            return
+
+        checked = self.current_filter.plot_filter == "With Plot"
+        self.plot_filter_action.blockSignals(True)
+        self.plot_filter_action.setChecked(checked)
+        self.plot_filter_action.blockSignals(False)
+
+    def on_plot_menu_selected(self, plot_filter: str):
+        """Handle View > Plot menu selection."""
+        target = (
+            plot_filter
+            if plot_filter in set(self._plot_filter_options)
+            else "All"
+        )
+        self.on_plot_filter_changed(target)
+
+    def on_plot_filter_toggled(self, checked: bool):
+        """Handle toolbar Plot Filter toggle."""
+        target = "With Plot" if checked else "All"
+        self.on_plot_filter_changed(target)
+
+    def on_plot_filter_changed(self, text: str):
+        """Handle plot filter change."""
+        self.current_filter.plot_filter = (
+            text if text in self._plot_filter_options else "All"
+        )
+        self._sync_plot_menu_selection()
+        self._sync_plot_toolbar_toggle()
+        self.refresh_books()
+        if self.current_filter.plot_filter != "All":
+            self.set_status(
+                f"{len(self.books)} books  |  Plot: {self.current_filter.plot_filter}",
+                announce=True,
+            )
 
     def _rebuild_sort_menu(self):
         """Populate Sort menu with supported sort fields."""
@@ -2076,6 +2313,7 @@ class MainWindow(QMainWindow):
             self.current_filter.search_text
             or self.current_filter.collection_id is not None
             or self.current_filter.read_filter != "All"
+            or self.current_filter.plot_filter != "All"
         )
 
     def refresh_books(self):
@@ -2144,7 +2382,13 @@ class MainWindow(QMainWindow):
             text if text in self._read_filter_options else "All"
         )
         self._sync_read_menu_selection()
+        self._sync_read_toolbar_toggle()
         self.refresh_books()
+        if self.current_filter.read_filter != "All":
+            self.set_status(
+                f"{len(self.books)} books  |  Read: {self.current_filter.read_filter}",
+                announce=True,
+            )
 
     def on_order_changed(self, text: str):
         """Handle sort order change."""
@@ -3002,6 +3246,8 @@ class MainWindow(QMainWindow):
         if 0 <= current_row < len(self.books):
             last_book = self.books[current_row]
             title = last_book.title or "Unknown"
+            if book_has_plot(last_book.comments):
+                title = f"{title}, plot"
 
             if count == 1:
                 announcement = f"{title} - selected"
@@ -3339,7 +3585,16 @@ class MainWindow(QMainWindow):
         finally:
             popup.close()
 
-        if web_data and not web_data.get("_no_result"):
+        from src.web.web_book_api import clean_web_data
+
+        cleaned_web_data = (
+            clean_web_data(web_data, move_articles, flip_author)
+            if web_data and not web_data.get("_no_result")
+            else None
+        )
+        if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
+            book, cleaned_web_data
+        ):
             focus_ctx = self._capture_table_focus_context(row, 1)
             dialog = WebMetadataWindow(
                 self.db,
@@ -3361,6 +3616,11 @@ class MainWindow(QMainWindow):
                 "Unable to reach one or more web sources.\n\n"
                 + "\n".join(f"  • {e}" for e in fetch_errors[:3])
             )
+        elif cleaned_web_data:
+            no_data_text = (
+                "Web sources were searched but no new information was found "
+                "for this book. Existing metadata is already up to date."
+            )
         else:
             no_data_text = "No information found for this book in any web source."
         if last_error:
@@ -3375,7 +3635,7 @@ class MainWindow(QMainWindow):
         )
 
         self.set_status(
-            "No additional web information found for this book.", timeout_ms=3000
+            "No new web information found for this book.", timeout_ms=3000
         )
         # Restore focus even when no web data is found
         self.table.setFocus()
@@ -3461,8 +3721,16 @@ class MainWindow(QMainWindow):
             # Clear read filter and refresh
             self.current_filter.read_filter = "All"
             self._sync_read_menu_selection()
+            self._sync_read_toolbar_toggle()
             self.refresh_books()
             self.set_status("Read/Unread filter cleared", timeout_ms=2000)
+            return
+        # Fourth priority: clear plot filter
+        if self.current_filter.plot_filter != "All":
+            self.current_filter.plot_filter = "All"
+            self._sync_plot_menu_selection()
+            self._sync_plot_toolbar_toggle()
+            self.refresh_books()
             return
 
     def clear_status_message(self):
@@ -3851,6 +4119,8 @@ class MainWindow(QMainWindow):
             ("Alt+U", "Update selected"),
             ("Alt+D", "Delete selected"),
             ("Alt+X", "Export duplicates (in duplicate mode)"),
+            ("Alt+P", "Toggle plot filter"),
+            ("Alt+R", "Toggle read filter"),
             ("Ctrl+F", "Find"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
@@ -3858,7 +4128,7 @@ class MainWindow(QMainWindow):
                 "Enter",
                 "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
             ),
-            ("Escape", "Clear selection/Find/read filter"),
+            ("Escape", "Clear selection / Find / plot filter / read filter"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),

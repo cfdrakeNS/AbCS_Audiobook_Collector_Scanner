@@ -452,6 +452,21 @@ def build_toolbar_button_style(
             background-color: palette(button);
             outline: none;
         }}
+        {selector}:checked {{
+            border: 2px solid palette(highlight);
+            background-color: palette(alternate-base);
+            color: palette(window-text);
+        }}
+        {selector}:checked:hover {{
+            border: 2px solid palette(highlight);
+            background-color: palette(button);
+            color: palette(window-text);
+        }}
+        {selector}:checked:focus {{
+            border: 2px solid palette(highlight);
+            background-color: palette(alternate-base);
+            outline: none;
+        }}
     """
 
 

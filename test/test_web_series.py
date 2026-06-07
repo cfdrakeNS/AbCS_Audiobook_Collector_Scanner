@@ -124,6 +124,24 @@ def test_enrich_metadata_series_uses_open_library_work_key(api):
     assert metadata["series_number"] == "9"
 
 
+def test_strip_series_number_rejects_year_suffix(api):
+    clean, number = api._strip_series_number("The Great War - 1914")
+    assert clean == "The Great War - 1914"
+    assert number == ""
+
+
+def test_seed_series_from_db_title_skips_orphan_number(api):
+    metadata = {
+        "title": "Murder Mystery - 2",
+        "author": "Jane Author",
+        "plot": "A standalone mystery with enough plot text for testing.",
+    }
+    changed = api._seed_series_from_db_title(metadata, "2", "Jane Author")
+    assert not changed
+    assert metadata.get("series") is None
+    assert metadata.get("series_number") is None
+
+
 def test_seed_series_from_db_title_lee_child_blue_moon(api):
     metadata = {
         "title": "Blue Moon - 24",

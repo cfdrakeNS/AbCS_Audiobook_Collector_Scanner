@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
-    QFormLayout,
+    QGridLayout,
     QLineEdit,
     QComboBox,
     QPushButton,
@@ -25,6 +25,8 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
     QStatusBar,
+    QWidget,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
@@ -997,163 +999,189 @@ class ImportDetailWindow(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        # Form layout (mirrors Book Details layout)
-        form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignRight)
-        form.setSpacing(10)
+        # Two-column grid layout — stable label column, expanding field column
+        grid = QGridLayout()
+        grid.setColumnStretch(1, 1)
+        grid.setVerticalSpacing(10)
+        grid.setHorizontalSpacing(8)
 
-        # Row 1: Title + Author (side by side)
-        row1_layout = QHBoxLayout()
+        label_align = Qt.AlignRight | Qt.AlignVCenter
+
+        ROW_TITLE = 0
+        ROW_AUTHOR = 1
+        ROW_PLOT = 2
+        ROW_YEAR_TIME = 3
+        ROW_SERIES = 4
+        ROW_GENRE = 5
+        ROW_COLLECTION = 6
+        ROW_FILES = 7
+        ROW_FORMAT = 8
+        ROW_ERRORS = 9
+        ROW_PATH = 10
+
+        # Title
+        title_label = QLabel("Title:")
+        title_label.setAccessibleName("")
+        title_label.setAccessibleDescription("")
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("")
         self.title_edit.setAccessibleDescription("")
         self.title_edit.setReadOnly(False)
-        row1_layout.addWidget(self.title_edit, 2)
+        title_label.setBuddy(self.title_edit)
+        grid.addWidget(title_label, ROW_TITLE, 0, label_align)
+        grid.addWidget(self.title_edit, ROW_TITLE, 1)
 
+        # Author
         author_label = QLabel("Author:")
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
-        self.author_combo.setMaximumWidth(280)
         author_label.setBuddy(self.author_combo)
-        row1_layout.addWidget(author_label)
-        row1_layout.addWidget(self.author_combo, 1)
+        grid.addWidget(author_label, ROW_AUTHOR, 0, label_align)
+        grid.addWidget(self.author_combo, ROW_AUTHOR, 1)
 
-        title_label = QLabel("Title:")
-        title_label.setAccessibleName("")
-        title_label.setAccessibleDescription("")
-        form.addRow(title_label, row1_layout)
-
-        # Row 2: Plot
+        # Plot — fixed height, scrolls internally
         self.comments_label = QLabel("Plot:")
         self.comments_edit = QTextEdit()
         self.comments_edit.setAccessibleName("Plot")
         self.comments_edit.setTabChangesFocus(True)
-        self.comments_edit.setMinimumHeight(40)
+        self.comments_edit.setMinimumHeight(120)
+        self.comments_edit.setMaximumHeight(200)
+        self.comments_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.comments_edit.setReadOnly(False)
         self.comments_label.setBuddy(self.comments_edit)
-        form.addRow(self.comments_label, self.comments_edit)
+        grid.addWidget(self.comments_label, ROW_PLOT, 0, label_align)
+        grid.addWidget(self.comments_edit, ROW_PLOT, 1)
 
-        # Row 3: Year + Length + Reader
-        row3_layout = QHBoxLayout()
-
+        # Year + Time + Reader
         self.year_spin = QSpinBox()
         self.year_spin.setRange(0, self.MAX_VALID_YEAR)
         self.year_spin.setValue(0)
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setSpecialValueText("")
-        self.year_spin.setFixedWidth(110)
+        self.year_spin.setMaximumWidth(110)
         self.year_spin.setReadOnly(False)
         self.year_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
-        row3_layout.addWidget(self.year_spin)
-        row3_layout.addSpacing(40)
 
         time_label = QLabel("Time:")
+        time_label.setAlignment(label_align)
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setInputMask("99:99;_")
         self.time_edit.setAccessibleName("Time")
-        self.time_edit.setFixedWidth(100)
+        self.time_edit.setMaximumWidth(100)
         self.time_edit.setReadOnly(False)
         time_label.setBuddy(self.time_edit)
-        row3_layout.addWidget(time_label)
-        row3_layout.addWidget(self.time_edit)
-        row3_layout.addSpacing(40)
 
         reader_label = QLabel("Reader:")
+        reader_label.setAlignment(label_align)
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Reader/Narrator")
-        self.reader_edit.setMaximumWidth(220)
         reader_label.setBuddy(self.reader_edit)
-        row3_layout.addWidget(reader_label)
-        row3_layout.addWidget(self.reader_edit)
-        row3_layout.addStretch(1)
+
+        year_time_layout = QHBoxLayout()
+        year_time_layout.setContentsMargins(0, 0, 0, 0)
+        year_time_layout.addWidget(self.year_spin)
+        year_time_layout.addWidget(time_label)
+        year_time_layout.addWidget(self.time_edit)
+        year_time_layout.addWidget(reader_label)
+        year_time_layout.addWidget(self.reader_edit, 1)
+        year_time_layout.addStretch()
+        year_time_widget = QWidget()
+        year_time_widget.setLayout(year_time_layout)
 
         year_label = QLabel("Year:")
         year_label.setBuddy(self.year_spin)
-        form.addRow(year_label, row3_layout)
+        grid.addWidget(year_label, ROW_YEAR_TIME, 0, label_align)
+        grid.addWidget(year_time_widget, ROW_YEAR_TIME, 1)
 
-        # Row 4: Series + Genre + Collection
-        row4_layout = QHBoxLayout()
-
+        # Series
+        series_label = QLabel("Series:")
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
         self.series_combo.setAccessibleName("Book series")
-        self.series_combo.setMaximumWidth(260)
-        row4_layout.addWidget(self.series_combo, 1)
+        series_label.setBuddy(self.series_combo)
+        grid.addWidget(series_label, ROW_SERIES, 0, label_align)
+        grid.addWidget(self.series_combo, ROW_SERIES, 1)
 
+        # Genre
         genre_label = QLabel("Genre:")
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
-        self.genre_combo.setMaximumWidth(220)
         genre_label.setBuddy(self.genre_combo)
-        row4_layout.addWidget(genre_label)
-        row4_layout.addWidget(self.genre_combo, 1)
+        grid.addWidget(genre_label, ROW_GENRE, 0, label_align)
+        grid.addWidget(self.genre_combo, ROW_GENRE, 1)
 
+        # Collection
         collection_label = QLabel("Collection:")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
-        self.collection_combo.setMaximumWidth(220)
-        self.collection_combo.setEditable(False)  # Make read-only, not editable
-        self.collection_combo.setEnabled(True)  # Always enabled for focus
+        self.collection_combo.setEditable(False)
+        self.collection_combo.setEnabled(True)
         collection_label.setBuddy(self.collection_combo)
-        row4_layout.addWidget(collection_label)
-        row4_layout.addWidget(self.collection_combo, 1)
+        grid.addWidget(collection_label, ROW_COLLECTION, 0, label_align)
+        grid.addWidget(self.collection_combo, ROW_COLLECTION, 1)
 
-        series_label = QLabel("Series:")
-        series_label.setBuddy(self.series_combo)
-        form.addRow(series_label, row4_layout)
-
-        # Row 5: Files + Bitrate + Size + Format + Source
-        row5_layout = QHBoxLayout()
-
+        # Files + Bitrate + Size
         files_label = QLabel("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
-        self.files_edit.setMaximumWidth(70)
         files_label.setBuddy(self.files_edit)
-        row5_layout.addWidget(self.files_edit)
 
         bitrate_label = QLabel("Bitrate:")
+        bitrate_label.setAlignment(label_align)
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(True)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
         bitrate_label.setBuddy(self.bitrate_edit)
-        row5_layout.addWidget(bitrate_label)
-        row5_layout.addWidget(self.bitrate_edit)
 
         size_label = QLabel("Size:")
+        size_label.setAlignment(label_align)
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(True)
         self.size_edit.setAccessibleName("File size in megabytes")
-        self.size_edit.setMaximumWidth(100)
         size_label.setBuddy(self.size_edit)
-        row5_layout.addWidget(size_label)
-        row5_layout.addWidget(self.size_edit)
 
+        files_layout = QHBoxLayout()
+        files_layout.setContentsMargins(0, 0, 0, 0)
+        files_layout.addWidget(self.files_edit)
+        files_layout.addWidget(bitrate_label)
+        files_layout.addWidget(self.bitrate_edit)
+        files_layout.addWidget(size_label)
+        files_layout.addWidget(self.size_edit)
+        files_layout.addStretch()
+        files_widget = QWidget()
+        files_widget.setLayout(files_layout)
+        grid.addWidget(files_label, ROW_FILES, 0, label_align)
+        grid.addWidget(files_widget, ROW_FILES, 1)
+
+        # Format + Source
         format_label = QLabel("Format:")
         self.format_edit = QLineEdit()
         self.format_edit.setReadOnly(True)
         self.format_edit.setAccessibleName("File format")
-        self.format_edit.setMaximumWidth(90)
-        row5_layout.addWidget(format_label)
-        row5_layout.addWidget(self.format_edit)
 
         source_label = QLabel("Source:")
+        source_label.setAlignment(label_align)
         self.source_edit = QLineEdit()
         self.source_edit.setReadOnly(True)
         self.source_edit.setAccessibleName("Import source")
-        self.source_edit.setMaximumWidth(110)
-        row5_layout.addWidget(source_label)
-        row5_layout.addWidget(self.source_edit)
 
-        form.addRow(files_label, row5_layout)
+        format_layout = QHBoxLayout()
+        format_layout.setContentsMargins(0, 0, 0, 0)
+        format_layout.addWidget(self.format_edit)
+        format_layout.addWidget(source_label)
+        format_layout.addWidget(self.source_edit, 1)
+        format_layout.addStretch()
+        format_widget = QWidget()
+        format_widget.setLayout(format_layout)
+        format_label.setBuddy(self.format_edit)
+        grid.addWidget(format_label, ROW_FORMAT, 0, label_align)
+        grid.addWidget(format_widget, ROW_FORMAT, 1)
 
-        # Row 6: Errors
-        row6_layout = QHBoxLayout()
-
+        # Errors
         self.errors_label = QLabel("Errors:")
         self.errors_edit = QTextEdit()
         self.errors_edit.setReadOnly(True)
@@ -1163,23 +1191,20 @@ class ImportDetailWindow(QDialog):
             "QTextEdit { background-color: palette(base); color: red; }"
         )
         self.errors_label.setBuddy(self.errors_edit)
-        row6_layout.addWidget(self.errors_edit)
+        grid.addWidget(self.errors_label, ROW_ERRORS, 0, label_align)
+        grid.addWidget(self.errors_edit, ROW_ERRORS, 1)
 
-        form.addRow(self.errors_label, row6_layout)
-
-        # Row 7: Path
-        row7_layout = QHBoxLayout()
-
+        # Path
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setAccessibleName("File path")
-        row7_layout.addWidget(self.path_edit, 1)
 
         path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
-        form.addRow(path_label, row7_layout)
+        grid.addWidget(path_label, ROW_PATH, 0, label_align)
+        grid.addWidget(self.path_edit, ROW_PATH, 1)
 
-        layout.addLayout(form)
+        layout.addLayout(grid)
 
         # Footer: status bar + buttons
         self.status_bar = QStatusBar()
@@ -1187,8 +1212,9 @@ class ImportDetailWindow(QDialog):
         configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
-        # Row 5: Action buttons
+        # Action buttons — stretch first to push buttons to the right
         button_layout = QHBoxLayout()
+        button_layout.addStretch()
 
         self.save_return_button = QPushButton("Save")
         self.save_return_button.setAccessibleName("Save")
@@ -1211,8 +1237,6 @@ class ImportDetailWindow(QDialog):
         self.skip_button.setFocusPolicy(Qt.StrongFocus)
         self.skip_button.clicked.connect(self.on_skip_discard)
         button_layout.addWidget(self.skip_button)
-
-        button_layout.addStretch()
 
         layout.addLayout(button_layout)
 

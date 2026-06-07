@@ -17,6 +17,13 @@ from dataclasses import dataclass, field
 from typing import Optional
 from datetime import datetime, date
 
+PLOT_MIN_LENGTH = 50  # minimum comment length to count as a real plot synopsis
+
+
+def book_has_plot(comments: str | None) -> bool:
+    """Return True when comments contain a plot synopsis, not just metadata."""
+    return len((comments or "").strip()) >= PLOT_MIN_LENGTH
+
 
 @dataclass
 class Author:
@@ -150,6 +157,7 @@ class SearchFilter:
 
     collection_id: Optional[int] = None  # None = All
     read_filter: str = "All"  # All, Read, Unread
+    plot_filter: str = "All"  # All, With Plot, Without Plot
     order_by: str = "Title"  # Title, Author, Genre, Series
     search_text: str = ""
     is_keyword_search: bool = False  # True if search starts with "?"

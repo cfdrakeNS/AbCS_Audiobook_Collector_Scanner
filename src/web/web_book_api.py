@@ -359,6 +359,18 @@ class WebBookAPI:
             return "Jack Reacher"
         return ""
 
+    @staticmethod
+    def _looks_like_year(number: str) -> bool:
+        """True when digits are probably a publication year, not a series index."""
+        digits = re.sub(r"[^\d]", "", str(number or ""))
+        if len(digits) != 4:
+            return False
+        try:
+            value = int(digits)
+        except ValueError:
+            return False
+        return 1700 <= value <= 2099
+
     def _seed_series_from_db_title(
         self,
         metadata: Dict,
@@ -370,9 +382,9 @@ class WebBookAPI:
             return False
         changed = False
         sn_digits = re.sub(r"[^\d]", "", str(title_series_number or ""))
-        if sn_digits and not metadata.get("series_number"):
-            metadata["series_number"] = sn_digits
-            changed = True
+        if sn_digits and self._looks_like_year(sn_digits):
+            sn_digits = ""
+
         if not metadata.get("series") and sn_digits:
             inferred = self._infer_series_name_from_author(author)
             if inferred and not self._is_unlikely_series_name(
@@ -382,6 +394,10 @@ class WebBookAPI:
             ):
                 metadata["series"] = inferred
                 changed = True
+
+        if sn_digits and not metadata.get("series_number") and metadata.get("series"):
+            metadata["series_number"] = sn_digits
+            changed = True
         return changed
 
     @staticmethod
@@ -1753,7 +1769,7 @@ class WebBookAPI:
             if match:
                 clean_title = match.group(1).strip()
                 series_number = match.group(2)
-                if clean_title:
+                if clean_title and not self._looks_like_year(series_number):
                     return clean_title, series_number
 
         # No series number found

@@ -19,7 +19,16 @@ This approach gives us:
 from typing import List, Optional
 from datetime import date, datetime
 from .connection import DatabaseManager
-from .models import Book, Author, Series, Genre, Collection, SearchFilter, Statistics
+from .models import (
+    Book,
+    Author,
+    Series,
+    Genre,
+    Collection,
+    SearchFilter,
+    Statistics,
+    PLOT_MIN_LENGTH,
+)
 
 
 class BookQueries:
@@ -85,6 +94,14 @@ class BookQueries:
             query += " AND b.read_date IS NOT NULL"
         elif filter_criteria.read_filter == "Unread":
             query += " AND b.read_date IS NULL"
+
+        # Plot synopsis filter
+        if filter_criteria.plot_filter == "With Plot":
+            query += " AND LENGTH(TRIM(COALESCE(b.comments, ''))) >= ?"
+            params.append(PLOT_MIN_LENGTH)
+        elif filter_criteria.plot_filter == "Without Plot":
+            query += " AND LENGTH(TRIM(COALESCE(b.comments, ''))) < ?"
+            params.append(PLOT_MIN_LENGTH)
 
         # Search/keyword filter
         if filter_criteria.has_search:

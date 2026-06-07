@@ -51,11 +51,20 @@ def temp_db(tmp_path):
         db.close()
 
 
-def test_main_window_shortcut_registry_removes_legacy_alt_keys():
-    """Main window shortcut map should not contain deprecated Alt+R/Alt+O entries."""
+def test_main_window_shortcut_registry_includes_filter_toggles():
+    """Main window shortcut map should include plot and read filter toggles."""
     keys = set(ShortcutManager.MAIN_WINDOW_SHORTCUTS.keys())
 
-    assert "R" not in keys
+    assert "P" in keys
+    assert "R" in keys
+    assert ShortcutManager.MAIN_WINDOW_SHORTCUTS["P"] == (
+        "Toggle plot filter",
+        "plot_filter_toggle",
+    )
+    assert ShortcutManager.MAIN_WINDOW_SHORTCUTS["R"] == (
+        "Toggle read filter",
+        "read_filter_toggle",
+    )
     assert "O" not in keys
     assert "B" not in keys
     assert "L" in keys

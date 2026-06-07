@@ -67,6 +67,92 @@ class WebMetadataWindow(QDialog):
         from src.web.web_book_api import normalize_title
         return normalize_title(title)
 
+    @staticmethod
+    def _compare_scalar_field(
+        web_value, current_value, field_name: str
+    ) -> str | None:
+        """Return web value when it differs from the current book field, else None."""
+        if not web_value:
+            return None
+        current_str = (
+            str(current_value).strip() if current_value is not None else ""
+        )
+        web_str = str(web_value).strip()
+        if field_name == "title":
+            norm_current = WebMetadataWindow.normalize_db_title(current_str)
+            norm_web = WebMetadataWindow.normalize_db_title(web_str)
+        else:
+            norm_current = current_str.lower()
+            norm_web = web_str.lower()
+        if current_str == "" or norm_web != norm_current:
+            return web_str
+        return None
+
+    @staticmethod
+    def _build_plot_text_for_db(web_data: dict) -> str:
+        """Build plot/comments text stored in the database (rating prefix + plot)."""
+        plot_text_for_db = ""
+        rating = web_data.get("rating")
+        ratings_count = web_data.get("ratings_count")
+        if rating:
+            try:
+                rating_val = float(rating)
+                rating_str = f"Rating: {rating_val:.1f}"
+            except (ValueError, TypeError):
+                rating_str = f"Rating: {rating}"
+            if ratings_count:
+                try:
+                    count_val = int(ratings_count)
+                    rating_str += f" ({count_val:,} ratings)"
+                except (ValueError, TypeError):
+                    pass
+            plot_text_for_db += rating_str + " - "
+        plot_text_for_db += web_data.get("plot") or ""
+        return plot_text_for_db
+
+    @classmethod
+    def compute_field_differences(cls, book, web_data: dict) -> dict:
+        """Return savable field differences between web data and the current book."""
+        differences: dict[str, str] = {}
+        scalar_fields = (
+            ("title", "title", book.title),
+            ("author", "author", book.author_name),
+            ("year", "year", book.year),
+            ("series", "series", book.series_name),
+            ("genre", "genre", book.genre_name),
+        )
+        for field_name, web_key, current_value in scalar_fields:
+            diff = cls._compare_scalar_field(
+                web_data.get(web_key), current_value, field_name
+            )
+            if diff is not None:
+                differences[field_name] = diff
+
+        current_series_number = ""
+        if hasattr(book, "series_number") and book.series_number:
+            current_series_number = str(book.series_number)
+        web_num_str = str(web_data.get("series_number") or "").strip()
+        web_series_name = str(web_data.get("series") or "").strip()
+        db_series_name = (book.series_name or "").strip()
+        if web_num_str and not web_series_name and not db_series_name:
+            web_num_str = ""
+        cur_num_str = current_series_number.strip()
+        if web_num_str and (not cur_num_str or web_num_str != cur_num_str):
+            differences["series_number"] = web_num_str
+
+        if web_data.get("plot"):
+            plot_text_for_db = cls._build_plot_text_for_db(web_data)
+            current_plot = book.comments or ""
+            if plot_text_for_db.strip() != current_plot.strip():
+                differences["plot"] = plot_text_for_db
+
+        return differences
+
+    @classmethod
+    def web_data_offers_changes(cls, book, web_data: dict | None) -> bool:
+        """True when cleaned web data has at least one savable difference."""
+        return bool(web_data) and bool(cls.compute_field_differences(book, web_data))
+
     """
     Web metadata window with PROVEN accessibility foundation.
 
@@ -507,6 +593,19 @@ class WebMetadataWindow(QDialog):
             }
         )
 
+    def _plot_status_phrase(self, web_data: dict | None) -> str:
+        """Short plot summary for status bar announcements."""
+        plot = str((web_data or {}).get("plot") or "").strip()
+        return "Plot found" if plot else "No plot"
+
+    def _build_web_status_message(self, prefix: str, web_data: dict | None) -> str:
+        """Build status text with plot found/no plot and optional field differences."""
+        diff_fields = [k.capitalize() for k in self.field_differences.keys()]
+        diff_str = (
+            f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
+        )
+        return f"{prefix} - {self._plot_status_phrase(web_data)}{diff_str}"
+
     def _update_series_row_visibility(self, web_data: dict | None = None) -> None:
         """Hide the series row when DB and web have no series name or number."""
         db_name = (self.series_edit.text() or "").strip()
@@ -516,6 +615,8 @@ class WebMetadataWindow(QDialog):
         if web_data:
             web_name = web_name or str(web_data.get("series") or "").strip()
             web_num = web_num or str(web_data.get("series_number") or "").strip()
+        if web_num and not (web_name or db_name):
+            web_num = ""
         self.series_row.setVisible(bool(db_name or db_num or web_name or web_num))
         self.set_tab_order()
 
@@ -660,7 +761,7 @@ class WebMetadataWindow(QDialog):
             self.rating_edit.clear()
             # Publisher field removed
 
-            # Plot field is always visible now to maintain layout
+            # Plot field is always visible to maintain layout
             self.plot_row.setVisible(True)
 
             # Initialize web fields and labels as hidden
@@ -689,14 +790,13 @@ class WebMetadataWindow(QDialog):
             )
             self.update_fields_with_web_data(cleaned_web_data)
 
-            # Build status message: Difference - ...
-            diff_fields = [k.capitalize() for k in self.field_differences.keys()]
-            diff_str = (
-                f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
+            prefix = (
+                "Web data found"
+                if self.field_differences
+                else "No new web data"
             )
-            msg = f"Web data found{diff_str}"
+            msg = self._build_web_status_message(prefix, cleaned_web_data)
             self.set_status(msg, announce=True)
-            # Requirement: web info returned => focus Plot ONLY if plot is non-empty
             plot_text = cleaned_web_data.get("plot")
             if plot_text and str(plot_text).strip():
                 QTimer.singleShot(100, self.plot_edit.setFocus)
@@ -761,7 +861,7 @@ class WebMetadataWindow(QDialog):
         popup.show()
         QApplication.processEvents()
         self.refetch_button.setEnabled(False)
-        status_msg = "Re-fetch complete"
+        status_msg = "Re-fetch complete - No plot"
         focus_after = self.title_edit
         try:
             book = self._refetch_book
@@ -785,11 +885,12 @@ class WebMetadataWindow(QDialog):
 
                 cleaned = clean_web_data(new_data, move_articles, flip_author)
                 self.update_fields_with_web_data(cleaned)
-                diff_fields = [k.capitalize() for k in self.field_differences.keys()]
-                diff_str = (
-                    f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
-                )
-                status_msg = f"Re-fetch complete{diff_str}"
+                if self.field_differences:
+                    status_msg = self._build_web_status_message(
+                        "Re-fetch complete", cleaned
+                    )
+                else:
+                    status_msg = "Re-fetch: no new data found."
                 plot_text = cleaned.get("plot")
                 focus_after = (
                     self.plot_edit
@@ -833,46 +934,27 @@ class WebMetadataWindow(QDialog):
             current_str = (
                 str(current_value).strip() if current_value is not None else ""
             )
-            web_str = str(web_value).strip() if web_value is not None else ""
-
-            # For title field, normalize for compare/search (trim, lowercase, remove embedded spaces)
-            if field_name == "title":
-                norm_current = self.normalize_db_title(current_str)
-                norm_web = self.normalize_db_title(web_str)
-            else:
-                norm_current = current_str.lower()
-                norm_web = web_str.lower()
-
-            if web_value and (current_value is None or current_str == ""):
-                # DB field is empty and web data exists - show web data but hide checkbox (auto-applied)
+            web_str = self._compare_scalar_field(
+                web_value, current_value, field_name
+            )
+            if web_str is not None:
                 web_edit.setText(web_str)
                 row_widget._web_label.setVisible(True)
                 row_widget._web_edit.setVisible(True)
-                row_widget._checkbox.setVisible(False)
-                checkbox.setVisible(False)
+                if current_str == "":
+                    row_widget._checkbox.setVisible(False)
+                    checkbox.setVisible(False)
+                else:
+                    row_widget._checkbox.setVisible(True)
+                    checkbox.setChecked(True)
                 self.field_differences[field_name] = web_str
                 return True
-            elif (
-                web_value
-                and current_value is not None
-                and current_str != ""
-                and norm_web != norm_current
-            ):
-                # Data differs and DB field is NOT empty - show web column and checkbox
-                web_edit.setText(web_str)
-                row_widget._web_label.setVisible(True)
-                row_widget._web_edit.setVisible(True)
-                row_widget._checkbox.setVisible(True)
-                checkbox.setChecked(True)
-                self.field_differences[field_name] = web_str
-                return True
-            else:
-                # Data is same or no web data - hide web column and checkbox
-                row_widget._web_label.setVisible(False)
-                row_widget._web_edit.setVisible(False)
-                row_widget._checkbox.setVisible(False)
-                checkbox.setChecked(False)
-                return False
+
+            row_widget._web_label.setVisible(False)
+            row_widget._web_edit.setVisible(False)
+            row_widget._checkbox.setVisible(False)
+            checkbox.setChecked(False)
+            return False
 
         # Title
         handle_field_comparison(
@@ -918,6 +1000,10 @@ class WebMetadataWindow(QDialog):
         if hasattr(self.book, "series_number") and self.book.series_number:
             current_series_number = str(self.book.series_number)
         web_num_str = str(web_data.get("series_number") or "").strip()
+        web_series_name = str(web_data.get("series") or "").strip()
+        db_series_name = (self.book.series_name or "").strip()
+        if web_num_str and not web_series_name and not db_series_name:
+            web_num_str = ""
         cur_num_str = current_series_number.strip()
         number_differs = bool(
             web_num_str and (not cur_num_str or web_num_str != cur_num_str)
@@ -958,38 +1044,14 @@ class WebMetadataWindow(QDialog):
 
         # Plot (store rating in database but only show plot in UI)
         if web_data.get("plot"):
-            # Build plot text for database storage (includes rating only)
-            plot_text_for_db = ""
-
-            # Add rating at the top if available
-            rating = web_data.get("rating")
-            ratings_count = web_data.get("ratings_count")
-            if rating:
-                try:
-                    rating_val = float(rating)
-                    rating_str = f"Rating: {rating_val:.1f}"
-                except (ValueError, TypeError):
-                    rating_str = f"Rating: {rating}"
-                if ratings_count:
-                    try:
-                        count_val = int(ratings_count)
-                        rating_str += f" ({count_val:,} ratings)"
-                    except (ValueError, TypeError):
-                        pass
-                plot_text_for_db += rating_str + " - "
-
-            # Add the actual plot
-            plot_text_for_db += web_data["plot"]
-
-            # Set only the plot text in the UI field (no rating)
+            plot_text_for_db = self._build_plot_text_for_db(web_data)
             self.plot_edit.setPlainText(web_data["plot"])
-
-            # Add the full plot text (with rating) to field_differences for DB storage
             current_plot = self.book.comments or ""
             if plot_text_for_db.strip() != current_plot.strip():
                 self.field_differences["plot"] = plot_text_for_db
 
-            # Show rating in separate UI field
+            rating = web_data.get("rating")
+            ratings_count = web_data.get("ratings_count")
             if rating:
                 try:
                     rating_val = float(rating)
@@ -1006,8 +1068,8 @@ class WebMetadataWindow(QDialog):
             else:
                 self.rating_edit.clear()
         else:
-            # Clear all fields if no plot data
-            self.plot_edit.clear()
+            # No web plot — keep the current local plot visible
+            self.plot_edit.setPlainText(self.book.comments or "")
             self.rating_edit.clear()
 
     def setup_shortcuts(self):

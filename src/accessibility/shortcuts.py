@@ -68,6 +68,8 @@ MAIN_WINDOW_SHORTCUTS = {
     "U": ("Update selected", "update_button"),
     "D": ("Delete selected", "delete_button"),
     "X": ("Export duplicates", "export_button"),
+    "P": ("Toggle plot filter", "plot_filter_toggle"),
+    "R": ("Toggle read filter", "read_filter_toggle"),
     "A": ("Author filter", "author_filter_combo"),
     # Alt+1..7 handled in main_window.py for column jump
 }

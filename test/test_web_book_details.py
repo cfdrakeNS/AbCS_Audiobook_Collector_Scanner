@@ -162,7 +162,7 @@ def test_series_web_number_visible_when_name_matches_db(qapp):
         dlg.close()
 
 
-def test_series_web_number_visible_when_only_number_returned(window):
+def test_series_web_number_hidden_when_only_orphan_number_returned(window):
     window.update_fields_with_web_data(
         {
             "title": window.book.title,
@@ -170,10 +170,63 @@ def test_series_web_number_visible_when_only_number_returned(window):
             "series_number": "4",
         }
     )
-    assert not window.series_row.isHidden()
-    assert window.series_web_edit.isHidden()
-    assert not window.series_number_web_edit.isHidden()
-    assert window.series_number_web_edit.text() == "4"
+    assert window.series_row.isHidden()
+    assert window.series_number_web_edit.isHidden()
+    assert "series_number" not in window.field_differences
+
+
+def test_web_status_message_includes_plot_found(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+            "plot": "A portrait of wealth, illusion, and longing in the Jazz Age.",
+        }
+    )
+    msg = window._build_web_status_message("Web data found", window.web_data)
+    assert "Plot found" in msg
+
+
+def test_compute_field_differences_empty_when_data_matches(sample_book):
+    web_data = {
+        "title": sample_book.title,
+        "author": sample_book.author_name,
+        "year": str(sample_book.year),
+        "genre": sample_book.genre_name,
+        "plot": "",
+    }
+    assert WebMetadataWindow.compute_field_differences(sample_book, web_data) == {}
+
+
+def test_web_data_offers_changes_false_for_matching_metadata(sample_book):
+    web_data = {
+        "title": sample_book.title,
+        "author": sample_book.author_name,
+        "year": str(sample_book.year),
+        "genre": sample_book.genre_name,
+    }
+    assert not WebMetadataWindow.web_data_offers_changes(sample_book, web_data)
+
+
+def test_plot_preserved_when_web_has_no_plot(window, sample_book):
+    window.update_fields_with_web_data(
+        {
+            "title": sample_book.title,
+            "author": sample_book.author_name,
+        }
+    )
+    assert window.plot_edit.toPlainText() == sample_book.comments
+
+
+def test_web_status_message_includes_no_plot(window):
+    window.update_fields_with_web_data(
+        {
+            "title": window.book.title,
+            "author": window.book.author_name,
+        }
+    )
+    msg = window._build_web_status_message("Web data found", window.web_data)
+    assert "No plot" in msg
 
 
 def test_tab_order_web_series_fields_before_buttons(window):

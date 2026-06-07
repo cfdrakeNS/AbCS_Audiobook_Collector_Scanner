@@ -140,11 +140,9 @@ On first launch, you'll see:
 - `F1` - Show keyboard shortcuts/help
 
 **Filtering (Alt + letter):**
-- `Alt+C` - Collection filter
-- `Alt+R` - Read filter
-- `Alt+O` - Order by
-- `Alt+S` - Search box
-- `Alt+M` - Menu
+- `Alt+P` - Toggle plot filter (show books with a plot synopsis)
+- `Alt+R` - Toggle read filter (show read books)
+- `Ctrl+F` - Find books by field
 
 **Zoom:**
 - `Ctrl +` - Zoom in
