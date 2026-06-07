@@ -75,6 +75,29 @@ def temp_db(tmp_path):
         db.close()
 
 
+def _prepare_window_for_teardown_close(widget):
+    """Skip Import Detail dirty-check prompts during automated teardown."""
+    if hasattr(widget, "_clear_dirty"):
+        widget._clear_dirty()
+    if hasattr(widget, "_closing_via_handler"):
+        widget._closing_via_handler = True
+
+
+def _close_widget_for_teardown(widget):
+    """Close a widget without blocking on unsaved-changes prompts."""
+    if not widget:
+        return
+    _prepare_window_for_teardown_close(widget)
+    try:
+        widget.setVisible(False)
+        if hasattr(widget, "reject"):
+            widget.reject()
+        elif hasattr(widget, "close"):
+            widget.close()
+    except Exception:
+        pass
+
+
 def cleanup_window(window):
     """Helper to forcefully cleanup a window and all its children."""
     if not window:
@@ -83,37 +106,20 @@ def cleanup_window(window):
     # Close any visible dialogs/message boxes first
     for widget in QApplication.topLevelWidgets():
         if widget.isVisible() and widget != window:
-            try:
-                if hasattr(widget, "reject"):
-                    widget.reject()
-                elif hasattr(widget, "close"):
-                    widget.close()
-                widget.setVisible(False)
-            except:
-                pass
+            _close_widget_for_teardown(widget)
 
     QApplication.processEvents()
 
     # Force close progress window if exists
     if hasattr(window, "progress_window") and window.progress_window is not None:
         pw = window.progress_window
-        try:
-            if pw.isVisible():
-                pw.setVisible(False)
-            pw.reject()
-        except:
-            pass
+        _close_widget_for_teardown(pw)
         window.progress_window = None
 
     QApplication.processEvents()
 
-    # Close the main window
-    if window and window.isVisible():
-        try:
-            window.setVisible(False)
-            window.reject()
-        except:
-            pass
+    # Close the main window (visible or not — qtbot keeps hidden dialogs in topLevelWidgets)
+    _close_widget_for_teardown(window)
 
     # Process events multiple times
     for _ in range(5):
@@ -123,14 +129,7 @@ def cleanup_window(window):
     for widget in QApplication.topLevelWidgets():
         if not widget:
             continue
-        try:
-            if hasattr(widget, "reject"):
-                widget.reject()
-            elif hasattr(widget, "close"):
-                widget.close()
-            widget.setVisible(False)
-        except Exception:
-            pass
+        _close_widget_for_teardown(widget)
 
     QApplication.processEvents()
 
