@@ -56,6 +56,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QStatusBar,
     QSizePolicy,
+    QStackedWidget,
 )
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
@@ -583,6 +584,25 @@ class BookDetailsWindow(QDialog):
             self.get_web_details_button, "search_web", self.scaler
         )
 
+    def _configure_field_combo(self, combo: QComboBox) -> None:
+        """Keep combo fields within the form column, not the longest list item."""
+        combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        combo.setMinimumContentsLength(12)
+
+    def _make_view_edit_stack(
+        self, view_widget: QWidget, edit_widget: QWidget
+    ) -> QStackedWidget:
+        """Stack view and edit widgets so only one sizes the grid cell."""
+        stack = QStackedWidget()
+        stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        stack.addWidget(view_widget)
+        stack.addWidget(edit_widget)
+        stack.setCurrentWidget(view_widget)
+        return stack
+
     def setup_ui(self):
         """Setup user interface."""
         layout = QVBoxLayout(self)
@@ -604,6 +624,7 @@ class BookDetailsWindow(QDialog):
         # Two-column grid layout — stable label column, expanding field column
         grid = QGridLayout()
         grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(0, self.scaler.get_scaled_size(90))
         grid.setVerticalSpacing(10)
         grid.setHorizontalSpacing(8)
 
@@ -644,11 +665,13 @@ class BookDetailsWindow(QDialog):
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
-        self.author_combo.hide()
+        self._configure_field_combo(self.author_combo)
+        self.author_field_stack = self._make_view_edit_stack(
+            self.author_label_display, self.author_combo
+        )
         author_label.setBuddy(self.author_label_display)
         grid.addWidget(author_label, ROW_AUTHOR, 0, label_align)
-        grid.addWidget(self.author_label_display, ROW_AUTHOR, 1)
-        grid.addWidget(self.author_combo, ROW_AUTHOR, 1)
+        grid.addWidget(self.author_field_stack, ROW_AUTHOR, 1)
 
         # Plot — fixed height, scrolls internally
         self.comments_label = QLabel("Plot:")
@@ -779,11 +802,13 @@ class BookDetailsWindow(QDialog):
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
         self.series_combo.setAccessibleName("Book series")
-        self.series_combo.hide()
+        self._configure_field_combo(self.series_combo)
+        self.series_field_stack = self._make_view_edit_stack(
+            self.series_label_display, self.series_combo
+        )
         series_label.setBuddy(self.series_label_display)
         grid.addWidget(series_label, ROW_SERIES, 0, label_align)
-        grid.addWidget(self.series_label_display, ROW_SERIES, 1)
-        grid.addWidget(self.series_combo, ROW_SERIES, 1)
+        grid.addWidget(self.series_field_stack, ROW_SERIES, 1)
 
         # Genre — view label and combo share the same grid cell
         genre_label = QLabel("Genre:")
@@ -797,11 +822,13 @@ class BookDetailsWindow(QDialog):
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
-        self.genre_combo.hide()
+        self._configure_field_combo(self.genre_combo)
+        self.genre_field_stack = self._make_view_edit_stack(
+            self.genre_label_display, self.genre_combo
+        )
         genre_label.setBuddy(self.genre_label_display)
         grid.addWidget(genre_label, ROW_GENRE, 0, label_align)
-        grid.addWidget(self.genre_label_display, ROW_GENRE, 1)
-        grid.addWidget(self.genre_combo, ROW_GENRE, 1)
+        grid.addWidget(self.genre_field_stack, ROW_GENRE, 1)
 
         # Collection — view label and combo share the same grid cell
         collection_label = QLabel("Collection:")
@@ -814,11 +841,13 @@ class BookDetailsWindow(QDialog):
         self.collection_label_display.setFocusPolicy(Qt.StrongFocus)
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
-        self.collection_combo.hide()
+        self._configure_field_combo(self.collection_combo)
+        self.collection_field_stack = self._make_view_edit_stack(
+            self.collection_label_display, self.collection_combo
+        )
         collection_label.setBuddy(self.collection_label_display)
         grid.addWidget(collection_label, ROW_COLLECTION, 0, label_align)
-        grid.addWidget(self.collection_label_display, ROW_COLLECTION, 1)
-        grid.addWidget(self.collection_combo, ROW_COLLECTION, 1)
+        grid.addWidget(self.collection_field_stack, ROW_COLLECTION, 1)
 
         # Files + Bitrate + Size
         files_label = QLabel("Files:")
@@ -858,6 +887,8 @@ class BookDetailsWindow(QDialog):
         format_label = QLabel("Format:")
         self.format_combo = QComboBox()
         self.format_combo.setAccessibleName("File format")
+        self._configure_field_combo(self.format_combo)
+        self.format_combo.setMaximumWidth(120)
         format_label.setBuddy(self.format_combo)
         format_items = [
             ("MP3", "mp3"),
@@ -1159,7 +1190,7 @@ class BookDetailsWindow(QDialog):
     def _focus_title_after_navigation(self):
         """Speak title only after Page Up/Down (same pattern as import detail)."""
         was_read_only = self.title_edit.isReadOnly()
-        in_edit_mode = self.author_combo.isVisible()
+        in_edit_mode = self._in_edit_mode
 
         def focus_title():
             if was_read_only and not in_edit_mode:
@@ -2042,29 +2073,20 @@ class BookDetailsWindow(QDialog):
 
     def _show_view_labels(self):
         """Show view labels and hide combos for fast display mode."""
-        # Show view labels, hide combos
-        self.author_label_display.show()
-        self.author_combo.hide()
-        self.series_label_display.show()
-        self.series_combo.hide()
-        self.genre_label_display.show()
-        self.genre_combo.hide()
-        self.collection_label_display.show()
-        self.collection_combo.hide()
+        self.author_field_stack.setCurrentWidget(self.author_label_display)
+        self.series_field_stack.setCurrentWidget(self.series_label_display)
+        self.genre_field_stack.setCurrentWidget(self.genre_label_display)
+        self.collection_field_stack.setCurrentWidget(self.collection_label_display)
         self._in_edit_mode = False
         # Make other fields read-only in view mode
         self._set_fields_read_only(True)
 
     def _hide_view_labels(self):
         """Hide view labels and show combos for edit mode."""
-        self.author_label_display.hide()
-        self.author_combo.show()
-        self.series_label_display.hide()
-        self.series_combo.show()
-        self.genre_label_display.hide()
-        self.genre_combo.show()
-        self.collection_label_display.hide()
-        self.collection_combo.show()
+        self.author_field_stack.setCurrentWidget(self.author_combo)
+        self.series_field_stack.setCurrentWidget(self.series_combo)
+        self.genre_field_stack.setCurrentWidget(self.genre_combo)
+        self.collection_field_stack.setCurrentWidget(self.collection_combo)
         # Make other fields editable in edit mode
         self._set_fields_read_only(False)
 

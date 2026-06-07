@@ -993,6 +993,14 @@ class ImportDetailWindow(QDialog):
         """Refresh styles when application theme changes."""
         self.apply_control_styles()
 
+    def _configure_field_combo(self, combo: QComboBox) -> None:
+        """Keep combo fields within the form column, not the longest list item."""
+        combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        combo.setMinimumContentsLength(12)
+
     def setup_ui(self):
         """Setup user interface."""
         layout = QVBoxLayout(self)
@@ -1002,6 +1010,7 @@ class ImportDetailWindow(QDialog):
         # Two-column grid layout — stable label column, expanding field column
         grid = QGridLayout()
         grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(0, self.scaler.get_scaled_size(90))
         grid.setVerticalSpacing(10)
         grid.setHorizontalSpacing(8)
 
@@ -1036,6 +1045,7 @@ class ImportDetailWindow(QDialog):
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
         self.author_combo.setAccessibleName("Author")
+        self._configure_field_combo(self.author_combo)
         author_label.setBuddy(self.author_combo)
         grid.addWidget(author_label, ROW_AUTHOR, 0, label_align)
         grid.addWidget(self.author_combo, ROW_AUTHOR, 1)
@@ -1100,6 +1110,7 @@ class ImportDetailWindow(QDialog):
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
         self.series_combo.setAccessibleName("Book series")
+        self._configure_field_combo(self.series_combo)
         series_label.setBuddy(self.series_combo)
         grid.addWidget(series_label, ROW_SERIES, 0, label_align)
         grid.addWidget(self.series_combo, ROW_SERIES, 1)
@@ -1109,6 +1120,7 @@ class ImportDetailWindow(QDialog):
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
         self.genre_combo.setAccessibleName("Genre")
+        self._configure_field_combo(self.genre_combo)
         genre_label.setBuddy(self.genre_combo)
         grid.addWidget(genre_label, ROW_GENRE, 0, label_align)
         grid.addWidget(self.genre_combo, ROW_GENRE, 1)
@@ -1119,6 +1131,7 @@ class ImportDetailWindow(QDialog):
         self.collection_combo.setAccessibleName("Collection")
         self.collection_combo.setEditable(False)
         self.collection_combo.setEnabled(True)
+        self._configure_field_combo(self.collection_combo)
         collection_label.setBuddy(self.collection_combo)
         grid.addWidget(collection_label, ROW_COLLECTION, 0, label_align)
         grid.addWidget(self.collection_combo, ROW_COLLECTION, 1)
