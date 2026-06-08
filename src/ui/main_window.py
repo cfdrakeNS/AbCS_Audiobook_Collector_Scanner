@@ -1118,28 +1118,28 @@ class MainWindow(QMainWindow):
             (
                 "Add Book",
                 "add_book",
-                "Create a new audiobook entry",
+                "Create a new audiobook entry - Ctrl+N",
                 "Create a new audiobook entry - Ctrl+N",
                 self.on_new_book,
             ),
             (
                 "Import",
                 "import",
-                "Import audiobooks from files or folders",
+                "Import audiobooks from files or folders - Ctrl+I",
                 "Import audiobooks from files or folders - Ctrl+I",
                 self.on_import,
             ),
             (
                 "Find",
                 "find",
-                "Find books by title, author, or other fields",
-                "Find books by field. Ctrl+F",
+                "Find books by title, author, or other fields - Ctrl+F",
+                "Find books by field. Enter text and press Enter to find. - Ctrl+F",
                 self.on_find,
             ),
             (
                 "Search Web",
                 "search_web",
-                "Search web metadata for the focused book",
+                "Search web metadata for the focused book - Alt+W",
                 "Search web metadata for the focused book - Alt+W",
                 self.on_get_web_info_clicked,
             ),
@@ -1160,8 +1160,8 @@ class MainWindow(QMainWindow):
             (
                 "Help",
                 "help",
-                "Show keyboard shortcuts",
-                "Show keyboard shortcuts for this window",
+                "Show keyboard shortcuts - F1",
+                "Show keyboard shortcuts for this window - F1",
                 self.on_show_shortcuts,
             ),
         ]
@@ -1182,7 +1182,7 @@ class MainWindow(QMainWindow):
                 self.plot_filter_action.triggered.connect(self.on_plot_filter_toggled)
                 apply_tooltip_accessibility(
                     self.plot_filter_action,
-                    "Toggle plot filter",
+                    "Toggle plot filter - Alt+P",
                     "Show only books that have a plot synopsis. Toggle off to show all books - Alt+P",
                 )
                 apply_decorative_action_icon(
@@ -1197,7 +1197,7 @@ class MainWindow(QMainWindow):
                 self.read_filter_action.triggered.connect(self.on_read_filter_toggled)
                 apply_tooltip_accessibility(
                     self.read_filter_action,
-                    "Toggle read filter",
+                    "Toggle read filter - Alt+R",
                     "Show only books marked as read. Toggle off to show all books - Alt+R",
                 )
                 apply_decorative_action_icon(

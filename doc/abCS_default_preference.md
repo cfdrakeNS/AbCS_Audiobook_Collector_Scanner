@@ -1,55 +1,88 @@
-# default preference 
- - theme: Default (system)
- - Zoom: 150% 
- - directory: empty 
- - formats: all checked 
- - scenario: mass standard import 
- - author fall back to folder checked
- - title fall back to file checked
- - reader keywords: reader, read by, narrator, narrated by
- - author in title: warning 
- - title in author: error
- - unknown/various: warning
- - min title length: 3
- - minimum book length in minutes: 0, disabled
- - maximum book length in hours: 0, disabled
- - Duplicate match: title + author + year
- - fuzzy duplicate %: 90
- - File structure warning 
- - year consistency: warning 
+# Default Preferences
 
-## Fuzzy Threshold Explained:
+## What this is
 
-**How it works:** Uses Python's `SequenceMatcher` which calculates similarity between two strings (0.0 to 1.0, converted to 0-100%).
+This document lists the **recommended default values** for AbCS preferences. They match what **Restore Defaults** sets in the Preferences window (**Alt+R** on that screen).
 
-**BOTH title AND author must pass the threshold** (AND logic - not OR).
+Use this guide when testing that preferences reset correctly, or when you need to know what AbCS expects before you change settings.
 
-### Settings Explained:
+## How to check defaults
 
-| Setting | What It Means | Example Matches |
-|---------|---------------|-----------------|
-| **0%** | **Fuzzy OFF** - Only exact matches | "The Hobbit" = "The Hobbit" only |
-| **50%** | **Lenient** - Catches typos/variations | "Hobbit" ≈ "The Hobbit", "Christie" ≈ "Agatha Christie" |
-| **90%** | **Strict** - Minor differences only | "Hobitt" ≈ "Hobbit" (typo), "Color" ≈ "Colour" |
-| **100%** | **Nearly exact** - Almost identical | "The Hobbit" ≈ "the hobbit" (case only) |
+1. Open **Manage → Preferences**.
+2. Review each tab, or press **Restore Defaults** (Alt+R) and confirm with **Yes**.
+3. Press **Save** (Alt+S) if you want to keep the restored values.
 
+Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-read the status bar.
 
-### Real Examples at 50% Threshold:
+**Note for testers:** On a very first run (before any save), a few validation fields may differ until you use **Restore Defaults** — for example, duplicate match mode may show **Title + Author + Year + Collection** and fuzzy duplicate may show **0%**. **Restore Defaults** is the authoritative reset for the values below.
 
-| DB Book | Import Book | Title Match? | Author Match? | Duplicate? |
-|---------|-------------|--------------|---------------|------------|
-| "The Hobbit" / "Tolkien" | "Hobbit" / "Tolkien" | ✅ ~70% | ✅ 100% | ✅ YES |
-| "The Hobbit" / "Tolkien" | "Hobbit" / "J.R.R. Tolkien" | ✅ ~70% | ✅ ~90% | ✅ YES |
-| "Hobbit" / "Tolkien" | "Lord of the Rings" / "Tolkien" | ❌ ~30% | ✅ 100% | ❌ NO (title fails) |
-| "The Hobbit" / "Tolkien" | "Hobbit" / "Rowling" | ✅ ~70% | ❌ ~20% | ❌ NO (author fails) |
+## Display settings (first tab)
 
-### Key Points:
+| Setting | Default |
+|---------|---------|
+| Theme | Default (follows system) |
+| Zoom | 150% (Extra Large preset; shown as Custom at 150%) |
 
-1. **0 = disabled** - Use only when you want strict exact matches
-2. **50-70 = sweet spot** - Catches common variations without false positives
-3. **90+ = very strict** - Only catches typos, still requires titles to be nearly identical
-4. **Higher % = fewer duplicates found** (more strict)
-5. **Lower % = more duplicates found** (more lenient)
+## Import settings (second tab)
 
-**Recommendation:** Start with **50%** - it catches "The Hobbit" vs "Hobbit" but won't match completely different titles.
+| Setting | Default |
+|---------|---------|
+| Default import directory | Empty |
+| Audio formats | All checked: MP3, M4A, M4B, FLAC, OGG, WAV, WMA |
+| Import scenario | Mass Standard Import |
+| Include subfolders | On (always enabled when settings are saved) |
 
+## Fallback and parsing (third tab)
+
+| Setting | Default |
+|---------|---------|
+| Author fallback to folder | Checked |
+| Title fallback to file | Checked |
+| Reader keywords | `reader, read by, narrator, narrated by` |
+
+When author or title is missing from file tags, AbCS can fill them from folder or file names only if these fallbacks are enabled.
+
+## Validation rules (fourth tab)
+
+| Rule | Default severity | Other default |
+|------|------------------|---------------|
+| Author in Title | Warning | Enabled |
+| Title in Author | **Error** | Enabled |
+| Unknown / Various author | Warning | Enabled |
+| Minimum title length | Warning | Enabled, minimum **3** characters |
+| Minimum book length | None (off) | Value 0 |
+| Maximum book length | None (off) | Value 0 |
+| File structure | Warning | Enabled, pattern **Author/Title** |
+| Year consistency | Warning | Enabled; year must be after 1800 and not in the future |
+| Duplicate match | Title + Author + Year | — |
+| Fuzzy duplicate % | **90%** | — |
+
+Severity **None** means the rule is turned off. **Warning** reports an issue but does not block import the same way as **Error**.
+
+## Fuzzy duplicate threshold
+
+Fuzzy matching compares title and author text similarity (0–100%). **Both** title and author must meet the threshold to count as a duplicate.
+
+| Value | Meaning |
+|-------|---------|
+| **0%** | Fuzzy off — near-exact text match only |
+| **50%** | Lenient — catches common shortenings and typos |
+| **90%** | Strict (default after Restore Defaults) — minor differences only |
+| **100%** | Nearly exact — mainly case differences |
+
+**Examples at 50%:**
+
+| Database book | Import book | Duplicate? | Why |
+|---------------|-------------|------------|-----|
+| The Hobbit / Tolkien | Hobbit / Tolkien | Yes | Title and author both pass |
+| The Hobbit / Tolkien | Hobbit / Rowling | No | Author fails |
+| The Hobbit / Tolkien | Lord of the Rings / Tolkien | No | Title fails |
+
+Higher percentage = stricter matching and fewer duplicate flags. Lower percentage = more duplicate flags.
+
+At the default **90%**, only small typos and near-matches are flagged; completely different titles will not match.
+
+## Related documentation
+
+- [Import preferences (scenario detail)](Import_preferences.md) — how each import scenario uses these settings
+- [Import process](abcs_import_process.md) — tester workflow for folder import
