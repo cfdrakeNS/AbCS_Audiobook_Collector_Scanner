@@ -19,7 +19,7 @@ These tools help you narrow and organize the main book list without changing you
 ## Steps — Find (search)
 
 1. Open **View → Find**, or press **Ctrl+F**.
-2. Choose a **field** to search (**Alt+I**): Author, Title, Series, or Genre.
+2. Choose a **field** to search (**Alt+I**): Author, Title, Series, or Genre. If your focus is on Author, Title, Series, or Genre in the book table, that field is pre-selected. From Year, Time, Read Date, or elsewhere, the last search field is used.
 3. Type your search text.
 4. Optionally check **Exact match** (**Alt+X**) for a strict comparison. When unchecked, keyword search is used (more flexible).
 5. Press **Enter** to run the search. The Find dialog closes and the main list updates.

@@ -2537,14 +2537,17 @@ class MainWindow(QMainWindow):
             "Genre": 4,
         }
 
-        # Use search_field if present, else order_by
-        current_field = getattr(
-            self.current_filter, "search_field", self.current_filter.order_by
-        )
-        if current_field in field_to_column:
-            field_combo.setCurrentText(current_field)
+        # Pre-select Find field from focused table column (Author/Title/Series/Genre),
+        # otherwise keep the last-used search field.
+        column_to_field = {col: name for name, col in field_to_column.items()}
+        focused_col = self.table.currentColumn()
+        if focused_col in column_to_field:
+            current_field = column_to_field[focused_col]
+        elif self.current_filter.search_field in field_to_column:
+            current_field = self.current_filter.search_field
         else:
-            field_combo.setCurrentText("Title")
+            current_field = "Title"
+        field_combo.setCurrentText(current_field)
 
         if self.current_filter.search_text:
             text_edit.setText(self.current_filter.search_text)
@@ -4068,25 +4071,25 @@ class MainWindow(QMainWindow):
             ("Alt+5", "Jump to Genre"),
             ("Alt+6", "Jump to Time"),
             ("Alt+7", "Jump to Read Date"),
-            ("Shift+Down/Up", "Start selection or extend selection"),
-            ("Alt+U", "Update selected"),
-            ("Alt+D", "Delete selected"),
-            ("Alt+X", "Export duplicates (in duplicate mode)"),
-            ("Alt+P", "Toggle plot filter"),
-            ("Alt+R", "Toggle read filter"),
-            ("Ctrl+F", "Find"),
-            ("Ctrl+I", "Import"),
-            ("Ctrl+N", "New book"),
             (
                 "Enter",
                 "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
             ),
+            ("Ctrl+F", "Find"),
+            ("Alt+P", "Toggle plot filter"),
+            ("Alt+R", "Toggle read filter"),
+            ("Alt+W", "Fetch web info"),
+            ("Ctrl+I", "Import"),
+            ("Ctrl+N", "New book"),
+            ("Shift+Down/Up", "Start selection or extend selection"),
+            ("Alt+U", "Update selected"),
+            ("Alt+D", "Delete selected"),
+            ("Alt+X", "Export duplicates (in duplicate mode)"),
             ("Escape", "Clear selection / Find / plot filter / read filter"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),
             ("Alt+/", "Read status bar"),
-            ("Alt+W", "Fetch web info"),
             ("F1", "Show keyboard shortcuts"),
         ]
         # Centralize Alt+/ visibility and order
