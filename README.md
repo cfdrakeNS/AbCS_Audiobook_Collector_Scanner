@@ -1,149 +1,142 @@
 # AbCS - Audio Book Collector Scanner
 
-A cross-platform audiobook collection manager with full accessibility support.
+A cross-platform audiobook collection manager with full accessibility support (JAWS, NVDA, and other screen readers).
 
 ## Features
 
-- **Audio Book Management**: Track your audiobook collection with full metadata
-- **ID3 Tag Import**: Automatically scan folders and import audiobook details from ID3 tags
-- **Advanced Search**: Filter by title, author, genre, series with instant search
-- **Collections**: Organize books into multiple collections
-- **Accessibility First**: 
+- **Audio book management** — track your collection with full metadata
+- **ID3 tag import** — scan folders and import from audio file tags
+- **Book list import** — import from CSV, Excel, or ODS spreadsheets
+- **Advanced search** — filter by title, author, genre, series, plot, and read status
+- **Collections** — organize books into multiple collections
+- **Bulk update and delete** — change or remove many books at once
+- **Duplicate mode** — find and clean up duplicate entries
+- **Backup and restore** — protect your database
+- **Web metadata** — fetch plot, series, and related fields from Open Library, Google Books, and WikiData
+- **Reading history and statistics** — track what you have listened to
+- **Accessibility first**
   - Complete keyboard navigation (Alt+key shortcuts)
-  - Screen reader support (NVDA, JAWS, VoiceOver)
-  - Scalable UI (50%-200%+)
+  - Screen reader support (NVDA, JAWS, Narrator, Orca)
+  - Scalable UI (50%–200%+)
   - High contrast themes
-- **Bulk Operations**: Select multiple books for update or deletion
-- **Backup/Restore**: Protect your data with easy backup management
-- **Web Metadata**: Fetch plot, series, and comparison fields from Open Library, Google Books, and WikiData
 
 ## Requirements
 
-- Python 3.9 or higher
+- Python 3.9 or higher (3.12 recommended for development)
 - Windows, macOS, or Linux
 
-## Installation
+## Installation and quick start
 
-1. Clone or extract the project
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+See [INSTALL.md](INSTALL.md) for step-by-step setup.
 
-3. Run the application:
-   ```bash
-   python src/main.py
-   ```
+```bash
+pip install -r requirements.txt
+python src/main.py
+```
 
-### Tester Build Expiry
+On first launch, AbCS creates a SQLite database automatically. No manual schema setup is required.
 
-- Bundled tester builds expire after 30 days from build date.
-- When expired, AbCS blocks startup and prompts the tester to download a newer build.
-- Source runs currently use the same build-expiry check.
+## User documentation
 
-## Quick Start
+Workflow guides for screen reader users:
 
-1. **First Launch**: The application will create a new database
-2. **Import Books**: Press Ctrl+I or use Menu → Import to scan your audiobook folders
-3. **Browse & Search**: Use the main window to explore your collection
-4. **Customize**: View → Preferences to adjust font size, theme, and accessibility settings
+- [User guide index](doc/abcs_user_index.md) — collections, import, filters, web metadata, backup, and more
+- [Keyboard shortcuts by window](doc/abcs_shortcuts_list.md)
+- [Default preferences](doc/abCS_default_preference.md)
+- [Import preferences (scenarios and rules)](doc/Import_preferences.md)
 
-## Keyboard Shortcuts
+Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-read the status message.
+
+## Keyboard shortcuts (summary)
 
 ### Global
-- **F1**: Show keyboard shortcuts/help
-- **Ctrl/Cmd +**: Zoom In
-- **Ctrl/Cmd -**: Zoom Out
-- **Ctrl/Cmd 0**: Reset Zoom
 
-### Main Window
-- **Alt+L**: Collection filter
-- **Alt+R**: Read filter
-- **Alt+O**: Order by
-- **Alt+S**: Search
-- **Alt+M**: Menu
-- **Space**: Select/deselect book (for bulk operations)
-- **Alt+U**: Update selected
-- **Alt+D**: Delete selected
-- **Alt+C**: Cancel selection
+- **F1** — show keyboard shortcuts / help
+- **Alt+/** — re-read status bar
+- **Ctrl/Cmd +** — zoom in
+- **Ctrl/Cmd -** — zoom out
+- **Ctrl/Cmd 0** — reset zoom
 
-### Book Details
-- **Alt+T**: Title
-- **Alt+A**: Author
-- **Alt+Y**: Year
-- **Alt+I**: Series
-- **Alt+G**: Genre
-- **Alt+V**: Save
-- **Alt+N**: Next book (Page Down)
-- **Alt+P**: Previous book (Page Up)
-- **Insert**: New book
-- **Delete**: Delete current book
+### Main window
 
-## Project Structure
+- **Ctrl+I** — import (folder scan)
+- **Alt+L** — collection filter
+- **Alt+R** — read filter
+- **Alt+O** — order by
+- **Alt+S** — search
+- **Alt+M** — menu
+- **Space** — select/deselect book (bulk operations)
+- **Alt+U** — update selected
+- **Alt+D** — delete selected
+
+See [doc/abcs_shortcuts_list.md](doc/abcs_shortcuts_list.md) for every window.
+
+## Project structure
 
 ```
-abcs_project/
-├── src/                    # Source code
-│   ├── main.py            # Application entry point
-│   ├── database/          # Database layer
-│   ├── ui/                # User interface windows
-│   ├── core/              # Core functionality (scanner, validator)
-│   ├── accessibility/     # Accessibility features
-│   └── utils/             # Utilities and settings
-├── resources/             # UI files, icons, themes
-├── data/                  # Database location
-├── backups/              # Backup files
-└── test/                 # Unit tests
-
+AbCS/
+├── src/              # Application source
+│   ├── main.py       # Entry point
+│   ├── database/     # SQLite layer
+│   ├── ui/           # Windows and dialogs
+│   ├── core/         # Import scanner, validator, tag reader
+│   ├── accessibility/
+│   ├── web/          # Web metadata APIs
+│   └── utils/
+├── doc/              # User and developer documentation
+├── test/             # Automated tests (pytest)
+├── data/             # Development database (created at runtime)
+├── Graphics/         # Icons and splash images
+├── backups/          # Database backups
+└── releases/         # Built installers (when present)
 ```
-
-## Database Schema
-
-The application uses SQLite with the following main tables:
-- **books**: Audio book records
-- **authors**: Author information
-- **series**: Book series
-- **genres**: Genre classifications
-- **collections**: User collections
-- **settings**: Application preferences
 
 ## Development
 
-### Running Tests
+### Running tests
+
 ```bash
 python -m pytest test/
 ```
 
-### Code Style
+See [TESTING.md](TESTING.md) for CI-style runs, headless Qt, and useful pytest switches.
+
+### Code style
+
 - Follow PEP 8
 - Type hints encouraged
-- Document accessibility features
+- Document accessibility features in code and user-facing strings
 
-## Migrating from MS Access Version
+### Building installers
 
-If you're migrating from the MS Access prototype:
-1. Export your Access data to CSV (optional migration script coming)
-2. The UI will feel familiar - same keyboard shortcuts
-3. Default scale is set to ~125% (similar to Access 14pt fonts)
-4. All features from Access version are included
+- **Windows:** `build_installer.bat` (PyInstaller + Inno Setup)
+- **Linux:** [linux_build.md](linux_build.md)
 
-## Accessibility Notes
+## Migrating from the MS Access version
 
-- All controls have Alt+key shortcuts (underlined in UI)
-- Status bar announces actions for screen readers
-- High contrast themes available
-- Minimum touch target size: 44x44 pixels
-- Focus indicators clearly visible
-- Tab order follows logical flow
+If you used the original MS Access prototype:
 
-## Accessibility Documentation
+1. Export your Access data to CSV and use **Import Book List**, or re-import from audio folders.
+2. Keyboard shortcuts and workflows are designed to feel familiar.
+3. Default zoom is **150%** (adjust in **Manage → Preferences**).
+4. Core features from the Access version are included in AbCS.
 
-For implementation and contribution work, use these two canonical docs:
+## Accessibility
 
-- `PySide6_Accessibility_Patterns_and_Implementation_Reference.md` (code patterns and implementation checklist)
-- `PySide6_Screen_Reader_Accessibility_Best_Practices.md` (design principles and review rules)
+- All major controls have accessible names and keyboard shortcuts.
+- Status changes are announced for screen readers (`Alt+/` re-reads the current status).
+- High contrast themes are available in Preferences.
 
-Legacy accessibility docs are archived under `archive/`.
+### Developer documentation
+
+- [PySide6 Accessibility Patterns and Implementation Reference](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
+- [PySide6 Screen Reader Accessibility Best Practices](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+
+Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/qa_verification.md](doc/qa_verification.md).
+
+## Tester build expiry
+
+Bundled tester builds expire 30 days after the build date. When expired, AbCS blocks startup and prompts you to download a newer build. Source runs use the same expiry check when `TRIAL_BUILD_DATE` is set in `src/build_config.py`.
 
 ## License
 
@@ -164,5 +157,5 @@ For support or licensing requests, contact C.F. Drake.
 
 ## Credits
 
-Original MS Access version: C.F. Drake
+Original MS Access version: C.F. Drake  
 Python version: C.F. Drake

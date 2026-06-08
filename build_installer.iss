@@ -5,14 +5,14 @@
 ;
 ; or open this file in Inno Setup IDE and press F9
 ;
-; Version source of truth is src/main.py APP_VERSION.
+; Version source of truth is src/build_config.py APP_VERSION.
 ;
 ; build_installer.bat passes MyAppVersion from APP_VERSION via /D.
 ; The fallback below is used when compiling this .iss directly in ISCC IDE.
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audio Book Collector Scanner"
 #ifndef MyAppVersion
-    #define MyAppVersion "1.9.6"
+    #define MyAppVersion "1.9.73"
 #endif
 #define MyAppPublisher "AbCS Project"
 #define MyAppURL       "https://github.com/cfdrakeNS/redevelop-AbCS-project"
@@ -41,7 +41,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 
-; Output: releases\AbCS-Setup-1.9.6.exe
+; Output: releases\AbCS-Setup-{version}.exe (version from APP_VERSION)
 OutputDir=releases
 OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
 

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import shutil
-from pathlib import Path
-
 import pytest
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -14,16 +10,12 @@ from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcuts import ShortcutManager
 from src.accessibility.style_helpers import set_message_box_button_accessibility
 from src.accessibility.theme_manager import ThemeManager
-from src.database.connection import DatabaseManager
 from src.ui.import_window import ImportWindow
 from src.ui.import_detail_window import ImportDetailWindow
 from src.ui.import_progress_window import ImportProgressWindow
 from src.ui.update_window import UpdateWindow
 from src.database.queries import CollectionQueries
 from src.database.models import Collection
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
 
 @pytest.fixture(autouse=True)
 def suppress_import_confirmations(monkeypatch):
@@ -42,37 +34,6 @@ def isolated_qsettings(tmp_path):
         yield
     finally:
         QSettings.setDefaultFormat(original_format)
-
-
-@pytest.fixture
-def temp_db(tmp_path):
-    """Provide a writable temporary copy of the project database."""
-    data_dir = Path(PROJECT_ROOT) / "data"
-    candidates = [
-        data_dir / "abcs.db",
-        data_dir / "wh abcs.db",
-    ]
-    backup_candidates = sorted(
-        data_dir.glob("abcs.db.backup.*"),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
-    candidates.extend(backup_candidates)
-
-    source_db = next((path for path in candidates if path.exists()), None)
-    if source_db is None:
-        raise FileNotFoundError(
-            f"No testable database found in {data_dir}. Expected one of: abcs.db, wh abcs.db, or abcs.db.backup.*"
-        )
-
-    target_db = tmp_path / "abcs_test.db"
-    shutil.copy2(source_db, target_db)
-
-    db = DatabaseManager(str(target_db))
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def _prepare_window_for_teardown_close(widget):

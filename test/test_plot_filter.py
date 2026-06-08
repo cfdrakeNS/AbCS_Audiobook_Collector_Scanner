@@ -1,47 +1,10 @@
 """Tests for plot indicator threshold and plot filter behaviour."""
 
-import os
-import shutil
-from pathlib import Path
-
 import pytest
 
 from src.database.models import SearchFilter, book_has_plot, PLOT_MIN_LENGTH, Book
 from src.database.queries import BookQueries, AuthorQueries
 from src.database.connection import DatabaseManager
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
-
-@pytest.fixture
-def temp_db(tmp_path):
-    """Provide a writable temporary copy of the project database."""
-    data_dir = Path(PROJECT_ROOT) / "data"
-    candidates = [
-        data_dir / "abcs.db",
-        data_dir / "wh abcs.db",
-    ]
-    backup_candidates = sorted(
-        data_dir.glob("abcs.db.backup.*"),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
-    candidates.extend(backup_candidates)
-
-    source_db = next((path for path in candidates if path.exists()), None)
-    if source_db is None:
-        raise FileNotFoundError(
-            f"No testable database found in {data_dir}. Expected one of: abcs.db, wh abcs.db, or abcs.db.backup.*"
-        )
-
-    target_db = tmp_path / "abcs_test.db"
-    shutil.copy2(source_db, target_db)
-
-    db = DatabaseManager(str(target_db))
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def _insert_book(db: DatabaseManager, title: str, comments: str = "") -> int:

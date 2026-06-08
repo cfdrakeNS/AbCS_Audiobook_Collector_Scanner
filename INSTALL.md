@@ -1,373 +1,109 @@
-# AbCS - Installation and Quick Start Guide
+# AbCS — Installation and Quick Start
+
+Step-by-step setup for running AbCS from source. For project overview and features, see [README.md](README.md). For workflow guides, see [doc/abcs_user_index.md](doc/abcs_user_index.md).
 
 ## Prerequisites
 
-- **Python 3.9 or higher** - Check with `python --version`
-- **pip** - Python package installer
-- **Your SQLite database** - You mentioned you already created this
+- **Python 3.9+** — check with `python --version` (3.12 recommended)
+- **pip** — Python package installer
+- **Git** (optional) — if cloning the repository
 
-## Installation Steps
+### Platform notes
 
-### 1. Install Python Dependencies
+- **Windows** — primary development and test platform
+- **Linux** — see [linux_build.md](linux_build.md) for build and packaging
+- **macOS** — run from source with the same steps below
 
-Open a terminal/command prompt in the project folder and run:
+## Install dependencies
+
+Open a terminal in the project root and run:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-This will install:
-- PySide6 (Qt GUI framework)
-- mutagen (audio file metadata reading)
-- python-dateutil (date utilities)
-- Send2Trash (safe file deletion)
+This installs PySide6, mutagen, python-dateutil, Send2Trash, and other runtime libraries. Pytest and pytest-qt are included for development testing.
 
-### 2. Set Up Your Database
-
-You mentioned you already have tables created in SQLite3. Make sure your database file is placed in the `data/` folder:
-
-```
-abcs_project/
-└── data/
-    └── abcs.db  (your existing SQLite database)
-```
-
-If you don't have a database yet, the application will create an empty one, but you'll need to create the tables. Here's a reference schema:
-
-```sql
--- This is what your existing database should have
--- (You mentioned you already created these)
-
-`CREATE TABLE` authors (
-    author_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE series (
-    series_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE genres (
-    genre_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE collections (
-    collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    borrowed INTEGER DEFAULT 0,
-    active INTEGER DEFAULT 1
-);
-
-CREATE TABLE books (
-    book_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    author_id INTEGER,
-    year INTEGER,
-    series_id INTEGER,
-    genre_id INTEGER,
-    collection_id INTEGER,
-    reader TEXT,
-    time_hours INTEGER DEFAULT 0,
-    time_minutes INTEGER DEFAULT 0,
-    tracks INTEGER DEFAULT 0,
-    size_mb REAL DEFAULT 0.0,
-    bitrate INTEGER DEFAULT 0,
-    file_format TEXT,
-    path TEXT,
-    comments TEXT,
-    read_date DATE,
-    returned_date DATE,
-    date_added DATETIME DEFAULT CURRENT_TIMESTAMP,
-    source TEXT,
-    FOREIGN KEY (author_id) REFERENCES authors(author_id),
-    FOREIGN KEY (series_id) REFERENCES series(series_id),
-    FOREIGN KEY (genre_id) REFERENCES genres(genre_id),
-    FOREIGN KEY (collection_id) REFERENCES collections(collection_id)
-);
-
-CREATE INDEX idx_books_author ON books(author_id);
-CREATE INDEX idx_books_series ON books(series_id);
-CREATE INDEX idx_books_genre ON books(genre_id);
-CREATE INDEX idx_books_collection ON books(collection_id);
-CREATE INDEX idx_books_title ON books(title);
-```
-
-### 3. Run the Application
+### Virtual environment (recommended)
 
 ```bash
-cd abcs_project
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux / macOS
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+## Run the application
+
+```bash
 python src/main.py
 ```
 
-Or on some systems:
+AbCS creates the database and tables automatically on first launch. You do not need to run SQL scripts manually.
+
+## Where your data lives
+
+### Development (running from source)
+
+- **Database:** `data/abcs.db` in the project folder (created on first run)
+- **Backups:** `backups/` in the project folder
+- **Preferences:** stored via Qt `QSettings` (registry on Windows, config files on Linux/macOS)
+
+### Bundled executable (installer build)
+
+- **Database:** per-user data directory (writable copy of the bundled template)
+  - Windows: `%LOCALAPPDATA%\AbCS\abcs.db`
+  - Linux: `~/.local/share/AbCS/abcs.db` (or `$XDG_DATA_HOME/AbCS`)
+  - macOS: `~/Library/Application Support/AbCS/abcs.db`
+- On first run of a fresh install, the app copies the embedded database template into that location.
+
+## First-time workflow
+
+1. **Launch** — `python src/main.py`
+2. **Create a collection** — **Manage → Collections** (at least one active collection is required before import)
+3. **Set preferences** (optional) — **Manage → Preferences** — default zoom is **150%**; see [Default preferences](doc/abCS_default_preference.md)
+4. **Import books** — **File → Import** (Ctrl+I) to scan audiobook folders
+5. **Browse** — use Find, filters, and sort on the main window
+6. **Back up** — **Manage → Backup/Restore** when you have data worth protecting
+
+Suggested guide order: [doc/abcs_user_index.md](doc/abcs_user_index.md).
+
+## Tester build expiry
+
+Tester builds expire **30 days** after the build date. If AbCS refuses to start, download a newer build. Source runs honor the same check when `TRIAL_BUILD_DATE` is set in `src/build_config.py`.
+
+## Running tests
+
 ```bash
-python3 src/main.py
+python -m pytest test/
 ```
 
-## First Launch
+For headless CI-style runs and pytest options, see [TESTING.md](TESTING.md).
 
-On first launch, you'll see:
+## Building an installer
 
-1. **Splash Screen** - Shows statistics (will be empty if no data)
-2. **Main Window** - The Audio Book Window with filter and search controls
-
-## Quick Tour
-
-### Main Window Layout
-
-```
-┌─ AbCS - Audio Book Collector Scanner ──────────────────────────┐
-│ File  View  Help                                                │
-├─────────────────────────────────────────────────────────────────┤
-│ Collection: [All ▼] Read? [All ▼] Order: [Title ▼]              │
-│ Search: [________________] Menu: [Select ▼] Selected: 0        │
-├─────────────────────────────────────────────────────────────────┤
-│ ┌─ Book List ────────────────────────────────────────────────┐ │
-│ │ Author      │ Title      │ Year │ Series │ Genre │ ...    │ │
-│ │─────────────┼────────────┼──────┼────────┼───────┼────────│ │
-│ │             │            │      │        │       │        │ │
-│ └────────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│ [Update] [Delete] [Cancel]               0 books  Sort: Title  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Essential Keyboard Shortcuts
-
-**Navigation:**
-- `F1` - Show keyboard shortcuts/help
-
-**Filtering (Alt + letter):**
-- `Alt+P` - Toggle plot filter (show books with a plot synopsis)
-- `Alt+R` - Toggle read filter (show read books)
-- `Ctrl+F` - Find books by field
-
-**Zoom:**
-- `Ctrl +` - Zoom in
-- `Ctrl -` - Zoom out
-- `Ctrl 0` - Reset zoom
-
-**Working with Books:**
-- `Double-click` or `Ctrl+Enter` - Open focused item (Title/other columns: Book Details; Author/Series/Genre columns: manager window)
-- `Space` - Select/deselect book
-- `Insert` - New book
-- `Delete` - Delete selected books
-
-### Searching
-
-**Regular Search:**
-- Type in search box - autocomplete search
-- Searches current "Order By" field (Title/Author/Genre/Series)
-
-**Keyword Search:**
-- Type `?` followed by search term
-- Example: `?space` finds all books with "space" in title
-- Shows only matching books (not just jumping to first match)
-
-## Using the Book Details Window
-
-1. **New Book**: Press `Insert` or Menu → New Title
-2. **Edit Book**: Double-click a book in the list
-3. Fill in fields:
-   - Required: Title, Author
-   - Optional: Year, Series, Genre, Reader, Comments, etc.
-4. Press `Save` or `Alt+S`
-
-## Accessibility Features
-
-### Current Scale
-
-The default scale is set to **125%** (similar to your MS Access 14pt fonts).
-
-To change:
-- `View` → `Zoom In/Out/Reset`
-- Or use `Ctrl +` / `Ctrl -`
-
-### Themes
-
-Currently: Default system theme
-
-Coming soon:
-- View → Preferences → Theme
-- High contrast options
-
-### Screen Reader Support
-
-All controls have:
-- Accessible names
-- Keyboard shortcuts (underlined in labels)
-- Status bar announcements
-
-Tested with NVDA on Windows.
-
-## What's Working vs. Coming Soon
-
-### ✅ Currently Working:
-- Main window with book list
-- Filtering by Collection, Read status
-- Sorting by Title, Author, Genre, Series
-- Search (both autocomplete and keyword)
-- Book details window (view/edit/add/delete)
-- Bulk selection (spacebar)
-- Bulk delete
-- UI scaling (Ctrl +/-)
-- All keyboard shortcuts
-- Database operations
-
-### 🚧 Coming Soon (in starter code):
-- Import window (scan folders for audiobooks)
-- Bulk update window
-- Backup/Restore
-- Theme preferences dialog
-- Duplicate detection view
-- Import validation and error handling
-
-## Testing the Application
-
-### Add Some Test Data
-
-Since you probably don't have data yet, you can:
-
-1. **Manually add a book:**
-   - Press `Insert`
-   - Fill in: Title, Author, Year
-   - Press Save
-
-2. **Test search:**
-   - Add 2-3 books
-   - Try searching by title
-   - Try `?keyword` search
-
-3. **Test filtering:**
-   - Add books to different collections (if you have collections in DB)
-   - Use Collection filter dropdown
-
-4. **Test scaling:**
-   - Press `Ctrl +` several times
-   - Watch everything get larger
-   - Press `Ctrl 0` to reset
-
-## Migrating Data from MS Access
-
-If you want to migrate your existing MS Access data:
-
-1. Export from Access to CSV files (one for each table)
-2. Create a Python script to import CSV to SQLite
-3. Or manually import using SQLite command line:
-
-```sql
-.mode csv
-.import authors.csv authors
-.import books.csv books
--- etc.
-```
+- **Windows:** run `build_installer.bat` (requires local `AbCS.spec` and PyInstaller; see [doc/BUILD.md](doc/BUILD.md))
+- **Linux:** follow [linux_build.md](linux_build.md)
 
 ## Troubleshooting
 
-### "Module not found" errors
-```bash
-# Make sure you're in the project directory
-cd abcs_project
+| Problem | What to try |
+|---------|-------------|
+| `ModuleNotFoundError` for PySide6 | Run `pip install -r requirements.txt` again |
+| Database errors on first run | Delete `data/abcs.db` and restart (you lose local dev data) |
+| UI too small or large | **Manage → Preferences** or Ctrl+/Ctrl- for zoom |
+| Import finds no files | Check **Preferences → Import Settings** audio formats and folder path |
+| Tester build expired | Obtain a newer build or clear `TRIAL_BUILD_DATE` in source for local dev only |
 
-# Install dependencies
-pip install -r requirements.txt
+## Related documentation
 
-# Try running again
-python src/main.py
-```
-
-### Database errors
-- Make sure `data/abcs.db` exists
-- Make sure tables are created (see schema above)
-- Check file permissions
-
-### Qt platform plugin errors
-- Make sure PySide6 installed correctly
-- Try: `pip install --upgrade PySide6`
-
-### Window doesn't scale properly
-- Close app
-- Delete `~/.config/AbCS/` (Linux/Mac) or registry keys (Windows)
-- Restart app
-
-## Next Steps for Development
-
-Priority order to add remaining features:
-
-1. **Import Window** - The most complex feature
-   - Folder selection dialog
-   - Progress window
-   - Error validation
-   - Import detail window
-
-2. **Bulk Update Window** - Relatively simple
-   - Select books → Update button
-   - Change Series/Genre for all selected
-
-3. **List Windows** - Simple CRUD
-   - Authors, Collections, Genres, Series
-   - All similar structure
-
-4. **Backup/Restore** - SQLite file copy
-   - List existing backups
-   - Create new backup
-   - Restore from backup
-
-5. **Preferences Dialog**
-   - Display tab (scale, font)
-   - Accessibility tab (theme, contrast)
-   - Save/load settings
-
-## File Structure Reference
-
-```
-abcs_project/
-├── src/
-│   ├── main.py              # Start here
-│   ├── database/            # All database code
-│   ├── ui/                  # All windows
-│   ├── core/                # Scanner, validator
-│   ├── accessibility/       # Scaling, themes, shortcuts
-│   └── utils/               # Settings, helpers
-├── data/                    # Your database
-├── backups/                 # Backup files
-├── resources/               # UI files, icons
-├── requirements.txt         # Dependencies
-└── README.md               # Documentation
-```
-
-## Getting Help
-
-Key files to read:
-- `README.md` - Overall project info
-- `src/database/queries.py` - All SQL operations
-- `src/ui/main_window.py` - Main UI logic
-- `src/accessibility/scaling.py` - Zoom system
-
-## Questions?
-
-Common questions answered:
-
-**Q: Can I use this with my existing Access database?**
-A: No, but you can export from Access to CSV and import to SQLite.
-
-**Q: How do I change the default zoom level?**
-A: Edit `src/accessibility/scaling.py`, change `DEFAULT_SCALE = 125` to desired value.
-
-**Q: Can I change keyboard shortcuts?**
-A: Yes, edit `src/accessibility/shortcuts.py`.
-
-**Q: How do I add more themes?**
-A: Edit `src/accessibility/theme_manager.py`, add to `THEMES` dictionary.
-
-## Ready to Go!
-
-You now have a working starter application. Try it out:
-
-```bash
-python src/main.py
-```
-
-Enjoy your new accessible, cross-platform audiobook manager! 🎧
+- [README.md](README.md) — features, structure, license
+- [doc/abcs_user_index.md](doc/abcs_user_index.md) — user workflow guides
+- [doc/Import_preferences.md](doc/Import_preferences.md) — import scenarios and validation rules
+- [TESTING.md](TESTING.md) — automated test guide
+- [linux_build.md](linux_build.md) — Linux packaging

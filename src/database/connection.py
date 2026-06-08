@@ -542,7 +542,9 @@ class DatabaseManager:
         schema_name = "abcdDB_def.sql"
 
         module_path = Path(__file__).resolve()
-        candidates.append(module_path.parent.parent.parent / "data" / schema_name)
+        project_root = module_path.parent.parent.parent
+        candidates.append(project_root / "data" / schema_name)
+        candidates.append(project_root / "test" / "fixtures" / schema_name)
 
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
