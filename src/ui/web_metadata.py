@@ -1371,23 +1371,6 @@ class WebMetadataWindow(QDialog):
                         self.book.comments = plot_text_for_db
                         applied_fields.append("Plot")
 
-                # Rating (save to database if available)
-                rating_text = self.rating_edit.text().strip()
-                if rating_text:
-                    # Extract just the rating number (e.g., "4.5" from "4.5 (1,234 ratings)")
-                    import re
-
-                    rating_match = re.match(r"([0-9.]+)", rating_text)
-                    if rating_match:
-                        try:
-                            rating_val = float(rating_match.group(1))
-                            # Note: You'll need to add a rating field to your book database table
-                            # self.book.rating = rating_val
-                            # applied_fields.append('Rating')
-                            pass  # Rating field not yet implemented in database
-                        except ValueError:
-                            pass
-
                 # Publisher field removed - too much inconsistent data from web sources
 
                 # Source is NOT saved to database (display only for legal safety)
@@ -1485,3 +1468,7 @@ def test_web_metadata():
 
 if __name__ == "__main__":
     sys.exit(test_web_metadata())
+
+
+# CLEANUP: _read_user_preferences() duplicates settings_helpers legacy keys with no UI;
+# remove along with flip_author / move_articles usage in web fetch when cleaning up.

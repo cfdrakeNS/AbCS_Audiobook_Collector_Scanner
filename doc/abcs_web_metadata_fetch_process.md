@@ -39,12 +39,7 @@ Fetch Web Info looks up a book online and compares what it finds with what is st
 
 ## Settings that affect this
 
-A few preference options influence how AbCS searches online:
-
-- **Move leading "The" in title** — may adjust the title before searching.
-- **Flip author name** — may swap "Last, First" to "First Last" before searching.
-
-These are in Preferences and affect search matching, not which sources are used.
+None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online.
 
 ## Shortcuts and accessibility
 

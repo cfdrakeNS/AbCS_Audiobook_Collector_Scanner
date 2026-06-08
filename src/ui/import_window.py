@@ -2953,3 +2953,7 @@ class ImportWindow(QDialog):
         self.collection_combo.setEnabled(True)
 
         super().closeEvent(event)
+
+
+# CLEANUP: move_leading_the_title is hardcoded False in configure() above; remove when
+# legacy import/autocorrect/move_leading_the_title preference support is dropped.

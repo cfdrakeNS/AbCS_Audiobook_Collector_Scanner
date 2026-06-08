@@ -40,3 +40,7 @@ def get_import_preferences() -> tuple[bool, bool]:
         )
 
     return move_articles, flip_author
+
+
+# CLEANUP: flip_author_name and move_leading_the_title have no Preferences UI; only
+# web fetch paths still read these QSettings keys. Remove helper and callers when done.

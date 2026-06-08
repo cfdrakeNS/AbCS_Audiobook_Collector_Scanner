@@ -386,3 +386,7 @@ class ImportScanner:
                     break  # Only handle the first matching article
 
         return field_corrections
+
+
+# CLEANUP: move_leading_the_title is always False from import_window; remove field,
+# configure() arg, and article-moving logic here when legacy preference support is dropped.
