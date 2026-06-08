@@ -100,7 +100,7 @@ class PreferencesWindow(QDialog):
             return
         super().keyPressEvent(event)
 
-    ALLOWED_ALT_LETTERS = {"A", "C", "D", "F", "O", "R", "S", "V"}
+    ALLOWED_ALT_LETTERS = {"A", "B", "C", "D", "F", "O", "R", "S", "V"}
 
     IMPORT_SCENARIOS = [
         ("mass_standard", "Mass Standard Import"),
@@ -432,7 +432,7 @@ class PreferencesWindow(QDialog):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a default import directory"
+            "Browse for a default import directory - Alt+B"
         )
         self.browse_button.setDefault(False)
         self.browse_button.setAutoDefault(False)
@@ -1587,7 +1587,7 @@ class PreferencesWindow(QDialog):
         shortcuts = [
             ("Alt+D", "Display Settings tab"),
             ("Alt+P", "Import Settings tab"),
-            ("Alt+W", "Browse for default import directory"),
+            ("Alt+B", "Browse for default import directory"),
             ("Alt+F", "Fallback and Parsing tab"),
             ("Alt+V", "Validation Rules tab"),
             ("Alt+R", "Restore Defaults"),

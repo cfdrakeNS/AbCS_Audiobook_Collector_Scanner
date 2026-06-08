@@ -47,11 +47,11 @@ from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 class BackupRestoreWindow(QDialog):
     """Manage database backups, restore, and full reset."""
 
-    ALLOWED_ALT_LETTERS = {"B", "D", "F", "L", "R", "T", "W"}
+    ALLOWED_ALT_LETTERS = {"B", "D", "F", "K", "L", "R", "T"}
 
     ALT_SHORTCUT_STATUS = {
-        Qt.Key_B: "Alt+B: Create backup",
-        Qt.Key_W: "Alt+W: Browse",
+        Qt.Key_B: "Alt+B: Browse",
+        Qt.Key_K: "Alt+K: Create backup",
         Qt.Key_L: "Alt+L: Backup list",
         Qt.Key_D: "Alt+D: Delete",
         Qt.Key_F: "Alt+F: Full reset",
@@ -122,7 +122,7 @@ class BackupRestoreWindow(QDialog):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a backup file to restore - Alt+W"
+            "Browse for a backup file to restore - Alt+B"
         )
         browse_layout.addWidget(self.browse_button)
         browse_layout.addStretch(1)
@@ -148,7 +148,7 @@ class BackupRestoreWindow(QDialog):
         self.backup_button = QPushButton("Backup")
         self.backup_button.setAccessibleName("Backup")
         self.backup_button.setAccessibleDescription(
-            "Create a backup in the default backup folder - Alt+B"
+            "Create a backup in the default backup folder - Alt+K"
         )
 
         self.restore_button = QPushButton("Restore")
@@ -242,7 +242,7 @@ class BackupRestoreWindow(QDialog):
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
     def keyPressEvent(self, event):
-        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_B:
             self.on_browse()
             event.accept()
             return
@@ -368,9 +368,9 @@ class BackupRestoreWindow(QDialog):
 
         shortcuts = [
             ("Alt+L", "Backup list"),
-            ("Alt+W", "Browse for restore file"),
+            ("Alt+B", "Browse for restore file"),
             ("Alt+T", "Focus restore file"),
-            ("Alt+B", "Create backup"),
+            ("Alt+K", "Create backup"),
             ("Alt+R", "Run restore from selected backup"),
             ("Alt+D", "Delete selected backup"),
             ("Alt+F", "Full reset"),

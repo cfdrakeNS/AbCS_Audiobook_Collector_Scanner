@@ -1068,7 +1068,7 @@ class MainWindow(QMainWindow):
             (getattr(self, "update_action", None), "Update selected books", None),
             (
                 getattr(self, "get_web_info_action", None),
-                "Search web metadata for the focused book",
+                "Search web metadata for the focused book - Alt+W",
                 None,
             ),
             (
@@ -1140,7 +1140,7 @@ class MainWindow(QMainWindow):
                 "Search Web",
                 "search_web",
                 "Search web metadata for the focused book",
-                "Search web metadata for the focused book",
+                "Search web metadata for the focused book - Alt+W",
                 self.on_get_web_info_clicked,
             ),
             (
@@ -1263,7 +1263,6 @@ class MainWindow(QMainWindow):
         self.update_action.setEnabled(False)  # Disabled until item selected
         self.edit_menu.addAction(self.update_action)
 
-        # Fetch Web Info action (for Alt+E then W shortcut)
         self.get_web_info_action = QAction("Fetch &Web Info", self)
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
         self.edit_menu.addAction(self.get_web_info_action)
@@ -1394,6 +1393,7 @@ class MainWindow(QMainWindow):
             "export_button": self.on_export_duplicates,  # Alt+X
             "plot_filter_toggle": lambda: self.plot_filter_action.trigger(),
             "read_filter_toggle": self.on_read_filter_shortcut,
+            "get_web_info": self.on_get_web_info_clicked,
             "cancel_button": self.on_escape_pressed,
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -3469,6 +3469,9 @@ class MainWindow(QMainWindow):
         if from_button:
             return
 
+        if self.duplicate_mode_active:
+            return
+
         # Handle focused book (no selection) first
         row = self.table.currentRow()
         if row >= 0 and row < len(self.books):
@@ -4083,6 +4086,7 @@ class MainWindow(QMainWindow):
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),
             ("Alt+/", "Read status bar"),
+            ("Alt+W", "Fetch web info"),
             ("F1", "Show keyboard shortcuts"),
         ]
         # Centralize Alt+/ visibility and order

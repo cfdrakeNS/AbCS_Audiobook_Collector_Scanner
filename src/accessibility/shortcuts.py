@@ -42,8 +42,8 @@ NAMELIST_WINDOW_SHORTCUTS = {
 
 BACKUP_RESTORE_WINDOW_SHORTCUTS = {
     "L": ("Backup list", "backup_list"),
-    "W": ("Browse", "browse_button"),
-    "B": ("Create backup", "backup_button"),
+    "B": ("Browse", "browse_button"),
+    "K": ("Create backup", "backup_button"),
     "T": ("Focus restore file", "restore_path_edit"),
     "R": ("Restore", "restore_button"),
     "D": ("Delete", "delete_button"),
@@ -71,6 +71,7 @@ MAIN_WINDOW_SHORTCUTS = {
     "P": ("Toggle plot filter", "plot_filter_toggle"),
     "R": ("Toggle read filter", "read_filter_toggle"),
     "A": ("Author filter", "author_filter_combo"),
+    "W": ("Fetch web info", "get_web_info"),
     # Alt+1..7 handled in main_window.py for column jump
 }
 
@@ -131,7 +132,7 @@ WEB_METADATA_SHORTCUTS = {
 IMPORT_WINDOW_SHORTCUTS = {
     "C": ("Collection field", "collection_combo"),
     "F": ("Folder field", "folder_field"),
-    "W": ("Browse", "browse_button"),
+    "B": ("Browse", "browse_button"),
     "E": ("Error filter", "error_filter"),
     "I": ("Import", "scan_button"),
     "S": ("Import Selected", "import_selected_button"),
@@ -142,7 +143,7 @@ IMPORT_WINDOW_SHORTCUTS = {
 # Book List Import Window
 BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
     "C": ("Collection", "collection_combo"),
-    "W": ("Browse for file", "browse_button"),
+    "B": ("Browse for file", "browse_button"),
     "O": ("Options group", "options_group"),
     "T": ("Title field mapping", "title_mapping"),
     "A": ("Author field mapping", "author_mapping"),
@@ -170,7 +171,7 @@ UPDATE_WINDOW_SHORTCUTS = {
 PREFERENCES_WINDOW_SHORTCUTS = {
     "D": ("Display Settings tab", "theme_picker"),
     "P": ("Import Settings tab", "import_dir_edit"),
-    "W": ("Browse", "browse_button"),
+    "B": ("Browse", "browse_button"),
     "F": ("Fallback and Parsing tab", "author_fallback_checkbox"),
     "V": ("Validation Rules tab", "rules_section_text"),
     "R": ("Restore Defaults", "restore_defaults_button"),

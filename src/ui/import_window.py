@@ -87,8 +87,8 @@ _DETAIL_BOOK_FIELD_KEYS = (
 class ImportWindow(QDialog):
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts and Enter key properly for buttons."""
-        # Accessibility: Alt+W always triggers file dialog
-        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+        # Accessibility: Alt+B always triggers file dialog
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_B:
             self.on_browse()
             event.accept()
             return
@@ -118,7 +118,7 @@ class ImportWindow(QDialog):
         return True
 
     def setup_shortcuts(self):
-        """Setup keyboard shortcuts using ShortcutManager (except F1, Escape, Alt+/, Alt+W)."""
+        """Setup keyboard shortcuts using ShortcutManager (except F1, Escape, Alt+/, Alt+B)."""
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 
         mgr = get_shortcut_manager()
@@ -177,10 +177,10 @@ class ImportWindow(QDialog):
             event.modifiers() & Qt.AltModifier
         ):
             key = event.key()
-            # Alt+W: let keyPressEvent handle it for accessibility
-            if key == Qt.Key_W:
-                return False  # Do not block Alt+W
-            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {"W"}):
+            # Alt+B: let keyPressEvent handle it for accessibility
+            if key == Qt.Key_B:
+                return False  # Do not block Alt+B
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {"B"}):
                 return True
         return super().eventFilter(source, event)
 
@@ -193,7 +193,7 @@ class ImportWindow(QDialog):
         "L",
         "S",
         "X",
-        "W",
+        "B",
     }
 
     COL_AUTHOR = 0
@@ -410,7 +410,7 @@ class ImportWindow(QDialog):
         self.browse_button = QPushButton("Browse")
         self.browse_button.setAccessibleName("Browse")
         self.browse_button.setAccessibleDescription(
-            "Browse for a folder to scan - Alt+W"
+            "Browse for a folder to scan - Alt+B"
         )
         self.browse_button.setDefault(False)
         self.browse_button.setAutoDefault(False)
@@ -810,7 +810,7 @@ class ImportWindow(QDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Folder"),
-            ("Alt+W", "Browse"),
+            ("Alt+B", "Browse"),
             ("Alt+I", "Import"),
             ("Alt+E", "Error filter"),
             ("Alt+L", "Jump to table"),

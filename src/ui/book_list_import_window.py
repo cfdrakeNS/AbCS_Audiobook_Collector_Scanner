@@ -100,7 +100,7 @@ class BookListImportWindow(QDialog):
     """Book List Import window with full accessibility support."""
 
     # Alt+Key filtering for accessibility
-    ALLOWED_ALT_LETTERS = "W M T A Y P S G R I H F C V O E /"
+    ALLOWED_ALT_LETTERS = "B M T A Y P S G R I H F C V O E /"
 
     def _check_duplicate(
         self,
@@ -426,9 +426,9 @@ class BookListImportWindow(QDialog):
 
             # Handle Alt+letter filtering
             if modifiers & Qt.AltModifier and event.text().upper():
-                # Alt+W: let keyPressEvent handle it for accessibility
-                if key == Qt.Key_W:
-                    return False  # Do not block Alt+W
+                # Alt+B: let keyPressEvent handle it for accessibility
+                if key == Qt.Key_B:
+                    return False  # Do not block Alt+B
                 if event.text().upper() in self.ALLOWED_ALT_LETTERS:
                     # Let the event through for allowed Alt+letters
                     return super().eventFilter(source, event)
@@ -441,8 +441,8 @@ class BookListImportWindow(QDialog):
 
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts and Enter key properly for buttons."""
-        # Accessibility: Alt+W always triggers file dialog
-        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_W:
+        # Accessibility: Alt+B always triggers file dialog
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_B:
             self.browse_file()
             event.accept()
             return
@@ -509,7 +509,7 @@ class BookListImportWindow(QDialog):
         self.browse_button = QPushButton("Browse...")
         self.browse_button.setAccessibleName("Browse for file")
         self.browse_button.setAccessibleDescription(
-            "Browse for spreadsheet file - Alt+W"
+            "Browse for spreadsheet file - Alt+B"
         )
         self.browse_button.clicked.connect(self.browse_file)
         header_layout.addWidget(self.browse_button)
@@ -1014,7 +1014,7 @@ class BookListImportWindow(QDialog):
 
         shortcuts = [
             ("Alt+C", "Collection"),
-            ("Alt+W", "Browse for file"),
+            ("Alt+B", "Browse for file"),
             ("Alt+H", "Instructions"),
             ("Alt+O", "Options section"),
             ("Alt+T", "Title"),

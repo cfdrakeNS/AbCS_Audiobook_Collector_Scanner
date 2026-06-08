@@ -67,8 +67,22 @@ def test_main_window_shortcut_registry_includes_filter_toggles():
     )
     assert "O" not in keys
     assert "B" not in keys
+    assert "W" in keys
+    assert ShortcutManager.MAIN_WINDOW_SHORTCUTS["W"] == (
+        "Fetch web info",
+        "get_web_info",
+    )
     assert "L" in keys
     assert "U" in keys
+
+
+def test_backup_restore_shortcut_registry_browse_and_backup_keys():
+    """Backup/restore shortcuts should use Alt+B for browse and Alt+K for backup."""
+    shortcuts = ShortcutManager.BACKUP_RESTORE_WINDOW_SHORTCUTS
+
+    assert "W" not in shortcuts
+    assert shortcuts["B"] == ("Browse", "browse_button")
+    assert shortcuts["K"] == ("Create backup", "backup_button")
 
 
 def test_view_find_action_uses_ctrl_f(qapp, qtbot, temp_db):
