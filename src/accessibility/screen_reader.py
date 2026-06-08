@@ -14,6 +14,7 @@ _SCREEN_READER_PROCESSES = {
     "jaws.exe": "jaws",
     "jfw.exe": "jaws",
     "nvda.exe": "nvda",
+    "narrator.exe": "narrator",
     "orca": "orca",
     "orca-daemon": "orca",
 }
@@ -22,7 +23,7 @@ _SCREEN_READER_PROCESSES = {
 def get_active_screen_reader():
     """
     Returns the detected screen reader name, otherwise an empty string.
-    Detects Windows screen readers (JAWS/NVDA) and Linux Orca.
+    Detects Windows screen readers (JAWS/NVDA/Narrator) and Linux Orca.
     """
     if psutil is None:
         return ""
@@ -45,6 +46,7 @@ def get_screen_reader_focus_delay_ms():
     return {
         "jaws": 300,
         "nvda": 1500,
+        "narrator": 3500,
         "orca": 800,
     }.get(reader_name, 0)
 
@@ -52,6 +54,6 @@ def get_screen_reader_focus_delay_ms():
 def is_screen_reader_active():
     """
     Returns True if a screen reader is running, otherwise False.
-    Detects Windows screen readers (JAWS/NVDA) and Linux Orca.
+    Detects Windows screen readers (JAWS/NVDA/Narrator) and Linux Orca.
     """
     return bool(get_active_screen_reader())
