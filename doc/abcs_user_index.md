@@ -22,6 +22,9 @@ Trial builds may expire after 30 days. If the app will not start, download a new
 | [Web Metadata Fetch](abcs_web_metadata_fetch_process.md) | Look up plot, series, and other details online |
 | [Duplicate Mode](abcs_duplicate_mode_process.md) | Find and clean up duplicate books already in your library |
 | [Backup and Restore](abcs_backup_restore_process.md) | Save or restore your database |
+| [Preferences](abcs_preferences_process.md) | Theme, zoom, import scenarios, and validation rules |
+| [Reading History](abcs_reading_history_process.md) | Books finished and listening totals by period |
+| [Statistics](abcs_statistics_process.md) | Library-wide counts and collection breakdown |
 
 ## Suggested order for new users
 
@@ -43,7 +46,9 @@ If you are new to AbCS, this order builds on each step:
 |----------|----------------|
 | [Keyboard shortcuts by window](abcs_shortcuts_list.md) | Alt+key and other shortcuts for every AbCS window |
 | [Default preferences](abCS_default_preference.md) | Factory defaults for display, import, fallback, and validation rules |
+| [Import preferences (scenarios)](Import_preferences.md) | How each import scenario and validation rule behaves |
+| [QA verification](qa_verification.md) | Manual testing complete; link to verification log |
 
 ## Related documentation
 
-Import scenario behavior is described in [Import_preferences.md](Import_preferences.md).
+Import scenario behavior is also summarized in [Import preferences](Import_preferences.md).

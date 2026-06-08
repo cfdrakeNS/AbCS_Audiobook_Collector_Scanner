@@ -25,9 +25,10 @@ Fetch Web Info looks up a book online and compares what it finds with what is st
    - **Differences found** — a review window opens showing your current values side by side with web values.
    - **Nothing useful found** — a "No Web Data Found" message appears. This can mean no match was found, the book is already up to date, or there was a network problem.
 5. In the review window, fields that differ have **checkboxes**. Check the fields you want to apply.
+   - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+I** Series, **Alt+G** Genre, or **Alt+R** Rating.
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
 6. To search again using alternate sources, press **Re-fetch** (Alt+F).
-7. Click **Save** (Alt+S) to apply checked fields, or **Cancel** to close without saving.
+7. Click **Save** (Alt+S) to apply checked fields, or **Cancel** (**Alt+C**) to close without saving.
 8. Plot text is saved to the book's comments field.
 
 ## What happens next
@@ -49,7 +50,14 @@ These are in Preferences and affect search matching, not which sources are used.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+W | Fetch Web Info |
+| Alt+W | Fetch Web Info (main window or Book Details) |
+| Alt+T | Title (review window) |
+| Alt+A | Author (review window) |
+| Alt+P | Plot (review window) |
+| Alt+Y | Year (review window) |
+| Alt+I | Series (review window) |
+| Alt+G | Genre (review window) |
+| Alt+R | Rating (review window) |
 | Alt+F | Re-fetch (in review window) |
 | Alt+S | Save selected fields |
 | Alt+C | Cancel |
@@ -57,16 +65,9 @@ These are in Preferences and affect search matching, not which sources are used.
 | Alt+/ | Re-read status |
 | Escape | Close window |
 
-## Things to test
+## Verification
 
-- [ ] Fetch for a well-known book — confirm progress announcements and a review window with differences.
-- [ ] Fetch for a book that is already complete — confirm "No Web Data Found" or minimal changes.
-- [ ] Check only some fields and save — confirm unchecked fields stay unchanged.
-- [ ] Use Re-fetch and confirm alternate results may appear.
-- [ ] Try with no internet — confirm a clear error or no-data message.
-- [ ] Try while duplicate mode is active — confirm Fetch Web Info is blocked.
-- [ ] Fetch from Book Details window — confirm same behavior as main window.
-- [ ] Press Alt+/ during progress and in review window.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

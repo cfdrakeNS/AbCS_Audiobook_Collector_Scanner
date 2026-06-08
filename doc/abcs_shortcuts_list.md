@@ -205,6 +205,14 @@ Last updated: June 2026.
 | Alt+/ | Read status bar |
 | F1 | Show this help |
 
+## Statistics dialog
+
+| Shortcut | Action |
+|----------|--------|
+| Tab | Navigate table cells |
+| F1 | Show this help |
+| Escape | Close dialog |
+
 ## Reading History window
 
 | Shortcut | Action |

@@ -18,7 +18,7 @@ Import scans a folder of audiobook files, reads information from the audio file 
 ## Steps
 
 1. Open **File → Import**, or press **Ctrl+I**.
-2. Choose a **Collection**. If the main window already shows a specific collection, it may be pre-selected.
+2. Choose a **Collection** (**Alt+C**). If the main window already shows a specific collection, it may be pre-selected.
 3. Choose a **Folder** (Alt+F, then **Browse** with Alt+B). This is the top-level folder to scan. Subfolders are included.
 4. Click **Import** (Alt+I) to start the scan.
 5. A **progress window** appears while files are read. You can cancel if needed.
@@ -94,18 +94,9 @@ Changing preferences while the Import window is open may not apply until you clo
 | Alt+/ | Re-read status |
 | Escape | Close (may confirm if review items remain) |
 
-## Things to test
+## Verification
 
-- [ ] Import with each scenario type (if you have sample folder layouts).
-- [ ] Turn author/title fallback on and off; confirm missing tags are filled or flagged.
-- [ ] Import a book that already exists — confirm it stays in review as a duplicate and is not auto-added.
-- [ ] Change fuzzy duplicate percent and confirm stricter or looser matching.
-- [ ] Open detail window, edit a field, save, and add the book.
-- [ ] Use error filter for each issue type.
-- [ ] Export review list and confirm the CSV contents.
-- [ ] Press Alt+/ after major steps and confirm status is announced clearly.
-- [ ] Close with review items remaining — confirm the warning dialog.
-- [ ] Start Import while duplicate mode is active — confirm duplicate mode exits.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

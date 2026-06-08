@@ -18,8 +18,8 @@ Backup and Restore lets you save a copy of your entire AbCS database and restore
 
 ## Steps
 
-1. Open **Manage → Backup & Restore**.
-2. The window opens with focus on the **backup list**, which shows backup files already saved.
+1. Open **Manage → Backup & Restore** (**Alt+M**, then **B**).
+2. The window opens with focus on the **backup list** (**Alt+L**), which shows backup files already saved.
 
 ### Create a backup
 
@@ -63,6 +63,7 @@ None. Backup and Restore does not use import or display preferences.
 
 | Shortcut | Action |
 |----------|--------|
+| Alt+M, B | Open Backup and Restore (Manage menu) |
 | Alt+K | Create backup |
 | Alt+L | Focus backup list |
 | Alt+B | Browse for restore file |
@@ -75,15 +76,9 @@ None. Backup and Restore does not use import or display preferences.
 | Alt+/ | Re-read status |
 | Escape | Close window |
 
-## Things to test
+## Verification
 
-- [ ] Create a backup — confirm it appears in the list and status announces success.
-- [ ] Restore a backup — confirm books and collections match the backup date.
-- [ ] Browse for a backup file outside the default list — confirm restore works.
-- [ ] Delete a backup file — confirm it is removed from the list only.
-- [ ] After restore, confirm main window shows All Collections and correct book count.
-- [ ] Full reset — confirm empty database (test only if safe to do so).
-- [ ] Press Alt+/ after backup and restore operations.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

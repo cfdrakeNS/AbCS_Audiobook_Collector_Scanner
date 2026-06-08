@@ -19,36 +19,36 @@ These tools help you narrow and organize the main book list without changing you
 ## Steps — Find (search)
 
 1. Open **View → Find**, or press **Ctrl+F**.
-2. Choose a **field** to search: Author, Title, Series, or Genre.
+2. Choose a **field** to search (**Alt+I**): Author, Title, Series, or Genre.
 3. Type your search text.
-4. Optionally check **Exact match** for a strict comparison. When unchecked, keyword search is used (more flexible).
+4. Optionally check **Exact match** (**Alt+X**) for a strict comparison. When unchecked, keyword search is used (more flexible).
 5. Press **Enter** to run the search. The Find dialog closes and the main list updates.
 6. The filter summary shows your search (for example, "Find: Christie").
 7. If nothing matches, a message reports no results.
 
 ## Steps — Collection filter
 
-1. Open **View → Collections**.
+1. Open **View → Collections** (**Alt+V**, then **C**).
 2. Choose a collection name or **All Collections**.
 3. Only books in that collection appear in the list.
 
 ## Steps — Plot filter
 
-1. Open **View → Plot**.
+1. Open **View → Plot** (**Alt+V**, then **P**), or press **Alt+P** to toggle the plot filter.
 2. Choose **All**, **With Plot**, or **Without Plot**.
 3. Books are filtered by whether they have plot text in comments.
 
 ## Steps — Read filter
 
-1. Open **View → Read**.
+1. Open **View → Read** (**Alt+V**, then **R**), or press **Alt+R** to toggle the read filter.
 2. Choose **All**, **Read**, or **Unread**.
 3. The list shows only books matching that read status.
 
 ## Steps — Sort
 
-1. Open the **Sort** menu on the menu bar.
-2. Choose a sort field: Author, Title, Year, Series, Genre, Time, or Read Date.
-3. Click the same column header in the book table to reverse ascending/descending order.
+1. Open the **Sort** menu on the menu bar (**Alt+S**).
+2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date.
+3. Use **Alt+1** through **Alt+7** to jump to a column, then click the same column header in the book table to reverse ascending/descending order.
 4. The filter summary shows the current sort (for example, "Sort: Title (ascending)").
 
 ## Clearing filters
@@ -74,6 +74,13 @@ These tools help you narrow and organize the main book list without changing you
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+F | Open Find dialog |
+| Alt+V, C | View → Collections filter |
+| Alt+V, P | View → Plot filter |
+| Alt+P | Toggle plot filter |
+| Alt+V, R | View → Read filter |
+| Alt+R | Toggle read filter |
+| Alt+S | Sort menu |
+| Alt+1–Alt+7 | Jump to table columns |
 | Alt+/ | Re-read filter summary and status |
 | Escape | Clear selection, then search, then other filters (step by step) |
 | F1 | Help for main window |
@@ -88,20 +95,9 @@ Find dialog shortcuts (while open):
 | Alt+/ | Re-read Find dialog status |
 | Enter | Run search |
 
-Collection, Plot, Read, and Sort are accessed from the **View** and **Sort** menus.
+## Verification
 
-## Things to test
-
-- [ ] Find by author — confirm matching books appear.
-- [ ] Find with exact match on and off — confirm different result counts.
-- [ ] Find with no matches — confirm clear message.
-- [ ] Combine collection filter + read filter — confirm only matching books show.
-- [ ] Plot filter With Plot / Without Plot — confirm correct books.
-- [ ] Sort by each field — confirm order changes; click column header to reverse.
-- [ ] Confirm filter summary lists all active filters (Alt+/).
-- [ ] Press Escape after Find — confirm search clears and focus returns to prior book.
-- [ ] Press Escape with books selected — confirm selection clears first.
-- [ ] Enter duplicate mode — confirm filters clear; exit — confirm filters restore.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

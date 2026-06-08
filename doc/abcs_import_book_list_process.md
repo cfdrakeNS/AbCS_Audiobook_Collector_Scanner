@@ -29,7 +29,7 @@ This is separate from folder Import (Ctrl+I). See [Import](abcs_import_process.m
 6. Choose an import mode under **Options** (Alt+O):
    - **Add Book From List** (default) — insert new book records.
    - **Add Read Date from List** — update read dates on existing books only.
-7. In the **Field Mapping** table, assign each book field to a spreadsheet column (A, B, C, and so on).
+7. In the **Field Mapping** table, assign each book field to a spreadsheet column (A, B, C, and so on). Use **Alt+T** Title, **Alt+A** Author, **Alt+E** Read Date, and other **Alt+** keys for each mapping row (press **Alt+H** for the full mapping list).
    - New books: Title and Author are required.
    - Read-date mode: Title, Author, and Read Date are required. Other mapping fields are disabled.
 8. Click **Import** (Alt+I).
@@ -69,19 +69,9 @@ Other import preferences (scenarios, fallbacks, validation rules) do **not** app
 | Alt+/ | Re-read status |
 | Escape | Close window |
 
-## Things to test
+## Verification
 
-- [ ] Import a CSV and an Excel file.
-- [ ] Toggle **My file Has Header** and confirm columns reload correctly.
-- [ ] Map only Title and Author — confirm import succeeds.
-- [ ] Leave Title unmapped — confirm import is blocked with a clear message.
-- [ ] Import a duplicate title/author — confirm it is skipped and appears in error export.
-- [ ] Switch to **Add Read Date from List** — confirm only relevant mapping fields stay enabled.
-- [ ] Update read dates on existing books and confirm the Read column changes.
-- [ ] Try a read-date row with no matching book — confirm it appears in errors.
-- [ ] Confirm collection is pre-filled when main window shows a specific collection.
-- [ ] Start Import Book List while duplicate mode is active — confirm duplicate mode exits.
-- [ ] Press Alt+/ after load and after import; confirm counts are announced.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

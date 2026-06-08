@@ -18,13 +18,13 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
 
 ## Steps
 
-1. Open **Manage → Duplicate Check**.
-2. A dialog asks which **match type** to use:
+1. Open **Manage → Duplicate Check** (**Alt+M**, then **D**).
+2. A dialog asks which **match type** to use (**Alt+M** to focus the match type combo):
    - Title + Author + Year + Collection
    - Title + Author + Year
    - Title + Author + Collection
    - Title + Author only
-3. Click **Start** to run the scan, or **Cancel** to close without changes.
+3. Click **Start** (**Alt+R**) to run the scan, or **Cancel** (**Alt+L**) to close without changes.
 4. **If no duplicates are found:** an information message appears and you stay in the normal book list.
 5. **If duplicates are found:**
    - Duplicate mode activates.
@@ -52,25 +52,29 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
 
 ## Shortcuts and accessibility
 
+| Alt+M, D | Open Duplicate Check (Manage menu) |
+
+Duplicate Check dialog (steps 1–3):
+
 | Shortcut | Action |
 |----------|--------|
-| Alt+D | Delete selected (visible in duplicate mode) |
+| Alt+M | Focus match type combo |
+| Alt+R | Start duplicate check |
+| Alt+L | Cancel duplicate check |
+
+Main window (while duplicate mode is active):
+
+| Shortcut | Action |
+|----------|--------|
+| Alt+D | Delete selected |
 | Alt+X | Export duplicates to CSV |
 | Escape | Clear selection, then confirm exit from duplicate mode |
 | F1 | Help for main window |
 | Alt+/ | Re-read status |
 
-## Things to test
+## Verification
 
-- [ ] Run duplicate check with each match type.
-- [ ] Confirm no-duplicates message when library is clean.
-- [ ] Confirm filters are cleared during duplicate mode and restored on exit.
-- [ ] Delete one duplicate — confirm list refreshes and count updates.
-- [ ] Delete until none remain — confirm auto-exit with completion message.
-- [ ] Export duplicates CSV and verify columns.
-- [ ] Press Escape with selection — confirm selection clears before exit prompt.
-- [ ] Start Import while in duplicate mode — confirm mode exits first.
-- [ ] Confirm Update and Fetch Web Info are disabled during duplicate mode.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

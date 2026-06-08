@@ -22,7 +22,7 @@ You need at least one active collection before you can import books.
 
 ## Steps — Manage collections
 
-1. Open **Manage → Collections**.
+1. Open **Manage → Collections** (**Alt+M**, then **C**).
 2. The **collection list** shows all collections and whether each is active (Yes or No).
 3. To **add** a collection:
    - Click **New** (Alt+N).
@@ -42,7 +42,7 @@ You need at least one active collection before you can import books.
 
 ## Steps — Filter by collection (main window)
 
-1. Open **View → Collections** on the main window menu.
+1. Open **View → Collections** (**Alt+V**, then **C**) on the main window menu.
 2. Choose a collection name, or **All Collections** to show everything.
 3. The book list updates to show only books in that collection.
 4. The filter summary in the status area shows which collection is active (for example, "Collection: Audible").
@@ -65,6 +65,7 @@ None specific to collections beyond having at least one active collection at all
 
 | Shortcut | Action |
 |----------|--------|
+| Alt+M, C | Open Collection Manager (Manage menu) |
 | Alt+L | Focus collection list |
 | Alt+N | New collection |
 | Alt+E | Edit / name field |
@@ -76,19 +77,13 @@ None specific to collections beyond having at least one active collection at all
 
 ### Main window filter
 
-Use **View → Collections** from the menu. The collection filter is also available via the View menu structure.
+| Shortcut | Action |
+|----------|--------|
+| Alt+V, C | View → Collections filter |
 
-## Things to test
+## Verification
 
-- [ ] Create a new collection and confirm it appears in Import's collection dropdown.
-- [ ] Deactivate a collection — confirm it is hidden from import but still in Manage list.
-- [ ] Try to deactivate the last active collection — confirm it is blocked.
-- [ ] Try to delete a collection that has books — confirm it is blocked.
-- [ ] Delete an empty unused collection — confirm success.
-- [ ] Filter main list by collection — confirm only that collection's books show.
-- [ ] Switch to All Collections — confirm full list returns.
-- [ ] With a collection filtered, open Import — confirm that collection is pre-selected.
-- [ ] Press Alt+/ in Collection Manager after save and delete.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 

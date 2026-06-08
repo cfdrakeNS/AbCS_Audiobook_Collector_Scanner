@@ -28,7 +28,7 @@ Import (folder scan or spreadsheet) fills in books automatically. Use these proc
 1. Open **File → New Book**, or press **Ctrl+N**.
 2. The **Book Details** window opens with empty fields.
 3. Fill in Title, Author, Collection, and any other fields.
-4. Click **Save** (Alt+V) or use the save action for this window.
+4. Click **Save** (**Alt+S**).
 5. Close Book Details with **Escape** or the close action.
 6. The main list refreshes and focus moves to the new book if it was saved.
 
@@ -38,7 +38,7 @@ Import (folder scan or spreadsheet) fills in books automatically. Use these proc
 2. Click **Update** (Alt+U) or open **Edit → Update**.
 3. The **Update** window opens showing fields you can change.
 4. Enter new values only in the fields you want to change. Leave fields blank to keep existing values.
-5. Save your changes.
+5. Click **Save** to apply your changes (no dedicated Alt shortcut in the Update window).
 6. Selection clears and the main list refreshes. Focus returns to the first updated row.
 
 ## Steps — Book Details (view or edit one book)
@@ -46,7 +46,7 @@ Import (folder scan or spreadsheet) fills in books automatically. Use these proc
 1. In the main window, move to the book you want.
 2. Open **View → Open Focused Item**, or press **Enter** when the title column is focused.
 3. The **Book Details** window shows all fields for that book.
-4. Edit any field and **Save** (Alt+V).
+4. Edit any field and **Save** (**Alt+S**).
 5. Use **Next** (Alt+N or Page Down) and **Previous** (Alt+P or Page Up) to move between books in the current list order.
 6. Press **Escape** to close. The main list refreshes.
 
@@ -80,7 +80,7 @@ None directly. Sort order on the main window affects the order of Next/Previous 
 | Shortcut | Action |
 |----------|--------|
 | Alt+T, Alt+A, Alt+Y, etc. | Jump to field |
-| Alt+V | Save |
+| Alt+S | Save |
 | Alt+N | Next book |
 | Alt+P | Previous book |
 | Alt+W | Fetch Web Info |
@@ -90,17 +90,9 @@ None directly. Sort order on the main window affects the order of Next/Previous 
 | Alt+/ | Re-read status |
 | Escape | Close |
 
-## Things to test
+## Verification
 
-- [ ] Create a new book with title and author only — confirm it appears in the list.
-- [ ] Update a single field on one book — confirm only that field changes.
-- [ ] Select multiple books and update one shared field (for example, genre).
-- [ ] Open Book Details, edit, save, and confirm main list updates.
-- [ ] Navigate Next/Previous in Book Details — confirm order matches main list sort.
-- [ ] Cancel Book Details without saving — confirm no changes.
-- [ ] Try Update during duplicate mode — confirm it is blocked.
-- [ ] After update, confirm focus returns to a sensible row.
-- [ ] Press Alt+/ after save operations.
+Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
 
 ## Common confusion
 
