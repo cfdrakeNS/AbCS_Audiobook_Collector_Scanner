@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
+from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -44,7 +45,7 @@ from src.database import DatabaseManager
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
 
-class BackupRestoreWindow(QDialog):
+class BackupRestoreWindow(AccessibleDialog):
     """Manage database backups, restore, and full reset."""
 
     ALLOWED_ALT_LETTERS = {"B", "D", "F", "K", "L", "R", "T"}
@@ -351,7 +352,7 @@ class BackupRestoreWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Backup / Restore")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(460, 440)

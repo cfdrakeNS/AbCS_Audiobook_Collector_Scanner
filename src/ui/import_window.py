@@ -26,6 +26,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
+from src.ui.accessible_dialog import AccessibleDialog
 from pathlib import Path
 import os
 import time
@@ -84,7 +85,7 @@ _DETAIL_BOOK_FIELD_KEYS = (
 )
 
 
-class ImportWindow(QDialog):
+class ImportWindow(AccessibleDialog):
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts and Enter key properly for buttons."""
         # Accessibility: Alt+B always triggers file dialog
@@ -793,7 +794,7 @@ class ImportWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Import Window")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(560, 420)

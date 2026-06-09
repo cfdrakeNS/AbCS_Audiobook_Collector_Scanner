@@ -57,6 +57,7 @@ from PySide6.QtGui import (
     QIcon,
 )
 from PySide6.QtWidgets import QApplication
+from src.ui.accessible_dialog import AccessibleDialog
 
 from src.database import (
     DatabaseManager,
@@ -291,11 +292,11 @@ class MainWindow(QMainWindow):
 
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDateEdit
+        from PySide6.QtWidgets import QVBoxLayout, QDateEdit
         from PySide6.QtCore import QDate
         from src.accessibility.icon_helper import get_app_icon
 
-        class ReadDateDialog(QDialog):
+        class ReadDateDialog(AccessibleDialog):
             """Scoped Enter handling for the read-date dialog without global shortcuts."""
 
             def __init__(self, parent=None):
@@ -1670,7 +1671,7 @@ class MainWindow(QMainWindow):
             )
         )
 
-        dialog = QDialog(self)
+        dialog = AccessibleDialog(self)
         dialog.setWindowTitle("Duplicate Check")
         """Start duplicate mode by prompting for duplicate match type."""
         dialog.setAccessibleDescription(
@@ -2458,7 +2459,7 @@ class MainWindow(QMainWindow):
 
     def on_find(self):
         """Open popup Find dialog (Ctrl+F)."""
-        dialog = QDialog(self)
+        dialog = AccessibleDialog(self)
         dialog.setWindowTitle("Find")
         dialog.setAccessibleName("Find")
         dialog.setAccessibleDescription(
@@ -4053,7 +4054,7 @@ class MainWindow(QMainWindow):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for screen reader accessibility."""
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Main Window")
         dlg.setAccessibleName("")
         dlg.setAccessibleDescription("")

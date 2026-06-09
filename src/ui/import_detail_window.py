@@ -56,14 +56,14 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
-    announce_dialog_opened,
     announce_dialog_closed,
     configure_status_bar_accessibility,
     read_status_bar_message,
 )
+from src.ui.accessible_dialog import AccessibleDialog
 
 
-class ImportDetailWindow(QDialog):
+class ImportDetailWindow(AccessibleDialog):
     def _focus_first_dirty_field(self):
         """Focus the first field that was changed (for accessibility)."""
         if self._first_dirty_widget:
@@ -249,7 +249,6 @@ class ImportDetailWindow(QDialog):
         )
         self.resize(880, 500)
 
-        announce_dialog_opened(self, title)
         self.set_status("Ready")
 
     def showEvent(self, event):
@@ -1368,7 +1367,7 @@ class ImportDetailWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Import Detail")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(580, 440)

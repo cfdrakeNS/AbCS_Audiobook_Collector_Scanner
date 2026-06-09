@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
 from src.accessibility.icon_helper import get_app_icon
+from src.ui.accessible_dialog import AccessibleDialog
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
@@ -20,7 +21,7 @@ from src.accessibility.style_helpers import (
 )
 
 
-class StatisticsDialog(QDialog):
+class StatisticsDialog(AccessibleDialog):
     def __init__(self, stats, scaler, parent=None):
         super().__init__(parent)
         self.setWindowIcon(get_app_icon())
@@ -168,7 +169,7 @@ class StatisticsDialog(QDialog):
             ("Escape", "Close window"),
         ]
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Statistics")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(400, 300)

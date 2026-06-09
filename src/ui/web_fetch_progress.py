@@ -10,6 +10,7 @@ from src.accessibility.accessible_events import (
     announce_dialog_opened,
     configure_status_bar_accessibility,
 )
+from src.ui.accessible_dialog import AccessibleDialog
 from src.accessibility.screen_reader import (
     get_screen_reader_focus_delay_ms,
     is_screen_reader_active,
@@ -35,7 +36,7 @@ class FetchStatusLabel(QLabel):
             )
 
 
-class WebFetchProgressDialog(QDialog):
+class WebFetchProgressDialog(AccessibleDialog):
     """Modal wait dialog with live status text for web metadata fetch."""
 
     def __init__(self, parent=None):

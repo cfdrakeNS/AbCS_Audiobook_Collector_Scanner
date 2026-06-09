@@ -62,8 +62,9 @@ from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject
 from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
 from datetime import datetime
 from typing import List, Dict, Any
+from src.ui.accessible_dialog import AccessibleDialog
 
-class BookDetailsWindow(QDialog):
+class BookDetailsWindow(AccessibleDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from src.accessibility.icon_helper import get_app_icon
@@ -1458,7 +1459,7 @@ class BookDetailsWindow(QDialog):
             build_accessible_f1_popup_style,
         )
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(580, 440)

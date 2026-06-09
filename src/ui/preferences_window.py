@@ -51,14 +51,14 @@ from src.accessibility.theme_picker import ThemePreviewPicker
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
     announce_status_message,
-    announce_dialog_opened,
     announce_dialog_closed,
     configure_status_bar_accessibility,
     read_status_bar_message,
 )
+from src.ui.accessible_dialog import AccessibleDialog
 
 
-class PreferencesWindow(QDialog):
+class PreferencesWindow(AccessibleDialog):
     """
     Preferences dialog for display and import settings.
     """
@@ -168,7 +168,6 @@ class PreferencesWindow(QDialog):
         self.resize(994, 680)
         QTimer.singleShot(0, self.update_scenario_description_height)
 
-        announce_dialog_opened(self, title)
         self.set_status("Ready")
 
     def setup_ui(self):
@@ -1575,7 +1574,7 @@ class PreferencesWindow(QDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Preferences")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(520, 480)

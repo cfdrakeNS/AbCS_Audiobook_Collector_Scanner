@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QEvent, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from src.ui.accessible_dialog import AccessibleDialog
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
@@ -56,7 +57,7 @@ from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, Genr
 from src.web.web_book_api import WebBookAPI
 
 
-class WebMetadataWindow(QDialog):
+class WebMetadataWindow(AccessibleDialog):
 
     @staticmethod
     def normalize_db_title(title: str) -> str:
@@ -1116,7 +1117,7 @@ class WebMetadataWindow(QDialog):
 
     def on_show_shortcuts(self):
         """F1 shortcut - show help with standard table format."""
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Web Details")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(580, 440)

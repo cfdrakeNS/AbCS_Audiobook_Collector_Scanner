@@ -12,6 +12,7 @@ from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
+from src.ui.accessible_dialog import AccessibleDialog
 
 
 class FocusAnnouncingLabel(QLabel):
@@ -21,7 +22,7 @@ class FocusAnnouncingLabel(QLabel):
         QAccessible.updateAccessibility(acc_event)
 
 
-class SetupDialog(QDialog):
+class SetupDialog(AccessibleDialog):
 
     def __init__(self, scaler, parent=None):
         from src.accessibility.icon_helper import get_app_icon

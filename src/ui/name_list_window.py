@@ -8,6 +8,7 @@ from typing import Literal
 
 from PySide6.QtCore import Qt, QEvent, QSignalBlocker, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
+from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -52,7 +53,7 @@ from src.database import (
 NameListType = Literal["author", "genre", "series", "collection"]
 
 
-class NameListWindow(QDialog):
+class NameListWindow(AccessibleDialog):
     """Window for adding and editing names in reference tables."""
 
     def __init__(self, *args, **kwargs):
@@ -1032,7 +1033,7 @@ class NameListWindow(QDialog):
 
         shortcuts = get_accessible_shortcuts_list(shortcuts)
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle(f"Keyboard Shortcuts - {self.entity_plural}")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(460, 500)

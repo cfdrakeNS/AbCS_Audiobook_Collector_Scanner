@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QEvent
 from PySide6.QtCore import Qt, QDate, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from src.ui.accessible_dialog import AccessibleDialog
 
 from src.database import BookQueries, ReadingQueries
 from src.accessibility.scaling import UIScaler
@@ -45,7 +46,7 @@ from src.accessibility.style_helpers import (
 )
 
 
-class ReadingHistoryWindow(QDialog):
+class ReadingHistoryWindow(AccessibleDialog):
     """Reading History window with statistics and history table."""
 
     # Alt+Key filtering for accessibility
@@ -875,7 +876,7 @@ class ReadingHistoryWindow(QDialog):
             ("Escape", "Close window"),
         ]
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Reading History")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(560, 420)

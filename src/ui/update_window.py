@@ -23,6 +23,7 @@ import time
 from typing import Set, List
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
+from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -51,7 +52,7 @@ Updates occur immediately when a selection is made.
 NONE_MARKER = "__NONE__"
 
 
-class UpdateWindow(QDialog):
+class UpdateWindow(AccessibleDialog):
     """
     Update dialog for bulk updating Series, Genre, and Collection.
     Updates occur immediately when a combo selection is made.
@@ -957,7 +958,7 @@ class UpdateWindow(QDialog):
         ]
         filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Update Window")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(450, 400)

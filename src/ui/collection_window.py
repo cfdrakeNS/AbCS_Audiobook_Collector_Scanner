@@ -7,6 +7,7 @@ import sqlite3
 
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
+from src.ui.accessible_dialog import AccessibleDialog
 import sys
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -48,7 +49,7 @@ from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.database import Collection, CollectionQueries, DatabaseManager
 
 
-class CollectionWindow(QDialog):
+class CollectionWindow(AccessibleDialog):
     """
     Collection management window with PROVEN accessibility foundation.
 
@@ -763,7 +764,7 @@ class CollectionWindow(QDialog):
         ]
         filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Collection")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.resize(460, 500)

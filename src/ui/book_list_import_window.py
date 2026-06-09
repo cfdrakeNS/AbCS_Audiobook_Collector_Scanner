@@ -42,6 +42,7 @@ except ImportError:
     pd = DummyPandas()
 
 from PySide6.QtCore import Qt, QDate, QTimer, QSettings
+from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -96,7 +97,7 @@ from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.utils.text_utils import normalize_title, normalize_author, similarity_percentage
 
 
-class BookListImportWindow(QDialog):
+class BookListImportWindow(AccessibleDialog):
     """Book List Import window with full accessibility support."""
 
     # Alt+Key filtering for accessibility
@@ -1035,7 +1036,7 @@ class BookListImportWindow(QDialog):
             ("Escape", "Close window"),
         ]
 
-        dlg = QDialog(self)
+        dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Book List Import")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.setAccessibleDescription(
