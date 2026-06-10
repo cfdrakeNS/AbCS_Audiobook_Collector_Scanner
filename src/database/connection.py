@@ -16,6 +16,7 @@ Instead, you keep one connection open and reuse it, which is faster.
 import sqlite3
 import os
 import sys
+import time
 from datetime import datetime
 import shutil
 from pathlib import Path
@@ -423,6 +424,7 @@ class DatabaseManager:
         backup_name = f"{db_file.stem}.backup_{reason}_{timestamp}{db_file.suffix}"
         backup_path = db_file.parent / backup_name
         shutil.copy2(db_file, backup_path)
+        self._stamp_backup_creation_time(backup_path)
         return backup_path
 
     def _rebuild_database_from_schema(self, reason: str):
@@ -572,6 +574,12 @@ class DatabaseManager:
         backup_dir.mkdir(parents=True, exist_ok=True)
         return backup_dir
 
+    @staticmethod
+    def _stamp_backup_creation_time(backup_path: Path) -> None:
+        """Set backup file times to now so list_backups orders by creation, not DB mtime."""
+        now = time.time()
+        os.utime(backup_path, (now, now))
+
     def list_backups(self) -> list[Path]:
         """Return known backup files ordered newest-first."""
         db_file = Path(self.db_path).resolve()
@@ -613,6 +621,7 @@ class DatabaseManager:
         backup_name = f"abcs_backup_{timestamp}{extension}"
         backup_path = self.get_backup_directory() / backup_name
         shutil.copy2(db_file, backup_path)
+        self._stamp_backup_creation_time(backup_path)
         return backup_path
 
     def restore_from_backup(self, backup_file: str | Path):

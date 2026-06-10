@@ -66,6 +66,37 @@ def test_list_backups_orders_newest_first(tmp_path: Path):
     assert backups == [newer.resolve(), older.resolve()]
 
 
+def test_create_manual_backup_orders_by_creation_time(tmp_path: Path):
+    """Backups taken without DB changes should still sort newest-first."""
+    import sqlite3
+    from datetime import datetime
+    from unittest.mock import patch
+
+    db_path = tmp_path / "abcs.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY)")
+    conn.commit()
+    conn.close()
+    old_mtime = time.time() - 86400
+    os.utime(db_path, (old_mtime, old_mtime))
+
+    manager = DatabaseManager(str(db_path))
+    stamp_times = [
+        datetime(2026, 6, 1, 10, 0, 0),
+        datetime(2026, 6, 2, 10, 0, 0),
+    ]
+    with patch("src.database.connection.datetime") as mock_datetime:
+        mock_datetime.now.side_effect = stamp_times
+        mock_datetime.strftime = datetime.strftime
+        first = manager.create_manual_backup()
+        second = manager.create_manual_backup()
+
+    backups = manager.list_backups()
+    assert backups[0] == second.resolve()
+    assert backups[1] == first.resolve()
+    assert second.stat().st_mtime > first.stat().st_mtime
+
+
 def test_restore_from_backup_removes_wal_sidecars(tmp_path: Path):
     import sqlite3
 

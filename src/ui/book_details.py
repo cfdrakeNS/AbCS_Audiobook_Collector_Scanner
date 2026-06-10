@@ -645,8 +645,6 @@ class BookDetailsWindow(AccessibleDialog):
 
         # Title
         title_label = QLabel("Title:")
-        title_label.setAccessibleName("")
-        title_label.setAccessibleDescription("")
         self.title_edit = QLineEdit()
         self.title_edit.setAccessibleName("")
         self.title_edit.setAccessibleDescription("")

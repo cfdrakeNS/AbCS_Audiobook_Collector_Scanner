@@ -64,13 +64,22 @@ After save/delete/import/cancel operations:
 - Restore focus intentionally.
 - Keep users in a predictable workflow position.
 
-## 11. Test with more than one screen reader
+## 11. Dialog windows must be accessibility roots (Insert+T)
+
+When a dialog opens, screen readers must identify **that dialog** as the current window, not the window behind it.
+
+- Do not use `QDialog(parent=mainWindow)` for feature dialogs — Qt exposes that as an accessibility child of the parent, so JAWS Insert+T reads the parent's title.
+- Use `AccessibleDialog` (`src/ui/accessible_dialog.py`): logical `parent` is passed for Win32 ownership/z-order, but the Qt parent is `None` so the dialog is a root in the MSAA/UIA tree.
+- Verify with JAWS Insert+T after opening each major window and after F1 help popups.
+- Exception: modeless utility windows with special z-order needs (for example `ImportProgressWindow`) may remain standard `QDialog` with a Qt parent when `AccessibleDialog` would break scan/cancel behavior.
+
+## 12. Test with more than one screen reader
 
 Use at least two screen readers in validation when possible.
 - Different engines expose different accessibility gaps.
 - Cross-checking catches regressions earlier.
 
-## 12. Keep implementation and principles separate
+## 13. Keep implementation and principles separate
 
 Documentation model:
 - Principles live in this best-practices document.

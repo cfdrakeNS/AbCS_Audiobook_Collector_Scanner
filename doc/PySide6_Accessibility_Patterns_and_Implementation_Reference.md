@@ -52,7 +52,59 @@ Reference files:
 - `src/ui/main_window.py`
 - `src/ui/import_progress_window.py`
 
-## 4. Modal dialog accessibility pattern
+## 4. AccessibleDialog window title pattern (JAWS Insert+T)
+
+Goal: ensure screen readers read the **active dialog title**, not the window behind it.
+
+### Problem
+
+Qt's MSAA/UIA bridge exposes `QDialog(parent=X)` as an accessibility **child** of `X`. JAWS Insert+T walks up the tree from the focused control:
+
+`focused_control → … → DialogWindow → MainWindow`
+
+and reads `MainWindow`'s title instead of the dialog's (for example "Book Details").
+
+### Solution: `AccessibleDialog`
+
+All feature dialogs and inline help/popup dialogs inherit from `AccessibleDialog` (`src/ui/accessible_dialog.py`) instead of `QDialog` directly.
+
+Pattern:
+- Pass the logical owner as `parent` to `AccessibleDialog.__init__(parent)` — the base class stores it but calls `QDialog.__init__(None)` so the dialog is a **root** in the accessibility tree.
+- On Windows, set the Win32 **owner** via `SetWindowLongPtrW(GWL_HWNDPARENT)` so taskbar grouping and z-order still follow the calling window, without creating an accessibility parent chain.
+- On `showEvent`, re-fire focus after 300 ms so JAWS registers the new window before Insert+T is used (subclasses that override `showEvent` must call `super().showEvent(event)`).
+- Subclasses that override `done()` must call `super().done(r)`.
+
+**Feature window example:**
+```python
+from src.ui.accessible_dialog import AccessibleDialog
+
+class BookDetailsWindow(AccessibleDialog):
+    def __init__(self, db, scaler, ..., parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Book Details")
+        # ...
+```
+
+**Inline F1 / popup example:**
+```python
+dlg = AccessibleDialog(self)
+dlg.setWindowTitle("Keyboard Shortcuts - Book Details")
+dlg.exec()
+```
+
+### Exception: `ImportProgressWindow`
+
+`ImportProgressWindow` remains a standard `QDialog` with a normal Qt parent (`parent=self` on `ImportWindow`). It is a modeless scan utility that must stay above its owner via Qt z-order and handle Escape/cancel during an active scan. Do **not** migrate it to `AccessibleDialog`.
+
+Modeless utility windows that do use `AccessibleDialog` may set `self._announce_focus_on_show = False` in `__init__` to skip the 300 ms focus refire when repeated `show()` calls would steal focus.
+
+Reference files:
+- `src/ui/accessible_dialog.py`
+- `src/ui/book_details.py`
+- `src/ui/main_window.py` (Find, Duplicate Check, ReadDateDialog, F1 help)
+- `src/ui/import_progress_window.py` (intentional `QDialog` exception)
+
+## 5. Modal dialog accessibility pattern
 
 Goal: make warnings/confirmations readable and actionable.
 
@@ -61,13 +113,15 @@ Pattern:
 - Set clear dialog title/text and explicit button labels.
 - Set accessible name and description for custom dialogs.
 - Return focus to the most relevant control after dialog close.
+- Use `AccessibleDialog` for custom modal dialogs (see section 4), not raw `QDialog(parent)`.
 
 Reference files:
 - `src/accessibility/style_helpers.py`
 - `src/main.py`
 - `src/ui/book_list_import_window.py`
+- `src/ui/accessible_dialog.py`
 
-## 5. Keyboard shortcut implementation pattern
+## 6. Keyboard shortcut implementation pattern
 
 Goal: prevent conflicts and keep shortcut behavior predictable.
 
@@ -81,7 +135,7 @@ Reference files:
 - `src/ui/import_window.py`
 - `src/ui/backup_restore_window.py`
 
-## 6. Accessible help dialog pattern (F1)
+## 7. Accessible help dialog pattern (F1)
 
 Goal: provide a stable and readable shortcut list.
 
@@ -89,13 +143,14 @@ Pattern:
 - Use a simple one-column read-only table or list.
 - Provide per-row accessible text with explicit key + action wording.
 - Include `Alt+/` in each window help list.
+- Instantiate help with `AccessibleDialog(self)`, not `QDialog(self)` (see section 4).
 
 Reference files:
 - `src/ui/import_detail_window.py`
 - `src/ui/main_window.py`
 - `src/ui/name_list_window.py`
 
-## 7. Focus safety pattern for editable fields
+## 8. Focus safety pattern for editable fields
 
 Goal: reduce accidental full-value overwrite.
 
@@ -108,7 +163,7 @@ Reference files:
 - `src/ui/import_detail_window.py`
 - `src/ui/preferences_window.py`
 
-## 8. Table accessibility pattern
+## 9. Table accessibility pattern
 
 Goal: improve data comprehension in row-based widgets.
 
@@ -121,18 +176,19 @@ Reference files:
 - `src/ui/main_window.py`
 - `src/ui/backup_restore_window.py`
 
-## 9. About/Info Dialog Pattern (NEW)
+## 10. About/Info Dialog Pattern
 
 Goal: Provide a consistent, accessible, and themed approach for About, License, and other informational dialogs.
 
 Pattern:
 - Use external dialog classes (e.g., `AboutDialog`, `LicenseDialog`) instead of inline popups in main windows.
+- Inherit from `AccessibleDialog`, not `QDialog` (see section 4).
 - Structure dialog with header/content/footer using `QVBoxLayout`.
 - Footer: right-aligned, styled OK/Close button using `build_accessible_button_style()`.
 - Apply font scaling with `scaler.get_scaled_size()` for all text and controls.
 - Set accessible names and descriptions for all widgets.
 - Ensure dialog is modal and returns focus to main window after closing.
-- Test with JAWS/NVDA for screen reader feedback.
+- Test with JAWS/NVDA for screen reader feedback (verify Insert+T reads the dialog title).
 
 Example usage in main window:
 ```python
@@ -146,12 +202,13 @@ def on_about(self):
 ```
 
 Reference files:
+- `src/ui/accessible_dialog.py`
 - `src/ui/about_dialogue.py`
 - `src/ui/license_dialogue.py`
 - `src/accessibility/style_helpers.py`
 - `.github/copilot-instructions.md` (for project-wide accessibility/theming)
 
-## 10. Decision policy: defect vs intentional noise reduction
+## 11. Decision policy: defect vs intentional noise reduction
 
 Use this policy in reviews:
 - Confirmed defect: required information or action is not reliably accessible.

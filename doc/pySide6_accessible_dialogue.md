@@ -7,6 +7,7 @@ This document describes the recommended pattern for creating accessible, themed 
 
 ## Key Principles
 - **Use external dialog classes** (e.g., `AboutDialog`, `LicenseDialog`) instead of building dialogs inline in the main window.
+- **Inherit from `AccessibleDialog`** (`src/ui/accessible_dialog.py`), not `QDialog`, so JAWS Insert+T reads the correct window title (see `PySide6_Accessibility_Patterns_and_Implementation_Reference.md` section 4).
 - **Accessibility first:**
   - Font scaling via `self.scaler.get_scaled_size()`
   - High-contrast theming using `build_accessible_button_style()`
@@ -21,7 +22,7 @@ This document describes the recommended pattern for creating accessible, themed 
 ## Implementation Steps
 
 ### 1. Create a Dialog Class
-- Inherit from `QDialog`
+- Inherit from `AccessibleDialog` (pass `parent` for Win32 ownership; the base class uses `parent=None` internally for the accessibility tree)
 - Accept `scaler` and `parent` in `__init__`
 - Set window title, accessible name, and modal state
 - Use `QVBoxLayout` for main layout
@@ -31,10 +32,11 @@ This document describes the recommended pattern for creating accessible, themed 
 
 **Example:**
 ```python
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QLabel, QPushButton, QHBoxLayout
 from src.accessibility.style_helpers import build_accessible_button_style
+from src.ui.accessible_dialog import AccessibleDialog
 
-class AboutDialog(QDialog):
+class AboutDialog(AccessibleDialog):
     def __init__(self, scaler, parent=None):
         super().__init__(parent)
         self.setWindowTitle("About AbCS")
@@ -81,11 +83,13 @@ def on_about(self):
 - Use `build_accessible_button_style()` for all dialog buttons
 - Set accessible names/descriptions for all widgets
 - Ensure dialog is modal and focus returns to main window after closing
-- Test with JAWS/NVDA for screen reader feedback
+- Test with JAWS/NVDA: Insert+T should read this dialog's title, not the main window behind it
+- Inline popups (F1 help, Find, etc.) also use `AccessibleDialog(self)`, not `QDialog(self)`
 
 ---
 
 ## See Also
+- `src/ui/accessible_dialog.py` (base class for all feature dialogs)
 - `src/ui/about_dialogue.py` (reference implementation)
 - `src/ui/license_dialogue.py`
 - `src/accessibility/style_helpers.py`
