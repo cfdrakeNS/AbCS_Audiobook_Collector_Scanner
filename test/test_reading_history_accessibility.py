@@ -112,13 +112,12 @@ def test_reading_history_table_accessibility(reading_history_window):
         # Tables should have proper accessibility setup
         assert table.accessibleName() != ""
         
-        # Should have proper selection behavior (tables use SelectItems by default)
+        # Should select whole rows for screen reader line reading (like name_list_window)
         from PySide6.QtWidgets import QAbstractItemView
-        assert table.selectionBehavior() == QAbstractItemView.SelectionBehavior.SelectItems
+        assert table.selectionBehavior() == QAbstractItemView.SelectionBehavior.SelectRows
         
-        # Should not announce row changes (like name_list_window)
-        # This prevents excessive screen reader announcements
-        assert table.verticalHeader().accessibleName() == ""
+        # Vertical header is hidden but labeled for assistive tech
+        assert table.verticalHeader().accessibleName() == "Table Row Headers"
 
 
 def test_reading_history_layout_compactness(reading_history_window):

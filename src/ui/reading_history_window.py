@@ -135,6 +135,23 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
         self.on_theme_changed()
 
+    @staticmethod
+    def _configure_table_row_reading(table: QTableWidget) -> None:
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setFocusPolicy(Qt.StrongFocus)
+        vh = table.verticalHeader()
+        vh.setVisible(False)
+        vh.setAccessibleDescription("Table row headers are hidden.")
+        vh.setAccessibleName("Table Row Headers")
+        vh.setHighlightSections(False)
+        vh.setSectionsClickable(False)
+        vh.setSectionsMovable(False)
+        vh.setFocusPolicy(Qt.NoFocus)
+        vh.setEnabled(False)
+        table.setVerticalHeaderLabels([])
+
     def create_general_tab(self):
         """Create General tab with overall statistics."""
         general_widget = QWidget()
@@ -147,24 +164,21 @@ class ReadingHistoryWindow(AccessibleDialog):
 
         # Create a table for screen reader accessibility
         self.general_table = QTableWidget()
-        self.general_table.setTabKeyNavigation(False)
         self.general_table.installEventFilter(self)
         self.general_table.setAccessibleName("General reading statistics table")
         self.general_table.setAccessibleDescription(
-            "Table showing total reading statistics"
+            "Table showing total reading statistics. "
+            "Use Up and Down arrows to move between entries."
         )
         self.general_table.setColumnCount(2)
         self.general_table.setHorizontalHeaderLabels(["Statistic", "Value"])
         self.general_table.setRowCount(3)
 
         # Table configuration for accessibility
-        self.general_table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.general_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._configure_table_row_reading(self.general_table)
         self.general_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.general_table.setAlternatingRowColors(False)
         self.general_table.setStyleSheet(build_accessible_f1_popup_style())
-        self.general_table.verticalHeader().setVisible(False)
-        self.general_table.setVerticalHeaderLabels([])
 
         # Configure header
         header = self.general_table.horizontalHeader()
@@ -180,36 +194,45 @@ class ReadingHistoryWindow(AccessibleDialog):
         # Add statistics items to table
         self.total_books_item = QTableWidgetItem("Total Books Read")
         self.total_books_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.total_books_item.setData(Qt.AccessibleTextRole, "Total Books Read")
+        self.total_books_item.setData(
+            Qt.AccessibleTextRole, "Total Books Read: 0 books"
+        )
         self.general_table.setItem(0, 0, self.total_books_item)
 
         self.total_books_value = QTableWidgetItem("0")
         self.total_books_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.total_books_value.setData(Qt.AccessibleTextRole, "0 books")
+        self.total_books_value.setData(
+            Qt.AccessibleTextRole, "Total Books Read: 0 books"
+        )
         self.general_table.setItem(0, 1, self.total_books_value)
 
         self.total_hours_item = QTableWidgetItem("Total Hours Read")
         self.total_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.total_hours_item.setData(Qt.AccessibleTextRole, "Total Hours Read")
+        self.total_hours_item.setData(
+            Qt.AccessibleTextRole, "Total Hours Read: 0.0 hours"
+        )
         self.general_table.setItem(1, 0, self.total_hours_item)
 
         self.total_hours_value = QTableWidgetItem("0.0")
         self.total_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.total_hours_value.setData(Qt.AccessibleTextRole, "0.0 hours")
+        self.total_hours_value.setData(
+            Qt.AccessibleTextRole, "Total Hours Read: 0.0 hours"
+        )
         self.general_table.setItem(1, 1, self.total_hours_value)
 
         self.avg_hours_item = QTableWidgetItem("Average Hours per Book")
         self.avg_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.avg_hours_item.setData(Qt.AccessibleTextRole, "Average Hours per Book")
+        self.avg_hours_item.setData(
+            Qt.AccessibleTextRole, "Average Hours per Book: 0.0 hours per book"
+        )
         self.general_table.setItem(2, 0, self.avg_hours_item)
 
         self.avg_hours_value = QTableWidgetItem("0.0")
         self.avg_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.avg_hours_value.setData(Qt.AccessibleTextRole, "0.0 hours per book")
+        self.avg_hours_value.setData(
+            Qt.AccessibleTextRole, "Average Hours per Book: 0.0 hours per book"
+        )
         self.general_table.setItem(2, 1, self.avg_hours_value)
-
-        # Set vertical header labels after adding items (like other windows)
-        self.general_table.setVerticalHeaderLabels(["", "", ""])
 
         stats_layout.addWidget(self.general_table)
 
@@ -240,7 +263,10 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.year_table = QTableWidget()
         self.year_table.setAccessibleName("Yearly reading statistics table")
         self.year_table.installEventFilter(self)
-        self.year_table.setAccessibleDescription("Table showing books read per year")
+        self.year_table.setAccessibleDescription(
+            "Table showing books read per year. "
+            "Use Up and Down arrows to move between entries."
+        )
 
         # Setup table columns
         year_headers = ["Year", "Books Read", "Total Hours"]
@@ -248,13 +274,10 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.year_table.setHorizontalHeaderLabels(year_headers)
 
         # Table configuration
-        self.year_table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.year_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._configure_table_row_reading(self.year_table)
         self.year_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.year_table.setAlternatingRowColors(False)
         self.year_table.setStyleSheet(build_accessible_f1_popup_style())
-        self.year_table.verticalHeader().setVisible(False)
-        self.year_table.setVerticalHeaderLabels([])
 
         # Configure header
         header = self.year_table.horizontalHeader()
@@ -283,7 +306,10 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.month_table = QTableWidget()
         self.month_table.setAccessibleName("Monthly reading statistics table")
         self.month_table.installEventFilter(self)
-        self.month_table.setAccessibleDescription("Table showing books read per month")
+        self.month_table.setAccessibleDescription(
+            "Table showing books read per month. "
+            "Use Up and Down arrows to move between entries."
+        )
 
         # Swap month and year columns: Year, Month, Books Read, Total Hours
         month_headers = ["Year", "Month", "Books Read", "Total Hours"]
@@ -291,13 +317,10 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.month_table.setHorizontalHeaderLabels(month_headers)
 
         # Table configuration
-        self.month_table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.month_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._configure_table_row_reading(self.month_table)
         self.month_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.month_table.setAlternatingRowColors(False)
         self.month_table.setStyleSheet(build_accessible_f1_popup_style())
-        self.month_table.verticalHeader().setVisible(False)
-        self.month_table.setVerticalHeaderLabels([])
 
         # Configure header
         header = self.month_table.horizontalHeader()
@@ -394,7 +417,8 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.range_table.installEventFilter(self)
 
         self.range_table.setAccessibleDescription(
-            "Table showing reading history with date, title, author, and hours"
+            "Table showing reading history with date, title, author, and hours. "
+            "Use Up and Down arrows to move between entries."
         )
 
         # Setup table columns
@@ -403,13 +427,10 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.range_table.setHorizontalHeaderLabels(range_headers)
 
         # Table configuration
-        self.range_table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.range_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._configure_table_row_reading(self.range_table)
         self.range_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.range_table.setAlternatingRowColors(False)
         self.range_table.setStyleSheet(build_accessible_f1_popup_style())
-        self.range_table.verticalHeader().setVisible(False)
-        self.range_table.setVerticalHeaderLabels([])
 
         # Configure header
         header = self.range_table.horizontalHeader()
@@ -668,23 +689,27 @@ class ReadingHistoryWindow(AccessibleDialog):
         """Update general statistics table."""
         # Total books with thousand separator and right alignment
         books_text = f"{stats['total_books']:,}"
+        books_accessible = f"Total Books Read: {books_text} books"
         self.total_books_value.setText(books_text)
         self.total_books_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.total_books_value.setData(Qt.AccessibleTextRole, f"{books_text} books")
+        self.total_books_item.setData(Qt.AccessibleTextRole, books_accessible)
+        self.total_books_value.setData(Qt.AccessibleTextRole, books_accessible)
 
         # Total hours with thousand separator and right alignment
         hours_text = f"{stats['total_hours']:,.0f}"
+        hours_accessible = f"Total Hours Read: {hours_text} hours"
         self.total_hours_value.setText(hours_text)
         self.total_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.total_hours_value.setData(Qt.AccessibleTextRole, f"{hours_text} hours")
+        self.total_hours_item.setData(Qt.AccessibleTextRole, hours_accessible)
+        self.total_hours_value.setData(Qt.AccessibleTextRole, hours_accessible)
 
         # Average hours with thousand separator and right alignment
         avg_text = f"{stats['avg_hours_per_book']:,.0f}"
+        avg_accessible = f"Average Hours per Book: {avg_text} hours per book"
         self.avg_hours_value.setText(avg_text)
         self.avg_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.avg_hours_value.setData(
-            Qt.AccessibleTextRole, f"{avg_text} hours per book"
-        )
+        self.avg_hours_item.setData(Qt.AccessibleTextRole, avg_accessible)
+        self.avg_hours_value.setData(Qt.AccessibleTextRole, avg_accessible)
 
         # Also update hidden labels for backward compatibility
         self.total_books_label.setText(f"Total Books Read: {stats['total_books']:,}")
@@ -700,18 +725,28 @@ class ReadingHistoryWindow(AccessibleDialog):
         for row, year_data in enumerate(yearly_data):
             self.year_table.insertRow(row)
 
+            year_text = str(year_data["year"])
+            books_text = f"{year_data['book_count']:,}"
+            hours_text = f"{year_data['total_hours']:,.0f}"
+            accessible_text = (
+                f"{year_text}, Books read: {books_text}, Total hours: {hours_text}"
+            )
+
             # Year
-            year_item = QTableWidgetItem(str(year_data["year"]))
+            year_item = QTableWidgetItem(year_text)
+            year_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.year_table.setItem(row, 0, year_item)
 
             # Books read (right-aligned with thousand separator)
-            books_item = QTableWidgetItem(f"{year_data['book_count']:,}")
+            books_item = QTableWidgetItem(books_text)
             books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            books_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.year_table.setItem(row, 1, books_item)
 
             # Total hours (right-aligned with thousand separator)
-            hours_item = QTableWidgetItem(f"{year_data['total_hours']:,.0f}")
+            hours_item = QTableWidgetItem(hours_text)
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            hours_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.year_table.setItem(row, 2, hours_item)
 
         # Set vertical header labels to prevent row announcements (like name_list_window)
@@ -724,22 +759,35 @@ class ReadingHistoryWindow(AccessibleDialog):
         for row, month_data in enumerate(monthly_data):
             self.month_table.insertRow(row)
 
+            year_text = str(month_data["year"])
+            month_text = month_data["month_name"]
+            books_text = f"{month_data['book_count']:,}"
+            hours_text = f"{month_data['total_hours']:,.0f}"
+            accessible_text = (
+                f"{year_text}, {month_text}, Books read: {books_text}, "
+                f"Total hours: {hours_text}"
+            )
+
             # Year
-            year_item = QTableWidgetItem(str(month_data["year"]))
+            year_item = QTableWidgetItem(year_text)
+            year_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.month_table.setItem(row, 0, year_item)
 
             # Month name
-            month_item = QTableWidgetItem(month_data["month_name"])
+            month_item = QTableWidgetItem(month_text)
+            month_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.month_table.setItem(row, 1, month_item)
 
             # Books read (right-aligned with thousand separator)
-            books_item = QTableWidgetItem(f"{month_data['book_count']:,}")
+            books_item = QTableWidgetItem(books_text)
             books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            books_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.month_table.setItem(row, 2, books_item)
 
             # Total hours (right-aligned with thousand separator)
-            hours_item = QTableWidgetItem(f"{month_data['total_hours']:,.0f}")
+            hours_item = QTableWidgetItem(hours_text)
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            hours_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.month_table.setItem(row, 3, hours_item)
 
         # Set vertical header labels to prevent row announcements (like name_list_window)
@@ -793,23 +841,35 @@ class ReadingHistoryWindow(AccessibleDialog):
         for row, book in enumerate(books):
             self.range_table.insertRow(row)
 
-            # Date - book.read_date is now a proper date object
-            date_item = QTableWidgetItem(
+            date_text = (
                 book.read_date.strftime("%Y-%m-%d") if book.read_date else ""
             )
+            title_text = book.title or ""
+            author_text = book.author_name or ""
+            hours_text = f"{book.time_hours or 0:,.0f}"
+            accessible_text = (
+                f"{date_text}, {title_text}, {author_text}, {hours_text} hours"
+            )
+
+            # Date - book.read_date is now a proper date object
+            date_item = QTableWidgetItem(date_text)
+            date_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.range_table.setItem(row, 0, date_item)
 
             # Title
-            title_item = QTableWidgetItem(book.title or "")
+            title_item = QTableWidgetItem(title_text)
+            title_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.range_table.setItem(row, 1, title_item)
 
             # Author
-            author_item = QTableWidgetItem(book.author_name or "")
+            author_item = QTableWidgetItem(author_text)
+            author_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.range_table.setItem(row, 2, author_item)
 
             # Hours (right-aligned with thousand separator)
-            hours_item = QTableWidgetItem(f"{book.time_hours or 0:,.0f}")
+            hours_item = QTableWidgetItem(hours_text)
             hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            hours_item.setData(Qt.AccessibleTextRole, accessible_text)
             self.range_table.setItem(row, 3, hours_item)
 
         # Set vertical header labels to prevent row announcements (like name_list_window)

@@ -178,14 +178,28 @@ class CollectionWindow(AccessibleDialog):
 
         self.table = QTableWidget()
         self.table.setAccessibleName("Collections list")
-        self.table.setAccessibleDescription("List of collections with active status")
+        self.table.setAccessibleDescription(
+            "List of collections with active status. "
+            "Use Up and Down arrows to move between entries."
+        )
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["Collection", "Active"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setTabKeyNavigation(False)
+        self.table.setFocusPolicy(Qt.StrongFocus)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
-        self.table.verticalHeader().setVisible(False)
+        vh = self.table.verticalHeader()
+        vh.setVisible(False)
+        vh.setAccessibleDescription("Table row headers are hidden.")
+        vh.setAccessibleName("Table Row Headers")
+        vh.setHighlightSections(False)
+        vh.setSectionsClickable(False)
+        vh.setSectionsMovable(False)
+        vh.setFocusPolicy(Qt.NoFocus)
+        vh.setEnabled(False)
+        self.table.setVerticalHeaderLabels([])
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setMinimumSectionSize(60)
         self.table.setColumnWidth(self.COL_NAME, 520)
@@ -351,9 +365,15 @@ class CollectionWindow(AccessibleDialog):
         selected_row = -1
 
         for row, collection in enumerate(collections):
+            active_label = "Yes" if collection.active else "No"
+            accessible_text = f"{collection.name}, Active: {active_label}"
+
             name_item = QTableWidgetItem(collection.name)
             name_item.setData(Qt.UserRole, collection.collection_id)
-            active_item = QTableWidgetItem("Yes" if collection.active else "No")
+            name_item.setData(Qt.AccessibleTextRole, accessible_text)
+
+            active_item = QTableWidgetItem(active_label)
+            active_item.setData(Qt.AccessibleTextRole, accessible_text)
 
             self.table.setItem(row, self.COL_NAME, name_item)
             self.table.setItem(row, self.COL_ACTIVE, active_item)

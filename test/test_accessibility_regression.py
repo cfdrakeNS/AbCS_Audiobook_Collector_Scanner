@@ -116,13 +116,13 @@ def test_table_accessibility_regression(reading_history_window):
         assert table is not None, f"{table_name} table missing"
         assert table.accessibleName() != "", f"{table_name} table missing accessible name"
         
-        # Should have proper selection behavior (tables use SelectItems by default)
+        # Should select whole rows for screen reader line reading (like name_list_window)
         from PySide6.QtWidgets import QAbstractItemView
-        assert table.selectionBehavior() == QAbstractItemView.SelectionBehavior.SelectItems, f"{table_name} table should select items"
+        assert table.selectionBehavior() == QAbstractItemView.SelectionBehavior.SelectRows, f"{table_name} table should select rows"
         
-        # Check vertical header is accessible (should not announce rows)
+        # Vertical header is hidden but labeled for assistive tech
         vheader = table.verticalHeader()
-        assert vheader.accessibleName() == "", f"{table_name} table vertical header should not announce"
+        assert vheader.accessibleName() == "Table Row Headers", f"{table_name} table vertical header should be labeled"
 
 
 def test_focus_management_regression(main_window, reading_history_window):
