@@ -290,6 +290,19 @@ class MainWindow(QMainWindow):
         # Only show Escape to cancel selection for accessibility
         return "Escape to cancel selection"
 
+    def _position_read_date_dialog(self, dlg: QDialog) -> None:
+        """Place read-date dialog in the center of the screen."""
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            dlg_geom = dlg.frameGeometry()
+            dlg_geom.moveCenter(self.frameGeometry().center())
+            dlg.move(dlg_geom.topLeft())
+            return
+
+        dlg_geom = dlg.frameGeometry()
+        dlg_geom.moveCenter(screen.availableGeometry().center())
+        dlg.move(dlg_geom.topLeft())
+
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
         from PySide6.QtWidgets import QVBoxLayout, QDateEdit
@@ -369,11 +382,7 @@ class MainWindow(QMainWindow):
         content_width = dlg.sizeHint().width() + 120
         final_width = max(title_width, content_width, min_width)
         dlg.resize(final_width, dlg.sizeHint().height())
-        # Center the dialog in the main window
-        parent_geom = self.geometry()
-        dlg_geom = dlg.frameGeometry()
-        center_point = parent_geom.center() - dlg_geom.center()
-        dlg.move(center_point)
+        self._position_read_date_dialog(dlg)
 
         if dlg.exec() == QDialog.Accepted:
             # Check if date is being changed (not just cleared)
@@ -1864,7 +1873,7 @@ class MainWindow(QMainWindow):
             if column in (0, 3, 4):
                 self._handle_book_table_double_click(row, column)
             # Read column opens date picker
-            elif column == 7:
+            elif column == 6:
                 self.show_read_date_dialog(row)
             # Title column opens Book Details
             elif column == 1:
