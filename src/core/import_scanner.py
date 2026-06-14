@@ -90,7 +90,15 @@ class ImportScanner:
                 book["narrator"] = narrator
 
         title = (book.get("title") or "").strip()
-        if self._is_placeholder_title(title) and self.title_fallback_mode == "file":
+        defer_file_title_fallback = (
+            self.scenario_mode == "series_from_directory_nested"
+            and self.title_fallback_mode == "file"
+        )
+        if (
+            self._is_placeholder_title(title)
+            and self.title_fallback_mode == "file"
+            and not defer_file_title_fallback
+        ):
             # Fallback for all scenarios: use file stem only
             if files:
                 fallback_title = os.path.splitext(os.path.basename(files[0]))[0]
@@ -149,6 +157,52 @@ class ImportScanner:
                     book,
                     f"W: Series from directory skipped ({ambiguous_reason})",
                 )
+        elif self.scenario_mode == "series_from_directory_nested" and files:
+            series_name, title_hint, ambiguous_reason = (
+                self._derive_series_from_directory_nested(
+                    book=book,
+                    folder=folder,
+                    files=files,
+                )
+            )
+            if series_name:
+                book["series"] = series_name
+            elif ambiguous_reason:
+                from src.core.validator import ImportValidator
+
+                ImportValidator.append_flag_once(
+                    book,
+                    f"W: Series from directory skipped ({ambiguous_reason})",
+                )
+
+            if title_hint and self._is_placeholder_title(
+                (book.get("title") or "").strip()
+            ):
+                fallback_title = self._strip_leading_folder_prefix(title_hint)
+                if fallback_title:
+                    book["title"] = fallback_title
+                    fallback_applied.add("Title")
+                    from src.core.validator import ImportValidator
+
+                    ImportValidator.append_flag_once(
+                        book,
+                        "F: Title fallback from folder used",
+                    )
+
+            if defer_file_title_fallback and self._is_placeholder_title(
+                (book.get("title") or "").strip()
+            ):
+                fallback_title = os.path.splitext(os.path.basename(files[0]))[0]
+                fallback_title = re.sub(r"^\d+\s*", "", fallback_title).strip()
+                if fallback_title:
+                    book["title"] = fallback_title
+                    fallback_applied.add("Title")
+                    from src.core.validator import ImportValidator
+
+                    ImportValidator.append_flag_once(
+                        book,
+                        "F: Title fallback from file used",
+                    )
         elif self.scenario_mode == "series_from_filename" and files:
             source_text = os.path.splitext(os.path.basename(files[0]))[0]
 
@@ -248,6 +302,86 @@ class ImportScanner:
 
         return (series_candidate, None)
 
+    @staticmethod
+    def _folder_path_parts(folder: str) -> List[str]:
+        normalized = os.path.normpath((folder or "").strip())
+        if not normalized:
+            return []
+        return [part for part in normalized.split(os.sep) if part]
+
+    @staticmethod
+    def _relative_path_parts(parts: List[str]) -> List[str]:
+        if parts and re.match(r"^[A-Za-z]:$", parts[0]):
+            return parts[1:]
+        return parts
+
+    @staticmethod
+    def _strip_leading_folder_prefix(folder_name: str) -> str:
+        return re.sub(r"^\d+\s*[-.]?\s*", "", (folder_name or "").strip()).strip()
+
+    def _infer_author_index(self, parts: List[str], leaf_name: str = "") -> int:
+        if len(parts) < 2:
+            return -1
+
+        offset = 1 if parts and re.match(r"^[A-Za-z]:$", parts[0]) else 0
+        rel = parts[offset:]
+        leaf_lower = (leaf_name or "").casefold()
+
+        if len(rel) == 2:
+            return offset
+        if len(rel) == 3:
+            if leaf_lower and rel[-1].casefold() == leaf_lower:
+                return offset + len(rel) - 2
+            return offset
+        if len(rel) >= 4:
+            return offset
+
+        return -1
+
+    def _derive_series_from_directory_nested(
+        self, book: Dict, folder: str, files: List[str]
+    ):
+        """Return (series_name, title_hint, ambiguous_reason) for nested layout."""
+        candidate_folder = (folder or "").strip()
+        if not candidate_folder and files:
+            candidate_folder = os.path.dirname(files[0])
+
+        parts = self._folder_path_parts(candidate_folder)
+        if not parts:
+            return (None, None, "missing folder path")
+
+        author_text = (book.get("author") or "").strip()
+        author_idx = -1
+
+        if author_text:
+            for index, segment in enumerate(parts):
+                if segment.casefold() == author_text.casefold():
+                    author_idx = index
+                    break
+            if author_idx < 0:
+                return (None, None, "author not found in path")
+        else:
+            author_idx = self._infer_author_index(
+                parts,
+                leaf_name=os.path.basename(candidate_folder.rstrip("\\/")),
+            )
+            if author_idx < 0:
+                return (None, None, "path too shallow")
+
+        after_author = parts[author_idx + 1 :]
+        if not after_author:
+            return (None, None, "no folders after author")
+
+        if len(after_author) == 1:
+            return (None, None, None)
+
+        series_name = after_author[0].strip()
+        if not series_name:
+            return (None, None, "missing series folder name")
+
+        title_hint = after_author[1].strip() if len(after_author) >= 2 else None
+        return (series_name, title_hint, None)
+
     def _fallback_author_from_path(
         self, folder: str, files: List[str], title_hint: str
     ) -> str:
@@ -262,6 +396,15 @@ class ImportScanner:
             if parent_name:
                 return parent_name
             return folder_name
+
+        if self.scenario_mode == "series_from_directory_nested":
+            parts = self._folder_path_parts(folder)
+            author_idx = self._infer_author_index(
+                parts,
+                leaf_name=folder_name,
+            )
+            if author_idx >= 0:
+                return parts[author_idx]
 
         if (
             title_lower

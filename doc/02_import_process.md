@@ -45,11 +45,29 @@ Open **View → Preferences** (or **Manage → Preferences**). Import-related se
 
 - **Default directory** — pre-fills the folder field when Import opens.
 - **Audio formats** — which file types to scan (MP3, M4A, M4B, FLAC, OGG, WAV, WMA).
-- **Import scenario** — how your folders are organized:
-  - *Mass Standard* — author folders with title subfolders or files (most common).
-  - *Series From Directory* — series name comes from the folder name.
-  - *Series From Filename* — series name is parsed from the file name.
-  - *Single Item* — import one author folder, one book folder, or one file.
+- **Import scenario** — how your folders are organized. Choose the scenario in **Preferences → Import Settings** before scanning. The Import window shows the active scenario name in the status bar.
+
+| Scenario | Folder layout | When to use |
+|----------|---------------|-------------|
+| **Mass Standard Import** | Author → title subfolders or files | Most libraries; does not auto-assign series from folders |
+| **Series From Directory** | Author → series folder → **audio files** (no book subfolders) | One file (or album) per book directly inside the series folder |
+| **Series From Directory (Nested Books)** | Author → series folder → **book folder** → audio files | **Default.** Each book in its own subfolder under the series; standalone books under author get no series |
+| **Series From File Name** | Any layout | Series name is in the file name inside `( … )` |
+| **Single Item** | One author, book, or file | Import a single folder or file at a time |
+
+**Choosing between the two series scenarios:**
+
+- **Series From Directory** — files live **directly** in the series folder:
+  - `Tolkien/Lord of the Rings/Fellowship.m4b`
+  - `Michael R. Stern/Quantum Touch/01 Storm Portal.m4b` *(one m4b per book, no book subfolder)*
+
+- **Series From Directory (Nested Books)** — each book has its **own subfolder** under the series:
+  - `Michael R. Stern/Quantum Touch/1 Storm Portal/01 Storm Portal.m4b`
+  - `John Sandford/Lucas Deavenport Series/1- Rules of Prey/01 Rules of Prey.mp3`
+
+If you use **Series From Directory** on a nested layout (book subfolders under the series), series assignment is skipped and books are flagged with a **warning**. Switch to **Nested Books** for that layout.
+
+See [Import preferences](15_import_preferences.md) for full scenario details, fallbacks, and validation rules.
 
 ### Fallback and Parsing
 
@@ -103,3 +121,6 @@ No. Import duplicate detection happens while adding new books and can use fuzzy 
 
 **Do I need to set preferences every time?**
 No. Preferences are saved and apply to every import until you change them.
+
+**Why does Series From Directory show warnings for my author folder?**
+That scenario expects audio files **directly** in the series folder (`Author/Series/file.m4b`), not in per-book subfolders. If each book has its own folder under the series (`Author/Series/Book/file.m4b`), use **Series From Directory (Nested Books)** in Preferences instead.

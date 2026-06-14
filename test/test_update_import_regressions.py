@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from src.accessibility.scaling import UIScaler
@@ -164,6 +164,60 @@ def test_import_summary_uses_errors_warnings_label(
     assert "Issues:" not in status_text
 
     # Cleanup
+    cleanup_window(window)
+
+
+def test_import_alt_browse_from_collection_combo(
+    qapp, qtbot, temp_db, isolated_qsettings, monkeypatch
+):
+    """Alt+B should open browse even when collection combo has focus."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    browse_called = {"count": 0}
+
+    def fake_browse():
+        browse_called["count"] += 1
+
+    monkeypatch.setattr(window, "on_browse", fake_browse)
+    window.collection_combo.setFocus()
+    qtbot.keyClick(window.collection_combo, Qt.Key_B, Qt.AltModifier)
+
+    assert browse_called["count"] == 1
+
+    cleanup_window(window)
+
+
+def test_import_summary_showing_count_on_filter(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Active error filter should show count as Showing on the right."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.waitExposed(window)
+    window.scanned_items = [
+        {"status": "Warning", "errors": ["W: test"], "book": {}},
+        {"status": "OK", "errors": [], "book": {}},
+    ]
+
+    warning_index = window.error_filter_combo.findData("warning")
+    assert warning_index >= 0
+    window.error_filter_combo.setCurrentIndex(warning_index)
+    window.update_summary(scanned=2, fixed=0, errors=0, warnings=1, duplicates=0, added=0)
+
+    status_text = window.status_bar.currentMessage()
+    assert "Filtered:" not in status_text
+    assert "Showing:" not in status_text
+    assert "Filter: Warning" in status_text
+    assert window.showing_status_label.isVisible()
+    assert window.showing_status_label.text() == "Showing: 1"
+    assert "Showing: 1" in window._default_status_message
+
     cleanup_window(window)
 
 

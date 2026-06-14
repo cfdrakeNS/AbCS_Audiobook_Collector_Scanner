@@ -126,6 +126,7 @@ class ImportWindow(AccessibleDialog):
         callback_map = {
             "collection_combo": lambda: self.collection_combo.setFocus(),
             "folder_field": lambda: self.folder_edit.setFocus(),
+            "browse_button": self.on_browse,
             "error_filter": lambda: self.error_filter_combo.setFocus(),
             "scan_button": lambda: self.scan_button.click(),
             "import_selected_button": lambda: self.import_selected_button.click(),
@@ -178,6 +179,10 @@ class ImportWindow(AccessibleDialog):
             event.modifiers() & Qt.AltModifier
         ):
             key = event.key()
+            if key == Qt.Key_B and event.type() == QEvent.KeyPress:
+                self.on_browse()
+                event.accept()
+                return True
             # Alt+B: let keyPressEvent handle it for accessibility
             if key == Qt.Key_B:
                 return False  # Do not block Alt+B
@@ -206,6 +211,9 @@ class ImportWindow(AccessibleDialog):
     SCENARIO_LABELS = {
         "mass_standard": "Mass Standard Import",
         "series_from_directory": "Mass Import - Series From Directory",
+        "series_from_directory_nested": (
+            "Mass Import - Series From Directory (Nested Books)"
+        ),
         "series_from_filename": "Mass Import - Series From File Name",
         "single_item": "Single Author / Book Import",
     }
@@ -253,7 +261,7 @@ class ImportWindow(AccessibleDialog):
         self.include_subfolders = True
         self.default_collection_id = None
         self.current_collection_name = ""
-        self.import_scenario_mode = "mass_standard"
+        self.import_scenario_mode = "series_from_directory_nested"
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
@@ -508,6 +516,11 @@ class ImportWindow(AccessibleDialog):
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         configure_status_bar_accessibility(self.status_bar)
+        self.showing_status_label = QLabel("")
+        self.showing_status_label.setVisible(False)
+        self.showing_status_label.setAccessibleName("Import list showing count")
+        self.showing_status_label.setFocusPolicy(Qt.NoFocus)
+        self.status_bar.addPermanentWidget(self.showing_status_label)
         footer_layout.addWidget(self.status_bar, 1)
 
         self.import_selected_button = QPushButton("Add Selected")
@@ -664,7 +677,7 @@ class ImportWindow(AccessibleDialog):
             ("F1", "Show this help"),
         ]
         self.import_scenario_mode = self.settings.value(
-            "import/scenario/mode", "mass_standard", type=str
+            "import/scenario/mode", "series_from_directory_nested", type=str
         )
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
@@ -984,6 +997,7 @@ class ImportWindow(AccessibleDialog):
         read_status_bar_message(
             self.status_bar,
             fallback=getattr(self, "_default_status_message", "") or "Ready",
+            announce_text=getattr(self, "_default_status_message", "") or "Ready",
         )
 
     def jump_to_column(self, column: int):
@@ -1290,12 +1304,21 @@ class ImportWindow(AccessibleDialog):
         message = (
             f"Scanned: {scanned} | Added: {added} | "
             f"Corrected: {fixed} | Errors: {errors} | Warnings: {warnings} | "
-            f"Duplicates: {duplicates} | "
-            f"Filtered: {filtered}"
+            f"Duplicates: {duplicates}"
         )
+        showing_text = ""
         if filter_value and filter_value != "all":
             message += f" | Filter: {self.error_filter_combo.currentText()}"
-        self.set_status(message, announce=announce)
+            showing_text = f"Showing: {filtered}"
+            self.showing_status_label.setText(showing_text)
+            self.showing_status_label.setVisible(True)
+        else:
+            self.showing_status_label.clear()
+            self.showing_status_label.setVisible(False)
+
+        full_message = f"{message} | {showing_text}" if showing_text else message
+        self._default_status_message = full_message
+        announce_status_message(self.status_bar, message, move_focus=announce)
 
     def _format_error_summary(self, errors: list[str]) -> str:
         """Format error list using validator message-format rules."""

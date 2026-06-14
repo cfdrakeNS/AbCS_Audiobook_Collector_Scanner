@@ -105,6 +105,10 @@ class PreferencesWindow(AccessibleDialog):
     IMPORT_SCENARIOS = [
         ("mass_standard", "Mass Standard Import"),
         ("series_from_directory", "Mass Import - Series From Directory"),
+        (
+            "series_from_directory_nested",
+            "Mass Import - Series From Directory (Nested Books)",
+        ),
         ("series_from_filename", "Mass Import - Series From File Name"),
         ("single_item", "Single Author / Book Import"),
     ]
@@ -116,9 +120,15 @@ class PreferencesWindow(AccessibleDialog):
             "Series extraction from path is conservative."
         ),
         "series_from_directory": (
-            "Uses book folder as series (Author/Series/Files). "
-            "If folder path is ambiguous or does not match author, "
-            "series is skipped and flagged with a warning."
+            "Audio files live directly in the series folder (Author/Series/Files). "
+            "Not for book subfolders under the series. "
+            "If the path does not match author, series is skipped with a warning."
+        ),
+        "series_from_directory_nested": (
+            "Each book has its own subfolder under the series "
+            "(Author/Series/Book/Files). "
+            "Standalone books at Author/Book/Files get no series. "
+            "Use this when series folders contain per-book folders, not loose files."
         ),
         "series_from_filename": (
             "Parses first parenthesized block in file name as series. "
@@ -1202,7 +1212,7 @@ class PreferencesWindow(AccessibleDialog):
             self.import_scenario_combo.addItem(label, value)
 
         scenario_mode = self.settings.value(
-            "import/scenario/mode", "mass_standard", type=str
+            "import/scenario/mode", "series_from_directory_nested", type=str
         )
         scenario_index = self.import_scenario_combo.findData(scenario_mode)
         if scenario_index < 0:
@@ -1888,9 +1898,11 @@ class PreferencesWindow(AccessibleDialog):
 
         # Scenario
         self.import_scenario_combo.setCurrentIndex(
-            self.import_scenario_combo.findData("mass_standard")
+            self.import_scenario_combo.findData("series_from_directory_nested")
         )
-        self.settings.setValue("import/scenario/mode", "mass_standard")
+        self.settings.setValue(
+            "import/scenario/mode", "series_from_directory_nested"
+        )
 
         # Fallback options
         self.author_fallback_checkbox.setChecked(True)
