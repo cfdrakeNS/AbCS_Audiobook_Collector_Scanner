@@ -50,7 +50,7 @@ Import (folder scan or spreadsheet) fills in books automatically. Use these proc
 5. Use **Next** (Alt+N or Page Down) and **Previous** (Alt+P or Page Up) to move between books in the current list order.
 6. Press **Escape** to close. The main list refreshes.
 
-You can also open Book Details from the title column with Enter, and use **Fetch Web Info** (Alt+W) from within Book Details. See [Web Metadata Fetch](abcs_web_metadata_fetch_process.md).
+You can also open Book Details from the title column with Enter, and use **Fetch Web Info** (Alt+W) from within Book Details. See [Web Metadata Fetch](06_web_metadata_fetch_process.md).
 
 ## What happens next
 
@@ -89,11 +89,6 @@ None directly. Sort order on the main window affects the order of Next/Previous 
 | F1 | Help |
 | Alt+/ | Re-read status |
 | Escape | Close |
-
-## Verification
-
-Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
-
 ## Common confusion
 
 **Update vs Book Details — which should I use?**

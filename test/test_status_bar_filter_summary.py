@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from src.accessibility.scaling import UIScaler
@@ -143,7 +145,7 @@ def test_sort_change_status_matches_filter_summary(qapp, qtbot, temp_db):
     window.close()
 
 
-def test_active_find_appends_esc_hint_to_matching_summary(qapp, qtbot, temp_db):
+def test_active_find_status_matches_filter_summary(qapp, qtbot, temp_db):
     scaler = UIScaler(qapp)
     theme_manager = ThemeManager(qapp)
     window = MainWindow(temp_db, scaler, theme_manager)
@@ -152,9 +154,24 @@ def test_active_find_appends_esc_hint_to_matching_summary(qapp, qtbot, temp_db):
     window.current_filter.search_text = "Moby"
     window.refresh_books()
 
-    summary = window.filter_summary_label.text()
-    assert window.status_bar.currentMessage() == f"{summary}. Esc to exit Find."
+    _assert_status_matches_summary(window)
     assert "Find: Moby" in window.status_bar.currentMessage()
+
+    window.close()
+
+
+def test_date_added_filter_status_matches_filter_summary(qapp, qtbot, temp_db):
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = MainWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    window.current_filter.date_added_since = date(2025, 1, 1)
+    window.refresh_books()
+
+    _assert_status_matches_summary(window)
+    assert "Added since: 2025-01-01" in window.status_bar.currentMessage()
+    assert "Collection: All" in window.status_bar.currentMessage()
 
     window.close()
 

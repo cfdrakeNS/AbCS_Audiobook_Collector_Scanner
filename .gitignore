@@ -64,3 +64,6 @@ releases/**
 ltr_demo/
 ltr_demo/**
 .aider*
+
+# Generated ODT user documentation (built from doc/*.md)
+doc/user_docs/

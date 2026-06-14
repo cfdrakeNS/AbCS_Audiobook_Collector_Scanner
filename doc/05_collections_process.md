@@ -7,11 +7,11 @@ Collections let you organize books into separate groups — for example, "Audibl
 1. **Manage collections** — create, rename, activate, or delete collections.
 2. **Filter by collection** — show only books from one collection in the main list (does not change your data).
 
-You need at least one active collection before you can import books.
+Every book belongs to one collection. A default collection named **Audio Books** is created when the database is first set up, so you can import right away.
 
 ## When to use it
 
-- Setting up AbCS for the first time — create your collections before importing.
+- Renaming the default collection or adding collections to organize your library.
 - Organizing books into logical groups.
 - Narrowing the main book list to one collection while browsing.
 
@@ -80,18 +80,13 @@ None specific to collections beyond having at least one active collection at all
 | Shortcut | Action |
 |----------|--------|
 | Alt+V, C | View → Collections filter |
-
-## Verification
-
-Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
-
 ## Common confusion
 
 **Filter vs Manage — what is the difference?**
 Filtering (View menu) only changes what you see. Managing (Manage menu) creates or changes collections themselves.
 
 **Why can't I import without a collection?**
-Every book belongs to one collection. Create and activate at least one collection first.
+Every book must belong to a collection. AbCS creates a default **Audio Books** collection when the database is first set up, so import is available immediately. Use Manage → Collections only if you want to rename it or add more collections.
 
 **What happens to books in an inactive collection?**
 Books remain in the database. The collection is just hidden from import dropdowns until you activate it again.

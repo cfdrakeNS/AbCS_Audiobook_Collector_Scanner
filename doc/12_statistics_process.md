@@ -44,13 +44,13 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
 ## Common confusion
 
 **How is this different from Reading History?**
-Statistics covers the **whole library** (read and unread). Reading History focuses on **finished** books and breaks them down by time period. See [Reading History process](abcs_reading_history_process.md).
+Statistics covers the **whole library** (read and unread). Reading History focuses on **finished** books and breaks them down by time period. See [Reading History process](11_reading_history_process.md).
 
 **Why do collection counts not match my filter?**
 The statistics dialog summarizes the database broadly. Use the main window collection filter when browsing a subset.
 
 ## Related documentation
 
-- [Reading History process](abcs_reading_history_process.md)
-- [Collections process](abcs_collections_process.md)
-- [Keyboard shortcuts by window](abcs_shortcuts_list.md)
+- [Reading History process](11_reading_history_process.md)
+- [Collections process](05_collections_process.md)
+- [Keyboard shortcuts by window](13_shortcuts_list.md)

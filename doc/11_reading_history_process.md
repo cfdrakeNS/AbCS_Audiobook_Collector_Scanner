@@ -66,6 +66,6 @@ No. **Statistics** (Manage menu) shows library-wide counts (total books, authors
 
 ## Related documentation
 
-- [Find and Filters](abcs_find_filters_process.md) — read filter on the main window
-- [Keyboard shortcuts by window](abcs_shortcuts_list.md)
-- [Statistics process](abcs_statistics_process.md)
+- [Find and Filters](03_find_filters_process.md) — read filter on the main window
+- [Keyboard shortcuts by window](13_shortcuts_list.md)
+- [Statistics process](12_statistics_process.md)

@@ -162,6 +162,7 @@ class SearchFilter:
     search_text: str = ""
     is_keyword_search: bool = False  # True if search starts with "?"
     search_field: str = "Title"  # Field to search (Title, Author, Series, Genre)
+    date_added_since: Optional[date] = None  # None = no date-added filter
 
     @property
     def has_search(self) -> bool:

@@ -1,6 +1,6 @@
 # AbCS — Installation and Quick Start
 
-Step-by-step setup for running AbCS from source. For project overview and features, see [README.md](README.md). For workflow guides, see [doc/abcs_user_index.md](doc/abcs_user_index.md).
+Step-by-step setup for running AbCS from source. For project overview and features, see [README.md](README.md). For workflow guides, see [doc/01_user_index.md](doc/01_user_index.md).
 
 ## Prerequisites
 
@@ -65,13 +65,13 @@ AbCS creates the database and tables automatically on first launch. You do not n
 ## First-time workflow
 
 1. **Launch** — `python src/main.py`
-2. **Create a collection** — **Manage → Collections** (at least one active collection is required before import)
-3. **Set preferences** (optional) — **Manage → Preferences** — default zoom is **150%**; see [Default preferences](doc/abCS_default_preference.md)
-4. **Import books** — **File → Import** (Ctrl+I) to scan audiobook folders
-5. **Browse** — use Find, filters, and sort on the main window
+2. **Import books** — **File → Import** (Ctrl+I) to scan audiobook folders (a default **Audio Books** collection is created with the database)
+3. **Set preferences** (optional) — **Manage → Preferences** — default zoom is **150%**; see [Default preferences](doc/14_default_preference.md)
+4. **Browse** — use Find, filters, and sort on the main window
+5. **Manage collections** (optional) — **Manage → Collections** to rename the default collection or add more
 6. **Back up** — **Manage → Backup/Restore** when you have data worth protecting
 
-Suggested guide order: [doc/abcs_user_index.md](doc/abcs_user_index.md).
+Suggested guide order: [doc/01_user_index.md](doc/01_user_index.md).
 
 ## Tester build expiry
 
@@ -103,7 +103,7 @@ For headless CI-style runs and pytest options, see [TESTING.md](TESTING.md).
 ## Related documentation
 
 - [README.md](README.md) — features, structure, license
-- [doc/abcs_user_index.md](doc/abcs_user_index.md) — user workflow guides
-- [doc/Import_preferences.md](doc/Import_preferences.md) — import scenarios and validation rules
+- [doc/01_user_index.md](doc/01_user_index.md) — user workflow guides
+- [doc/15_import_preferences.md](doc/15_import_preferences.md) — import scenarios and validation rules
 - [TESTING.md](TESTING.md) — automated test guide
 - [linux_build.md](linux_build.md) — Linux packaging

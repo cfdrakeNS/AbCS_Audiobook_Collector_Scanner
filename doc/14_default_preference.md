@@ -84,5 +84,5 @@ At the default **90%**, only small typos and near-matches are flagged; completel
 
 ## Related documentation
 
-- [Import preferences (scenario detail)](Import_preferences.md) — how each import scenario uses these settings
-- [Import process](abcs_import_process.md) — tester workflow for folder import
+- [Import preferences (scenario detail)](15_import_preferences.md) — how each import scenario uses these settings
+- [Import process](02_import_process.md) — tester workflow for folder import

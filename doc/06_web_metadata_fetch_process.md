@@ -59,11 +59,6 @@ None. Fetch Web Info has no settings of its own in Preferences. It uses the book
 | F1 | Help for this window |
 | Alt+/ | Re-read status |
 | Escape | Close window |
-
-## Verification
-
-Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
-
 ## Common confusion
 
 **Why does it search multiple sources?**

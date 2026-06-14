@@ -103,6 +103,14 @@ class BookQueries:
             query += " AND LENGTH(TRIM(COALESCE(b.comments, ''))) < ?"
             params.append(PLOT_MIN_LENGTH)
 
+        if filter_criteria.date_added_since is not None:
+            query += " AND b.date_added >= ?"
+            params.append(
+                datetime.combine(
+                    filter_criteria.date_added_since, datetime.min.time()
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            )
+
         # Search/keyword filter
         if filter_criteria.has_search:
             is_keyword = (

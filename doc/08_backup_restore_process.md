@@ -75,11 +75,6 @@ None. Backup and Restore does not use import or display preferences.
 | F1 | Help for this window |
 | Alt+/ | Re-read status |
 | Escape | Close window |
-
-## Verification
-
-Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
-
 ## Common confusion
 
 **Where are backup files stored?**

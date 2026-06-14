@@ -71,11 +71,6 @@ Main window (while duplicate mode is active):
 | Escape | Clear selection, then confirm exit from duplicate mode |
 | F1 | Help for main window |
 | Alt+/ | Re-read status |
-
-## Verification
-
-Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
-
 ## Common confusion
 
 **Duplicate Mode vs Import duplicates — what is the difference?**

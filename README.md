@@ -40,10 +40,10 @@ On first launch, AbCS creates a SQLite database automatically. No manual schema 
 
 Workflow guides for screen reader users:
 
-- [User guide index](doc/abcs_user_index.md) — collections, import, filters, web metadata, backup, and more
-- [Keyboard shortcuts by window](doc/abcs_shortcuts_list.md)
-- [Default preferences](doc/abCS_default_preference.md)
-- [Import preferences (scenarios and rules)](doc/Import_preferences.md)
+- [User guide index](doc/01_user_index.md) — collections, import, filters, web metadata, backup, and more
+- [Keyboard shortcuts by window](doc/13_shortcuts_list.md)
+- [Default preferences](doc/14_default_preference.md)
+- [Import preferences (scenarios and rules)](doc/15_import_preferences.md)
 
 Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-read the status message.
 
@@ -69,7 +69,7 @@ Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-re
 - **Alt+U** — update selected
 - **Alt+D** — delete selected
 
-See [doc/abcs_shortcuts_list.md](doc/abcs_shortcuts_list.md) for every window.
+See [doc/13_shortcuts_list.md](doc/13_shortcuts_list.md) for every window.
 
 ## Project structure
 
@@ -132,7 +132,7 @@ If you used the original MS Access prototype:
 - [PySide6 Accessibility Patterns and Implementation Reference](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
 - [PySide6 Screen Reader Accessibility Best Practices](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
 
-Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/qa_verification.md](doc/qa_verification.md).
+Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/16_qa_verification.md](doc/16_qa_verification.md).
 
 ## Tester build expiry
 

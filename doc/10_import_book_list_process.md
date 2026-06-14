@@ -4,7 +4,7 @@
 
 Import Book List brings book information into AbCS from a spreadsheet file (CSV, Excel, or ODS). It does not read audio file tags. Use it when you already have a list of titles and authors in a table.
 
-This is separate from folder Import (Ctrl+I). See [Import](abcs_import_process.md) for scanning audio files.
+This is separate from folder Import (Ctrl+I). See [Import](02_import_process.md) for scanning audio files.
 
 ## When to use it
 
@@ -47,7 +47,7 @@ This is separate from folder Import (Ctrl+I). See [Import](abcs_import_process.m
 
 ## Settings that affect this
 
-Import Book List uses the same **duplicate match** and **fuzzy duplicate percent** settings as folder Import. Find these under **Preferences → Validation Rules**. See [Import](abcs_import_process.md) for an explanation of duplicate settings.
+Import Book List uses the same **duplicate match** and **fuzzy duplicate percent** settings as folder Import. Find these under **Preferences → Validation Rules**. See [Import](02_import_process.md) for an explanation of duplicate settings.
 
 Other import preferences (scenarios, fallbacks, validation rules) do **not** apply to spreadsheet import.
 
@@ -68,11 +68,6 @@ Other import preferences (scenarios, fallbacks, validation rules) do **not** app
 | F1 | Help for this window |
 | Alt+/ | Re-read status |
 | Escape | Close window |
-
-## Verification
-
-Manual QA for this workflow is complete. See [QA verification](qa_verification.md).
-
 ## Common confusion
 
 **Import vs Import Book List — which do I use?**

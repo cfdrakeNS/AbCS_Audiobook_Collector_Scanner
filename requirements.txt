@@ -36,3 +36,6 @@ psutil>=5.9.0
 # Development/Testing (optional)
 pytest>=7.4.0
 pytest-qt>=4.2.0
+
+# User doc generation: pip install pypandoc && python scripts/generate_user_docs_odt.py --install-pandoc
+pypandoc>=1.13

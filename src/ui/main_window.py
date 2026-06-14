@@ -525,6 +525,11 @@ class MainWindow(QMainWindow):
                 search_text = search_text[1:]
             parts.append(f"Find: {search_text}")
 
+        if self.current_filter.date_added_since is not None:
+            parts.append(
+                f"Added since: {self.current_filter.date_added_since.strftime('%Y-%m-%d')}"
+            )
+
         parts.append(self._sort_summary_part())
         return "  |  ".join(parts)
 
@@ -1180,7 +1185,13 @@ class MainWindow(QMainWindow):
             action = QAction(text, self)
             apply_tooltip_accessibility(action, tooltip, description)
             action.setStatusTip(tooltip)
-            action.triggered.connect(handler)
+            if role == "find":
+                action.setCheckable(True)
+                action.setChecked(False)
+                action.triggered.connect(self.on_find_toolbar_clicked)
+                self.find_toolbar_action = action
+            else:
+                action.triggered.connect(handler)
             apply_decorative_action_icon(action, role, self.scaler)
             self.action_toolbar.addAction(action)
             self._toolbar_actions.append((action, role))
@@ -1215,6 +1226,27 @@ class MainWindow(QMainWindow):
                 )
                 self.action_toolbar.addAction(self.read_filter_action)
                 self._toolbar_actions.append((self.read_filter_action, "read_filter"))
+
+                self.recently_added_filter_action = QAction("Recently Added Filter", self)
+                self.recently_added_filter_action.setCheckable(True)
+                self.recently_added_filter_action.setChecked(False)
+                self.recently_added_filter_action.triggered.connect(
+                    self.on_recently_added_toolbar_clicked
+                )
+                apply_tooltip_accessibility(
+                    self.recently_added_filter_action,
+                    "Filter by date added - Alt+V, A",
+                    "Show books added on or after a selected date. Opens date picker - Alt+V, A",
+                )
+                apply_decorative_action_icon(
+                    self.recently_added_filter_action,
+                    "recently_added_filter",
+                    self.scaler,
+                )
+                self.action_toolbar.addAction(self.recently_added_filter_action)
+                self._toolbar_actions.append(
+                    (self.recently_added_filter_action, "recently_added_filter")
+                )
 
         self.addToolBar(Qt.TopToolBarArea, self.action_toolbar)
 
@@ -1307,6 +1339,10 @@ class MainWindow(QMainWindow):
         self.read_filter_group = QActionGroup(self)
         self.read_filter_group.setExclusive(True)
         self._rebuild_read_filter_menu()
+
+        self.recently_added_action = QAction("Recently &Added...", self)
+        self.recently_added_action.triggered.connect(self.on_recently_added)
+        self.view_menu.addAction(self.recently_added_action)
 
         # Phase 2: Reading History (accessed via menu Alt+V then H)
         self.reading_history_action = QAction(
@@ -1496,10 +1532,7 @@ class MainWindow(QMainWindow):
             return f"{count} selected. {shortcuts}"
 
         # Priority 2–4: Mirror filter summary label (collection, read, plot, find, sort)
-        summary = self._filter_summary_text()
-        if self.current_filter.search_text:
-            return f"{summary}. Esc to exit Find."
-        return summary
+        return self._filter_summary_text()
 
     def _normalize_duplicate_mode(self, mode: str) -> str:
         """Normalize duplicate mode values (supports legacy aliases)."""
@@ -1551,6 +1584,8 @@ class MainWindow(QMainWindow):
         self._sync_plot_menu_selection()
         self._sync_plot_toolbar_toggle()
         self._sync_read_toolbar_toggle()
+        self._sync_find_toolbar_toggle()
+        self._sync_recently_added_toolbar_toggle()
         self._sync_sort_menu_selection(self.current_filter.order_by)
 
     def _current_collection_label(self) -> str:
@@ -1662,6 +1697,7 @@ class MainWindow(QMainWindow):
                 order_by=saved_filter.order_by,
                 search_text=saved_filter.search_text,
                 is_keyword_search=saved_filter.is_keyword_search,
+                date_added_since=saved_filter.date_added_since,
             )
 
         self._apply_current_filter_to_controls()
@@ -1775,6 +1811,7 @@ class MainWindow(QMainWindow):
                 order_by=self.current_filter.order_by,
                 search_text=self.current_filter.search_text,
                 is_keyword_search=self.current_filter.is_keyword_search,
+                date_added_since=self.current_filter.date_added_since,
             )
 
         self.duplicate_mode_active = True
@@ -1786,6 +1823,7 @@ class MainWindow(QMainWindow):
         self.current_filter.plot_filter = "All"
         self.current_filter.search_text = ""
         self.current_filter.is_keyword_search = False
+        self.current_filter.date_added_since = None
         self._apply_current_filter_to_controls()
 
         self.refresh_books()
@@ -1912,8 +1950,9 @@ class MainWindow(QMainWindow):
         self.current_filter.search_text = ""
         self.current_filter.is_keyword_search = False
         self.current_filter.collection_id = None
-        self.current_filter.read_filter = "All"
         self.current_filter.plot_filter = "All"
+        self.current_filter.read_filter = "All"
+        self.current_filter.date_added_since = None
         self._apply_current_filter_to_controls()
 
         self._sync_collection_menu_selection()
@@ -1921,6 +1960,8 @@ class MainWindow(QMainWindow):
         self._sync_plot_menu_selection()
         self._sync_plot_toolbar_toggle()
         self._sync_read_toolbar_toggle()
+        self._sync_find_toolbar_toggle()
+        self._sync_recently_added_toolbar_toggle()
 
     def _rebuild_read_filter_menu(self):
         """Populate View > Read submenu from read filter options."""
@@ -1986,6 +2027,16 @@ class MainWindow(QMainWindow):
         self.read_filter_action.blockSignals(True)
         self.read_filter_action.setChecked(checked)
         self.read_filter_action.blockSignals(False)
+
+    def _sync_recently_added_toolbar_toggle(self):
+        """Keep toolbar Recently Added filter synced with current filter."""
+        if not hasattr(self, "recently_added_filter_action"):
+            return
+
+        checked = self.current_filter.date_added_since is not None
+        self.recently_added_filter_action.blockSignals(True)
+        self.recently_added_filter_action.setChecked(checked)
+        self.recently_added_filter_action.blockSignals(False)
 
     def on_read_filter_toggled(self, checked: bool):
         """Handle toolbar Read Filter toggle."""
@@ -2062,6 +2113,28 @@ class MainWindow(QMainWindow):
         self.plot_filter_action.blockSignals(True)
         self.plot_filter_action.setChecked(checked)
         self.plot_filter_action.blockSignals(False)
+
+    def _sync_find_toolbar_toggle(self):
+        """Keep toolbar Find button synced with active search."""
+        if not hasattr(self, "find_toolbar_action"):
+            return
+
+        checked = bool(self.current_filter.search_text)
+        self.find_toolbar_action.blockSignals(True)
+        self.find_toolbar_action.setChecked(checked)
+        self.find_toolbar_action.blockSignals(False)
+
+    def on_find_toolbar_clicked(self, checked: bool):
+        """Open Find dialog or clear search, like plot filter toggle."""
+        if checked:
+            self.on_find()
+            self._sync_find_toolbar_toggle()
+        elif self.current_filter.has_search:
+            self.current_filter.search_text = ""
+            self.current_filter.is_keyword_search = False
+            self.refresh_books()
+            self.set_status("Search cleared", timeout_ms=2000)
+            self._sync_find_toolbar_toggle()
 
     def on_plot_menu_selected(self, plot_filter: str):
         """Handle View > Plot menu selection."""
@@ -2277,6 +2350,7 @@ class MainWindow(QMainWindow):
             or self.current_filter.collection_id is not None
             or self.current_filter.read_filter != "All"
             or self.current_filter.plot_filter != "All"
+            or self.current_filter.date_added_since is not None
         )
 
     def refresh_books(self):
@@ -2346,6 +2420,7 @@ class MainWindow(QMainWindow):
         )
         self._sync_read_menu_selection()
         self._sync_read_toolbar_toggle()
+        self._sync_recently_added_toolbar_toggle()
         self.refresh_books()
         if self.current_filter.read_filter != "All":
             self.set_default_status(announce=True)
@@ -2465,6 +2540,110 @@ class MainWindow(QMainWindow):
         self._last_header_sort_column = column
         self._last_header_sort_order = Qt.AscendingOrder
         self.table.horizontalHeader().setSortIndicator(column, Qt.AscendingOrder)
+
+    def on_recently_added_toolbar_clicked(self, _checked: bool = False):
+        """Open recently-added dialog without toggling filter off on toolbar click."""
+        self._sync_recently_added_toolbar_toggle()
+        self.on_recently_added()
+
+    def on_recently_added(self):
+        """Open popup to filter books added on or after a selected date."""
+        from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QDateEdit
+        from PySide6.QtCore import QDate
+        from PySide6.QtGui import QFontMetrics
+        from src.accessibility.icon_helper import get_app_icon
+
+        dlg = AccessibleDialog(self)
+        dlg.setWindowIcon(get_app_icon())
+        dlg.setWindowTitle("Recently Added")
+        dlg.setModal(True)
+        dlg.setAccessibleName("Recently Added")
+        dlg.setAccessibleDescription(
+            "Show books added on or after the selected date."
+        )
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        date_row = QHBoxLayout()
+        date_label = QLabel("&Added since:")
+        date_field = QDateEdit()
+        date_field.setCalendarPopup(True)
+        date_field.setDisplayFormat("yyyy-MM-dd")
+        date_field.setAccessibleName("Added since date")
+        date_label.setBuddy(date_field)
+
+        if self.current_filter.date_added_since is not None:
+            since = self.current_filter.date_added_since
+            date_field.setDate(QDate(since.year, since.month, since.day))
+        else:
+            date_field.setDate(QDate.currentDate().addMonths(-2))
+
+        font = date_field.font()
+        font.setPointSize(self.scaler.get_scaled_size(14))
+        date_field.setFont(font)
+
+        date_row.addWidget(date_label)
+        date_row.addWidget(date_field, 1)
+        layout.addLayout(date_row)
+
+        dialog_status = QStatusBar(dlg)
+        dialog_status.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(dialog_status)
+        dialog_status.showMessage(
+            "Choose a date and press Enter to filter. Alt+/ read status"
+        )
+        layout.addWidget(dialog_status)
+
+        date_field.setFocus()
+
+        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
+        alt_down_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        alt_down_shortcut.activated.connect(date_field.calendarPopup)
+
+        recently_added_status_shortcut = QShortcut(QKeySequence("Alt+/"), dlg)
+        recently_added_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+
+        def read_recently_added_status():
+            read_status_bar_message(
+                dialog_status, fallback="Recently added dialog ready"
+            )
+
+        recently_added_status_shortcut.activated.connect(read_recently_added_status)
+
+        for key in (Qt.Key_Return, Qt.Key_Enter):
+            apply_shortcut = QShortcut(QKeySequence(key), dlg)
+            apply_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+            apply_shortcut.activated.connect(dlg.accept)
+
+        font_metrics = QFontMetrics(dlg.font())
+        title_width = font_metrics.horizontalAdvance(dlg.windowTitle()) + 80
+        min_width = 400
+        content_width = dlg.sizeHint().width() + 120
+        final_width = max(title_width, content_width, min_width)
+        dlg.resize(final_width, max(dlg.sizeHint().height(), 120))
+        self._position_read_date_dialog(dlg)
+
+        if dlg.exec() == QDialog.Accepted:
+            selected_date = date_field.date().toPython()
+            self.current_filter.date_added_since = selected_date
+            self.refresh_books()
+            date_str = selected_date.strftime("%Y-%m-%d")
+            if not self.books:
+                self.set_status(
+                    f"No books added since {date_str}",
+                    timeout_ms=3000,
+                    announce=True,
+                )
+            else:
+                self.set_status(
+                    f"Showing {len(self.books)} books added since {date_str}",
+                    announce=True,
+                )
+
+        self._sync_recently_added_toolbar_toggle()
+        self.restore_main_focus_after_modal()
 
     def on_find(self):
         """Open popup Find dialog (Ctrl+F)."""
@@ -2620,6 +2799,7 @@ class MainWindow(QMainWindow):
                 # Clear filter so new search works
                 self.current_filter.search_text = ""
                 self.refresh_books()
+                self._sync_find_toolbar_toggle()
 
                 # Return keyboard focus to the main table after the no-match popup.
                 dialog.reject()
@@ -2641,6 +2821,7 @@ class MainWindow(QMainWindow):
             found_book = self.books[0]
             dialog.accept()
             self.focus_book_by_id(found_book.book_id, selected_column)
+            self._sync_find_toolbar_toggle()
 
         text_edit.returnPressed.connect(run_find)
         field_combo.activated.connect(lambda _index: text_edit.setFocus())
@@ -2658,6 +2839,7 @@ class MainWindow(QMainWindow):
         for widget in self._find_filter_widgets:
             widget.removeEventFilter(self)
         self._find_filter_widgets = set()
+        self._sync_find_toolbar_toggle()
 
     def focus_book_by_id(self, book_id: int, column: int = 1):
         """Find a book by ID and focus its cell in the table."""
@@ -3669,6 +3851,7 @@ class MainWindow(QMainWindow):
             self.current_filter.search_text = ""
             self.current_filter.is_keyword_search = False
             self.refresh_books()
+            self._sync_find_toolbar_toggle()
 
             # Restore focus to the actual book that was selected
             def restore_focus():
@@ -3682,7 +3865,15 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(150, restore_focus)
             self.set_status("Search cleared", timeout_ms=2000)
             return
-        # Third priority: clear read/unread filter
+        # Third priority: clear plot filter
+        if self.current_filter.plot_filter != "All":
+            self.current_filter.plot_filter = "All"
+            self._sync_plot_menu_selection()
+            self._sync_plot_toolbar_toggle()
+            self.refresh_books()
+            self.set_status("Plot filter cleared", timeout_ms=2000)
+            return
+        # Fourth priority: clear read/unread filter
         if self.current_filter.read_filter in ("Read", "Unread"):
             # Clear read filter and refresh
             self.current_filter.read_filter = "All"
@@ -3691,12 +3882,11 @@ class MainWindow(QMainWindow):
             self.refresh_books()
             self.set_status("Read/Unread filter cleared", timeout_ms=2000)
             return
-        # Fourth priority: clear plot filter
-        if self.current_filter.plot_filter != "All":
-            self.current_filter.plot_filter = "All"
-            self._sync_plot_menu_selection()
-            self._sync_plot_toolbar_toggle()
+        if self.current_filter.date_added_since is not None:
+            self.current_filter.date_added_since = None
+            self._sync_recently_added_toolbar_toggle()
             self.refresh_books()
+            self.set_status("Recently added filter cleared", timeout_ms=2000)
             return
 
     def clear_status_message(self):
@@ -4086,6 +4276,7 @@ class MainWindow(QMainWindow):
                 "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
             ),
             ("Ctrl+F", "Find"),
+            ("Alt+V, A", "View, Recently Added filter"),
             ("Alt+P", "Toggle plot filter"),
             ("Alt+R", "Toggle read filter"),
             ("Alt+W", "Fetch web info"),
@@ -4095,7 +4286,7 @@ class MainWindow(QMainWindow):
             ("Alt+U", "Update selected"),
             ("Alt+D", "Delete selected"),
             ("Alt+X", "Export duplicates (in duplicate mode)"),
-            ("Escape", "Clear selection / Find / plot filter / read filter"),
+            ("Escape", "Clear selection / Find / read filter / plot filter / recently added"),
             ("Ctrl+Plus", "Zoom in"),
             ("Ctrl+Minus", "Zoom out"),
             ("Ctrl+0", "Reset zoom"),

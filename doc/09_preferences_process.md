@@ -14,7 +14,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 - Theme and zoom **preview immediately** while the dialog is open.
 - Other import settings apply on the **next** Import scan (close and reopen Import if it is already open).
-- Factory defaults are listed in [Default preferences](abCS_default_preference.md). Import scenario detail is in [Import preferences](Import_preferences.md).
+- Factory defaults are listed in [Default preferences](14_default_preference.md). Import scenario detail is in [Import preferences](15_import_preferences.md).
 
 ## Steps
 
@@ -30,7 +30,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 - **Default import directory** — pre-fills Import window (Alt+B to browse).
 - **Audio formats** — which extensions to scan.
-- **Import scenario** — how folders map to author, title, and series. See [Import preferences](Import_preferences.md).
+- **Import scenario** — how folders map to author, title, and series. See [Import preferences](15_import_preferences.md).
 
 ### Fallback and Parsing (Alt+F)
 
@@ -82,7 +82,7 @@ You can also use **View → Zoom In/Out/Reset** (Ctrl+/Ctrl-/Ctrl+0) without ope
 
 ## Related documentation
 
-- [Default preferences](abCS_default_preference.md) — factory values
-- [Import preferences](Import_preferences.md) — scenario and validation detail
-- [Import process](abcs_import_process.md) — folder scan workflow
-- [Keyboard shortcuts by window](abcs_shortcuts_list.md)
+- [Default preferences](14_default_preference.md) — factory values
+- [Import preferences](15_import_preferences.md) — scenario and validation detail
+- [Import process](02_import_process.md) — folder scan workflow
+- [Keyboard shortcuts by window](13_shortcuts_list.md)
