@@ -454,17 +454,18 @@ def build_toolbar_button_style(
         }}
         {selector}:checked {{
             border: 2px solid palette(highlight);
-            background-color: palette(alternate-base);
-            color: palette(window-text);
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
         }}
         {selector}:checked:hover {{
             border: 2px solid palette(highlight);
-            background-color: palette(button);
-            color: palette(window-text);
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
         }}
         {selector}:checked:focus {{
-            border: 2px solid palette(highlight);
-            background-color: palette(alternate-base);
+            border: 3px solid palette(highlight);
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
             outline: none;
         }}
     """
