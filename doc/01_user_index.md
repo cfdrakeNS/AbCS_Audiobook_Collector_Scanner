@@ -52,6 +52,7 @@ A default collection named **Audio Books** is created when the database is first
 | [Default preferences](14_default_preference.md) | Factory defaults for display, import, fallback, and validation rules |
 | [Import preferences (scenarios)](15_import_preferences.md) | How each import scenario and validation rule behaves |
 | [QA verification](16_qa_verification.md) | Manual testing complete; link to verification log |
+| [Name Consistency Check plan](17_name_consistency_check_plan.md) | Planned feature: find and merge similar author/title/genre spellings (future work) |
 
 ## Related documentation
 

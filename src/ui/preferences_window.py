@@ -1212,7 +1212,7 @@ class PreferencesWindow(AccessibleDialog):
             self.import_scenario_combo.addItem(label, value)
 
         scenario_mode = self.settings.value(
-            "import/scenario/mode", "series_from_directory_nested", type=str
+            "import/scenario/mode", "mass_standard", type=str
         )
         scenario_index = self.import_scenario_combo.findData(scenario_mode)
         if scenario_index < 0:
@@ -1898,11 +1898,9 @@ class PreferencesWindow(AccessibleDialog):
 
         # Scenario
         self.import_scenario_combo.setCurrentIndex(
-            self.import_scenario_combo.findData("series_from_directory_nested")
+            self.import_scenario_combo.findData("mass_standard")
         )
-        self.settings.setValue(
-            "import/scenario/mode", "series_from_directory_nested"
-        )
+        self.settings.setValue("import/scenario/mode", "mass_standard")
 
         # Fallback options
         self.author_fallback_checkbox.setChecked(True)

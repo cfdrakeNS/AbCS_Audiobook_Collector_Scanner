@@ -10,18 +10,19 @@ Press **F1** in Preferences for shortcuts. Press **Alt+/** to re-read the status
 
 ## Import scenarios
 
-Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences and applied when you scan from the Import window. **Nested Books** is the default for new installs and after Restore Defaults.
+Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences and applied when you scan from the Import window. **Mass Standard Import** is the default for new installs and after Restore Defaults.
 
 | Scenario | Best for | Folder layout |
 |----------|----------|---------------|
-| **Mass Standard Import** | Most libraries | Root → author folders → title subfolders or files (series folders may appear under author) |
+| **Mass Standard Import** (default) | Most libraries | Root → author folders → title subfolders or files (series folders may appear under author) |
 | **Mass Import - Series From Directory** | Series with files directly in folder | Root → author → **series folder** → audio files (not book subfolders) |
-| **Mass Import - Series From Directory (Nested Books)** | Series with per-book subfolders (default) | Root → author → **series folder** → **book folder** → audio files; standalone books at author → book folder |
+| **Mass Import - Series From Directory (Nested Books)** | Series with per-book subfolders | Root → author → **series folder** → **book folder** → audio files; standalone books at author → book folder |
 | **Mass Import - Series From File Name** | Series encoded in file names | Any layout; series parsed from the first `( … )` block in each file name |
 | **Single Author / Book Import** | One book at a time | One author folder, one book/series folder, or a single audio file |
 
-### Mass Standard Import
+### Mass Standard Import (default)
 
+- **Factory default** after Restore Defaults (Alt+R).
 - Expects author names in folder structure when tags are missing (with author fallback enabled).
 - Does **not** aggressively derive series from folder paths.
 - Use when each author has their own top-level folder and books live in title subfolders or as files under the author.
@@ -41,9 +42,9 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 
 **Not for:** `Author/Series/Book/Files` layouts where each book has its own subfolder — use **Series From Directory (Nested Books)** instead. If you use this scenario on nested folders, series assignment is skipped with a warning.
 
-### Mass Import - Series From Directory (Nested Books) (default)
+### Mass Import - Series From Directory (Nested Books)
 
-- **Factory default** after Restore Defaults (Alt+R). Best for author folders where series contain per-book subfolders.
+- Best for author folders where series contain per-book subfolders.
 - For libraries where each series has its own folder and **each book has a subfolder** under that series (`Author/Series/Book/Files`).
 - Standalone books directly under the author (`Author/Book/Files`) are imported **without** a series.
 - Series is taken from the first folder under the author; title fallback (when the title tag is missing) uses the book subfolder name and strips leading numbers (for example `1- Rules of Prey` → **Rules of Prey**).

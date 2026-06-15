@@ -261,7 +261,7 @@ class ImportWindow(AccessibleDialog):
         self.include_subfolders = True
         self.default_collection_id = None
         self.current_collection_name = ""
-        self.import_scenario_mode = "series_from_directory_nested"
+        self.import_scenario_mode = "mass_standard"
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
@@ -677,7 +677,7 @@ class ImportWindow(AccessibleDialog):
             ("F1", "Show this help"),
         ]
         self.import_scenario_mode = self.settings.value(
-            "import/scenario/mode", "series_from_directory_nested", type=str
+            "import/scenario/mode", "mass_standard", type=str
         )
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"

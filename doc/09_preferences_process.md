@@ -30,7 +30,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 - **Default import directory** — pre-fills Import window (Alt+B to browse).
 - **Audio formats** — which extensions to scan.
-- **Import scenario** — how folders map to author, title, and series (default: **Series From Directory (Nested Books)**). See [Import preferences](15_import_preferences.md).
+- **Import scenario** — how folders map to author, title, and series (default: **Mass Standard Import**). See [Import preferences](15_import_preferences.md).
 
 ### Fallback and Parsing (Alt+F)
 
