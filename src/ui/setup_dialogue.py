@@ -1,25 +1,18 @@
 """Accessible Setup Dialog for AbCS."""
 
 from PySide6.QtWidgets import (
-    QDialog,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
 )
-from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
+from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
+from src.accessibility.read_only_text import create_accessible_read_only_text
 from src.ui.accessible_dialog import AccessibleDialog
-
-
-class FocusAnnouncingLabel(QLabel):
-    def focusInEvent(self, event):
-        super().focusInEvent(event)
-        acc_event = QAccessibleEvent(self, QAccessible.Event.Focus)
-        QAccessible.updateAccessibility(acc_event)
 
 
 class SetupDialog(AccessibleDialog):
@@ -70,15 +63,13 @@ class SetupDialog(AccessibleDialog):
             "Click OK or press Escape to exit."
         )
 
-        setup_label = FocusAnnouncingLabel(setup_text, self)
-        setup_label.setWordWrap(True)
-        setup_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        setup_label.setTextInteractionFlags(Qt.NoTextInteraction)
-        setup_label.setFocusPolicy(Qt.TabFocus)
-        setup_label.setAccessibleName(setup_text)
-        setup_label.setAccessibleDescription(
-            "Welcome/setup information. Press Tab to move to Import, Add Book, or Close button."
+        setup_label = create_accessible_read_only_text(
+            self,
+            setup_text,
+            "Welcome information",
+            "Setup instructions. Use arrow keys to read line by line. Press Tab to move to OK button.",
         )
+        setup_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         font = setup_label.font()
         font.setPointSize(self.scaler.get_scaled_size(12))

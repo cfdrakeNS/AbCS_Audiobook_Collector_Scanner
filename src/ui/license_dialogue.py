@@ -1,13 +1,16 @@
 """Accessible License Dialog for AbCS."""
 
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QVBoxLayout
 from PySide6.QtCore import Qt, QTimer
+
+from src.accessibility.read_only_text import create_accessible_read_only_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 
 class LicenseDialog(AccessibleDialog):
     def __init__(self, scaler, parent=None):
         from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.style_helpers import build_accessible_button_style
 
         super().__init__(parent)
         self.setWindowIcon(get_app_icon())
@@ -51,23 +54,18 @@ class LicenseDialog(AccessibleDialog):
             "software or the use or other dealings in the software."
         )
 
-        license_label = QLabel(license_text, self)
-        license_label.setWordWrap(True)
-        license_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        license_label.setTextInteractionFlags(Qt.NoTextInteraction)
-        license_label.setFocusPolicy(Qt.TabFocus)
-        license_label.setAccessibleName(license_text)
-        license_label.setAccessibleDescription(
-            "AbCS license information. Press Tab to move to OK button."
+        license_label = create_accessible_read_only_text(
+            self,
+            license_text,
+            "License information",
+            "AbCS license terms. Use arrow keys to read line by line. Press Tab to move to OK button.",
         )
+        license_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         font = license_label.font()
         font.setPointSize(self.scaler.get_scaled_size(12))
         license_label.setFont(font)
         license_label.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(license_label)
-
-        from PySide6.QtWidgets import QHBoxLayout
-        from src.accessibility.style_helpers import build_accessible_button_style
 
         btn_row = QHBoxLayout()
         btn_row.addStretch(1)

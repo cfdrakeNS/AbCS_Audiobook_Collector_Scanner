@@ -1,17 +1,18 @@
 """Accessible About Dialog for AbCS."""
 
 from PySide6.QtWidgets import (
-    QDialog,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QPixmap, QAccessible, QAccessibleEvent
+from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
+from src.accessibility.read_only_text import create_accessible_read_only_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -22,13 +23,6 @@ def _get_app_version() -> str:
         return f"v{APP_VERSION}"
     except ImportError:
         return "v?.?.?"
-
-
-class FocusAnnouncingLabel(QLabel):
-    def focusInEvent(self, event):
-        super().focusInEvent(event)
-        acc_event = QAccessibleEvent(self, QAccessible.Event.Focus)
-        QAccessible.updateAccessibility(acc_event)
 
 
 class AboutDialog(AccessibleDialog):
@@ -64,28 +58,24 @@ class AboutDialog(AccessibleDialog):
 
         pixmap = QPixmap(resolve_graphics_path("abcs_app_splash.png"))
         if not pixmap.isNull():
-            graphic_container = QWidget(self)
-            graphic_layout = QVBoxLayout(graphic_container)
-            graphic_layout.setContentsMargins(0, 0, 0, 0)
-            graphic_layout.setSpacing(0)
-            graphic_layout.addStretch(1)
             graphic_label = QLabel(self)
             graphic_label.setPixmap(pixmap)
             graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
             graphic_label.setFocusPolicy(Qt.NoFocus)
             graphic_label.setContentsMargins(0, 0, 0, 0)
-            graphic_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
-            graphic_layout.addStretch(1)
-            content_layout.addWidget(graphic_container)
+            graphic_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            content_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
 
         version = _get_app_version()
         about_text = (
             f"AbCS - Audio Book Collector Scanner    {version}\n"
-            "A cross-platform audiobook collection manager with full accessibility support.\n\n"
+            "A cross-platform audiobook collection manager with full accessibility support.\n"
+            " \n"
             "LICENSE\n"
             "Copyright (c) 2025-2026 C.F. Drake & Contributors\n"
             "Custom non-commercial license.\n"
             "Commercial sale/distribution requires written permission.\n\n"
+            " \n"
             "FEATURES - \n "
             "• Audio Book Management with full metadata.\n "
             "• ID3 Tag Import from Most Audio Format Files.\n "
@@ -94,22 +84,21 @@ class AboutDialog(AccessibleDialog):
             "• Complete Keyboard Navigation.\n "
             "• Screen Reader Support.\n "
             "• Scalable UI (50%-200%+).\n "
-            "• High Contrast Themes.\n .\n "
+            "• High Contrast Themes.\n \n "
+            " \n"
             "ACCESSIBILITY.\n "
             "• Designed for users with low vision and screen readers.\n "
             "• All features include keyboard shortcuts.\n "
             "Press F1 or use Help menu for Keyboard Shortcuts."
         )
 
-        about_label = FocusAnnouncingLabel(about_text, self)
-        about_label.setWordWrap(True)
-        about_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        about_label.setTextInteractionFlags(Qt.NoTextInteraction)
-        about_label.setFocusPolicy(Qt.TabFocus)
-        about_label.setAccessibleName(about_text)
-        about_label.setAccessibleDescription(
-            "About information. Press Tab to move to Close button."
+        about_label = create_accessible_read_only_text(
+            self,
+            about_text,
+            "About information",
+            "About AbCS. Use arrow keys to read line by line. Press Tab to move to OK button.",
         )
+        about_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         font = about_label.font()
         font.setPointSize(self.scaler.get_scaled_size(12))

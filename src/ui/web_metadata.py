@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QLineEdit,
-    QTextEdit,
     QPushButton,
     QMessageBox,
     QCheckBox,
@@ -45,6 +44,10 @@ from src.accessibility.accessible_events import (
     read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.read_only_text import (
+    PlotLineList,
+    plot_text_equivalent,
+)
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.style_helpers import (
@@ -92,7 +95,9 @@ class WebMetadataWindow(AccessibleDialog):
     @staticmethod
     def _build_plot_text_for_db(web_data: dict) -> str:
         """Build plot/comments text stored in the database (rating prefix + plot)."""
-        plot_text_for_db = ""
+        from src.accessibility.read_only_text import format_plot_text_for_navigation
+
+        plot_body = format_plot_text_for_navigation(web_data.get("plot") or "")
         rating = web_data.get("rating")
         ratings_count = web_data.get("ratings_count")
         if rating:
@@ -107,9 +112,10 @@ class WebMetadataWindow(AccessibleDialog):
                     rating_str += f" ({count_val:,} ratings)"
                 except (ValueError, TypeError):
                     pass
-            plot_text_for_db += rating_str + " - "
-        plot_text_for_db += web_data.get("plot") or ""
-        return plot_text_for_db
+            if plot_body:
+                return f"{rating_str}\n{plot_body}"
+            return rating_str
+        return plot_body
 
     @classmethod
     def compute_field_differences(cls, book, web_data: dict) -> dict:
@@ -144,7 +150,7 @@ class WebMetadataWindow(AccessibleDialog):
         if web_data.get("plot"):
             plot_text_for_db = cls._build_plot_text_for_db(web_data)
             current_plot = book.comments or ""
-            if plot_text_for_db.strip() != current_plot.strip():
+            if not plot_text_equivalent(plot_text_for_db, current_plot):
                 differences["plot"] = plot_text_for_db
 
         return differences
@@ -478,22 +484,16 @@ class WebMetadataWindow(AccessibleDialog):
         self.main_layout.addWidget(genre_row)
 
         # Plot field - always visible to maintain layout
-        plot_layout = QHBoxLayout()
         plot_label = QLabel("&Plot:")
         plot_label.setFocusPolicy(Qt.NoFocus)
-        self.plot_edit = QTextEdit()
+        self.plot_edit = PlotLineList(self)
         self.plot_edit.setAccessibleName("Plot")
-        self.plot_edit.setAccessibleDescription("Current plot from web metadata")
-        self.plot_edit.setReadOnly(True)  # Make read-only like other fields
-        self.plot_edit.setFocusPolicy(
-            Qt.StrongFocus
-        )  # Ensure it can receive focus for tabbing
-        self.plot_edit.setTabChangesFocus(True)
         self.plot_edit.setObjectName("plot_edit")  # For shortcut manager
-        self.plot_edit.setMinimumHeight(150)  # Give plot more vertical space
+        plot_min = self.scaler.get_scaled_size(120)
+        plot_max = self.scaler.get_scaled_size(200)
+        self.plot_edit.setMinimumHeight(plot_min)
+        self.plot_edit.setMaximumHeight(plot_max)
         plot_label.setBuddy(self.plot_edit)
-        plot_layout.addWidget(plot_label)
-        plot_layout.addWidget(self.plot_edit)
         plot_label.setMinimumWidth(80)
         plot_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
         plot_row = QWidget()
@@ -501,7 +501,7 @@ class WebMetadataWindow(AccessibleDialog):
         plot_layout.setContentsMargins(0, 0, 0, 0)
         plot_layout.setSpacing(10)
         plot_layout.addWidget(plot_label)
-        plot_layout.addWidget(self.plot_edit)
+        plot_layout.addWidget(self.plot_edit, 1)
         self.plot_row = plot_row  # Store reference for hiding/showing
         self.main_layout.addWidget(plot_row)
 
@@ -690,7 +690,7 @@ class WebMetadataWindow(AccessibleDialog):
             if not self._widget_takes_tab_focus(widget):
                 widget.setFocusPolicy(Qt.NoFocus)
                 continue
-            if isinstance(widget, (QLineEdit, QTextEdit, QCheckBox, QPushButton)):
+            if isinstance(widget, (QLineEdit, PlotLineList, QCheckBox, QPushButton)):
                 widget.setFocusPolicy(Qt.StrongFocus)
             visible.append(widget)
         return visible
@@ -713,9 +713,6 @@ class WebMetadataWindow(AccessibleDialog):
         field_style = build_accessible_f1_popup_style()
 
         for field in self.findChildren(QLineEdit):
-            field.setStyleSheet(field_style)
-
-        for field in self.findChildren(QTextEdit):
             field.setStyleSheet(field_style)
 
         scaled_height = int(20 * (self.scaler.current_scale / 100.0))
@@ -756,7 +753,7 @@ class WebMetadataWindow(AccessibleDialog):
             else:
                 self.series_number_edit.clear()
             self.genre_edit.setText(self.book.genre_name or "")
-            self.plot_edit.setPlainText(self.book.comments or "")
+            self.plot_edit.set_plot_text(self.book.comments or "")
 
             # Initialize new fields
             self.rating_edit.clear()
@@ -1046,9 +1043,9 @@ class WebMetadataWindow(AccessibleDialog):
         # Plot (store rating in database but only show plot in UI)
         if web_data.get("plot"):
             plot_text_for_db = self._build_plot_text_for_db(web_data)
-            self.plot_edit.setPlainText(web_data["plot"])
+            self.plot_edit.set_plot_text(web_data["plot"])
             current_plot = self.book.comments or ""
-            if plot_text_for_db.strip() != current_plot.strip():
+            if not plot_text_equivalent(plot_text_for_db, current_plot):
                 self.field_differences["plot"] = plot_text_for_db
 
             rating = web_data.get("rating")
@@ -1070,7 +1067,7 @@ class WebMetadataWindow(AccessibleDialog):
                 self.rating_edit.clear()
         else:
             # No web plot — keep the current local plot visible
-            self.plot_edit.setPlainText(self.book.comments or "")
+            self.plot_edit.set_plot_text(self.book.comments or "")
             self.rating_edit.clear()
 
     def setup_shortcuts(self):

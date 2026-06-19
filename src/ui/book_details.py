@@ -33,6 +33,11 @@ from src.accessibility.accessible_events import (
     read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.read_only_text import (
+    PlotLineList,
+    format_plot_text_for_navigation,
+    set_navigable_plain_text,
+)
 import getpass
 
 from PySide6.QtWidgets import (
@@ -43,6 +48,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QComboBox,
     QTextEdit,
+    QStackedWidget,
     QPushButton,
     QLabel,
     QDateEdit,
@@ -363,7 +369,7 @@ class BookDetailsWindow(AccessibleDialog):
         for widget in self.findChildren(QLineEdit):
             widget.installEventFilter(self)
 
-        # Also filter QTextEdit widgets
+        # Also filter plot editor
         for widget in self.findChildren(QTextEdit):
             widget.installEventFilter(self)
 
@@ -407,8 +413,8 @@ class BookDetailsWindow(AccessibleDialog):
             if isinstance(source, QLineEdit):
                 QTimer.singleShot(0, lambda w=source: w.deselect())
             elif isinstance(source, QTextEdit):
-                # Move cursor to start for accessibility (better for screen readers)
-                QTimer.singleShot(0, lambda w=source: w.moveCursor(QTextCursor.Start))
+                if source is not self.comments_edit:
+                    QTimer.singleShot(0, lambda w=source: w.moveCursor(QTextCursor.Start))
             elif isinstance(source, QComboBox):
                 # QComboBox selects text in its internal lineEdit - deselect it
                 if source.lineEdit():
@@ -672,17 +678,30 @@ class BookDetailsWindow(AccessibleDialog):
         grid.addWidget(author_label, ROW_AUTHOR, 0, label_align)
         grid.addWidget(self.author_field_stack, ROW_AUTHOR, 1)
 
-        # Plot — fixed height, scrolls internally
+        # Plot — line list for review, text edit for editing
         self.comments_label = QLabel("Plot:")
+        self.plot_review = PlotLineList()
+        self.plot_review.setAccessibleName("Plot")
         self.comments_edit = QTextEdit()
-        self.comments_edit.setAccessibleName("Plot")
+        self.comments_edit.setAccessibleName("Plot editor")
+        self.comments_edit.setAccessibleDescription("Plot summary for editing.")
         self.comments_edit.setTabChangesFocus(True)
+        self.comments_edit.setFocusPolicy(Qt.StrongFocus)
+        self.plot_stack = QStackedWidget()
+        self.plot_stack.addWidget(self.plot_review)
+        self.plot_stack.addWidget(self.comments_edit)
+        self.plot_stack.setFocusPolicy(Qt.StrongFocus)
+        self.plot_stack.setCurrentWidget(self.plot_review)
+        self.plot_stack.setFocusProxy(self.plot_review)
         self.comments_edit.setMinimumHeight(120)
         self.comments_edit.setMaximumHeight(200)
+        self.plot_review.setMinimumHeight(120)
+        self.plot_review.setMaximumHeight(200)
         self.comments_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.comments_label.setBuddy(self.comments_edit)
+        self.plot_review.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.comments_label.setBuddy(self.plot_stack)
         grid.addWidget(self.comments_label, ROW_PLOT, 0, label_align)
-        grid.addWidget(self.comments_edit, ROW_PLOT, 1)
+        grid.addWidget(self.plot_stack, ROW_PLOT, 1)
 
         # Year + Time
         self.year_spin = QSpinBox()
@@ -1022,8 +1041,8 @@ class BookDetailsWindow(AccessibleDialog):
         # bd#7: Include view labels in tab order for accessibility
         self.setTabOrder(self.title_edit, self.author_label_display)
         self.setTabOrder(self.author_label_display, self.author_combo)
-        self.setTabOrder(self.author_combo, self.comments_edit)
-        self.setTabOrder(self.comments_edit, self.year_spin)
+        self.setTabOrder(self.author_combo, self.plot_stack)
+        self.setTabOrder(self.plot_stack, self.year_spin)
         self.setTabOrder(self.year_spin, self.time_edit)
         self.setTabOrder(self.time_edit, self.reader_edit)
         self.setTabOrder(self.reader_edit, self.read_date)
@@ -1237,6 +1256,7 @@ class BookDetailsWindow(AccessibleDialog):
         callback_map["series_label_display"] = self._focus_series
         callback_map["genre_label_display"] = self._focus_genre
         callback_map["collection_label_display"] = self._focus_collection
+        callback_map["comments_edit"] = self._focus_plot
         mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
 
         # Button shortcuts (local like import_detail)
@@ -1601,7 +1621,8 @@ class BookDetailsWindow(AccessibleDialog):
                     self.added_edit.setText(self.book.date_added.strftime("%Y-%m-%d"))
             else:
                 self.added_edit.setText("")
-            self.comments_edit.setPlainText(self.book.comments or "")
+            set_navigable_plain_text(self.comments_edit, self.book.comments or "")
+            self.plot_review.set_plot_text(self.book.comments or "")
             if self.book.read_date:
                 read_date_value = self.book.read_date
                 if isinstance(read_date_value, str):
@@ -2095,6 +2116,15 @@ class BookDetailsWindow(AccessibleDialog):
         self.title_edit.setReadOnly(read_only)
         # Plot/Comments
         self.comments_edit.setReadOnly(read_only)
+        if read_only:
+            restored_plot = format_plot_text_for_navigation(self.comments_edit.toPlainText())
+            self.comments_edit.setPlainText(restored_plot)
+            self.plot_review.set_plot_text(restored_plot)
+            self.plot_stack.setCurrentWidget(self.plot_review)
+            self.plot_stack.setFocusProxy(self.plot_review)
+        else:
+            self.plot_stack.setCurrentWidget(self.comments_edit)
+            self.plot_stack.setFocusProxy(self.comments_edit)
         # Year
         self.year_spin.setReadOnly(read_only)
         # Time
@@ -2117,6 +2147,13 @@ class BookDetailsWindow(AccessibleDialog):
         self.source_edit.setReadOnly(read_only)
         # Added date
         self.added_edit.setReadOnly(read_only)
+
+    def _focus_plot(self):
+        """Focus plot line list in view mode or editor in edit mode."""
+        if self.plot_stack.currentWidget() is self.plot_review:
+            self.plot_review.setFocus()
+        else:
+            self.comments_edit.setFocus()
 
     def _focus_author(self):
         """Focus author - view label in view mode, combo in edit mode."""
@@ -2180,6 +2217,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.source_edit.clear()
             self.added_edit.setText("")
             self.comments_edit.clear()
+            self.plot_review.clear()
             self.read_date.setDate(self._null_read_date)
             if self.current_collection_id is not None:
                 idx = self.collection_combo.findData(self.current_collection_id)
@@ -2291,7 +2329,7 @@ class BookDetailsWindow(AccessibleDialog):
                     self.set_status(
                         "Web details applied successfully", announce=True
                     )
-                    QTimer.singleShot(0, self.comments_edit.setFocus)
+                    QTimer.singleShot(0, self._focus_plot)
             else:
                 fetch_errors = (web_data or {}).get("_fetch_errors", [])
                 if fetch_errors:
