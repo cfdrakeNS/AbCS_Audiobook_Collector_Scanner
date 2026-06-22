@@ -2,7 +2,7 @@
 
 ## What this is
 
-This guide explains how **Preferences** shape folder import behavior: import scenarios, fallback rules, validation, and duplicate matching. It complements [Default preferences](14_default_preference.md) (factory values) and [Import process](02_import_process.md) (step-by-step workflow).
+This guide explains how **Preferences** shape folder import behavior: import scenarios, fallback rules, validation, and duplicate matching. It complements [Default preferences](17_default_preference.md) (factory values) and [Import process](02_import_process.md) (step-by-step workflow).
 
 Open **Manage → Preferences** (or **View → Preferences**). Import-related settings are on three tabs: **Import Settings**, **Fallback and Parsing**, and **Validation Rules**.
 
@@ -122,10 +122,10 @@ Corrections appear in the review list with **C:** flags. Fallback flags (**F:**)
 
 - Preferences are saved to disk when you click **Save** (Alt+S) in Preferences.
 - If the Import window is already open, close and reopen it, or start a new scan, so the latest scenario and rules load.
-- Default values after **Restore Defaults** (Alt+R) are listed in [Default preferences](14_default_preference.md).
+- Default values after **Restore Defaults** (Alt+R) are listed in [Default preferences](17_default_preference.md).
 
 ## Related documentation
 
-- [Default preferences](14_default_preference.md) — factory default values
+- [Default preferences](17_default_preference.md) — factory default values
 - [Import process](02_import_process.md) — folder scan workflow
-- [Keyboard shortcuts by window](13_shortcuts_list.md) — Import and Preferences shortcuts
+- [Keyboard shortcuts by window](16_shortcuts_list.md) — Import and Preferences shortcuts

@@ -94,7 +94,11 @@ from src.accessibility.style_helpers import (
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
-from src.utils.text_utils import normalize_title, normalize_author, similarity_percentage
+from src.utils.text_utils import (
+    compare_normalize_title,
+    normalize_author,
+    similarity_percentage,
+)
 
 
 class BookListImportWindow(AccessibleDialog):
@@ -127,7 +131,7 @@ class BookListImportWindow(AccessibleDialog):
         Returns:
             True if duplicate found, False otherwise
         """
-        norm_title = normalize_title(title, aggressive=True)
+        norm_title = compare_normalize_title(title)
         norm_author = normalize_author(author, aggressive=True)
 
         for db_book in preexisting_books:
@@ -352,6 +356,10 @@ class BookListImportWindow(AccessibleDialog):
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
 
         # Alt+/ remains local for status bar read
         self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
@@ -1056,8 +1064,6 @@ class BookListImportWindow(AccessibleDialog):
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
 
-        table.setRowCount(len(shortcuts))
-        table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -1074,7 +1080,15 @@ class BookListImportWindow(AccessibleDialog):
         table.viewport().setAttribute(Qt.WA_Hover, False)
 
         # Centralize Alt+/ visibility and order for screen readers
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
+        )
+
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, desc) in enumerate(shortcuts):
@@ -1272,6 +1286,9 @@ class BookListImportWindow(AccessibleDialog):
         text = str(value).strip()
         if not text or text.lower() == "nan":
             return None
+
+        # Fix spaced digits in typo dates such as "25-0 1-2024" -> "25-01-2024".
+        text = re.sub(r"(?<=\d)\s+(?=\d)", "", text)
 
         # Strip time component if present (e.g., "2026-04-04 00:00:00").
         text = text.split(" ")[0].strip()
@@ -1605,13 +1622,15 @@ class BookListImportWindow(AccessibleDialog):
             "JOIN authors a ON b.author_id = a.author_id"
         )
         
-        # Pre-normalize DB records once to avoid millions of repeated string operations
+        # Pre-normalize DB records once to avoid millions of repeated string operations.
+        # compare_normalize_title strips DB series suffixes (e.g. "Triptych - 01")
+        # and moves trailing articles before aggressive normalization.
         preexisting_books = []
         for row_data in preexisting_rows:
             preexisting_books.append({
                 "title": row_data[1],
                 "author": row_data[2],
-                "norm_title": normalize_title(row_data[1], aggressive=True),
+                "norm_title": compare_normalize_title(row_data[1]),
                 "norm_author": normalize_author(row_data[2], aggressive=True),
                 "year": row_data[3],
                 "collection_id": row_data[4]
@@ -1717,7 +1736,7 @@ class BookListImportWindow(AccessibleDialog):
                 preexisting_books.append({
                     "title": title_for_save,
                     "author": author,
-                    "norm_title": normalize_title(title_for_save, aggressive=True),
+                    "norm_title": compare_normalize_title(title_for_save),
                     "norm_author": normalize_author(author, aggressive=True),
                     "year": import_year,
                     "collection_id": selected_collection_id
@@ -1830,11 +1849,21 @@ class BookListImportWindow(AccessibleDialog):
             self.set_status("Error: No collection selected")
             return 0, 1
 
+        from src.core.validator import ImportValidator
+        validator = ImportValidator()
+
         for index, row in self.file_data.iterrows():
             try:
                 # Extract required fields
                 title = str(row.iloc[mapping["title"]]).strip()
                 author = str(row.iloc[mapping["author"]]).strip()
+
+                # Sanitize title and author (trim, proper-case, collapse spaces)
+                # to match the same pre-processing that add-book mode applies.
+                temp_meta = {"title": title, "author": author}
+                validator.sanitize_metadata(temp_meta)
+                title = temp_meta["title"]
+                author = temp_meta["author"]
 
                 if not title or not author or title == "nan" or author == "nan":
                     self.import_errors.append(
@@ -1880,8 +1909,8 @@ class BookListImportWindow(AccessibleDialog):
                     ):
                         title_for_save = f"{title} ({series} #{series_no})"
 
-                # Prepare import title for comparison: use full normalization
-                import_title_for_compare = normalize_title(title_for_save, aggressive=True)
+                # compare_normalize_title massages DB/sheet titles (series suffix, articles).
+                import_title_for_compare = compare_normalize_title(title_for_save)
                 # Fetch all books by this author in the selected collection (case-insensitive, trimmed)
                 candidate_rows = self.db.fetch_all(
                     "SELECT b.book_id, b.title, a.name FROM books b "
@@ -1892,7 +1921,7 @@ class BookListImportWindow(AccessibleDialog):
                 found_book_id = None
                 for db_row in candidate_rows:
                     db_title = db_row[1]
-                    norm_db_title = normalize_title(db_title, aggressive=True)
+                    norm_db_title = compare_normalize_title(db_title)
                     if norm_db_title == import_title_for_compare:
                         found_book_id = db_row[0]
                         break

@@ -178,15 +178,16 @@ Reference files:
 
 ## 10. About/Info Dialog Pattern
 
-Goal: Provide a consistent, accessible, and themed approach for About, License, and other informational dialogs.
+Goal: Provide a consistent, accessible, and themed approach for About, License, Setup, and other informational dialogs.
 
 Pattern:
-- Use external dialog classes (e.g., `AboutDialog`, `LicenseDialog`) instead of inline popups in main windows.
+- Use external dialog classes (e.g., `AboutDialog`, `LicenseDialog`, `SetupDialog`) instead of inline popups in main windows.
 - Inherit from `AccessibleDialog`, not `QDialog` (see section 4).
 - Structure dialog with header/content/footer using `QVBoxLayout`.
+- **Use `create_accessible_read_only_text()` for body text** — not `QLabel` (see section 11).
 - Footer: right-aligned, styled OK/Close button using `build_accessible_button_style()`.
 - Apply font scaling with `scaler.get_scaled_size()` for all text and controls.
-- Set accessible names and descriptions for all widgets.
+- Set a **short** accessible name and a helpful accessible description on the text area.
 - Ensure dialog is modal and returns focus to main window after closing.
 - Test with JAWS/NVDA for screen reader feedback (verify Insert+T reads the dialog title).
 
@@ -205,10 +206,125 @@ Reference files:
 - `src/ui/accessible_dialog.py`
 - `src/ui/about_dialogue.py`
 - `src/ui/license_dialogue.py`
+- `src/ui/setup_dialogue.py`
+- `src/accessibility/read_only_text.py`
 - `src/accessibility/style_helpers.py`
-- `.github/copilot-instructions.md` (for project-wide accessibility/theming)
 
-## 11. Decision policy: defect vs intentional noise reduction
+## 11. Read-only navigable text pattern
+
+Goal: let JAWS/NVDA users move through static help or license text line by line with arrow keys.
+
+### Problem
+
+`QLabel` with the full body in `setAccessibleName()` causes the screen reader to dump all text at once. Arrow keys do not move line by line. Empty lines in the source text can also cause JAWS to repeat the previous line.
+
+### Solution: `create_accessible_read_only_text()`
+
+Module: `src/accessibility/read_only_text.py`
+
+Use a read-only `QTextEdit` configured for keyboard review:
+
+```python
+from src.accessibility.read_only_text import create_accessible_read_only_text
+
+about_label = create_accessible_read_only_text(
+    self,
+    about_text,
+    "About information",  # short name only — not the full body
+    "About AbCS. Use arrow keys to read line by line. Press Tab to move to OK button.",
+)
+about_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+```
+
+`configure_accessible_read_only_text()` applies these settings:
+- `setReadOnly(True)`
+- `setTextInteractionFlags(Qt.TextSelectableByKeyboard)` — enables arrow-key line review
+- `setFocusPolicy(Qt.StrongFocus)` and `setTabChangesFocus(True)`
+- `setMouseTracking(False)` on widget and viewport; `WA_Hover` disabled
+- Transparent background / no frame for dialog embedding
+- Body text passed through `_collapse_blank_lines()` to remove empty lines that confuse JAWS
+
+### Rules
+
+- **Never** put the full body text in `setAccessibleName()`.
+- Use a short accessible name (for example `"License information"`) and a brief description that mentions arrow-key review.
+- Decorative graphics (splash image) use `Qt.NoFocus`.
+- Set initial focus to the text area with `QTimer.singleShot(100, lambda: text_widget.setFocus(Qt.TabFocusReason))`.
+
+### Where used
+
+- `src/ui/about_dialogue.py`
+- `src/ui/license_dialogue.py`
+- `src/ui/setup_dialogue.py`
+
+## 12. Plot field line-by-line review pattern
+
+Goal: let screen reader users review plot text line by line in view mode while keeping continuous prose in the database and edit mode.
+
+### Problem
+
+- Read-only `QTextEdit` did not give reliable Up/Down line navigation in JAWS/NVDA.
+- Putting the full plot in `setAccessibleName()` made review worse.
+- Splitting every sentence into list rows looked like blank lines between items and polluted stored text with extra line breaks.
+
+### Solution: `PlotLineList` + edit `QTextEdit`
+
+Module: `src/accessibility/read_only_text.py`
+
+**View mode (read-only review):** `PlotLineList` — a `QListWidget` subclass with one row per navigable line.
+
+**Edit mode:** standard `QTextEdit` loaded with `set_navigable_plain_text()` (continuous prose, no injected breaks).
+
+**Book Details** stacks both in a `QStackedWidget`:
+- View: `plot_review` (`PlotLineList`)
+- Edit: `comments_edit` (`QTextEdit`)
+- Switch widgets in `_set_fields_read_only()`; sync prose with `format_plot_text_for_navigation()` when returning to view mode.
+
+**Web Metadata** uses `PlotLineList` for the plot field.
+
+### How plot rows are built
+
+`plot_lines_for_review()` loads text into the list:
+1. **Item 0:** rating line only (for example `Rating: 3.5 (2 ratings)`), when present.
+2. **Items 1+:** plot body split into lines of at most **73 characters**, breaking only at word boundaries (`_wrap_at_words()`).
+
+Storage and edit mode use `format_plot_text_for_navigation()` — normalizes line endings, rejoins legacy sentence-per-line data, and keeps plot body as continuous prose. **Do not** inject sentence line breaks into stored text.
+
+Compare plot text with `plot_text_equivalent()` (ignores line-break and whitespace differences).
+
+### PlotLineList accessibility and visual settings
+
+- `setAccessibleName("Plot")` — short label only; row text comes from `AccessibleTextRole` per item.
+- `setAccessibleDescription("")` — avoid duplicate announcements.
+- `setSpacing(0)`, `setUniformItemSizes(True)`, zero item padding in stylesheet.
+- `_CompactPlotLineDelegate` paints single-line rows at `fontMetrics().height()` so rows stack tightly without visual gaps.
+- Selected/focused rows use base background (no highlight bar) so the field does not flash a selection color while reviewing.
+- `setMouseTracking(False)`; `WA_Hover` disabled on widget and viewport.
+
+Example:
+```python
+from src.accessibility.read_only_text import PlotLineList
+
+self.plot_review = PlotLineList()
+self.plot_review.setAccessibleName("Plot")
+self.plot_review.set_plot_text(self.book.comments or "")
+```
+
+### Rules
+
+- Use `PlotLineList.set_plot_text()` to load; do not call `setPlainText()`.
+- Keep rating on its own list row (item 0), separate from plot body lines.
+- Do not break words when wrapping plot lines for the list.
+- Do not put full plot text in `setAccessibleName()`.
+- Web metadata save path: `_build_plot_text_for_db()` uses `format_plot_text_for_navigation()`, not sentence splitting.
+
+Reference files:
+- `src/accessibility/read_only_text.py`
+- `src/ui/book_details.py`
+- `src/ui/web_metadata.py`
+- `test/test_read_only_text.py`
+
+## 13. Decision policy: defect vs intentional noise reduction
 
 Use this policy in reviews:
 - Confirmed defect: required information or action is not reliably accessible.

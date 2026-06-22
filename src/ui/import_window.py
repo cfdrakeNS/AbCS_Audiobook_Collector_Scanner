@@ -137,6 +137,10 @@ class ImportWindow(AccessibleDialog):
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
         # IMPORTANT: Do NOT add global Return/Enter shortcuts here!
         # They interfere with button Enter key activation (accessibility issue)
         # Enter key handling is done in keyPressEvent method instead
@@ -838,6 +842,13 @@ class ImportWindow(AccessibleDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
+        )
+
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
 
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
@@ -853,14 +864,6 @@ class ImportWindow(AccessibleDialog):
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
-        # Apply centralized F1 popup style
-        from src.accessibility.shortcut_helpers import (
-            get_accessible_shortcuts_list,
-            build_accessible_f1_popup_style,
-        )
-
-        # Centralize Alt+/ visibility and order for screen readers
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, desc) in enumerate(shortcuts):

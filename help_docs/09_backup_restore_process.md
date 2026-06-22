@@ -23,31 +23,31 @@ Backup and Restore lets you save a copy of your entire AbCS database and restore
 
 ### Create a backup
 
-3. Click **Backup** (Alt+K).
-4. AbCS saves a new backup file in the app's backup folder and adds it to the list.
-5. The status bar confirms success.
+1. Click **Backup** (Alt+K).
+2. AbCS saves a new backup file in the app's backup folder and adds it to the list.
+3. The status bar confirms success.
 
 ### Restore from a backup
 
-3. Select a backup in the list, or click **Browse** (Alt+B) to choose a backup file from another location.
-4. The selected file appears in the **Restore file** field (Alt+T to focus).
-5. Click **Restore** (Alt+R).
-6. Confirm the restore when asked. This replaces your current database.
-7. When restore completes, the main window refreshes and shows **All Collections**.
+1. Select a backup in the list, or click **Browse** (Alt+B) to choose a backup file from another location.
+2. The selected file appears in the **Restore file** field (Alt+T to focus).
+3. Click **Restore** (Alt+R).
+4. Confirm the restore when asked. This replaces your current database.
+5. When restore completes, the main window refreshes and shows **All Collections**.
 
 ### Delete a backup file
 
-3. Select a backup in the list.
-4. Click **Delete** (Alt+D), or press the Delete key while the list is focused.
-5. Confirm deletion. This removes the backup file only, not your live database.
+1. Select a backup in the list.
+2. Click **Delete** (Alt+D), or press the Delete key while the list is focused.
+3. Confirm deletion. This removes the backup file only, not your live database.
 
 ### Full reset
 
-3. Click **Full Reset** (Alt+F).
-4. Confirm carefully. This clears all data and creates an empty database.
-5. The main window refreshes to All Collections.
+1. Click **Full Reset** (Alt+F).
+2. Confirm carefully. This clears all data and creates an empty database.
+3. The main window refreshes to All Collections.
 
-5. Press **Escape** to close the Backup and Restore window.
+4. Press **Escape** to close the Backup and Restore window.
 
 ## What happens next
 
@@ -72,9 +72,11 @@ None. Backup and Restore does not use import or display preferences.
 | Alt+D | Delete selected backup |
 | Alt+F | Full reset |
 | Delete | Delete selected backup (when list focused) |
-| F1 | Help for this window |
+| Shift+F1 | Help for this window |
+| F1 | Keyboard shortcuts for this window |
 | Alt+/ | Re-read status |
 | Escape | Close window |
+
 ## Common confusion
 
 **Where are backup files stored?**

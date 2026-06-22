@@ -489,6 +489,10 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
+
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
@@ -921,6 +925,7 @@ class ReadingHistoryWindow(AccessibleDialog):
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
             build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
         )
 
         shortcuts = [
@@ -935,6 +940,7 @@ class ReadingHistoryWindow(AccessibleDialog):
             ("F1", "Show this help"),
             ("Escape", "Close window"),
         ]
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
 
         dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Reading History")
@@ -965,8 +971,6 @@ class ReadingHistoryWindow(AccessibleDialog):
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
 
-        # Centralize Alt+/ visibility and order for screen readers
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
         table.setStyleSheet(build_accessible_f1_popup_style())
 
         for row, (key, desc) in enumerate(shortcuts):

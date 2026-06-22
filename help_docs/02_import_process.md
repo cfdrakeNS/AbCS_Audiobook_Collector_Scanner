@@ -11,7 +11,7 @@ Import scans a folder of audiobook files, reads information from the audio file 
 
 ## Before you start
 
-- At least one **active collection** must exist. See [Collections](05_collections_process.md).
+- At least one **active collection** must exist. See [Collections](06_collections_process.md).
 - Know which folder contains your audiobooks.
 - Optional: set up **Preferences** first (View → Preferences, or Manage → Preferences). Import behavior depends heavily on these settings.
 
@@ -67,7 +67,7 @@ Open **View → Preferences** (or **Manage → Preferences**). Import-related se
 
 If you use **Series From Directory** on a nested layout (book subfolders under the series), series assignment is skipped and books are flagged with a **warning**. Switch to **Nested Books** for that layout.
 
-See [Import preferences](15_import_preferences.md) for full scenario details, fallbacks, and validation rules.
+See [Import preferences](18_import_preferences.md) for full scenario details, fallbacks, and validation rules.
 
 ### Fallback and Parsing
 
@@ -117,7 +117,7 @@ Changing preferences while the Import window is open may not apply until you clo
 Clean books are added immediately. Anything with a duplicate match, validation issue, or fallback guess stays in the review list until you add it manually.
 
 **Is import duplicate detection the same as Duplicate Mode?**
-No. Import duplicate detection happens while adding new books and can use fuzzy matching. Duplicate Mode (Manage menu) finds duplicates already in your library using exact key matching. See [Duplicate Mode](07_duplicate_mode_process.md).
+No. Import duplicate detection happens while adding new books and can use fuzzy matching. Duplicate Mode (Manage menu) finds duplicates already in your library using exact key matching. See [Duplicate Mode](08_duplicate_mode_process.md).
 
 **Do I need to set preferences every time?**
 No. Preferences are saved and apply to every import until you change them.

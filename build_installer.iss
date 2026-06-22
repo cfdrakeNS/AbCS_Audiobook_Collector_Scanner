@@ -128,6 +128,9 @@ Source: "installer_graphics\abcs_small_55x55.png";    DestDir: "{tmp}"; Flags: d
 
 Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
+; User help documentation
+Source: "help_docs\*"; DestDir: "{app}\help_docs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
 ; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
 ; ──────────────────────────────────────────────────────────────────

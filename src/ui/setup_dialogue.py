@@ -11,7 +11,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
-from src.accessibility.read_only_text import create_accessible_read_only_text
+from src.accessibility.read_only_text import create_dialog_html_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -29,8 +29,8 @@ class SetupDialog(AccessibleDialog):
         self.setAccessibleName("Welcome to AbCS")
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setMinimumWidth(self.scaler.get_scaled_size(400))
-        self.setMinimumHeight(self.scaler.get_scaled_size(173))
+        self.setMinimumWidth(self.scaler.get_scaled_size(480))
+        self.setMinimumHeight(self.scaler.get_scaled_size(200))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -51,21 +51,24 @@ class SetupDialog(AccessibleDialog):
             graphic_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
 
-        setup_text = (
-            "No audiobooks found in the database.\n\n"
-            "You can:\n"
-            "• Import audiobooks from your computer\n"
-            "    ctrl+I or from the menu File->Import\n\n"
-            "• Manually add a new book\n"
-            "    ctrl+N or from the menu File->New Book\n\n"
-            "• Import a book list from a spreadsheet\n"
-            "    shift+ctrl+I or from the menu File->Import Book List\n\n"
-            "Click OK or press Escape to exit."
-        )
+        setup_blocks = [
+            ("body", "No audiobooks found in the database."),
+            ("heading", "You can:"),
+            ("item", "Import audiobooks from your computer."),
+            ("body", "Ctrl+I or File → Import."),
+            ("item", "Manually add a new book."),
+            ("body", "Ctrl+N or File → New Book."),
+            ("item", "Import a book list from a spreadsheet."),
+            ("body", "Shift+Ctrl+I or File → Import Book List."),
+            ("heading", "Help"),
+            ("body", "Press Shift+F1 in any window for context-sensitive help."),
+            ("body", "Use the Help menu for full workflow guides."),
+            ("body", "Click OK or press Escape to exit."),
+        ]
 
-        setup_label = create_accessible_read_only_text(
+        setup_label = create_dialog_html_text(
             self,
-            setup_text,
+            setup_blocks,
             "Welcome information",
             "Setup instructions. Use arrow keys to read line by line. Press Tab to move to OK button.",
         )

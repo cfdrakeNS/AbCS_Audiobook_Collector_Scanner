@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QVBoxLayout
 from PySide6.QtCore import Qt, QTimer
 
-from src.accessibility.read_only_text import create_accessible_read_only_text
+from src.accessibility.read_only_text import create_dialog_html_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -19,7 +19,7 @@ class LicenseDialog(AccessibleDialog):
         self.setAccessibleName("AbCS License")
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setMinimumWidth(self.scaler.get_scaled_size(400))
+        self.setMinimumWidth(self.scaler.get_scaled_size(480))
         self.setMinimumHeight(self.scaler.get_scaled_size(400))
 
         layout = QVBoxLayout(self)
@@ -31,32 +31,50 @@ class LicenseDialog(AccessibleDialog):
         )
         layout.setSpacing(self.scaler.get_scaled_size(8))
 
-        license_text = (
-            "AbCS - Audio Book Collector Scanner\n"
-            "Custom Non-Commercial License\n\n"
-            "License Terms\n\n"
-            "Copyright (c) 2025-2026 C.F. Drake & Contributors\n\n"
-            "Permission is granted, free of charge, to use, copy, and share this\n"
-            "software for personal, educational, testing, and non-commercial use.\n\n"
-            "You may modify this software for your own use.\n"
-            "If you redistribute copies or modified versions, this notice and\n"
-            "copyright attribution must remain intact.\n\n"
-            "Commercial use is prohibited without prior written permission from\n"
-            "the copyright holder.\n"
-            "You may not sell this software, bundle it into paid products, or\n"
-            "distribute it for a fee without explicit written authorization.\n\n"
-            'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,\n'
-            "express or implied, including but not limited to the warranties of\n"
-            "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n"
-            "In no event shall the authors or copyright holders be liable for any\n"
-            "claim, damages or other liability, whether in an action of contract,\n"
-            "tort or otherwise, arising from, out of or in connection with the\n"
-            "software or the use or other dealings in the software."
-        )
+        license_blocks = [
+            ("body", "AbCS - Audio Book Collector Scanner"),
+            ("heading", "Custom Non-Commercial License"),
+            ("heading", "License Terms"),
+            ("body", "Copyright (c) 2025-2026 C.F. Drake & Contributors"),
+            (
+                "body",
+                "Permission is granted, free of charge, to use, copy, and share this "
+                "software for personal, educational, testing, and non-commercial use.",
+            ),
+            ("body", "You may modify this software for your own use."),
+            (
+                "body",
+                "If you redistribute copies or modified versions, this notice and "
+                "copyright attribution must remain intact.",
+            ),
+            (
+                "body",
+                "Commercial use is prohibited without prior written permission from "
+                "the copyright holder.",
+            ),
+            (
+                "body",
+                "You may not sell this software, bundle it into paid products, or "
+                "distribute it for a fee without explicit written authorization.",
+            ),
+            (
+                "body",
+                'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, '
+                "express or implied, including but not limited to the warranties of "
+                "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.",
+            ),
+            (
+                "body",
+                "In no event shall the authors or copyright holders be liable for any "
+                "claim, damages or other liability, whether in an action of contract, "
+                "tort or otherwise, arising from, out of or in connection with the "
+                "software or the use or other dealings in the software.",
+            ),
+        ]
 
-        license_label = create_accessible_read_only_text(
+        license_label = create_dialog_html_text(
             self,
-            license_text,
+            license_blocks,
             "License information",
             "AbCS license terms. Use arrow keys to read line by line. Press Tab to move to OK button.",
         )

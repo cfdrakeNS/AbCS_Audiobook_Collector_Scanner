@@ -36,14 +36,16 @@ python src/main.py
 
 On first launch, AbCS creates a SQLite database automatically. No manual schema setup is required.
 
+**Note for Windows Users:** As this is a new open-source project, Windows SmartScreen may display a warning during installation. To bypass this, click **'More info'** on the blue popup window, and then click **'Run anyway.'** This is a standard security check for independent software.
+
 ## User documentation
 
 Workflow guides for screen reader users:
 
-- [User guide index](doc/01_user_index.md) — collections, import, filters, web metadata, backup, and more
-- [Keyboard shortcuts by window](doc/13_shortcuts_list.md)
-- [Default preferences](doc/14_default_preference.md)
-- [Import preferences (scenarios and rules)](doc/15_import_preferences.md)
+- [User guide index](help_docs/01_overview.md) — collections, import, filters, web metadata, backup, and more
+- [Keyboard shortcuts by window](help_docs/16_shortcuts_list.md)
+- [Default preferences](help_docs/17_default_preference.md)
+- [Import preferences (scenarios and rules)](help_docs/18_import_preferences.md)
 
 Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-read the status message.
 
@@ -69,7 +71,7 @@ Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-re
 - **Alt+U** — update selected
 - **Alt+D** — delete selected
 
-See [doc/13_shortcuts_list.md](doc/13_shortcuts_list.md) for every window.
+See [help_docs/16_shortcuts_list.md](help_docs/16_shortcuts_list.md) for every window.
 
 ## Project structure
 

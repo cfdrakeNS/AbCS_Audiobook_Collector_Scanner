@@ -1,6 +1,16 @@
 """Helpers for accessible shortcut lists and F1 popup styling."""
 from src.accessibility.screen_reader import is_screen_reader_active
 
+HELP_DOC_SHORTCUT = ("Shift+F1", "Show help for this window")
+
+
+def prepend_help_doc_shortcut(shortcuts):
+    """Prepend Shift+F1 as the first row in an F1 shortcuts table."""
+    shortcuts = list(shortcuts)
+    if shortcuts and shortcuts[0] == HELP_DOC_SHORTCUT:
+        return shortcuts
+    return [HELP_DOC_SHORTCUT] + shortcuts
+
 
 def get_accessible_shortcuts_list(shortcuts):
     """

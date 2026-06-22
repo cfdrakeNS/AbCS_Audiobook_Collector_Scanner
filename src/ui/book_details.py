@@ -1288,6 +1288,12 @@ class BookDetailsWindow(AccessibleDialog):
         self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(
+            self, shortcut_context=Qt.WidgetWithChildrenShortcut
+        )
+
         # PageUp/PageDown for navigation (like import_detail_window)
         self.prev_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
         self.prev_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -1475,6 +1481,7 @@ class BookDetailsWindow(AccessibleDialog):
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
             build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
         )
 
         dlg = AccessibleDialog(self)
@@ -1512,7 +1519,9 @@ class BookDetailsWindow(AccessibleDialog):
             ]
         )
         shortcut_keys.append(("F1", "Show keyboard shortcuts"))
-        shortcut_keys = get_accessible_shortcuts_list(shortcut_keys)
+        shortcut_keys = prepend_help_doc_shortcut(
+            get_accessible_shortcuts_list(shortcut_keys)
+        )
         table.setRowCount(len(shortcut_keys))
         table.setVerticalHeaderLabels([""] * len(shortcut_keys))
         for row, (key, desc) in enumerate(shortcut_keys):

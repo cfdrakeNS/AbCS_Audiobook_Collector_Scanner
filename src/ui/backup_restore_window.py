@@ -42,7 +42,11 @@ from src.accessibility.style_helpers import (
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.database import DatabaseManager
-from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+from src.accessibility.shortcut_helpers import (
+    build_accessible_f1_popup_style,
+    get_accessible_shortcuts_list,
+    prepend_help_doc_shortcut,
+)
 
 
 class BackupRestoreWindow(AccessibleDialog):
@@ -239,6 +243,10 @@ class BackupRestoreWindow(AccessibleDialog):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
+
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status_bar)
 
@@ -361,12 +369,6 @@ class BackupRestoreWindow(AccessibleDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        """Show keyboard shortcuts help dialog (accessible, centralized)."""
-        from src.accessibility.shortcut_helpers import (
-            get_accessible_shortcuts_list,
-            build_accessible_f1_popup_style,
-        )
-
         shortcuts = [
             ("Alt+L", "Backup list"),
             ("Alt+B", "Browse for restore file"),
@@ -379,13 +381,15 @@ class BackupRestoreWindow(AccessibleDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        filtered_shortcuts = get_accessible_shortcuts_list(shortcuts)
+        filtered_shortcuts = prepend_help_doc_shortcut(
+            get_accessible_shortcuts_list(shortcuts)
+        )
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(shortcuts))
+        table.setRowCount(len(filtered_shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)

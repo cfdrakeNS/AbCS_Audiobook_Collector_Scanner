@@ -1412,8 +1412,19 @@ class MainWindow(QMainWindow):
         splash_action.triggered.connect(self.on_show_splash)
         view_menu.addAction(splash_action)
 
-        # Help menu
+        # Help menu — topic list shared with HelpWindow combo via HELP_TOPICS
         help_menu = menubar.addMenu("&Help")
+
+        from src.ui.help_router import HELP_TOPICS, show_help_doc
+
+        for label, filename in HELP_TOPICS:
+            topic_action = QAction(label, self)
+            topic_action.triggered.connect(
+                lambda checked=False, doc=filename: show_help_doc(self, doc)
+            )
+            help_menu.addAction(topic_action)
+
+        help_menu.addSeparator()
 
         about_action = QAction("&About AbCS...", self)
         about_action.triggered.connect(self.on_about)
@@ -1471,6 +1482,10 @@ class MainWindow(QMainWindow):
         # Help shortcut: F1 opens keyboard shortcuts help
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
 
         # mw#15: Ctrl+N for new book
         self.new_book_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
@@ -4251,6 +4266,12 @@ class MainWindow(QMainWindow):
         self.set_status("License dialog opened. Press Tab to move to OK button.")
         self.restore_main_focus_after_modal()
 
+    def on_show_overview_help(self):
+        """Show the AbCS overview help index."""
+        from src.ui.help_router import show_overview_help
+
+        show_overview_help(self)
+
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for screen reader accessibility."""
         dlg = AccessibleDialog(self)
@@ -4297,9 +4318,10 @@ class MainWindow(QMainWindow):
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
             build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
         )
 
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
 
         # Create table with 1 column
         table = QTableWidget()

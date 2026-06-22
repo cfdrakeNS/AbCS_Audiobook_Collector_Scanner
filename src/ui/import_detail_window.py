@@ -1349,6 +1349,12 @@ class ImportDetailWindow(AccessibleDialog):
         self.help_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(
+            self, shortcut_context=Qt.WidgetWithChildrenShortcut
+        )
+
         self.close_shortcut = QShortcut(QKeySequence("Escape"), self)
         self.close_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.close_shortcut.activated.connect(self.on_cancel_edit)
@@ -1391,6 +1397,7 @@ class ImportDetailWindow(AccessibleDialog):
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
             build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
         )
 
         table.setStyleSheet(build_accessible_f1_popup_style())
@@ -1418,7 +1425,7 @@ class ImportDetailWindow(AccessibleDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
-        shortcuts = get_accessible_shortcuts_list(shortcuts)
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
 
         table.setRowCount(len(shortcuts))
         table.setVerticalHeaderLabels([""] * len(shortcuts))

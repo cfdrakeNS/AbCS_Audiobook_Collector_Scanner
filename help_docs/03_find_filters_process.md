@@ -15,7 +15,7 @@ These tools help you narrow and organize the main book list without changing you
 ## Before you start
 
 - Filters combine: collection + plot + read + recently added + find text can all be active at once.
-- During **duplicate mode**, filters are cleared and restored when you exit. See [Duplicate Mode](07_duplicate_mode_process.md).
+- During **duplicate mode**, filters are cleared and restored when you exit. See [Duplicate Mode](08_duplicate_mode_process.md).
 
 ## Steps — Find (search)
 
@@ -86,7 +86,7 @@ After step 5, further Escape presses on the main window do **not** clear any mor
 
 - The book table shows only rows matching all active filters.
 - The status or filter summary area lists active filters and the book count.
-- Sort order affects Book Details Next/Previous navigation. See [Update and New Book](04_update_new_book_process.md).
+- Sort order affects Book Details Next/Previous navigation. See [Book Details](04_book_details_process.md).
 
 ## Settings that affect this
 

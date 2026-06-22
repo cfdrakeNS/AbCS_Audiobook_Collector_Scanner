@@ -55,7 +55,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 
 ## 7. Further Reading
 - [README.md](README.md): Project intro, features, structure, and shortcuts
-- [doc/01_user_index.md](doc/01_user_index.md): User workflow guides
+- [help_docs/01_overview.md](help_docs/01_overview.md): User workflow guides
 - [TESTING.md](TESTING.md): Automated test guide
 - [doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md): Code patterns
 - [doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md): Design principles

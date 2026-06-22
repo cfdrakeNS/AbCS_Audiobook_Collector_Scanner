@@ -52,6 +52,18 @@ For shortcut help and static guidance:
 - Keep wording short and explicit.
 - Ensure each row has meaningful accessible text.
 
+For long static body text (About, License, Setup):
+- Use read-only `QTextEdit` via `create_accessible_read_only_text()` — not `QLabel`.
+- Set a short accessible name; put content in the document, not the name.
+- Enable `TextSelectableByKeyboard` so arrow keys move line by line.
+- Collapse empty lines in source text to avoid JAWS repeating the previous line.
+
+For long plot text in view mode:
+- Use `PlotLineList` (one list row per review line; rating on row 0).
+- Keep continuous prose in the database and in edit-mode `QTextEdit`.
+
+See implementation reference sections 11–12.
+
 ## 9. Reduce table announcement noise
 
 Where row numbers do not help:
