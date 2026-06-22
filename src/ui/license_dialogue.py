@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QVBoxLayout
 from PySide6.QtCore import Qt, QTimer
 
-from src.accessibility.read_only_text import create_dialog_html_text
+from src.accessibility.dialog_prose import create_dialog_html_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 

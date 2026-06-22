@@ -12,7 +12,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
-from src.accessibility.read_only_text import create_dialog_html_text
+from src.accessibility.dialog_prose import create_dialog_html_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -41,6 +41,10 @@ class AboutDialog(AccessibleDialog):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setMinimumWidth(self.scaler.get_scaled_size(480))
         self.setMinimumHeight(self.scaler.get_scaled_size(520))
+        self.resize(
+            self.scaler.get_scaled_size(480),
+            self.scaler.get_scaled_size(520),
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -58,19 +62,13 @@ class AboutDialog(AccessibleDialog):
 
         pixmap = QPixmap(resolve_graphics_path("abcs_app_splash.png"))
         if not pixmap.isNull():
-            graphic_container = QWidget(self)
-            graphic_layout = QVBoxLayout(graphic_container)
-            graphic_layout.setContentsMargins(0, 0, 0, 0)
-            graphic_layout.setSpacing(0)
-            graphic_layout.addStretch(1)
             graphic_label = QLabel(self)
             graphic_label.setPixmap(pixmap)
             graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
             graphic_label.setFocusPolicy(Qt.NoFocus)
             graphic_label.setContentsMargins(0, 0, 0, 0)
-            graphic_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
-            graphic_layout.addStretch(1)
-            content_layout.addWidget(graphic_container)
+            graphic_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            content_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
 
         version = _get_app_version()
         about_blocks = [
@@ -112,7 +110,7 @@ class AboutDialog(AccessibleDialog):
         about_label.setContentsMargins(0, 0, 0, 0)
         content_layout.addWidget(about_label)
 
-        layout.addWidget(content_widget)
+        layout.addWidget(content_widget, stretch=1)
 
         btn_row = QHBoxLayout()
         btn_row.addStretch(1)

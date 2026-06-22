@@ -6,12 +6,13 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
+    QWidget,
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
-from src.accessibility.read_only_text import create_dialog_html_text
+from src.accessibility.dialog_prose import create_dialog_html_text
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -29,8 +30,13 @@ class SetupDialog(AccessibleDialog):
         self.setAccessibleName("Welcome to AbCS")
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        setup_height = self.scaler.get_scaled_size(390)
         self.setMinimumWidth(self.scaler.get_scaled_size(480))
-        self.setMinimumHeight(self.scaler.get_scaled_size(200))
+        self.setMinimumHeight(setup_height)
+        self.resize(
+            self.scaler.get_scaled_size(480),
+            setup_height,
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -41,25 +47,30 @@ class SetupDialog(AccessibleDialog):
         )
         layout.setSpacing(self.scaler.get_scaled_size(8))
 
+        content_widget = QWidget(self)
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
         pixmap = QPixmap(resolve_graphics_path("abcs_app_splash.png"))
         if not pixmap.isNull():
             graphic_label = QLabel(self)
             graphic_label.setPixmap(pixmap)
-            graphic_label.setAlignment(Qt.AlignHCenter)
+            graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
             graphic_label.setFocusPolicy(Qt.NoFocus)
             graphic_label.setContentsMargins(0, 0, 0, 0)
             graphic_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-            layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
+            content_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
 
         setup_blocks = [
             ("body", "No audiobooks found in the database."),
             ("heading", "You can:"),
-            ("item", "Import audiobooks from your computer."),
-            ("body", "Ctrl+I or File → Import."),
-            ("item", "Manually add a new book."),
-            ("body", "Ctrl+N or File → New Book."),
-            ("item", "Import a book list from a spreadsheet."),
-            ("body", "Shift+Ctrl+I or File → Import Book List."),
+            ("body", "Import audiobooks from your computer."),
+            ("item", "Ctrl+I or File → Import."),
+            ("body", "Manually add a new book."),
+            ("item", "Ctrl+N or File → New Book."),
+            ("body", "Import a book list from a spreadsheet."),
+            ("item", "Shift+Ctrl+I or File → Import Book List."),
             ("heading", "Help"),
             ("body", "Press Shift+F1 in any window for context-sensitive help."),
             ("body", "Use the Help menu for full workflow guides."),
@@ -78,7 +89,9 @@ class SetupDialog(AccessibleDialog):
         font.setPointSize(self.scaler.get_scaled_size(12))
         setup_label.setFont(font)
         setup_label.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(setup_label)
+        content_layout.addWidget(setup_label)
+
+        layout.addWidget(content_widget, stretch=1)
 
         btn_row = QHBoxLayout()
         btn_row.setContentsMargins(0, 0, 0, 0)
