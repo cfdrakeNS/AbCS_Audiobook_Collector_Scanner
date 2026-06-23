@@ -4,6 +4,8 @@
 
 Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You can then choose which fields to update — such as plot, series, genre, year, title, or author.
 
+For an explained walkthrough, see [Web metadata explained](21_web_metadata_explained.md).
+
 ## When to use it
 
 - A book is in your library but is missing a plot, series, or other details.

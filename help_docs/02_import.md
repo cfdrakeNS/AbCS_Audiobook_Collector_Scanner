@@ -4,6 +4,8 @@
 
 Import scans a folder of audiobook files, reads information from the audio file tags (such as title and author), and adds books to your chosen collection. This is the main way to build your library from files on your computer.
 
+For an explained walkthrough of what happens when you import, see [Import explained](19_import_explained.md).
+
 ## When to use it
 
 - You have audiobook files organized in folders and want to add them to AbCS.

@@ -4,6 +4,8 @@
 
 Import Book List brings book information into AbCS from a spreadsheet file (CSV, Excel, or ODS). It does not read audio file tags. Use it when you already have a list of titles and authors in a table.
 
+For an explained walkthrough, see [Import Book List explained](20_import_book_list_explained.md).
+
 This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for scanning audio files.
 
 ## When to use it

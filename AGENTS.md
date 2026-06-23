@@ -46,7 +46,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 - **Combo anti-noise:** See `eventFilter` in `src/ui/book_details.py`, `src/ui/update_window.py`, `src/ui/preferences_window.py`.
 - **Alt-key hygiene:** See `is_unmapped_alt_letter` in `src/accessibility/key_filters.py`.
 - **Help dialogs:** Use simple, accessible lists/tables for shortcut help.
-- **Help topics:** Add `help_docs/nn_topic_name.md` files (discovered at runtime). Update `src/ui/help_router.py` `WINDOW_HELP_MAP` only for Shift+F1 per-window routing. See `src/accessibility/help_paths.py` and `src/ui/help_window.py` module docstrings.
+- **Help topics:** Add `help_docs/nn_topic_name.md` files (discovered at runtime). Update `src/ui/help_router.py` `WINDOW_HELP_MAP` only for Shift+F1 per-window routing. Authoring rules: [doc/help_docs_authoring.md](doc/help_docs_authoring.md). See also `src/accessibility/help_paths.py` and `src/ui/help_window.py` module docstrings.
 - **Focus safety:** Deselect text on FocusIn for line edits/combo edits.
 
 ## 6. Common Pitfalls

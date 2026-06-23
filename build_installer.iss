@@ -12,7 +12,7 @@
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audio Book Collector Scanner"
 #ifndef MyAppVersion
-    #define MyAppVersion "1.9.73"
+    #define MyAppVersion "1.99"
 #endif
 #define MyAppPublisher "AbCS Project"
 #define MyAppURL       "https://github.com/cfdrakeNS/redevelop-AbCS-project"

@@ -5,6 +5,7 @@ These guides describe major workflows in AbCS (Audio Book Collector Scanner) in 
 ## About these guides
 
 - **Process guides** (02–15) walk through one window or workflow step by step.
+- **Explained guides** (19–21) describe import and web fetch in everyday terms without technical detail.
 - **Reference guides** (16–18) list shortcuts, factory defaults, and import settings.
 - Every workflow guide has a **Mouse, shortcuts, and accessibility** section with both point-and-click and keyboard options.
 - Press **Shift+F1** in any window to open help for that window. Press **F1** for keyboard shortcuts only.
@@ -89,6 +90,16 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 | [Reading History](13_reading_history.md) | Books finished and listening totals by period |
 | [Statistics](14_statistics.md) | Library-wide counts and collection breakdown |
 | [Name List](15_name_list.md) | View and edit author, series, and genre name lists |
+
+## Explained guides
+
+These explain *what happens behind the scenes* in everyday language. Use them before or alongside the process guides above.
+
+| Guide | What it covers |
+|-------|----------------|
+| [Import explained](19_import_explained.md) | How folder scan import works (Ctrl+I) |
+| [Import Book List explained](20_import_book_list_explained.md) | How spreadsheet import works (Ctrl+Shift+I) |
+| [Web metadata explained](21_web_metadata_explained.md) | How Fetch Web Info works (Alt+W) |
 
 ## Suggested order for new users
 

@@ -81,6 +81,8 @@ To add a guide:
 
 No code change is required for the topic to appear in **All Help Topics**.
 
+Full authoring rules (naming, allowed markdown, accessibility): [doc/help_docs_authoring.md](doc/help_docs_authoring.md).
+
 **Shift+F1** context help is separate: each window maps to a specific file in [`src/ui/help_router.py`](src/ui/help_router.py) (`WINDOW_HELP_MAP`). Update that map when a new window needs its own default help doc.
 
 Implementation details:
