@@ -150,6 +150,12 @@ These items are flagged by vulture but are actually used or required:
 
 **Post-cleanup:** production actionable section cleared.
 
+### June 23, 2026 — Follow-up dead-code cleanup
+
+**Removed:**
+- `src/accessibility/icon_helper.py`: `resource_path()` — orphaned when `ICON_PATH` was removed.
+- `src/accessibility/read_only_text.py`: `_announce_text_caret_moved()` and unused `_ARROW_NAV_KEYS` — orphaned when `NavigablePlainTextEdit` was removed.
+
 ### June 5, 2026 — Dead-code cleanup (vulture actionable items)
 - `src/web/web_book_api.py`: `loaded` assigned-only counter in `_load_persistent_cache`.
 - `src/ui/setup_dialogue.py`: duplicate `__init__` and duplicate unused `get_app_version` methods (Python kept only the second `__init__`, leaving dead code and no window icon); consolidated to single `__init__` with `get_app_icon` and `_resolve_graphics_path`.

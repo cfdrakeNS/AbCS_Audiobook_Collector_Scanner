@@ -16,7 +16,6 @@ from PySide6.QtWidgets import QApplication, QStyle
 
 from src.accessibility.graphics_paths import (
     APP_ICON_CANDIDATES,
-    resolve_app_icon_path,
     resolve_graphics_path,
 )
 
@@ -72,11 +71,6 @@ def _load_icon_from_path(path: str) -> QIcon:
         return icon
 
     return QIcon()
-
-
-def resource_path() -> str:
-    """Get absolute path to the preferred application window icon asset."""
-    return resolve_app_icon_path()
 
 
 def get_app_icon() -> QIcon:

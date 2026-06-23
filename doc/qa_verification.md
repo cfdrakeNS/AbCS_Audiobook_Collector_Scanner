@@ -1,6 +1,6 @@
 # QA Verification
 
-Manual testing for AbCS workflows was completed multiple times with JAWS and NVDA. Process guides no longer list open checklists because that work is done.
+Manual testing for AbCS workflows was completed multiple times with JAWS and NVDA on Windows. Linux UI verification (icons, splash graphics, bundled help) is complete; see [abcs_linux_fixes.md](../abcs_linux_fixes.md). Process guides no longer list open checklists because that work is done.
 
 ## Verification log
 

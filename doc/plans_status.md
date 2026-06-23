@@ -25,7 +25,7 @@ The following plan areas were implemented and verified in code:
 - Book details layout and performance
 - JAWS Book Details label fix (Insert+W pilot — code complete; formal verification checklist closed, not tracked)
 - Toolbar/filter shortcuts
-- Linux combo and packaging fixes
+- Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](../abcs_linux_fixes.md))
 - Dynamic SQLite pragmas
 - Duplicate mode, import, collections, backup/restore, reading history, statistics, preferences
 

@@ -16,7 +16,7 @@ Because `pytest.ini` sets `testpaths = test`, this is equivalent:
 pytest
 ```
 
-That runs all tests under `test/` (currently ~240 tests). Debug scripts in `test/` that do not follow pytest naming (for example `debug_*.py`) are not collected.
+That runs all tests under `test/` (currently ~257 tests). Debug scripts in `test/` that do not follow pytest naming (for example `debug_*.py`) are not collected.
 
 ## CI-style run (quiet)
 
@@ -97,6 +97,7 @@ python -m pytest test/ -v -x
 # One topic or file
 python -m pytest test/ -k "accessibility" -v
 python -m pytest test/test_screen_reader_detection.py -v
+python -m pytest test/test_tag_reader.py -v
 
 # See what would run
 python -m pytest test/ --co -q
@@ -130,6 +131,15 @@ UI tests use the shared `temp_db` fixture from `test/conftest.py`:
 - Otherwise tests create a fresh database with `initialize_database()`, using `test/fixtures/abcdDB_def.sql`.
 
 No manual database setup is required for pytest on a clean clone.
+
+## Core logic tests (no UI)
+
+| File | Covers |
+|------|--------|
+| `test/test_tag_reader.py` | ID3 tag parsing, narrator extraction, supported formats, `read_file` error paths |
+| `test/test_import_scanner_fallbacks.py` | Import scenario folder/title fallbacks |
+| `test/test_list_backups.py` | Backup discovery, restore, WAL sidecar cleanup |
+| `test/test_text_utils_import_compare.py` | Title/author normalization and fuzzy compare |
 
 ## Related docs
 

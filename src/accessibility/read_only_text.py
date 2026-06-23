@@ -3,7 +3,7 @@
 import re
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QAccessible, QAccessibleEvent, QPalette
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -21,18 +21,6 @@ from PySide6.QtWidgets import (
 _RATING_PREFIX_RE = re.compile(r"^(Rating:\s*.+?)\s*-\s*(.+)$", re.DOTALL)
 _SENTENCE_END_RE = re.compile(r'[.!?]["\']?$')
 _PLOT_LINE_WIDTH = 73
-_ARROW_NAV_KEYS = frozenset(
-    {
-        Qt.Key_Up,
-        Qt.Key_Down,
-        Qt.Key_Left,
-        Qt.Key_Right,
-        Qt.Key_PageUp,
-        Qt.Key_PageDown,
-        Qt.Key_Home,
-        Qt.Key_End,
-    }
-)
 
 
 def _collapse_blank_lines(text: str) -> str:
@@ -147,12 +135,6 @@ def plot_text_equivalent(left: str, right: str) -> bool:
 def set_navigable_plain_text(widget: QTextEdit | QPlainTextEdit, text: str) -> None:
     """Load text into a navigable text area with logical line breaks."""
     widget.setPlainText(format_plot_text_for_navigation(text))
-
-
-def _announce_text_caret_moved(widget: QTextEdit | QPlainTextEdit) -> None:
-    QAccessible.updateAccessibility(
-        QAccessibleEvent(widget, QAccessible.Event.TextCaretMoved)
-    )
 
 
 class _CompactPlotLineDelegate(QStyledItemDelegate):
