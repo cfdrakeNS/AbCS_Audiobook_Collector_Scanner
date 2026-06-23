@@ -255,19 +255,6 @@ class PlotLineList(QListWidget):
         return "\n".join(self.item(index).text() for index in range(self.count()))
 
 
-class NavigablePlainTextEdit(QPlainTextEdit):
-    """Plain-text plot field tuned for JAWS/NVDA line-by-line arrow review."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        configure_navigable_text_edit(self)
-
-    def keyPressEvent(self, event):
-        super().keyPressEvent(event)
-        if event.key() in _ARROW_NAV_KEYS and not (event.modifiers() & Qt.ShiftModifier):
-            _announce_text_caret_moved(self)
-
-
 def configure_accessible_read_only_text(
     widget: QTextEdit,
     *,

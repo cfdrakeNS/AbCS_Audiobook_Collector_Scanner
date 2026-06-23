@@ -22,14 +22,14 @@ Reading History shows how many books you have finished listening to, total hours
    - Total books read
    - Total hours read
    - Average hours per book
-3. Switch tabs to see different breakdowns:
+3. Click a tab (**General**, **Year**, **Month**, or **Date Range**) or use Alt-key shortcuts to switch breakdowns:
    - **General** (Alt+G) — overall summary table
    - **Year** (Alt+Y) — books and hours per calendar year
    - **Month** (Alt+M) — books and hours per month
    - **Date Range** (Alt+R) — custom from/to search
 4. On **Date Range**:
-   - Set **From** (Alt+F) and **To** dates.
-   - Click **Search** (Alt+S).
+   - Click the **From** and **To** date fields to open the calendar, or press **Alt+F** to focus **From**.
+   - Click **Search** (or press **Alt+S**).
    - Results appear in the date-range table.
 5. Press **Alt+L** to focus the current tab's table.
 6. Press **Alt+/** to hear the status bar (includes period context on some tabs).
@@ -40,7 +40,11 @@ Reading History shows how many books you have finished listening to, total hours
 - Closing the window returns focus to the main window.
 - Totals update the next time you open Reading History after marking more books as read.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Open **View → Reading History** from the menu bar.
+- Click tab labels to switch between General, Year, Month, and Date Range views.
+- On the Date Range tab, click date fields and **Search** to run a custom range.
 
 | Shortcut | Action |
 |----------|--------|
@@ -66,6 +70,6 @@ No. **Statistics** (Manage menu) shows library-wide counts (total books, authors
 
 ## Related documentation
 
-- [Find and Filters](03_find_filters_process.md) — read filter on the main window
-- [Keyboard shortcuts by window](16_shortcuts_list.md)
-- [Statistics process](14_statistics_process.md)
+- [Find and Filters](03_find_filters.md) — read filter on the main window
+- [Keyboard shortcuts by window](16_shortcuts.md)
+- [Statistics process](14_statistics.md)

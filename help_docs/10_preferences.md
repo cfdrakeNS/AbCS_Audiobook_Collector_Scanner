@@ -14,12 +14,12 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 - Theme and zoom **preview immediately** while the dialog is open.
 - Other import settings apply on the **next** Import scan (close and reopen Import if it is already open).
-- Factory defaults are listed in [Default preferences](17_default_preference.md). Import scenario detail is in [Import preferences](18_import_preferences.md).
+- Factory defaults are listed in [Default preferences](17_default_preferences.md). Import scenario detail is in [Import preferences](18_import_preferences.md).
 
 ## Steps
 
 1. Open **Manage → Preferences** (**Alt+M**, then **P**).
-2. Work through the four tabs:
+2. Click a tab label (**Display Settings**, **Import Settings**, and so on) or use the Alt-key shortcuts to move between the four tabs:
 
 ### Display Settings (Alt+D)
 
@@ -53,7 +53,11 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 - Saved preferences persist across restarts (Qt settings).
 - Import, web metadata duplicate options, and display settings use the new values on the next relevant action.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click tab labels at the top of the dialog to switch sections.
+- Use dropdowns, checkboxes, and the **Browse** button directly with the mouse.
+- Click **Save** to keep changes or **Restore Defaults** to reset fields (then **Save** again to write defaults to disk).
 
 | Shortcut | Action |
 |----------|--------|
@@ -82,7 +86,7 @@ You can also use **View → Zoom In/Out/Reset** (Ctrl+/Ctrl-/Ctrl+0) without ope
 
 ## Related documentation
 
-- [Default preferences](17_default_preference.md) — factory values
+- [Default preferences](17_default_preferences.md) — factory values
 - [Import preferences](18_import_preferences.md) — scenario and validation detail
-- [Import process](02_import_process.md) — folder scan workflow
-- [Keyboard shortcuts by window](16_shortcuts_list.md)
+- [Import process](02_import.md) — folder scan workflow
+- [Keyboard shortcuts by window](16_shortcuts.md)

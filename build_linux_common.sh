@@ -27,6 +27,17 @@ abcs_pyinstaller_graphics_args() {
   printf '%s\n' "${args[@]}"
 }
 
+abcs_pyinstaller_help_docs_args() {
+  local args=()
+  if [[ -d "help_docs" ]]; then
+    args+=(--add-data="help_docs:help_docs")
+  else
+    echo "WARNING: help_docs/ not found — in-app help will be missing from the build." >&2
+  fi
+
+  printf '%s\n' "${args[@]}"
+}
+
 abcs_write_linux_dist_assets() {
   local dist_dir="${1:-dist}"
   local icon_src=""
@@ -95,6 +106,11 @@ WHAT IS IN THIS FOLDER
   install_abcs.sh       Recommended setup script (menu icon and permissions)
   AbCS.desktop          Desktop launcher (updated automatically by install_abcs.sh)
   README.txt            This file
+
+IN-APP HELP
+  Help topics are bundled inside the AbCS executable (help_docs/).
+  Use Help → Help... or Shift+F1 in any window. See Help → Help... → overview
+  for the full guide list.
 
 QUICK START (recommended)
   1. Open a terminal in this folder.

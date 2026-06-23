@@ -8,9 +8,9 @@ Use this guide when testing that preferences reset correctly, or when you need t
 
 ## How to check defaults
 
-1. Open **Manage → Preferences**.
-2. Review each tab, or press **Restore Defaults** (Alt+R) and confirm with **Yes**.
-3. Press **Save** (Alt+S) if you want to keep the restored values.
+1. Open **Manage → Preferences** from the menu bar.
+2. Click through each tab to review settings, or click **Restore Defaults** (Alt+R) and confirm with **Yes**.
+3. Click **Save** (Alt+S) if you want to keep the restored values.
 
 Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-read the status bar.
 
@@ -85,4 +85,4 @@ At the default **90%**, only small typos and near-matches are flagged; completel
 ## Related documentation
 
 - [Import preferences (scenario detail)](18_import_preferences.md) — how each import scenario uses these settings
-- [Import process](02_import_process.md) — tester workflow for folder import
+- [Import process](02_import.md) — tester workflow for folder import

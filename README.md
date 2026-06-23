@@ -40,12 +40,58 @@ On first launch, AbCS creates a SQLite database automatically. No manual schema 
 
 ## User documentation
 
-Workflow guides for screen reader users:
+AbCS includes in-app help for sighted, low vision, and blind users. Guides live in the [`help_docs/`](help_docs/) folder as markdown files.
 
-- [User guide index](help_docs/01_overview.md) — collections, import, filters, web metadata, backup, and more
-- [Keyboard shortcuts by window](help_docs/16_shortcuts_list.md)
-- [Default preferences](help_docs/17_default_preference.md)
+### Using help in the app
+
+- **Help → Help...** — opens the help window (overview by default)
+- **Shift+F1** — context-sensitive help for the current window
+- **F1** — keyboard shortcuts for the current window (not the full process guide)
+- **Alt+/** — re-read the status message
+
+The help window has a **Help Navigation** list on the left and the document on the right. Choose **All Help Topics** to browse every guide, or pick a section heading to jump within the current guide. Use **Tab** to move between the list and content.
+
+Start here: [User guide overview](help_docs/01_overview.md)
+
+Reference guides:
+
+- [Keyboard shortcuts by window](help_docs/16_shortcuts.md)
+- [Default preferences](help_docs/17_default_preferences.md)
 - [Import preferences (scenarios and rules)](help_docs/18_import_preferences.md)
+
+### Adding or changing help topics (dynamic topics)
+
+Topic names in the help window are **not** hard-coded. At runtime, AbCS scans `help_docs/` for markdown files matching:
+
+```text
+nn_topic_name.md
+```
+
+- `nn` — two-digit sort order (for example `02`, `11`)
+- `topic_name` — lowercase words separated by underscores
+
+The navigation list shows the filename **without** the number, with underscores replaced by spaces. Example: `11_import_book_list.md` appears as **import book list**.
+
+To add a guide:
+
+1. Create `help_docs/19_my_new_topic.md` (use the next free number).
+2. Start the file with an `#` heading (used as the window title).
+3. Use `##` and `###` headings for sections (they appear in the section list after the topic is opened).
+4. Link to other guides with `[label](02_import.md)` — use the filename only.
+
+No code change is required for the topic to appear in **All Help Topics**.
+
+**Shift+F1** context help is separate: each window maps to a specific file in [`src/ui/help_router.py`](src/ui/help_router.py) (`WINDOW_HELP_MAP`). Update that map when a new window needs its own default help doc.
+
+Implementation details:
+
+| Module | Role |
+|--------|------|
+| [`src/accessibility/help_paths.py`](src/accessibility/help_paths.py) | Discovers topics, resolves paths (dev and installed builds) |
+| [`src/ui/help_window.py`](src/ui/help_window.py) | Help viewer UI, markdown → HTML, navigation list |
+| [`src/ui/help_router.py`](src/ui/help_router.py) | Shift+F1 routing and `show_help_doc()` entry point |
+
+Tests: [`test/test_help_router.py`](test/test_help_router.py)
 
 Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-read the status message.
 
@@ -71,7 +117,7 @@ Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-re
 - **Alt+U** — update selected
 - **Alt+D** — delete selected
 
-See [help_docs/16_shortcuts_list.md](help_docs/16_shortcuts_list.md) for every window.
+See [help_docs/16_shortcuts.md](help_docs/16_shortcuts.md) for every window.
 
 ## Project structure
 
@@ -86,6 +132,7 @@ AbCS/
 │   ├── web/          # Web metadata APIs
 │   └── utils/
 ├── doc/              # User and developer documentation
+├── help_docs/        # In-app help topics (nn_topic_name.md; loaded dynamically)
 ├── test/             # Automated tests (pytest)
 ├── data/             # Development database (created at runtime)
 ├── Graphics/         # Icons and splash images
@@ -116,12 +163,7 @@ See [TESTING.md](TESTING.md) for CI-style runs, headless Qt, and useful pytest s
 
 ## Migrating from the MS Access version
 
-If you used the original MS Access prototype:
-
-1. Export your Access data to CSV and use **Import Book List**, or re-import from audio folders.
-2. Keyboard shortcuts and workflows are designed to feel familiar.
-3. Default zoom is **150%** (adjust in **Manage → Preferences**).
-4. Core features from the Access version are included in AbCS.
+If you used the original MS Access prototype, export your data to CSV and use **Import Book List**, or re-import from audio folders. There is no automated migration tool. Keyboard shortcuts and workflows are designed to feel familiar; default zoom is **150%** (adjust in **Manage → Preferences**).
 
 ## Accessibility
 
@@ -134,7 +176,7 @@ If you used the original MS Access prototype:
 - [PySide6 Accessibility Patterns and Implementation Reference](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
 - [PySide6 Screen Reader Accessibility Best Practices](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
 
-Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/16_qa_verification.md](doc/16_qa_verification.md).
+Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/qa_verification.md](doc/qa_verification.md).
 
 ## Tester build expiry
 

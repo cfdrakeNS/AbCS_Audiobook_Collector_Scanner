@@ -2,7 +2,7 @@
 
 Read-only reference for how AbCS compares book titles during **web metadata fetch** and how that relates to **book list import**. This document describes current behavior; it does not propose changes to web fetch or the review window (those paths are working as intended).
 
-**Related user guide:** [06_web_metadata_fetch_process.md](06_web_metadata_fetch_process.md)  
+**Related user guide:** [07_web_metadata.md](07_web_metadata.md)  
 **Related import logic:** `src/utils/text_utils.py` (`compare_normalize_title`)  
 **Web implementation:** `src/web/web_book_api.py`, `src/ui/web_metadata.py`
 

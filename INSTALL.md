@@ -52,6 +52,7 @@ AbCS creates the database and tables automatically on first launch. You do not n
 
 - **Database:** `data/abcs.db` in the project folder (created on first run)
 - **Backups:** `backups/` in the project folder
+- **Help topics:** `help_docs/` in the project folder (loaded dynamically; see [README.md](README.md#user-documentation))
 - **Preferences:** stored via Qt `QSettings` (registry on Windows, config files on Linux/macOS)
 
 ### Bundled executable (installer build)
@@ -61,12 +62,16 @@ AbCS creates the database and tables automatically on first launch. You do not n
   - Linux: `~/.local/share/AbCS/abcs.db` (or `$XDG_DATA_HOME/AbCS`)
   - macOS: `~/Library/Application Support/AbCS/abcs.db`
 - On first run of a fresh install, the app copies the embedded database template into that location.
+- **Help topics:** bundled inside the application
+  - Windows: `help_docs\` next to the installed executable (see `build_installer.iss`)
+  - Linux: `help_docs/` embedded in the PyInstaller build via `build_linux.sh` (extracted at runtime from the bundle)
+- **In-app help:** **Help → Help...**, **Shift+F1** (context help), **F1** (shortcuts). Overview: [help_docs/01_overview.md](help_docs/01_overview.md)
 
 ## First-time workflow
 
 1. **Launch** — `python src/main.py`
 2. **Import books** — **File → Import** (Ctrl+I) to scan audiobook folders (a default **Audio Books** collection is created with the database)
-3. **Set preferences** (optional) — **Manage → Preferences** — default zoom is **150%**; see [Default preferences](help_docs/17_default_preference.md)
+3. **Set preferences** (optional) — **Manage → Preferences** — default zoom is **150%**; see [Default preferences](help_docs/17_default_preferences.md)
 4. **Browse** — use Find, filters, and sort on the main window
 5. **Manage collections** (optional) — **Manage → Collections** to rename the default collection or add more
 6. **Back up** — **Manage → Backup/Restore** when you have data worth protecting
@@ -87,8 +92,10 @@ For headless CI-style runs and pytest options, see [TESTING.md](TESTING.md).
 
 ## Building an installer
 
-- **Windows:** run `build_installer.bat` (requires local `AbCS.spec` and PyInstaller; see [doc/BUILD.md](doc/BUILD.md))
-- **Linux:** follow [linux_build.md](linux_build.md)
+- **Windows:** run `build_installer.bat` (requires local `AbCS.spec` and PyInstaller; see [doc/BUILD.md](doc/BUILD.md)). The Inno Setup script copies `help_docs\` into the install folder.
+- **Linux:** follow [linux_build.md](linux_build.md). `build_linux.sh` and `build_linux_debug.sh` bundle `help_docs/` into the executable automatically (see `build_linux_common.sh`).
+
+When adding a help topic, create `help_docs/nn_topic_name.md` in the repository before building; no code change is required for it to appear in **All Help Topics**. See [README.md](README.md#adding-or-changing-help-topics-dynamic-topics).
 
 ## Troubleshooting
 
@@ -98,6 +105,7 @@ For headless CI-style runs and pytest options, see [TESTING.md](TESTING.md).
 | Database errors on first run | Delete `data/abcs.db` and restart (you lose local dev data) |
 | UI too small or large | **Manage → Preferences** or Ctrl+/Ctrl- for zoom |
 | Import finds no files | Check **Preferences → Import Settings** audio formats and folder path |
+| Help topics missing in built app | Rebuild after confirming `help_docs/` exists; Linux builds need `./build_linux.sh` (bundles help via PyInstaller) |
 | Tester build expired | Obtain a newer build or clear `TRIAL_BUILD_DATE` in source for local dev only |
 
 ## Related documentation

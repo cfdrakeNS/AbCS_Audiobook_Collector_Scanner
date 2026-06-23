@@ -59,7 +59,11 @@ Backup and Restore lets you save a copy of your entire AbCS database and restore
 
 None. Backup and Restore does not use import or display preferences.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click **Backup**, **Restore**, **Delete**, **Browse**, and **Full Reset** buttons as needed.
+- Click a backup row in the list to select it before Restore or Delete.
+- Click **Yes** or **No** on confirmation dialogs for restore, delete, and full reset.
 
 | Shortcut | Action |
 |----------|--------|

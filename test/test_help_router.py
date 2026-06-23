@@ -1,6 +1,11 @@
 """Tests for help markdown conversion and routing."""
 
-from src.accessibility.help_paths import HELP_TOPICS, help_doc_exists, resolve_help_docs_dir
+from src.accessibility.help_paths import (
+    discover_help_topics,
+    help_doc_display_name,
+    help_doc_exists,
+    resolve_help_docs_dir,
+)
 from src.ui.help_router import DUPLICATE_MODE_DOC, WINDOW_HELP_MAP, get_help_doc_filename
 from src.ui.help_window import markdown_to_html, markdown_to_plain_text
 
@@ -9,10 +14,23 @@ def test_help_docs_dir_exists():
     docs_dir = resolve_help_docs_dir()
     assert docs_dir.is_dir()
     assert help_doc_exists("01_overview.md")
-    assert help_doc_exists("09_backup_restore_process.md")
-    assert help_doc_exists("15_name_list_process.md")
-    for _label, filename in HELP_TOPICS:
+    assert help_doc_exists("09_backup_restore.md")
+    assert help_doc_exists("15_name_list.md")
+    for _label, filename in discover_help_topics():
         assert help_doc_exists(filename), filename
+
+
+def test_help_doc_display_name_strips_prefix_and_underscores():
+    assert help_doc_display_name("11_import_book_list.md") == "import book list"
+    assert help_doc_display_name("01_overview.md") == "overview"
+
+
+def test_discover_help_topics_sorted_and_dynamic():
+    topics = discover_help_topics()
+    filenames = [filename for _label, filename in topics]
+    assert filenames == sorted(filenames)
+    assert "01_overview.md" in filenames
+    assert ("overview", "01_overview.md") in topics
 
 
 def test_window_help_mapping():
@@ -105,10 +123,17 @@ def test_markdown_to_html_uses_bold_headings_and_no_blank_paragraphs():
     assert links == []
 
 
+def test_markdown_to_html_embeds_named_anchors_in_headings():
+    md = "## Section One\n\nBody.\n\n### Sub section\n\nMore."
+    html_doc, _links = markdown_to_html(md)
+    assert '<a name="h0"><strong>Section One</strong></a>' in html_doc
+    assert '<a name="h1"><strong>Sub section</strong></a>' in html_doc
+
+
 def test_markdown_to_plain_text_strips_formatting():
-    md = "# Title\n\nSee [Import](02_import_process.md).\n\n- one\n"
+    md = "# Title\n\nSee [Import](02_import.md).\n\n- one\n"
     plain, links = markdown_to_plain_text(md)
     assert "Title" in plain
     assert "Import" in plain
     assert "[Import]" not in plain
-    assert links == [("Import", "02_import_process.md")]
+    assert links == [("Import", "02_import.md")]

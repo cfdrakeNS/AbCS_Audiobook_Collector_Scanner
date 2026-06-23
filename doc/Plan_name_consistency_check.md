@@ -2,7 +2,7 @@
 
 **Status:** Planned (not yet implemented)  
 **Created:** June 2026  
-**Related:** [Duplicate Mode Process](07_duplicate_mode_process.md), [Import Process](02_import_process.md)
+**Related:** [Duplicate Mode Process](08_duplicate_mode.md), [Import Process](02_import.md)
 
 ---
 
@@ -92,7 +92,7 @@ Same pattern as authors against `genres` table. Additionally normalize before co
 
 ### Settings
 
-Add preferences (defaults in [Default preferences](14_default_preference.md)):
+Add preferences (defaults in [Default preferences](17_default_preferences.md)):
 
 | Key | Default | Purpose |
 |-----|---------|---------|
@@ -200,7 +200,7 @@ No new tables needed for Phase 1. Phase 2 alias map could be a simple `genre_ali
 | 5 | Add threshold/scope preferences | `src/ui/preferences_window.py`, `doc/14_default_preference.md` |
 | 6 | Register shortcut context | `src/accessibility/shortcuts.py` |
 | 7 | Unit tests for clustering + merge | `test/test_name_consistency.py`, `test/test_author_genre_merge.py` |
-| 8 | User guide (when implemented) | New process doc parallel to `07_duplicate_mode_process.md` |
+| 8 | User guide (when implemented) | New process doc parallel to `08_duplicate_mode.md` |
 | 9 | Cross-link from user index | `doc/01_user_index.md` |
 
 ---
@@ -225,6 +225,6 @@ No new tables needed for Phase 1. Phase 2 alias map could be a simple `genre_ali
 | Text normalization / fuzzy match | `src/utils/text_utils.py` |
 | Import duplicate fuzzy logic | `src/core/validator.py` |
 | Author find / token reorder | `src/ui/name_list_window.py` |
-| Duplicate mode pattern | `src/ui/main_window.py`, `doc/07_duplicate_mode_process.md` |
+| Duplicate mode pattern | `src/ui/main_window.py`, `help_docs/08_duplicate_mode.md` |
 | Side-by-side suggest/apply UI | `src/ui/web_metadata.py` |
 | Genre storage (free text, one per book) | `genres` table, `GenreQueries` |

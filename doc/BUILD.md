@@ -10,23 +10,23 @@ Developer reference for Windows and Linux builds. End users should use released 
 
 ## Files not in git (local / machine-specific)
 
-These paths are listed in `.gitignore` but required for full builds:
+These paths are listed in `.gitignore` but required for full Windows installer builds:
 
-| File | Purpose |
-|------|---------|
-| `AbCS.spec` | PyInstaller spec used by `build_installer.bat` |
-| `data/abcdDB_def.sql` | Schema SQL for new databases and bundled installs |
-| `data/abcs.db` | Development or template database (runtime) |
+| File | Purpose | Gitignore rule |
+|------|---------|----------------|
+| `AbCS.spec` | PyInstaller spec used by `build_installer.bat` | `*.spec` |
+| `data/abcdDB_def.sql` | Schema SQL for new databases and bundled installs | `data/*.sql` |
+| `data/abcs.db` | Development or template database (runtime) | `data/*.db` |
+
+Linux builds pass `--add-data="data/abcdDB_def.sql:data"`; copy from `test/fixtures/abcdDB_def.sql` on a fresh clone before building.
 
 ### Schema for tests and fresh clones
 
 A committed copy lives at [test/fixtures/abcdDB_def.sql](../test/fixtures/abcdDB_def.sql). `DatabaseManager` searches both `data/abcdDB_def.sql` and `test/fixtures/abcdDB_def.sql`.
 
-For local development, keep `data/abcdDB_def.sql` in sync with the fixture when the schema changes.
+`data/abcdDB_def.sql` is gitignored via `data/*.sql`. Copy from `test/fixtures/abcdDB_def.sql` when the schema changes or on a fresh clone before packaging.
 
-### PyInstaller spec
-
-`AbCS.spec` is gitignored because it may contain machine-specific paths. To build on a new machine:
+`AbCS.spec` is gitignored via `*.spec` because it may contain machine-specific paths. To build on a new machine:
 
 1. Copy an existing `AbCS.spec` from a prior build machine, or regenerate with `pyi-makespec` and tune for onedir output.
 2. `build_installer.bat` expects the spec at the project root and produces `dist/AbCS/`.

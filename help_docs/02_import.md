@@ -11,7 +11,7 @@ Import scans a folder of audiobook files, reads information from the audio file 
 
 ## Before you start
 
-- At least one **active collection** must exist. See [Collections](06_collections_process.md).
+- At least one **active collection** must exist. See [Collections](06_collections.md).
 - Know which folder contains your audiobooks.
 - Optional: set up **Preferences** first (View → Preferences, or Manage → Preferences). Import behavior depends heavily on these settings.
 
@@ -25,10 +25,10 @@ Import scans a folder of audiobook files, reads information from the audio file 
 6. When the scan finishes, books are handled in two ways:
    - **Added automatically** — books with clean metadata and no problems.
    - **Held for review** — books with duplicates, errors, warnings, fallback guesses, or autocorrects.
-7. If any books need review, they appear in a **review table**. Use the **error filter** (Alt+E) to show only certain issue types: All, Corrected, Duplicate, Error, Fallback, or Warning.
-8. To work on one book, select a row and press **Enter** to open the **detail window**. There you can edit fields, move to previous/next book, skip, or discard.
-9. Select rows you want to add and click **Add Selected** (Alt+S).
-10. Optionally click **Export** (Alt+X) to save the review list to a spreadsheet for offline review.
+7. If any books need review, they appear in a **review table**. Click the **error filter** dropdown, or press **Alt+E**, to show only certain issue types: All, Corrected, Duplicate, Error, Fallback, or Warning.
+8. To work on one book, click a row (or select it with the keyboard) and press **Enter**, or double-click the row, to open the **detail window**. There you can edit fields, move to previous/next book, skip, or discard.
+9. Click rows to select them, then click **Add Selected** (or press **Alt+S**).
+10. Optionally click **Export** (or press **Alt+X**) to save the review list to a spreadsheet for offline review.
 11. Press **Escape** to close Import. If unscanned review items remain, you will be asked to confirm.
 
 ## What happens next
@@ -94,7 +94,12 @@ Rules that flag possible problems during import. Each rule can be off, a warning
 
 Changing preferences while the Import window is open may not apply until you close and reopen Import, or start a new scan.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Open **File → Import** from the menu bar, or click **Import** on the main toolbar.
+- Click **Browse** to pick a folder; click **Import** to start the scan.
+- In the review table, click a row to select it; use **Ctrl+click** or **Shift+click** to select several rows before **Add Selected**.
+- Click **Close** or press **Escape** to leave Import (you may be asked to confirm if review items remain).
 
 | Shortcut | Action |
 |----------|--------|
@@ -117,7 +122,7 @@ Changing preferences while the Import window is open may not apply until you clo
 Clean books are added immediately. Anything with a duplicate match, validation issue, or fallback guess stays in the review list until you add it manually.
 
 **Is import duplicate detection the same as Duplicate Mode?**
-No. Import duplicate detection happens while adding new books and can use fuzzy matching. Duplicate Mode (Manage menu) finds duplicates already in your library using exact key matching. See [Duplicate Mode](08_duplicate_mode_process.md).
+No. Import duplicate detection happens while adding new books and can use fuzzy matching. Duplicate Mode (Manage menu) finds duplicates already in your library using exact key matching. See [Duplicate Mode](08_duplicate_mode.md).
 
 **Do I need to set preferences every time?**
 No. Preferences are saved and apply to every import until you change them.

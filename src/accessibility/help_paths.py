@@ -1,7 +1,21 @@
-"""Resolve help documentation paths for dev and installed builds."""
+"""Resolve help documentation paths for dev and installed builds.
+
+Help topics live in ``help_docs/`` as markdown files named ``nn_topic_name.md``
+(two digits, underscore, topic slug). ``discover_help_topics()`` scans that folder
+at runtime and builds sorted (display label, filename) pairs for the help window
+topic list. Display labels drop the numeric prefix and replace underscores with
+spaces (``11_import_book_list.md`` → ``import book list``).
+
+Shift+F1 context help uses per-window filenames in ``src/ui/help_router.py``
+(``WINDOW_HELP_MAP``), not the dynamic topic list. Cross-links inside markdown
+should use the bare filename (for example ``[Import](02_import.md)``).
+
+See ``help_docs/01_overview.md`` (user-facing) and README.md (developer summary).
+"""
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -9,26 +23,26 @@ from src.accessibility.graphics_paths import bundle_base, project_root
 
 OVERVIEW_DOC = "01_overview.md"
 
-HELP_TOPICS: list[tuple[str, str]] = [
-    ("Overview", "01_overview.md"),
-    ("Import (Folder Scan)", "02_import_process.md"),
-    ("Find and Filters", "03_find_filters_process.md"),
-    ("Book Details", "04_book_details_process.md"),
-    ("Update", "05_update_process.md"),
-    ("Collections", "06_collections_process.md"),
-    ("Web Metadata Fetch", "07_web_metadata_process.md"),
-    ("Duplicate Mode", "08_duplicate_mode_process.md"),
-    ("Backup and Restore", "09_backup_restore_process.md"),
-    ("Preferences", "10_preferences_process.md"),
-    ("Import Book List", "11_import_book_list_process.md"),
-    ("Import Detail", "12_import_detail_process.md"),
-    ("Reading History", "13_reading_history_process.md"),
-    ("Statistics", "14_statistics_process.md"),
-    ("Name List", "15_name_list_process.md"),
-    ("Keyboard Shortcuts", "16_shortcuts_list.md"),
-    ("Default Preferences", "17_default_preference.md"),
-    ("Import Preferences", "18_import_preferences.md"),
-]
+HELP_DOC_FILENAME_RE = re.compile(r"^\d{2}_[\w-]+\.md$", re.IGNORECASE)
+
+
+def help_doc_display_name(filename: str) -> str:
+    """Build a list label from nn_topic.md by dropping the numeric prefix."""
+    stem = Path(filename).stem
+    if len(stem) >= 3 and stem[:2].isdigit() and stem[2] == "_":
+        return stem[3:].replace("_", " ")
+    return stem.replace("_", " ")
+
+
+def discover_help_topics() -> list[tuple[str, str]]:
+    """Return sorted (display label, filename) pairs for help_docs/*.md files."""
+    docs_dir = resolve_help_docs_dir()
+    topics: list[tuple[str, str]] = []
+    for path in sorted(docs_dir.glob("*.md")):
+        name = path.name
+        if HELP_DOC_FILENAME_RE.match(name):
+            topics.append((help_doc_display_name(name), name))
+    return topics
 
 
 def _search_bases() -> list[Path]:

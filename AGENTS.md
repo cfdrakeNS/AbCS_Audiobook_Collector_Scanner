@@ -8,7 +8,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 ##  Format: Factual summaries only (What changed / What will change).
 
 ## 1. Project Overview
-- **Purpose:** Cross-platform audiobook collection manager with full accessibility support (JAWS/NVDA/VoiceOver).
+- **Purpose:** Cross-platform audiobook collection manager with full accessibility support (JAWS, NVDA, Narrator, Orca).
 - **Tech:** Python 3.9+, PySide6, SQLite, custom accessibility patterns.
 - **Key Folders:**
   - `src/` — Main source code
@@ -35,6 +35,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 
 ## 4. Keyboard Shortcuts
 - **F1:** Show help/shortcuts
+- **Shift+F1:** Context-sensitive process help (see `help_router.py`)
 - **Alt+/**: Read status
 - **Escape:** Cancel/close
 - **Alt+U/D:** Update/Delete selected
@@ -45,6 +46,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 - **Combo anti-noise:** See `eventFilter` in `src/ui/book_details.py`, `src/ui/update_window.py`, `src/ui/preferences_window.py`.
 - **Alt-key hygiene:** See `is_unmapped_alt_letter` in `src/accessibility/key_filters.py`.
 - **Help dialogs:** Use simple, accessible lists/tables for shortcut help.
+- **Help topics:** Add `help_docs/nn_topic_name.md` files (discovered at runtime). Update `src/ui/help_router.py` `WINDOW_HELP_MAP` only for Shift+F1 per-window routing. See `src/accessibility/help_paths.py` and `src/ui/help_window.py` module docstrings.
 - **Focus safety:** Deselect text on FocusIn for line edits/combo edits.
 
 ## 6. Common Pitfalls

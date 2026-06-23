@@ -4,7 +4,7 @@
 
 The **Update** window lets you change one or more fields on books you have already selected in the main table. Leave a field blank to keep the existing value for that field.
 
-For editing a single book with full fields and navigation, use [Book Details](04_book_details_process.md) instead.
+For editing a single book with full fields and navigation, use [Book Details](04_book_details.md) instead.
 
 ## When to use it
 
@@ -13,13 +13,13 @@ For editing a single book with full fields and navigation, use [Book Details](04
 
 ## Before you start
 
-- Select one or more books in the main table (**Space** toggles selection).
+- Select one or more books in the main table (**click** a row; **Ctrl+click** to add rows; **Shift+click** for a range; or press **Space** on each row with the keyboard).
 - **Update** is not available during duplicate mode.
 
 ## Steps — Update selected books
 
-1. In the main window, select one or more books using **Space** on each row.
-2. Click **Update** (Alt+U) or open **Edit → Update**.
+1. In the main window, select one or more books (click rows, or use **Space** on each row).
+2. Click **Update** on the toolbar, open **Edit → Update**, or press **Alt+U**.
 3. The **Update** window opens showing fields you can change.
 4. Enter new values only in the fields you want to change. Leave fields blank to keep existing values.
 5. Click **Save** to apply your changes.
@@ -27,14 +27,17 @@ For editing a single book with full fields and navigation, use [Book Details](04
 
 ## Steps — New Book
 
-New books use the Book Details window. Open **File → New Book** or press **Ctrl+N**. See [Book Details](04_book_details_process.md).
+New books use the Book Details window. Open **File → New Book** or press **Ctrl+N**. See [Book Details](04_book_details.md).
 
 ## What happens next
 
 - Saved changes appear immediately in the main book list.
 - If filters hide an updated book, AbCS may clear filters so you are not left with an empty list.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click **Update** on the main toolbar or choose **Edit → Update** after selecting books.
+- In the Update window, fill only the fields you want to change, then click **Save**.
 
 ### Main window
 

@@ -191,6 +191,8 @@ chmod +x build_linux.sh
 
 Output: `dist/AbCS` (single executable file)
 
+The build scripts bundle `help_docs/` into the executable so **Help → Help...** and **Shift+F1** work on testers' machines without a separate docs folder. Topics are discovered at runtime from the embedded `help_docs` directory (same as the Windows installer).
+
 ### Option 2: Debug Build (build_linux_debug.sh)
 
 Use this when the app won't start and you need error messages:
@@ -249,6 +251,8 @@ python -m PyInstaller \
   --clean \
   --noconfirm \
   --add-data="data/abcdDB_def.sql:data" \
+  --add-data="help_docs:help_docs" \
+  --add-data="graphics:graphics" \
   --hidden-import="PySide6.QtCore" \
   --hidden-import="PySide6.QtGui" \
   --hidden-import="PySide6.QtWidgets" \
@@ -325,7 +329,7 @@ Your CPU doesn't support the required instruction set. Use the legacy CPU script
 
 ## Notes
 
-- The `build_linux.sh` script uses `onefile` mode by default
+- The `build_linux.sh` script uses `onefile` mode by default and bundles `graphics/` and `help_docs/` via `build_linux_common.sh`
 - The Windows build uses `onedir` mode (folder) for better antivirus compatibility
 - Linux onefile builds extract to `/tmp` on each run, causing slower startup
 - Consider using `onedir` mode for Linux if startup performance is important

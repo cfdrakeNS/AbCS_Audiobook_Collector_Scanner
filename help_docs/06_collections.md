@@ -30,7 +30,7 @@ Every book belongs to one collection. A default collection named **Audio Books**
    - Check or uncheck **Active** (Alt+A in some contexts — see F1 help).
    - Click **Save** (Alt+S).
 4. To **edit** a collection:
-   - Select a row in the list (Alt+L to focus list).
+   - Select a row by clicking it in the list (or press **Alt+L** to focus the list with the keyboard).
    - Click **Edit** (Alt+E) or press Enter on a row.
    - Change the name or active status.
    - Click **Save** (Alt+S).
@@ -59,7 +59,10 @@ Import windows use this filter: if the main window shows a specific collection, 
 
 None specific to collections beyond having at least one active collection at all times.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click **New**, **Edit**, **Save**, and **Delete** in the Collection Manager.
+- On the main window, use **View → Collections** to filter by collection.
 
 ### Collection Manager
 

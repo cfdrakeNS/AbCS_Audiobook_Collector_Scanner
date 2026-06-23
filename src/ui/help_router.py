@@ -1,4 +1,10 @@
-"""Map AbCS windows to context-sensitive help documents."""
+"""Map AbCS windows to context-sensitive help documents.
+
+``WINDOW_HELP_MAP`` selects which markdown file Shift+F1 opens for each window
+class. This is independent of the dynamic topic list in HelpWindow (see
+``help_paths.discover_help_topics()``). When adding a window, add a map entry and
+a matching ``help_docs/nn_topic.md`` file.
+"""
 
 from __future__ import annotations
 
@@ -6,31 +12,29 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QWidget
 
-from src.accessibility.help_paths import HELP_TOPICS, OVERVIEW_DOC, help_doc_exists
+from src.accessibility.help_paths import OVERVIEW_DOC, help_doc_exists
 from src.ui.help_window import HelpWindow
 
 FALLBACK_DOC = OVERVIEW_DOC
 
-DUPLICATE_MODE_DOC = "08_duplicate_mode_process.md"
+DUPLICATE_MODE_DOC = "08_duplicate_mode.md"
 
 WINDOW_HELP_MAP: dict[str, str] = {
-    "MainWindow": "03_find_filters_process.md",
-    "ImportWindow": "02_import_process.md",
-    "ImportProgressWindow": "02_import_process.md",
-    "ImportDetailWindow": "12_import_detail_process.md",
-    "BookDetailsWindow": "04_book_details_process.md",
-    "UpdateWindow": "05_update_process.md",
-    "CollectionWindow": "06_collections_process.md",
-    "WebMetadataWindow": "07_web_metadata_process.md",
-    "BackupRestoreWindow": "09_backup_restore_process.md",
-    "PreferencesWindow": "10_preferences_process.md",
-    "BookListImportWindow": "11_import_book_list_process.md",
-    "ReadingHistoryWindow": "13_reading_history_process.md",
-    "StatisticsDialog": "14_statistics_process.md",
-    "NameListWindow": "15_name_list_process.md",
+    "MainWindow": "03_find_filters.md",
+    "ImportWindow": "02_import.md",
+    "ImportProgressWindow": "02_import.md",
+    "ImportDetailWindow": "12_import_detail.md",
+    "BookDetailsWindow": "04_book_details.md",
+    "UpdateWindow": "05_update.md",
+    "CollectionWindow": "06_collections.md",
+    "WebMetadataWindow": "07_web_metadata.md",
+    "BackupRestoreWindow": "09_backup_restore.md",
+    "PreferencesWindow": "10_preferences.md",
+    "BookListImportWindow": "11_import_book_list.md",
+    "ReadingHistoryWindow": "13_reading_history.md",
+    "StatisticsDialog": "14_statistics.md",
+    "NameListWindow": "15_name_list.md",
 }
-
-DUPLICATE_MODE_DOC = "08_duplicate_mode_process.md"
 
 
 def get_help_doc_filename(widget: QWidget | None) -> str:

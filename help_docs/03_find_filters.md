@@ -15,7 +15,7 @@ These tools help you narrow and organize the main book list without changing you
 ## Before you start
 
 - Filters combine: collection + plot + read + recently added + find text can all be active at once.
-- During **duplicate mode**, filters are cleared and restored when you exit. See [Duplicate Mode](08_duplicate_mode_process.md).
+- During **duplicate mode**, filters are cleared and restored when you exit. See [Duplicate Mode](08_duplicate_mode.md).
 
 ## Steps — Find (search)
 
@@ -58,7 +58,7 @@ This filter uses **date added** (when the book was imported or created in AbCS),
 
 1. Open the **Sort** menu on the menu bar (**Alt+S**).
 2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date.
-3. Use **Alt+1** through **Alt+7** to jump to a column, then click the same column header in the book table to reverse ascending/descending order.
+3. Use **Tab** to move through table cells, or click a column header to sort by that column; click the same header again to reverse ascending/descending order.
 4. The filter summary shows the current sort (for example, "Sort: Title (ascending)").
 
 ## Clearing filters
@@ -86,13 +86,17 @@ After step 5, further Escape presses on the main window do **not** clear any mor
 
 - The book table shows only rows matching all active filters.
 - The status or filter summary area lists active filters and the book count.
-- Sort order affects Book Details Next/Previous navigation. See [Book Details](04_book_details_process.md).
+- Sort order affects Book Details Next/Previous navigation. See [Book Details](04_book_details.md).
 
 ## Settings that affect this
 
 - **Exact match** in the Find dialog is remembered for your next search session.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Use **View** menu items or the main toolbar buttons for **Plot**, **Read**, and **Recently Added** filters — click a highlighted toolbar button again to turn that filter off.
+- In the Find dialog, click the field dropdown, type in the search box, and click **OK** or press **Enter**.
+- On the Recently Added filter, click the date field to open the calendar popup and pick a date.
 
 | Shortcut | Action |
 |----------|--------|

@@ -1412,17 +1412,14 @@ class MainWindow(QMainWindow):
         splash_action.triggered.connect(self.on_show_splash)
         view_menu.addAction(splash_action)
 
-        # Help menu — topic list shared with HelpWindow combo via HELP_TOPICS
+        # Help menu — single entry opens the help window topic list
         help_menu = menubar.addMenu("&Help")
 
-        from src.ui.help_router import HELP_TOPICS, show_help_doc
+        from src.ui.help_router import show_overview_help
 
-        for label, filename in HELP_TOPICS:
-            topic_action = QAction(label, self)
-            topic_action.triggered.connect(
-                lambda checked=False, doc=filename: show_help_doc(self, doc)
-            )
-            help_menu.addAction(topic_action)
+        help_action = QAction("&Help...", self)
+        help_action.triggered.connect(lambda: show_overview_help(self))
+        help_menu.addAction(help_action)
 
         help_menu.addSeparator()
 
@@ -4265,12 +4262,6 @@ class MainWindow(QMainWindow):
         dlg.exec()
         self.set_status("License dialog opened. Press Tab to move to OK button.")
         self.restore_main_focus_after_modal()
-
-    def on_show_overview_help(self):
-        """Show the AbCS overview help index."""
-        from src.ui.help_router import show_overview_help
-
-        show_overview_help(self)
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for screen reader accessibility."""

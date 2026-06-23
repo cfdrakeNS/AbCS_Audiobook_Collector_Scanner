@@ -97,9 +97,6 @@ def install_app_icon(app: QApplication) -> bool:
     return True
 
 
-ICON_PATH = resource_path()
-
-
 def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:
     """Map logical action roles to Qt standard pixmaps (no extra dependencies)."""
     mapping: dict[str, QStyle.StandardPixmap] = {

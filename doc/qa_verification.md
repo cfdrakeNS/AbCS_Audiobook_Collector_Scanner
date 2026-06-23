@@ -12,5 +12,6 @@ That file is in the local `archive/` folder (gitignored on this repo). Restore i
 
 ## Related notes
 
+- Development plan status: [plans_status.md](plans_status.md) (Name Consistency Check deferred; all other plans complete)
 - Linux UI verification: [abcs_linux_fixes.md](../abcs_linux_fixes.md)
 - Automated regression tests: [TESTING.md](../TESTING.md)

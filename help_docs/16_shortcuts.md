@@ -1,6 +1,6 @@
 # AbCS Keyboard Shortcuts by Window
 
-Reference list of keyboard shortcuts for each AbCS window. Press **F1** in any window for that window's live help. Press **Alt+/** to re-read the status bar.
+Reference list of keyboard shortcuts for each AbCS window. Most actions are also on menus and toolbar buttons — use the mouse if you prefer. Press **F1** in any window for that window's live help. Press **Alt+/** to re-read the status bar.
 
 Source: `src/accessibility/shortcuts.py`, F1 help dialogs in `src/ui/`, and `AbCS_Shortcut_June07.csv`.
 
@@ -260,6 +260,18 @@ Last updated: June 2026.
 | Alt+R | Start duplicate check |
 | Alt+L | Cancel duplicate check |
 | Alt+M | Focus match type combo |
+
+## Help window
+
+| Shortcut | Action |
+|----------|--------|
+| Alt+L | Help navigation list |
+| Tab | Switch between list and content |
+| Enter | Open topic or jump to section |
+| Shift+F1 | Open help for current window (from other windows) |
+| Alt+/ | Re-read status |
+| F1 | Show shortcuts for this window |
+| Escape | Close help |
 
 ## Cross-window shortcuts
 

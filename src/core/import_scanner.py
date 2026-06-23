@@ -310,12 +310,6 @@ class ImportScanner:
         return [part for part in normalized.split(os.sep) if part]
 
     @staticmethod
-    def _relative_path_parts(parts: List[str]) -> List[str]:
-        if parts and re.match(r"^[A-Za-z]:$", parts[0]):
-            return parts[1:]
-        return parts
-
-    @staticmethod
     def _strip_leading_folder_prefix(folder_name: str) -> str:
         return re.sub(r"^\d+\s*[-.]?\s*", "", (folder_name or "").strip()).strip()
 

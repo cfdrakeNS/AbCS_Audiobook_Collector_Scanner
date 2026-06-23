@@ -21,11 +21,11 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 
 ## Steps — view or edit one book
 
-1. In the main window, move to the book you want.
-2. Open **View → Open Focused Item**, or press **Enter** when the title column is focused.
+1. In the main window, click the book row you want, or move to it with the keyboard.
+2. Double-click the **Title** column, open **View → Open Focused Item**, or press **Enter** when the title column is focused.
 3. The **Book Details** window shows all fields for that book.
 4. Edit any field and **Save** (**Alt+S**).
-5. Use **Next** (Alt+N or Page Down) and **Previous** (Alt+P or Page Up) to move between books.
+5. Click **Next** and **Previous** at the bottom of the window, or use **Alt+N** / **Alt+P** (or Page Down / Page Up).
 6. Press **Escape** to close. The main list refreshes.
 
 ## Steps — New Book
@@ -43,10 +43,14 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 
 ## Related help
 
-- Bulk changes on several selected books: see [Update](05_update_process.md).
-- Online plot and series lookup: see [Web Metadata Fetch](07_web_metadata_process.md).
+- Bulk changes on several selected books: see [Update](05_update.md).
+- Online plot and series lookup: see [Web Metadata Fetch](07_web_metadata.md).
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click any field to edit it; click **Save** when you are done.
+- Use **Next** / **Previous** buttons to move through books in the current main-list order.
+- From the main window, double-click a title or use **File → New Book** to open an empty Book Details form.
 
 | Shortcut | Action |
 |----------|--------|

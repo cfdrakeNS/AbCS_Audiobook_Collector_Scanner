@@ -33,8 +33,8 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
    - The status area reports how many duplicates were found and which match type was used.
    - Focus moves to the first book in the list.
 6. While duplicate mode is active:
-   - **Delete** (Alt+D) — select one or more rows and delete them.
-   - **Export Duplicates** (Alt+X) — save a CSV with Author, Title, Year, Time, Collection, and Date Added.
+   - **Delete** — click rows to select duplicates, then click **Delete** on the toolbar or press **Alt+D**.
+   - **Export Duplicates** — click **Export Duplicates** (or press **Alt+X**) to save a CSV with Author, Title, Year, Time, Collection, and Date Added.
    - **Update** and **Fetch Web Info** are disabled.
 7. After deleting, the duplicate list refreshes. If no duplicates remain, duplicate mode exits automatically with a completion message.
 8. To exit manually, press **Escape**. If rows are selected, Escape clears the selection first; press Escape again to confirm exit.
@@ -50,7 +50,11 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
 - **Duplicate Match** in Preferences sets the default match type shown in the duplicate check dialog.
 - **Fuzzy Duplicate percent** applies to **Import only**, not to Duplicate Mode. Library duplicate check uses exact matching on the fields in your chosen rule.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Open **Manage → Duplicate Check** from the menu bar.
+- In the check dialog, choose a match type from the dropdown and click **Start**.
+- While duplicate mode is active, click rows to select them, then click **Delete** or **Export Duplicates** on the toolbar.
 
 | Alt+M, D | Open Duplicate Check (Manage menu) |
 

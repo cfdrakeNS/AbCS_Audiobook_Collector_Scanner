@@ -20,15 +20,15 @@ Fetch Web Info looks up a book online and compares what it finds with what is st
 1. In the main window, move to the book you want to look up.
 2. Open **Edit → Fetch Web Info**, click **Search Web** on the toolbar, or press **Alt+W**.
    - You can also open **Book Details** for a book and press **Alt+W** there.
-3. A **progress dialog** appears. Listen for announcements as AbCS searches online sources in order: Open Library, then Google Books, then WikiData.
+3. A **progress dialog** appears. Watch the status text, or listen for announcements as AbCS searches online sources in order: Open Library, then Google Books, then WikiData.
 4. When the search finishes, one of two things happens:
    - **Differences found** — a review window opens showing your current values side by side with web values.
    - **Nothing useful found** — a "No Web Data Found" message appears. This can mean no match was found, the book is already up to date, or there was a network problem.
-5. In the review window, fields that differ have **checkboxes**. Check the fields you want to apply.
+5. In the review window, fields that differ have **checkboxes**. Click each box for the fields you want to apply from the web.
    - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+I** Series, **Alt+G** Genre, or **Alt+R** Rating.
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
-6. To search again using alternate sources, press **Re-fetch** (Alt+F).
-7. Click **Save** (Alt+S) to apply checked fields, or **Cancel** (**Alt+C**) to close without saving.
+6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
+7. Click **Save** (or press **Alt+S**) to apply checked fields, or click **Cancel** (or press **Alt+C**) to close without saving.
 8. Plot text is saved to the book's comments field.
 
 ## What happens next
@@ -41,7 +41,10 @@ Fetch Web Info looks up a book online and compares what it finds with what is st
 
 None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click **Search Web** on the main toolbar, or use **Edit → Fetch Web Info**.
+- In the review window, click checkboxes beside fields you want to update, then click **Save**, **Re-fetch**, or **Cancel**.
 
 | Shortcut | Action |
 |----------|--------|

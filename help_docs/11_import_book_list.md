@@ -4,7 +4,7 @@
 
 Import Book List brings book information into AbCS from a spreadsheet file (CSV, Excel, or ODS). It does not read audio file tags. Use it when you already have a list of titles and authors in a table.
 
-This is separate from folder Import (Ctrl+I). See [Import](02_import_process.md) for scanning audio files.
+This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for scanning audio files.
 
 ## When to use it
 
@@ -25,11 +25,11 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import_process.md)
 2. Choose a **Collection** (Alt+C). Focus starts on this field when the window opens.
 3. Click **Browse** (Alt+B) and select your spreadsheet file.
 4. After the file loads, the status bar reports how many rows and columns were found.
-5. If your spreadsheet has a header row in the first line, leave **My file Has Header** checked. Uncheck it if the first row is data.
-6. Choose an import mode under **Options** (Alt+O):
+5. If your spreadsheet has a header row in the first line, click **My file Has Header** to check or uncheck it.
+6. Choose an import mode under **Options** (click a radio button, or press **Alt+O**):
    - **Add Book From List** (default) — insert new book records.
    - **Add Read Date from List** — update read dates on existing books only.
-7. In the **Field Mapping** table, assign each book field to a spreadsheet column (A, B, C, and so on). Use **Alt+T** Title, **Alt+A** Author, **Alt+E** Read Date, and other **Alt+** keys for each mapping row (press **Alt+H** for the full mapping list).
+7. In the **Field Mapping** table, open each dropdown and choose a spreadsheet column (A, B, C, and so on). Keyboard users can use **Alt+T** Title, **Alt+A** Author, **Alt+E** Read Date, and other **Alt+** keys for each mapping row (press **Alt+H** for the full mapping list).
    - New books: Title and Author are required.
    - Read-date mode: Title, Author, and Read Date are required. Other mapping fields are disabled.
 8. Click **Import** (Alt+I).
@@ -47,11 +47,15 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import_process.md)
 
 ## Settings that affect this
 
-Import Book List uses the same **duplicate match** and **fuzzy duplicate percent** settings as folder Import. Find these under **Preferences → Validation Rules**. See [Import](02_import_process.md) for an explanation of duplicate settings.
+Import Book List uses the same **duplicate match** and **fuzzy duplicate percent** settings as folder Import. Find these under **Preferences → Validation Rules**. See [Import](02_import.md) for an explanation of duplicate settings.
 
 Other import preferences (scenarios, fallbacks, validation rules) do **not** apply to spreadsheet import.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Click **Browse** to select your spreadsheet; click **Import** to start after mapping columns.
+- In the mapping table, click each dropdown to assign spreadsheet columns to book fields.
+- Click **Yes** or **No** on the confirm dialog; click **Export Errors** if any rows failed.
 
 | Shortcut | Action |
 |----------|--------|

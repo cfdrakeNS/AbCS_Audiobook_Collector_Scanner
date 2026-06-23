@@ -23,16 +23,18 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
    - Books read and unread
    - Total hours read and total listening time (all books)
    - Collection count and per-collection book counts
-3. Use **Tab** to move through table cells. Each row is announced as `statistic: value`.
-4. Press **F1** for shortcuts (Tab, F1, Escape).
-5. Press **Escape** to close.
+3. Click a row to read it, or use **Tab** to move through table cells. Each row is announced as `statistic: value` to screen readers.
+4. Click **Close** or press **Escape** to dismiss the dialog.
 
 ## What happens next
 
 - Closing returns you to the main window.
 - Reopen Statistics anytime for updated numbers after imports or edits.
 
-## Shortcuts and accessibility
+## Mouse, shortcuts, and accessibility
+
+- Open **Manage → Statistics** or click **Statistics** on the main toolbar.
+- Click **Close** or the dialog close control when finished.
 
 | Shortcut | Action |
 |----------|--------|
@@ -44,13 +46,13 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
 ## Common confusion
 
 **How is this different from Reading History?**
-Statistics covers the **whole library** (read and unread). Reading History focuses on **finished** books and breaks them down by time period. See [Reading History process](13_reading_history_process.md).
+Statistics covers the **whole library** (read and unread). Reading History focuses on **finished** books and breaks them down by time period. See [Reading History process](13_reading_history.md).
 
 **Why do collection counts not match my filter?**
 The statistics dialog summarizes the database broadly. Use the main window collection filter when browsing a subset.
 
 ## Related documentation
 
-- [Reading History process](13_reading_history_process.md)
-- [Collections process](06_collections_process.md)
-- [Keyboard shortcuts by window](16_shortcuts_list.md)
+- [Reading History process](13_reading_history.md)
+- [Collections process](06_collections.md)
+- [Keyboard shortcuts by window](16_shortcuts.md)
