@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -93,6 +95,29 @@ def cleanup_window(window):
         _close_widget_for_teardown(widget)
 
     QApplication.processEvents()
+
+
+def _configure_mass_standard_scan(window, *, trim_whitespace: bool | None = None):
+    """Use mass-standard import rules so scan tests are not host-settings dependent."""
+    if trim_whitespace is not None:
+        window.import_scanner.trim_whitespace = trim_whitespace
+    window.import_scenario_mode = "mass_standard"
+    scanner = window.import_scanner
+    window.import_scanner.configure(
+        scenario_mode="mass_standard",
+        author_fallback_mode="folder" if window.author_fallback_to_folder else None,
+        title_fallback_mode="file" if window.title_fallback_to_file else None,
+        reader_keywords=window.reader_keywords,
+        trim_whitespace=scanner.trim_whitespace,
+        strip_leading_punctuation=scanner.strip_leading_punctuation,
+        remove_non_alphanumeric=scanner.remove_non_alphanumeric,
+        proper_case_fields=scanner.proper_case_fields,
+        move_leading_the_title=scanner.move_leading_the_title,
+        proper_case_skip_review=scanner.proper_case_skip_review,
+        trim_whitespace_skip_review=scanner.trim_whitespace_skip_review,
+        strip_leading_punctuation_skip_review=scanner.strip_leading_punctuation_skip_review,
+        remove_non_alphanumeric_skip_review=scanner.remove_non_alphanumeric_skip_review,
+    )
 
 
 def test_update_window_series_and_genre_combo_widths_match(qapp, qtbot, temp_db):
@@ -489,6 +514,7 @@ def test_scan_keeps_fixed_warning_rows_for_manual_add(
     scan_dir = Path(tmp_path)
     scan_dir.mkdir(parents=True, exist_ok=True)
     window.folder_edit.setText(str(scan_dir))
+    _configure_mass_standard_scan(window)
 
     fixed_book = {
         "title": "Fixed Example",
@@ -581,7 +607,7 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(
     scan_dir = Path(tmp_path)
     scan_dir.mkdir(parents=True, exist_ok=True)
     window.folder_edit.setText(str(scan_dir))
-    window.import_scanner.trim_whitespace = True
+    _configure_mass_standard_scan(window, trim_whitespace=True)
 
     corrected_book = {
         "title": "  Corrected Example  ",

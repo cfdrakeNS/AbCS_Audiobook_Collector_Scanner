@@ -137,7 +137,7 @@ Last updated: June 2026.
 | Alt+D | Display Settings tab |
 | Alt+P | Import Settings tab |
 | Alt+B | Browse for default import directory |
-| Alt+F | Fallback and Parsing tab |
+| Alt+F | Fallback & Auto Correct tab |
 | Alt+V | Validation Rules tab |
 | Alt+R | Restore Defaults |
 | Alt+S | Save |

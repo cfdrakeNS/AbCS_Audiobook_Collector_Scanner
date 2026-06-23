@@ -32,10 +32,15 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 - **Audio formats** — which extensions to scan.
 - **Import scenario** — how folders map to author, title, and series (default: **Mass Standard Import**). See [Import preferences](18_import_preferences.md).
 
-### Fallback and Parsing (Alt+F)
+### Fallback & Auto Correct (Alt+F)
 
 - **Author fallback to folder** / **Title fallback to file** — fill missing tags from paths.
 - **Reader keywords** — detect narrator in comments.
+- **Auto Correct** — four text cleanup options, each with **Apply** and **Skip Review**:
+  - Apply proper case
+  - Trim whitespace
+  - Remove leading punctuation
+  - Remove non-printable characters (accents such as é and ñ are kept)
 
 ### Validation Rules (Alt+V)
 
@@ -64,7 +69,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 | Alt+M, P | Open Preferences (Manage menu) |
 | Alt+D | Display Settings tab |
 | Alt+P | Import Settings tab |
-| Alt+F | Fallback and Parsing tab |
+| Alt+F | Fallback & Auto Correct tab |
 | Alt+V | Validation Rules tab |
 | Alt+B | Browse default import directory |
 | Alt+R | Restore Defaults |

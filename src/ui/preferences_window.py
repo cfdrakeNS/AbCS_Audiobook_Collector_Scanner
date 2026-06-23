@@ -80,8 +80,9 @@ class PreferencesWindow(AccessibleDialog):
             "use album for the book title and album artist for the author (not the narrator) when possible."
         ),
         TAB_FALLBACK: (
-            "Control how missing metadata is filled in during import and how narrator "
-            "names are detected from file tags and comments."
+            "Control how missing metadata is filled in during import, how narrator "
+            "names are detected from file tags and comments, and which text "
+            "auto-corrections run during folder scan."
         ),
         TAB_VALIDATION: (
             "Configure import validation severity: duplicate matching, title and author "
@@ -195,7 +196,7 @@ class PreferencesWindow(AccessibleDialog):
         )
         self.tab_widget.addTab(self._build_import_tab(), "Import Settings")
         self.tab_widget.addTab(
-            self._build_fallback_tab(), "Fallback and Parsing"
+            self._build_fallback_tab(), "Fallback & Auto Correct"
         )
         self.tab_widget.addTab(
             self._build_validation_tab(), "Validation Rules"
@@ -254,7 +255,7 @@ class PreferencesWindow(AccessibleDialog):
         tab_names = {
             self.TAB_DISPLAY: "Display Settings",
             self.TAB_IMPORT: "Import Settings",
-            self.TAB_FALLBACK: "Fallback and Parsing",
+            self.TAB_FALLBACK: "Fallback & Auto Correct",
             self.TAB_VALIDATION: "Validation Rules",
         }
         section_name = tab_names.get(tab_index, "Preferences")
@@ -301,7 +302,7 @@ class PreferencesWindow(AccessibleDialog):
         tab_names = {
             self.TAB_DISPLAY: "Display Settings",
             self.TAB_IMPORT: "Import Settings",
-            self.TAB_FALLBACK: "Fallback and Parsing",
+            self.TAB_FALLBACK: "Fallback & Auto Correct",
             self.TAB_VALIDATION: "Validation Rules",
         }
         self.set_status(f"{tab_names.get(tab_index, 'Preferences')} instructions")
@@ -521,6 +522,142 @@ class PreferencesWindow(AccessibleDialog):
         self._card_groups.append(source_scope_group)
         return page
 
+    def _autocorrect_row_height(self) -> int:
+        """Single-line row height for compact auto-correct grid at any zoom."""
+        return max(self.fontMetrics().height() + 2, self.scaler.get_scaled_size(14))
+
+    def _autocorrect_blank_line_height(self) -> int:
+        """One blank line of vertical space between auto-correct rows."""
+        return self.fontMetrics().height()
+
+    def _apply_autocorrect_compact_styles(self):
+        """Override global touch-target checkbox sizing inside Auto Correct."""
+        widgets = getattr(self, "_autocorrect_compact_widgets", None)
+        if not widgets:
+            return
+        row_height = self._autocorrect_row_height()
+        blank_line = self._autocorrect_blank_line_height()
+        grid = getattr(self, "_autocorrect_grid", None)
+        if grid is not None:
+            grid.setVerticalSpacing(blank_line)
+        checkbox_style = f"""
+            QCheckBox {{
+                min-height: {row_height}px;
+                max-height: {row_height}px;
+                padding: 0px;
+                margin: 0px;
+            }}
+        """
+        label_style = f"""
+            QLabel {{
+                min-height: {row_height}px;
+                max-height: {row_height}px;
+                padding: 0px;
+                margin: 0px;
+            }}
+        """
+        for widget in widgets:
+            if isinstance(widget, QCheckBox):
+                widget.setStyleSheet(checkbox_style)
+            else:
+                widget.setStyleSheet(label_style)
+            widget.setFixedHeight(row_height)
+            widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+    def _build_autocorrect_group(self) -> QGroupBox:
+        """Build compact auto-correct options with Apply and Skip Review on the left."""
+        group = QGroupBox("Auto Correct")
+        group.setObjectName("autocorrectGroup")
+        group.setFont(self._section_font())
+        layout = QVBoxLayout(group)
+        layout.setContentsMargins(8, 2, 8, 2)
+        layout.setSpacing(0)
+
+        grid = QGridLayout()
+        self._autocorrect_grid = grid
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(0)
+
+        self._autocorrect_compact_widgets = []
+
+        apply_header = QLabel("Apply")
+        apply_header.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        apply_header.setAccessibleName("Auto correct apply column")
+        skip_header = QLabel("Skip Review")
+        skip_header.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        skip_header.setAccessibleName("Auto correct skip review column")
+        grid.addWidget(apply_header, 0, 0, alignment=Qt.AlignHCenter)
+        grid.addWidget(skip_header, 0, 1, alignment=Qt.AlignHCenter)
+        grid.addWidget(QLabel(""), 0, 2)
+        self._autocorrect_compact_widgets.extend(
+            (apply_header, skip_header)
+        )
+
+        tooltip_map = {
+            apply_header: "Run the correction during folder import scan.",
+            skip_header: (
+                "Auto-add when that correction is the only reason a book would "
+                "go to review."
+            ),
+        }
+
+        options = (
+            (
+                "proper_case",
+                "Apply proper case",
+                "Capitalize title and author words during import scan.",
+                "Auto-add when proper case is the only correction needed.",
+            ),
+            (
+                "trim_whitespace",
+                "Trim whitespace",
+                "Collapse extra spaces and trim leading or trailing spaces.",
+                "Auto-add when whitespace trim is the only correction needed.",
+            ),
+            (
+                "strip_punctuation",
+                "Remove leading punctuation",
+                "Strip non-letter characters from the start of title or author.",
+                "Auto-add when leading punctuation removal is the only correction needed.",
+            ),
+            (
+                "remove_nonprintable",
+                "Remove non-printable characters",
+                "Remove control characters only; accented letters such as é and ñ are kept.",
+                "Auto-add when non-printable removal is the only correction needed.",
+            ),
+        )
+
+        for row, (key, label, apply_tip, skip_tip) in enumerate(options, start=1):
+            apply_box = QCheckBox()
+            apply_box.setAccessibleName(f"{label} apply")
+            apply_box.setAccessibleDescription(apply_tip)
+            skip_box = QCheckBox()
+            skip_box.setAccessibleName(f"{label} skip review")
+            skip_box.setAccessibleDescription(skip_tip)
+            name_label = QLabel(label)
+            name_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            name_label.setAccessibleName(label)
+            name_label.setAccessibleDescription(apply_tip)
+            setattr(self, f"ac_{key}_apply", apply_box)
+            setattr(self, f"ac_{key}_skip", skip_box)
+            grid.addWidget(apply_box, row, 0, alignment=Qt.AlignHCenter)
+            grid.addWidget(skip_box, row, 1, alignment=Qt.AlignHCenter)
+            grid.addWidget(name_label, row, 2, alignment=Qt.AlignLeft | Qt.AlignVCenter)
+            self._autocorrect_compact_widgets.extend(
+                (apply_box, skip_box, name_label)
+            )
+            tooltip_map[apply_box] = apply_tip
+            tooltip_map[skip_box] = skip_tip
+            tooltip_map[name_label] = apply_tip
+
+        grid.setColumnStretch(2, 1)
+        layout.addLayout(grid)
+        apply_visual_tooltip_map(tooltip_map)
+        self._apply_autocorrect_compact_styles()
+        return group
+
     def _build_fallback_tab(self) -> QWidget:
         page, content_layout = self._make_tab_page(
             self.TAB_FALLBACK, self.TAB_DESCRIPTIONS[self.TAB_FALLBACK]
@@ -586,8 +723,11 @@ class PreferencesWindow(AccessibleDialog):
         fallback_layout.addLayout(reader_keywords_layout)
 
         content_layout.addWidget(fallback_group)
+        self.autocorrect_group = self._build_autocorrect_group()
+        content_layout.addWidget(self.autocorrect_group)
         content_layout.addStretch(1)
         self._card_groups.append(fallback_group)
+        self._card_groups.append(self.autocorrect_group)
         return page
 
     def _build_validation_tab(self) -> QWidget:
@@ -974,6 +1114,8 @@ class PreferencesWindow(AccessibleDialog):
         for checkbox in self.format_checks.values():
             checkbox.setStyleSheet(format_checkbox_style)
 
+        self._apply_autocorrect_compact_styles()
+
         section_text_style = f"""
             QTextEdit {{
                 border: 1px solid palette(dark);
@@ -1001,6 +1143,7 @@ class PreferencesWindow(AccessibleDialog):
         if _is_linux():
             self._apply_compact_combo_widths()
             self._sync_fallback_column_alignment()
+            self._apply_autocorrect_compact_styles()
             if hasattr(self, "rules_section_text"):
                 self._fit_readonly_section_text_height(self.rules_section_text)
             self.update_scenario_description_height()
@@ -1104,6 +1247,16 @@ class PreferencesWindow(AccessibleDialog):
             "author_fallback": self.author_fallback_checkbox.isChecked(),
             "title_fallback": self.title_fallback_checkbox.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
+            "autocorrect": (
+                self.ac_proper_case_apply.isChecked(),
+                self.ac_proper_case_skip.isChecked(),
+                self.ac_trim_whitespace_apply.isChecked(),
+                self.ac_trim_whitespace_skip.isChecked(),
+                self.ac_strip_punctuation_apply.isChecked(),
+                self.ac_strip_punctuation_skip.isChecked(),
+                self.ac_remove_nonprintable_apply.isChecked(),
+                self.ac_remove_nonprintable_skip.isChecked(),
+            ),
             "rule_author_in_title": (self.rule_author_in_title_severity.currentData(),),
             "rule_title_in_author": (self.rule_title_in_author_severity.currentData(),),
             "rule_unknown_author": (self.rule_unknown_author_severity.currentData(),),
@@ -1126,7 +1279,6 @@ class PreferencesWindow(AccessibleDialog):
             "rule_year_quality": self.rule_year_quality_severity.currentData(),
             "duplicate_match_mode": self.duplicate_match_combo.currentData(),
             "duplicate_fuzzy_threshold": self.duplicate_fuzzy_spin.value(),
-            "autocorrect": (),
         }
 
     def _has_unsaved_changes(self) -> bool:
@@ -1234,6 +1386,37 @@ class PreferencesWindow(AccessibleDialog):
             "import/reader_keywords", "reader, read by, narrator, narrated by", type=str
         )
         self.reader_keywords_edit.setText(reader_keywords)
+
+        self.ac_proper_case_apply.setChecked(
+            self.settings.value("import/scan/proper_case", True, type=bool)
+        )
+        self.ac_proper_case_skip.setChecked(
+            self.settings.value("import/scan/proper_case_skip_review", True, type=bool)
+        )
+        self.ac_trim_whitespace_apply.setChecked(
+            self.settings.value("import/scan/trim_whitespace", True, type=bool)
+        )
+        self.ac_trim_whitespace_skip.setChecked(
+            self.settings.value(
+                "import/scan/trim_whitespace_skip_review", False, type=bool
+            )
+        )
+        self.ac_strip_punctuation_apply.setChecked(
+            self.settings.value("import/scan/strip_punctuation", True, type=bool)
+        )
+        self.ac_strip_punctuation_skip.setChecked(
+            self.settings.value(
+                "import/scan/strip_punctuation_skip_review", False, type=bool
+            )
+        )
+        self.ac_remove_nonprintable_apply.setChecked(
+            self.settings.value("import/scan/remove_nonprintable", False, type=bool)
+        )
+        self.ac_remove_nonprintable_skip.setChecked(
+            self.settings.value(
+                "import/scan/remove_nonprintable_skip_review", False, type=bool
+            )
+        )
 
         for combo in (
             self.rule_author_in_title_severity,
@@ -1561,10 +1744,10 @@ class PreferencesWindow(AccessibleDialog):
         """Focus first control in Options section."""
 
     def focus_fallback_section(self):
-        """Focus first control in Fallback and Parsing section."""
+        """Focus first control in Fallback & Auto Correct section."""
         self._focus_section_widget(
             self.author_fallback_checkbox,
-            "Fallback and Parsing Behavior",
+            "Fallback & Auto Correct",
             self.TAB_FALLBACK,
         )
 
@@ -1601,7 +1784,7 @@ class PreferencesWindow(AccessibleDialog):
             ("Alt+D", "Display Settings tab"),
             ("Alt+P", "Import Settings tab"),
             ("Alt+B", "Browse for default import directory"),
-            ("Alt+F", "Fallback and Parsing tab"),
+            ("Alt+F", "Fallback & Auto Correct tab"),
             ("Alt+V", "Validation Rules tab"),
             ("Alt+R", "Restore Defaults"),
             ("Alt+S", "Save"),
@@ -1918,6 +2101,23 @@ class PreferencesWindow(AccessibleDialog):
         self.reader_keywords_edit.setText(default_keywords)
         self.settings.setValue("import/reader_keywords", default_keywords)
 
+        self.ac_proper_case_apply.setChecked(True)
+        self.ac_proper_case_skip.setChecked(True)
+        self.ac_trim_whitespace_apply.setChecked(True)
+        self.ac_trim_whitespace_skip.setChecked(False)
+        self.ac_strip_punctuation_apply.setChecked(True)
+        self.ac_strip_punctuation_skip.setChecked(False)
+        self.ac_remove_nonprintable_apply.setChecked(False)
+        self.ac_remove_nonprintable_skip.setChecked(False)
+        self.settings.setValue("import/scan/proper_case", True)
+        self.settings.setValue("import/scan/proper_case_skip_review", True)
+        self.settings.setValue("import/scan/trim_whitespace", True)
+        self.settings.setValue("import/scan/trim_whitespace_skip_review", False)
+        self.settings.setValue("import/scan/strip_punctuation", True)
+        self.settings.setValue("import/scan/strip_punctuation_skip_review", False)
+        self.settings.setValue("import/scan/remove_nonprintable", False)
+        self.settings.setValue("import/scan/remove_nonprintable_skip_review", False)
+
         # Validation rules - reset to defaults
         # Author in Title: warning
         self.rule_author_in_title_severity.setCurrentIndex(
@@ -2024,6 +2224,38 @@ class PreferencesWindow(AccessibleDialog):
         )
         self.settings.setValue(
             "import/reader_keywords", self.reader_keywords_edit.text().strip()
+        )
+
+        self.settings.setValue(
+            "import/scan/proper_case", self.ac_proper_case_apply.isChecked()
+        )
+        self.settings.setValue(
+            "import/scan/proper_case_skip_review",
+            self.ac_proper_case_skip.isChecked(),
+        )
+        self.settings.setValue(
+            "import/scan/trim_whitespace",
+            self.ac_trim_whitespace_apply.isChecked(),
+        )
+        self.settings.setValue(
+            "import/scan/trim_whitespace_skip_review",
+            self.ac_trim_whitespace_skip.isChecked(),
+        )
+        self.settings.setValue(
+            "import/scan/strip_punctuation",
+            self.ac_strip_punctuation_apply.isChecked(),
+        )
+        self.settings.setValue(
+            "import/scan/strip_punctuation_skip_review",
+            self.ac_strip_punctuation_skip.isChecked(),
+        )
+        self.settings.setValue(
+            "import/scan/remove_nonprintable",
+            self.ac_remove_nonprintable_apply.isChecked(),
+        )
+        self.settings.setValue(
+            "import/scan/remove_nonprintable_skip_review",
+            self.ac_remove_nonprintable_skip.isChecked(),
         )
 
         author_in_title_choice = self.rule_author_in_title_severity.currentData()

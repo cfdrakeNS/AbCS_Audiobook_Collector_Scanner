@@ -71,11 +71,12 @@ If you use **Series From Directory** on a nested layout (book subfolders under t
 
 See [Import preferences](18_import_preferences.md) for full scenario details, fallbacks, and validation rules.
 
-### Fallback and Parsing
+### Fallback & Auto Correct
 
 - **Author fallback to folder** — if the author tag is missing, use the folder name.
 - **Title fallback to file** — if the title tag is missing, use the file name.
 - **Reader keywords** — words that help detect the narrator in comments (for example, "narrator", "read by").
+- **Auto Correct** — optional text cleanup during scan. Each option has **Apply** (run the fix) and **Skip Review** (allow auto-add when that fix is the only issue). Options: proper case, trim whitespace, remove leading punctuation, remove non-printable characters (accents kept).
 
 ### Validation Rules
 
@@ -121,7 +122,7 @@ Changing preferences while the Import window is open may not apply until you clo
 ## Common confusion
 
 **Why were some books added and others not?**
-Clean books are added immediately. Anything with a duplicate match, validation issue, or fallback guess stays in the review list until you add it manually.
+Clean books are added immediately. Anything with a duplicate match, validation issue, or fallback guess stays in the review list until you add it manually. Autocorrects may also hold a book for review unless **Skip Review** is enabled for that correction in Preferences.
 
 **Is import duplicate detection the same as Duplicate Mode?**
 No. Import duplicate detection happens while adding new books and can use fuzzy matching. Duplicate Mode (Manage menu) finds duplicates already in your library using exact key matching. See [Duplicate Mode](08_duplicate_mode.md).

@@ -15,6 +15,35 @@ Items that need verification or cleanup, organized by file:
 
 - No current production cleanup items after June 23 dead-code removal (see Cleanup History).
 
+### June 23, 2026 — Post-autocorrect preferences vulture scan (`python -m vulture src test --min-confidence 60`)
+
+**Scan run (after Fallback & Auto Correct preferences work):**
+- `python -m vulture src test --min-confidence 60`
+- `python -m vulture src --min-confidence 60`
+
+**New production actionable items:** none.
+
+**Review notes (low priority, no change required now):**
+- `src/accessibility/graphics_paths.py`: `resolve_app_icon_path` — exercised by `test/test_graphics_paths.py`; runtime icon loading uses `icon_helper.get_app_icon()` / `_icon_candidate_paths()` instead. Keep for tested path-resolution API unless/until icon_helper is refactored to call it.
+- `src/accessibility/read_only_text.py`: `_plot_title` on `PlotLineList` — write-only mirror of accessible name; never read. Safe to remove in a future small cleanup if desired.
+
+**False positives confirmed (unchanged from earlier June 23 scan):**
+- `context_help_shortcut` on multiple windows (including `preferences_window.py`) — holds `QShortcut` from `install_shift_f1_help()`; do not remove.
+- `src/accessibility/read_only_text.py`: `paint` — Qt delegate callback.
+- `src/ui/main_window.py`: `paint` on title delegate — Qt callback.
+- `src/ui/accessible_dialog.py`: `_owner_widget` — Win32 z-order owner; intentional.
+- `src/ui/help_window.py`: `markdown_to_plain_text` — called from `test/test_help_router.py`.
+- `src/database/connection.py`: `row_factory`
+- `src/ui/book_list_import_window.py`: fallback `DataFrame`
+- `src/accessibility/shortcuts.py`: `READING_HISTORY_SHORTCUTS`
+- `src/ui/main_window.py`: `book_list`
+- `src/ui/name_list_window.py`: `on_alt_f_pressed`, `_format_status_message`, `_is_find_match`
+- `src/ui/reading_history_window.py`: `load_general_stats`
+
+**Tests:** pytest fixtures (`isolated_qsettings`, `suppress_import_confirmations`), mock `side_effect`/`return_value`, and `test/test_message_box_button_icons.py` `Parent` helper — test-only; no action.
+
+**`.vultureignore`:** no changes required this scan.
+
 ### June 23, 2026 — Pre-release vulture scan (`python -m vulture src test --min-confidence 60`)
 
 **Scan run:**

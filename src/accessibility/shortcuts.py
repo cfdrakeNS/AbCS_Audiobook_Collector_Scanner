@@ -172,7 +172,7 @@ PREFERENCES_WINDOW_SHORTCUTS = {
     "D": ("Display Settings tab", "theme_picker"),
     "P": ("Import Settings tab", "import_dir_edit"),
     "B": ("Browse", "browse_button"),
-    "F": ("Fallback and Parsing tab", "author_fallback_checkbox"),
+    "F": ("Fallback & Auto Correct tab", "author_fallback_checkbox"),
     "V": ("Validation Rules tab", "rules_section_text"),
     "R": ("Restore Defaults", "restore_defaults_button"),
     "S": ("Save", "save_button"),

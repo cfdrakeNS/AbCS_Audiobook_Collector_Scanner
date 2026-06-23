@@ -191,3 +191,60 @@ def test_nested_author_fallback_from_path_depth():
     assert any(
         "F: Author fallback from folder used" in str(err) for err in book["errors"]
     )
+
+
+def test_trim_whitespace_flags_correction_by_default():
+    scanner = ImportScanner()
+    scanner.configure(
+        scenario_mode="mass_standard",
+        trim_whitespace=True,
+        trim_whitespace_skip_review=False,
+    )
+    book = {
+        "title": "  Spaced Title  ",
+        "author": "Author One",
+        "errors": [],
+    }
+
+    scanner.apply_preferences(book)
+
+    assert book["title"] == "Spaced Title"
+    assert any("C: Title whitespace trimmed" in str(err) for err in book["errors"])
+
+
+def test_trim_whitespace_skip_review_suppresses_correction_flag():
+    scanner = ImportScanner()
+    scanner.configure(
+        scenario_mode="mass_standard",
+        trim_whitespace=True,
+        trim_whitespace_skip_review=True,
+    )
+    book = {
+        "title": "  Spaced Title  ",
+        "author": "Author One",
+        "errors": [],
+    }
+
+    scanner.apply_preferences(book)
+
+    assert book["title"] == "Spaced Title"
+    assert not any(str(err).startswith("C:") for err in book["errors"])
+
+
+def test_proper_case_skip_review_suppresses_correction_flag():
+    scanner = ImportScanner()
+    scanner.configure(
+        scenario_mode="mass_standard",
+        proper_case_fields=True,
+        proper_case_skip_review=True,
+    )
+    book = {
+        "title": "the hobbit",
+        "author": "j.r.r. tolkien",
+        "errors": [],
+    }
+
+    scanner.apply_preferences(book)
+
+    assert book["title"] == "The Hobbit"
+    assert not any(str(err).startswith("C:") for err in book["errors"])

@@ -2,7 +2,7 @@
 
 ## What this is
 
-The **Import Detail** window lets you review and fix one held import item at a time. Books land here when import finds duplicates, validation issues, fallback guesses, or other problems that need your attention.
+The **Import Detail** window lets you review and fix one held import item at a time. Books land here when import finds duplicates, validation issues, fallback guesses, text auto-corrects (**C:** flags), or other problems that need your attention.
 
 ## When to use it
 

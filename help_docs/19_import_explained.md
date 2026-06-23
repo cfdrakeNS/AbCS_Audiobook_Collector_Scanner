@@ -70,6 +70,7 @@ After the scan, each book is either **added immediately** or **held for review**
 
 - Possible **duplicate** of a book already in the library.
 - **Missing or guessed** author or title (fallback from folder/file name).
+- **Text auto-correct** on title or author (for example trimmed whitespace), unless **Skip Review** is enabled for that correction in Preferences.
 - **Validation warning or error** (wrong field in wrong place, odd duration, path mismatch, and so on).
 - **Unreadable file** or tag problem.
 

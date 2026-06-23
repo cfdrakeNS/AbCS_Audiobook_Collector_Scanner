@@ -2,9 +2,9 @@
 
 ## What this is
 
-This guide explains how **Preferences** shape folder import behavior: import scenarios, fallback rules, validation, and duplicate matching. It complements [Default preferences](17_default_preferences.md) (factory values) and [Import process](02_import.md) (step-by-step workflow).
+This guide explains how **Preferences** shape folder import behavior: import scenarios, fallback rules, auto-correct options, validation, and duplicate matching. It complements [Default preferences](17_default_preferences.md) (factory values) and [Import process](02_import.md) (step-by-step workflow).
 
-Open **Manage → Preferences** (or **View → Preferences**) from the menu bar. Click the **Import Settings**, **Fallback and Parsing**, and **Validation Rules** tabs to change import behavior. See [Preferences](10_preferences.md) for mouse and keyboard navigation in that window.
+Open **Manage → Preferences** (or **View → Preferences**) from the menu bar. Click the **Import Settings**, **Fallback & Auto Correct**, and **Validation Rules** tabs to change import behavior. See [Preferences](10_preferences.md) for mouse and keyboard navigation in that window.
 
 Press **F1** in Preferences for shortcuts. Press **Alt+/** to re-read the status bar.
 
@@ -69,9 +69,13 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 
 - For importing one author folder, one book folder, or one audio file.
 - When picking a single file, only enabled audio formats from Preferences are offered.
-- Other fallback and validation rules still apply.
+- Other fallback, auto-correct, and validation rules still apply.
 
-## Fallback and parsing
+## Fallback and auto correct
+
+The **Fallback & Auto Correct** tab has two groups: fallback parsing and text auto-correct.
+
+### Fallback and parsing
 
 | Setting | When enabled | Effect |
 |---------|--------------|--------|
@@ -81,7 +85,29 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 
 Placeholder values treated as missing include: empty, `unknown`, `untitled`, `n/a`, and similar.
 
-When a fallback is used, the review list flags the book with **F:** (fallback).
+When a fallback is used, the review list flags the book with **F:** (fallback). Fallback always holds the book for review.
+
+### Auto correct
+
+Each option has two checkboxes:
+
+| Column | Meaning |
+|--------|---------|
+| **Apply** | Run this correction during folder scan |
+| **Skip Review** | If this correction is the only reason a book would go to review, still auto-add it |
+
+| Option | What it does |
+|--------|--------------|
+| **Apply proper case** | Capitalizes words in title and author (for example `the hobbit` → `The Hobbit`) |
+| **Trim whitespace** | Collapses extra spaces and trims leading or trailing spaces |
+| **Remove leading punctuation** | Strips non-letter characters from the start of title or author |
+| **Remove non-printable characters** | Removes control characters only; accented letters such as é, ñ, and ü are **kept** |
+
+When **Apply** is on and **Skip Review** is off, corrected title or author fields get a **C:** flag and the book is held for review.
+
+When **Skip Review** is on for a correction, that correction alone will not block auto-add. If another issue is present (duplicate, validation warning, fallback, or a different correction without Skip Review), the book still goes to review.
+
+**F:** fallback flags always hold for review regardless of Skip Review settings.
 
 ## Validation rules
 
@@ -111,12 +137,6 @@ Separate from **Duplicate Mode** on the main window (which finds duplicates alre
 Both title and author must meet the fuzzy threshold. At **90%** (default after Restore Defaults), only minor typos match. At **0%**, near-exact text is required.
 
 Books that match an existing entry are held in review with a **Duplicate** flag — they are not auto-added.
-
-## Auto-corrections
-
-Optional text cleanup (configured in Preferences) may trim whitespace, strip leading punctuation, remove non-printable characters, apply proper case, or move leading articles in titles (for example `The Hobbit` → `Hobbit, The`).
-
-Corrections appear in the review list with **C:** flags. Fallback flags (**F:**) take priority over correction flags for the same field.
 
 ## When settings take effect
 

@@ -32,7 +32,7 @@ Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-r
 | Import scenario | Mass Standard Import |
 | Include subfolders | On (always enabled when settings are saved) |
 
-## Fallback and parsing (third tab)
+## Fallback & Auto Correct (third tab)
 
 | Setting | Default |
 |---------|---------|
@@ -41,6 +41,19 @@ Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-r
 | Reader keywords | `reader, read by, narrator, narrated by` |
 
 When author or title is missing from file tags, AbCS can fill them from folder or file names only if these fallbacks are enabled.
+
+### Auto correct defaults
+
+Each option has **Apply** and **Skip Review** checkboxes.
+
+| Option | Apply | Skip Review |
+|--------|-------|-------------|
+| Apply proper case | Checked | Checked |
+| Trim whitespace | Checked | Unchecked |
+| Remove leading punctuation | Checked | Unchecked |
+| Remove non-printable characters | Unchecked | Unchecked |
+
+**Skip Review** means a book corrected only by that option may still auto-add. See [Import preferences](18_import_preferences.md) for details.
 
 ## Validation rules (fourth tab)
 

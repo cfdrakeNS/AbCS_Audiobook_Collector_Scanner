@@ -710,11 +710,31 @@ class ImportWindow(AccessibleDialog):
             author_fallback_mode="folder" if self.author_fallback_to_folder else None,
             title_fallback_mode="file" if self.title_fallback_to_file else None,
             reader_keywords=self.reader_keywords,
-            trim_whitespace=True,
-            strip_leading_punctuation=True,
-            remove_non_alphanumeric=False,
-            proper_case_fields=True,
+            trim_whitespace=self.settings.value(
+                "import/scan/trim_whitespace", True, type=bool
+            ),
+            strip_leading_punctuation=self.settings.value(
+                "import/scan/strip_punctuation", True, type=bool
+            ),
+            remove_non_alphanumeric=self.settings.value(
+                "import/scan/remove_nonprintable", False, type=bool
+            ),
+            proper_case_fields=self.settings.value(
+                "import/scan/proper_case", True, type=bool
+            ),
             move_leading_the_title=False,
+            proper_case_skip_review=self.settings.value(
+                "import/scan/proper_case_skip_review", True, type=bool
+            ),
+            trim_whitespace_skip_review=self.settings.value(
+                "import/scan/trim_whitespace_skip_review", False, type=bool
+            ),
+            strip_leading_punctuation_skip_review=self.settings.value(
+                "import/scan/strip_punctuation_skip_review", False, type=bool
+            ),
+            remove_non_alphanumeric_skip_review=self.settings.value(
+                "import/scan/remove_nonprintable_skip_review", False, type=bool
+            ),
         )
         self.validator.reload_settings()
         self._update_header_info_line()

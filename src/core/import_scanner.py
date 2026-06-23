@@ -41,6 +41,17 @@ class ImportScanner:
         self.remove_non_alphanumeric = False
         self.proper_case_fields = False
         self.move_leading_the_title = False
+        self.proper_case_skip_review = True
+        self.trim_whitespace_skip_review = False
+        self.strip_leading_punctuation_skip_review = False
+        self.remove_non_alphanumeric_skip_review = False
+
+    _CORRECTION_SKIP_REVIEW_ATTRS = {
+        "whitespace trimmed": "trim_whitespace_skip_review",
+        "punctuation removed": "strip_leading_punctuation_skip_review",
+        "non-printable characters removed": "remove_non_alphanumeric_skip_review",
+        "proper case applied": "proper_case_skip_review",
+    }
 
     def configure(
         self,
@@ -53,6 +64,10 @@ class ImportScanner:
         remove_non_alphanumeric: bool = False,
         proper_case_fields: bool = False,
         move_leading_the_title: bool = False,
+        proper_case_skip_review: bool = True,
+        trim_whitespace_skip_review: bool = False,
+        strip_leading_punctuation_skip_review: bool = False,
+        remove_non_alphanumeric_skip_review: bool = False,
     ):
         self.scenario_mode = scenario_mode or "mass_standard"
         self.author_fallback_mode = (
@@ -64,6 +79,14 @@ class ImportScanner:
         self.remove_non_alphanumeric = bool(remove_non_alphanumeric)
         self.proper_case_fields = bool(proper_case_fields)
         self.move_leading_the_title = bool(move_leading_the_title)
+        self.proper_case_skip_review = bool(proper_case_skip_review)
+        self.trim_whitespace_skip_review = bool(trim_whitespace_skip_review)
+        self.strip_leading_punctuation_skip_review = bool(
+            strip_leading_punctuation_skip_review
+        )
+        self.remove_non_alphanumeric_skip_review = bool(
+            remove_non_alphanumeric_skip_review
+        )
 
         if reader_keywords:
             cleaned = [
@@ -224,8 +247,15 @@ class ImportScanner:
         for field in ["Title", "Author"]:
             if field in field_corrections and field not in fallback_applied:
                 corrections = field_corrections[field]
-                # Create specific message for each correction
-                correction_text = ", ".join(corrections)
+                flaggable = []
+                for correction in corrections:
+                    skip_attr = self._CORRECTION_SKIP_REVIEW_ATTRS.get(correction)
+                    if skip_attr and getattr(self, skip_attr, False):
+                        continue
+                    flaggable.append(correction)
+                if not flaggable:
+                    continue
+                correction_text = ", ".join(flaggable)
                 from src.core.validator import ImportValidator
 
                 ImportValidator.append_flag_once(
@@ -497,7 +527,7 @@ class ImportScanner:
                     proper_cased,
                 )
                 if proper_cased != updated:
-                    # Apply proper case but don't flag it
+                    corrections_applied.append("proper case applied")
                     updated = proper_cased
 
             normalized_updated = updated.strip()
