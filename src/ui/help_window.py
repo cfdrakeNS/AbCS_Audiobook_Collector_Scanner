@@ -61,6 +61,43 @@ _NAV_ROLE_TYPE = Qt.ItemDataRole.UserRole
 _NAV_ROLE_FILENAME = Qt.ItemDataRole.UserRole + 1
 _NAV_ROLE_ANCHOR = Qt.ItemDataRole.UserRole + 2
 
+# Default geometry (~33% wider than original 780×820) to reduce line wrap in JAWS.
+_BASE_MIN_WIDTH = 1040
+_BASE_WIDTH = 1093
+_BASE_MIN_HEIGHT = 560
+_BASE_HEIGHT = 620
+_BASE_NAV_MIN_WIDTH = 220
+
+_NAV_LIST_STYLE = """
+QListWidget {
+    border: 1px solid palette(mid);
+    background: palette(base);
+    outline: none;
+    show-decoration-selected: 1;
+}
+QListWidget::item {
+    padding: 2px 6px;
+    color: palette(text);
+    background: palette(base);
+}
+QListWidget::item:selected {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+    border: none;
+    outline: none;
+}
+QListWidget::item:focus {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+    border: none;
+    outline: none;
+}
+QListWidget::item:hover {
+    background: palette(base);
+    color: palette(text);
+}
+"""
+
 _HELP_DOCUMENT_STYLESHEET = """
 p.body { margin-left: 1.25em; margin-top: 0.08em; margin-bottom: 0.08em; }
 p.step { margin-left: 1.5em; margin-top: 0.08em; margin-bottom: 0.08em; }
@@ -381,11 +418,11 @@ class HelpWindow(AccessibleDialog):
         self.setAccessibleName("AbCS Help")
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
-        self.setMinimumWidth(self.scaler.get_scaled_size(780))
-        self.setMinimumHeight(self.scaler.get_scaled_size(560))
+        self.setMinimumWidth(self.scaler.get_scaled_size(_BASE_MIN_WIDTH))
+        self.setMinimumHeight(self.scaler.get_scaled_size(_BASE_MIN_HEIGHT))
         self.resize(
-            self.scaler.get_scaled_size(820),
-            self.scaler.get_scaled_size(620),
+            self.scaler.get_scaled_size(_BASE_WIDTH),
+            self.scaler.get_scaled_size(_BASE_HEIGHT),
         )
 
         layout = QVBoxLayout(self)
@@ -397,20 +434,21 @@ class HelpWindow(AccessibleDialog):
         )
         layout.setSpacing(self.scaler.get_scaled_size(8))
 
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
-        self.nav_list = QListWidget(splitter)
+        self.nav_list = QListWidget(self._splitter)
         self.nav_list.setAccessibleName("Help Navigation")
         self.nav_list.setAccessibleDescription(
             "Help section list. Press Enter to jump to a section. "
             "Use Tab to move to the help content."
         )
-        self.nav_list.setMinimumWidth(self.scaler.get_scaled_size(220))
+        self.nav_list.setStyleSheet(_NAV_LIST_STYLE)
+        self.nav_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.nav_list.itemActivated.connect(self._on_nav_item_activated)
-        splitter.addWidget(self.nav_list)
+        self._splitter.addWidget(self.nav_list)
 
         self.help_text = create_accessible_read_only_text(
-            splitter,
+            self._splitter,
             "",
             "Help content",
             "Help document text. Use arrow keys to read line by line.",
@@ -423,10 +461,13 @@ class HelpWindow(AccessibleDialog):
         self.help_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.help_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.help_text.document().setDefaultStyleSheet(_HELP_DOCUMENT_STYLESHEET)
-        splitter.addWidget(self.help_text)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        layout.addWidget(splitter, stretch=1)
+        self._splitter.addWidget(self.help_text)
+        self._splitter.setStretchFactor(0, 0)
+        self._splitter.setStretchFactor(1, 1)
+        self._splitter.setChildrenCollapsible(False)
+        layout.addWidget(self._splitter, stretch=1)
+
+        self.scaler.scale_changed.connect(self._on_scale_changed)
 
         self._nav_focus_filter = _HelpNavFocusFilter(
             self.nav_list, self.help_text, self._on_nav_item_activated
@@ -467,6 +508,49 @@ class HelpWindow(AccessibleDialog):
 
         self._load_doc(self._current_filename)
         QTimer.singleShot(0, lambda: self._focus_help_text(at_start=True))
+
+    def _on_scale_changed(self, _scale_percentage: int) -> None:
+        self._apply_scaled_geometry()
+        self._update_nav_list_width()
+        self._balance_splitter()
+
+    def _apply_scaled_geometry(self) -> None:
+        self.setMinimumWidth(self.scaler.get_scaled_size(_BASE_MIN_WIDTH))
+        self.setMinimumHeight(self.scaler.get_scaled_size(_BASE_MIN_HEIGHT))
+        target_w = self.scaler.get_scaled_size(_BASE_WIDTH)
+        target_h = self.scaler.get_scaled_size(_BASE_HEIGHT)
+        self.resize(max(self.width(), target_w), max(self.height(), target_h))
+        font = self.help_text.font()
+        font.setPointSize(self.scaler.get_scaled_size(12))
+        self.help_text.setFont(font)
+
+    def _update_nav_list_width(self) -> None:
+        """Size the nav list to fit item text at the current zoom level."""
+        padding = self.scaler.get_scaled_size(28)
+        min_nav = self.scaler.get_scaled_size(_BASE_NAV_MIN_WIDTH)
+        fm = self.nav_list.fontMetrics()
+        max_text = 0
+        for row in range(self.nav_list.count()):
+            item = self.nav_list.item(row)
+            if item is not None:
+                max_text = max(max_text, fm.horizontalAdvance(item.text()))
+        nav_width = max(min_nav, max_text + padding)
+        splitter_w = self._splitter.width()
+        if splitter_w > 0:
+            cap = int(splitter_w * 0.38)
+            nav_width = min(nav_width, cap)
+        self.nav_list.setFixedWidth(nav_width)
+
+    def _balance_splitter(self) -> None:
+        total = self._splitter.width()
+        nav_w = self.nav_list.width()
+        if total > nav_w:
+            self._splitter.setSizes([nav_w, total - nav_w])
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_nav_list_width()
+        self._balance_splitter()
 
     def _focus_nav_list(self) -> None:
         self.nav_list.setFocus(Qt.FocusReason.ShortcutFocusReason)
@@ -518,6 +602,8 @@ class HelpWindow(AccessibleDialog):
                 self.nav_list.setCurrentItem(item)
         self._set_nav_description()
         self.status_bar.showMessage("Showing help topics")
+        self._update_nav_list_width()
+        self._balance_splitter()
 
     def _show_headings_list(self, headings: list[tuple[str, str, int]]) -> None:
         self._nav_mode = "headings"
@@ -536,6 +622,8 @@ class HelpWindow(AccessibleDialog):
             self.nav_list.addItem(item)
 
         self._set_nav_description()
+        self._update_nav_list_width()
+        self._balance_splitter()
 
     def _on_nav_item_activated(self, item: QListWidgetItem) -> None:
         nav_type = item.data(_NAV_ROLE_TYPE)
