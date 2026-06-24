@@ -22,6 +22,7 @@ Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-r
 |---------|---------|
 | Theme | Default (follows system) |
 | Zoom | 150% (Extra Large preset; shown as Custom at 150%) |
+| Help window zoom (screen reader) | 100% until you change Help zoom at the top of the Help window (preset, spin box, or Ctrl+Plus/Minus); then your saved Help zoom is used. Main app zoom is unchanged. |
 
 ## Import settings (second tab)
 

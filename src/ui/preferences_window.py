@@ -2362,9 +2362,6 @@ class PreferencesWindow(AccessibleDialog):
             datetime.now().year,
         )
 
-        self.settings.setValue("import/rules/genre_missing/enabled", False)
-        self.settings.setValue("import/rules/bitrate_below_minimum/enabled", False)
-
         self.settings.setValue(
             "import/rules/duplicate/match_mode",
             self.duplicate_match_combo.currentData(),

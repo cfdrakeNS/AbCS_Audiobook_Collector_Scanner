@@ -41,7 +41,7 @@ except ImportError:
 
     pd = DummyPandas()
 
-from PySide6.QtCore import Qt, QDate, QTimer, QSettings
+from PySide6.QtCore import Qt, QDate, QTimer
 from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
     QDialog,
@@ -1605,13 +1605,14 @@ class BookListImportWindow(AccessibleDialog):
             return
 
         # Load duplicate checking settings from preferences
-        settings = QSettings()
-        duplicate_match_mode = settings.value(
+        from src.utils.settings_helpers import read_setting
+
+        duplicate_match_mode = read_setting(
             "import/rules/duplicate/match_mode",
             "title_author_year_collection",
             type=str,
         )
-        fuzzy_threshold = settings.value(
+        fuzzy_threshold = read_setting(
             "import/rules/duplicate/fuzzy_threshold", 0, type=int
         )
 

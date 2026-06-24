@@ -809,6 +809,7 @@ class WebBookAPI:
                      2=WikiData only
             move_articles: Move 'The', 'A', 'An' to end of title for search
             flip_author: Flip author name format for search
+            append_series_to_title: When True, append series number to title for display
             narrator: Reader/narrator when tagged separately from author
             path: Book folder path (Librivox detection)
             source: Book source field (Librivox detection)

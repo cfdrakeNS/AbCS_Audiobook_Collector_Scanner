@@ -819,7 +819,6 @@ class WebMetadataWindow(AccessibleDialog):
         """Read user preferences for title and author formatting."""
         settings = QSettings("AbCS", "AudioBookCollector")
 
-        # Check legacy settings if current settings don't exist
         if not settings.contains("import/flip_author_name"):
             legacy_settings = QSettings("AbCS", "AbCS")
             flip_author = legacy_settings.value(
@@ -839,8 +838,6 @@ class WebMetadataWindow(AccessibleDialog):
             )
 
         return move_articles, flip_author
-
-    # fetch_web_data removed - now handled in main_window.py
 
     def on_refetch_clicked(self):
         """Re-fetch web data using alternative sources (skip Open Library, refresh=1).
@@ -1473,7 +1470,3 @@ def test_web_metadata():
 
 if __name__ == "__main__":
     sys.exit(test_web_metadata())
-
-
-# CLEANUP: _read_user_preferences() duplicates settings_helpers legacy keys with no UI;
-# remove along with flip_author / move_articles usage in web fetch when cleaning up.

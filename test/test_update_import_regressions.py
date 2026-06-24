@@ -112,7 +112,6 @@ def _configure_mass_standard_scan(window, *, trim_whitespace: bool | None = None
         strip_leading_punctuation=scanner.strip_leading_punctuation,
         remove_non_alphanumeric=scanner.remove_non_alphanumeric,
         proper_case_fields=scanner.proper_case_fields,
-        move_leading_the_title=scanner.move_leading_the_title,
         proper_case_skip_review=scanner.proper_case_skip_review,
         trim_whitespace_skip_review=scanner.trim_whitespace_skip_review,
         strip_leading_punctuation_skip_review=scanner.strip_leading_punctuation_skip_review,
@@ -324,7 +323,7 @@ def test_import_detail_actions_return_focus_to_title(
         def set_status(self, message, announce=False):
             pass
 
-    monkeypatch.setattr(window, "parent", lambda: ParentStub())
+    window._owner_widget = ParentStub()
     window.on_skip_discard()
 
     assert len(focus_requests) == 4
@@ -375,7 +374,6 @@ def test_refresh_summary_updates_after_revalidate(
     assert window._summary_counts["errors"] == 0
 
     book["title"] = "A Proper Long Title"
-    book["errors"] = []
     window._revalidate_scanned_item(item)
     window._refresh_summary_from_items()
 
@@ -386,6 +384,105 @@ def test_refresh_summary_updates_after_revalidate(
     assert "warning" not in window.scan_outcomes[0]["outcomes"]
 
     cleanup_window(window)
+
+
+def test_revalidate_clears_author_blank_after_edit(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Fixing a missing author in import detail should clear stale Author Blank flags."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    book = {
+        "title": "A Good Title Here",
+        "author": "",
+        "year": 2020,
+        "folder": "/tmp/book-missing-author",
+        "errors": ["Author Blank"],
+    }
+    item = {
+        "book": book,
+        "status": "Error",
+        "errors": list(book["errors"]),
+        "is_duplicate": False,
+        "error_summary": "",
+        "author": book["author"],
+        "title": book["title"],
+        "year": book["year"],
+        "folder": book["folder"],
+    }
+    window.scanned_items = [item]
+    window.scan_outcomes = []
+
+    book["author"] = "New Author"
+    item["author"] = "New Author"
+    window._revalidate_scanned_item(item)
+
+    assert item["status"] == "OK"
+    assert book["errors"] == item["errors"]
+    assert not any("author blank" in str(err).lower() for err in item["errors"])
+
+    cleanup_window(window)
+
+
+def test_import_detail_new_author_survives_focus_out_and_save(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """A typed author not yet in the database must not revert on focus-out or save."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    import_window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(import_window)
+
+    book = {
+        "title": "A Good Title Here",
+        "author": "",
+        "year": 2020,
+        "folder": "/tmp/book-missing-author",
+        "errors": ["Author Blank"],
+    }
+    item = {
+        "book": book,
+        "status": "Error",
+        "errors": list(book["errors"]),
+        "is_duplicate": False,
+        "error_summary": "",
+        "author": book["author"],
+        "title": book["title"],
+        "year": book["year"],
+        "folder": book["folder"],
+    }
+    import_window.scanned_items = [item]
+    import_window.scan_outcomes = []
+
+    detail = ImportDetailWindow(
+        temp_db,
+        scaler,
+        theme_manager,
+        book_data=book.copy(),
+        errors=list(item["errors"]),
+        current_index=0,
+        total_count=1,
+        parent=import_window,
+    )
+    qtbot.addWidget(detail)
+
+    detail.author_combo.setEditText("Brand New Author")
+    detail.title_edit.setFocus()
+    qtbot.wait(10)
+
+    assert detail.author_combo.currentText().strip() == "Brand New Author"
+
+    assert detail.on_save() is True
+    assert book["author"] == "Brand New Author"
+    assert item["author"] == "Brand New Author"
+    assert item["status"] == "OK"
+    assert not any("author blank" in str(err).lower() for err in item["errors"])
+
+    cleanup_window(detail)
+    cleanup_window(import_window)
 
 
 def test_refresh_summary_drops_discarded_row_from_scanned_total(

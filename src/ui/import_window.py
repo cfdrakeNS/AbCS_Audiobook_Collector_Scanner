@@ -722,7 +722,6 @@ class ImportWindow(AccessibleDialog):
             proper_case_fields=self.settings.value(
                 "import/scan/proper_case", True, type=bool
             ),
-            move_leading_the_title=False,
             proper_case_skip_review=self.settings.value(
                 "import/scan/proper_case_skip_review", True, type=bool
             ),
@@ -1090,6 +1089,33 @@ class ImportWindow(AccessibleDialog):
     def _is_correction_error(error: str) -> bool:
         return str(error).strip().upper().startswith("C:")
 
+    @staticmethod
+    def _append_unique_error(errors: list[str], message: str) -> None:
+        if not message:
+            return
+        existing = {str(err).strip().lower() for err in errors if str(err).strip()}
+        normalized = message.strip().lower()
+        if normalized not in existing:
+            errors.append(message)
+
+    def _is_revalidatable_scan_error(self, error: str) -> bool:
+        """True when an existing scan error should be recomputed from current fields."""
+        text = str(error or "").strip()
+        if not text:
+            return True
+        if text.lower() == "duplicate":
+            return True
+        if self._is_fallback_error(text) or self._is_correction_error(text):
+            return False
+        if self.validator.categorize_error(text) == "read":
+            return False
+
+        normalized = self.validator.normalize_error_message(text).lower()
+        for fragment, _rule_name in self.validator.rules_engine._message_rule_map:
+            if fragment.lower() in normalized:
+                return True
+        return False
+
     def _has_non_fixed_warning(self, errors: list[str]) -> bool:
         for err in errors:
             if self._is_fallback_error(err) or self._is_correction_error(err):
@@ -1364,8 +1390,10 @@ class ImportWindow(AccessibleDialog):
         """Recompute validation + duplicate state for an edited scanned item."""
         self.validator.reload_settings()  # Ensure settings are current
         book_data = item.get("book", {})
-        errors = list(book_data.get("errors", []))
-        errors.extend(self.validator.validate_book(book_data))
+        errors: list[str] = list(self.validator.validate_book(book_data))
+        for err in book_data.get("errors", []):
+            if not self._is_revalidatable_scan_error(err):
+                self._append_unique_error(errors, err)
 
         # PHASE 2 OPTIMIZATION: Build index once and use fast check
         existing_list = self._build_existing_book_list()
@@ -1399,6 +1427,7 @@ class ImportWindow(AccessibleDialog):
         item["status"] = status
         item["is_duplicate"] = is_duplicate
         item["error_summary"] = self._format_error_summary(errors)
+        book_data["errors"] = list(errors)
         self._sync_scan_outcome_for_scanned_item(item)
 
     def _find_scan_outcome_index(self, book_data: dict) -> int | None:
@@ -3000,7 +3029,3 @@ class ImportWindow(AccessibleDialog):
         self.collection_combo.setEnabled(True)
 
         super().closeEvent(event)
-
-
-# CLEANUP: move_leading_the_title is hardcoded False in configure() above; remove when
-# legacy import/autocorrect/move_leading_the_title preference support is dropped.

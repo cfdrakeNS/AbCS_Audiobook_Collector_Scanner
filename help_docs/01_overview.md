@@ -27,6 +27,35 @@ The help window has two main areas side by side:
 
 At the bottom are a **Close** button and a status bar. Press **Alt+/** to re-read the status message.
 
+### Help zoom (separate from main app zoom)
+
+Help has its own zoom at the top of the window. It changes **text and controls inside Help only** — not the main AbCS window zoom (for example 150% under **Manage → Preferences** or **View → Zoom**).
+
+**Controls:**
+
+- **Preset** list — same names as Preferences (Tiny through Maximum). Select a preset and press **Enter** to apply it (a mouse click also applies).
+- **−** and **+** buttons — step zoom by 15%.
+- **%** spin box — type or step an exact percentage.
+
+**Keyboard shortcuts (while Help is open):**
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Plus | Zoom Help in |
+| Ctrl+Minus | Zoom Help out |
+| Ctrl+0 | Reset Help zoom to **150%** (Extra Large), same default as the main window |
+
+**With a screen reader (JAWS, NVDA, Narrator, or Orca):**
+
+- On first use, Help opens at **100% (Normal)** so help text is not double-scaled with your main app zoom.
+- After you change Help zoom, your choice is **saved automatically** and used the next time you open Help.
+- Main app zoom is unchanged.
+
+**Tips:**
+
+- Press **Enter** after choosing a preset in the list. If the preset dropdown is open, **Escape** closes the list first; press **Escape** again to close Help.
+- Open the full help viewer from **Help → Help...** or **Shift+F1**. **F1** alone shows keyboard shortcuts for the current window, not the full help viewer.
+
 ### Topics and sections
 
 When help first opens, the navigation list shows **sections** from the current guide (for example, *What this is*, *Steps*, *Common confusion*).
@@ -43,7 +72,9 @@ When help first opens, the navigation list shows **sections** from the current g
 | Tab | Switch focus between the list and the content area |
 | Enter | Open the selected topic or jump to the selected section |
 | Arrow keys | Move through list items or read the content line by line |
-| Escape | Close help |
+| Ctrl+Plus / Ctrl+Minus | Zoom Help in or out |
+| Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
+| Escape | Close help (closes an open preset list first) |
 
 ### How topics are listed
 

@@ -3712,8 +3712,6 @@ class MainWindow(QMainWindow):
         web_data = None
         try:
             from src.web.web_book_api import WebBookAPI
-
-            # Read import preferences via helper (handles legacy fallback)
             from src.utils.settings_helpers import get_import_preferences
 
             move_articles, flip_author = get_import_preferences()

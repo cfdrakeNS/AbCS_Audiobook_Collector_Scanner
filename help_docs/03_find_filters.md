@@ -17,7 +17,7 @@ These tools help you narrow and organize the main book list without changing you
 - Filters combine: collection + plot + read + recently added + find text can all be active at once.
 - During **duplicate mode**, filters are cleared and restored when you exit. See [Duplicate Mode](08_duplicate_mode.md).
 
-## Steps — Find (search)
+##  Find (search)
 
 1. Open **View → Find**, or press **Ctrl+F**.
 2. Choose a **field** to search (**Alt+I**): Author, Title, Series, or Genre. If your focus is on Author, Title, Series, or Genre in the book table, that field is pre-selected. From Year, Time, Read Date, or elsewhere, the last search field is used.
@@ -27,25 +27,25 @@ These tools help you narrow and organize the main book list without changing you
 6. The filter summary shows your search (for example, "Find: Christie").
 7. If nothing matches, a message reports no results.
 
-## Steps — Collection filter
+##  Collection filter
 
 1. Open **View → Collections** (**Alt+V**, then **C**).
 2. Choose a collection name or **All Collections**.
 3. Only books in that collection appear in the list.
 
-## Steps — Plot filter
+##  Plot filter
 
 1. Open **View → Plot** (**Alt+V**, then **P**), or press **Alt+P** to toggle the plot filter.
 2. Choose **All**, **With Plot**, or **Without Plot**.
 3. Books are filtered by whether they have plot text in comments.
 
-## Steps — Read filter
+##  Read filter
 
 1. Open **View → Read** (**Alt+V**, then **R**), or press **Alt+R** to toggle the read filter.
 2. Choose **All**, **Read**, or **Unread**.
 3. The list shows only books matching that read status.
 
-## Steps — Recently added filter
+##  Recently added filter
 
 1. Open **View → Recently Added...** (**Alt+V**, then **A**), or activate the **Recently Added Filter** toolbar button to the right of Read Filter.
 2. The date field defaults to **2 months ago** from today. Change it if needed (calendar popup on the date field).
@@ -54,7 +54,7 @@ These tools help you narrow and organize the main book list without changing you
 
 This filter uses **date added** (when the book was imported or created in AbCS), not read date.
 
-## Steps — Sort
+##  Sort
 
 1. Open the **Sort** menu on the menu bar (**Alt+S**).
 2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date.

@@ -13,6 +13,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QWidget
 
 from src.accessibility.help_paths import OVERVIEW_DOC, help_doc_exists
+from src.accessibility.help_scaling import resolve_initial_help_scale
 from src.ui.help_window import HelpWindow
 
 FALLBACK_DOC = OVERVIEW_DOC
@@ -65,7 +66,8 @@ def show_overview_help(parent: QWidget | None) -> None:
 def show_help_doc(parent: QWidget | None, doc_filename: str) -> None:
     """Open help for a specific markdown filename."""
     scaler = getattr(parent, "scaler", None)
-    dlg = HelpWindow(scaler, parent, doc_filename=doc_filename)
+    help_scale = resolve_initial_help_scale(scaler)
+    dlg = HelpWindow(scaler, parent, doc_filename=doc_filename, help_scale=help_scale)
     dlg.exec()
 
 

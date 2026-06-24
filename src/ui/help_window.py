@@ -20,15 +20,18 @@ import html
 import re
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, Qt, QTimer
-from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeySequence, QShortcut, QTextCursor
+from PySide6.QtCore import QEvent, QObject, Qt, QTimer, QRect
+from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeyEvent, QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QHBoxLayout,
     QHeaderView,
+    QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QSpinBox,
     QSplitter,
     QStatusBar,
     QTableWidget,
@@ -47,6 +50,11 @@ from src.accessibility.read_only_text import (
     create_accessible_read_only_text,
 )
 from src.accessibility.scaling import UIScaler
+from src.accessibility.help_scaling import (
+    HelpUIScaler,
+    help_preset_name,
+    save_help_scale,
+)
 from src.accessibility.style_helpers import build_modern_button_style
 from src.ui.accessible_dialog import AccessibleDialog
 
@@ -407,23 +415,32 @@ class _HelpNavFocusFilter(QObject):
 class HelpWindow(AccessibleDialog):
     """Display help topics as accessible read-only text."""
 
-    def __init__(self, scaler, parent=None, doc_filename: str = "01_overview.md"):
+    def __init__(
+        self,
+        scaler,
+        parent=None,
+        doc_filename: str = "01_overview.md",
+        help_scale: int | None = None,
+    ):
         super().__init__(parent)
-        self.scaler = scaler or UIScaler()
+        self._global_scaler = scaler
+        if help_scale is not None:
+            self.scaler = HelpUIScaler(help_scale)
+        elif scaler is not None:
+            self.scaler = HelpUIScaler(scaler.current_scale)
+        else:
+            self.scaler = HelpUIScaler(UIScaler.DEFAULT_SCALE)
         self._current_filename = Path(doc_filename).name
         self._current_title = "AbCS Help"
         self._nav_mode = "headings"
+        self._help_zoom_loading = False
+        self._geometry_positioned = False
 
         self.setWindowTitle("AbCS Help")
         self.setAccessibleName("AbCS Help")
+        self.setObjectName("helpWindow")
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
-        self.setMinimumWidth(self.scaler.get_scaled_size(_BASE_MIN_WIDTH))
-        self.setMinimumHeight(self.scaler.get_scaled_size(_BASE_MIN_HEIGHT))
-        self.resize(
-            self.scaler.get_scaled_size(_BASE_WIDTH),
-            self.scaler.get_scaled_size(_BASE_HEIGHT),
-        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -433,6 +450,41 @@ class HelpWindow(AccessibleDialog):
             self.scaler.get_scaled_size(12),
         )
         layout.setSpacing(self.scaler.get_scaled_size(8))
+
+        zoom_row = QHBoxLayout()
+        self.zoom_label = QLabel("Help zoom:")
+        self.zoom_label.setAccessibleName("Help zoom")
+        self.preset_combo = QComboBox()
+        self.preset_combo.setAccessibleName("Help zoom preset")
+        self.preset_combo.setAccessibleDescription(
+            "Select a zoom preset for the Help window without changing main app zoom"
+        )
+        self.zoom_out_button = QPushButton("−")
+        self.zoom_out_button.setAccessibleName("Zoom out")
+        self.zoom_out_button.setAccessibleDescription(
+            "Decrease Help window zoom without changing main app zoom"
+        )
+        self.zoom_spin = QSpinBox()
+        self.zoom_spin.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
+        self.zoom_spin.setSingleStep(UIScaler.SCALE_STEP)
+        self.zoom_spin.setSuffix("%")
+        self.zoom_spin.setAccessibleName("Help zoom level")
+        self.zoom_spin.setAccessibleDescription(
+            "Help window zoom percentage. Saved automatically when changed."
+        )
+        self.zoom_label.setBuddy(self.preset_combo)
+        self.zoom_in_button = QPushButton("+")
+        self.zoom_in_button.setAccessibleName("Zoom in")
+        self.zoom_in_button.setAccessibleDescription(
+            "Increase Help window zoom without changing main app zoom"
+        )
+        zoom_row.addWidget(self.zoom_label)
+        zoom_row.addWidget(self.preset_combo)
+        zoom_row.addWidget(self.zoom_out_button)
+        zoom_row.addWidget(self.zoom_spin)
+        zoom_row.addWidget(self.zoom_in_button)
+        zoom_row.addStretch()
+        layout.addLayout(zoom_row)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
@@ -454,9 +506,6 @@ class HelpWindow(AccessibleDialog):
             "Help document text. Use arrow keys to read line by line.",
             transparent_background=False,
         )
-        font = self.help_text.font()
-        font.setPointSize(self.scaler.get_scaled_size(12))
-        self.help_text.setFont(font)
         configure_navigable_text_edit(self.help_text)
         self.help_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.help_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -467,8 +516,6 @@ class HelpWindow(AccessibleDialog):
         self._splitter.setChildrenCollapsible(False)
         layout.addWidget(self._splitter, stretch=1)
 
-        self.scaler.scale_changed.connect(self._on_scale_changed)
-
         self._nav_focus_filter = _HelpNavFocusFilter(
             self.nav_list, self.help_text, self._on_nav_item_activated
         )
@@ -477,22 +524,16 @@ class HelpWindow(AccessibleDialog):
 
         close_row = QHBoxLayout()
         close_row.addStretch()
-        button_height = self.scaler.get_scaled_size(28)
-        button_style = build_modern_button_style(button_height)
         self.close_button = QPushButton("Close")
         self.close_button.setAccessibleName("Close")
         self.close_button.setAccessibleDescription("Close help window")
         self.close_button.clicked.connect(self.accept)
-        self.close_button.setStyleSheet(button_style)
         close_row.addWidget(self.close_button)
         layout.addLayout(close_row)
 
         self.status_bar = QStatusBar()
         configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
-
-        escape_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
-        escape_shortcut.activated.connect(self.reject)
 
         self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.status_shortcut.activated.connect(self.on_read_status)
@@ -503,26 +544,228 @@ class HelpWindow(AccessibleDialog):
         self.nav_focus_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.nav_focus_shortcut.activated.connect(self._focus_nav_list)
 
+        self.zoom_in_shortcut = QShortcut(QKeySequence("Ctrl++"), self)
+        self.zoom_in_shortcut.activated.connect(self._zoom_in)
+        self.zoom_in_numpad_shortcut = QShortcut(QKeySequence("Ctrl+Num++"), self)
+        self.zoom_in_numpad_shortcut.activated.connect(self._zoom_in)
+
+        self.zoom_out_shortcut = QShortcut(QKeySequence("Ctrl+-"), self)
+        self.zoom_out_shortcut.activated.connect(self._zoom_out)
+        self.zoom_out_numpad_shortcut = QShortcut(QKeySequence("Ctrl+Num+-"), self)
+        self.zoom_out_numpad_shortcut.activated.connect(self._zoom_out)
+
+        self.zoom_reset_shortcut = QShortcut(QKeySequence("Ctrl+0"), self)
+        self.zoom_reset_shortcut.activated.connect(self._zoom_reset)
+
+        self.zoom_out_button.clicked.connect(self._zoom_out)
+        self.zoom_in_button.clicked.connect(self._zoom_in)
+        self.preset_combo.activated.connect(self._on_help_preset_activated)
+        self.zoom_spin.valueChanged.connect(self._on_help_zoom_spin_changed)
+        self.preset_combo.installEventFilter(self)
+        self.zoom_spin.installEventFilter(self)
+        for name in UIScaler.SCALE_PRESETS.keys():
+            self.preset_combo.addItem(name)
+        self.preset_combo.addItem("Custom")
+        self._help_zoom_loading = True
+        self.preset_combo.setCurrentText(help_preset_name(self.scaler.current_scale))
+        self._help_zoom_loading = False
+        self.zoom_spin.blockSignals(True)
+        self.zoom_spin.setValue(self.scaler.current_scale)
+        self.zoom_spin.blockSignals(False)
+        self._style_action_buttons()
+
+        self.setTabOrder(self.zoom_out_button, self.preset_combo)
+        self.setTabOrder(self.preset_combo, self.zoom_spin)
+        self.setTabOrder(self.zoom_spin, self.zoom_in_button)
+        self.setTabOrder(self.zoom_in_button, self.nav_list)
         self.setTabOrder(self.nav_list, self.help_text)
         self.setTabOrder(self.help_text, self.close_button)
 
         self._load_doc(self._current_filename)
+        self._apply_window_geometry(initial=True)
+        self._apply_help_font_scaling()
         QTimer.singleShot(0, lambda: self._focus_help_text(at_start=True))
 
-    def _on_scale_changed(self, _scale_percentage: int) -> None:
-        self._apply_scaled_geometry()
+    def _available_screen_rect(self) -> QRect:
+        window_handle = self.windowHandle()
+        if window_handle is not None:
+            screen = window_handle.screen()
+            if screen is not None:
+                return screen.availableGeometry()
+        from PySide6.QtGui import QGuiApplication
+
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            return screen.availableGeometry()
+        return QRect(0, 0, 1600, 900)
+
+    def _clamp_help_size(self, width: int, height: int) -> tuple[int, int]:
+        avail = self._available_screen_rect()
+        pad = 24
+        max_w = max(480, avail.width() - pad)
+        max_h = max(360, avail.height() - pad)
+        return min(max(1, width), max_w), min(max(1, height), max_h)
+
+    def _scale_window_pixels(self, base: int) -> int:
+        """Scale Help window frame by main app zoom (matches pre–Help-zoom widen build)."""
+        if self._global_scaler is not None:
+            return self._global_scaler.get_scaled_size(base)
+        return base
+
+    def _apply_window_geometry(self, *, initial: bool = False) -> None:
+        """Size the Help window from base layout × main app zoom; Help zoom affects fonts only."""
+        min_w = self._scale_window_pixels(_BASE_MIN_WIDTH)
+        min_h = self._scale_window_pixels(_BASE_MIN_HEIGHT)
+        target_w = self._scale_window_pixels(_BASE_WIDTH)
+        target_h = self._scale_window_pixels(_BASE_HEIGHT)
+
+        min_w, min_h = self._clamp_help_size(min_w, min_h)
+        target_w, target_h = self._clamp_help_size(target_w, target_h)
+        min_w = min(min_w, target_w)
+        min_h = min(min_h, target_h)
+
+        self.setMinimumSize(min_w, min_h)
+
+        if initial:
+            self.resize(target_w, target_h)
+            frame = self.frameGeometry()
+            frame.moveCenter(self._available_screen_rect().center())
+            self.move(frame.topLeft())
+            self._geometry_positioned = True
+            return
+
+        width, height = self._clamp_help_size(self.width(), self.height())
+        if width < self.width() or height < self.height():
+            self.resize(max(width, min_w), max(height, min_h))
+
+    def _style_action_buttons(self) -> None:
+        button_height = self.scaler.get_scaled_size(28)
+        button_style = build_modern_button_style(button_height)
+        self.close_button.setMinimumHeight(button_height)
+        self.close_button.setMaximumHeight(button_height)
+        self.close_button.setStyleSheet(button_style)
+        zoom_btn_h = max(self.scaler.get_scaled_size(24), 20)
+        zoom_style = build_modern_button_style(zoom_btn_h)
+        for btn in (self.zoom_out_button, self.zoom_in_button):
+            btn.setMinimumWidth(zoom_btn_h)
+            btn.setMaximumWidth(zoom_btn_h)
+            btn.setMinimumHeight(zoom_btn_h)
+            btn.setMaximumHeight(zoom_btn_h)
+            btn.setStyleSheet(zoom_style)
+
+    def _set_help_zoom(self, percentage: int, *, announce: bool = False) -> None:
+        percentage = max(UIScaler.MIN_SCALE, min(UIScaler.MAX_SCALE, int(percentage)))
+        self.scaler.set_scale(percentage)
+        save_help_scale(percentage)
+        self.zoom_spin.blockSignals(True)
+        self.zoom_spin.setValue(percentage)
+        self.zoom_spin.blockSignals(False)
+        self._sync_help_preset_combo(percentage)
+        self._style_action_buttons()
+        self._apply_help_font_scaling()
         self._update_nav_list_width()
         self._balance_splitter()
+        if announce:
+            self.status_bar.showMessage(f"Help zoom set to {percentage}%")
 
-    def _apply_scaled_geometry(self) -> None:
-        self.setMinimumWidth(self.scaler.get_scaled_size(_BASE_MIN_WIDTH))
-        self.setMinimumHeight(self.scaler.get_scaled_size(_BASE_MIN_HEIGHT))
-        target_w = self.scaler.get_scaled_size(_BASE_WIDTH)
-        target_h = self.scaler.get_scaled_size(_BASE_HEIGHT)
-        self.resize(max(self.width(), target_w), max(self.height(), target_h))
-        font = self.help_text.font()
-        font.setPointSize(self.scaler.get_scaled_size(12))
-        self.help_text.setFont(font)
+    def done(self, result: int) -> None:
+        save_help_scale(self.zoom_spin.value())
+        super().done(result)
+
+    def _on_help_zoom_spin_changed(self, value: int) -> None:
+        self._set_help_zoom(value, announce=True)
+
+    def _on_help_preset_activated(self, index: int) -> None:
+        if self._help_zoom_loading:
+            return
+        preset_name = self.preset_combo.itemText(index)
+        if preset_name in UIScaler.SCALE_PRESETS:
+            self._set_help_zoom(UIScaler.SCALE_PRESETS[preset_name], announce=True)
+
+    def _sync_help_preset_combo(self, percentage: int) -> None:
+        preset_name = help_preset_name(percentage)
+        if self.preset_combo.currentText() != preset_name:
+            self._help_zoom_loading = True
+            self.preset_combo.setCurrentText(preset_name)
+            self._help_zoom_loading = False
+
+    def _zoom_out(self) -> None:
+        self._set_help_zoom(self.scaler.current_scale - UIScaler.SCALE_STEP, announce=True)
+
+    def _zoom_in(self) -> None:
+        self._set_help_zoom(self.scaler.current_scale + UIScaler.SCALE_STEP, announce=True)
+
+    def _zoom_reset(self) -> None:
+        self._set_help_zoom(UIScaler.DEFAULT_SCALE, announce=True)
+
+    def _apply_help_font_scaling(self) -> None:
+        """Override global app zoom fonts so Help uses help-local scale only."""
+        body_pt = self.scaler.get_scaled_size(12)
+        status_pt = max(9, int(body_pt * 0.9))
+        nav_font = self.nav_list.font()
+        nav_font.setPointSize(body_pt)
+        self.nav_list.setFont(nav_font)
+        help_font = self.help_text.font()
+        help_font.setPointSize(body_pt)
+        self.help_text.setFont(help_font)
+        self.help_text.document().setDefaultFont(help_font)
+        close_font = self.close_button.font()
+        close_font.setPointSize(body_pt)
+        self.close_button.setFont(close_font)
+        zoom_font = self.zoom_spin.font()
+        zoom_font.setPointSize(body_pt)
+        self.zoom_spin.setFont(zoom_font)
+        self.zoom_label.setFont(zoom_font)
+        self.preset_combo.setFont(zoom_font)
+        for btn in (self.zoom_out_button, self.zoom_in_button):
+            btn.setFont(zoom_font)
+        self.setStyleSheet(
+            f"""
+            QDialog#helpWindow, QDialog#helpWindow QWidget {{
+                font-size: {body_pt}pt;
+            }}
+            QDialog#helpWindow QStatusBar {{
+                font-size: {status_pt}pt;
+            }}
+            """
+        )
+        self.nav_list.setStyleSheet(_NAV_LIST_STYLE)
+
+    def eventFilter(self, obj, event) -> bool:
+        from PySide6.QtWidgets import QApplication
+
+        if event.type() == QEvent.Type.Wheel and obj in (
+            self.preset_combo,
+            self.zoom_spin,
+        ):
+            event.accept()
+            return True
+        if event.type() == QEvent.Type.KeyPress and obj is self.preset_combo:
+            key = event.key()
+            modifiers = event.modifiers()
+            if key in (Qt.Key.Key_Up, Qt.Key.Key_Down) and not (
+                modifiers & Qt.KeyboardModifier.AltModifier
+            ):
+                QApplication.beep()
+                return True
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            popup = self.preset_combo.view()
+            if popup is not None and popup.isVisible():
+                self.preset_combo.hidePopup()
+                event.accept()
+                return
+            self.reject()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._geometry_positioned:
+            QTimer.singleShot(0, lambda: self._apply_window_geometry(initial=True))
 
     def _update_nav_list_width(self) -> None:
         """Size the nav list to fit item text at the current zoom level."""
@@ -713,6 +956,9 @@ class HelpWindow(AccessibleDialog):
                 ("Tab", "Switch between list and content"),
                 ("Enter", "Open topic or jump to section"),
                 ("Arrow keys", "Read line by line"),
+                ("+/−, preset, or spin box", "Help window zoom (saved automatically; press Enter to apply a preset)"),
+                ("Ctrl+Plus / Ctrl+Minus", "Zoom Help in or out"),
+                ("Ctrl+0", "Reset Help zoom to 150% (Extra Large)"),
                 ("Alt+/", "Re-read status"),
                 ("F1", "Show these shortcuts"),
                 ("Escape", "Close help"),

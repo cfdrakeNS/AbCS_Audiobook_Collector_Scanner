@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
+from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 
 from src.core.validator import ImportValidator
@@ -163,8 +163,9 @@ class ImportDetailWindow(AccessibleDialog):
 
     @staticmethod
     def _is_proper_case_enabled() -> bool:
-        settings = QSettings("AbCS", "AbCS")
-        return settings.value("import/autocorrect/proper_case", False, type=bool)
+        from src.utils.settings_helpers import is_proper_case_enabled
+
+        return is_proper_case_enabled()
 
     @classmethod
     def _normalize_name_field(cls, text: str) -> str:
@@ -274,7 +275,7 @@ class ImportDetailWindow(AccessibleDialog):
         if hasattr(self, "status_bar") and self.status_bar is not None:
             announce_status_message(self.status_bar, message, move_focus=announce)
 
-        parent = self.parent()
+        parent = self.owner_widget
         if parent and hasattr(parent, "set_status"):
             parent.set_status(message, announce=False)
         elif parent and hasattr(parent, "status_bar"):
@@ -282,7 +283,7 @@ class ImportDetailWindow(AccessibleDialog):
 
     def get_status_summary(self) -> str:
         """Return a concise current-status summary for Alt+/ reading."""
-        parent = self.parent()
+        parent = self.owner_widget
         if parent and hasattr(parent, "status_bar"):
             parent_status = parent.status_bar.currentMessage().strip()
             if parent_status:
@@ -299,7 +300,7 @@ class ImportDetailWindow(AccessibleDialog):
 
     def _get_import_list_valid_count(self) -> int:
         """Return current valid-books count from parent Import Window when available."""
-        parent = self.parent()
+        parent = self.owner_widget
         if parent and hasattr(parent, "scanned_items"):
             valid_count = 0
             for item in getattr(parent, "scanned_items", []) or []:
@@ -312,7 +313,7 @@ class ImportDetailWindow(AccessibleDialog):
     def _build_exit_prompt_text(self) -> str:
         """Build close-confirmation message including import-list context."""
         valid_count = self._get_import_list_valid_count()
-        parent = self.parent()
+        parent = self.owner_widget
         parent_message = ""
         if parent and hasattr(parent, "_default_status_message"):
             parent_message = str(
@@ -332,7 +333,7 @@ class ImportDetailWindow(AccessibleDialog):
     def on_read_status_bar(self):
         """Read current status (Alt+/)."""
         fallback = (getattr(self, "_default_status_message", "") or "").strip()
-        parent = self.parent()
+        parent = self.owner_widget
         if parent and hasattr(parent, "status_bar"):
             parent_msg = (parent.status_bar.currentMessage() or "").strip()
             if parent_msg and not (self.status_bar.currentMessage() or "").strip():
@@ -646,7 +647,10 @@ class ImportDetailWindow(AccessibleDialog):
     def _setup_dirty_tracking(self):
         """Setup signals to track changes."""
         self.title_edit.textChanged.connect(lambda: self._mark_dirty(self.title_edit))
-        self.author_combo.currentTextChanged.connect(
+        self.author_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.author_combo)
+        )
+        self.author_combo.editTextChanged.connect(
             lambda: self._mark_dirty(self.author_combo)
         )
         self.comments_edit.textChanged.connect(
@@ -655,10 +659,16 @@ class ImportDetailWindow(AccessibleDialog):
         self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
         self.time_edit.textChanged.connect(lambda: self._mark_dirty(self.time_edit))
         self.reader_edit.textChanged.connect(lambda: self._mark_dirty(self.reader_edit))
-        self.series_combo.currentTextChanged.connect(
+        self.series_combo.currentIndexChanged.connect(
             lambda: self._mark_dirty(self.series_combo)
         )
-        self.genre_combo.currentTextChanged.connect(
+        self.series_combo.editTextChanged.connect(
+            lambda: self._mark_dirty(self.series_combo)
+        )
+        self.genre_combo.currentIndexChanged.connect(
+            lambda: self._mark_dirty(self.genre_combo)
+        )
+        self.genre_combo.editTextChanged.connect(
             lambda: self._mark_dirty(self.genre_combo)
         )
         self.collection_combo.currentIndexChanged.connect(
@@ -817,37 +827,10 @@ class ImportDetailWindow(AccessibleDialog):
     def _check_combo_change(
         self, field_name: str, combo: QComboBox, original_value: str, query_obj
     ):
-        """
-        Check whether combo changed to a new value and confirm create-on-save.
-        """
+        """Accept free-text combo values during import review."""
         current_text = combo.currentText().strip()
-
-        if not current_text or current_text == original_value:
-            return
-
-        existing = query_obj.get_by_name(current_text)
-        if existing:
+        if current_text and current_text != original_value:
             self._set_original_combo_value(field_name, current_text)
-            return
-
-        reply = exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Question,
-            title=f"New {field_name}",
-            text=(
-                f"'{current_text}' is a new {field_name}.\n\n"
-                f"Create this new {field_name}?"
-            ),
-            buttons=QMessageBox.Yes | QMessageBox.No,
-            default_button=QMessageBox.No,
-        )
-
-        if reply != QMessageBox.Yes:
-            combo.setEditText(original_value)
-            return
-
-        self._set_original_combo_value(field_name, current_text)
 
     def _set_original_combo_value(self, field_name: str, value: str):
         """Update original combo snapshots to avoid repeat prompts."""
@@ -865,7 +848,7 @@ class ImportDetailWindow(AccessibleDialog):
 
     def _build_errors_for_row(self, row: int) -> list:
         """Build current error list for a row from parent scanned items."""
-        parent = self.parent()
+        parent = self.owner_widget
         if not parent or not hasattr(parent, "scanned_items"):
             return []
         if row < 0 or row >= len(parent.scanned_items):
@@ -883,7 +866,7 @@ class ImportDetailWindow(AccessibleDialog):
 
     def _navigate_without_close(self, target_index: int) -> bool:
         """Navigate to another scanned item in the same dialog instance."""
-        parent = self.parent()
+        parent = self.owner_widget
         if not parent or not hasattr(parent, "scanned_items"):
             return False
 
@@ -909,7 +892,7 @@ class ImportDetailWindow(AccessibleDialog):
 
     def _resolve_target_index_from_filter(self, requested_index: int) -> int | None:
         """Resolve navigation target to previous/next visible row when filter is active."""
-        parent = self.parent()
+        parent = self.owner_widget
         if not parent or not hasattr(parent, "scanned_items"):
             return None
 
@@ -1473,7 +1456,7 @@ class ImportDetailWindow(AccessibleDialog):
 
     def on_skip_discard(self):
         """Discard this import item and return skip result to parent."""
-        parent = self.parent()
+        parent = self.owner_widget
         if (
             parent
             and hasattr(parent, "_discard_scanned_item")
@@ -1517,50 +1500,65 @@ class ImportDetailWindow(AccessibleDialog):
         finally:
             self._closing_via_handler = False
 
-    def _save_to_parent(self, resolve_errors: bool):
+    def _save_to_parent(self):
         """Push current edits to parent import list and refresh local state."""
         self._collect_form_data()
 
-        parent = self.parent()
+        parent = self.owner_widget
         if parent and hasattr(parent, "_apply_detail_edits"):
             parent._apply_detail_edits(self.current_index, self)
+            if hasattr(parent, "scanned_items"):
+                row = self.current_index
+                if 0 <= row < len(parent.scanned_items):
+                    self.errors = list(parent.scanned_items[row].get("errors", []))
 
-        if resolve_errors:
-            self.errors = []
-            self.errors_edit.setText("")
+        validator = ImportValidator()
+        error_text = (
+            validator.format_error_summary(self.errors) if self.errors else ""
+        )
+        self.errors_edit.setText(error_text)
 
         title = self._detail_window_title(self.book_data, self.errors)
         self.setWindowTitle(title)
         self.setAccessibleName(title)
+        self._original_author = self.author_combo.currentText().strip()
+        self._original_series = self.series_combo.currentText().strip()
+        self._original_genre = self.genre_combo.currentText().strip()
         self._clear_dirty()
 
     def on_save(self):
         """Save edits in-place and keep dialog open. Returns True if save succeeded, False if validation failed."""
-        if not self._dirty:
-            self._focus_title_field()
-            return True
-
-        # Normalize time field before saving (in case user hasn't lost focus from time field)
         if self.time_edit.hasFocus():
             self._normalize_time_on_focus_out()
 
-        # Validation logic (add your own as needed)
         if not self.title_edit.text().strip():
             self.set_status("Title is required.")
             self.title_edit.setFocus()
             return False
-        # Add more validation as needed
+        if not self.author_combo.currentText().strip():
+            self.set_status("Author is required.")
+            self.author_combo.setFocus()
+            return False
 
-        resolve_errors = bool(self.errors)
-        self._save_to_parent(resolve_errors=resolve_errors)
+        self._save_to_parent()
         self.set_status("Changes saved")
         self._focus_title_field()
         return True
 
     def accept(self):
         """Return edited data when accepting."""
-        resolve_errors = bool(self._dirty and self.errors)
-        self._save_to_parent(resolve_errors=resolve_errors)
+        if self.time_edit.hasFocus():
+            self._normalize_time_on_focus_out()
+        if not self.title_edit.text().strip():
+            self.set_status("Title is required.")
+            self.title_edit.setFocus()
+            return
+        if not self.author_combo.currentText().strip():
+            self.set_status("Author is required.")
+            self.author_combo.setFocus()
+            return
+
+        self._save_to_parent()
 
         announce_dialog_closed(self)
         super().accept()

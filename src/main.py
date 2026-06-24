@@ -211,6 +211,10 @@ class AbCSApplication:
         self.scaler = get_scaler(self.qt_app)
         self.theme_manager = get_theme_manager(self.qt_app)  # Handles color themes
 
+        from src.utils.settings_helpers import run_settings_maintenance
+
+        run_settings_maintenance()
+
         # Main window (created later)
         self.main_window = None
 

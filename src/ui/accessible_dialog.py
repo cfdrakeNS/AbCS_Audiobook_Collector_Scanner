@@ -63,6 +63,11 @@ class AccessibleDialog(QDialog):
             _ = self.winId()
             _set_win32_owner(int(self.winId()), int(parent.winId()))
 
+    @property
+    def owner_widget(self):
+        """Logical owner window (Qt parent() is None for screen-reader isolation)."""
+        return self._owner_widget
+
     def showEvent(self, event):
         super().showEvent(event)
         # Re-fire a focus event 300 ms after opening.  Subclasses typically

@@ -40,7 +40,6 @@ class ImportScanner:
         self.strip_leading_punctuation = False
         self.remove_non_alphanumeric = False
         self.proper_case_fields = False
-        self.move_leading_the_title = False
         self.proper_case_skip_review = True
         self.trim_whitespace_skip_review = False
         self.strip_leading_punctuation_skip_review = False
@@ -63,7 +62,6 @@ class ImportScanner:
         strip_leading_punctuation: bool = False,
         remove_non_alphanumeric: bool = False,
         proper_case_fields: bool = False,
-        move_leading_the_title: bool = False,
         proper_case_skip_review: bool = True,
         trim_whitespace_skip_review: bool = False,
         strip_leading_punctuation_skip_review: bool = False,
@@ -78,7 +76,6 @@ class ImportScanner:
         self.strip_leading_punctuation = bool(strip_leading_punctuation)
         self.remove_non_alphanumeric = bool(remove_non_alphanumeric)
         self.proper_case_fields = bool(proper_case_fields)
-        self.move_leading_the_title = bool(move_leading_the_title)
         self.proper_case_skip_review = bool(proper_case_skip_review)
         self.trim_whitespace_skip_review = bool(trim_whitespace_skip_review)
         self.strip_leading_punctuation_skip_review = bool(
@@ -536,24 +533,4 @@ class ImportScanner:
 
             book[field] = normalized_updated
 
-        if self.move_leading_the_title:
-            title = (book.get("title") or "").strip()
-
-            # Check for leading articles: "The", "A", "An"
-            articles = ["the ", "a ", "an "]
-            for article in articles:
-                if title.lower().startswith(article) and len(title) > len(article):
-                    title_core = title[len(article) :].strip()
-                    article_capital = article.title().strip()  # "The", "A", "An"
-                    if title_core and not title_core.lower().endswith(
-                        f", {article.lower()}"
-                    ):
-                        # Move article to end but don't flag it
-                        book["title"] = f"{title_core}, {article_capital}"
-                    break  # Only handle the first matching article
-
         return field_corrections
-
-
-# CLEANUP: move_leading_the_title is always False from import_window; remove field,
-# configure() arg, and article-moving logic here when legacy preference support is dropped.

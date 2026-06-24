@@ -56,6 +56,61 @@ Use the **next free** `nn` when adding a file. Do not renumber existing files un
 3. **Shift+F1** — Opens a **fixed** file per window class via `WINDOW_HELP_MAP` in `src/ui/help_router.py`. Add a map entry when a **new window** needs its own default help doc.
 4. **F1** — Keyboard shortcut tables built in code per window; not loaded from these markdown files.
 
+### Window and file number reference
+
+The two-digit prefix (`nn`) is the stable ID for each topic. **Renaming** `02_import.md` to `02_folder_scan.md` is safe for **All Help Topics** (discovery uses the pattern), but you must update **`WINDOW_HELP_MAP`** and any **cross-links** that use the old filename.
+
+#### Shift+F1 — window class to help file
+
+| `nn` | Help file | Window class (`__name__`) | Notes |
+|------|-----------|---------------------------|-------|
+| 01 | `01_overview.md` | *(none)* | **Help → Help...** menu; fallback when no map entry |
+| 02 | `02_import.md` | `ImportWindow` | Folder scan import |
+| 02 | `02_import.md` | `ImportProgressWindow` | Same doc as Import |
+| 03 | `03_find_filters.md` | `MainWindow` | Main book list (normal mode) |
+| 08 | `08_duplicate_mode.md` | `MainWindow` | When duplicate mode is active (overrides `03`) |
+| 04 | `04_book_details.md` | `BookDetailsWindow` | New / edit one book |
+| 05 | `05_update.md` | `UpdateWindow` | Bulk update selected books |
+| 06 | `06_collections.md` | `CollectionWindow` | Collections manager |
+| 07 | `07_web_metadata.md` | `WebMetadataWindow` | Fetch web info |
+| 09 | `09_backup_restore.md` | `BackupRestoreWindow` | Backup / restore / reset |
+| 10 | `10_preferences.md` | `PreferencesWindow` | App preferences |
+| 11 | `11_import_book_list.md` | `BookListImportWindow` | Spreadsheet import |
+| 12 | `12_import_detail.md` | `ImportDetailWindow` | Import review — one held item |
+| 13 | `13_reading_history.md` | `ReadingHistoryWindow` | Reading history |
+| 14 | `14_statistics.md` | `StatisticsDialog` | Library statistics |
+| 15 | `15_name_list.md` | `NameListWindow` | Author / series / genre lists |
+
+When adding a window: pick the next free process-guide number (`02`–`15`), create `nn_topic.md`, add `ClassName → nn_topic.md` to `WINDOW_HELP_MAP`.
+
+#### All numbered help files
+
+| `nn` | File | Type | Shift+F1 window |
+|------|------|------|-----------------|
+| 01 | `01_overview.md` | Hub | Menu only |
+| 02 | `02_import.md` | Process | Import, Import progress |
+| 03 | `03_find_filters.md` | Process | Main window |
+| 04 | `04_book_details.md` | Process | Book Details |
+| 05 | `05_update.md` | Process | Update |
+| 06 | `06_collections.md` | Process | Collections |
+| 07 | `07_web_metadata.md` | Process | Web metadata |
+| 08 | `08_duplicate_mode.md` | Process | Main window (duplicate mode) |
+| 09 | `09_backup_restore.md` | Process | Backup / restore |
+| 10 | `10_preferences.md` | Process | Preferences |
+| 11 | `11_import_book_list.md` | Process | Import book list |
+| 12 | `12_import_detail.md` | Process | Import detail |
+| 13 | `13_reading_history.md` | Process | Reading history |
+| 14 | `14_statistics.md` | Process | Statistics |
+| 15 | `15_name_list.md` | Process | Name list |
+| 16 | `16_shortcuts.md` | Reference | — |
+| 17 | `17_default_preferences.md` | Reference | — |
+| 18 | `18_import_preferences.md` | Reference | — |
+| 19 | `19_import_explained.md` | Explained | — |
+| 20 | `20_import_book_list_explained.md` | Explained | — |
+| 21 | `21_web_metadata_explained.md` | Explained | — |
+
+Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
+
 ### Cross-links between topics
 
 Link with the **filename only** (no folder path):
@@ -180,7 +235,7 @@ The help viewer splits **body paragraphs** into **one sentence per paragraph** s
 1. Pick the next free `nn` and a `topic_name` slug.
 2. Create `help_docs/nn_topic_name.md` with `#` title and `##` sections.
 3. Cross-link related topics using `[label](filename.md)`.
-4. If a **new window** needs Shift+F1, add `ClassName → filename.md` to `WINDOW_HELP_MAP` in `src/ui/help_router.py`.
+4. If a **new window** needs Shift+F1, add `ClassName → nn_topic.md` to `WINDOW_HELP_MAP` in `src/ui/help_router.py` (see **Window and file number reference** above).
 5. Optionally add a row to [01_overview.md](../help_docs/01_overview.md) process or explained tables.
 6. Run tests: `python -m pytest test/test_help_router.py -v`
 7. Open **Help → Help... → All Help Topics** and confirm the new name and sections.
@@ -193,7 +248,7 @@ The help viewer splits **body paragraphs** into **one sentence per paragraph** s
 1. Edit the markdown file only; topic list updates automatically.
 2. Keep the `#` title accurate — it is the window title.
 3. If you rename a file, update **all** cross-links in other `help_docs/` files.
-4. If you rename a file used by Shift+F1, update `WINDOW_HELP_MAP` too.
+4. If you rename a file used by Shift+F1, update `WINDOW_HELP_MAP` and the **Window and file number reference** table in this guide if the number assignment changes.
 5. Run `test/test_help_router.py` after structural changes (tables, FAQ blocks, new links).
 
 ---

@@ -223,11 +223,9 @@ class BookDetailsWindow(AccessibleDialog):
 
     @staticmethod
     def _is_proper_case_enabled() -> bool:
-        settings = QSettings("AbCS", "AudioBookCollector")
-        if settings.contains("import/autocorrect/proper_case"):
-            return settings.value("import/autocorrect/proper_case", False, type=bool)
-        legacy_settings = QSettings("AbCS", "AbCS")
-        return legacy_settings.value("import/autocorrect/proper_case", False, type=bool)
+        from src.utils.settings_helpers import is_proper_case_enabled
+
+        return is_proper_case_enabled()
 
     @classmethod
     def _normalize_name_field(cls, text: str) -> str:

@@ -22,7 +22,7 @@ from src.database import (
 import time
 from typing import Set, List
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
-from PySide6.QtCore import Qt, QEvent, QTimer, QSettings
+from PySide6.QtCore import Qt, QEvent, QTimer
 from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
     QDialog,
@@ -80,8 +80,9 @@ class UpdateWindow(AccessibleDialog):
 
     @staticmethod
     def _is_proper_case_enabled() -> bool:
-        settings = QSettings("AbCS", "AbCS")
-        return settings.value("import/autocorrect/proper_case", False, type=bool)
+        from src.utils.settings_helpers import is_proper_case_enabled
+
+        return is_proper_case_enabled()
 
     @classmethod
     def _normalize_name_field(cls, text: str) -> str:

@@ -268,6 +268,9 @@ Last updated: June 2026.
 | Alt+L | Help navigation list |
 | Tab | Switch between list and content |
 | Enter | Open topic or jump to section |
+| Ctrl+Plus | Zoom Help in |
+| Ctrl+Minus | Zoom Help out |
+| Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
 | Shift+F1 | Open help for current window (from other windows) |
 | Alt+/ | Re-read status |
 | F1 | Show shortcuts for this window |
