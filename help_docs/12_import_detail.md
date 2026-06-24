@@ -73,3 +73,6 @@ The **Import Detail** window lets you review and fix one held import item at a t
 
 **Discard vs skipping in Import**
 **Discard** in detail removes the current held item. You can also leave items in the review list and close Import; you will be asked to confirm if unscanned items remain.
+
+**Author Blank after I typed a name**
+**Save** (Alt+S) after editing author. Validation is refreshed on save, so **Author Blank** clears when the author field has text. A name you type that is not yet in the name list is kept when you save.

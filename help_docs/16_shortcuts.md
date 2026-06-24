@@ -274,7 +274,7 @@ Last updated: June 2026.
 | Shift+F1 | Open help for current window (from other windows) |
 | Alt+/ | Re-read status |
 | F1 | Show shortcuts for this window |
-| Escape | Close help |
+| Escape | Close help (closes an open preset list first) |
 
 ## Cross-window shortcuts
 

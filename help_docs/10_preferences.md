@@ -25,6 +25,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 - **Theme** — system default or high-contrast themes.
 - **Zoom** — preset or custom scale (default **150%** after Restore Defaults).
+- **Help window zoom** — separate from main app zoom; adjusted at the top of the Help window when you open **Help → Help...** or press **Shift+F1**. See [Help overview](01_overview.md).
 
 ### Import Settings (Alt+P)
 

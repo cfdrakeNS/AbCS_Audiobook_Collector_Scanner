@@ -105,6 +105,8 @@ Each option has two checkboxes:
 
 When **Apply** is on and **Skip Review** is off, corrected title or author fields get a **C:** flag and the book is held for review.
 
+Folder import **does not** move leading articles (**The**, **A**, **An**) to the end of titles. That behavior was removed from scan auto-correct; only the four options in the table above run during import.
+
 When **Skip Review** is on for a correction, that correction alone will not block auto-add. If another issue is present (duplicate, validation warning, fallback, or a different correction without Skip Review), the book still goes to review.
 
 **F:** fallback flags always hold for review regardless of Skip Review settings.

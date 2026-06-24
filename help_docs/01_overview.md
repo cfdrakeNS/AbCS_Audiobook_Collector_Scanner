@@ -31,6 +31,8 @@ At the bottom are a **Close** button and a status bar. Press **Alt+/** to re-rea
 
 Help has its own zoom at the top of the window. It changes **text and controls inside Help only** — not the main AbCS window zoom (for example 150% under **Manage → Preferences** or **View → Zoom**).
 
+The **Help window size** still follows your main app zoom so the frame stays readable at 150% or other main-window scales.
+
 **Controls:**
 
 - **Preset** list — same names as Preferences (Tiny through Maximum). Select a preset and press **Enter** to apply it (a mouse click also applies).
@@ -47,9 +49,14 @@ Help has its own zoom at the top of the window. It changes **text and controls i
 
 **With a screen reader (JAWS, NVDA, Narrator, or Orca):**
 
-- On first use, Help opens at **100% (Normal)** so help text is not double-scaled with your main app zoom.
+- On first use (before you change Help zoom), Help opens at **100% (Normal)** so help text is not double-scaled with your main app zoom.
 - After you change Help zoom, your choice is **saved automatically** and used the next time you open Help.
 - Main app zoom is unchanged.
+
+**Without a screen reader:**
+
+- On first use, Help zoom **matches your main app zoom** (for example 150% after Restore Defaults).
+- After you change Help zoom, your saved Help zoom is used instead.
 
 **Tips:**
 
