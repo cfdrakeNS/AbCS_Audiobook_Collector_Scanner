@@ -132,6 +132,13 @@ Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourced
 Source: "help_docs\*"; DestDir: "{app}\help_docs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; ──────────────────────────────────────────────────────────────────
+; [InstallDelete] - Remove stale files before installing new versions
+; ──────────────────────────────────────────────────────────────────
+[InstallDelete]
+; Replace help_docs entirely on upgrade so removed topics do not linger
+Type: filesandordirs; Name: "{app}\help_docs"
+
+; ──────────────────────────────────────────────────────────────────
 ; [Icons] - Shortcuts created by the installer
 ; ──────────────────────────────────────────────────────────────────
 [Icons]
@@ -165,6 +172,7 @@ Filename: "{app}\{#MyAppExeName}"; \
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\data"
 Type: filesandordirs; Name: "{app}\Graphics"
+Type: filesandordirs; Name: "{app}\help_docs"
 
 ; Remove {app} itself if empty after all other cleanup is done
 Type: dirifempty;     Name: "{app}"

@@ -90,11 +90,17 @@ class AboutDialog(AccessibleDialog):
             ("item", "Screen reader support."),
             ("item", "Scalable UI (50%-200%+)."),
             ("item", "High contrast themes."),
+            ("heading", "HELP"),
+            (
+                "body",
+                "Built-in guides explain workflows in plain language for every major window.",
+            ),
+            ("item", "Help menu, Help... — browse topics and jump to sections."),
+            ("item", "Shift+F1 — context-sensitive help for the current window."),
+            ("item", "F1 — keyboard shortcuts for the current window."),
             ("heading", "ACCESSIBILITY"),
             ("body", "Designed for users with low vision and screen readers."),
             ("body", "All features include keyboard shortcuts."),
-            ("body", "Press Shift+F1 in any window for context-sensitive help."),
-            ("body", "Press F1 for keyboard shortcuts, or use the Help menu."),
         ]
 
         about_label = create_dialog_html_text(
