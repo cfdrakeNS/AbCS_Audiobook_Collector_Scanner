@@ -88,21 +88,13 @@ QListWidget::item {
     color: palette(text);
     background: palette(base);
 }
-QListWidget::item:selected {
-    background: palette(highlight);
-    color: palette(highlighted-text);
-    border: none;
-    outline: none;
-}
+QListWidget::item:selected,
+QListWidget::item:selected:hover,
 QListWidget::item:focus {
     background: palette(highlight);
     color: palette(highlighted-text);
     border: none;
     outline: none;
-}
-QListWidget::item:hover {
-    background: palette(base);
-    color: palette(text);
 }
 """
 
@@ -491,12 +483,12 @@ class HelpWindow(AccessibleDialog):
         self.nav_list = QListWidget(self._splitter)
         self.nav_list.setAccessibleName("Help Navigation")
         self.nav_list.setAccessibleDescription(
-            "Help section list. Press Enter to jump to a section. "
+            "Help section list. Click or press Enter to jump to a section. "
             "Use Tab to move to the help content."
         )
         self.nav_list.setStyleSheet(_NAV_LIST_STYLE)
         self.nav_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.nav_list.itemActivated.connect(self._on_nav_item_activated)
+        self.nav_list.itemClicked.connect(self._on_nav_item_activated)
         self._splitter.addWidget(self.nav_list)
 
         self.help_text = create_accessible_read_only_text(
@@ -823,12 +815,12 @@ class HelpWindow(AccessibleDialog):
     def _set_nav_description(self) -> None:
         if self._nav_mode == "topics":
             self.nav_list.setAccessibleDescription(
-                "Help topic list. Press Enter to open a topic. "
+                "Help topic list. Click or press Enter to open a topic. "
                 "Press Alt+L to focus this list. Use Tab to move to the help content."
             )
             return
         self.nav_list.setAccessibleDescription(
-            "Help section list. Press Enter to jump to a section. "
+            "Help section list. Click or press Enter to jump to a section. "
             "Choose All Help Topics to return to the topic list. "
             "Press Alt+L to focus this list. Use Tab to move to the help content."
         )
@@ -954,7 +946,7 @@ class HelpWindow(AccessibleDialog):
                 ("Shift+F1", "Open help for current window"),
                 ("Alt+L", "Help navigation list"),
                 ("Tab", "Switch between list and content"),
-                ("Enter", "Open topic or jump to section"),
+                ("Click or Enter", "Open topic or jump to section"),
                 ("Arrow keys", "Read line by line"),
                 ("+/−, preset, or spin box", "Help window zoom (saved automatically; press Enter to apply a preset)"),
                 ("Ctrl+Plus / Ctrl+Minus", "Zoom Help in or out"),

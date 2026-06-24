@@ -1,141 +1,305 @@
-# Import Explained
+# Import Explained — Under the Hood
 
-Describes **File → Import** (Ctrl+I) in everyday terms. For keyboard shortcuts and step-by-step detail, see [Import](02_import.md).
+What AbCS does internally after you press **Import** (Alt+I). This is not a how-to guide — for steps and shortcuts see [Import](02_import.md). For preference settings see [Import preferences](18_import_preferences.md).
 
----
-
-## What Import does
-
-Import looks at audiobook **files on your computer** and adds **book records** to AbCS. It does **not** move, copy, or rename your audio files. It does **not** create new folders on your hard drive.
-
-What it does create is information **inside AbCS**: each book gets a row in your library with title, author, year, folder path, and other details read from the file (or guessed from folder names, depending on your settings).
-
-Think of it as: **you point AbCS at a folder → AbCS reads what it can → good books land in your collection right away → questionable ones wait in a review list for you.**
+**Important:** Import does **not** create, move, copy, or rename folders on your computer. Your audio files stay exactly where they are. AbCS only reads them and stores book information inside the app.
 
 ---
 
-## What you need first
+## 1. Once Import is activated
 
-- At least one **collection** in AbCS (for example *Audio Books*). Import always adds books to the collection you pick.
-- A folder on your computer that contains audiobooks (subfolders are included in the scan).
-- Optional but helpful: **Preferences → Import Settings** set to match how your folders are organized (author folders, series folders, and so on). See [Import preferences](18_import_preferences.md) when you are ready for detail.
+The app checks that everything is ready before it starts:
 
----
+- A **collection** must be selected — import always attaches new books to that collection.
+- A **folder** (or single file, in single-item mode) must be chosen and must exist on disk.
+- The collection dropdown is **locked** so books from this scan cannot accidentally go to a different collection.
+- Any **previous review list** in this window is cleared.
+- The **Import** button is disabled and a **progress window** opens.
+- Your current **import preferences** are loaded fresh (file types, scenario, fallbacks, validation rules, duplicate settings).
 
-## Step by step — what happens when you import
-
-### 1. You open Import
-
-Use **File → Import** or **Ctrl+I**. The Import window opens.
-
-You choose:
-
-- **Collection** — which AbCS collection these books belong to.
-- **Folder** — the top folder to scan. Everything inside it (and in subfolders) is searched for audio files.
-
-### 2. You press Import (Alt+I)
-
-When you start the scan:
-
-1. AbCS **checks** that you picked a collection and a valid folder.
-2. The **collection** dropdown is locked for the rest of this session so books are not split across collections by mistake.
-3. Any **old review list** from a previous scan in this window is cleared.
-4. A **progress window** opens. It shows how many files have been checked and how long the scan has run. You can cancel if needed.
-
-### 3. AbCS walks through your folder
-
-The app searches the folder tree for audio files (types you enabled in Preferences — MP3, M4B, FLAC, and so on).
-
-For each file it finds, AbCS:
-
-- Reads **tags** embedded in the file (title, author, year, comments, and similar).
-- Looks at **folder and file names** when tags are missing or incomplete (if you turned those fallbacks on in Preferences).
-- Applies your **import scenario** — rules for how author, title, and series should be inferred from the path (for example author folder → series folder → book folder).
-- Runs **validation** — flags oddities such as “author looks like a title,” very short books, or suspicious years.
-- Checks for **duplicates** — books that already exist in AbCS (or are very similar, if fuzzy matching is on).
-
-Your original files stay where they are. AbCS only records the **path** to each file so it knows where the audiobook lives on disk.
-
-### 4. Two paths: automatic add vs review
-
-After the scan, each book is either **added immediately** or **held for review**.
-
-**Added automatically** when AbCS is confident:
-
-- Tags and paths look good.
-- No duplicate conflict.
-- No validation errors (only minor warnings may still auto-add, depending on settings).
-
-**Held for review** when something needs your eye:
-
-- Possible **duplicate** of a book already in the library.
-- **Missing or guessed** author or title (fallback from folder/file name).
-- **Text auto-correct** on title or author (for example trimmed whitespace), unless **Skip Review** is enabled for that correction in Preferences.
-- **Validation warning or error** (wrong field in wrong place, odd duration, path mismatch, and so on).
-- **Unreadable file** or tag problem.
-
-The status bar and summary tell you how many were scanned, auto-added, and left for review.
-
-### 5. The review table (if any books need you)
-
-Books that were not auto-added appear in a **table** in the Import window.
-
-- Use the **error filter** (Alt+E) to show only duplicates, errors, warnings, or corrected items.
-- Select a row and press **Enter** to open the **detail window** — edit title, author, year, and other fields; move to the next book; skip; or discard.
-- When you are satisfied, select rows and press **Add Selected** (Alt+S) to add them to your collection.
-
-You can **export** the review list to a spreadsheet (Alt+X) if you want to work offline.
-
-### 6. You close Import
-
-Press **Escape** to close. If review items remain, AbCS asks you to confirm — those books are **not** in your library until you add them.
-
-When Import closes, the **main book list** refreshes. New books appear in the collection you chose.
+If any check fails, the scan stops and you see a warning — nothing is read and nothing is added.
 
 ---
 
-## What Import does *not* do
+## 2. Walking the folder — finding audio files
 
-| Myth | Reality |
-|------|---------|
-| “Import copies my files into AbCS.” | No. Files stay on your drive. AbCS stores metadata and the file path. |
-| “Import creates folders on my computer.” | No. You choose an existing folder to scan. |
-| “Import reorganizes my disk.” | No. Only the library inside AbCS changes. |
-| “I must import the same folder only once.” | You can re-import later; duplicates are flagged so you do not add the same book twice (unless you override). |
+The app walks the folder tree you pointed it at. No new folders are created; it only **reads** what is already there.
+
+### Which folders are searched
+
+- Starts at the **top folder** you chose in the Import window.
+- If **include subfolders** is on in preferences, every folder below that level is searched too.
+- If subfolders are off, only files directly inside the top folder are checked.
+
+### Which files count as audiobooks
+
+Only files whose extension matches a type you turned on in **Preferences → Import Settings → Formats**:
+
+| Format | Extensions |
+|--------|------------|
+| MP3 | `.mp3` |
+| M4A / M4B | `.m4a`, `.m4b` |
+| FLAC | `.flac` |
+| OGG | `.ogg`, `.oga` |
+| WAV | `.wav` |
+| WMA | `.wma` |
+| AAC | `.aac` |
+| Opus | `.opus` |
+
+Files with any other extension are skipped. If every format is turned off, nothing is found.
+
+### How files become one book
+
+As each audio file is found, the app reads its tags and groups files that belong to the same book:
+
+- **Grouping key** — normally the **album** tag (treated as the book title).
+- If album is empty, files in the same parent folder are grouped using that **folder name** instead.
+- In **single-item** mode, one file = one book; title falls back to the filename if album is empty.
+
+The **folder path** where the files live is remembered — this is stored as the book's location in AbCS, not as a new folder on disk.
+
+### Progress during this phase
+
+- The progress bar shows **files scanned** vs **total files found**.
+- Status text shows something like `Scanning 12/48 | Elapsed 00:35`.
+- Updates are throttled so the screen reader is not flooded — roughly every 150 milliseconds.
+- **Escape** on the progress window asks to cancel; if you confirm, the scan stops and keeps whatever was found so far.
 
 ---
 
-## How this ties to your collection
+## 3. For each file — reading the tags
 
-A **collection** in AbCS is a label for grouping books in the app (for example *Audiobooks*, *Wish list*). Import does not create a new Windows or Linux folder with that name — it attaches each new book record to the collection you selected.
+For every audio file, the app opens it and reads embedded metadata. Your file is not changed.
 
-If the main window was already filtered to one collection when you opened Import, that collection may be pre-selected.
+### Tags read from the file
+
+| What AbCS needs | Where it looks in the file |
+|-----------------|---------------------------|
+| **Title** | Album tag |
+| **Author** | Album Artist tag first; if missing, Artist tag |
+| **Year** | Year / date tag (first four digits) |
+| **Genre** | Genre tag |
+| **Narrator** | Composer tag first; if empty, comment text after keywords like "read by" or "narrated by" |
+| **Comments** | Comment tag (reader-only lines are filtered out) |
+| **Duration** | Length of the audio |
+| **Bitrate** | Quality of the encoding |
+| **Format** | File extension (MP3, M4B, FLAC, etc.) |
+| **Size** | File size on disk |
+
+Different file types use different tag names internally (MP3 ID3, MP4 atoms, FLAC Vorbis comments, etc.) but the app maps them all to the same book fields above.
+
+### What gets accumulated per book
+
+When several files share the same album (one multi-part audiobook):
+
+- **Total duration** — sum of all part lengths → converted to hours and minutes.
+- **Total size** — sum of all file sizes → converted to megabytes.
+- **Track count** — number of files in the group.
+- **Comments** — merged from all parts, duplicates removed.
+- **Read errors** — if a file cannot be opened, a note is added like `part03.mp3: Error reading file`.
+
+The progress bar advances once per file during this phase.
 
 ---
 
-## When to use folder Import vs other tools
+## 4. Applying preference rules to each book
 
-| You have… | Use… |
-|-----------|------|
-| Audiobook files in folders | **Import** (this guide) — Ctrl+I |
-| A spreadsheet of titles and authors, no audio files | [Import Book List explained](20_import_book_list_explained.md) — Ctrl+Shift+I |
-| Books already in AbCS but missing plot or series | [Web metadata explained](21_web_metadata_explained.md) — Alt+W |
+After all files are read, the app processes each grouped book through your **import scenario** and **fallback** settings.
+
+### Import scenario (how folder layout is interpreted)
+
+| Scenario | What the app does with folder names |
+|----------|-------------------------------------|
+| **Mass standard** | Uses tags only; standard fallbacks and corrections apply |
+| **Series from directory** | Series name from the book's folder; author from the parent folder |
+| **Series from directory (nested)** | Series and title from nested folders after the author segment |
+| **Series from filename** | Series from text inside `(…)` in the filename; may append a series number to the title |
+| **Single item** | One file or folder treated as one book |
+
+### Fallbacks when tags are weak
+
+If a tag is blank or looks like a placeholder ("unknown", "untitled", "n/a", etc.):
+
+- **Title fallback from file** — uses the filename (strips leading track numbers like `01 `).
+- **Title fallback from folder** — uses the folder name (in nested scenario).
+- **Author fallback from folder** — walks up the folder path to find an author name.
+
+Each fallback is flagged so you can review it — unless you turned on **skip review** for that type of correction in preferences.
+
+### Auto-corrections (text cleanup)
+
+If enabled in preferences, the app may adjust title or author text:
+
+- Trim extra whitespace
+- Remove leading punctuation
+- Remove non-printable characters
+- Apply proper case (capitalize words)
+
+Each correction is flagged. If **skip review** is on for that correction type, it still applies but may not block auto-add.
+
+### Other preference adjustments
+
+- **Narrator from comment** — if no narrator tag, searches comment for your keyword list (default: "reader", "read by", "narrator", "narrated by").
+- **Author equals title** — if author and title are the same string, author is replaced with the parent folder name.
 
 ---
 
-## Tips for a smooth first import
+## 5. Validation — checking each book
 
-1. Start with a **small test folder** (one author) before scanning your whole library.
-2. Set **Preferences → Import Settings → Import scenario** to match your folder layout.
-3. Turn on **author** and **title fallbacks** if many files have weak tags.
-4. After the first scan, open the review table and read the **status** column — it explains why a book was held back.
-5. Use **Add Selected** only after you have checked duplicates and corrections.
+The app runs your enabled **validation rules**. Each rule can be set to **error** (blocks auto-add) or **warning** (held for review) in preferences.
+
+### Rules on by default
+
+| Rule | Severity | What it checks |
+|------|----------|----------------|
+| Title blank | Error | No title after tags and fallbacks |
+| Author blank | Error | No author after tags and fallbacks |
+| Author starts with non-letter | Warning | Author does not begin with a letter |
+| Author name in title | Warning | Author text appears inside the title |
+| Title in author name | Warning | Title text appears inside the author |
+| Unknown or Various author | Warning | Author contains "unknown" or "various" |
+| Unreadable audio length | Warning | Files exist but total duration is zero |
+
+### Rules off by default (enable in preferences)
+
+| Rule | What it checks |
+|------|----------------|
+| Minimum title length | Title shorter than configured minimum (default 3 characters) |
+| File structure | Folder path does not match expected Author/Title or Year/Author/Title pattern |
+| Minimum book length | Total duration below configured minutes |
+| Maximum book length | Total duration above configured hours |
+| Year out of range | Year is not a number, or falls outside 1801–current year |
+
+Tag read failures from step 3 are treated as **errors** and always block auto-add.
 
 ---
 
-## Where to go next
+## 6. Duplicate check
+
+Before deciding whether to add a book, the app compares it against books **already in your library**.
+
+### What counts as a duplicate
+
+Controlled by **duplicate match mode** in preferences:
+
+| Mode | Match on |
+|------|----------|
+| Title + Author + Year + Collection | All four must match (default) |
+| Title + Author + Year | Same title, author, and year anywhere in the library |
+| Title + Author only | Same title and author, year ignored |
+
+### Fuzzy matching
+
+If a **fuzzy threshold** is set (0–100%), near-matches count as duplicates — both title and author must reach that similarity percentage. At 0%, only exact matches count.
+
+A duplicate is **never** auto-added. It always goes to the review table with status **Duplicate**.
+
+Books auto-added earlier in the same scan are also checked — so two identical albums in one folder cannot both slip through.
+
+---
+
+## 7. Auto-add or review?
+
+For each book, the app decides:
+
+### Auto-added immediately (goes straight into the library)
+
+Only when **all** of these are true:
+
+- Not a duplicate
+- No read error (unreadable file)
+- No validation error
+- No validation warning
+- No fallback was used (`F:` flag)
+- No auto-correction was applied (`C:` flag)
+
+### Held for review (appears in the Import table)
+
+Everything else, with a status label:
+
+| Status | Reason |
+|--------|--------|
+| **Duplicate** | Already in the library |
+| **Error** | Unreadable file, blank title/author, or other hard failure |
+| **Warning** | Validation warning, fallback, or correction |
+
+---
+
+## 8. Writing to the library (auto-add path)
+
+When a book passes all checks, the app creates records **inside AbCS only** — still no changes to your disk folders.
+
+For each auto-added book:
+
+1. **Author** — looked up in the database; created if new.
+2. **Genre** — looked up or created if the book has a genre.
+3. **Series** — looked up or created if the book has a series.
+4. **Book record** — written with:
+   - Title, author, year, series, genre, collection
+   - Narrator, duration (hours + minutes), track count
+   - Size, bitrate, file format
+   - **Path** — the folder on your computer where the files live (not individual file names)
+   - Comments, date added, source = "Import"
+
+Individual audio file paths are **not** stored as separate records — only the folder and how many files were found.
+
+All auto-adds in one scan are saved together in a single database transaction at the end of processing.
+
+---
+
+## 9. Once the scan is complete
+
+- The progress bar reaches **100%**.
+- The status bar shows a summary, for example:  
+  `Scanned: 48 | Added: 32 | Corrected: 8 | Errors: 2 | Warnings: 4 | Duplicates: 2 | Elapsed: 01:12`
+- The **Import** button is re-enabled.
+- The collection dropdown stays locked until the review list is empty or you close Import.
+- Closing the progress window returns focus to the review table or Import button.
+
+If no audio files were found (or every format is disabled), you still get a summary — nothing is added.
+
+---
+
+## 10. If issues were found — the review table
+
+Books that were not auto-added appear in the **review table** in the Import window.
+
+### What you can do with them
+
+- **Error filter** (Alt+E) — show only duplicates, errors, warnings, fallbacks, or corrections.
+- **Enter** on a row — open the detail window to edit title, author, year, and other fields.
+- **Add Selected** (Alt+S) — add rows with status OK or Warning to your collection.
+- **Export** (Alt+X) — save the review list to a spreadsheet.
+
+Duplicates are never added through Add Selected unless you edit them first so they no longer match.
+
+### How preferences affect review
+
+| Preference | Effect |
+|------------|--------|
+| Skip review for a correction type | Correction still applies but may allow auto-add |
+| Duplicate match mode | Controls which existing books count as duplicates |
+| Fuzzy threshold | Controls how close a near-match must be to flag as duplicate |
+| Validation rule severity | Error vs warning determines status and whether Add Selected is allowed |
+
+When you close Import (Escape), the main book list refreshes. Any books you added — automatically or through review — appear in the collection you chose.
+
+---
+
+## What Import does not do
+
+| Assumption | Reality |
+|------------|---------|
+| Creates folders on your computer | No — only reads an existing folder you choose |
+| Copies or moves audio files | No — files stay where they are |
+| Stores every individual file path | No — stores the folder path and track count |
+| Re-imports without duplicate checks | No — duplicates are always flagged |
+
+---
+
+## Related guides
 
 - Step-by-step with shortcuts: [Import](02_import.md)
-- Scenario and validation detail: [Import preferences](18_import_preferences.md)
-- Collections: [Collections](06_collections.md)
-- Cleaning duplicates already in the library: [Duplicate Mode](08_duplicate_mode.md) (different from import-time duplicate checks)
+- Preference detail: [Import preferences](18_import_preferences.md)
+- Spreadsheet import (no audio files): [Import Book List explained](20_import_book_list_explained.md)
+- Fill in plot/series for books already in AbCS: [Web metadata explained](21_web_metadata_explained.md)

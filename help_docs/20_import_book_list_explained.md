@@ -1,154 +1,251 @@
-# Import Book List Explained
+# Import Book List Explained — Under the Hood
 
-Describes **File → Import Book List** (Ctrl+Shift+I) in everyday terms. For keyboard shortcuts and step-by-step detail, see [Import Book List](11_import_book_list.md).
+What AbCS does internally after you press **Import** (Alt+I) in the Import Book List window. This is not a how-to guide — for steps and shortcuts see [Import Book List](11_import_book_list.md).
 
----
-
-## What Import Book List does
-
-Import Book List reads a **spreadsheet** on your computer (CSV, Excel, or ODS) and turns each row into book information in AbCS — or updates **read dates** on books you already have.
-
-It does **not** read audio file tags. It does **not** attach audio files to the books it creates. You are importing **text from a table**, not scanning folders.
-
-Think of it as: **you open a list you already made elsewhere → you tell AbCS which column is title and which is author → AbCS adds new rows to your collection or updates dates on matching books.**
+**Important:** Import Book List does **not** read audio files, scan folders, or create folders on your computer. It only reads a **spreadsheet** you already have and writes book information inside AbCS. Your spreadsheet file on disk is never changed.
 
 ---
 
-## What you need first
+## 1. Once Import is activated
 
-- At least one **collection** in AbCS.
-- A spreadsheet file ready on your computer (`.csv`, `.xlsx`, `.xls`, or `.ods`).
-- For **new books**: each row needs at least a **title** and **author** (in columns you will map).
-- For **read-date updates**: the books must **already exist** in the collection you pick, with matching title and author.
+Before any row is processed, the app checks that everything is ready:
 
----
+- A **collection** must be selected.
+- A **spreadsheet** must already be loaded in memory (from Browse).
+- **Field mapping** must be valid:
+  - Title column mapped (required)
+  - Author column mapped (required)
+  - In **read-date mode**: Read Date column mapped (required)
+  - At least two fields mapped in total
 
-## Step by step — what happens when you import a list
+If any check fails, a warning appears and nothing is written.
 
-### 1. You open Import Book List
+### Confirm dialog
 
-Use **File → Import Book List** or **Ctrl+Shift+I**.
+If checks pass, a **Confirm Import** dialog summarizes:
 
-You choose:
+- How many rows will be processed
+- Which mode is active (new books or read-date update)
+- Which spreadsheet columns map to which book fields
 
-- **Collection** — where new books go, or which collection to match for read-date updates.
+**No** cancels the import. **Yes** starts processing.
 
-### 2. You pick your spreadsheet (Browse, Alt+B)
-
-AbCS opens the file and reads it like a table:
-
-- It counts **rows** and **columns**.
-- The status bar tells you what it found (for example “50 rows, 6 columns”).
-- Your spreadsheet file on disk is **not changed**.
-
-If the first row contains column headings (Title, Author, Date Read, and so on), leave **My file Has Header** checked. If the first row is already data, uncheck it.
-
-### 3. You choose what kind of import (Options, Alt+O)
-
-Two modes:
-
-| Mode | What AbCS does |
-|------|----------------|
-| **Add Book From List** (default) | Creates **new** book records from each row. |
-| **Add Read Date from List** | Finds **existing** books by title + author in the selected collection and updates their **read date** only. No new books are created. |
-
-### 4. You map columns (Field Mapping)
-
-Your spreadsheet might have columns in any order. AbCS shows a **mapping table**: for each book field (Title, Author, Year, Series, and so on), you pick which spreadsheet column holds that data (Column A, B, C, …).
-
-- **New books mode:** Title and Author mappings are **required**. Other fields are optional.
-- **Read-date mode:** Title, Author, and Read Date are **required**. Other mappings are turned off.
-
-Nothing is written to your library yet — you are only telling AbCS how to read the file.
-
-### 5. You press Import (Alt+I)
-
-AbCS shows a **Confirm Import** dialog summarizing:
-
-- How many rows it will process.
-- Which mode you chose.
-- How columns are mapped.
-
-Click **Yes** to continue or **No** to go back and fix mapping.
-
-### 6. AbCS processes each row
-
-For each row in the spreadsheet, AbCS:
-
-**Add Book From List mode:**
-
-- Reads the mapped title and author (and any optional fields you mapped).
-- Skips rows with a **missing** title or author.
-- Checks for **duplicates** — a book with the same title/author (and year, if your duplicate settings include year) already in that collection.
-- Adds good rows as **new book records** in the collection. No audio file path is attached unless your spreadsheet included folder information and you mapped it.
-
-**Add Read Date from List mode:**
-
-- Looks up an existing book in the collection by **title and author**.
-- If found, updates its **read date** from the mapped column.
-- Skips rows where no matching book exists or the date is invalid.
-
-When finished, an **Import Complete** message shows how many rows succeeded and how many failed.
-
-### 7. Errors (if any)
-
-Failed rows are **not** added. Common reasons:
-
-- Missing title or author.
-- Duplicate already in the collection.
-- Read-date mode: no matching book, or bad date format.
-
-Click **Export Errors** (Alt+X) to save a CSV file listing the problem rows so you can fix the spreadsheet and try again.
-
-### 8. You close when done
-
-The window **stays open** so you can import another file without reopening the menu. Press **Escape** when finished.
-
-The **main book list** refreshes when you close the window. New or updated books appear in the collection you chose.
+The status bar shows `Importing books...` while rows are handled. There is no progress bar — only a final count when finished.
 
 ---
 
-## What Import Book List does *not* do
+## 2. Which mode runs
 
-| Myth | Reality |
-|------|---------|
-| “It imports my audiobook files.” | No. Use [Import explained](19_import_explained.md) (Ctrl+I) for audio files. |
-| “It updates every field on existing books.” | In read-date mode, only the **read date** changes. In add mode, it only **creates** new books. |
-| “It uses my folder import scenario settings.” | No. Spreadsheet import ignores import scenarios and tag fallbacks. Only **duplicate** settings are shared with folder Import. |
-| “It changes my spreadsheet.” | No. AbCS only reads the file. |
+Controlled by the **Options** checkboxes you set before Import:
 
----
+| Mode | What happens to each row |
+|------|--------------------------|
+| **Add Book From List** (default) | Creates a **new** book record in the selected collection |
+| **Add Read Date from List** | Finds an **existing** book and updates its **read date** only |
 
-## How duplicates work
-
-Import Book List uses the same **duplicate match** and **fuzzy duplicate percent** settings as folder Import (**Preferences → Validation Rules**). If a row looks like a book you already have, it is skipped and listed in the error export.
-
-See [Import](02_import.md) for a short explanation of those settings.
+Only one mode runs per import. The two paths are completely separate after this point.
 
 ---
 
-## When to use Import Book List vs other tools
+## 3. Add Book From List — setup before the row loop
 
-| You have… | Use… |
-|-----------|------|
-| Audiobook files in folders | [Import explained](19_import_explained.md) — Ctrl+I |
-| A spreadsheet or export from another app | **Import Book List** (this guide) — Ctrl+Shift+I |
-| Books in AbCS missing plot or series | [Web metadata explained](21_web_metadata_explained.md) — Alt+W |
+Before reading row 1, the app prepares:
 
----
+1. Resets error list and success/fail counters.
+2. Loads **duplicate settings** from preferences (same as folder Import):
+   - Duplicate match mode (title + author + year + collection, etc.)
+   - Fuzzy duplicate percentage (0 = exact match only)
+3. Loads **all existing books** in the library into memory for fast duplicate checks.
+4. Creates a text cleanup helper (trim spaces, proper case, strip odd characters from author names).
 
-## Tips for a smooth import
-
-1. **Test with a small file** (5–10 rows) before importing hundreds of titles.
-2. Open the spreadsheet in Excel or LibreOffice first and confirm column letters match what you expect in the mapping dropdowns.
-3. Keep **title and author spelling consistent** with books already in AbCS if you plan to use read-date mode later.
-4. After errors, fix the spreadsheet and import again — successfully added rows will be flagged as duplicates if you re-import the same list.
-5. Import Book List is ideal for **wish lists**, **exports from Goodreads**, or **migrating from a spreadsheet** before you attach audio files with folder Import.
+All new books from this import will be saved together in **one database transaction** at the end — not one commit per row.
 
 ---
 
-## Where to go next
+## 4. Add Book From List — for each spreadsheet row
+
+The app walks every row in the loaded table, top to bottom.
+
+### Read the mapped columns
+
+For each row, values are pulled from the spreadsheet columns you mapped:
+
+| Book field | Spreadsheet column (if mapped) |
+|------------|-------------------------------|
+| Title | Required |
+| Author | Required |
+| Year | Optional |
+| Plot | Optional → stored as comments |
+| Series | Optional |
+| Series # | Optional — may be appended to title as `(Series #N)` |
+| Genre | Optional |
+| Reader | Optional |
+| Read Date | Optional |
+| Time | Optional → hours and minutes |
+| Files | Optional → track count |
+
+Title and author text are cleaned up (extra spaces removed, proper case applied).
+
+### Skip if title or author is missing
+
+If either is blank after cleanup, the row is skipped and recorded as an error: `Missing title or author`.
+
+### Duplicate check
+
+The row is compared against:
+
+- Books already in your library (loaded at start), **and**
+- Rows already accepted earlier in **this same import**
+
+Match rules follow your duplicate preferences:
+
+| Match mode | Treated as duplicate when |
+|------------|---------------------------|
+| Title + Author + Year + Collection | Same title, author, year, and collection |
+| Title + Author + Year | Same title, author, and year |
+| Title + Author only | Same title and author (year ignored) |
+
+If **fuzzy matching** is enabled, near-matches count when both title and author reach the similarity percentage you set.
+
+**Duplicate found** → row skipped, error: `Duplicate - book already exists`.
+
+### Build and save the book record
+
+If the row passes, the app creates records **inside AbCS only**:
+
+1. **Author** — looked up or created.
+2. **Series** — looked up or created if series was mapped.
+3. **Genre** — looked up or created if genre was mapped.
+4. **Book record** — written with:
+   - Title (may include series number suffix)
+   - Author, year, series, genre, collection
+   - Plot → comments field
+   - Reader, read date, duration, track count
+   - Source = `Bookh_list`
+   - **No audio folder path** — unless you mapped time/tracks, these are metadata-only records
+
+The row is added to the in-memory duplicate list so a repeated row in the same spreadsheet is caught later.
+
+### Row-level errors
+
+Any unexpected problem on a single row is caught, logged with the row number and reason, and the loop continues to the next row.
+
+---
+
+## 5. Add Book From List — once all rows are done
+
+- **One commit** saves every successful insert to the database.
+- An **Import Complete** dialog shows how many rows succeeded and how many failed.
+- Status bar shows something like `32 books added to Audiobooks collection, 3 errors`.
+- Focus returns to the file path field.
+- The **main book list does not refresh yet** — that happens when you close the Import Book List window.
+
+### If errors occurred
+
+Failed rows are kept in an internal error list. Press **Export Errors** (Alt+X) to save a CSV with:
+
+- Row number
+- Title
+- Author
+- Error reason
+
+Common reasons:
+
+| Reason | Cause |
+|--------|-------|
+| Missing title or author | Blank cell in a required column |
+| Duplicate - book already exists | Matches a book in the library or an earlier row in this file |
+| Exception message | Unexpected data problem on that row |
+
+---
+
+## 6. Add Read Date from List — for each spreadsheet row
+
+This mode **never creates new books**. It only updates the read date on books that already exist.
+
+### Setup
+
+- Resets error list and counters.
+- Does **not** use duplicate settings or fuzzy matching.
+- Each successful update commits **immediately** (not batched).
+
+### Per row
+
+1. **Read title and author** from mapped columns (same cleanup as new-book mode).
+2. **Skip** if either is missing.
+3. **Look up the book** in the selected collection:
+   - Compare normalized title (spacing and case ignored)
+   - Compare author name (trimmed, case-insensitive)
+   - First exact match wins
+4. **Not found** → row skipped: `Book not found in selected collection: Title by Author`.
+5. **Read the date** from the mapped Read Date column:
+   - Supports many formats: `2024-03-15`, `15/03/2024`, `March 15 2024`, Excel date numbers, and others
+   - **Valid date** → updates the book's read date in the database
+   - **Empty cell** → `Read date is empty`
+   - **Unrecognized format** → `Invalid date format...`
+
+Year column mapping is available in the UI but is **not used** for book lookup in this mode.
+
+---
+
+## 7. Add Read Date from List — once all rows are done
+
+Same completion flow as new-book mode:
+
+- Import Complete dialog with success and error counts
+- Status bar summary
+- Error export available for failed rows
+
+---
+
+## 8. What gets written to the library
+
+### New-book mode
+
+| What | Where it goes |
+|------|---------------|
+| Title, year, reader, read date, duration, track count | `books` table |
+| Author | `authors` table (looked up or created) |
+| Series | `series` table (if mapped) |
+| Genre | `genres` table (if mapped) |
+| Plot | `books.comments` |
+| Collection | Attached to the collection you selected |
+| Source | `Bookh_list` |
+
+No audio file paths, bitrates, or folder locations are set unless you later attach them through folder Import.
+
+### Read-date mode
+
+Only `read_date` on an existing `books` row is changed. Nothing else is touched.
+
+---
+
+## What Import Book List does not do
+
+| Assumption | Reality |
+|------------|---------|
+| Reads audio file tags | No — only spreadsheet text |
+| Uses folder import scenario settings | No — scenarios and tag fallbacks do not apply |
+| Creates folders on your computer | No |
+| Changes your spreadsheet file | No — read only |
+| Updates all fields on existing books (read-date mode) | No — only read date changes |
+| Shows a per-row progress bar | No — status messages only |
+
+---
+
+## How preferences affect this import
+
+| Preference | Applies to |
+|------------|------------|
+| Duplicate match mode | New-book mode only |
+| Fuzzy duplicate percent | New-book mode only |
+| Import scenario, fallbacks, validation rules | **Not used** — folder Import only |
+
+---
+
+## Related guides
 
 - Step-by-step with shortcuts: [Import Book List](11_import_book_list.md)
 - Scanning audio files: [Import explained](19_import_explained.md)
-- Duplicate settings: [Import preferences](18_import_preferences.md)
+- Duplicate settings detail: [Import preferences](18_import_preferences.md)
+- Fill in plot/series from the web: [Web metadata explained](21_web_metadata_explained.md)
