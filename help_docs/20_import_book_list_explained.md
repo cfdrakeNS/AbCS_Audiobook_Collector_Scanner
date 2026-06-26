@@ -249,3 +249,4 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 - Scanning audio files: [Import explained](19_import_explained.md)
 - Duplicate settings detail: [Import preferences](18_import_preferences.md)
 - Fill in plot/series from the web: [Web metadata explained](21_web_metadata_explained.md)
+- How spreadsheet title matching works: [Web metadata title compare explained](22_web_metadata_title_compare.md)

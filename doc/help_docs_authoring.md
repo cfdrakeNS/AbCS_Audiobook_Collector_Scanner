@@ -42,7 +42,7 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `01` | Help overview / hub |
 | `02`–`15` | Process guides (one workflow per window) |
 | `16`–`18` | Reference (shortcuts, defaults, import preferences) |
-| `19`–`21` | Explained guides (everyday-language walkthroughs) |
+| `19`–`22` | Explained guides (everyday-language walkthroughs) |
 | `22+` | Next free numbers for new topics |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
@@ -108,8 +108,9 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 19 | `19_import_explained.md` | Explained | — |
 | 20 | `20_import_book_list_explained.md` | Explained | — |
 | 21 | `21_web_metadata_explained.md` | Explained | — |
+| 22 | `22_web_metadata_title_compare.md` | Explained | — |
 
-Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
+Reference and explained guides (`16`–`22`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
 
 ### Cross-links between topics
 

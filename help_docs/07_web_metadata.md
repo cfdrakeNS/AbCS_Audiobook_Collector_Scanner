@@ -4,7 +4,7 @@
 
 Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You can then choose which fields to update — such as plot, series, genre, year, title, or author.
 
-For an explained walkthrough, see [Web metadata explained](21_web_metadata_explained.md).
+For an explained walkthrough, see [Web metadata explained](21_web_metadata_explained.md). If a fetch matches but the review window still offers a title change, see [Web metadata title compare explained](22_web_metadata_title_compare.md).
 
 ## When to use it
 
@@ -31,12 +31,13 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
 6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
 7. Click **Save** (or press **Alt+S**) to apply checked fields, or click **Cancel** (or press **Alt+C**) to close without saving.
-8. Plot text is saved to the book's comments field.
+8. Plot text is saved to the book's **comments** field. If the web source includes a rating and you save plot, the rating line (for example `Rating: 4.5 (1,234 ratings)`) may appear at the **top of that plot text**. It is not stored in a separate rating field.
 
 ## What happens next
 
 - Saved fields update the book in your database immediately.
 - The main book list and Book Details reflect the changes.
+- In Book Details, a saved rating prefix may show as the first line of the plot when you review the book.
 - Focus returns to a sensible place after the window closes.
 
 ## Settings that affect this
@@ -70,7 +71,7 @@ None. Fetch Web Info has no settings of its own in Preferences. It uses the book
 AbCS tries Open Library first, then Google Books, then WikiData, to find the best match for your title and author.
 
 **Is the rating saved?**
-No. Rating may appear in the review window for information only. It is not stored in the database.
+Not in its own field. The review window shows **Rating** for reference (Alt+R). AbCS does not keep a separate rating column in the database today. If you save **Plot** and the web result includes a rating, that rating line is written at the **top of the plot/comments text** (for example `Rating: 4.5 (1,234 ratings)` followed by the plot). You can edit or remove that line later in Book Details like any other plot text.
 
 **Can I fetch for multiple books at once?**
 No. Only the currently focused book in the main window is used. Use Book Details to fetch one book at a time from that view.

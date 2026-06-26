@@ -138,6 +138,7 @@ These explain *what happens behind the scenes* in everyday language. Use them be
 | [Import explained](19_import_explained.md) | How folder scan import works (Ctrl+I) |
 | [Import Book List explained](20_import_book_list_explained.md) | How spreadsheet import works (Ctrl+Shift+I) |
 | [Web metadata explained](21_web_metadata_explained.md) | How Fetch Web Info works (Alt+W) |
+| [Web metadata title compare explained](22_web_metadata_title_compare.md) | Why web search, review, and spreadsheet import compare titles differently |
 
 ## Suggested order for new users
 

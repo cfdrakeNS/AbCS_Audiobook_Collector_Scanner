@@ -12,13 +12,17 @@ Press **F1** in Preferences for shortcuts. Press **Alt+/** to re-read the status
 
 Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences and applied when you scan from the Import window. **Mass Standard Import** is the default for new installs and after Restore Defaults.
 
-| Scenario | Best for | Folder layout |
-|----------|----------|---------------|
-| **Mass Standard Import** (default) | Most libraries | Root → author folders → title subfolders or files (series folders may appear under author) |
-| **Mass Import - Series From Directory** | Series with files directly in folder | Root → author → **series folder** → audio files (not book subfolders) |
-| **Mass Import - Series From Directory (Nested Books)** | Series with per-book subfolders | Root → author → **series folder** → **book folder** → audio files; standalone books at author → book folder |
-| **Mass Import - Series From File Name** | Series encoded in file names | Any layout; series parsed from the first `( … )` block in each file name |
-| **Single Author / Book Import** | One book at a time | One author folder, one book/series folder, or a single audio file |
+
+| Scenario                                               | Best for                             | Folder layout                                                                                               |
+| ------------------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| **Mass Standard Import** (default)                     | Most libraries                       | Root → author folders → title subfolders or files (series folders may appear under author)                  |
+| **Mass Import - Series From Directory**                | Series with files directly in folder | Root → author → **series folder** → audio files (not book subfolders)                                       |
+| **Mass Import - Series From Directory (Nested Books)** | Series with per-book subfolders      | Root → author → **series folder** → **book folder** → audio files; standalone books at author → book folder |
+| **Mass Import - Series From File Name**                | Series encoded in file names         | Any layout; series parsed from the first `( … )` block in each file name                                    |
+| **Single Author / Book Import**                        | One book at a time                   | One author folder, one book/series folder, or a single audio file                                           |
+
+
+
 
 ### Mass Standard Import (default)
 
@@ -26,6 +30,8 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 - Expects author names in folder structure when tags are missing (with author fallback enabled).
 - Does **not** aggressively derive series from folder paths.
 - Use when each author has their own top-level folder and books live in title subfolders or as files under the author.
+
+
 
 ### Mass Import - Series From Directory
 
@@ -61,7 +67,7 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 
 - Reads the **first parenthesized block** in the file name (without extension).
 - Uses that block as the series name.
-- If the block ends with a number (for example `(Mistborn 1)`), the number becomes a **title suffix** (` - 1`).
+- If the block ends with a number (for example `(Mistborn 1)`), the number becomes a **title suffix** ( `- 1`).
 
 **Example:** `01 - The Final Empire (Mistborn 1).m4b` → series **Mistborn**, title may gain suffix ** - 1**.
 
@@ -71,17 +77,21 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 - When picking a single file, only enabled audio formats from Preferences are offered.
 - Other fallback, auto-correct, and validation rules still apply.
 
+
+
 ## Fallback and auto correct
 
 The **Fallback & Auto Correct** tab has two groups: fallback parsing and text auto-correct.
 
 ### Fallback and parsing
 
-| Setting | When enabled | Effect |
-|---------|--------------|--------|
-| **Author fallback to folder** | Author tag missing or placeholder | Uses folder names to infer author (scenario-aware) |
-| **Title fallback to file** | Title tag missing or placeholder | Uses file name (strips leading track numbers); nested-books scenario prefers the book folder name first |
-| **Reader keywords** | Always (comma-separated list) | Detects narrator in comment/tag text (for example `narrator`, `read by`) |
+
+| Setting                       | When enabled                      | Effect                                                                                                  |
+| ----------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Author fallback to folder** | Author tag missing or placeholder | Uses folder names to infer author (scenario-aware)                                                      |
+| **Title fallback to file**    | Title tag missing or placeholder  | Uses file name (strips leading track numbers); nested-books scenario prefers the book folder name first |
+| **Reader keywords**           | Always (comma-separated list)     | Detects narrator in comment/tag text (for example `narrator`, `read by`)                                |
+
 
 Placeholder values treated as missing include: empty, `unknown`, `untitled`, `n/a`, and similar.
 
@@ -98,20 +108,20 @@ The **Auto Correct** group lists four options. Each option has:
 1. A **main checkbox** with the full option name — turn this on to run that correction during folder scan.
 2. An indented **Skip review** checkbox below it — only enabled when the main option is checked.
 
-| Main option | What it does |
-|-------------|--------------|
-| **Apply proper case to title and author** | Capitalizes words in title and author (for example `the hobbit` → `The Hobbit`) |
-| **Trim extra and leading/trailing whitespace** | Collapses multiple spaces and removes leading or trailing spaces |
-| **Remove leading punctuation from title and author** | Strips non-letter characters from the start of title or author |
-| **Remove non-printable control characters** | Removes invisible control characters only; accented letters such as é, ñ, and ü are **kept** |
+
+| Main option                                          | What it does                                                                                 |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Apply proper case to title and author**            | Capitalizes words in title and author (for example `the hobbit` → `The Hobbit`)              |
+| **Trim extra and leading/trailing whitespace**       | Collapses multiple spaces and removes leading or trailing spaces                             |
+| **Remove leading punctuation from title and author** | Strips non-letter characters from the start of title or author                               |
+| **Remove non-printable control characters**          | Removes invisible control characters only; accented letters such as é, ñ, and ü are **kept** |
+
 
 **Skip review** means: if this correction is the only reason a book would go to review, still auto-add it.
 
 When the main option is on and **Skip review** is off, corrected title or author fields get a **C:** flag and the book is held for review.
 
 When the main option is off, that correction does not run and **Skip review** is greyed out and unchecked.
-
-Folder import **does not** move leading articles (**The**, **A**, **An**) to the end of titles. That behavior was removed from scan auto-correct; only the four options in the table above run during import.
 
 When **Skip review** is on for a correction, that correction alone will not block auto-add. If another issue is present (duplicate, validation warning, fallback, or a different correction without Skip review), the book still goes to review.
 
@@ -121,15 +131,17 @@ When **Skip review** is on for a correction, that correction alone will not bloc
 
 Each rule can be **None** (off), **Warning**, or **Error**. Warnings and errors send books to the **review list** instead of auto-add.
 
-| Rule | What it checks |
-|------|----------------|
-| Author in Title | Author name appears inside the title field |
-| Title in Author | Title text appears in the author field |
-| Unknown / Various author | Author is a generic placeholder |
-| Minimum title length | Title shorter than the configured minimum |
-| Minimum / maximum book length | Listening duration too short or too long |
-| File structure | Path does not match the expected pattern (default **Author/Title**) |
-| Year consistency | Year before 1800 or in the future |
+
+| Rule                          | What it checks                                                      |
+| ----------------------------- | ------------------------------------------------------------------- |
+| Author in Title               | Author name appears inside the title field                          |
+| Title in Author               | Title text appears in the author field                              |
+| Unknown / Various author      | Author is a generic placeholder                                     |
+| Minimum title length          | Title shorter than the configured minimum                           |
+| Minimum / maximum book length | Listening duration too short or too long                            |
+| File structure                | Path does not match the expected pattern (default **Author/Title**) |
+| Year consistency              | Year before 1800 or in the future                                   |
+
 
 Severity **Error** is stricter than **Warning** for blocking auto-import.
 
@@ -137,10 +149,12 @@ Severity **Error** is stricter than **Warning** for blocking auto-import.
 
 Separate from **Duplicate Mode** on the main window (which finds duplicates already in your library).
 
-| Setting | Meaning |
-|---------|---------|
-| **Duplicate match** | Which fields must match (for example Title + Author + Year) |
+
+| Setting               | Meaning                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| **Duplicate match**   | Which fields must match (for example Title + Author + Year)    |
 | **Fuzzy duplicate %** | How similar title **and** author text must be (0% = fuzzy off) |
+
 
 Both title and author must meet the fuzzy threshold. At **90%** (default after Restore Defaults), only minor typos match. At **0%**, near-exact text is required.
 
@@ -149,11 +163,13 @@ Books that match an existing entry are held in review with a **Duplicate** flag 
 ## When settings take effect
 
 - Preferences are saved to disk when you click **Save** (Alt+S) in Preferences.
-- If the Import window is already open, close and reopen it, or start a new scan, so the latest scenario and rules load.
 - Default values after **Restore Defaults** (Alt+R) are listed in [Default preferences](17_default_preferences.md).
+
+
 
 ## Related documentation
 
 - [Default preferences](17_default_preferences.md) — factory default values
 - [Import process](02_import.md) — folder scan workflow
 - [Keyboard shortcuts by window](16_shortcuts.md) — Import and Preferences shortcuts
+
