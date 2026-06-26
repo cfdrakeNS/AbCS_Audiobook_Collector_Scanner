@@ -1,6 +1,7 @@
 """Tests for navigable plot/text formatting."""
 
 from src.accessibility.read_only_text import (
+    canonicalize_plot_comments,
     format_plot_text_for_navigation,
     plot_lines_for_review,
     plot_text_equivalent,
@@ -87,6 +88,55 @@ def test_plot_lines_for_review_does_not_break_words():
     lines = plot_lines_for_review(text)
     assert " ".join(lines) == text
     assert all(len(line) <= 73 for line in lines)
+
+
+def test_split_rating_not_confused_by_hyphen_in_body():
+    """Rating on its own line must not split at the first hyphen in the plot body."""
+    text = (
+        "Rating: 4.0 (43 ratings)\n"
+        "A missing little girl named Maggie Rose. The thrill-killing of a teacher."
+    )
+    formatted = format_plot_text_for_navigation(text)
+    assert formatted.startswith("Rating: 4.0 (43 ratings)\n")
+    lines = plot_lines_for_review(text)
+    assert lines[0] == "Rating: 4.0 (43 ratings)"
+    assert "thrill-killing" in " ".join(lines[1:])
+
+
+def test_format_plot_flattens_newline_rating_with_wrapped_body():
+    """Web metadata stores rating on line 1; body may carry 73-char wrap artifacts."""
+    text = (
+        "Rating: 4.0 (43 ratings)\n"
+        "A missing little girl named Maggie Rose...The thrill\n"
+        "killing of a beautiful elementary school teacher..."
+    )
+    formatted = format_plot_text_for_navigation(text)
+    assert formatted.startswith("Rating: 4.0 (43 ratings)\n")
+    body = formatted.split("\n", 1)[1]
+    assert "\n" not in body
+    assert "The thrill killing" in body
+
+
+def test_canonicalize_plot_comments_matches_format():
+    text = "Rating: 4.0\nword\nword"
+    assert canonicalize_plot_comments(text) == format_plot_text_for_navigation(text)
+
+
+def test_plot_line_list_shows_rating_on_first_row():
+    from PySide6.QtWidgets import QApplication
+
+    from src.accessibility.read_only_text import PlotLineList, canonicalize_plot_comments
+
+    app = QApplication.instance() or QApplication([])
+    raw = (
+        "Rating: 4.0 (43 ratings)\n"
+        "A missing little girl named Maggie Rose...The thrill\n"
+        "killing of a beautiful elementary school teacher."
+    )
+    widget = PlotLineList()
+    widget.set_plot_text(canonicalize_plot_comments(raw))
+    assert widget.item(0).text() == "Rating: 4.0 (43 ratings)"
+    assert widget.currentRow() == 0
 
 
 def test_plot_text_equivalent_ignores_line_breaks():

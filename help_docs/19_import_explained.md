@@ -15,7 +15,7 @@ The app checks that everything is ready before it starts:
 - The collection dropdown is **locked** so books from this scan cannot accidentally go to a different collection.
 - Any **previous review list** in this window is cleared.
 - The **Import** button is disabled and a **progress window** opens.
-- Your current **import preferences** are loaded fresh (file types, scenario, fallbacks, validation rules, duplicate settings).
+- Your current **import preferences** are loaded fresh (file types, scenario, fallbacks, validation rules, duplicate settings). Preferences are re-read from disk at the start of every Import scan.
 
 If any check fails, the scan stops and you see a warning — nothing is read and nothing is added.
 
@@ -118,29 +118,33 @@ After all files are read, the app processes each grouped book through your **imp
 
 ### Fallbacks when tags are weak
 
-If a tag is blank or looks like a placeholder ("unknown", "untitled", "n/a", etc.):
+Only runs when the matching fallback is **enabled** in Preferences (**Author fallback to folder** or **Title fallback to file**). If a fallback is off, the field stays blank and validation reports an error.
+
+If a tag is blank or looks like a placeholder ("unknown", "untitled", "n/a", etc.) and the fallback is enabled:
 
 - **Title fallback from file** — uses the filename (strips leading track numbers like `01 `).
 - **Title fallback from folder** — uses the folder name (in nested scenario).
 - **Author fallback from folder** — walks up the folder path to find an author name.
 
-Each fallback is flagged so you can review it — unless you turned on **skip review** for that type of correction in preferences.
+Each fallback is flagged so you can review it.
 
 ### Auto-corrections (text cleanup)
 
-If enabled in preferences, the app may adjust title or author text:
+Only runs for options whose main checkbox is **checked** in Preferences. Each option has an indented **Skip review** checkbox below it (only available when the main option is on).
+
+If enabled, the app may adjust title or author text:
 
 - Trim extra whitespace
 - Remove leading punctuation
 - Remove non-printable characters
 - Apply proper case (capitalize words)
 
-Each correction is flagged. If **skip review** is on for that correction type, it still applies but may not block auto-add.
+Each correction is flagged with **C:**. If **Skip review** is on for that correction type, it still applies but may not block auto-add.
 
 ### Other preference adjustments
 
 - **Narrator from comment** — if no narrator tag, searches comment for your keyword list (default: "reader", "read by", "narrator", "narrated by").
-- **Author equals title** — if author and title are the same string, author is replaced with the parent folder name.
+- **Author equals title** — if author and title are the same string and **Author fallback to folder** is enabled, author is replaced with the parent folder name (flagged as fallback).
 
 ---
 

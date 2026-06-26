@@ -85,31 +85,37 @@ The **Fallback & Auto Correct** tab has two groups: fallback parsing and text au
 
 Placeholder values treated as missing include: empty, `unknown`, `untitled`, `n/a`, and similar.
 
+When a fallback checkbox is **unchecked**, AbCS does not guess from folder or file names. Missing author or title stays missing and validation reports an error (for example **Author blank** or **Title blank**).
+
 When a fallback is used, the review list flags the book with **F:** (fallback). Fallback always holds the book for review.
+
+Each Import scan reloads the latest saved fallback and auto-correct settings from Preferences.
 
 ### Auto correct
 
-Each option has two checkboxes:
+The **Auto Correct** group lists four options. Each option has:
 
-| Column | Meaning |
-|--------|---------|
-| **Apply** | Run this correction during folder scan |
-| **Skip Review** | If this correction is the only reason a book would go to review, still auto-add it |
+1. A **main checkbox** with the full option name — turn this on to run that correction during folder scan.
+2. An indented **Skip review** checkbox below it — only enabled when the main option is checked.
 
-| Option | What it does |
-|--------|--------------|
-| **Apply proper case** | Capitalizes words in title and author (for example `the hobbit` → `The Hobbit`) |
-| **Trim whitespace** | Collapses extra spaces and trims leading or trailing spaces |
-| **Remove leading punctuation** | Strips non-letter characters from the start of title or author |
-| **Remove non-printable characters** | Removes control characters only; accented letters such as é, ñ, and ü are **kept** |
+| Main option | What it does |
+|-------------|--------------|
+| **Apply proper case to title and author** | Capitalizes words in title and author (for example `the hobbit` → `The Hobbit`) |
+| **Trim extra and leading/trailing whitespace** | Collapses multiple spaces and removes leading or trailing spaces |
+| **Remove leading punctuation from title and author** | Strips non-letter characters from the start of title or author |
+| **Remove non-printable control characters** | Removes invisible control characters only; accented letters such as é, ñ, and ü are **kept** |
 
-When **Apply** is on and **Skip Review** is off, corrected title or author fields get a **C:** flag and the book is held for review.
+**Skip review** means: if this correction is the only reason a book would go to review, still auto-add it.
+
+When the main option is on and **Skip review** is off, corrected title or author fields get a **C:** flag and the book is held for review.
+
+When the main option is off, that correction does not run and **Skip review** is greyed out and unchecked.
 
 Folder import **does not** move leading articles (**The**, **A**, **An**) to the end of titles. That behavior was removed from scan auto-correct; only the four options in the table above run during import.
 
-When **Skip Review** is on for a correction, that correction alone will not block auto-add. If another issue is present (duplicate, validation warning, fallback, or a different correction without Skip Review), the book still goes to review.
+When **Skip review** is on for a correction, that correction alone will not block auto-add. If another issue is present (duplicate, validation warning, fallback, or a different correction without Skip review), the book still goes to review.
 
-**F:** fallback flags always hold for review regardless of Skip Review settings.
+**F:** fallback flags always hold for review regardless of Skip review settings.
 
 ## Validation rules
 

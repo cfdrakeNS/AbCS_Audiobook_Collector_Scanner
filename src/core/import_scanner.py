@@ -157,10 +157,22 @@ class ImportScanner:
 
         author = (book.get("author") or "").strip()
         title = (book.get("title") or "").strip()
-        if author and title and author.lower() == title.lower():
+        if (
+            self.author_fallback_mode == "folder"
+            and author
+            and title
+            and author.lower() == title.lower()
+        ):
             parent_name = self._folder_parent_name(folder)
             if parent_name and parent_name.lower() != title.lower():
                 book["author"] = parent_name
+                fallback_applied.add("Author")
+                from src.core.validator import ImportValidator
+
+                ImportValidator.append_flag_once(
+                    book,
+                    "F: Author fallback from folder used",
+                )
 
         if self.scenario_mode == "series_from_directory" and files:
             series_name, ambiguous_reason = self._derive_series_from_directory(
@@ -195,8 +207,10 @@ class ImportScanner:
                     f"W: Series from directory skipped ({ambiguous_reason})",
                 )
 
-            if title_hint and self._is_placeholder_title(
-                (book.get("title") or "").strip()
+            if (
+                self.title_fallback_mode == "file"
+                and title_hint
+                and self._is_placeholder_title((book.get("title") or "").strip())
             ):
                 fallback_title = self._strip_leading_folder_prefix(title_hint)
                 if fallback_title:

@@ -73,10 +73,12 @@ See [Import preferences](18_import_preferences.md) for full scenario details, fa
 
 ### Fallback & Auto Correct
 
-- **Author fallback to folder** — if the author tag is missing, use the folder name.
-- **Title fallback to file** — if the title tag is missing, use the file name.
+- **Author fallback to folder** — if the author tag is missing and this is checked, use the folder name. When unchecked, missing author stays missing and import reports an error.
+- **Title fallback to file** — if the title tag is missing and this is checked, use the file name. When unchecked, missing title stays missing and import reports an error.
 - **Reader keywords** — words that help detect the narrator in comments (for example, "narrator", "read by").
-- **Auto Correct** — optional text cleanup during scan. Each option has **Apply** (run the fix) and **Skip Review** (allow auto-add when that fix is the only issue). Options: proper case, trim whitespace, remove leading punctuation, remove non-printable characters (accents kept).
+- **Auto Correct** — optional text cleanup during scan. Each option has a main checkbox and an indented **Skip review** checkbox below it (Skip review is only available when the main option is checked). Options: apply proper case to title and author, trim extra and leading/trailing whitespace, remove leading punctuation, remove non-printable control characters (accents kept).
+
+Each Import scan reloads the latest saved preferences.
 
 ### Validation Rules
 

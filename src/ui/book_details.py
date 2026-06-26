@@ -35,7 +35,7 @@ from src.accessibility.accessible_events import (
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.read_only_text import (
     PlotLineList,
-    format_plot_text_for_navigation,
+    canonicalize_plot_comments,
     set_navigable_plain_text,
 )
 import getpass
@@ -1628,8 +1628,9 @@ class BookDetailsWindow(AccessibleDialog):
                     self.added_edit.setText(self.book.date_added.strftime("%Y-%m-%d"))
             else:
                 self.added_edit.setText("")
-            set_navigable_plain_text(self.comments_edit, self.book.comments or "")
-            self.plot_review.set_plot_text(self.book.comments or "")
+            plot_text = canonicalize_plot_comments(self.book.comments or "")
+            set_navigable_plain_text(self.comments_edit, plot_text)
+            self.plot_review.set_plot_text(plot_text)
             if self.book.read_date:
                 read_date_value = self.book.read_date
                 if isinstance(read_date_value, str):
@@ -1864,7 +1865,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.book.file_format = file_format
         self.book.source = source_text
         self.book.path = path_text
-        self.book.comments = self.comments_edit.toPlainText()
+        self.book.comments = canonicalize_plot_comments(self.comments_edit.toPlainText())
         self.book.read_date = read_date
 
         # Save to database
@@ -2124,8 +2125,8 @@ class BookDetailsWindow(AccessibleDialog):
         # Plot/Comments
         self.comments_edit.setReadOnly(read_only)
         if read_only:
-            restored_plot = format_plot_text_for_navigation(self.comments_edit.toPlainText())
-            self.comments_edit.setPlainText(restored_plot)
+            restored_plot = canonicalize_plot_comments(self.comments_edit.toPlainText())
+            set_navigable_plain_text(self.comments_edit, restored_plot)
             self.plot_review.set_plot_text(restored_plot)
             self.plot_stack.setCurrentWidget(self.plot_review)
             self.plot_stack.setFocusProxy(self.plot_review)

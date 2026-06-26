@@ -523,12 +523,38 @@ class PreferencesWindow(AccessibleDialog):
         return page
 
     def _autocorrect_row_height(self) -> int:
-        """Single-line row height for compact auto-correct grid at any zoom."""
+        """Single-line row height for compact auto-correct options at any zoom."""
         return max(self.fontMetrics().height() + 2, self.scaler.get_scaled_size(14))
 
     def _autocorrect_blank_line_height(self) -> int:
-        """One blank line of vertical space between auto-correct rows."""
+        """One blank line of vertical space between auto-correct option pairs."""
         return self.fontMetrics().height()
+
+    def _autocorrect_skip_indent(self) -> int:
+        """Left indent for skip-review checkboxes under each main option."""
+        return self.scaler.get_scaled_size(24)
+
+    def _sync_autocorrect_skip_states(self) -> None:
+        """Enable skip-review only when its main auto-correct option is checked."""
+        for key in (
+            "proper_case",
+            "trim_whitespace",
+            "strip_punctuation",
+            "remove_nonprintable",
+        ):
+            apply_box = getattr(self, f"ac_{key}_apply")
+            skip_box = getattr(self, f"ac_{key}_skip")
+            skip_box.setEnabled(apply_box.isChecked())
+            if not apply_box.isChecked():
+                skip_box.setChecked(False)
+
+    def _on_autocorrect_apply_toggled(
+        self, skip_box: QCheckBox, checked: bool
+    ) -> None:
+        """Grey out skip review when the parent auto-correct option is off."""
+        skip_box.setEnabled(checked)
+        if not checked:
+            skip_box.setChecked(False)
 
     def _apply_autocorrect_compact_styles(self):
         """Override global touch-target checkbox sizing inside Auto Correct."""
@@ -536,124 +562,91 @@ class PreferencesWindow(AccessibleDialog):
         if not widgets:
             return
         row_height = self._autocorrect_row_height()
-        blank_line = self._autocorrect_blank_line_height()
-        grid = getattr(self, "_autocorrect_grid", None)
-        if grid is not None:
-            grid.setVerticalSpacing(blank_line)
         checkbox_style = f"""
             QCheckBox {{
                 min-height: {row_height}px;
-                max-height: {row_height}px;
-                padding: 0px;
-                margin: 0px;
-            }}
-        """
-        label_style = f"""
-            QLabel {{
-                min-height: {row_height}px;
-                max-height: {row_height}px;
                 padding: 0px;
                 margin: 0px;
             }}
         """
         for widget in widgets:
-            if isinstance(widget, QCheckBox):
-                widget.setStyleSheet(checkbox_style)
-            else:
-                widget.setStyleSheet(label_style)
-            widget.setFixedHeight(row_height)
-            widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            widget.setStyleSheet(checkbox_style)
+            widget.setMinimumHeight(row_height)
+            widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
     def _build_autocorrect_group(self) -> QGroupBox:
-        """Build compact auto-correct options with Apply and Skip Review on the left."""
+        """Build auto-correct options with indented skip-review under each main item."""
         group = QGroupBox("Auto Correct")
         group.setObjectName("autocorrectGroup")
         group.setFont(self._section_font())
         layout = QVBoxLayout(group)
         layout.setContentsMargins(8, 2, 8, 2)
         layout.setSpacing(0)
-
-        grid = QGridLayout()
-        self._autocorrect_grid = grid
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(0)
+        self._autocorrect_layout = layout
 
         self._autocorrect_compact_widgets = []
-
-        apply_header = QLabel("Apply")
-        apply_header.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        apply_header.setAccessibleName("Auto correct apply column")
-        skip_header = QLabel("Skip Review")
-        skip_header.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        skip_header.setAccessibleName("Auto correct skip review column")
-        grid.addWidget(apply_header, 0, 0, alignment=Qt.AlignHCenter)
-        grid.addWidget(skip_header, 0, 1, alignment=Qt.AlignHCenter)
-        grid.addWidget(QLabel(""), 0, 2)
-        self._autocorrect_compact_widgets.extend(
-            (apply_header, skip_header)
-        )
-
-        tooltip_map = {
-            apply_header: "Run the correction during folder import scan.",
-            skip_header: (
-                "Auto-add when that correction is the only reason a book would "
-                "go to review."
-            ),
-        }
+        tooltip_map = {}
 
         options = (
             (
                 "proper_case",
-                "Apply proper case",
-                "Capitalize title and author words during import scan.",
-                "Auto-add when proper case is the only correction needed.",
+                "Apply proper case to title and author",
+                "Capitalizes the first letter of each word in title and author during import scan.",
+                "Skip review when proper case is the only correction",
             ),
             (
                 "trim_whitespace",
-                "Trim whitespace",
-                "Collapse extra spaces and trim leading or trailing spaces.",
-                "Auto-add when whitespace trim is the only correction needed.",
+                "Trim extra and leading/trailing whitespace",
+                "Collapses multiple spaces and removes leading or trailing spaces from title and author.",
+                "Skip review when whitespace trim is the only correction",
             ),
             (
                 "strip_punctuation",
-                "Remove leading punctuation",
-                "Strip non-letter characters from the start of title or author.",
-                "Auto-add when leading punctuation removal is the only correction needed.",
+                "Remove leading punctuation from title and author",
+                "Strips non-letter characters from the start of title or author fields.",
+                "Skip review when leading punctuation removal is the only correction",
             ),
             (
                 "remove_nonprintable",
-                "Remove non-printable characters",
-                "Remove control characters only; accented letters such as é and ñ are kept.",
-                "Auto-add when non-printable removal is the only correction needed.",
+                "Remove non-printable control characters",
+                "Removes invisible control characters only; accented letters like é and ñ are kept.",
+                "Skip review when non-printable removal is the only correction",
             ),
         )
 
-        for row, (key, label, apply_tip, skip_tip) in enumerate(options, start=1):
-            apply_box = QCheckBox()
-            apply_box.setAccessibleName(f"{label} apply")
-            apply_box.setAccessibleDescription(apply_tip)
-            skip_box = QCheckBox()
-            skip_box.setAccessibleName(f"{label} skip review")
-            skip_box.setAccessibleDescription(skip_tip)
-            name_label = QLabel(label)
-            name_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            name_label.setAccessibleName(label)
-            name_label.setAccessibleDescription(apply_tip)
+        blank_line = self._autocorrect_blank_line_height()
+        for index, (key, main_label, main_tip, skip_label) in enumerate(options):
+            apply_box = QCheckBox(main_label)
+            apply_box.setAccessibleName(main_label)
+            apply_box.setAccessibleDescription(main_tip)
+            skip_box = QCheckBox(skip_label)
+            skip_box.setAccessibleName(skip_label)
+            skip_box.setAccessibleDescription(
+                f"{skip_label}. Auto-add the book instead of holding it for review."
+            )
             setattr(self, f"ac_{key}_apply", apply_box)
             setattr(self, f"ac_{key}_skip", skip_box)
-            grid.addWidget(apply_box, row, 0, alignment=Qt.AlignHCenter)
-            grid.addWidget(skip_box, row, 1, alignment=Qt.AlignHCenter)
-            grid.addWidget(name_label, row, 2, alignment=Qt.AlignLeft | Qt.AlignVCenter)
-            self._autocorrect_compact_widgets.extend(
-                (apply_box, skip_box, name_label)
+            apply_box.toggled.connect(
+                lambda checked, skip=skip_box: self._on_autocorrect_apply_toggled(
+                    skip, checked
+                )
             )
-            tooltip_map[apply_box] = apply_tip
-            tooltip_map[skip_box] = skip_tip
-            tooltip_map[name_label] = apply_tip
 
-        grid.setColumnStretch(2, 1)
-        layout.addLayout(grid)
+            layout.addWidget(apply_box)
+            skip_row = QWidget()
+            skip_row_layout = QHBoxLayout(skip_row)
+            skip_row_layout.setContentsMargins(self._autocorrect_skip_indent(), 0, 0, 0)
+            skip_row_layout.setSpacing(0)
+            skip_row_layout.addWidget(skip_box, 1)
+            layout.addWidget(skip_row)
+
+            self._autocorrect_compact_widgets.extend((apply_box, skip_box))
+            tooltip_map[apply_box] = main_tip
+            tooltip_map[skip_box] = skip_box.accessibleDescription()
+
+            if index < len(options) - 1:
+                layout.addSpacing(blank_line)
+
         apply_visual_tooltip_map(tooltip_map)
         self._apply_autocorrect_compact_styles()
         return group
@@ -1417,6 +1410,7 @@ class PreferencesWindow(AccessibleDialog):
                 "import/scan/remove_nonprintable_skip_review", False, type=bool
             )
         )
+        self._sync_autocorrect_skip_states()
 
         for combo in (
             self.rule_author_in_title_severity,
@@ -2117,6 +2111,7 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue("import/scan/strip_punctuation_skip_review", False)
         self.settings.setValue("import/scan/remove_nonprintable", False)
         self.settings.setValue("import/scan/remove_nonprintable_skip_review", False)
+        self._sync_autocorrect_skip_states()
 
         # Validation rules - reset to defaults
         # Author in Title: warning

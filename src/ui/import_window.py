@@ -636,50 +636,8 @@ class ImportWindow(AccessibleDialog):
         self.apply_control_styles()
         self.update_stretch_columns()
 
-    def load_preferences(self):
-        """Load import preferences into header fields."""
-        self._loading = True
-
-        default_dir = self.settings.value("import/default_directory", "", type=str)
-        self.folder_edit.setText(default_dir)
-
-        self.include_subfolders = self.settings.value(
-            "import/include_subfolders", True, type=bool
-        )
-        selected_extensions = set()
-        format_extension_map = {
-            "mp3": (".mp3",),
-            "m4a": (".m4a",),
-            "m4b": (".m4b",),
-            "flac": (".flac",),
-            "ogg": (".ogg", ".oga"),
-            "wav": (".wav",),
-            "wma": (".wma",),
-            "aac": (".aac",),
-            "opus": (".opus",),
-        }
-        for key, extensions in format_extension_map.items():
-            if self.settings.value(f"import/formats/{key}", True, type=bool):
-                selected_extensions.update(extensions)
-        self.allowed_extensions = selected_extensions
-
-        shortcuts = [
-            ("Alt+C", "Collection"),
-            ("Alt+F", "Folder"),
-            ("Alt+I", "Import"),
-            ("Alt+E", "Error filter"),
-            ("Alt+L", "Jump to table"),
-            ("Alt+1", "Jump to Author "),
-            ("Alt+2", "Jump to Title "),
-            ("Alt+3-5", "Jump to Year..."),
-            ("Enter", "Open import detail"),
-            ("Alt+S", "Add selected"),
-            ("Alt+V", "Add valid"),
-            ("Alt+X", "Export list to CSV"),
-            ("Escape", "Cancel/Close window"),
-            ("Alt+/", "Read status bar"),
-            ("F1", "Show this help"),
-        ]
+    def _reload_scan_settings(self):
+        """Reload import scanner and validation settings from QSettings."""
         self.import_scenario_mode = self.settings.value(
             "import/scenario/mode", "mass_standard", type=str
         )
@@ -738,6 +696,34 @@ class ImportWindow(AccessibleDialog):
         self.validator.reload_settings()
         self._update_header_info_line()
 
+    def load_preferences(self):
+        """Load import preferences into header fields."""
+        self._loading = True
+
+        default_dir = self.settings.value("import/default_directory", "", type=str)
+        self.folder_edit.setText(default_dir)
+
+        self.include_subfolders = self.settings.value(
+            "import/include_subfolders", True, type=bool
+        )
+        selected_extensions = set()
+        format_extension_map = {
+            "mp3": (".mp3",),
+            "m4a": (".m4a",),
+            "m4b": (".m4b",),
+            "flac": (".flac",),
+            "ogg": (".ogg", ".oga"),
+            "wav": (".wav",),
+            "wma": (".wma",),
+            "aac": (".aac",),
+            "opus": (".opus",),
+        }
+        for key, extensions in format_extension_map.items():
+            if self.settings.value(f"import/formats/{key}", True, type=bool):
+                selected_extensions.update(extensions)
+        self.allowed_extensions = selected_extensions
+
+        self._reload_scan_settings()
         self._load_collection_options()
 
         self._loading = False
@@ -1579,7 +1565,7 @@ class ImportWindow(AccessibleDialog):
 
     def on_scan(self):
         """Scan the selected folder or file for audiobooks."""
-        self.validator.reload_settings()
+        self._reload_scan_settings()
 
         target_collection_id = self._get_target_collection_id()
         if target_collection_id is None:

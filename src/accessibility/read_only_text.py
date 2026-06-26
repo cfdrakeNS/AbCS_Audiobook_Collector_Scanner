@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QTextEdit,
 )
 
-_RATING_PREFIX_RE = re.compile(r"^(Rating:\s*.+?)\s*-\s*(.+)$", re.DOTALL)
+_RATING_PREFIX_RE = re.compile(r"^(Rating:[^\n]*?)\s*-\s*(.+)$", re.DOTALL)
 _SENTENCE_END_RE = re.compile(r'[.!?]["\']?$')
 _PLOT_LINE_WIDTH = 73
 
@@ -64,18 +64,24 @@ def restore_prose_line_breaks(text: str) -> str:
 
 
 def format_plot_text_for_navigation(text: str) -> str:
-    """Prepare plot text for display without injecting sentence line breaks."""
+    """Prepare plot text: rating on line 1, body as one prose paragraph on line 2."""
     text = restore_prose_line_breaks(text)
     if not text:
         return ""
 
-    rating_match = _RATING_PREFIX_RE.match(text)
-    if rating_match:
-        rating_line = rating_match.group(1).strip()
-        body = normalize_plot_text(rating_match.group(2).strip())
-        return f"{rating_line}\n{body}" if body else rating_line
+    rating_line, body = _split_rating_and_body(text)
+    if rating_line:
+        if body:
+            body = re.sub(r"\s+", " ", body.strip())
+            return f"{rating_line}\n{body}"
+        return rating_line
 
     return text
+
+
+def canonicalize_plot_comments(text: str) -> str:
+    """Normalize plot/comments for database storage and editing."""
+    return format_plot_text_for_navigation(text)
 
 
 def _wrap_at_words(text: str, width: int = _PLOT_LINE_WIDTH) -> list[str]:
@@ -98,13 +104,13 @@ def _wrap_at_words(text: str, width: int = _PLOT_LINE_WIDTH) -> list[str]:
 
 
 def _split_rating_and_body(prose: str) -> tuple[str | None, str]:
-    rating_match = _RATING_PREFIX_RE.match(prose)
-    if rating_match:
-        return rating_match.group(1).strip(), rating_match.group(2).strip()
     if "\n" in prose:
         first_line, _, remainder = prose.partition("\n")
         if first_line.startswith("Rating:"):
             return first_line.strip(), remainder.strip()
+    rating_match = _RATING_PREFIX_RE.match(prose)
+    if rating_match:
+        return rating_match.group(1).strip(), rating_match.group(2).strip()
     return None, prose
 
 
@@ -209,6 +215,7 @@ class PlotLineList(QListWidget):
             self.addItem(item)
         if self.count():
             self.setCurrentRow(0)
+            self.scrollToItem(self.item(0))
         self._resize_to_content()
 
     def _resize_to_content(self, *, min_visible_rows: int = 4, max_visible_rows: int = 10) -> None:

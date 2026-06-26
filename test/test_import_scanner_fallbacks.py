@@ -248,3 +248,46 @@ def test_proper_case_skip_review_suppresses_correction_flag():
 
     assert book["title"] == "The Hobbit"
     assert not any(str(err).startswith("C:") for err in book["errors"])
+
+
+def test_author_equals_title_skipped_when_author_fallback_disabled():
+    book = {
+        "title": "Dead Watch",
+        "author": "Dead Watch",
+        "series": "",
+        "folder": r"F:\Audio Books\John Sandford\Dead Watch",
+        "files": [r"F:\Audio Books\John Sandford\Dead Watch\01 Dead Watch.mp3"],
+        "errors": [],
+    }
+
+    scanner = ImportScanner()
+    scanner.configure(
+        scenario_mode="mass_standard",
+        author_fallback_mode=None,
+        title_fallback_mode=None,
+    )
+    scanner.apply_preferences(book)
+
+    assert book["author"] == "Dead Watch"
+    assert not any(str(err).startswith("F:") for err in book["errors"])
+
+
+def test_nested_title_from_folder_skipped_when_title_fallback_disabled():
+    book = {
+        "title": "unknown",
+        "author": "John Sandford",
+        "series": "",
+        "folder": (
+            r"F:\Audio Books\John Sandford\Lucas Deavenport Series\1- Rules of Prey"
+        ),
+        "files": [
+            r"F:\Audio Books\John Sandford\Lucas Deavenport Series\1- Rules of Prey\01 Rules of Prey.mp3"
+        ],
+        "errors": [],
+    }
+
+    updated = _apply_nested_scenario(book, title_fallback_mode=None)
+
+    assert updated["series"] == "Lucas Deavenport Series"
+    assert updated["title"] == "unknown"
+    assert not any(str(err).startswith("F:") for err in updated["errors"])

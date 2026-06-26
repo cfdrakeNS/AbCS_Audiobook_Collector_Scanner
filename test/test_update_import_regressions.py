@@ -166,6 +166,34 @@ def test_import_warning_filter_excludes_fallback_and_corrected(
     cleanup_window(window)
 
 
+def test_import_scan_reloads_fallback_preferences(
+    qapp, qtbot, temp_db, isolated_qsettings
+):
+    """Each scan should pick up current fallback checkbox values from settings."""
+    scaler = UIScaler(qapp)
+    theme_manager = ThemeManager(qapp)
+    window = ImportWindow(temp_db, scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    settings = QSettings("AbCS", "AudioBookCollector")
+    settings.setValue("import/fallback/author_to_folder", True)
+    settings.setValue("import/fallback/title_to_file", True)
+    window._reload_scan_settings()
+    assert window.author_fallback_to_folder is True
+    assert window.import_scanner.author_fallback_mode == "folder"
+    assert window.import_scanner.title_fallback_mode == "file"
+
+    settings.setValue("import/fallback/author_to_folder", False)
+    settings.setValue("import/fallback/title_to_file", False)
+    window._reload_scan_settings()
+    assert window.author_fallback_to_folder is False
+    assert window.title_fallback_to_file is False
+    assert window.import_scanner.author_fallback_mode is None
+    assert window.import_scanner.title_fallback_mode is None
+
+    cleanup_window(window)
+
+
 def test_import_summary_uses_errors_warnings_label(
     qapp, qtbot, temp_db, isolated_qsettings
 ):

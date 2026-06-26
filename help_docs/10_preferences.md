@@ -35,13 +35,15 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 ### Fallback & Auto Correct (Alt+F)
 
-- **Author fallback to folder** / **Title fallback to file** — fill missing tags from paths.
+- **Author fallback to folder** / **Title fallback to file** — fill missing tags from paths when checked. When unchecked, missing author or title stays missing and import reports an error.
 - **Reader keywords** — detect narrator in comments.
-- **Auto Correct** — four text cleanup options, each with **Apply** and **Skip Review**:
-  - Apply proper case
-  - Trim whitespace
-  - Remove leading punctuation
-  - Remove non-printable characters (accents such as é and ñ are kept)
+- **Auto Correct** — four text cleanup options. Each option is a main checkbox with a **Skip review** checkbox indented below it:
+  - Apply proper case to title and author
+  - Trim extra and leading/trailing whitespace
+  - Remove leading punctuation from title and author
+  - Remove non-printable control characters (accents such as é and ñ are kept)
+
+  Turn on the main checkbox to run that correction during scan. **Skip review** is only available when the main option is checked; it allows auto-add when that correction is the only issue.
 
 ### Validation Rules (Alt+V)
 
@@ -82,7 +84,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 ## Common confusion
 
 **I changed preferences but Import behaved the same.**
-Close the Import window and start a new scan, or reopen Import after saving.
+Save Preferences, then run Import again. Each scan reloads the latest saved settings; you do not need to close and reopen the Import window.
 
 **Restore Defaults vs Save**
 Restore Defaults resets fields in the dialog only until you click **Save**. Press **Save** to write defaults to disk.
