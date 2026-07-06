@@ -44,6 +44,9 @@ def _prepare_window_for_teardown_close(widget):
         widget._clear_dirty()
     if hasattr(widget, "_closing_via_handler"):
         widget._closing_via_handler = True
+    # ImportProgressWindow blocks close while scan is active (modal cancel prompt).
+    if hasattr(widget, "_scan_active"):
+        widget._scan_active = False
 
 
 def _close_widget_for_teardown(widget):

@@ -203,7 +203,7 @@ The following are part of the project but are **not** Python application modules
 | Item | Notes |
 |------|-------|
 | `archive/` | Archived demos, old tests, and retired scripts — not active source |
-| `accessible_pySIde6_Sample/` | Standalone PySide6 accessibility sample project |
+| External: [pyside6-accessible-ui-reference](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference) | Standalone PySide6 accessibility reference (separate GitHub repo) |
 | `build/`, `dist/` | PyInstaller build output |
 | `data/` | SQLite database and backups (runtime data) |
 | `Graphics/` | Icons, splash, and image assets |

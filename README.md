@@ -175,8 +175,9 @@ If you used the original MS Access prototype, export your data to CSV and use **
 
 ### Developer documentation
 
-- [PySide6 Accessibility Patterns and Implementation Reference](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
-- [PySide6 Screen Reader Accessibility Best Practices](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+- [PySide6 Accessibility Patterns and Implementation Reference](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
+- [PySide6 Screen Reader Accessibility Best Practices](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+- Runnable sample app: [pyside6-accessible-ui-reference](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference) — clone the repo, `pip install -r requirements.txt`, then `python main.py`
 
 Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/qa_verification.md](doc/qa_verification.md).
 

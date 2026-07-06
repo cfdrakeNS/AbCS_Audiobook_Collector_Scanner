@@ -164,7 +164,7 @@ Plot text in Book Details and Web Metadata uses a different control — `PlotLin
 
 ## See Also
 
-- `doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md` — sections 10–12
+- https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md — sections 10–12
 - `src/accessibility/read_only_text.py` — `create_accessible_read_only_text`, `PlotLineList`
 - `src/ui/accessible_dialog.py` — base class for all feature dialogs
 - `src/ui/about_dialogue.py` — reference implementation

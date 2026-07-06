@@ -14,7 +14,6 @@ This file provides essential guidance for AI coding agents working on the AbCS (
   - `src/` — Main source code
   - `src/ui/` — All user interface windows/dialogs
   - `src/accessibility/` — Accessibility helpers, patterns, and event logic
-  - `doc/` — Documentation (see below)
 
 ## 2. Build & Test
 - **Run app:** `python src/main.py`
@@ -29,9 +28,10 @@ This file provides essential guidance for AI coding agents working on the AbCS (
   - Block plain Up/Down in editable combos; allow only with `Alt` (see combo anti-noise pattern).
   - Always set accessible names/descriptions for controls and dialogs.
   - Restore focus intentionally after dialogs/operations.
-- **Reference docs:**
-  - [PySide6_Accessibility_Patterns_and_Implementation_Reference.md](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
-  - [PySide6_Screen_Reader_Accessibility_Best_Practices.md](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+- **Reference docs (external sample repo):**
+  - [PySide6_Accessibility_Patterns_and_Implementation_Reference.md](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
+  - [PySide6_Screen_Reader_Accessibility_Best_Practices.md](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+  - Runnable sample: clone [pyside6-accessible-ui-reference](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference) and run `python main.py`
 
 ## 4. Keyboard Shortcuts
 - **F1:** Show help/shortcuts
@@ -59,8 +59,8 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 - [README.md](README.md): Project intro, features, structure, and shortcuts
 - [help_docs/01_overview.md](help_docs/01_overview.md): User workflow guides
 - [TESTING.md](TESTING.md): Automated test guide
-- [doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md](doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md): Code patterns
-- [doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md](doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md): Design principles
+- [PySide6_Accessibility_Patterns_and_Implementation_Reference.md](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md): Code patterns
+- [PySide6_Screen_Reader_Accessibility_Best_Practices.md](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md): Design principles
 
 ---
 
