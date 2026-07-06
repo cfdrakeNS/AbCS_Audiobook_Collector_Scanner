@@ -1378,22 +1378,37 @@ class WebMetadataWindow(AccessibleDialog):
                 # Source is NOT saved to database (display only for legal safety)
 
                 # Validate foreign keys before save (prevent IntegrityError)
+                # and sync denormalized name fields for view-mode refresh
                 if self.book.author_id and self.author_queries:
                     author = self.author_queries.get_by_id(self.book.author_id)
                     if not author:
                         self.book.author_id = None
+                    self.book.author_name = author.name if author else ""
+                else:
+                    self.book.author_name = ""
                 if self.book.series_id and self.series_queries:
                     series = self.series_queries.get_by_id(self.book.series_id)
                     if not series:
                         self.book.series_id = None
+                    self.book.series_name = series.name if series else ""
+                else:
+                    self.book.series_name = ""
                 if self.book.genre_id and self.genre_queries:
                     genre = self.genre_queries.get_by_id(self.book.genre_id)
                     if not genre:
                         self.book.genre_id = None
+                    self.book.genre_name = genre.name if genre else ""
+                else:
+                    self.book.genre_name = ""
                 if self.book.collection_id and self.collection_queries:
-                    collection = self.collection_queries.get_by_id(self.book.collection_id)
+                    collection = self.collection_queries.get_by_id(
+                        self.book.collection_id
+                    )
                     if not collection:
                         self.book.collection_id = None
+                    self.book.collection_name = collection.name if collection else ""
+                else:
+                    self.book.collection_name = ""
 
                 # Save to database
                 try:

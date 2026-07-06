@@ -3,10 +3,12 @@ ID3 Tag reader for audio files.
 Extracts metadata from audio files using mutagen library.
 """
 
+import io
 import os
 import re
+import zipfile
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Tuple
 from mutagen import File as MutagenFile
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
@@ -31,6 +33,9 @@ class AudioFileInfo:
         self.file_format: str = ""
         self.file_path: str = ""
         self.read_error: Optional[str] = None
+        self.embedded_zip_detected: bool = False
+        self.outer_duration_seconds: float = 0.0
+        self.embedded_zip_track_count: int = 0
 
 
 class TagReader:
@@ -179,10 +184,120 @@ class TagReader:
                 # Try generic tag reading
                 self._read_generic_tags(audio, info)
 
+            if isinstance(audio, MP3):
+                self._maybe_correct_embedded_zip_duration(info)
+
         except Exception as e:
             info.read_error = f"Error reading file: {str(e)}"
 
         return info
+
+    @staticmethod
+    def _mp3_id3_end_offset(header: bytes) -> int:
+        """Return byte offset where MP3 audio (or payload) begins after an ID3v2 tag."""
+        if len(header) < 10 or header[:3] != b"ID3":
+            return 0
+        tag_size = (
+            ((header[6] & 0x7F) << 21)
+            | ((header[7] & 0x7F) << 14)
+            | ((header[8] & 0x7F) << 7)
+            | (header[9] & 0x7F)
+        )
+        return 10 + tag_size
+
+    def _find_embedded_zip_offset(self, file_path: str) -> Optional[int]:
+        """Return offset of a ZIP archive embedded immediately after an ID3 tag."""
+        try:
+            with open(file_path, "rb") as handle:
+                header = handle.read(10)
+                if header[:3] != b"ID3":
+                    return None
+                id3_end = self._mp3_id3_end_offset(header)
+                handle.seek(id3_end)
+                signature = handle.read(4)
+            if signature != b"PK\x03\x04":
+                return None
+            return id3_end
+        except OSError:
+            return None
+
+    @staticmethod
+    def _embedded_zip_audio_extensions() -> Tuple[str, ...]:
+        return (".mp3", ".m4a", ".m4b", ".flac", ".ogg", ".oga", ".opus", ".wma")
+
+    def _duration_from_audio_bytes(self, blob: bytes) -> float:
+        """Read duration from in-memory audio bytes."""
+        if not blob:
+            return 0.0
+        try:
+            audio = MutagenFile(io.BytesIO(blob))
+            if audio is not None and hasattr(audio.info, "length"):
+                length = float(audio.info.length)
+                if length > 0:
+                    return length
+        except Exception:
+            pass
+        return 0.0
+
+    def _duration_from_embedded_zip(
+        self, file_path: str, zip_offset: int, bitrate_kbps: int
+    ) -> Tuple[float, int]:
+        """Sum duration of audio files stored inside an embedded ZIP payload."""
+        total_duration = 0.0
+        track_count = 0
+        audio_extensions = self._embedded_zip_audio_extensions()
+
+        try:
+            with open(file_path, "rb") as handle:
+                handle.seek(zip_offset)
+                zip_data = handle.read()
+            archive = zipfile.ZipFile(io.BytesIO(zip_data))
+        except (OSError, zipfile.BadZipFile):
+            return 0.0, 0
+
+        for entry_name in archive.namelist():
+            if not entry_name.lower().endswith(audio_extensions):
+                continue
+            track_count += 1
+            try:
+                blob = archive.read(entry_name)
+            except (KeyError, OSError, zipfile.BadZipFile):
+                continue
+
+            inner_duration = self._duration_from_audio_bytes(blob)
+            if inner_duration > 0:
+                total_duration += inner_duration
+            elif bitrate_kbps > 0:
+                total_duration += (len(blob) * 8) / (bitrate_kbps * 1000)
+
+        return total_duration, track_count
+
+    def _maybe_correct_embedded_zip_duration(self, info: AudioFileInfo) -> None:
+        """Detect ZIP-in-MP3 containers and replace stub duration with inner audio."""
+        if info.file_format != "MP3" or not info.file_path:
+            return
+
+        zip_offset = self._find_embedded_zip_offset(info.file_path)
+        if zip_offset is None:
+            return
+
+        outer_duration = float(info.duration_seconds or 0.0)
+        inner_duration, inner_count = self._duration_from_embedded_zip(
+            info.file_path,
+            zip_offset,
+            int(info.bitrate or 0),
+        )
+        if inner_count <= 0 or inner_duration <= 0:
+            return
+
+        # Ignore coincidental PK signatures unless inner audio is much longer.
+        if inner_duration < max(60.0, outer_duration * 2.0):
+            return
+
+        info.embedded_zip_detected = True
+        info.outer_duration_seconds = outer_duration
+        info.embedded_zip_track_count = inner_count
+        info.duration_seconds = inner_duration
 
     def _read_mp3_tags(self, audio: MP3, info: AudioFileInfo):
         """Read tags from MP3 file."""
@@ -442,6 +557,20 @@ class BookScanner:
         """Initialize book scanner."""
         self.tag_reader = TagReader()
 
+    @staticmethod
+    def _append_embedded_zip_flags(book: Dict[str, Any]) -> None:
+        """Add import correction flag when ZIP-in-MP3 duration was used."""
+        embedded_count = int(book.pop("_embedded_zip_file_count", 0) or 0)
+        if embedded_count <= 0:
+            return
+
+        from src.core.validator import ImportValidator
+
+        ImportValidator.append_flag_once(
+            book,
+            "C: Duration corrected from embedded ZIP audio",
+        )
+
     def scan_folder(
         self,
         folder_path: str,
@@ -571,6 +700,11 @@ class BookScanner:
                     f"{os.path.basename(file_path)}: {info.read_error}"
                 )
 
+            if info.embedded_zip_detected:
+                book["_embedded_zip_file_count"] = (
+                    int(book.get("_embedded_zip_file_count", 0) or 0) + 1
+                )
+
         # Convert to list and finalize
         result = []
         for book in books.values():
@@ -580,6 +714,7 @@ class BookScanner:
             )
             del book["comments"]
             del book["_comment_keys"]
+            self._append_embedded_zip_flags(book)
 
             # Convert duration to hours/minutes
             total_minutes = int(book["total_duration"] / 60)
@@ -660,6 +795,10 @@ class BookScanner:
         # Add error if present
         if info.read_error:
             book["errors"].append(f"{file_name}: {info.read_error}")
+
+        if info.embedded_zip_detected:
+            book["_embedded_zip_file_count"] = 1
+        self._append_embedded_zip_flags(book)
 
         # Convert duration to hours/minutes
         total_minutes = int(book["total_duration"] / 60)

@@ -1247,7 +1247,11 @@ class BookDetailsWindow(AccessibleDialog):
                 if hasattr(widget, "setFocus"):
                     callback_map[attr] = lambda w=widget: w.setFocus()
         # Add button callbacks that trigger actions (not just focus)
-        callback_map["get_web_details_button"] = self.on_get_web_details
+        callback_map["get_web_details_button"] = (
+            lambda: self.on_get_web_details()
+            if self.get_web_details_button.isVisible()
+            else None
+        )
         callback_map["edit_button"] = self.on_edit_mode
         # Add focus routing for view labels (route to combos when labels are hidden in edit mode)
         callback_map["author_label_display"] = self._focus_author
@@ -1468,7 +1472,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.new_button.setVisible(not save_active)
         self.delete_button.setVisible((not self.is_new) and (not save_active))
         self.save_button.setVisible(save_active)
-        # Get Web Info: show for existing books, hide for new books and in edit mode
+        # Get Web Info: view mode only for saved books (not new or update/edit)
         self.get_web_details_button.setVisible(not self.is_new and not save_active)
         # Update button: hide for new books, hide in edit mode, show in view mode for existing
         self.edit_button.setVisible(not self.is_new and not save_active)

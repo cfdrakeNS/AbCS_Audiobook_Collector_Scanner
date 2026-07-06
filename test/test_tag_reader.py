@@ -1,5 +1,6 @@
 """Unit tests for TagReader comment parsing and tag helper logic."""
 
+import os
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -159,3 +160,130 @@ def test_read_file_delegates_to_mp3_reader(reader, tmp_path, monkeypatch):
     assert info.year == 2019
     assert info.duration_seconds == 125.5
     assert info.bitrate == 192
+
+
+def _synchsafe_size(size: int) -> bytes:
+    return bytes(
+        [
+            (size >> 21) & 0x7F,
+            (size >> 14) & 0x7F,
+            (size >> 7) & 0x7F,
+            size & 0x7F,
+        ]
+    )
+
+
+def _make_id3_header(body_size: int = 0) -> bytes:
+    return b"ID3\x03\x00\x00" + _synchsafe_size(body_size)
+
+
+def test_mp3_id3_end_offset_empty_tag(reader):
+    header = _make_id3_header(0)
+    assert reader._mp3_id3_end_offset(header) == 10
+
+
+def test_find_embedded_zip_offset_after_id3(reader, tmp_path):
+    import io
+    import zipfile
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as archive:
+        archive.writestr("chapter.mp3", b"not-real-mp3")
+    zip_bytes = zip_buffer.getvalue()
+
+    path = tmp_path / "container.mp3"
+    path.write_bytes(_make_id3_header(0) + zip_bytes)
+
+    assert reader._find_embedded_zip_offset(str(path)) == 10
+
+
+def test_maybe_correct_embedded_zip_duration_ignores_small_inner(reader, tmp_path):
+    path = tmp_path / "container.mp3"
+    path.write_bytes(_make_id3_header(0) + b"PK\x03\x04")
+
+    info = AudioFileInfo()
+    info.file_path = str(path)
+    info.file_format = "MP3"
+    info.duration_seconds = 12.0
+    info.bitrate = 64
+
+    reader._maybe_correct_embedded_zip_duration(info)
+
+    assert not info.embedded_zip_detected
+    assert info.duration_seconds == 12.0
+
+
+def test_maybe_correct_embedded_zip_duration_applies(reader, tmp_path, monkeypatch):
+    path = tmp_path / "container.mp3"
+    path.write_bytes(_make_id3_header(0) + b"PK\x03\x04")
+
+    monkeypatch.setattr(reader, "_find_embedded_zip_offset", lambda _path: 10)
+    monkeypatch.setattr(
+        reader,
+        "_duration_from_embedded_zip",
+        lambda _path, _offset, _bitrate: (7200.0, 12),
+    )
+
+    info = AudioFileInfo()
+    info.file_path = str(path)
+    info.file_format = "MP3"
+    info.duration_seconds = 10.0
+    info.bitrate = 64
+
+    reader._maybe_correct_embedded_zip_duration(info)
+
+    assert info.embedded_zip_detected
+    assert info.duration_seconds == 7200.0
+    assert info.outer_duration_seconds == 10.0
+    assert info.embedded_zip_track_count == 12
+
+
+def test_book_scanner_adds_embedded_zip_flags(tmp_path, monkeypatch):
+    from src.core.tag_reader import BookScanner
+
+    folder = tmp_path / "book"
+    folder.mkdir()
+    first = folder / "01.mp3"
+    second = folder / "02.mp3"
+    first.write_bytes(b"stub")
+    second.write_bytes(b"stub")
+
+    def _fake_read(file_path: str) -> AudioFileInfo:
+        info = AudioFileInfo()
+        info.file_path = file_path
+        info.album = "Sample Book"
+        info.file_format = "MP3"
+        info.duration_seconds = 3600.0
+        info.bitrate = 64
+        info.embedded_zip_detected = True
+        info.embedded_zip_track_count = 5
+        return info
+
+    scanner = BookScanner()
+    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+
+    books = scanner.scan_folder(str(folder), include_subfolders=False)
+
+    assert len(books) == 1
+    book = books[0]
+    assert book["time_hours"] == 2
+    assert book["time_minutes"] == 0
+    assert any("Duration corrected from embedded ZIP audio" in err for err in book["errors"])
+    assert not any(str(err).strip().upper().startswith("W:") for err in book["errors"])
+
+
+@pytest.mark.skipif(
+    not os.path.exists(r"E:\test standard import\Dean Koontz\Whispers"),
+    reason="Whispers sample folder not available",
+)
+def test_whispers_embedded_zip_duration_correction():
+    from src.core.tag_reader import BookScanner
+
+    folder = r"E:\test standard import\Dean Koontz\Whispers"
+    books = BookScanner().scan_folder(folder, include_subfolders=False)
+
+    assert len(books) == 1
+    book = books[0]
+    total_minutes = (book["time_hours"] * 60) + book["time_minutes"]
+    assert total_minutes >= 1000
+    assert any("Duration corrected from embedded ZIP audio" in err for err in book.get("errors", []))
