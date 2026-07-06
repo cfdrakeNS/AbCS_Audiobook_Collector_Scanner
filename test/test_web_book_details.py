@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from src.accessibility.read_only_text import plot_text_equivalent
 from src.accessibility.scaling import UIScaler
 from src.accessibility.theme_manager import ThemeManager
 from src.database.models import Book
@@ -76,7 +77,7 @@ def test_web_metadata_loads_book_values(window, sample_book):
     assert window.author_edit.text() == sample_book.author_name
     assert window.year_edit.text() == str(sample_book.year)
     assert window.genre_edit.text() == sample_book.genre_name
-    assert window.plot_edit.toPlainText() == sample_book.comments
+    assert plot_text_equivalent(window.plot_edit.plot_text(), sample_book.comments)
 
 
 def test_update_fields_with_web_data_tracks_differences(window):
@@ -101,7 +102,7 @@ def test_update_fields_with_web_data_tracks_differences(window):
     assert "plot" in window.field_differences
     assert window.title_web_edit.text() == "The Great Gatsby (Annotated)"
     assert window.author_web_edit.text() == "Francis Scott Fitzgerald"
-    assert window.plot_edit.toPlainText().startswith("A portrait of wealth")
+    assert window.plot_edit.plot_text().startswith("A portrait of wealth")
     assert window.rating_edit.text().startswith("4.2")
 
 
@@ -215,7 +216,7 @@ def test_plot_preserved_when_web_has_no_plot(window, sample_book):
             "author": sample_book.author_name,
         }
     )
-    assert window.plot_edit.toPlainText() == sample_book.comments
+    assert plot_text_equivalent(window.plot_edit.plot_text(), sample_book.comments)
 
 
 def test_web_status_message_includes_no_plot(window):
