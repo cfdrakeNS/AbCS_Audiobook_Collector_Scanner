@@ -2345,12 +2345,13 @@ class BookDetailsWindow(AccessibleDialog):
             else:
                 fetch_errors = (web_data or {}).get("_fetch_errors", [])
                 if fetch_errors:
-                    status_msg = "Web fetch failed: unable to reach web sources."
-                    if fetch_errors:
-                        status_msg = f"{status_msg} {fetch_errors[0]}"
+                    from src.web.web_book_api import format_web_fetch_status_message
+
+                    status_msg = format_web_fetch_status_message(fetch_errors)
                     no_web_text = (
                         "Unable to reach one or more web sources.\n\n"
                         + "\n".join(f"  \u2022 {e}" for e in fetch_errors[:3])
+                        + "\n\nTry again later or use Re-fetch (Alt+F) in the web details window."
                     )
                 elif cleaned_web_data:
                     status_msg = "No new web information found for this book."

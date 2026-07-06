@@ -395,6 +395,50 @@ def test_plot_is_adequate_threshold(api):
     assert api._plot_is_adequate("x" * 80)
 
 
+def test_rejects_non_book_song_plot(api):
+    song_plot = (
+        '"Blue on Black" is a song by American blues rock group Kenny Wayne Shepherd Band. '
+        "Written by Shepherd with Mark Selby and Tia Sillers, it was originally released on "
+        "their second studio album, Trouble Is... (1997). In 1998, the song was released as a "
+        "single and reached the top position on the US Billboard Mainstream Rock Tracks chart."
+    )
+    assert api._is_non_book_plot(song_plot)
+    metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
+    assert not api._apply_plot_to_metadata(
+        metadata,
+        song_plot,
+        "wikipedia",
+        "Blue On Black",
+        "Michael Connelly",
+    )
+    assert "plot" not in metadata or not metadata.get("plot")
+
+
+def test_wikipedia_plot_requires_author_or_book_context(api):
+    metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
+    unrelated = "A" * 120
+    assert not api._apply_plot_to_metadata(
+        metadata,
+        unrelated,
+        "wikipedia",
+        "Blue On Black",
+        "Michael Connelly",
+    )
+    metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
+    book_plot = (
+        "Blue On Black is a novella by Michael Connelly featuring detective Harry Bosch "
+        "in a case involving a mysterious death tied to a jazz club."
+    )
+    assert api._apply_plot_to_metadata(
+        metadata,
+        book_plot,
+        "wikipedia",
+        "Blue On Black",
+        "Michael Connelly",
+    )
+    assert metadata["plot"] == book_plot
+
+
 def test_strip_html_removes_tags(api):
     raw = "<p>Hello <b>world</b> &amp; friends</p>"
     assert "<" not in api._strip_html(raw)
@@ -409,7 +453,10 @@ def test_enrich_metadata_plot_fills_from_wikipedia_when_ol_plot_short(api):
         "plot": "Short.",
         "open_library_work_key": "/works/OL123W",
     }
-    wiki_text = "A" * 120
+    wiki_text = (
+        "Pride and Prejudice is a novel by Jane Austen that follows Elizabeth Bennet "
+        "as she navigates issues of manners, upbringing, and marriage in Georgian England."
+    )
     with patch.object(api, "_get_open_library_work_fields", return_value={"description": "Tiny"}):
         with patch.object(api, "_fetch_wikipedia_rest_summary", return_value=""):
             with patch.object(api, "_fetch_plot_from_wikipedia", return_value=wiki_text):
@@ -552,7 +599,10 @@ def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
         "plot": "Short.",
         "open_library_work_key": "/works/OL123W",
     }
-    rest_text = "B" * 120
+    rest_text = (
+        "Pride and Prejudice is a novel by Jane Austen that follows Elizabeth Bennet "
+        "as she navigates issues of manners, upbringing, and marriage in Georgian England."
+    )
     with patch.object(
         api, "_get_open_library_work_fields", return_value={"description": "Tiny"}
     ):
@@ -563,7 +613,8 @@ def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
                 api._enrich_metadata_plot(
                     metadata, "Pride And Prejudice", "Jane Austen"
                 )
-    rest_mock.assert_called_once()
+    rest_mock.assert_called()
+    assert rest_mock.call_args_list[0].args[0] == "Pride and Prejudice Jane Austen novel"
     wiki_mock.assert_not_called()
     assert metadata["plot"] == rest_text
     assert metadata["plot_source"] == "wikipedia"
@@ -642,3 +693,71 @@ def test_google_isbn_lookup_returns_series_info(api):
     assert result is not None
     assert result["series"] == "The Stormlight Archive"
     assert result["series_number"] == "1"
+
+
+def test_dedupe_fetch_errors_keeps_one_per_source():
+    from src.web.web_book_api import _dedupe_fetch_errors
+
+    errors = [
+        "google_books: HTTP Error 429: Too Many Requests",
+        "google_books: HTTP Error 429: Too Many Requests",
+        "open_library: timed out",
+    ]
+    assert _dedupe_fetch_errors(errors) == [
+        "google_books: HTTP Error 429: Too Many Requests",
+        "open_library: timed out",
+    ]
+
+
+def test_format_web_fetch_status_message_rate_limit():
+    from src.web.web_book_api import format_web_fetch_status_message
+
+    msg = format_web_fetch_status_message(
+        ["google_books: HTTP Error 429: Too Many Requests"]
+    )
+    assert "rate limited" in msg.lower()
+    assert "re-fetch" in msg.lower()
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
+def test_google_books_429_surfaces_fetch_errors(_ol_mock, _wd_mock, api):
+    import urllib.error
+
+    def raise_429(*_args, **_kwargs):
+        raise urllib.error.HTTPError(
+            "https://www.googleapis.com/books/v1/volumes",
+            429,
+            "Too Many Requests",
+            {},
+            None,
+        )
+
+    with patch.object(WebBookAPI, "_fetch_from_google_books", side_effect=raise_429):
+        result = api._search_metadata_sources(
+            "Pride and Prejudice",
+            "Jane Austen",
+            refresh=0,
+            require_author_match=True,
+        )
+    assert result is not None
+    assert result.get("_no_result") is True
+    assert any("google_books" in err for err in result.get("_fetch_errors", []))
+
+
+@patch("src.web.web_book_api.urllib.request.urlopen")
+def test_open_library_search_sends_user_agent(urlopen_mock, api):
+    class FakeResponse:
+        def read(self):
+            return json.dumps({"docs": []}).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    urlopen_mock.return_value = FakeResponse()
+    api._fetch_from_open_library("Pride and Prejudice", "Jane Austen")
+    sent_request = urlopen_mock.call_args.args[0]
+    assert sent_request.get_header("User-agent") == "AbCS-Audiobook-Collector/1.0"

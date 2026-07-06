@@ -895,7 +895,9 @@ class WebMetadataWindow(AccessibleDialog):
             else:
                 errors = (new_data or {}).get("_fetch_errors", [])
                 if errors:
-                    status_msg = f"Re-fetch failed: {errors[0]}"
+                    from src.web.web_book_api import format_web_fetch_status_message
+
+                    status_msg = format_web_fetch_status_message(errors)
                 else:
                     status_msg = "Re-fetch: no data found."
         except Exception as exc:

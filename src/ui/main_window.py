@@ -3770,17 +3770,23 @@ class MainWindow(QMainWindow):
         # Build "No Web Data Found" message: distinguish network errors from clean misses.
         fetch_errors = (web_data or {}).get("_fetch_errors", [])
         if fetch_errors:
+            from src.web.web_book_api import format_web_fetch_status_message
+
             no_data_text = (
                 "Unable to reach one or more web sources.\n\n"
                 + "\n".join(f"  • {e}" for e in fetch_errors[:3])
+                + "\n\nTry again later or use Re-fetch (Alt+F) in the web details window."
             )
+            status_msg = format_web_fetch_status_message(fetch_errors)
         elif cleaned_web_data:
             no_data_text = (
                 "Web sources were searched but no new information was found "
                 "for this book. Existing metadata is already up to date."
             )
+            status_msg = "No new web information found for this book."
         else:
             no_data_text = "No information found for this book in any web source."
+            status_msg = "No web data found for this book."
         if last_error:
             no_data_text = f"{no_data_text}\n\nLast error: {last_error}"
 
@@ -3792,9 +3798,7 @@ class MainWindow(QMainWindow):
             text=no_data_text,
         )
 
-        self.set_status(
-            "No new web information found for this book.", timeout_ms=3000
-        )
+        self.set_status(status_msg, announce=True, timeout_ms=5000)
         # Restore focus even when no web data is found
         self.table.setFocus()
 
