@@ -34,6 +34,9 @@ import ctypes
 import threading
 import importlib
 
+# Held for process lifetime so the OS lock is not released early.
+_instance_lock_fd = None
+
 
 def _show_native_message(title: str, message: str, auto_close_seconds: float = 3.0):
     """Show a Windows-native message box that auto-closes after a delay."""
@@ -62,6 +65,75 @@ def _show_native_message(title: str, message: str, auto_close_seconds: float = 3
         MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND,
     )
     timer.cancel()
+
+
+def _acquire_instance_lock() -> bool:
+    """Try to become the sole AbCS instance via an exclusive lockfile.
+
+    Returns True if this process acquired the lock (first instance).
+    Returns False if another instance already holds the lock.
+    Returns True on unexpected errors so lock failures never block startup.
+    """
+    global _instance_lock_fd
+    try:
+        from src.app_paths import get_user_data_dir
+
+        lock_path = get_user_data_dir() / "abcs.lock"
+        fd = open(lock_path, "a+b")
+
+        # msvcrt.locking requires at least one byte in the lock region.
+        fd.seek(0, 2)
+        if fd.tell() == 0:
+            fd.write(b"0")
+            fd.flush()
+        fd.seek(0)
+
+        if sys.platform.startswith("win"):
+            import msvcrt
+
+            try:
+                msvcrt.locking(fd.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError:
+                fd.close()
+                return False
+        else:
+            import fcntl
+
+            try:
+                fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except (OSError, BlockingIOError):
+                fd.close()
+                return False
+
+        _instance_lock_fd = fd
+        return True
+    except Exception:
+        return True
+
+
+def _show_already_running():
+    """Inform the user that AbCS is already open, then return for exit."""
+    title = "AbCS — Already Running"
+    message = (
+        "AbCS is already running.\n\n"
+        "Only one copy of AbCS can be open at a time."
+    )
+    if sys.platform.startswith("win"):
+        _show_native_message(title, message, auto_close_seconds=10.0)
+        return
+
+    from PySide6.QtWidgets import QMessageBox
+
+    qt_app = QApplication.instance() or QApplication(sys.argv)
+    box = QMessageBox()
+    box.setWindowTitle(title)
+    box.setText(message)
+    box.setIcon(QMessageBox.Icon.Information)
+    box.setAccessibleName(title)
+    box.setAccessibleDescription(message)
+    box.exec()
+    # Keep qt_app referenced so it is not collected before exec returns.
+    _ = qt_app
 
 
 def _check_trial_expiry():
@@ -325,6 +397,9 @@ class AbCSApplication:
 def main():
     """Application entry point."""
     _check_trial_expiry()
+    if not _acquire_instance_lock():
+        _show_already_running()
+        sys.exit(1)
     from src.accessibility.linux_qt_compat import install_linux_qt_compat
 
     install_linux_qt_compat()
