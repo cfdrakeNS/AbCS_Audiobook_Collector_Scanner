@@ -7,7 +7,6 @@ import time
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from PySide6.QtWidgets import (
-    QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
@@ -21,6 +20,8 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
 )
+
+from src.ui.accessible_dialog import AccessibleDialog
 
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
@@ -37,11 +38,14 @@ from src.accessibility.accessible_events import (
 )
 
 
-class ImportProgressWindow(QDialog):
+class ImportProgressWindow(AccessibleDialog):
     """Modeless progress window for long-running import scans."""
 
     # This window intentionally uses local shortcuts only (F1, Escape, Alt+/).
     ALLOWED_ALT_LETTERS = set()
+
+    # Modeless: do not steal focus back each time the window is shown/updated.
+    _announce_focus_on_show = False
 
     def __init__(self, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)

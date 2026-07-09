@@ -329,7 +329,9 @@ class WebMetadataWindow(AccessibleDialog):
         self.title_web_edit.setReadOnly(True)
         self.title_checkbox = QCheckBox()
         self.title_checkbox.setAccessibleName("Keep Web Title")
-        self.title_checkbox.setAccessibleDescription("Apply web title to current book")
+        self.title_checkbox.setAccessibleDescription(
+            "Checked: web title will be saved. Unchecked: current title is kept."
+        )
         self.title_checkbox.setChecked(False)
         title_row = create_two_column_row(
             "Title:", self.title_edit, self.title_web_edit, self.title_checkbox
@@ -350,7 +352,7 @@ class WebMetadataWindow(AccessibleDialog):
         self.author_checkbox = QCheckBox()
         self.author_checkbox.setAccessibleName("Keep Web Author")
         self.author_checkbox.setAccessibleDescription(
-            "Apply web author to current book"
+            "Checked: web author will be saved. Unchecked: current author is kept."
         )
         self.author_checkbox.setChecked(False)
         author_row = create_two_column_row(
@@ -372,7 +374,9 @@ class WebMetadataWindow(AccessibleDialog):
         self.year_web_edit.setReadOnly(True)
         self.year_checkbox = QCheckBox()
         self.year_checkbox.setAccessibleName("Keep Web Year")
-        self.year_checkbox.setAccessibleDescription("Apply web year to current book")
+        self.year_checkbox.setAccessibleDescription(
+            "Checked: web year will be saved. Unchecked: current year is kept."
+        )
         self.year_checkbox.setChecked(False)
         # Removed setShortcut to avoid conflict with shortcut manager
         year_row = create_two_column_row(
@@ -448,7 +452,7 @@ class WebMetadataWindow(AccessibleDialog):
         self.series_checkbox = QCheckBox()
         self.series_checkbox.setAccessibleName("Keep Web Series")
         self.series_checkbox.setAccessibleDescription(
-            "Apply web series to current book"
+            "Checked: web series will be saved. Unchecked: current series is kept."
         )
         self.series_checkbox.setChecked(False)
         self.series_checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -475,7 +479,9 @@ class WebMetadataWindow(AccessibleDialog):
         self.genre_web_edit.setReadOnly(True)
         self.genre_checkbox = QCheckBox()
         self.genre_checkbox.setAccessibleName("Keep Web Genre")
-        self.genre_checkbox.setAccessibleDescription("Apply web genre to current book")
+        self.genre_checkbox.setAccessibleDescription(
+            "Checked: web genre will be saved. Unchecked: current genre is kept."
+        )
         self.genre_checkbox.setChecked(False)
         genre_row = create_two_column_row(
             "Genre:", self.genre_edit, self.genre_web_edit, self.genre_checkbox

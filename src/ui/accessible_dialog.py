@@ -27,7 +27,21 @@ without creating an accessibility parent chain.
 import sys
 
 from PySide6.QtWidgets import QDialog
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, qVersion
+
+
+def _focus_refire_delay_ms() -> int:
+    """Return the focus-refire delay suited to the running Qt version.
+
+    Qt 6.11 improved MSAA/UIA top-level window and focus registration on
+    Windows, so the conservative 300 ms guard can be halved.  Older Qt
+    builds still need the full 300 ms.
+    """
+    try:
+        major, minor, _ = (int(x) for x in qVersion().split(".")[:3])
+    except Exception:
+        return 300
+    return 100 if (major, minor) >= (6, 11) else 300
 
 
 def _set_win32_owner(child_hwnd: int, owner_hwnd: int) -> None:
@@ -70,15 +84,17 @@ class AccessibleDialog(QDialog):
 
     def showEvent(self, event):
         super().showEvent(event)
-        # Re-fire a focus event 300 ms after opening.  Subclasses typically
-        # set focus via singleShot(0), which fires before JAWS has registered
-        # the new window.  This later shot ensures JAWS receives the focus
-        # event while the dialog is already in its window list, so Insert+T
-        # reads the correct title without the user needing to Tab first.
+        # Re-fire a focus event after opening so JAWS/NVDA receive it once
+        # the dialog is registered in the AT window list and Insert+T reads
+        # the correct title without the user needing to Tab first.
+        # The delay is 100 ms on Qt 6.11+ (improved window/focus registration)
+        # and 300 ms on older Qt builds.
         # Modeless utility windows (e.g. import progress) set
         # _announce_focus_on_show = False to avoid stealing focus repeatedly.
         if getattr(self, "_announce_focus_on_show", True):
-            QTimer.singleShot(300, self._refire_focus_for_screen_reader)
+            QTimer.singleShot(
+                _focus_refire_delay_ms(), self._refire_focus_for_screen_reader
+            )
 
     def _refire_focus_for_screen_reader(self):
         if not self.isVisible():
