@@ -4085,7 +4085,16 @@ class MainWindow(QMainWindow):
         self.table.setFocus(Qt.TabFocusReason)
 
     def open_book_details(self, book: Book):
-        """Open book details window."""
+        """Open book details window on the next event-loop tick.
+
+        Defers creation until after the current key event (e.g. Enter on the
+        table) finishes so JAWS/NVDA do not read the main window title before
+        Book Details appears.
+        """
+        QTimer.singleShot(0, lambda b=book: self._open_book_details_modal(b))
+
+    def _open_book_details_modal(self, book: Book):
+        """Show Book Details modally and restore table focus when closed."""
         sort_order = self._active_sort_display_text()
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
