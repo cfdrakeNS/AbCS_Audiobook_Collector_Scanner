@@ -1,5 +1,5 @@
 # AbCS - Audio Book Collector Scanner
-# Requirements for Python 3.10+ (PySide6 6.11+ minimum)
+# Requirements for Python 3.10+ (PySide6 6.11+ minimum; tested on Python 3.14.6)
 #
 # Linux system packages (apt — NOT installable via pip):
 #   sudo apt install -y libxcb-cursor0 libxkbcommon-x11-0 libgl1 libegl1
@@ -25,7 +25,10 @@ jinja2>=3.0.0
 pandas>=2.0.0
 openpyxl>=3.1.0
 odfpy>=1.4.1
-numpy<2.0
+# numpy 2.x is required for Python 3.14+ (1.x has no 3.14 wheels).
+# numpy 2.x is also safe on Python 3.12/3.13 — AbCS uses only pandas
+# public API (pd.notna, pd.read_csv, pd.read_excel) which is compatible.
+numpy>=1.26
 
 # Image processing
 Pillow>=10.0.0
