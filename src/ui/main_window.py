@@ -4095,6 +4095,10 @@ class MainWindow(QMainWindow):
 
     def _open_book_details_modal(self, book: Book):
         """Show Book Details modally and restore table focus when closed."""
+        from src.debug.open_timing import log, mark_origin
+
+        mark_origin()
+        log("_open_book_details_modal start")
         sort_order = self._active_sort_display_text()
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
@@ -4104,6 +4108,7 @@ class MainWindow(QMainWindow):
                 current_index = i
                 break
 
+        log("before BookDetailsWindow()")
         details = BookDetailsWindow(
             self.db,
             self.scaler,
@@ -4113,7 +4118,10 @@ class MainWindow(QMainWindow):
             current_index=current_index,
             parent=self,
         )
+        log("after BookDetailsWindow() (__init__ complete)")
+        log("before exec()")
         details.exec()
+        log("after exec() (dialog closed)")
 
         # bd#7: After dialog closes, get the last viewed book_id
         # The dialog object still exists after exec() returns (just hidden),

@@ -263,7 +263,10 @@ class BookDetailsWindow(AccessibleDialog):
             parent: Parent widget
             current_collection_id: Current collection ID (if provided and new book)
         """
+        from src.debug.open_timing import log
+
         # Initialize book details window
+        log("BookDetailsWindow.__init__ start")
         super().__init__(parent)
         self.setAttribute(Qt.WA_NativeWindow, True)
         self.setWindowModality(Qt.ApplicationModal)
@@ -304,7 +307,9 @@ class BookDetailsWindow(AccessibleDialog):
         self.collection_queries = CollectionQueries(db)
 
         # Setup UI
+        log("before setup_ui()")
         self.setup_ui()
+        log("after setup_ui()")
         self.apply_visual_tooltips()
         self.apply_control_styles()  # bd#1: Uniform control heights
         self.disable_hover_highlight()
@@ -314,22 +319,29 @@ class BookDetailsWindow(AccessibleDialog):
         # New books: load combos immediately (user will edit)
         # Existing books: show labels, load combos on demand via Edit button
         if self.is_new:
+            log("before load_combos() (new book)")
             # New book: load combos and show them immediately
             self.load_combos()
             self._hide_view_labels()
+            log("after load_combos() (new book)")
         else:
+            log("before _show_view_labels()")
             # Existing book: view mode - hide combos, show labels (fast!)
             self._show_view_labels()
+            log("after _show_view_labels()")
 
         # Load book data (view mode uses labels, edit mode uses combos)
         if not self.is_new:
+            log("before load_book_data()")
             self.load_book_data()
+            log("after load_book_data()")
         else:
             self._reset_new_fields()
 
         # bd#6: Setup dirty tracking and initial save button visibility
         self._setup_dirty_tracking()
         self._update_save_button_visibility()
+        log("BookDetailsWindow.__init__ end")
 
         # Window settings — accessible name helps JAWS identify this dialog
         # before focus moves, instead of reading the main window title first.
@@ -346,8 +358,13 @@ class BookDetailsWindow(AccessibleDialog):
 
     def showEvent(self, event):
         """Announce dialog open; let AccessibleDialog handle focus refire."""
+        from src.debug.open_timing import log
+
+        log("showEvent start (window visible to screen readers)")
         super().showEvent(event)
+        log("after AccessibleDialog.showEvent (focus refire scheduled)")
         announce_dialog_opened(self, self.accessibleName() or self.windowTitle())
+        log("after announce_dialog_opened()")
         if self.focusWidget() is None:
             QTimer.singleShot(0, self.title_edit.setFocus)
 
