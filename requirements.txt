@@ -1,5 +1,5 @@
 # AbCS - Audio Book Collector Scanner
-# Requirements for Python 3.9+
+# Requirements for Python 3.10+ (PySide6 6.11+ minimum)
 #
 # Linux system packages (apt — NOT installable via pip):
 #   sudo apt install -y libxcb-cursor0 libxkbcommon-x11-0 libgl1 libegl1
@@ -9,10 +9,10 @@
 # fails with "Could not load the Qt platform plugin xcb".
 
 # GUI Framework
-# PySide6 6.7+ Qt builds require SSE4.2/POPCNT on x86_64.
-# Keep Python <=3.12 on a compatible Qt line for older CPUs.
-PySide6>=6.6.0,<6.7; python_version < "3.13"
-PySide6>=6.10.0; python_version >= "3.13"
+# PySide6 6.11+ requires Python 3.10+ and Qt builds require SSE4.2/POPCNT on x86_64.
+# 6.11 brings Qt 6.11 accessibility improvements: top-level window/focus fixes (Windows),
+# Orientation attribute for sliders, Switch role, and AT-SPI Collection (Linux/Orca).
+PySide6>=6.11.1
 
 # Audio metadata reading
 mutagen>=1.47.0
