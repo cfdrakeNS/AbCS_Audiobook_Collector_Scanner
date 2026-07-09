@@ -27,21 +27,23 @@ without creating an accessibility parent chain.
 import sys
 
 from PySide6.QtWidgets import QDialog
-from PySide6.QtCore import Qt, QTimer, qVersion
+from PySide6.QtCore import Qt, QTimer
 
 
 def _focus_refire_delay_ms() -> int:
-    """Return the focus-refire delay suited to the running Qt version.
+    """Return the focus-refire delay in milliseconds.
 
-    Qt 6.11 improved MSAA/UIA top-level window and focus registration on
-    Windows, so the conservative 300 ms guard can be halved.  Older Qt
-    builds still need the full 300 ms.
+    300 ms is the minimum safe value for JAWS and NVDA.  Reducing below this
+    causes JAWS to receive the clearFocus/setFocus pair while still in its own
+    window-open reading sequence, which triggers a spurious full-window read
+    (the same behaviour as Insert+B).  It also causes NVDA Alt+/ speech to be
+    interrupted when the timer fires during a status bar announcement.
+
+    Qt 6.11 improved MSAA/UIA top-level window registration on Windows, but
+    the refire uses focus events (not registration), so the improvement does
+    not reduce the safe minimum delay.  Keep 300 ms unconditionally.
     """
-    try:
-        major, minor, _ = (int(x) for x in qVersion().split(".")[:3])
-    except Exception:
-        return 300
-    return 100 if (major, minor) >= (6, 11) else 300
+    return 300
 
 
 def _set_win32_owner(child_hwnd: int, owner_hwnd: int) -> None:
