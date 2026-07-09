@@ -28,6 +28,7 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.accessible_events import (
     announce_status_message,
+    announce_dialog_opened,
     announce_dialog_closed,
     configure_status_bar_accessibility,
     read_status_bar_message,
@@ -330,27 +331,25 @@ class BookDetailsWindow(AccessibleDialog):
         self._setup_dirty_tracking()
         self._update_save_button_visibility()
 
-        # Window settings (title bar only; no accessible name/description noise for SR)
+        # Window settings — accessible name helps JAWS identify this dialog
+        # before focus moves, instead of reading the main window title first.
         title = "New Book" if self.is_new else "Book Details"
         self.setWindowTitle(title)
-        self.setAccessibleName("")
-        self.setAccessibleDescription("")
+        self.setAccessibleName(title)
+        self.setAccessibleDescription(
+            "View and edit audiobook details"
+            if not self.is_new
+            else "Enter details for a new audiobook"
+        )
         self.resize(850, 650)
         self._show_idle_status(announce=False)
-        QTimer.singleShot(0, self.title_edit.setFocus)
 
     def showEvent(self, event):
-        """Ensure this dialog remains the active foreground window."""
+        """Announce dialog open; let AccessibleDialog handle focus refire."""
         super().showEvent(event)
-        QTimer.singleShot(0, self._ensure_foreground_window)
-
-    def _ensure_foreground_window(self):
-        """Raise and activate the dialog for reliable screen-reader title reading."""
-        self.raise_()
-        self.activateWindow()
-        current_focus = self.focusWidget()
-        if current_focus is None:
-            self.title_edit.setFocus(Qt.TabFocusReason)
+        announce_dialog_opened(self, self.accessibleName() or self.windowTitle())
+        if self.focusWidget() is None:
+            QTimer.singleShot(0, self.title_edit.setFocus)
 
     def install_focus_filters(self):
         """
