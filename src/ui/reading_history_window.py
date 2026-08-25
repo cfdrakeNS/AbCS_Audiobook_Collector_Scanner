@@ -1,0 +1,1026 @@
+"""
+Reading History Window - Audio Book Collection
+Shows reading statistics and history with full accessibility support.
+"""
+
+from PySide6.QtWidgets import (
+    QDialog,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidget,
+    QTableWidgetItem,
+    QLabel,
+    QPushButton,
+    QDateEdit,
+    QComboBox,
+    QGroupBox,
+    QHeaderView,
+    QAbstractItemView,
+    QStatusBar,
+    QMessageBox,
+    QTabWidget,
+    QTextEdit,
+)
+from PySide6.QtCore import QEvent
+from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from src.ui.accessible_dialog import AccessibleDialog
+
+from src.database import BookQueries, ReadingQueries
+from src.accessibility.scaling import UIScaler
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
+    build_card_group_box_style,
+    build_modern_button_style,
+    build_table_polish_style,
+)
+
+
+class ReadingHistoryWindow(AccessibleDialog):
+    """Reading History window with statistics and history table."""
+
+    # Alt+Key filtering for accessibility
+    ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
+
+    def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+        super().__init__(parent)
+        from src.accessibility.icon_helper import get_app_icon
+
+        self.setWindowIcon(get_app_icon())
+
+    # Alt+Key filtering for accessibility
+    ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
+
+    def eventFilter(self, source, event):
+        # Tab/Shift+Tab on any table: move focus out of table, not to next cell
+        if isinstance(source, QTableWidget) and event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Tab and not event.modifiers():
+                self.focusNextChild()
+                event.accept()
+                return True
+            elif event.key() == Qt.Key_Backtab:
+                self.focusPreviousChild()
+                event.accept()
+                return True
+        return super().eventFilter(source, event)
+
+    def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
+        super().__init__(parent)
+        self.db = db
+        self.scaler = scaler
+        self.theme_manager = theme_manager
+        self.book_queries = BookQueries(db)
+        self.reading_queries = ReadingQueries(db)
+        self._default_status_message = "Ready"
+        self._loading = False
+        self._collections_loaded = False
+        self._period_message = ""  # Store period message for Alt+/ announcements
+
+        # Window setup
+        self.setWindowTitle("Reading History")
+        self.setAccessibleName("Reading History Window")
+        self.setAccessibleDescription(
+            "Window showing reading statistics and history with tabs for General, Year, Month, and Date Range views"
+        )
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setMinimumSize(800, 600)
+        self.resize(1200, 800)
+
+        self.setup_ui()
+        self.apply_visual_tooltips()
+        self.apply_accessible_styling()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+        self.setup_shortcuts()
+        self.load_reading_data()
+
+    def setup_ui(self):
+        """Setup user interface with tabs."""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setAccessibleName("Reading history tabs")
+        self.tab_widget.setDocumentMode(False)
+        self.tab_widget.tabBar().setExpanding(False)
+        self.tab_widget.tabBar().setUsesScrollButtons(True)
+
+        # Create tabs
+        self.create_general_tab()
+        self.create_year_tab()
+        self.create_month_tab()
+        self.create_date_range_tab()
+
+        main_layout.addWidget(self.tab_widget)
+
+        # Status bar
+        self.status_bar = QStatusBar()
+        configure_status_bar_accessibility(self.status_bar)
+        main_layout.addWidget(self.status_bar)
+
+        # Connect signals
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+
+        # Apply theme
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
+        self.on_theme_changed()
+
+    @staticmethod
+    def _configure_table_row_reading(table: QTableWidget) -> None:
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setFocusPolicy(Qt.StrongFocus)
+        vh = table.verticalHeader()
+        vh.setVisible(False)
+        vh.setAccessibleDescription("Table row headers are hidden.")
+        vh.setAccessibleName("Table Row Headers")
+        vh.setHighlightSections(False)
+        vh.setSectionsClickable(False)
+        vh.setSectionsMovable(False)
+        vh.setFocusPolicy(Qt.NoFocus)
+        vh.setEnabled(False)
+        table.setVerticalHeaderLabels([])
+
+    def create_general_tab(self):
+        """Create General tab with overall statistics."""
+        general_widget = QWidget()
+        self.general_tab_layout = QVBoxLayout(general_widget)  # Store reference
+
+        # Statistics section
+        stats_group = QGroupBox("Reading Statistics")
+        self.stats_group = stats_group
+        stats_layout = QVBoxLayout(stats_group)
+
+        # Create a table for screen reader accessibility
+        self.general_table = QTableWidget()
+        self.general_table.installEventFilter(self)
+        self.general_table.setAccessibleName("General reading statistics table")
+        self.general_table.setAccessibleDescription(
+            "Table showing total reading statistics. "
+            "Use Up and Down arrows to move between entries."
+        )
+        self.general_table.setColumnCount(2)
+        self.general_table.setHorizontalHeaderLabels(["Statistic", "Value"])
+        self.general_table.setRowCount(3)
+
+        # Table configuration for accessibility
+        self._configure_table_row_reading(self.general_table)
+        self.general_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.general_table.setAlternatingRowColors(False)
+        self.general_table.setStyleSheet(build_accessible_f1_popup_style())
+
+        # Configure header
+        header = self.general_table.horizontalHeader()
+        header.setSectionsClickable(False)
+        header.setSortIndicatorShown(False)
+        header.setMinimumSectionSize(150)
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Statistic
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Value
+        self.general_table.setColumnWidth(0, 200)  # Statistic
+        self.general_table.setColumnWidth(1, 100)  # Value (reduced for low vision)
+
+        # Add statistics items to table
+        self.total_books_item = QTableWidgetItem("Total Books Read")
+        self.total_books_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_books_item.setData(
+            Qt.AccessibleTextRole, "Total Books Read: 0 books"
+        )
+        self.general_table.setItem(0, 0, self.total_books_item)
+
+        self.total_books_value = QTableWidgetItem("0")
+        self.total_books_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_books_value.setData(
+            Qt.AccessibleTextRole, "Total Books Read: 0 books"
+        )
+        self.general_table.setItem(0, 1, self.total_books_value)
+
+        self.total_hours_item = QTableWidgetItem("Total Hours Read")
+        self.total_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_hours_item.setData(
+            Qt.AccessibleTextRole, "Total Hours Read: 0.0 hours"
+        )
+        self.general_table.setItem(1, 0, self.total_hours_item)
+
+        self.total_hours_value = QTableWidgetItem("0.0")
+        self.total_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.total_hours_value.setData(
+            Qt.AccessibleTextRole, "Total Hours Read: 0.0 hours"
+        )
+        self.general_table.setItem(1, 1, self.total_hours_value)
+
+        self.avg_hours_item = QTableWidgetItem("Average Hours per Book")
+        self.avg_hours_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.avg_hours_item.setData(
+            Qt.AccessibleTextRole, "Average Hours per Book: 0.0 hours per book"
+        )
+        self.general_table.setItem(2, 0, self.avg_hours_item)
+
+        self.avg_hours_value = QTableWidgetItem("0.0")
+        self.avg_hours_value.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        self.avg_hours_value.setData(
+            Qt.AccessibleTextRole, "Average Hours per Book: 0.0 hours per book"
+        )
+        self.general_table.setItem(2, 1, self.avg_hours_value)
+
+        stats_layout.addWidget(self.general_table)
+
+        # Keep labels for backward compatibility but hide them
+        self.total_books_label = QLabel("Total Books Read: 0")
+        self.total_books_label.setAccessibleName("Total books read")
+        self.total_books_label.hide()
+
+        self.total_hours_label = QLabel("Total Hours Read: 0.0")
+        self.total_hours_label.setAccessibleName("Total hours read")
+        self.total_hours_label.hide()
+
+        self.avg_hours_label = QLabel("Average Hours per Book: 0.0")
+        self.avg_hours_label.setAccessibleName("Average hours per book")
+        self.avg_hours_label.hide()
+
+        self.general_tab_layout.addWidget(stats_group)
+        self.general_tab_layout.addStretch()
+
+        self.tab_widget.addTab(general_widget, "General")
+
+    def create_year_tab(self):
+        """Create Year tab with yearly breakdown."""
+        year_widget = QWidget()
+        year_layout = QVBoxLayout(year_widget)
+
+        # Year table
+        self.year_table = QTableWidget()
+        self.year_table.setAccessibleName("Yearly reading statistics table")
+        self.year_table.installEventFilter(self)
+        self.year_table.setAccessibleDescription(
+            "Table showing books read per year. "
+            "Use Up and Down arrows to move between entries."
+        )
+
+        # Setup table columns
+        year_headers = ["Year", "Books Read", "Total Hours"]
+        self.year_table.setColumnCount(len(year_headers))
+        self.year_table.setHorizontalHeaderLabels(year_headers)
+
+        # Table configuration
+        self._configure_table_row_reading(self.year_table)
+        self.year_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.year_table.setAlternatingRowColors(False)
+        self.year_table.setStyleSheet(build_accessible_f1_popup_style())
+
+        # Configure header
+        header = self.year_table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(0, Qt.DescendingOrder)
+        header.setMinimumSectionSize(80)
+        header.setStretchLastSection(False)
+        # Set specific column widths: Year=80, Books=100, Hours=80
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.year_table.setColumnWidth(0, 80)  # Year
+        self.year_table.setColumnWidth(1, 100)  # Books Read
+        self.year_table.setColumnWidth(2, 80)  # Total Hours
+
+        year_layout.addWidget(self.year_table)
+        self.tab_widget.addTab(year_widget, "Year")
+
+    def create_month_tab(self):
+        """Create Month tab with monthly breakdown."""
+        month_widget = QWidget()
+        month_layout = QVBoxLayout(month_widget)
+
+        # Month table
+        self.month_table = QTableWidget()
+        self.month_table.setAccessibleName("Monthly reading statistics table")
+        self.month_table.installEventFilter(self)
+        self.month_table.setAccessibleDescription(
+            "Table showing books read per month. "
+            "Use Up and Down arrows to move between entries."
+        )
+
+        # Swap month and year columns: Year, Month, Books Read, Total Hours
+        month_headers = ["Year", "Month", "Books Read", "Total Hours"]
+        self.month_table.setColumnCount(len(month_headers))
+        self.month_table.setHorizontalHeaderLabels(month_headers)
+
+        # Table configuration
+        self._configure_table_row_reading(self.month_table)
+        self.month_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.month_table.setAlternatingRowColors(False)
+        self.month_table.setStyleSheet(build_accessible_f1_popup_style())
+
+        # Configure header
+        header = self.month_table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(0, Qt.DescendingOrder)
+        header.setMinimumSectionSize(80)
+        header.setStretchLastSection(False)
+        # Set specific column widths: Year=80, Month=150, Books=100, Hours=80
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Year
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Month
+        header.setSectionResizeMode(2, QHeaderView.Fixed)  # Books Read
+        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Total Hours
+        self.month_table.setColumnWidth(0, 80)  # Year
+        self.month_table.setColumnWidth(1, 150)  # Month
+        self.month_table.setColumnWidth(2, 100)  # Books Read
+        self.month_table.setColumnWidth(3, 80)  # Total Hours
+
+        month_layout.addWidget(self.month_table)
+        self.tab_widget.addTab(month_widget, "Month")
+
+    def create_date_range_tab(self):
+        """Create Date Range tab with filtering."""
+        range_widget = QWidget()
+        range_layout = QVBoxLayout(range_widget)
+        range_layout.setContentsMargins(0, 0, 0, 0)
+        range_layout.setSpacing(2)
+
+        # Date range controls - single line, no group box
+        date_layout = QHBoxLayout()
+        date_layout.setSpacing(4)
+        date_layout.setContentsMargins(4, 2, 4, 2)
+
+        # Start date
+        start_date_label = QLabel("From:")
+        start_date_label.setAccessibleName("Start date")
+        self.start_date_edit = QDateEdit()
+        self.start_date_edit.setAccessibleName("Start date")
+        self.start_date_edit.setCalendarPopup(True)
+        self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
+        self.start_date_edit.setDate(QDate.currentDate().addMonths(-3))
+
+        # End date
+        end_date_label = QLabel("To:")
+        end_date_label.setAccessibleName("End date")
+        self.end_date_edit = QDateEdit()
+        self.end_date_edit.setAccessibleName("End date")
+        self.end_date_edit.setCalendarPopup(True)
+        self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
+        self.end_date_edit.setDate(QDate.currentDate())
+
+        date_layout.addWidget(start_date_label)
+        date_layout.addWidget(self.start_date_edit)
+        date_layout.addWidget(end_date_label)
+        date_layout.addWidget(self.end_date_edit)
+
+        # Search button inline with date fields
+        self.refresh_button = QPushButton("Search")
+        self.refresh_button.setAccessibleName("Search reading history")
+        self.refresh_button.setAccessibleDescription(
+            "Search reading history for selected date range - Alt+S"
+        )
+        self.refresh_button.clicked.connect(self.load_date_range_data)
+        date_layout.addWidget(self.refresh_button)
+
+        date_layout.addStretch()
+        range_layout.addLayout(date_layout)
+
+        # Period statistics - no extra spacing
+        period_layout = QHBoxLayout()
+        period_layout.setContentsMargins(4, 0, 4, 2)
+        period_layout.setSpacing(2)
+
+        self.period_books_label = QTextEdit()
+        self.period_books_label.setReadOnly(True)
+        self.period_books_label.setAccessibleName("Books read in period")
+        self.period_books_label.setAccessibleDescription(
+            "Books read in selected date range"
+        )
+        self.period_books_label.setFocusPolicy(Qt.StrongFocus)
+        self.period_books_label.setTextInteractionFlags(Qt.TextSelectableByKeyboard)
+        self.period_books_label.setFixedHeight(22)  # Even shorter
+        self.period_books_label.setPlainText(
+            ""
+        )  # Empty - period messages shown in status bar only
+
+        period_layout.addWidget(self.period_books_label)
+        range_layout.addLayout(period_layout)
+
+        # History table
+
+        self.range_table = QTableWidget()
+        self.range_table.setAccessibleName("Date range reading history table")
+        self.range_table.installEventFilter(self)
+
+        self.range_table.setAccessibleDescription(
+            "Table showing reading history with date, title, author, and hours. "
+            "Use Up and Down arrows to move between entries."
+        )
+
+        # Setup table columns
+        range_headers = ["Date", "Title", "Author", "Hours"]
+        self.range_table.setColumnCount(len(range_headers))
+        self.range_table.setHorizontalHeaderLabels(range_headers)
+
+        # Table configuration
+        self._configure_table_row_reading(self.range_table)
+        self.range_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.range_table.setAlternatingRowColors(False)
+        self.range_table.setStyleSheet(build_accessible_f1_popup_style())
+
+        # Configure header
+        header = self.range_table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(0, Qt.DescendingOrder)
+        header.setMinimumSectionSize(100)
+        header.setStretchLastSection(False)
+        # Set specific column widths: Date=120, Title=523, Author=319, Hours=100
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Date
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Title
+        header.setSectionResizeMode(2, QHeaderView.Fixed)  # Author
+        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Hours
+        self.range_table.setColumnWidth(0, 120)  # Date
+        self.range_table.setColumnWidth(1, 523)  # Title
+        self.range_table.setColumnWidth(2, 319)  # Author (+33%)
+        self.range_table.setColumnWidth(3, 100)  # Hours
+
+        range_layout.addWidget(self.range_table)
+
+        self.tab_widget.addTab(range_widget, "Date Range")
+
+        # Set explicit tab order for predictable screen reader navigation
+        self.setTabOrder(self.start_date_edit, self.end_date_edit)
+        self.setTabOrder(self.end_date_edit, self.refresh_button)
+
+    def apply_visual_tooltips(self):
+        """Short sighted-user tooltips paired with screen reader descriptions."""
+        apply_visual_tooltip_map(
+            {
+                self.tab_widget: "Switch between reading history views",
+                self.general_table: "Overall reading statistics",
+                self.year_table: "Books read by year",
+                self.month_table: "Books read by month",
+                self.start_date_edit: "Start of the date range to search",
+                self.end_date_edit: "End of the date range to search",
+                self.refresh_button: "Search reading history for the selected dates",
+                self.range_table: "Books read within the selected date range",
+                self.status_bar: "Reading history status",
+            }
+        )
+
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts using ShortcutManager."""
+        mgr = get_shortcut_manager()
+        callback_map = {
+            "refresh_button": self.load_date_range_data,
+            "table": self.focus_current_table,
+            "start_date_edit": lambda: self.start_date_edit.setFocus(Qt.TabFocusReason),
+        }
+        mgr.register_alt_shortcuts(
+            self, ShortcutContext.READING_HISTORY_WINDOW, callback_map
+        )
+
+        # Local QShortcuts for F1 and Alt+/
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
+
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.activated.connect(self.on_read_status_bar)
+
+        # Standard tab navigation shortcuts used by most applications.
+        self.next_tab_shortcut = QShortcut(QKeySequence("Ctrl+Tab"), self)
+        self.next_tab_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.next_tab_shortcut.activated.connect(lambda: self.cycle_tab(+1))
+
+        self.prev_tab_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+        self.prev_tab_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.prev_tab_shortcut.activated.connect(lambda: self.cycle_tab(-1))
+
+        # Focus on the appropriate table based on current tab
+        self.focus_current_table()
+
+    def cycle_tab(self, step: int):
+        """Move to next/previous tab with wraparound."""
+        count = self.tab_widget.count()
+        if count <= 0:
+            return
+
+        current = self.tab_widget.currentIndex()
+        target = (current + step) % count
+        self.tab_widget.setCurrentIndex(target)
+
+    def focus_current_table(self):
+        """Focus on the appropriate table based on current tab."""
+        current_tab = self.tab_widget.currentIndex()
+
+        if current_tab == 0:  # General tab
+            # Focus on general table for screen reader
+            if self.general_table.rowCount() > 0:
+                row = 0
+                self.general_table.setCurrentCell(row, 0)
+            self.general_table.setFocus(Qt.TabFocusReason)
+
+        elif current_tab == 1:  # Year tab
+            # Focus on year table
+            if self.year_table.rowCount() > 0:
+                row = self.year_table.currentRow()
+                if row < 0 or row >= self.year_table.rowCount():
+                    row = 0
+                self.year_table.setCurrentCell(row, 0)
+            self.year_table.setFocus(Qt.TabFocusReason)
+
+        elif current_tab == 2:  # Month tab
+            # Focus on month table
+            if self.month_table.rowCount() > 0:
+                row = self.month_table.currentRow()
+                if row < 0 or row >= self.month_table.rowCount():
+                    row = 0
+                self.month_table.setCurrentCell(row, 0)
+            self.month_table.setFocus(Qt.TabFocusReason)
+
+        elif current_tab == 3:  # Date Range tab
+            # Focus on range table
+            if self.range_table.rowCount() > 0:
+                row = self.range_table.currentRow()
+                if row < 0 or row >= self.range_table.rowCount():
+                    row = 0
+                self.range_table.setCurrentCell(row, 0)
+            self.range_table.setFocus(Qt.TabFocusReason)
+
+    def apply_accessible_styling(self):
+        """Apply modern buttons, table polish, and tab styling."""
+        scale_pct = self.scaler.current_scale
+        scaled_height = int(20 * (scale_pct / 100.0))
+        button_style = build_modern_button_style(scaled_height)
+        card_style = build_card_group_box_style()
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.refresh_button.setObjectName("primaryActionButton")
+        for widget in self.findChildren(QPushButton):
+            widget.setStyleSheet(button_style)
+        self.status_bar.setStyleSheet(status_style)
+        if hasattr(self, "stats_group"):
+            self.stats_group.setStyleSheet(card_style)
+        self._apply_action_button_icons()
+
+        tab_padding_v = max(self.scaler.get_scaled_size(4), 3)
+        tab_padding_h = max(self.scaler.get_scaled_size(12), 8)
+        self.tab_widget.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid palette(mid);
+                top: -1px;
+                background: palette(window);
+            }}
+            QTabBar::tab {{
+                background: palette(button);
+                color: palette(button-text);
+                border: 1px solid palette(mid);
+                border-bottom: none;
+                padding: {tab_padding_v}px {tab_padding_h}px;
+                margin-right: 2px;
+                min-width: {self.scaler.get_scaled_size(90)}px;
+            }}
+            QTabBar::tab:selected {{
+                background: palette(highlight);
+                color: palette(highlighted-text);
+                border-color: palette(dark);
+            }}
+            QTabBar::tab:!selected {{
+                margin-top: 2px;
+            }}
+            """)
+
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+
+        for table in [
+            self.general_table,
+            self.year_table,
+            self.month_table,
+            self.range_table,
+        ]:
+            if table:
+                table.setStyleSheet(table_style)
+                # Disable hover highlighting for low-vision comfort
+                table.setMouseTracking(False)
+                table.viewport().setMouseTracking(False)
+                table.setAttribute(Qt.WA_Hover, False)
+                table.viewport().setAttribute(Qt.WA_Hover, False)
+
+        # Date edit and combo box styling - let theme manager handle it
+        for widget in self.findChildren(QDateEdit):
+            widget.setStyleSheet("")
+        for widget in self.findChildren(QComboBox):
+            widget.setStyleSheet("")
+
+    def load_reading_data(self):
+        """Load all reading-history views.
+
+        Summary tabs (General/Year/Month) are always all-time and are intentionally
+        independent from Date Range tab filters.
+        """
+        if self._loading:
+            return
+
+        self._loading = True
+        try:
+            self.load_summary_data()
+
+            # Load date range data
+            self.load_date_range_data()
+
+        except Exception as e:
+            from src.accessibility.icon_helper import get_app_icon
+
+            from src.accessibility.style_helpers import exec_styled_message_box
+
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Critical,
+                title="Error",
+                text=f"Failed to load reading history: {str(e)}",
+                window_icon=get_app_icon(),
+            )
+        finally:
+            self._loading = False
+
+    def load_summary_data(self):
+        """Load all-time summary data for General/Year/Month tabs.
+
+        Do not pass date-range filters here; these tabs must not be affected by
+        Date Range tab selections.
+        """
+        stats = self.reading_queries.get_reading_statistics()
+        self.update_general_stats(stats)
+
+        yearly_data = stats.get("yearly_breakdown", [])
+        self.populate_year_table(yearly_data)
+
+        monthly_data = stats.get("monthly_breakdown", [])
+        self.populate_month_table(monthly_data)
+
+    def load_general_stats(self):
+        return self.load_summary_data()
+
+    def update_general_stats(self, stats):
+        """Update general statistics table."""
+        # Total books with thousand separator and right alignment
+        books_text = f"{stats['total_books']:,}"
+        books_accessible = f"Total Books Read: {books_text} books"
+        self.total_books_value.setText(books_text)
+        self.total_books_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_books_item.setData(Qt.AccessibleTextRole, books_accessible)
+        self.total_books_value.setData(Qt.AccessibleTextRole, books_accessible)
+
+        # Total hours with thousand separator and right alignment
+        hours_text = f"{stats['total_hours']:,.0f}"
+        hours_accessible = f"Total Hours Read: {hours_text} hours"
+        self.total_hours_value.setText(hours_text)
+        self.total_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_hours_item.setData(Qt.AccessibleTextRole, hours_accessible)
+        self.total_hours_value.setData(Qt.AccessibleTextRole, hours_accessible)
+
+        # Average hours with thousand separator and right alignment
+        avg_text = f"{stats['avg_hours_per_book']:,.0f}"
+        avg_accessible = f"Average Hours per Book: {avg_text} hours per book"
+        self.avg_hours_value.setText(avg_text)
+        self.avg_hours_value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.avg_hours_item.setData(Qt.AccessibleTextRole, avg_accessible)
+        self.avg_hours_value.setData(Qt.AccessibleTextRole, avg_accessible)
+
+        # Also update hidden labels for backward compatibility
+        self.total_books_label.setText(f"Total Books Read: {stats['total_books']:,}")
+        self.total_hours_label.setText(f"Total Hours Read: {stats['total_hours']:.1f}")
+        self.avg_hours_label.setText(
+            f"Average Hours per Book: {stats['avg_hours_per_book']:.1f}"
+        )
+
+    def populate_year_table(self, yearly_data):
+        """Populate year table with yearly breakdown."""
+        self.year_table.setRowCount(0)
+
+        for row, year_data in enumerate(yearly_data):
+            self.year_table.insertRow(row)
+
+            year_text = str(year_data["year"])
+            books_text = f"{year_data['book_count']:,}"
+            hours_text = f"{year_data['total_hours']:,.0f}"
+            accessible_text = (
+                f"{year_text}, Books read: {books_text}, Total hours: {hours_text}"
+            )
+
+            # Year
+            year_item = QTableWidgetItem(year_text)
+            year_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.year_table.setItem(row, 0, year_item)
+
+            # Books read (right-aligned with thousand separator)
+            books_item = QTableWidgetItem(books_text)
+            books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            books_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.year_table.setItem(row, 1, books_item)
+
+            # Total hours (right-aligned with thousand separator)
+            hours_item = QTableWidgetItem(hours_text)
+            hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            hours_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.year_table.setItem(row, 2, hours_item)
+
+        # Set vertical header labels to prevent row announcements (like name_list_window)
+        self.year_table.setVerticalHeaderLabels([""] * len(yearly_data))
+
+    def populate_month_table(self, monthly_data):
+        """Populate month table with monthly breakdown."""
+        self.month_table.setRowCount(0)
+
+        for row, month_data in enumerate(monthly_data):
+            self.month_table.insertRow(row)
+
+            year_text = str(month_data["year"])
+            month_text = month_data["month_name"]
+            books_text = f"{month_data['book_count']:,}"
+            hours_text = f"{month_data['total_hours']:,.0f}"
+            accessible_text = (
+                f"{year_text}, {month_text}, Books read: {books_text}, "
+                f"Total hours: {hours_text}"
+            )
+
+            # Year
+            year_item = QTableWidgetItem(year_text)
+            year_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.month_table.setItem(row, 0, year_item)
+
+            # Month name
+            month_item = QTableWidgetItem(month_text)
+            month_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.month_table.setItem(row, 1, month_item)
+
+            # Books read (right-aligned with thousand separator)
+            books_item = QTableWidgetItem(books_text)
+            books_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            books_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.month_table.setItem(row, 2, books_item)
+
+            # Total hours (right-aligned with thousand separator)
+            hours_item = QTableWidgetItem(hours_text)
+            hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            hours_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.month_table.setItem(row, 3, hours_item)
+
+        # Set vertical header labels to prevent row announcements (like name_list_window)
+        self.month_table.setVerticalHeaderLabels([""] * len(monthly_data))
+
+    def load_date_range_data(self):
+        """Load data for date range tab."""
+        start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
+        end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
+
+        # Convert string dates to date objects for ReadingQueries
+        from datetime import datetime
+
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+        # Use ReadingQueries to get books with proper date objects
+        books = self.reading_queries.get_reading_history(
+            start_date=start_date_obj, end_date=end_date_obj
+        )
+
+        # Update period statistics
+        total_books = len(books)
+        total_hours = sum(book.time_hours or 0 for book in books)
+
+        # Create status message with readable date format
+        start_date_str = self.start_date_edit.date().toString("MMMM d, yyyy")
+        end_date_str = self.end_date_edit.date().toString("MMMM d, yyyy")
+        status_msg = f"Showing {total_books} books read between {start_date_str} and {end_date_str} totaling {total_hours:,.0f} hours"
+
+        # Store status message for Alt+/ announcements
+        self._period_message = status_msg
+
+        # Populate table
+        self.populate_range_table(books)
+
+        # Focus to first title in table after search
+        if books and self.range_table.rowCount() > 0:
+            self.range_table.setCurrentCell(0, 1)  # Focus on title column (index 1)
+            self.range_table.setFocus(Qt.TabFocusReason)
+
+        # Do not overwrite General/Year/Month status with Date Range text
+        # unless Date Range is the currently visible tab.
+        if self.tab_widget.currentIndex() == 3:
+            self.set_status(status_msg)
+
+    def populate_range_table(self, books):
+        """Populate date range table with reading history data."""
+        self.range_table.setRowCount(0)
+
+        for row, book in enumerate(books):
+            self.range_table.insertRow(row)
+
+            date_text = (
+                book.read_date.strftime("%Y-%m-%d") if book.read_date else ""
+            )
+            title_text = book.title or ""
+            author_text = book.author_name or ""
+            hours_text = f"{book.time_hours or 0:,.0f}"
+            accessible_text = (
+                f"{date_text}, {title_text}, {author_text}, {hours_text} hours"
+            )
+
+            # Date - book.read_date is now a proper date object
+            date_item = QTableWidgetItem(date_text)
+            date_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.range_table.setItem(row, 0, date_item)
+
+            # Title
+            title_item = QTableWidgetItem(title_text)
+            title_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.range_table.setItem(row, 1, title_item)
+
+            # Author
+            author_item = QTableWidgetItem(author_text)
+            author_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.range_table.setItem(row, 2, author_item)
+
+            # Hours (right-aligned with thousand separator)
+            hours_item = QTableWidgetItem(hours_text)
+            hours_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            hours_item.setData(Qt.AccessibleTextRole, accessible_text)
+            self.range_table.setItem(row, 3, hours_item)
+
+        # Set vertical header labels to prevent row announcements (like name_list_window)
+        self.range_table.setVerticalHeaderLabels([""] * len(books))
+
+    def on_tab_changed(self, index):
+        """Handle tab change."""
+        tab_names = ["General", "Year", "Month", "Date Range"]
+        if index < len(tab_names):
+            # Only show period message on Date Range tab
+            if index == 3:  # Date Range tab
+                if self._period_message:
+                    self.set_status(self._period_message, announce=True)
+                else:
+                    self.set_status(
+                        f"Viewing {tab_names[index]} statistics", announce=True
+                    )
+            else:
+                self.set_status(f"Viewing {tab_names[index]} statistics", announce=True)
+
+            # Set focus to table when tab changes
+            self.focus_current_table()
+
+            # Set focus to from date when opening date range tab
+            if index == 3:  # Date Range tab
+                self.start_date_edit.setFocus()
+
+    def _apply_action_button_icons(self):
+        """Decorative icon beside Search button text."""
+        apply_decorative_action_icon(self.refresh_button, "find", self.scaler)
+
+    def on_scale_changed(self, _scale_percentage: int):
+        """Refresh styles when zoom changes."""
+        self.apply_accessible_styling()
+
+    def on_theme_changed(self, _theme_name=None):
+        """Handle theme change."""
+        self.apply_accessible_styling()
+
+    def on_read_status_bar(self):
+        """Read only the currently visible status bar message (Alt+/)."""
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+        )
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog (accessible, centralized)."""
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
+        )
+
+        shortcuts = [
+            ("Alt+G", "General tab"),
+            ("Alt+Y", "Year tab"),
+            ("Alt+M", "Month tab"),
+            ("Alt+R", "Date Range tab"),
+            ("Alt+L", "Focus current table"),
+            ("Alt+F", "From date field"),
+            ("Alt+S", "Search"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show this help"),
+            ("Escape", "Close window"),
+        ]
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
+
+        dlg = AccessibleDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Reading History")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(560, 420)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+
+        table.setStyleSheet(build_accessible_f1_popup_style())
+
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+            table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+
+        layout.addWidget(table)
+        dlg.setLayout(layout)
+        dlg.exec()
+
+    def set_status(self, message: str, announce: bool = False):
+        """Set status bar message with optional screen reader announcement."""
+        self._default_status_message = message
+        announce_status_message(self.status_bar, message, move_focus=announce)
+
+    def keyPressEvent(self, event):
+        """Handle key press events."""
+        # Escape key closes window
+        if event.key() == Qt.Key_Escape:
+            self.close()
+            event.accept()
+            return
+
+        # Prevent Enter from closing dialog
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            event.ignore()
+            return
+        super().keyPressEvent(event)
+
+    def showEvent(self, event):
+        """Handle show event."""
+        if not self._collections_loaded:
+            self._collections_loaded = True
+            # Ensure status matches the initially visible tab when opening.
+            current_tab = self.tab_widget.currentIndex()
+            tab_names = ["General", "Year", "Month", "Date Range"]
+            if 0 <= current_tab < len(tab_names):
+                self.set_status(f"Viewing {tab_names[current_tab]} statistics")
+            # Set focus to table when window opens (use timer like name_list_window)
+            QTimer.singleShot(0, self.focus_current_table)
+        super().showEvent(event)
+
+    def closeEvent(self, event):
+        """Handle window close event."""
+        # No cleanup needed - shortcuts are automatically managed
+        super().closeEvent(event)

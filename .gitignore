@@ -1,0 +1,74 @@
+# Ignore graphics assets (all cases)
+data/Graphics/
+data/graphics/**
+graphics/
+graphics/**
+installer_graphics/
+installer_graphics/**
+
+# Virtual environment
+.venv/
+.venv-legacy/
+venv/
+env/
+ENV/
+
+# Build outputs
+build/
+build-legacy-hp/
+dist/
+dist-legacy-hp/
+*.exe
+*.pkg
+*.spec
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database files (keep schema SQL tracked, ignore runtime DBs)
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite3
+data/*.sql
+data/*.csv
+data/*.xls
+data/web_cache.json
+
+# Backup folder
+backups/
+
+# Temporary files
+*.tmp
+*.temp
+_rewrite_identity.sh
+doc/Update launch_plan.md
+
+# Archive folder
+archive/
+
+# releases 
+releases/
+releases/**
+ltr_demo/
+ltr_demo/**
+.aider*
+
+# Generated ODT user documentation (built from doc/*.md)
+doc/user_docs/

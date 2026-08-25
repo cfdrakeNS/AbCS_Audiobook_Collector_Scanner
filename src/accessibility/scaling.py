@@ -1,0 +1,318 @@
+"""
+UI Scaling system for AbCS.
+Manages application-wide font and UI scaling for accessibility.
+"""
+
+import re
+import sys
+
+from PySide6.QtCore import QObject, Signal, QSettings
+from PySide6.QtWidgets import QApplication
+from typing import Optional
+
+from .linux_qt_compat import build_linux_scale_stylesheet
+from .style_helpers import build_accessible_button_style
+
+
+class UIScaler(QObject):
+    """
+    Manages application-wide UI scaling.
+
+    Signals:
+        scale_changed: Emitted when scale factor changes (new_scale: int)
+    """
+
+    scale_changed = Signal(int)
+
+    # Scale presets (percentage)
+    SCALE_PRESETS = {
+        "Tiny": 75,
+        "Small": 85,
+        "Normal": 100,
+        "Large": 125,
+        "Extra Large": 150,
+        "Huge": 175,
+        "Maximum": 200,
+    }
+
+    # Min/max scale
+    MIN_SCALE = 50
+    MAX_SCALE = 300
+    SCALE_STEP = 15
+
+    # Default scale - 150% gives ~14pt fonts (9pt base * 1.5 = 13.5pt)
+    DEFAULT_SCALE = 150
+    SCALE_STYLE_BEGIN = "/* AbCS Scale Styles:BEGIN */"
+    SCALE_STYLE_END = "/* AbCS Scale Styles:END */"
+
+    def __init__(self, app: QApplication):
+        """
+        Initialize UI scaler.
+
+        Args:
+            app: QApplication instance
+        """
+        super().__init__()
+        self.app = app
+        self.settings = QSettings("AbCS", "AudioBookCollector")
+
+        # Load saved scale or use default
+        self._current_scale = self.settings.value(
+            "ui_scale", self.DEFAULT_SCALE, type=int
+        )
+        self._apply_scale()
+
+    @property
+    def current_scale(self) -> int:
+        """Get current scale percentage."""
+        return self._current_scale
+
+    def set_scale(self, percentage: int):
+        """
+        Set UI scale to specific percentage.
+
+        Args:
+            percentage: Scale percentage (50-300)
+        """
+        # Clamp to valid range
+        percentage = max(self.MIN_SCALE, min(self.MAX_SCALE, percentage))
+
+        if percentage != self._current_scale:
+            self._current_scale = percentage
+            self._apply_scale()
+            self.scale_changed.emit(percentage)
+
+            # Save to settings
+            self.settings.setValue("ui_scale", percentage)
+
+    def increase_scale(self, step: int = SCALE_STEP):
+        """
+        Increase scale (Ctrl/Cmd +).
+
+        Args:
+            step: Amount to increase by
+        """
+        new_scale = self._current_scale + step
+        self.set_scale(new_scale)
+
+    def decrease_scale(self, step: int = SCALE_STEP):
+        """
+        Decrease scale (Ctrl/Cmd -).
+
+        Args:
+            step: Amount to decrease by
+        """
+        new_scale = self._current_scale - step
+        self.set_scale(new_scale)
+
+    def reset_scale(self):
+        """Reset to default scale (150% for ~14pt fonts)."""
+        self.set_scale(self.DEFAULT_SCALE)
+
+    def get_preset_name(self) -> str:
+        """
+        Get name of current preset, or 'Custom'.
+
+        Returns:
+            Preset name or 'Custom'
+        """
+        for name, value in self.SCALE_PRESETS.items():
+            if value == self._current_scale:
+                return name
+        return "Custom"
+
+    def _apply_scale(self):
+        """Apply current scale to application."""
+        # Calculate base font size
+        # Normal = 9pt, scale proportionally
+        base_size = 9  # Qt's default
+        scaled_size = int(base_size * (self._current_scale / 100.0))
+        control_height = int(20 * (self._current_scale / 100.0))
+
+        # Update application font
+        font = self.app.font()
+        font.setPointSize(scaled_size)
+        self.app.setFont(font)
+
+        linux = sys.platform.startswith("linux")
+        if linux:
+            stylesheet = build_linux_scale_stylesheet(
+                scaled_size, self._current_scale
+            )
+            self._apply_scale_stylesheet(stylesheet)
+            return
+
+        header_hiding_style = ""
+        if not linux:
+            header_hiding_style = """
+            QHeaderView::section:vertical {
+                min-width: 0px;
+                max-width: 0px;
+                width: 0px;
+                padding: 0px;
+                margin: 0px;
+                border: none;
+            }
+
+            QTableCornerButton::section {
+                border: none;
+                background: transparent;
+            }
+            """
+
+        if linux:
+            focus_style = """
+            QLineEdit:focus {
+                border: 2px solid palette(highlight);
+                background-color: palette(base);
+            }
+            """
+        else:
+            focus_style = """
+            QComboBox:focus, QLineEdit:focus {
+                border: 2px solid palette(highlight);
+                background-color: palette(base);
+            }
+            """
+
+        # Update stylesheet for fine-tuned control
+        stylesheet = f"""
+            /* Base font scaling */
+            * {{
+                font-size: {scaled_size}pt;
+            }}
+
+            {focus_style}
+
+            /* Ensure minimum touch target size (44x44 at 100%) for buttons/checkboxes */
+            QPushButton, QCheckBox {{
+                min-height: {int(44 * self._current_scale / 100)}px;
+                padding: {int(6 * self._current_scale / 100)}px;
+            }}
+
+            /* Combo boxes scale with zoom but stay compact (not button-sized) */
+            QComboBox {{
+                min-height: {int(20 * self._current_scale / 100)}px;
+                max-height: {int(20 * self._current_scale / 100)}px;
+            }}
+
+            /* Table row height */
+            QTableView {{
+                selection-background-color: palette(highlight);
+            }}
+
+            QTableView::item:focus {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+            }}
+
+            /* Selected rows: use highlight background and highlighted text */
+            QTableView::item:selected {{
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+                border: none !important;
+                outline: none !important;
+            }}
+
+            QTableView::item:selected:focus {{
+                border: none !important;
+                outline: none !important;
+            }}
+
+            QTableWidget::item:selected {{
+                border: none !important;
+                outline: none !important;
+            }}
+
+            QTableWidget::item:selected:focus {{
+                border: none !important;
+                outline: none !important;
+            }}
+
+            QListView::item:selected {{
+                border: none;
+                outline: none;
+            }}
+
+            QListWidget::item:selected {{
+                border: none;
+                outline: none;
+            }}
+
+            /* Disable mouse hover highlighting for all tables */
+            QTableWidget::item:hover, QTableView::item:hover {{
+                background: none !important;
+            }}
+
+            QTableView::item {{
+                padding: {int(8 * self._current_scale / 100)}px;
+            }}
+
+            {header_hiding_style}
+
+            /* Combo box dropdown — skip extra padding on Linux (hides Fusion arrow) */
+            QComboBox {{
+                padding-right: {0 if linux else int(20 * self._current_scale / 100)}px;
+            }}
+
+            /* Status bar */
+            QStatusBar {{
+                font-size: {int(scaled_size * 0.9)}pt;
+            }}
+        """
+
+        stylesheet += "\n" + build_accessible_button_style(
+            control_height,
+            selector="QMessageBox QPushButton",
+        )
+
+        self._apply_scale_stylesheet(stylesheet)
+
+    def _apply_scale_stylesheet(self, scale_stylesheet: str):
+        """Apply scale stylesheet without overwriting theme-managed styles."""
+        current = self.app.styleSheet() or ""
+        pattern = re.compile(
+            rf"{re.escape(self.SCALE_STYLE_BEGIN)}.*?{re.escape(self.SCALE_STYLE_END)}",
+            re.DOTALL,
+        )
+        base = re.sub(pattern, "", current).strip()
+
+        wrapped_scale = (
+            f"{self.SCALE_STYLE_BEGIN}\n{scale_stylesheet}\n{self.SCALE_STYLE_END}"
+        )
+        merged = f"{base}\n\n{wrapped_scale}" if base else wrapped_scale
+        self.app.setStyleSheet(merged)
+
+    def get_scaled_size(self, base_size: int) -> int:
+        """
+        Get scaled size for a given base size.
+
+        Args:
+            base_size: Base size in pixels
+
+        Returns:
+            Scaled size in pixels
+        """
+        return int(base_size * (self._current_scale / 100.0))
+
+
+# Global instance
+_scaler_instance: Optional[UIScaler] = None
+
+
+def get_scaler(app: Optional[QApplication] = None) -> UIScaler:
+    """
+    Get global UI scaler instance.
+
+    Args:
+        app: QApplication (required on first call)
+
+    Returns:
+        UIScaler instance
+    """
+    global _scaler_instance
+    if _scaler_instance is None:
+        if app is None:
+            raise ValueError("QApplication required for first call to get_scaler()")
+        _scaler_instance = UIScaler(app)
+    return _scaler_instance

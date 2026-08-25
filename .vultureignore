@@ -1,0 +1,18 @@
+# .vultureignore — known false positives reviewed and confirmed live or intentional
+# Last updated: June 2, 2026
+
+# src/accessibility/scaling.py
+# Public API method called from preferences_window.py at runtime
+set_preset
+
+# src/accessibility/theme_manager.py
+# Public API method called from preferences_window.py / theme selector at runtime
+get_current_theme_display_name
+
+# src/database/connection.py
+# SQLite built-in attribute — assigned to connection.row_factory, not called directly
+row_factory
+
+# src/ui/book_list_import_window.py
+# Fallback stub class defined in the `except ImportError` block when pandas is unavailable
+DataFrame

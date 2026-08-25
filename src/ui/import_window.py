@@ -1,0 +1,3060 @@
+import csv
+from PySide6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QComboBox,
+    QPushButton,
+    QStatusBar,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QFileDialog,
+    QMessageBox,
+    QApplication,
+)
+from PySide6.QtCore import (
+    Qt,
+    QSettings,
+    QTimer,
+    QEvent,
+    QModelIndex,
+    QItemSelectionModel,
+)
+from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
+from datetime import datetime
+from src.ui.accessible_dialog import AccessibleDialog
+from pathlib import Path
+import os
+import time
+from typing import Optional
+from src.database import (
+    DatabaseManager,
+    BookQueries,
+    AuthorQueries,
+    GenreQueries,
+    CollectionQueries,
+    SeriesQueries,
+    Book,
+    Collection,
+    SearchFilter,
+)
+from src.core import BookScanner, ImportValidator, ImportScanner
+from src.accessibility.scaling import UIScaler
+from src.accessibility.style_helpers import (
+    apply_visual_tooltip_map,
+    build_accessible_message_box_style,
+    build_modern_button_style,
+    build_table_polish_style,
+    exec_styled_message_box,
+    apply_message_box_button_icons,
+    MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+)
+from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.accessible_events import (
+    announce_status_message,
+    announce_dialog_opened,
+    announce_dialog_closed,
+    configure_status_bar_accessibility,
+    read_status_bar_message,
+)
+from src.ui.import_detail_window import ImportDetailWindow
+from src.ui.import_progress_window import ImportProgressWindow
+
+"""Import Window
+    Main interface for scanning folders and importing audiobooks.
+"""
+
+# Book fields copied from Import detail back into scanned_items.
+_DETAIL_BOOK_FIELD_KEYS = (
+    "title",
+    "author",
+    "year",
+    "narrator",
+    "genre",
+    "series",
+    "collection",
+    "comment",
+    "time_hours",
+    "time_minutes",
+)
+
+
+class ImportWindow(AccessibleDialog):
+    def keyPressEvent(self, event):
+        """Handle keyboard shortcuts and Enter key properly for buttons."""
+        # Accessibility: Alt+B always triggers file dialog
+        if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_B:
+            self.on_browse()
+            event.accept()
+            return
+        # Handle Escape key — progress window owns Esc while it is visible
+        # (Import is application-modal, so Esc arrives here, not on progress).
+        if event.key() == Qt.Key_Escape:
+            if self.progress_window is not None and self.progress_window.isVisible():
+                self.progress_window.on_close_requested()
+                event.accept()
+                return
+            self.on_cancel()
+            event.accept()
+            return
+        # Handle Enter key on focused widgets
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, QPushButton):
+                # Click the focused button
+                focused_widget.click()
+                event.accept()
+                return
+            # Enter/Return opens import detail if table has focus
+            elif self.table.hasFocus():
+                self.on_open_detail_selected()
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def _confirm_cancel_scan(self):
+        """Prompt before canceling scan. Default True for test compatibility."""
+        self.set_status("Scan canceled", announce=True)
+        return True
+
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts using ShortcutManager (except F1, Escape, Alt+/, Alt+B)."""
+        from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+
+        mgr = get_shortcut_manager()
+        callback_map = {
+            "collection_combo": lambda: self.collection_combo.setFocus(),
+            "folder_field": lambda: self.folder_edit.setFocus(),
+            "browse_button": self.on_browse,
+            "error_filter": lambda: self.error_filter_combo.setFocus(),
+            "scan_button": lambda: self.scan_button.click(),
+            "import_selected_button": lambda: self.import_selected_button.click(),
+            "import_list_table": lambda: self.table.setFocus(),
+            "export_button": lambda: self.export_button.click(),
+        }
+        mgr.register_alt_shortcuts(self, ShortcutContext.IMPORT_WINDOW, callback_map)
+        # F1 help shortcut remains local
+        self.help_shortcut = QShortcut(QKeySequence("F1"), self)
+        self.help_shortcut.activated.connect(self.on_show_shortcuts)
+
+        from src.ui.help_router import install_shift_f1_help
+
+        self.context_help_shortcut = install_shift_f1_help(self)
+        # IMPORTANT: Do NOT add global Return/Enter shortcuts here!
+        # They interfere with button Enter key activation (accessibility issue)
+        # Enter key handling is done in keyPressEvent method instead
+        # Alt+/ remains local for status bar read
+        self.read_status_bar_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.read_status_bar_shortcut.activated.connect(self.on_read_status_bar)
+
+    def install_alt_key_filters(self):
+        """Install key filters to block unmapped Alt+letter input."""
+        self.installEventFilter(self)
+        widgets = []
+        widgets.extend(self.findChildren(QLineEdit))
+        widgets.extend(self.findChildren(QComboBox))
+        widgets.extend(self.findChildren(QPushButton))
+        widgets.extend(self.findChildren(QTableWidget))
+        for widget in widgets:
+            widget.installEventFilter(self)
+
+    def eventFilter(self, source, event):
+        """Handle mapped Alt+letter actions reliably across child widgets and combo anti-noise."""
+        # Combo anti-noise pattern: block plain arrow keys on combo boxes
+        if event.type() == QEvent.KeyPress and isinstance(source, QComboBox):
+            if (
+                event.key() in (Qt.Key_Up, Qt.Key_Down)
+                and not event.modifiers() & Qt.AltModifier
+            ):
+                # Block only plain arrows - allow Alt+Up/Down to open dropdown
+                QApplication.beep()
+                event.accept()
+                return True
+            elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                # Enter commits selection and moves focus
+                if source.lineEdit():
+                    source.lineEdit().selectAll()
+                event.accept()
+                return True
+
+        # Alt+letter handling
+        if event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress) and bool(
+            event.modifiers() & Qt.AltModifier
+        ):
+            key = event.key()
+            if key == Qt.Key_B and event.type() == QEvent.KeyPress:
+                self.on_browse()
+                event.accept()
+                return True
+            # Alt+B: let keyPressEvent handle it for accessibility
+            if key == Qt.Key_B:
+                return False  # Do not block Alt+B
+            if is_unmapped_alt_letter(event, self.ALLOWED_ALT_LETTERS - {"B"}):
+                return True
+        return super().eventFilter(source, event)
+
+    # Import dialog for scanning folders and importing metadata.
+
+    ALLOWED_ALT_LETTERS = {
+        "C",
+        "F",
+        "E",
+        "L",
+        "S",
+        "X",
+        "B",
+    }
+
+    COL_AUTHOR = 0
+    COL_TITLE = 1
+    COL_YEAR = 2
+    COL_ERROR = 3
+    COL_PATH = 4
+
+    SCENARIO_LABELS = {
+        "mass_standard": "Mass Standard Import",
+        "series_from_directory": "Mass Import - Series From Directory",
+        "series_from_directory_nested": (
+            "Mass Import - Series From Directory (Nested Books)"
+        ),
+        "series_from_filename": "Mass Import - Series From File Name",
+        "single_item": "Single Author / Book Import",
+    }
+
+    @staticmethod
+    def _format_elapsed(seconds: float) -> str:
+        """Format elapsed seconds as MM:SS or HH:MM:SS."""
+        total_seconds = max(0, int(round(seconds)))
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, secs = divmod(remainder, 60)
+        if hours > 0:
+            return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+        return f"{minutes:02d}:{secs:02d}"
+
+    def __init__(
+        self,
+        db: DatabaseManager,
+        scaler: UIScaler,
+        theme_manager: ThemeManager,
+        parent=None,
+    ):
+        super().__init__(parent)
+
+        self.db = db
+        self.scaler = scaler
+        self.theme_manager = theme_manager
+        self.settings = QSettings("AbCS", "AudioBookCollector")
+        self.settings.setFallbacksEnabled(False)
+
+        self.book_queries = BookQueries(self.db)
+        self.author_queries = AuthorQueries(self.db)
+        self.genre_queries = GenreQueries(self.db)
+        self.series_queries = SeriesQueries(self.db)
+        self.collection_queries = CollectionQueries(self.db)
+        self.scanner = BookScanner()
+        self.validator = ImportValidator()
+        self.import_scanner = ImportScanner()
+
+        self._loading = False
+        self.scanned_items = []
+        self.selected_rows = set()
+        self.selection_anchor_row = None
+        self._updating_selection_ui = False
+        self.allowed_extensions = None
+        self.include_subfolders = True
+        self.default_collection_id = None
+        self.current_collection_name = ""
+        self.import_scenario_mode = "mass_standard"
+        self.current_mode_text = self.SCENARIO_LABELS.get(
+            self.import_scenario_mode, "Mass Standard Import"
+        )
+        self.author_fallback_to_folder = True
+        self.title_fallback_to_file = True
+        self.reader_keywords = ["reader", "read by", "narrator", "narrated by"]
+        self._summary_counts = {
+            "scanned": 0,
+            "fixed": 0,
+            "errors": 0,
+            "warnings": 0,
+            "duplicates": 0,
+            "added": 0,
+        }
+        self.total_imported = 0
+        self._default_status_message = "Ready"
+        self._base_window_title = "Import Audiobooks"
+        self._is_adding = False
+        self._cancel_add_requested = False
+        self._is_scanning = False
+        self._cancel_scan_requested = False
+        self._closing_via_handler = False
+        self.progress_window: ImportProgressWindow | None = None
+        self._pending_info_popup = None  # For non-blocking popups
+        self._last_header_sort_column = self.COL_AUTHOR
+        self._last_header_sort_order = Qt.AscendingOrder
+        self.setup_ui()
+        self.resize(1400, 800)
+        self.apply_visual_tooltips()
+        self.install_alt_key_filters()
+        self.apply_control_styles()
+        self.load_preferences()
+        self.connect_signals()
+        self.setup_shortcuts()
+        self.scaler.scale_changed.connect(self.on_scale_changed)
+
+    def _get_target_collection_id(self) -> Optional[int]:
+        """Get selected target collection ID for imports."""
+        if hasattr(self, "collection_combo"):
+            selected_id = self.collection_combo.currentData()
+            if selected_id is None:
+                return None
+            self.default_collection_id = int(selected_id)
+            return self.default_collection_id
+
+        if self.default_collection_id is not None:
+            return self.default_collection_id
+
+        collections = self.collection_queries.get_all()
+        if collections:
+            self.default_collection_id = collections[0].collection_id
+            return self.default_collection_id
+
+        default_collection = Collection(name="Default", active=True)
+        self.default_collection_id = self.collection_queries.insert(default_collection)
+        return self.default_collection_id
+
+    @staticmethod
+    def _normalize_year(value):
+        """Normalize year to int or None."""
+        if value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            value = value.strip()
+            if value.isdigit():
+                return int(value)
+        return None
+
+    def _build_book_from_scan(self, data: dict, defer_commits: bool = False) -> Book:
+        """Create a Book object from scanned data."""
+        title = (data.get("title") or "").strip()
+        # Sanitize author field before using
+        from src.core.validator import ImportValidator
+
+        validator = ImportValidator()
+        author_text = (data.get("author") or "").strip()
+        temp = {"author": author_text}
+        validator.sanitize_metadata(temp)
+        author_text = temp["author"]
+        series_text = (data.get("series") or "").strip()
+        genre_text = (data.get("genre") or "").strip()
+        reader_text = (data.get("narrator") or "").strip()
+        target_collection_id = self._get_target_collection_id()
+        if target_collection_id is None:
+            raise ValueError("No collection selected")
+
+        author_id = self.author_queries.get_or_create(
+            author_text,
+            commit=not defer_commits,
+        )
+        genre_id = None
+        if genre_text:
+            genre_id = self.genre_queries.get_or_create(
+                genre_text,
+                commit=not defer_commits,
+            )
+
+        series_id = None
+        if series_text:
+            series_id = self.series_queries.get_or_create(
+                series_text,
+                commit=not defer_commits,
+            )
+
+        return Book(
+            title=title,
+            author_id=author_id,
+            year=self._normalize_year(data.get("year")),
+            series_id=series_id,
+            genre_id=genre_id,
+            collection_id=target_collection_id,
+            reader=reader_text,
+            time_hours=int(data.get("time_hours") or 0),
+            time_minutes=int(data.get("time_minutes") or 0),
+            tracks=int(data.get("tracks") or 0),
+            size_mb=float(data.get("size_mb") or 0.0),
+            bitrate=int(data.get("bitrate") or 0),
+            file_format=str(data.get("format") or ""),
+            path=str(data.get("folder") or ""),
+            comments=str(data.get("comment") or ""),
+            date_added=datetime.now(),
+            source="Import",
+        )
+
+    def setup_ui(self):
+        """Setup user interface."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+        # Header section
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(10)
+
+        collection_label = QLabel("&Collection:")
+        self.collection_combo = QComboBox()
+        self.collection_combo.setAccessibleName("Import collection")
+        self.collection_combo.setAccessibleDescription(
+            "Select target collection for imported books - Alt+C"
+        )
+        collection_label.setBuddy(self.collection_combo)
+        header_layout.addWidget(collection_label)
+        header_layout.addWidget(self.collection_combo, 1)
+
+        folder_label = QLabel("&Folder:")
+        self.folder_edit = QLineEdit()
+        self.folder_edit.setReadOnly(True)
+        self.folder_edit.setAccessibleName("Folder path")
+        self.folder_edit.setAccessibleDescription("Folder to scan for imports - Alt+F")
+        folder_label.setBuddy(self.folder_edit)
+        header_layout.addWidget(folder_label)
+        header_layout.addWidget(self.folder_edit, 1)
+
+        self.browse_button = QPushButton("Browse")
+        self.browse_button.setAccessibleName("Browse")
+        self.browse_button.setAccessibleDescription(
+            "Browse for a folder to scan - Alt+B"
+        )
+        self.browse_button.setDefault(False)
+        self.browse_button.setAutoDefault(False)
+        header_layout.addWidget(self.browse_button)
+
+        self.scan_button = QPushButton("Import")
+        self.scan_button.setAccessibleName("Import")
+        self.scan_button.setAccessibleDescription(
+            "Import audio files from the selected folder - Alt+I"
+        )
+        self.scan_button.setDefault(False)
+        self.scan_button.setAutoDefault(False)
+        self.scan_button.setEnabled(False)
+        header_layout.addWidget(self.scan_button)
+
+        error_filter_label = QLabel("&Errors Filter:")
+        self.error_filter_combo = QComboBox()
+        self.error_filter_combo.setAccessibleName("Import error filter")
+        self._base_error_filter_options = [
+            ("All", "all"),
+            ("Corrected", "corrected"),
+            ("Duplicate", "duplicate"),
+            ("Error", "error"),
+            ("Fallback", "fallback"),
+            ("Warning", "warning"),
+        ]
+        self._configure_error_filter_options()
+        error_filter_label.setBuddy(self.error_filter_combo)
+        header_layout.addWidget(error_filter_label)
+        header_layout.addWidget(self.error_filter_combo)
+
+        layout.addLayout(header_layout)
+
+        # Detail section: import list table
+        self.table = QTableWidget()
+        self.table.setAccessibleName("Import list")
+        self.table.setAccessibleDescription(
+            "Review scanned import items before adding them - Alt+L"
+        )
+
+        columns = [
+            "Author",
+            "Title",
+            "Year",
+            "Error Type",
+            "File/Folder",
+        ]
+        self.table.setColumnCount(len(columns))
+        self.table.setHorizontalHeaderLabels(columns)
+
+        # Use SelectItems so left/right arrow only highlights cell, not row
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setAlternatingRowColors(False)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setSectionsClickable(False)
+        self.table.verticalHeader().setHighlightSections(False)
+        self.table.verticalHeader().setAccessibleName("")
+        self.table.verticalHeader().setAccessibleDescription("")
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(60)
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(self.COL_AUTHOR, Qt.AscendingOrder)
+        header.setAccessibleName("")
+        header.setAccessibleDescription("")
+        # Disable Qt's built-in sorting - we handle sorting manually via header clicks
+        self.table.setSortingEnabled(False)
+
+        # Keep compact metadata column fixed to content, size remaining columns proportionally.
+        header.setSectionResizeMode(self.COL_YEAR, QHeaderView.Fixed)
+        header.setSectionResizeMode(self.COL_AUTHOR, QHeaderView.Interactive)
+        header.setSectionResizeMode(self.COL_TITLE, QHeaderView.Interactive)
+        header.setSectionResizeMode(self.COL_ERROR, QHeaderView.Interactive)
+        header.setSectionResizeMode(self.COL_PATH, QHeaderView.Interactive)
+
+        # Proportional widths: Author, Title, Error Type, File/Folder
+        self._stretch_columns = {
+            self.COL_AUTHOR: 2.2,
+            self.COL_TITLE: 3.0,
+            self.COL_ERROR: 2.3,
+            self.COL_PATH: 3.0,
+        }
+
+        layout.addWidget(self.table, 1)
+
+        # Footer section
+        footer_layout = QHBoxLayout()
+
+        self.status_bar = QStatusBar()
+        self.status_bar.setSizeGripEnabled(False)
+        configure_status_bar_accessibility(self.status_bar)
+        self.showing_status_label = QLabel("")
+        self.showing_status_label.setVisible(False)
+        self.showing_status_label.setAccessibleName("Import list showing count")
+        self.showing_status_label.setFocusPolicy(Qt.NoFocus)
+        self.status_bar.addPermanentWidget(self.showing_status_label)
+        footer_layout.addWidget(self.status_bar, 1)
+
+        self.import_selected_button = QPushButton("Add Selected")
+        self.import_selected_button.setAccessibleName("Add Selected")
+        self.import_selected_button.setAccessibleDescription(
+            "Add selected valid items - Alt+S"
+        )
+        self.import_selected_button.setDefault(False)
+        self.import_selected_button.setAutoDefault(False)
+        footer_layout.addWidget(self.import_selected_button)
+
+        self.export_button = QPushButton("Export")
+        self.export_button.setAccessibleName("Export")
+        self.export_button.setAccessibleDescription(
+            "Export current import review list to CSV spreadsheet - Alt+X"
+        )
+        self.export_button.setDefault(False)
+        self.export_button.setAutoDefault(False)
+        footer_layout.addWidget(self.export_button)
+
+        layout.addLayout(footer_layout)
+
+        self.setTabOrder(self.collection_combo, self.folder_edit)
+        self.setTabOrder(self.folder_edit, self.browse_button)
+        self.setTabOrder(self.browse_button, self.scan_button)
+        self.setTabOrder(self.scan_button, self.error_filter_combo)
+        self.setTabOrder(self.error_filter_combo, self.table)
+        self.setTabOrder(self.table, self.import_selected_button)
+        self.setTabOrder(self.import_selected_button, self.export_button)
+
+        self._update_action_buttons_enabled()
+
+    def apply_visual_tooltips(self):
+        tooltip_map = {
+            self.collection_combo: "Choose the collection to receive imported books",
+            self.folder_edit: "Folder selected for scanning",
+            self.browse_button: "Choose an import folder",
+            self.scan_button: "Scan the selected folder for audiobooks",
+            self.error_filter_combo: "Filter the import review list by issue type",
+            self.table: "Review scanned books before adding them",
+            self.import_selected_button: "Add selected books to the collection",
+            self.export_button: "Export the current import review list to CSV",
+        }
+        apply_visual_tooltip_map(tooltip_map)
+
+    def apply_control_styles(self):
+        """Apply consistent styling to inputs and buttons."""
+        scale_pct = self.scaler.current_scale
+        base_height = 20
+        scaled_height = int(base_height * (scale_pct / 100.0))
+        base_font_size = int(9 * (scale_pct / 100.0))
+
+        font = self.font()
+        font.setPointSize(base_font_size)
+        self.setFont(font)
+
+        button_style = build_modern_button_style(scaled_height)
+
+        status_style = f"""
+            QStatusBar {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+                padding: 2px 6px;
+                background-color: palette(base);
+            }}
+        """
+
+        self.scan_button.setObjectName("primaryActionButton")
+        self.import_selected_button.setObjectName("primaryActionButton")
+        self.status_bar.setStyleSheet(status_style)
+
+        # Use theme manager styling for text boxes and combo boxes
+        for widget in self.findChildren(QLineEdit):
+            widget.setStyleSheet("")  # Clear local style
+        for widget in self.findChildren(QComboBox):
+            widget.setStyleSheet("")  # Clear local style
+        for widget in self.findChildren(QPushButton):
+            widget.setStyleSheet(button_style)
+
+        self._apply_action_button_icons()
+
+        self.table.setColumnWidth(
+            self.COL_YEAR, max(self.scaler.get_scaled_size(68), 56)
+        )
+
+        from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+
+        table_style = (
+            build_accessible_f1_popup_style()
+            + build_table_polish_style("QTableWidget")
+            + f"""
+            QTableWidget {{
+                border: 1px solid palette(mid);
+                border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            """
+        )
+        self.table.setStyleSheet(table_style)
+
+    def _apply_action_button_icons(self):
+        """Decorative icons beside header/footer button text."""
+        apply_decorative_action_icon(self.browse_button, "browse", self.scaler)
+        apply_decorative_action_icon(self.scan_button, "import", self.scaler)
+        apply_decorative_action_icon(
+            self.import_selected_button, "add", self.scaler
+        )
+        apply_decorative_action_icon(self.export_button, "export", self.scaler)
+
+    def on_scale_changed(self, value: int):
+        """Refresh control styles when zoom changes."""
+        self.apply_control_styles()
+        self.update_stretch_columns()
+
+    def _reload_scan_settings(self):
+        """Reload import scanner and validation settings from QSettings."""
+        self.import_scenario_mode = self.settings.value(
+            "import/scenario/mode", "mass_standard", type=str
+        )
+        self.current_mode_text = self.SCENARIO_LABELS.get(
+            self.import_scenario_mode, "Mass Standard Import"
+        )
+        self.author_fallback_to_folder = self.settings.value(
+            "import/fallback/author_to_folder", True, type=bool
+        )
+        self.title_fallback_to_file = self.settings.value(
+            "import/fallback/title_to_file", True, type=bool
+        )
+        self._configure_error_filter_options()
+
+        keywords = self.settings.value(
+            "import/reader_keywords",
+            "reader, read by, narrator, narrated by",
+            type=str,
+        )
+        parsed_keywords = [
+            key.strip().lower() for key in keywords.split(",") if key.strip()
+        ]
+        if parsed_keywords:
+            self.reader_keywords = parsed_keywords
+
+        self.import_scanner.configure(
+            scenario_mode=self.import_scenario_mode,
+            author_fallback_mode="folder" if self.author_fallback_to_folder else None,
+            title_fallback_mode="file" if self.title_fallback_to_file else None,
+            reader_keywords=self.reader_keywords,
+            trim_whitespace=self.settings.value(
+                "import/scan/trim_whitespace", True, type=bool
+            ),
+            strip_leading_punctuation=self.settings.value(
+                "import/scan/strip_punctuation", True, type=bool
+            ),
+            remove_non_alphanumeric=self.settings.value(
+                "import/scan/remove_nonprintable", False, type=bool
+            ),
+            proper_case_fields=self.settings.value(
+                "import/scan/proper_case", True, type=bool
+            ),
+            proper_case_skip_review=self.settings.value(
+                "import/scan/proper_case_skip_review", True, type=bool
+            ),
+            trim_whitespace_skip_review=self.settings.value(
+                "import/scan/trim_whitespace_skip_review", False, type=bool
+            ),
+            strip_leading_punctuation_skip_review=self.settings.value(
+                "import/scan/strip_punctuation_skip_review", False, type=bool
+            ),
+            remove_non_alphanumeric_skip_review=self.settings.value(
+                "import/scan/remove_nonprintable_skip_review", False, type=bool
+            ),
+        )
+        self.validator.reload_settings()
+        self._update_header_info_line()
+
+    def load_preferences(self):
+        """Load import preferences into header fields."""
+        self._loading = True
+
+        default_dir = self.settings.value("import/default_directory", "", type=str)
+        self.folder_edit.setText(default_dir)
+
+        self.include_subfolders = self.settings.value(
+            "import/include_subfolders", True, type=bool
+        )
+        selected_extensions = set()
+        format_extension_map = {
+            "mp3": (".mp3",),
+            "m4a": (".m4a",),
+            "m4b": (".m4b",),
+            "flac": (".flac",),
+            "ogg": (".ogg", ".oga"),
+            "wav": (".wav",),
+            "wma": (".wma",),
+            "aac": (".aac",),
+            "opus": (".opus",),
+        }
+        for key, extensions in format_extension_map.items():
+            if self.settings.value(f"import/formats/{key}", True, type=bool):
+                selected_extensions.update(extensions)
+        self.allowed_extensions = selected_extensions
+
+        self._reload_scan_settings()
+        self._load_collection_options()
+
+        self._loading = False
+
+    def _load_collection_options(self):
+        """Load target collection options for imports."""
+        self.collection_combo.blockSignals(True)
+        self.collection_combo.clear()
+
+        collections = self.collection_queries.get_all(active_only=True)
+        if not collections:
+            default_collection = Collection(name="Default", active=True)
+            new_id = self.collection_queries.insert(default_collection)
+            collections = [
+                Collection(collection_id=new_id, name="Default", active=True)
+            ]
+
+        collections = sorted(
+            collections,
+            key=lambda collection: (collection.name or "").casefold(),
+        )
+
+        for collection in collections:
+            self.collection_combo.addItem(collection.name, collection.collection_id)
+
+        # Selection logic: if only 1 collection, select it; if more, default to empty
+        if len(collections) == 1:
+            self.collection_combo.setCurrentIndex(0)
+        elif len(collections) > 1:
+            self.collection_combo.setCurrentIndex(-1)  # No selection
+        else:
+            self.collection_combo.setCurrentIndex(-1)
+
+        selected_id = self.collection_combo.currentData()
+        if selected_id is None:
+            self.default_collection_id = None
+            self.current_collection_name = ""
+        else:
+            self.default_collection_id = int(selected_id)
+            self.current_collection_name = self.collection_combo.currentText()
+
+        self._update_scan_enabled_state()
+        self.collection_combo.blockSignals(False)
+
+    def _update_scan_enabled_state(self):
+        """Keep scan enabled for accessibility - use popup validation instead."""
+        # Button stays enabled for blind users - popup validation will handle missing fields
+        self.scan_button.setEnabled(True)
+
+    def _update_action_buttons_enabled(self):
+        """Gate Add Selected, Export, and the error filter on scan results.
+
+        Buttons need rows; the error filter additionally needs at least one
+        row with an issue (error, warning, duplicate, fallback, correction),
+        otherwise there is nothing to filter.
+        """
+        has_rows = bool(self.scanned_items)
+        self.import_selected_button.setEnabled(has_rows)
+        self.export_button.setEnabled(has_rows)
+
+        has_issues = any(
+            not self._is_clean_valid_item(item) for item in self.scanned_items
+        )
+        if not has_issues and self.error_filter_combo.currentData() != "all":
+            # Reset to "All" before disabling so no rows stay hidden
+            index = self.error_filter_combo.findData("all")
+            if index >= 0:
+                self.error_filter_combo.blockSignals(True)
+                self.error_filter_combo.setCurrentIndex(index)
+                self.error_filter_combo.blockSignals(False)
+                self._apply_error_filter()
+        self.error_filter_combo.setEnabled(has_issues)
+
+    def connect_signals(self):
+        """Connect signals to handlers."""
+        self.browse_button.clicked.connect(self.on_browse)
+        self.scan_button.clicked.connect(self.on_scan)
+        self.error_filter_combo.currentIndexChanged.connect(
+            self.on_error_filter_changed
+        )
+        self.collection_combo.currentIndexChanged.connect(self.on_collection_changed)
+        self.import_selected_button.clicked.connect(self.on_import_selected)
+
+        self.export_button.clicked.connect(self.on_export_csv)
+        self.table.cellDoubleClicked.connect(self.on_open_detail)
+        self.table.itemSelectionChanged.connect(self.on_table_selection_changed)
+        self.table.mousePressEvent = self.table_mouse_press
+        self.table.mouseDoubleClickEvent = self.table_mouse_double_click
+        self.table.keyPressEvent = self.table_key_press
+        self.table.horizontalHeader().sectionClicked.connect(
+            self.on_table_header_clicked
+        )
+
+    def _confirm_close_window(self) -> bool:
+        """Prompt before closing the import window."""
+        if self.table.rowCount() == 0:
+            return True
+
+        message_lines = ["Current scan results in this window will be discarded."]
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Close Import Window",
+            text="\n\n".join(message_lines),
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+            button_icon_roles={
+                QMessageBox.Yes: "close",
+                QMessageBox.No: "cancel",
+            },
+        )
+        return reply == QMessageBox.Yes
+
+    def on_show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        dlg = AccessibleDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts - Import Window")
+        dlg.setAccessibleName("Keyboard Shortcuts")
+        dlg.resize(560, 420)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        table = QTableWidget()
+        table.setAccessibleName("Shortcuts list")
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([""])
+
+        shortcuts = [
+            ("Alt+C", "Collection"),
+            ("Alt+F", "Folder"),
+            ("Alt+B", "Browse"),
+            ("Alt+I", "Import"),
+            ("Alt+E", "Error filter"),
+            ("Alt+L", "Jump to table"),
+            ("Alt+1", "Jump to Author "),
+            ("Alt+2", "Jump to Title "),
+            ("Alt+3-5", "Jump to Year..."),
+            ("Enter", "Open import detail"),
+            ("Alt+S", "Add selected"),
+            ("Alt+X", "Export list to CSV"),
+            ("Escape", "Cancel/Close window"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show this help"),
+        ]
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            build_accessible_f1_popup_style,
+            prepend_help_doc_shortcut,
+        )
+
+        shortcuts = prepend_help_doc_shortcut(get_accessible_shortcuts_list(shortcuts))
+
+        table.setRowCount(len(shortcuts))
+        table.setVerticalHeaderLabels([""] * len(shortcuts))
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setTabKeyNavigation(False)
+        table.setAlternatingRowColors(False)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setMouseTracking(False)
+        table.viewport().setMouseTracking(False)
+        table.setAttribute(Qt.WA_Hover, False)
+        table.viewport().setAttribute(Qt.WA_Hover, False)
+        table.setStyleSheet(build_accessible_f1_popup_style())
+
+        for row, (key, desc) in enumerate(shortcuts):
+            item = QTableWidgetItem(f"{desc} - {key}")
+            item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+            table.setItem(row, 0, item)
+
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        font = table.font()
+        font.setPointSize(self.scaler.get_scaled_size(11))
+        table.setFont(font)
+
+        layout.addWidget(table)
+
+        policy_note = QLabel(
+            "Duplicate policy: matching duplicates remain in the review list and are not auto-added."
+        )
+        policy_note.setWordWrap(True)
+        policy_note.setAccessibleName("Duplicate policy note")
+        policy_note.setAccessibleDescription(
+            "Explains that duplicates stay in the review list and are not added automatically"
+        )
+        note_font = policy_note.font()
+        note_font.setPointSize(self.scaler.get_scaled_size(10))
+        policy_note.setFont(note_font)
+        layout.addWidget(policy_note)
+
+        dlg.exec()
+
+    def set_status(self, message: str, announce: bool = False):
+        """Set status bar message with optional screen reader announcement."""
+        self._default_status_message = message
+        announce_status_message(self.status_bar, message, move_focus=announce)
+
+    def on_table_header_clicked(self, column: int):
+        """Handle table header clicks for sorting."""
+        if not self.scanned_items:
+            return
+
+        # Toggle sort order if same column, otherwise use ascending
+        if self._last_header_sort_column == column:
+            next_order = (
+                Qt.DescendingOrder
+                if self._last_header_sort_order == Qt.AscendingOrder
+                else Qt.AscendingOrder
+            )
+        else:
+            next_order = Qt.AscendingOrder
+
+        self._last_header_sort_column = column
+        self._last_header_sort_order = next_order
+
+        self._sort_scanned_items(column, next_order)
+        self.table.horizontalHeader().setSortIndicator(column, next_order)
+
+        # Announce sort for accessibility
+        header_text = (
+            self.table.horizontalHeader()
+            .model()
+            .headerData(column, Qt.Horizontal, Qt.DisplayRole)
+            or "Column"
+        )
+        direction = "descending" if next_order == Qt.DescendingOrder else "ascending"
+        self.set_status(f"Sorted by {header_text} ({direction})", announce=True)
+
+    def _sort_scanned_items(self, column: int, order: Qt.SortOrder):
+        """Sort scanned_items list and repopulate table."""
+        if not self.scanned_items:
+            return
+
+        def sort_key(item):
+            if column == self.COL_AUTHOR:
+                return (item.get("author") or "").lower()
+            elif column == self.COL_TITLE:
+                return (item.get("title") or "").lower()
+            elif column == self.COL_YEAR:
+                year = item.get("year")
+                if year is None or year == "":
+                    return (1, 0)  # Empty years last
+                try:
+                    return (0, int(year))
+                except (ValueError, TypeError):
+                    return (1, 0)
+            elif column == self.COL_ERROR:
+                return (item.get("error_summary") or "").lower()
+            elif column == self.COL_PATH:
+                return (item.get("folder") or "").lower()
+            return ""
+
+        # Sort the scanned_items list
+        self.scanned_items.sort(key=sort_key, reverse=(order == Qt.DescendingOrder))
+
+        # Repopulate the table with sorted data
+        self._repopulate_table_from_scanned_items()
+
+    def _repopulate_table_from_scanned_items(self):
+        """Repopulate the table from the sorted scanned_items list."""
+        if not self.scanned_items:
+            return
+
+        # PHASE 1 OPTIMIZATION: Block updates and pre-size table
+        self.table.setUpdatesEnabled(False)
+        self.table.setSortingEnabled(False)
+
+        # Clear and pre-size table (allocate once instead of per-row)
+        total_rows = len(self.scanned_items)
+        self.table.setRowCount(total_rows)
+        self._clear_table_row_accessible_headers()
+
+        # Repopulate with sorted data
+        for row, item in enumerate(self.scanned_items):
+            self.table.setItem(
+                row, self.COL_AUTHOR, self._cell_item(item.get("author", ""))
+            )
+            self.table.setItem(
+                row, self.COL_TITLE, self._cell_item(item.get("title", ""))
+            )
+            self.table.setItem(row, self.COL_YEAR, self._cell_item(item.get("year") or ""))
+            self.table.setItem(
+                row, self.COL_ERROR, self._cell_item(item.get("error_summary", ""))
+            )
+            self.table.setItem(row, self.COL_PATH, self._cell_item(item.get("folder", "")))
+
+        # PHASE 1 OPTIMIZATION: Re-enable updates
+        self.table.setUpdatesEnabled(True)
+        # Note: Qt sorting stays disabled - we handle sorting manually
+
+        # Reapply error filter
+        self._apply_error_filter()
+
+    def on_read_status_bar(self):
+        """Read current status bar message (Alt+/).
+
+        While the modeless progress window is open, ImportWindow remains the
+        application-modal focus owner, so forward Alt+/ there. The progress
+        window's own ApplicationShortcut is blocked by modality.
+        """
+        if self.progress_window is not None and self.progress_window.isVisible():
+            self.progress_window.on_read_status_bar()
+            return
+        read_status_bar_message(
+            self.status_bar,
+            fallback=getattr(self, "_default_status_message", "") or "Ready",
+            announce_text=getattr(self, "_default_status_message", "") or "Ready",
+        )
+
+    def jump_to_column(self, column: int):
+        """Jump to a column in the import table for the current row."""
+        if self.table.columnCount() == 0:
+            return
+
+        if self.table.rowCount() == 0:
+            self.table.setFocus()
+            return
+
+        row = self.table.currentRow()
+        if row < 0:
+            first_visible = self._first_visible_row()
+            row = first_visible
+            if row < 0:
+                row = 0
+
+        if column >= self.table.columnCount():
+            column = self.table.columnCount() - 1
+
+        self.table.setCurrentCell(row, column)
+        index = self.table.model().index(row, column)
+        self.table.setCurrentIndex(index)
+        self.table.scrollTo(index)
+        self.table.setFocus()
+
+    def _update_header_info_line(self):
+        """Keep window title simple for screen-reader clarity."""
+        self.setWindowTitle(self._base_window_title)
+
+    def _first_visible_row(self) -> int:
+        """Return first visible row index or -1 when all rows hidden."""
+        for row in range(self.table.rowCount()):
+            if not self.table.isRowHidden(row):
+                return row
+        return -1
+
+    def _style_message_box(
+        self,
+        msg: QMessageBox,
+        button_icon_roles: dict | None = None,
+    ):
+        """Apply consistent styling and decorative icons to message-box buttons."""
+        msg.setStyleSheet(
+            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
+        )
+        apply_message_box_button_icons(msg, self.scaler, button_icon_roles)
+
+    @staticmethod
+    def _is_fallback_error(error: str) -> bool:
+        return str(error).strip().upper().startswith("F:")
+
+    @staticmethod
+    def _cell_item(text) -> QTableWidgetItem:
+        item = QTableWidgetItem(str(text or ""))
+        item.setData(Qt.AccessibleTextRole, item.text())
+        item.setData(Qt.AccessibleDescriptionRole, "")
+        return item
+
+    def _clear_table_row_accessible_headers(self):
+        row_count = self.table.rowCount()
+        if row_count > 0:
+            self.table.setVerticalHeaderLabels([""] * row_count)
+
+    @staticmethod
+    def _is_correction_error(error: str) -> bool:
+        return str(error).strip().upper().startswith("C:")
+
+    @staticmethod
+    def _append_unique_error(errors: list[str], message: str) -> None:
+        if not message:
+            return
+        existing = {str(err).strip().lower() for err in errors if str(err).strip()}
+        normalized = message.strip().lower()
+        if normalized not in existing:
+            errors.append(message)
+
+    def _is_revalidatable_scan_error(self, error: str) -> bool:
+        """True when an existing scan error should be recomputed from current fields."""
+        text = str(error or "").strip()
+        if not text:
+            return True
+        if text.lower() == "duplicate":
+            return True
+        if self._is_fallback_error(text) or self._is_correction_error(text):
+            return False
+        if self.validator.categorize_error(text) == "read":
+            return False
+
+        normalized = self.validator.normalize_error_message(text).lower()
+        for fragment, _rule_name in self.validator.rules_engine._message_rule_map:
+            if fragment.lower() in normalized:
+                return True
+        return False
+
+    def _has_non_fixed_warning(self, errors: list[str]) -> bool:
+        for err in errors:
+            if self._is_fallback_error(err) or self._is_correction_error(err):
+                continue
+            if self.validator.categorize_error(err) == "warning":
+                return True
+        return False
+
+    def _is_clean_valid_item(self, item: dict) -> bool:
+        """Return True when an import row is clean-valid and safe for Add Valid."""
+        status = str(item.get("status", "")).strip()
+        errors = item.get("errors", []) or []
+
+        is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+        has_hard_error = any(
+            self.validator.categorize_error(err) in ("read", "parse") for err in errors
+        ) or status in ("Error", "Failed")
+        has_warning = self._has_non_fixed_warning(errors) or status == "Warning"
+        has_fallback = any(self._is_fallback_error(err) for err in errors)
+        has_correction = any(self._is_correction_error(err) for err in errors)
+
+        return not (
+            is_duplicate
+            or has_hard_error
+            or has_warning
+            or has_fallback
+            or has_correction
+        )
+
+    def _matches_error_filter(self, item: dict) -> bool:
+        """Check whether a scanned item matches current error filter."""
+        selected_filter = self.error_filter_combo.currentData()
+        status = item.get("status", "")
+        errors = item.get("errors", [])
+
+        has_hard_error = any(
+            self.validator.categorize_error(err) in ("read", "parse") for err in errors
+        )
+        has_warning = self._has_non_fixed_warning(errors)
+        is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+        has_fallback = any(self._is_fallback_error(err) for err in errors)
+        has_correction = any(self._is_correction_error(err) for err in errors)
+
+        if selected_filter == "all":
+            return True
+        if selected_filter == "warning":
+            return has_warning and not has_fallback and not has_correction
+        if selected_filter == "error":
+            return has_hard_error or status in ("Error", "Failed")
+        if selected_filter == "duplicate":
+            return is_duplicate
+        if selected_filter == "fallback":
+            return has_fallback
+        if selected_filter == "corrected":
+            return has_correction
+        if selected_filter == "valid":
+            return self._is_clean_valid_item(item)
+
+        return True
+
+    def _configure_error_filter_options(self):
+        """Configure error filter options (no valid filter, Phase 3)."""
+        current_value = self.error_filter_combo.currentData()
+        options = list(self._base_error_filter_options)
+        # Do not add valid filter
+        self.error_filter_combo.blockSignals(True)
+        self.error_filter_combo.clear()
+        for label, value in options:
+            self.error_filter_combo.addItem(label, value)
+        desc = (
+            "Filter import list by All, Warning, Error, Duplicate, Fallback, or Corrected - Alt+E. "
+            "Duplicates are kept in review list and are not auto-added."
+        )
+        self.error_filter_combo.setAccessibleDescription(desc)
+        index = self.error_filter_combo.findData(current_value)
+        if index < 0:
+            index = 0
+        self.error_filter_combo.setCurrentIndex(index)
+        self.error_filter_combo.blockSignals(False)
+
+    def _apply_error_filter(self):
+        """Apply current error filter to table row visibility (Phase 3: no Add Valid logic)."""
+        if not self.scanned_items:
+            return
+
+        self._updating_selection_ui = True
+        self.table.clearSelection()
+        self._updating_selection_ui = False
+        self.selected_rows.clear()
+        self.selection_anchor_row = None
+
+        for row, item in enumerate(self.scanned_items):
+            self.table.setRowHidden(row, not self._matches_error_filter(item))
+
+    def _get_filtered_count(self) -> int:
+        """Return number of scanned items matching the active error filter."""
+        if not self.scanned_items:
+            return 0
+        return sum(1 for item in self.scanned_items if self._matches_error_filter(item))
+
+    def on_error_filter_changed(self):
+        """Handle error filter combo change."""
+        if self._loading:
+            return
+        self._apply_error_filter()
+        first_visible = self._first_visible_row()
+        if first_visible >= 0:
+            self.table.setCurrentCell(first_visible, self.COL_TITLE)
+            self.table.setCurrentIndex(
+                self.table.model().index(first_visible, self.COL_TITLE)
+            )
+            self.table.setFocus(Qt.TabFocusReason)
+        self.restore_summary_status()
+
+    def on_collection_changed(self):
+        """Handle target collection change for imports."""
+        selected_id = self.collection_combo.currentData()
+        if selected_id is None:
+            self.default_collection_id = None
+            self.current_collection_name = ""
+            self.settings.setValue("import/collection_id", 0)
+            self._update_scan_enabled_state()
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title="Collection Selection",
+                text="Please select a collection to import books.",
+            )
+            return
+
+        self.default_collection_id = int(selected_id)
+        self.current_collection_name = self.collection_combo.currentText().strip()
+        self.settings.setValue("import/collection_id", self.default_collection_id)
+        self._update_scan_enabled_state()
+        self.set_status(
+            f"Import collection: {self.current_collection_name}", announce=True
+        )
+
+    def _restore_focus_after_scan(self):
+        """Return keyboard focus to Import Window after scan/progress window closes."""
+        self.raise_()
+        self.activateWindow()
+        if self.table.rowCount() > 0:
+            if self.table.currentRow() < 0:
+                first_visible = self._first_visible_row()
+                if first_visible >= 0:
+                    self.table.setCurrentCell(first_visible, self.COL_TITLE)
+            self.table.setFocus(Qt.TabFocusReason)
+        else:
+            self.scan_button.setFocus(Qt.TabFocusReason)
+
+    def _on_progress_window_closed(self, _result: int):
+        """Restore Import Window focus only after progress window is closed."""
+        self.progress_window = None
+        self._restore_focus_after_scan()
+
+        first_visible = self._first_visible_row()
+        if first_visible >= 0:
+            self.table.setCurrentCell(first_visible, self.COL_TITLE)
+            self.table.setFocus(Qt.TabFocusReason)
+
+    def on_table_selection_changed(self):
+        """Show selection status bar message like MainWindow, only when selection is active.
+        Only count visible (filtered) rows as selected.
+        """
+        if self._updating_selection_ui:
+            return
+
+        model = self.table.selectionModel()
+        selected_rows = set()
+        for idx in model.selectedRows():
+            row = idx.row()
+            if not self.table.isRowHidden(row):
+                selected_rows.add(row)
+        self.selected_rows = selected_rows
+
+        if self.selected_rows:
+            self.announce_selection()
+        else:
+            self.restore_summary_status()
+
+    def _row_title(self, row: int) -> str:
+        """Return title text for a table row."""
+        if row < 0:
+            return "Unknown"
+        item = self.table.item(row, self.COL_TITLE)
+        if item and item.text().strip():
+            return item.text().strip()
+        if 0 <= row < len(self.scanned_items):
+            return (
+                self.scanned_items[row].get("book", {}).get("title") or "Unknown"
+            ).strip() or "Unknown"
+        return "Unknown"
+
+    def announce_selection(self):
+        """Announce selection with focused title and count, like MainWindow."""
+        if not self.selected_rows:
+            return
+
+        count = len(self.selected_rows)
+        current_row = self.table.currentRow()
+        title = self._row_title(current_row)
+        shortcuts_text = "Escape to cancel selection"
+        # Always include count, even for single selection
+        if count == 1:
+            message = f"{title} - 1 selected. {shortcuts_text}"
+        else:
+            message = f"{title} - {count} selected. {shortcuts_text}"
+        self.set_status(message, announce=True)
+
+    def update_summary(
+        self,
+        scanned: int = 0,
+        fixed: int = 0,
+        errors: int = 0,
+        duplicates: int = 0,
+        warnings: int = 0,
+        added: int | None = None,
+        announce: bool = False,
+    ):
+        """Update status bar summary from scan and review-list counters."""
+        if added is None:
+            added = self._summary_counts.get("added", 0)
+        self._summary_counts = {
+            "scanned": scanned,
+            "fixed": fixed,
+            "errors": errors,
+            "warnings": warnings,
+            "duplicates": duplicates,
+            "added": added,
+        }
+        filtered = self._get_filtered_count()
+        filter_value = self.error_filter_combo.currentData()
+        message = (
+            f"Scanned: {scanned} | Added: {added} | "
+            f"Corrected: {fixed} | Errors: {errors} | Warnings: {warnings} | "
+            f"Duplicates: {duplicates}"
+        )
+        showing_text = ""
+        if filter_value and filter_value != "all":
+            message += f" | Filter: {self.error_filter_combo.currentText()}"
+            showing_text = f"Showing: {filtered}"
+            self.showing_status_label.setText(showing_text)
+            self.showing_status_label.setVisible(True)
+        else:
+            self.showing_status_label.clear()
+            self.showing_status_label.setVisible(False)
+
+        full_message = f"{message} | {showing_text}" if showing_text else message
+        self._default_status_message = full_message
+        announce_status_message(self.status_bar, message, move_focus=announce)
+
+    def _format_error_summary(self, errors: list[str]) -> str:
+        """Format error list using validator message-format rules."""
+        return self.validator.format_error_summary(errors)
+
+    def _build_existing_book_list(self) -> list[dict]:
+        """Build an existing-library snapshot for duplicate checks."""
+        existing_books = self.book_queries.get_all()
+        return [
+            {
+                "title": b.title,
+                "author": b.author_name,
+                "year": b.year,
+                "collection_id": b.collection_id,
+            }
+            for b in existing_books
+        ]
+
+    def _revalidate_scanned_item(self, item: dict):
+        """Recompute validation + duplicate state for an edited scanned item."""
+        self.validator.reload_settings()  # Ensure settings are current
+        book_data = item.get("book", {})
+        errors: list[str] = list(self.validator.validate_book(book_data))
+        for err in book_data.get("errors", []):
+            if not self._is_revalidatable_scan_error(err):
+                self._append_unique_error(errors, err)
+
+        # PHASE 2 OPTIMIZATION: Build index once and use fast check
+        existing_list = self._build_existing_book_list()
+        dup_index = self.validator.build_duplicate_index(
+            existing_list,
+            target_collection_id=self._get_target_collection_id(),
+        )
+        is_duplicate = self.validator.is_duplicate_fast(
+            book_data,
+            dup_index,
+            target_collection_id=self._get_target_collection_id(),
+        )
+        if is_duplicate:
+            errors = [err for err in errors if str(err).strip().lower() != "duplicate"]
+            errors.insert(0, "Duplicate")
+
+        has_hard_error = any(
+            self.validator.categorize_error(err) in ("read", "parse") for err in errors
+        )
+        has_warning = self._has_non_fixed_warning(errors)
+
+        status = "OK"
+        if is_duplicate:
+            status = "Duplicate"
+        elif has_hard_error:
+            status = "Error"
+        elif has_warning:
+            status = "Warning"
+
+        item["errors"] = errors
+        item["status"] = status
+        item["is_duplicate"] = is_duplicate
+        item["error_summary"] = self._format_error_summary(errors)
+        book_data["errors"] = list(errors)
+        self._sync_scan_outcome_for_scanned_item(item)
+
+    def _find_scan_outcome_index(self, book_data: dict) -> int | None:
+        """Locate scan_outcomes entry for a scanned book dict."""
+        if not book_data:
+            return None
+        for index, outcome in enumerate(self.scan_outcomes):
+            if outcome.get("book") is book_data:
+                return index
+
+        title = (book_data.get("title") or "").strip()
+        author = (book_data.get("author") or "").strip()
+        year = book_data.get("year")
+        folder = str(book_data.get("folder") or "")
+        for index, outcome in enumerate(self.scan_outcomes):
+            outcome_book = outcome.get("book") or {}
+            if (
+                (outcome_book.get("title") or "").strip() == title
+                and (outcome_book.get("author") or "").strip() == author
+                and outcome_book.get("year") == year
+                and str(outcome_book.get("folder") or "") == folder
+            ):
+                return index
+        return None
+
+    def _derive_item_outcomes(self, item: dict) -> tuple[str, set[str], bool]:
+        """Return status, outcome tags, and duplicate flag for a review-list item."""
+        errors = list(item.get("errors", []) or [])
+        status = str(item.get("status", "")).strip()
+        is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+        has_hard_error = any(
+            self.validator.categorize_error(err) in ("read", "parse") for err in errors
+        ) or status in ("Error", "Failed")
+        has_warning = self._has_non_fixed_warning(errors) or (
+            status == "Warning" and not is_duplicate and not has_hard_error
+        )
+        has_fallback = any(self._is_fallback_error(err) for err in errors)
+        has_correction = any(self._is_correction_error(err) for err in errors)
+
+        outcomes: set[str] = set()
+        if is_duplicate:
+            outcomes.add("duplicate")
+        if has_hard_error:
+            outcomes.add("error")
+        elif has_warning:
+            outcomes.add("warning")
+        if has_fallback:
+            outcomes.add("fallback_used")
+        if has_correction:
+            outcomes.add("autocorrect_used")
+
+        if is_duplicate:
+            derived_status = "Duplicate"
+        elif has_hard_error:
+            derived_status = "Error"
+        elif has_warning:
+            derived_status = "Warning"
+        else:
+            derived_status = "OK"
+        return derived_status, outcomes, is_duplicate
+
+    def _sync_scan_outcome_for_scanned_item(self, item: dict) -> None:
+        """Keep scan_outcomes aligned with an edited review-list row."""
+        book_data = item.get("book", {})
+        index = self._find_scan_outcome_index(book_data)
+        if index is None:
+            return
+
+        outcome = self.scan_outcomes[index]
+        if outcome.get("status") == "Added":
+            return
+
+        derived_status, outcomes, is_duplicate = self._derive_item_outcomes(item)
+        outcome["status"] = derived_status
+        outcome["errors"] = list(item.get("errors", []) or [])
+        outcome["is_duplicate"] = is_duplicate
+        outcome["outcomes"] = sorted(outcomes)
+
+    def _remove_scan_outcome_for_scanned_item(self, item: dict) -> None:
+        """Remove scan_outcomes entry when a review row is discarded."""
+        book_data = item.get("book", {})
+        index = self._find_scan_outcome_index(book_data)
+        if index is not None:
+            del self.scan_outcomes[index]
+
+    def restore_summary_status(self):
+        """Restore scan summary message after transient selection messages."""
+        self.update_summary(
+            scanned=self._summary_counts["scanned"],
+            fixed=self._summary_counts["fixed"],
+            errors=self._summary_counts["errors"],
+            warnings=self._summary_counts.get("warnings", 0),
+            duplicates=self._summary_counts["duplicates"],
+            added=self._summary_counts.get("added", 0),
+        )
+
+    def _show_info_popup(self, title: str, message: str):
+        """Show an informational popup (non-blocking)."""
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(message)
+        msg.setStandardButtons(QMessageBox.Ok)
+        self._style_message_box(msg)
+        # Store as instance variable so it doesn't get garbage collected
+        # Use show() instead of exec() to avoid blocking the event loop
+        self._pending_info_popup = msg
+        msg.show()
+        # Connect finished signal to clean up
+        msg.finished.connect(lambda: self._on_info_popup_closed(msg))
+
+    def _on_info_popup_closed(self, popup: QMessageBox):
+        """Handle cleanup when info popup closes."""
+        if self._pending_info_popup is popup:
+            self._pending_info_popup = None
+
+    def on_browse(self):
+        """Open folder or file browser based on scenario."""
+        # Check if scan is in progress
+        if self._is_scanning:
+            self.set_status("Browse canceled: scan is in progress")
+            return
+
+        current_path = self.folder_edit.text().strip() or ""
+
+        # For single-item scenario, allow selecting a single audio file
+        if self.import_scenario_mode == "single_item":
+            # Build file dialog filter for audio files
+            audio_filters = "Audio Files (*.mp3 *.m4a *.m4b *.flac *.ogg *.oga *.wma *.wav *.aac *.opus);;All Files (*.*)"
+            selected = QFileDialog.getOpenFileName(
+                self, "Select Audio File", current_path, audio_filters
+            )[0]
+            if selected:
+                self.folder_edit.setText(selected)
+                file_name = os.path.basename(selected)
+                self.set_status(
+                    f"Audio file selected: {file_name} | Mode: {self.current_mode_text}"
+                )
+        else:
+            # For other scenarios, use folder picker
+            selected = QFileDialog.getExistingDirectory(
+                self, "Select Import Folder", current_path
+            )
+            if selected:
+                self.folder_edit.setText(selected)
+                self.set_status(
+                    f"Import folder selected | Mode: {self.current_mode_text}"
+                )
+
+    def on_scan(self):
+        """Scan the selected folder or file for audiobooks."""
+        self._reload_scan_settings()
+
+        target_collection_id = self._get_target_collection_id()
+        if target_collection_id is None:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Collection Required",
+                text="Please select a collection before scanning.",
+            )
+            self.collection_combo.setFocus(Qt.TabFocusReason)
+            return
+
+        folder_path = self.folder_edit.text().strip()
+        if not folder_path:
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Warning,
+                title="Folder Required",
+                text="Please select a folder or file before scanning.",
+            )
+            self.folder_edit.setFocus()
+            return
+
+        # Lock the collection combo to prevent changes during review
+        self.collection_combo.setEnabled(False)
+
+        # Validate path based on scenario
+        is_single_item = self.import_scenario_mode == "single_item"
+        is_valid = False
+
+        if is_single_item:
+            # Single item mode: accept either file or folder
+            if os.path.isfile(folder_path) or os.path.isdir(folder_path):
+                is_valid = True
+        else:
+            # Other modes: expect folder only
+            if os.path.isdir(folder_path):
+                is_valid = True
+
+        if not is_valid:
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Invalid Path")
+            msg.setIcon(QMessageBox.Warning)
+            if is_single_item:
+                msg.setText(
+                    "The selected import path (folder or file) does not exist.\n\n"
+                    "Please choose a valid folder or audio file and try again."
+                )
+            else:
+                msg.setText(
+                    "The selected import folder does not exist.\n\n"
+                    "Please choose a valid folder and try again."
+                )
+            msg.setStandardButtons(QMessageBox.Ok)
+            self._style_message_box(msg)
+            msg.exec()
+            self.set_status("Selected path does not exist")
+            self.folder_edit.setFocus(Qt.TabFocusReason)
+            return
+
+        self.raise_()
+        self.activateWindow()
+        self.scan_button.setFocus(Qt.TabFocusReason)
+
+        if self.table.rowCount() > 0:
+            self.table.setRowCount(0)
+        self.scanned_items = []
+        self.scan_outcomes = []
+        self.selected_rows.clear()
+        self.selection_anchor_row = None
+        self.update_summary(0, 0, 0, 0)
+        self._update_action_buttons_enabled()
+
+        self._is_scanning = True
+        self._cancel_scan_requested = False
+        scan_was_canceled = False
+        self.progress_window = ImportProgressWindow(
+            self.scaler, self.theme_manager, parent=self
+        )
+        self.progress_window.set_compact_mode(True)
+        self.progress_window.finished.connect(self._on_progress_window_closed)
+        self.progress_window.show()
+        self.progress_window.raise_()
+        self.progress_window.activateWindow()
+
+        self.scan_button.setEnabled(False)
+        # Keep browse button enabled for accessibility - show message if clicked during scan
+        self.set_status("Scan started")
+        scan_start = time.perf_counter()
+        elapsed_text = "00:00"
+        progress_update_interval = 0.15
+        counters_update_interval = 0.15
+        next_progress_ui_update = scan_start
+        next_counters_ui_update = scan_start
+
+        def on_progress(processed: int, total: int, file_path: str):
+            nonlocal next_progress_ui_update
+            if self.progress_window and self.progress_window.cancel_requested:
+                self._cancel_scan_requested = True
+
+            now = time.perf_counter()
+            is_final_step = total > 0 and processed >= total
+            should_update_ui = is_final_step or now >= next_progress_ui_update
+
+            if not should_update_ui:
+                return
+
+            current_elapsed = self._format_elapsed(now - scan_start)
+
+            if self.progress_window:
+                self.progress_window.update_scan_progress(
+                    processed=processed,
+                    total=total,
+                    elapsed_text=current_elapsed,
+                )
+                if total > 0:
+                    self.progress_window.set_status(
+                        f"Scanning {processed}/{total} | Elapsed {current_elapsed}"
+                    )
+                else:
+                    self.progress_window.set_status(
+                        f"Scanning {processed} | Elapsed {current_elapsed}"
+                    )
+
+            next_progress_ui_update = now + progress_update_interval
+            QApplication.processEvents()
+
+        try:
+            books = self.scanner.scan_folder(
+                folder_path,
+                include_subfolders=self.include_subfolders,
+                allowed_extensions=self.allowed_extensions,
+                reader_keywords=self.reader_keywords,
+                progress_callback=on_progress,
+                cancel_check=lambda: self._cancel_scan_requested,
+            )
+            scan_was_canceled = self._cancel_scan_requested
+
+            if is_single_item:
+                self.set_status(f"Single file scan: {len(books)} book(s) found")
+        finally:
+            elapsed = time.perf_counter() - scan_start
+            elapsed_text = self._format_elapsed(elapsed)
+            self._is_scanning = False
+            self._cancel_scan_requested = False
+            self.scan_button.setEnabled(True)
+            # Browse button remains enabled (accessibility pattern)
+            if self.progress_window and self.progress_window.cancel_requested:
+                scan_was_canceled = True
+
+        if self.validator.duplicate_match_mode == "title_author_year_collection":
+            existing_books = self.book_queries.get_all(
+                filter_criteria=SearchFilter(collection_id=target_collection_id)
+            )
+        else:
+            existing_books = self.book_queries.get_all()
+
+        existing_list = [
+            {
+                "title": b.title,
+                "author": b.author_name,
+                "year": b.year,
+                "collection_id": b.collection_id,
+            }
+            for b in existing_books
+        ]
+
+        # PHASE 2 OPTIMIZATION: Build optimized duplicate index once before loop
+        # This replaces O(n²) checking with O(1) exact + O(k) fuzzy where k << n
+        dup_index = self.validator.build_duplicate_index(
+            existing_list,
+            target_collection_id=target_collection_id,
+        )
+
+        fuzzy_enabled = self.validator.duplicate_fuzzy_threshold > 0
+
+        fixed_count = 0
+        error_count = 0
+        warning_count = 0
+        duplicate_count = 0
+        read_error_count = 0
+        added_count = 0
+
+        conn = self.db.connect()
+        transaction_open = False
+        try:
+            # Only start transaction if not already in one (WAL mode may have implicit transaction)
+            if not conn.in_transaction:
+                conn.execute("BEGIN")
+            transaction_open = True
+
+            # Update progress window to show add phase starting.
+            if self.progress_window:
+                self.progress_window.prepare_for_add_phase(len(books))
+                self.progress_window.update_add_progress(
+                    processed=0,
+                    total=len(books),
+                    books_added=0,
+                    elapsed_text="00:00",
+                )
+                QApplication.processEvents()
+
+            # PHASE 1 OPTIMIZATION: Block table repaint and sorting during batch load
+            self.table.setUpdatesEnabled(False)
+            self.table.setSortingEnabled(False)
+
+            for row, book in enumerate(books):
+                auto_added = False
+                self.import_scanner.apply_preferences(book)
+
+                errors = list(book.get("errors", []))
+                errors.extend(self.validator.validate_book(book))
+
+                # PHASE 2 OPTIMIZATION: Use fast index-based duplicate check
+                is_duplicate = self.validator.is_duplicate_fast(
+                    book,
+                    dup_index,
+                    target_collection_id=target_collection_id,
+                )
+                if is_duplicate:
+                    errors = [
+                        err for err in errors if str(err).strip().lower() != "duplicate"
+                    ]
+                    errors.insert(0, "Duplicate")
+                    duplicate_count += 1
+
+                current_read_errors = 0
+                for err in errors:
+                    if self.validator.categorize_error(err) == "read":
+                        current_read_errors += 1
+                read_error_count += current_read_errors
+
+                has_hard_error = any(
+                    self.validator.categorize_error(err) in ("read", "parse")
+                    for err in errors
+                )
+                has_warning = self._has_non_fixed_warning(errors)
+
+                has_fallback = any(self._is_fallback_error(err) for err in errors)
+                has_correction = any(self._is_correction_error(err) for err in errors)
+
+                outcomes = set()
+                if is_duplicate:
+                    outcomes.add("duplicate")
+                if has_hard_error:
+                    outcomes.add("error")
+                elif has_warning:
+                    outcomes.add("warning")
+                if has_fallback:
+                    outcomes.add("fallback_used")
+                if has_correction:
+                    outcomes.add("autocorrect_used")
+
+                if has_fallback or has_correction:
+                    fixed_count += 1
+
+                # Auto-add valid books to database during scan
+                auto_added = False
+                should_auto_add = (
+                    not is_duplicate
+                    and not has_hard_error
+                    and not has_warning
+                    and not has_fallback
+                    and not has_correction
+                )
+                # Prevent auto-add if duplicate
+                if is_duplicate:
+                    auto_added = False
+                elif should_auto_add:
+                    try:
+                        book_to_add = self._build_book_from_scan(
+                            book,
+                            defer_commits=True,
+                        )
+                        self.book_queries.insert(book_to_add, commit=False)
+                        auto_added = True
+                        outcomes.add("added")
+                        added_count += 1
+                        self.total_imported += 1
+                        # Update existing_list for future duplicate checks
+                        existing_list.append(
+                            {
+                                "title": book.get("title", ""),
+                                "author": book.get("author", ""),
+                                "year": book.get("year"),
+                                "collection_id": target_collection_id,
+                            }
+                        )
+                    except Exception as exc:
+                        # Add failed auto-add as error
+                        errors.append(f"E: {str(exc)}")
+                        has_hard_error = True
+                        outcomes.discard("added")
+                        outcomes.add("error")
+
+                status = "OK"
+                if is_duplicate:
+                    status = "Duplicate"
+                elif has_hard_error:
+                    status = "Error"
+                elif has_warning:
+                    status = "Warning"
+
+                # Only add to review table if not auto_added:
+                if not auto_added:
+                    table_row = self.table.rowCount()
+                    self.table.insertRow(table_row)
+                    self._clear_table_row_accessible_headers()
+                    self.table.setItem(
+                        table_row,
+                        self.COL_AUTHOR,
+                        self._cell_item(book.get("author", "")),
+                    )
+                    self.table.setItem(
+                        table_row,
+                        self.COL_TITLE,
+                        self._cell_item(book.get("title", "")),
+                    )
+                    self.table.setItem(
+                        table_row,
+                        self.COL_YEAR,
+                        self._cell_item(book.get("year") or ""),
+                    )
+                    error_summary = self._format_error_summary(errors)
+                    self.table.setItem(
+                        table_row, self.COL_ERROR, self._cell_item(error_summary)
+                    )
+                    self.table.setItem(
+                        table_row,
+                        self.COL_PATH,
+                        self._cell_item(book.get("folder", "")),
+                    )
+
+                    scanned_item = {
+                        "book": book,
+                        "status": status,
+                        "errors": errors,
+                        "error_summary": error_summary,
+                        "author": book.get("author", ""),
+                        "title": book.get("title", ""),
+                        "year": book.get("year"),
+                        "folder": book.get("folder", ""),
+                    }
+                    self.scanned_items.append(scanned_item)
+
+                    if not is_duplicate:
+                        if has_hard_error:
+                            error_count += 1
+                        elif has_warning:
+                            warning_count += 1
+
+                # Track all scan outcomes
+                self.scan_outcomes.append(
+                    {
+                        "book": book,
+                        "status": "Added" if auto_added else status,
+                        "errors": errors,
+                        "is_duplicate": is_duplicate,
+                        "outcomes": sorted(outcomes),
+                    }
+                )
+
+                # Update counter/status on the same timer cadence.
+                now = time.perf_counter()
+                is_final_book = row >= len(books) - 1
+                if is_final_book or now >= next_counters_ui_update:
+                    scanned_so_far = len(self.scan_outcomes)
+                    if self.progress_window:
+                        current_elapsed = self._format_elapsed(now - scan_start)
+                        self.progress_window.update_add_progress(
+                            processed=row + 1,
+                            total=len(books),
+                            books_added=added_count,
+                            elapsed_text=current_elapsed,
+                            scanned=scanned_so_far,
+                            fixed=fixed_count,
+                            errors=error_count,
+                            warnings=warning_count,
+                            duplicates=duplicate_count,
+                        )
+                    self.update_summary(
+                        scanned=scanned_so_far,
+                        fixed=fixed_count,
+                        errors=error_count,
+                        warnings=warning_count,
+                        duplicates=duplicate_count,
+                        added=added_count,
+                    )
+                    next_counters_ui_update = now + counters_update_interval
+                    QApplication.processEvents()
+
+            # PHASE 1 OPTIMIZATION: Re-enable table updates after batch load
+            self.table.setUpdatesEnabled(True)
+            # Note: Qt sorting stays disabled - we handle sorting manually
+
+            if transaction_open:
+                conn.commit()
+                transaction_open = False
+        except Exception:
+            if transaction_open:
+                conn.rollback()
+            # PHASE 1 OPTIMIZATION: Ensure table updates are re-enabled on error
+            self.table.setUpdatesEnabled(True)
+            # Note: Qt sorting stays disabled - we handle sorting manually
+            raise
+
+        if not books:
+            scanned_total = len(self.scan_outcomes)
+            if scan_was_canceled:
+                final_status = (
+                    f"Scan canceled. No partial results found. Elapsed: {elapsed_text}"
+                )
+            else:
+                if is_single_item:
+                    final_status = f"No audio found. Selected file may be unsupported or inaccessible. Elapsed: {elapsed_text}"
+                else:
+                    final_status = f"No audio files found. Elapsed: {elapsed_text}"
+
+            self.update_summary(scanned_total, 0, 0, 0, added=added_count)
+            self.set_status(final_status)
+            if self.progress_window:
+                summary_text = (
+                    f"Scanned: {scanned_total} | Added: {added_count} | "
+                    f"Corrected: 0 | Errors: 0 | Warnings: 0 | "
+                    f"Duplicates: 0 | Elapsed: {elapsed_text}"
+                )
+                if scan_was_canceled:
+                    summary_text = f"Scan canceled | {summary_text}"
+                elif not is_single_item:
+                    summary_text = (
+                        f"No audio files found | {summary_text}"
+                    )
+                else:
+                    summary_text = (
+                        f"No audio found | {summary_text}"
+                    )
+                self.progress_window.mark_scan_complete(
+                    canceled=scan_was_canceled,
+                    elapsed_text=elapsed_text,
+                    files_scanned=scanned_total,
+                    books_added=added_count,
+                    read_errors=read_error_count,
+                    summary_text=summary_text,
+                )
+            return
+
+        self._apply_error_filter()
+        self._update_action_buttons_enabled()
+
+        scanned_total = len(self.scan_outcomes)
+        scan_summary = (
+            f"Scanned: {scanned_total} | Added: {added_count} | "
+            f"Corrected: {fixed_count} | Errors: {error_count} | Warnings: {warning_count} | "
+            f"Duplicates: {duplicate_count} | Elapsed: {elapsed_text}"
+        )
+        if scan_was_canceled:
+            self.set_status("Scan canceled", announce=True)
+            self.set_status(f"Scan canceled | {scan_summary}")
+        else:
+            self.set_status(scan_summary)
+
+        if self.progress_window:
+            progress_summary = scan_summary
+            if scan_was_canceled:
+                progress_summary = f"Scan canceled | {progress_summary}"
+            self.progress_window.mark_scan_complete(
+                canceled=scan_was_canceled,
+                elapsed_text=elapsed_text,
+                files_scanned=scanned_total,
+                books_added=added_count,
+                read_errors=read_error_count,
+                summary_text=progress_summary,
+            )
+
+        self.update_summary(
+            scanned=scanned_total,
+            fixed=fixed_count,
+            errors=error_count,
+            warnings=warning_count,
+            duplicates=duplicate_count,
+            added=added_count,
+        )
+
+        # Re-apply proportional widths after data population.
+        self.update_stretch_columns()
+
+    def on_import_selected(self):
+        """Add selected valid items."""
+        if not self.scanned_items:
+            self.set_status("No scanned items to add")
+            return
+
+        selected_rows = {index.row() for index in self.table.selectedIndexes()}
+        if not selected_rows:
+            self.set_status("Select one or more rows to add")
+            return
+
+        self._import_rows(sorted(selected_rows))
+
+    def on_export_csv(self):
+        """Export visible import rows to CSV for spreadsheet review."""
+        if self.table.rowCount() == 0:
+            self.set_status("No import rows to export")
+            return
+
+        rows_to_export = []
+        for row in range(self.table.rowCount()):
+            if self.table.isRowHidden(row):
+                continue
+
+            author_item = self.table.item(row, self.COL_AUTHOR)
+            title_item = self.table.item(row, self.COL_TITLE)
+            year_item = self.table.item(row, self.COL_YEAR)
+            error_item = self.table.item(row, self.COL_ERROR)
+            path_item = self.table.item(row, self.COL_PATH)
+
+            rows_to_export.append(
+                {
+                    "author": author_item.text() if author_item else "",
+                    "title": title_item.text() if title_item else "",
+                    "year": year_item.text() if year_item else "",
+                    "error_type": error_item.text() if error_item else "",
+                    "path": path_item.text() if path_item else "",
+                }
+            )
+
+        if not rows_to_export:
+            self.set_status("No visible rows to export for current filter")
+            return
+
+        # Get user's documents folder for default location
+        if hasattr(Path.home(), "Documents"):
+            default_path = Path.home() / "Documents"
+        else:
+            default_path = Path.home()
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_name = f"import_review_list_{timestamp}.csv"
+        default_file = str(default_path / default_name)
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Import List",
+            default_file,
+            "CSV Files (*.csv);;All Files (*.*)",
+        )
+        if not file_path:
+            self.set_status("Export canceled")
+            return
+
+        if not file_path.lower().endswith(".csv"):
+            file_path += ".csv"
+
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8-sig") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(
+                    ["Author", "Title", "Year", "Error Type", "File/Folder"]
+                )
+                for row_data in rows_to_export:
+                    writer.writerow(
+                        [
+                            row_data["author"],
+                            row_data["title"],
+                            row_data["year"],
+                            row_data["error_type"],
+                            row_data["path"],
+                        ]
+                    )
+        except Exception as exc:
+            self.set_status(f"Export failed: {str(exc)}", announce=True)
+            return
+
+        self.set_status(
+            f"Exported {len(rows_to_export)} row(s) to CSV: {os.path.basename(file_path)}",
+            announce=True,
+        )
+
+    def _refresh_summary_from_items(self):
+        """Recalculate summary counters from scan_outcomes and current review rows."""
+        scanned = len(self.scan_outcomes)
+        fixed = 0
+        errors = 0
+        warnings = 0
+        duplicates = 0
+        added = 0
+
+        for outcome in self.scan_outcomes:
+            status = outcome.get("status")
+            outcome_tags = set(outcome.get("outcomes", []) or [])
+
+            if status == "Added":
+                added += 1
+                if "fallback_used" in outcome_tags or "autocorrect_used" in outcome_tags:
+                    fixed += 1
+
+        for item in self.scanned_items:
+            status = str(item.get("status", "")).strip()
+            row_errors = list(item.get("errors", []) or [])
+            is_duplicate = bool(item.get("is_duplicate")) or status == "Duplicate"
+
+            if is_duplicate:
+                duplicates += 1
+            elif status in ("Error", "Failed") or any(
+                self.validator.categorize_error(err) in ("read", "parse")
+                for err in row_errors
+            ):
+                errors += 1
+            elif status == "Warning" or self._has_non_fixed_warning(row_errors):
+                warnings += 1
+
+            if any(self._is_fallback_error(err) for err in row_errors) or any(
+                self._is_correction_error(err) for err in row_errors
+            ):
+                fixed += 1
+
+        self.update_summary(
+            scanned=scanned,
+            fixed=fixed,
+            errors=errors,
+            warnings=warnings,
+            duplicates=duplicates,
+            added=added,
+        )
+        self._apply_error_filter()
+
+    def _mark_scan_outcome_added(self, book_data: dict):
+        """Mark matching scan outcome as added after manual add operation."""
+        if not book_data:
+            return
+
+        target_title = (book_data.get("title") or "").strip()
+        target_author = (book_data.get("author") or "").strip()
+        target_year = book_data.get("year")
+
+        for outcome in self.scan_outcomes:
+            outcome_book = outcome.get("book") or {}
+            if outcome_book is book_data:
+                outcome["status"] = "Added"
+                outcomes = list(outcome.get("outcomes", []) or [])
+                if "added" not in outcomes:
+                    outcomes.append("added")
+                outcome["outcomes"] = outcomes
+                return
+
+        for outcome in self.scan_outcomes:
+            outcome_book = outcome.get("book") or {}
+            if (
+                (outcome_book.get("title") or "").strip() == target_title
+                and (outcome_book.get("author") or "").strip() == target_author
+                and outcome_book.get("year") == target_year
+            ):
+                outcome["status"] = "Added"
+                outcomes = list(outcome.get("outcomes", []) or [])
+                if "added" not in outcomes:
+                    outcomes.append("added")
+                outcome["outcomes"] = outcomes
+                return
+
+    def _import_rows(self, row_indices):
+        """Add rows by index from scanned_items."""
+        self._is_adding = True
+        self._cancel_add_requested = False
+
+        imported = 0
+        skipped = 0
+        failed = 0
+        processed_valid = 0
+        rows_to_remove = []
+        conn = self.db.connect()
+        transaction_open = False
+
+        # Count how many rows will actually be added (valid status, title, author)
+        valid_count = 0
+        for row in row_indices:
+            if row < 0 or row >= len(self.scanned_items):
+                continue
+            item = self.scanned_items[row]
+            status = item.get("status")
+            if status not in ("OK", "Warning"):
+                continue
+            book_data = item.get("book", {})
+            title = (book_data.get("title") or "").strip()
+            author_text = (book_data.get("author") or "").strip()
+            if not title or not author_text:
+                continue
+            valid_count += 1
+
+        # Prepare progress window for add phase with actual valid count
+        if self.progress_window:
+            self.progress_window.prepare_for_add_phase(valid_count)
+            self.progress_window.show()
+            self.progress_window.raise_()
+            self.progress_window.activateWindow()
+            QApplication.processEvents()
+
+        try:
+            # Only start transaction if not already in one (WAL mode may have implicit transaction)
+            if not conn.in_transaction:
+                conn.execute("BEGIN")
+            transaction_open = True
+
+            for row in row_indices:
+                QApplication.processEvents()
+                if self._cancel_add_requested:
+                    break
+
+                if row < 0 or row >= len(self.scanned_items):
+                    continue
+
+                item = self.scanned_items[row]
+                status = item.get("status")
+                if status not in ("OK", "Warning"):
+                    skipped += 1
+                    continue
+
+                book_data = item.get("book", {})
+                title = (book_data.get("title") or "").strip()
+                author_text = (book_data.get("author") or "").strip()
+                if not title or not author_text:
+                    skipped += 1
+                    continue
+
+                processed_valid += 1
+
+                try:
+                    book = self._build_book_from_scan(
+                        book_data,
+                        defer_commits=True,
+                    )
+                    self.book_queries.insert(book, commit=False)
+                    imported += 1
+                    self._mark_scan_outcome_added(book_data)
+                    rows_to_remove.append(row)
+                except Exception as exc:
+                    failed += 1
+                    item["status"] = "Failed"
+                    error_item = self.table.item(row, self.COL_ERROR)
+                    error_text = error_item.text() if error_item else ""
+                    combined_error = (
+                        error_text + "; " if error_text else ""
+                    ) + f"E: {str(exc)}"
+                    self.table.setItem(
+                        row, self.COL_ERROR, self._cell_item(combined_error)
+                    )
+
+                if self.progress_window:
+                    self.progress_window.update_add_progress(
+                        processed=processed_valid,
+                        total=valid_count,
+                        books_added=imported,
+                        scanned=self._summary_counts.get("scanned", 0),
+                        fixed=self._summary_counts.get("fixed", 0),
+                        errors=self._summary_counts.get("errors", 0),
+                        warnings=self._summary_counts.get("warnings", 0),
+                        duplicates=self._summary_counts.get("duplicates", 0),
+                    )
+                    QApplication.processEvents()
+
+            if self._cancel_add_requested:
+                if transaction_open:
+                    conn.rollback()
+                    transaction_open = False
+                self.set_status(
+                    f"Add canceled. No books were added | Skipped: {skipped} | Failed: {failed}"
+                )
+                return
+
+            if transaction_open:
+                conn.commit()
+                transaction_open = False
+
+            if rows_to_remove:
+                sorted_rows_to_remove = sorted(set(rows_to_remove))
+                next_focus_row = sorted_rows_to_remove[0]
+
+                for row in reversed(sorted_rows_to_remove):
+                    if 0 <= row < len(self.scanned_items):
+                        del self.scanned_items[row]
+                        self.table.removeRow(row)
+
+                self.selected_rows.clear()
+                self.selection_anchor_row = None
+
+                if self.table.rowCount() > 0:
+                    target_row = min(next_focus_row, self.table.rowCount() - 1)
+                    self.table.setCurrentCell(target_row, self.COL_TITLE)
+                    self.table.setFocus(Qt.TabFocusReason)
+
+            self._refresh_summary_from_items()
+            self.restore_summary_status()
+            self._update_action_buttons_enabled()
+
+            if imported > 0:
+                self.total_imported += imported
+
+            remaining = len(self.scanned_items)
+
+            # Re-enable collection combo if no items remain to review
+            if remaining == 0:
+                self.collection_combo.setEnabled(True)
+
+            # Mark add phase complete in progress window
+            if self.progress_window:
+                self.progress_window.mark_add_phase_complete(
+                    books_added=imported,
+                    elapsed_text="",
+                )
+
+            # Show result popup
+            # Non-blocking show() keeps event loop responsive
+            self._show_info_popup(
+                "Add Complete",
+                f"Books added: {imported}\nLeft in import list: {remaining}",
+            )
+        finally:
+            if transaction_open:
+                conn.rollback()
+            self._is_adding = False
+            self._cancel_add_requested = False
+
+    def _apply_detail_edits(
+        self,
+        row: int,
+        detail_window: ImportDetailWindow,
+        resolve_errors: bool = False,
+    ):
+        """Apply edits returned from ImportDetailWindow to scanned item + table."""
+        item = self.scanned_items[row]
+        book_data = item.setdefault("book", {})
+        for key in _DETAIL_BOOK_FIELD_KEYS:
+            if key in detail_window.book_data:
+                book_data[key] = detail_window.book_data[key]
+
+        item["author"] = book_data.get("author", "")
+        item["title"] = book_data.get("title", "")
+        item["year"] = book_data.get("year")
+
+        self._revalidate_scanned_item(item)
+
+        self.table.setItem(
+            row,
+            self.COL_TITLE,
+            self._cell_item(detail_window.book_data.get("title", "")),
+        )
+        self.table.setItem(
+            row,
+            self.COL_AUTHOR,
+            self._cell_item(detail_window.book_data.get("author", "")),
+        )
+        self.table.setItem(
+            row,
+            self.COL_YEAR,
+            self._cell_item(detail_window.book_data.get("year") or ""),
+        )
+
+        row_errors = list(item.get("errors", []))
+
+        error_summary = self._format_error_summary(row_errors) if row_errors else ""
+        self.table.setItem(row, self.COL_ERROR, self._cell_item(error_summary))
+
+        self._refresh_summary_from_items()
+
+    def _focus_import_row(self, row: int):
+        """Restore focus to a row in the import list after closing detail."""
+        if self.table.rowCount() == 0:
+            return
+
+        target_row = max(0, min(row, self.table.rowCount() - 1))
+        self.table.setCurrentCell(target_row, self.COL_TITLE)
+        self.table.scrollTo(self.table.model().index(target_row, self.COL_TITLE))
+        self.table.setFocus(Qt.TabFocusReason)
+
+    def _discard_scanned_item(self, row: int) -> int | None:
+        """Discard one scanned row and return next visible row index, if any."""
+        if row < 0 or row >= len(self.scanned_items):
+            return None
+
+        item = self.scanned_items[row]
+        self._remove_scan_outcome_for_scanned_item(item)
+        del self.scanned_items[row]
+        self.table.removeRow(row)
+        self.selected_rows.clear()
+        self.selection_anchor_row = None
+        self._refresh_summary_from_items()
+        self._update_action_buttons_enabled()
+
+        if self.table.rowCount() == 0:
+            return None
+
+        visible_rows = self._visible_row_indices()
+        if not visible_rows:
+            return None
+
+        for candidate_row in visible_rows:
+            if candidate_row >= row:
+                return candidate_row
+
+        return visible_rows[-1]
+
+    def _visible_row_indices(self) -> list[int]:
+        """Return all table rows currently visible under active filter."""
+        return [
+            row
+            for row in range(self.table.rowCount())
+            if not self.table.isRowHidden(row)
+        ]
+
+    def _adjacent_visible_row(self, current_row: int, direction: int) -> int | None:
+        """Return previous/next visible row index relative to current row."""
+        visible_rows = self._visible_row_indices()
+        if not visible_rows:
+            return None
+
+        if direction > 0:
+            for row in visible_rows:
+                if row > current_row:
+                    return row
+            return None
+
+        for row in reversed(visible_rows):
+            if row < current_row:
+                return row
+        return None
+
+    def on_open_detail(self, row: int = 0, col: int = 0):
+        """Open import detail window to view/edit scanned metadata."""
+        if self.table.rowCount() == 0:
+            self.set_status("No items to view")
+            return
+
+        if row < 0 or row >= len(self.scanned_items):
+            self.set_status("Select a valid row")
+            return
+
+        while 0 <= row < len(self.scanned_items):
+            item = self.scanned_items[row]
+            book_data = item.get("book", {})
+            errors = list(item.get("errors", []))
+            if item.get("is_duplicate"):
+                has_duplicate_error = any(
+                    str(err).strip().lower() == "duplicate" for err in errors
+                )
+                if not has_duplicate_error:
+                    errors.append("Duplicate")
+
+            detail_window = ImportDetailWindow(
+                self.db,
+                self.scaler,
+                self.theme_manager,
+                book_data=book_data.copy(),
+                errors=errors,
+                current_index=row,
+                total_count=len(self.scanned_items),
+                is_duplicate=item.get("is_duplicate", False),
+                parent=self,
+            )
+
+            result = detail_window.exec()
+
+            if result == QDialog.Accepted:
+                self._apply_detail_edits(row, detail_window)
+                self.set_status("Changes applied to import item")
+                self._focus_import_row(row)
+                return
+
+            if result == ImportDetailWindow.RESULT_PREV:
+                self._apply_detail_edits(row, detail_window)
+                previous_row = self._adjacent_visible_row(row, -1)
+                if previous_row is not None:
+                    row = previous_row
+                else:
+                    self.set_status("Already at first item")
+                    self._focus_import_row(row)
+                    return
+                continue
+
+            if result == ImportDetailWindow.RESULT_NEXT:
+                self._apply_detail_edits(row, detail_window)
+                next_row = self._adjacent_visible_row(row, 1)
+                if next_row is not None:
+                    row = next_row
+                else:
+                    self.set_status("Already at last item")
+                    self._focus_import_row(row)
+                    return
+                continue
+
+            if result == ImportDetailWindow.RESULT_SKIP:
+                next_visible = self._discard_scanned_item(row)
+                if self.table.rowCount() == 0:
+                    self.set_status("Import item discarded. No items remain")
+                    return
+                if next_visible is None:
+                    self.set_status(
+                        "Import item discarded. No items remain in current filter"
+                    )
+                    return
+                self.set_status("Import item discarded")
+                row = next_visible
+                continue
+
+            self._focus_import_row(row)
+            return
+
+    def _get_selected_or_current_row(self) -> int:
+        """Return selected row, current row, or -1 if unavailable."""
+        if self.selected_rows:
+            return min(self.selected_rows)
+
+        current_row = self.table.currentRow()
+        if current_row >= 0:
+            return current_row
+
+        if self.table.rowCount() > 0:
+            return 0
+
+        return -1
+
+    def on_open_detail_selected(self):
+        """Open detail window for selected/current row."""
+        row = self._get_selected_or_current_row()
+        if row < 0:
+            self.set_status("No items to view")
+            return
+        self.on_open_detail(row, self.table.currentColumn())
+
+    def on_cancel(self):
+        """Handle cancel request for add-in-progress or close dialog."""
+        # Re-enable collection combo when canceling import/review
+        self.collection_combo.setEnabled(True)
+        # Escape should trigger the same confirmation as window close
+        self._closing_via_handler = True
+        try:
+            if self._is_scanning:
+                if self._confirm_cancel_scan():
+                    self._cancel_scan_requested = True
+                    self.set_status("Canceling scan...")
+                    self.close()
+                else:
+                    self.set_status("Continuing scan")
+                return
+
+            if self._is_adding:
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Stop Add",
+                    text=(
+                        "Stop adding books now?\n\n"
+                        "Any books added in this run will be removed so no partial adds remain."
+                    ),
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                    button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+                )
+                if reply == QMessageBox.Yes:
+                    self._cancel_add_requested = True
+                    self.set_status("Stopping add operation...")
+                    self.close()
+                else:
+                    self.set_status("Continuing add operation")
+                return
+
+            if not self._confirm_close_window():
+                self.set_status("Close canceled")
+                return
+
+            self.close()
+        finally:
+            self._closing_via_handler = False
+
+    def table_mouse_press(self, event):
+        """Handle mouse press with main-window style row selection."""
+        if event.button() == Qt.LeftButton:
+            index = self.table.indexAt(event.position().toPoint())
+            if not index.isValid():
+                QTableWidget.mousePressEvent(self.table, event)
+                return
+
+            modifiers = event.modifiers()
+            row = index.row()
+
+            if modifiers & Qt.ShiftModifier:
+                if self.selection_anchor_row is None:
+                    self.selection_anchor_row = row
+                self._select_row_range(self.selection_anchor_row, row, index.column())
+                event.accept()
+                return
+
+            if modifiers & Qt.ControlModifier:
+                self._updating_selection_ui = True
+                self.table.clearSelection()
+                self.table.selectionModel().clearSelection()
+                self.table.setCurrentCell(row, index.column())
+                self._updating_selection_ui = False
+
+                if row in self.selected_rows:
+                    self.selected_rows.remove(row)
+                else:
+                    self.selected_rows.add(row)
+                    if self.selection_anchor_row is None:
+                        self.selection_anchor_row = row
+
+                self._updating_selection_ui = True
+                self._sync_table_selection_to_selected_rows()
+                self._updating_selection_ui = False
+                if self.selected_rows:
+                    self.announce_selection()
+                else:
+                    self.restore_summary_status()
+                event.accept()
+                return
+
+            self._updating_selection_ui = True
+            self.table.clearSelection()
+            self.table.selectionModel().clearSelection()
+            self._updating_selection_ui = False
+            self.selected_rows.clear()
+            self.selection_anchor_row = None
+            self.restore_summary_status()
+            self.table.setCurrentCell(index.row(), index.column())
+            event.accept()
+            return
+
+        QTableWidget.mousePressEvent(self.table, event)
+
+    def table_mouse_double_click(self, event):
+        """Open Import Detail on double-click of a valid row."""
+        if event.button() == Qt.LeftButton:
+            index = self.table.indexAt(event.position().toPoint())
+            if index.isValid():
+                row = index.row()
+                col = index.column()
+                self.table.setCurrentCell(row, col)
+                self.on_open_detail(row, col)
+                event.accept()
+                return
+
+        QTableWidget.mouseDoubleClickEvent(self.table, event)
+
+    def table_key_press(self, event):
+        """Handle table key presses with main-window style selection behavior."""
+        # Tab/Shift+Tab: Move focus out of table to next/previous widget (accessibility)
+        if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
+            self.focusNextChild()
+            event.accept()
+            return
+        elif event.key() == Qt.Key_Backtab:
+            self.focusPreviousChild()
+            event.accept()
+            return
+
+        # Ctrl+A: Select all visible rows
+        if event.key() == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
+            row_count = self.table.rowCount()
+            if row_count > 0:
+                visible_rows = [r for r in range(row_count) if not self.table.isRowHidden(r)]
+                if visible_rows:
+                    self._updating_selection_ui = True
+                    self.selected_rows = set(visible_rows)
+                    self.selection_anchor_row = visible_rows[0]
+                    col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+                    self.table.setCurrentCell(visible_rows[0], col)
+                    self._sync_table_selection_to_selected_rows()
+                    self._updating_selection_ui = False
+                    self.announce_selection()
+            event.accept()
+            return
+
+        if event.key() in (
+            Qt.Key_Up,
+            Qt.Key_Down,
+            Qt.Key_PageUp,
+            Qt.Key_PageDown,
+            Qt.Key_Home,
+            Qt.Key_End,
+        ):
+            modifiers = event.modifiers()
+
+            if modifiers & Qt.ShiftModifier:
+                # Shift+Arrow: Start selection OR extend selection (Windows standard)
+                row = self.table.currentRow()
+                if row >= 0:
+                    if self.selection_anchor_row is None:
+                        # No anchor set - start selection at current row
+                        self.selection_anchor_row = row
+                        col = (
+                            self.table.currentColumn()
+                            if self.table.currentColumn() >= 0
+                            else 0
+                        )
+                        self._select_row_range(row, row, col)
+                    else:
+                        # Anchor exists - extend selection
+                        self.extend_selection_with_arrow(event.key())
+                event.accept()
+                return
+
+            if modifiers & Qt.ControlModifier:
+                QTableWidget.keyPressEvent(self.table, event)
+                return
+
+            self.move_current_without_selection(event.key())
+            event.accept()
+            return
+
+        if event.key() in (Qt.Key_Left, Qt.Key_Right):
+            self.move_column_without_selection(event.key())
+            event.accept()
+            return
+
+        # Skip Space key handling - no longer used for selection
+        if event.key() == Qt.Key_Space:
+            event.accept()
+            return
+
+        QTableWidget.keyPressEvent(self.table, event)
+
+    def move_current_without_selection(self, key: int):
+        """Move current cell and clear selection when navigating rows."""
+        row_count = self.table.rowCount()
+        col_count = self.table.columnCount()
+        if row_count == 0 or col_count == 0:
+            return
+
+        visible_rows = [r for r in range(row_count) if not self.table.isRowHidden(r)]
+        if not visible_rows:
+            return
+
+        row = (
+            self.table.currentRow() if self.table.currentRow() >= 0 else visible_rows[0]
+        )
+        if row not in visible_rows:
+            row = visible_rows[0]
+        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+        page_step = max(self.table.verticalScrollBar().pageStep() - 1, 1)
+        current_visible_index = visible_rows.index(row)
+
+        changing_rows = False
+        if key == Qt.Key_Up:
+            row = visible_rows[max(current_visible_index - 1, 0)]
+            changing_rows = True
+        elif key == Qt.Key_Down:
+            row = visible_rows[min(current_visible_index + 1, len(visible_rows) - 1)]
+            changing_rows = True
+        elif key == Qt.Key_PageUp:
+            row = visible_rows[max(current_visible_index - page_step, 0)]
+            changing_rows = True
+        elif key == Qt.Key_PageDown:
+            row = visible_rows[
+                min(current_visible_index + page_step, len(visible_rows) - 1)
+            ]
+            changing_rows = True
+        elif key == Qt.Key_Home:
+            row = visible_rows[0]
+            changing_rows = True
+        elif key == Qt.Key_End:
+            row = visible_rows[-1]
+            changing_rows = True
+
+        if changing_rows:
+            self._updating_selection_ui = True
+            self.table.clearSelection()
+            self.table.selectionModel().clearSelection()
+            self._updating_selection_ui = False
+            self.selected_rows.clear()
+            self.selection_anchor_row = None
+            self.restore_summary_status()
+
+        self.table.setCurrentCell(row, col)
+        self.table.setCurrentIndex(self.table.model().index(row, col))
+        self.table.scrollTo(self.table.model().index(row, col))
+
+    def move_column_without_selection(self, key: int):
+        """Move between columns without changing row selection state."""
+        col_count = self.table.columnCount()
+        if col_count == 0:
+            return
+
+        row = self.table.currentRow() if self.table.currentRow() >= 0 else 0
+        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+
+        if key == Qt.Key_Left:
+            col = max(col - 1, 0)
+        elif key == Qt.Key_Right:
+            col = min(col + 1, col_count - 1)
+
+        self.table.setCurrentCell(row, col)
+        self.table.setCurrentIndex(self.table.model().index(row, col))
+        self.table.scrollTo(self.table.model().index(row, col))
+
+    def extend_selection_with_arrow(self, key: int):
+        """Extend row selection from anchor using Shift+navigation keys."""
+        if self.selection_anchor_row is None:
+            return
+
+        row_count = self.table.rowCount()
+        if row_count == 0:
+            return
+
+        visible_rows = [r for r in range(row_count) if not self.table.isRowHidden(r)]
+        if not visible_rows:
+            return
+        if self.selection_anchor_row not in visible_rows:
+            self.selection_anchor_row = visible_rows[0]
+
+        row = (
+            self.table.currentRow() if self.table.currentRow() >= 0 else visible_rows[0]
+        )
+        if row not in visible_rows:
+            row = visible_rows[0]
+        col = self.table.currentColumn() if self.table.currentColumn() >= 0 else 0
+        page_step = max(self.table.verticalScrollBar().pageStep() - 1, 1)
+        current_visible_index = visible_rows.index(row)
+
+        target_row = row
+        if key == Qt.Key_Up:
+            target_row = visible_rows[max(current_visible_index - 1, 0)]
+        elif key == Qt.Key_Down:
+            target_row = visible_rows[
+                min(current_visible_index + 1, len(visible_rows) - 1)
+            ]
+        elif key == Qt.Key_PageUp:
+            target_row = visible_rows[max(current_visible_index - page_step, 0)]
+        elif key == Qt.Key_PageDown:
+            target_row = visible_rows[
+                min(current_visible_index + page_step, len(visible_rows) - 1)
+            ]
+        elif key == Qt.Key_Home:
+            target_row = visible_rows[0]
+        elif key == Qt.Key_End:
+            target_row = visible_rows[-1]
+
+        self._select_row_range(self.selection_anchor_row, target_row, col)
+        self.announce_selection()
+
+    def _sync_table_selection_to_selected_rows(self):
+        model = self.table.selectionModel()
+        if model is None:
+            return
+
+        model.clearSelection()
+        col_count = self.table.columnCount()
+        for row in sorted(self.selected_rows):
+            if self.table.isRowHidden(row):
+                continue
+            for col in range(col_count):
+                index = self.table.model().index(row, col)
+                model.select(index, QItemSelectionModel.Select)
+
+    def _select_row_range(self, anchor_row: int, target_row: int, current_col: int = 0):
+        """Track selected rows without selecting full table rows in Qt."""
+        row_count = self.table.rowCount()
+        visible_rows = [r for r in range(row_count) if not self.table.isRowHidden(r)]
+        if not visible_rows:
+            return
+        if anchor_row not in visible_rows:
+            anchor_row = visible_rows[0]
+        if target_row not in visible_rows:
+            target_row = visible_rows[0]
+
+        start_row = min(anchor_row, target_row)
+        end_row = max(anchor_row, target_row)
+
+        self._updating_selection_ui = True
+        self.table.selectionModel().clearSelection()
+        self.selected_rows = {
+            row
+            for row in range(start_row, end_row + 1)
+            if not self.table.isRowHidden(row)
+        }
+
+        self.table.setCurrentCell(target_row, current_col)
+        self.table.setCurrentIndex(self.table.model().index(target_row, current_col))
+        self._sync_table_selection_to_selected_rows()
+        self._updating_selection_ui = False
+        self.announce_selection()
+
+    def resizeEvent(self, event):
+        """Keep import table stretch columns proportional on window resize."""
+        super().resizeEvent(event)
+        self.update_stretch_columns()
+
+    def showEvent(self, event):
+        """Apply initial proportional import column widths after layout."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self.update_stretch_columns)
+
+    def update_stretch_columns(self):
+        """Update Import table stretch column widths proportionally."""
+        if not hasattr(self, "_stretch_columns") or not hasattr(self, "table"):
+            return
+
+        header = self.table.horizontalHeader()
+        fixed_width = 0
+        for col in range(self.table.columnCount()):
+            if col not in self._stretch_columns:
+                fixed_width += header.sectionSize(col)
+
+        available = self.table.viewport().width() - fixed_width
+        if available < 100:
+            return
+
+        total_weight = sum(self._stretch_columns.values())
+        for col, weight in self._stretch_columns.items():
+            width = int(available * weight / total_weight)
+            self.table.setColumnWidth(col, max(width, 90))
+
+    def accept(self):
+        """Handle dialog accept."""
+        announce_dialog_closed(self)
+        super().accept()
+
+    def reject(self):
+        """Handle dialog reject."""
+        announce_dialog_closed(self)
+        super().reject()
+
+    def closeEvent(self, event):
+        """Intercept close while scanning to confirm cancel/continue."""
+        if getattr(self, "_closing_via_handler", False):
+            super().closeEvent(event)
+            return
+
+        if self._is_scanning:
+            if self._confirm_cancel_scan():
+                self._cancel_scan_requested = True
+                self.set_status("Canceling scan...")
+            else:
+                self.set_status("Continuing scan")
+            event.ignore()
+            return
+
+        if self._is_adding:
+            event.ignore()
+            # Only call on_cancel if not already closing via handler
+            if not getattr(self, "_closing_via_handler", False):
+                self.on_cancel()
+            return
+
+        if not self._confirm_close_window():
+            self.set_status("Close canceled")
+            event.ignore()
+            return
+
+        # Re-enable collection combo when closing normally
+        self.collection_combo.setEnabled(True)
+
+        super().closeEvent(event)
