@@ -11,7 +11,7 @@ Step-by-step setup for running AbCS from source. For project overview and featur
 ### Platform notes
 
 - **Windows** — primary development and test platform
-- **Linux** — see [linux_build.md](linux_build.md) for build and packaging
+- **Linux** — see [doc/linux_build.md](doc/linux_build.md) for build and packaging
 - **macOS** — run from source with the same steps below
 
 ## Install dependencies
@@ -70,7 +70,7 @@ AbCS creates the database and tables automatically on first launch. You do not n
 ## First-time workflow
 
 1. **Launch** — `python src/main.py`
-2. **Import books** — **File → Import** (Ctrl+I) to scan audiobook folders (a default **Audio Books** collection is created with the database)
+2. **Import books** — **File → Import** (Ctrl+I) to scan audiobook folders (a default **Audiobooks** collection is created with the database)
 3. **Set preferences** (optional) — **Manage → Preferences** — default zoom is **150%**; see [Default preferences](help_docs/17_default_preferences.md)
 4. **Browse** — use Find, filters, and sort on the main window
 5. **Manage collections** (optional) — **Manage → Collections** to rename the default collection or add more
@@ -93,7 +93,7 @@ For headless CI-style runs and pytest options, see [TESTING.md](TESTING.md).
 ## Building an installer
 
 - **Windows:** run `build_installer.bat` (requires local `AbCS.spec` and PyInstaller; see [doc/BUILD.md](doc/BUILD.md)). The Inno Setup script copies `help_docs\` into the install folder.
-- **Linux:** follow [linux_build.md](linux_build.md). `build_linux.sh` and `build_linux_debug.sh` bundle `help_docs/` into the executable automatically (see `build_linux_common.sh`).
+- **Linux:** follow [doc/linux_build.md](doc/linux_build.md). `build_linux.sh` and `build_linux_debug.sh` bundle `help_docs/` into the executable automatically (see `build_linux_common.sh`).
 
 When adding a help topic, create `help_docs/nn_topic_name.md` in the repository before building; no code change is required for it to appear in **All Help Topics**. See [README.md](README.md#adding-or-changing-help-topics-dynamic-topics).
 
@@ -114,4 +114,4 @@ When adding a help topic, create `help_docs/nn_topic_name.md` in the repository 
 - [help_docs/01_overview.md](help_docs/01_overview.md) — user workflow guides
 - [help_docs/18_import_preferences.md](help_docs/18_import_preferences.md) — import scenarios and validation rules
 - [TESTING.md](TESTING.md) — automated test guide
-- [linux_build.md](linux_build.md) — Linux packaging
+- [doc/linux_build.md](doc/linux_build.md) — Linux packaging

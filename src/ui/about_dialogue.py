@@ -72,17 +72,18 @@ class AboutDialog(AccessibleDialog):
 
         version = _get_app_version()
         about_blocks = [
-            ("body", f"AbCS - Audio Book Collector Scanner    {version}"),
+            ("body", f"AbCS - Audiobook Collector Scanner    {version}"),
             (
                 "body",
                 "A cross-platform audiobook collection manager with full accessibility support.",
             ),
+            ("body", "Published by Aurora Accessibility — auroraaccessibility.com"),
             ("heading", "LICENSE"),
             ("body", "Copyright (c) 2025-2026 C.F. Drake & Contributors"),
             ("body", "Custom non-commercial license."),
             ("body", "Commercial sale/distribution requires written permission."),
             ("heading", "FEATURES"),
-            ("item", "Audio Book Management with full metadata."),
+            ("item", "Audiobook management with full metadata."),
             ("item", "ID3 Tag Import from most audio format files."),
             ("item", "Web import and updated metadata."),
             ("item", "Advanced search and filtering."),
@@ -96,6 +97,7 @@ class AboutDialog(AccessibleDialog):
                 "Built-in guides explain workflows in plain language for every major window.",
             ),
             ("item", "Help menu, Help... — browse topics and jump to sections."),
+            ("item", "Help menu, Website... — product page and downloads."),
             ("item", "Shift+F1 — context-sensitive help for the current window."),
             ("item", "F1 — keyboard shortcuts for the current window."),
             ("heading", "ACCESSIBILITY"),

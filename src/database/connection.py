@@ -508,7 +508,7 @@ class DatabaseManager:
         if collection_count == 0:
             self.execute(
                 "INSERT INTO collections (name, active) VALUES (?, ?)",
-                ("Audio Books", 1),
+                ("Audiobooks", 1),
             )
             self.connect().commit()
 

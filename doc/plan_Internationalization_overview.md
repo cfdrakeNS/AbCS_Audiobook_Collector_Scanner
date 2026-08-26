@@ -45,7 +45,7 @@ Each language file is a flat Python dict:
 ```python
 # en.py
 STRINGS = {
-    "main.title": "AbCS — Audio Book Collection Scanner",
+    "main.title": "AbCS — Audiobook Collector Scanner",
     "main.menu.file": "&File",
     "book_details.save_btn": "Save",
     "book_details.save_btn.accessible": "Save book changes",

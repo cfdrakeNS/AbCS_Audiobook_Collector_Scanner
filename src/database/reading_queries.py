@@ -1,5 +1,5 @@
 """
-Reading History Queries - Audio Book Collection
+Reading History Queries - Audiobook Collection
 Provides queries for reading statistics and history analysis.
 """
 

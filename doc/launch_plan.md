@@ -1,6 +1,6 @@
 # AbCS Public Launch Plan
 
-**Status:** Main Aurora site ready for Dominic content review; AbCS product site is the next Carrd priority.
+**Status:** All three Carrd sites ready on test URLs; awaiting Dominic content review before custom domains and repo flip.
 **Created:** Aug 2026
 **Updated:** Aug 2026
 **Source of decisions:** [launch_open_questions.md](launch_open_questions.md) (keep for the record; this document is the actionable plan built from those answers).
@@ -17,13 +17,14 @@
 | 4 | macOS support | **Dropped from the roadmap** — no packaged macOS installer. macOS users continue to run AbCS from source (already documented). Backlog/status docs updated to reflect this (see Doc cleanup below). |
 | 5 | Talk3270 | Separate JAWS-scripting product for AS/400 terminal access (sold to businesses since 1998); demo-request form only, no public download. Carrd site supports lead gen; not on the critical path for the AbCS repo/release launch. |
 | 6 | Web presence | **Three Carrd sites** under `auroraaccessibility.com`: main brand/home (`auroraaccessibility.com`), AbCS (`abcs.auroraaccessibility.com`), Talk3270 (`talk3270.auroraaccessibility.com`). DNS via Porkbun; Cloudflare not used. |
-| 7 | Donation link | **Ko-fi** confirmed. Add a Ko-fi link/button to the README and the AbCS Carrd page (not required on the main Aurora page for v1). |
-| 8 | Public contact | **`auroraaccessibility@gmail.com`** for README Support and product-specific use. **Main Aurora site:** no public email (routes visitors to product sites). **AbCS site:** add a contact/questions section when ready. **Talk3270 site:** demo request form (and email via form workflow). |
-| 9 | AbCS help docs on the site | Link from the AbCS Carrd site via **one link** to a single GitHub entry point (`help_docs/01_overview.md`), not per-doc Carrd pages. Avoids GitHub file-tree navigation for screen reader users and avoids duplicating/maintaining 22 docs on Carrd. In-app help (Shift+F1 / bundled `help_docs`) remains primary. |
+| 7 | Donation link | **Ko-fi** confirmed. Add a Ko-fi link/button to the README and the AbCS Carrd page (optional for v1). |
+| 8 | Public contact | **`auroraaccessibility@gmail.com`** in README Support. **Main Aurora site:** no public email. **AbCS site:** no public email (free product; in-app help only — no support inbox). **Talk3270 site:** demo form → `auroraaccessibility@gmail.com` as form recipient. |
+| 9 | AbCS help docs on the site | Optional: one link from the AbCS Carrd site to GitHub `help_docs/01_overview.md`. In-app help (Shift+F1 / bundled `help_docs`) remains primary. Dominic owns help doc copy — do not edit `help_docs/` in repo until his pass is merged. |
 | 10 | AbCS video tutorials | **Deferred** — not part of v1 launch. Text and in-app help are enough for now; revisit later if users ask for video. |
 | 11 | Talk3270 package delivery | After a demo-request / license, send the zipped install + user docs via a **Google Drive** shared link per client (manual, not a public download). |
 | 12 | Talk3270 client support page | **Unlisted Carrd page** (not in site navigation), shared with licensed clients via direct link only. |
-| 13 | Git commit identity | Before AbCS goes public, rewrite commit author/committer from the personal Hotmail address to **Aurora Accessibility** / GitHub noreply (`18517493+cfdrakeNS@users.noreply.github.com`). Same rewrite applied to the already-public `pyside6-accessible-ui-reference` repo. |
+| 13 | Git commit identity | Rewrite commit author/committer from personal Hotmail to **Aurora Accessibility** / GitHub noreply. **Done Aug 2026** via `fresh_public_repo.ps1`. |
+| 14 | Product naming | Use **Audiobook** (one word) for the expanded product name: **Audiobook Collector Scanner**. Body text: **audiobook** / **audiobooks**. Default collection: **Audiobooks**. Align code and docs; `help_docs/` updated by Dominic separately. |
 
 ---
 
@@ -37,36 +38,58 @@
 Done:
 
 - Hero with Products (AbCS, Talk3270) and About section
-- About copy: mission, What we build, Our story, Our approach, The team (Francis and Dominic, first names only)
+- About copy: mission, What we build, Our story, Our approach (incl. PySide6 GitHub link), The team
 - Talk3270 blurb links to Talk3270 site
+- **Audiobook Collector Scanner** naming on Products and About
 - No public email on main site
-- Heading structure: one H1, H2 for Products and About, H3 subsections
-- Meta description set
+- Heading structure, meta description, footer
 - Indexing off on test URL until launch
 
 Pending (after Dominic meeting):
 
 - Dominic content/sign-off on Our story, team blurbs, and bank/employer wording
-- Expand accessibility wording to mention **braille display users** (tagline and/or About — deferred until meeting)
-- Copyright footer (optional, low priority)
-- Switch test URLs to custom domains and publish when approved
-- Ko-fi on main site — optional; not required for v1
+- Expand accessibility wording to mention **braille display users** (deferred until meeting)
+- Switch test URLs to custom domains, turn indexing on, publish when approved
 
 About-page draft reference: [aurora_about_page_draft.md](aurora_about_page_draft.md)
 
-### AbCS site — next priority
+### AbCS site — ready for Dominic review
 
 **Test URL:** https://abcstest.carrd.co/  
 **Live URL (when published):** https://abcs.auroraaccessibility.com/
 
-Needs work: download buttons, **one** help-docs link to GitHub `help_docs/01_overview.md` (not per-doc pages), placeholder list items, typos, contact section, heading cleanup, Ko-fi link, braille/screen reader copy alignment with main site. Video tutorials deferred.
+Done:
 
-### Talk3270 site — after AbCS or in parallel with Dominic
+- Product page: features, accessibility bullets, **AbCS — Audiobook Collector Scanner** title
+- Download buttons wired to GitHub Release v2.06 (Windows + Linux zips)
+- Footer link to Aurora main site
+- No public contact email (by design)
+
+Pending (optional / post-Dominic):
+
+- Ko-fi link (optional)
+- One help-docs link to GitHub `help_docs/01_overview.md` (optional)
+- Publish to custom domain; turn indexing on
+
+### Talk3270 site — ready for Dominic review
 
 **Test URL:** https://talk3270.carrd.co/  
 **Live URL (when published):** https://talk3270.auroraaccessibility.com/
 
-Needs work: sectioned layout cleanup, features/benefits as proper lists, demo form review with Dominic, duplicate headings, link labels. Client delivery via Google Drive; unlisted Carrd support page for licensed clients.
+Done:
+
+- Features and Benefits as proper lists; intro as paragraph (single H1)
+- Demo request form: Contact Name, Organization, Email, terminal emulator (message field), Require consent
+- Form recipient: `auroraaccessibility@gmail.com`
+- **Filter messages** off (required for delivery — short field values were blocked when on)
+- Footer link to Aurora main site
+
+Pending (after Dominic meeting):
+
+- Dominic review of demo form copy and business wording
+- Publish to custom domain; turn indexing on
+- Google Drive delivery workflow for licensed clients
+- Unlisted client support Carrd page (direct link only)
 
 ---
 
@@ -76,9 +99,11 @@ Needs work: sectioned layout cleanup, features/benefits as proper lists, demo fo
 - [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md) — removed the macOS installer row from the backlog table.
 - [plans_status.md](plans_status.md) — removed macOS installer from the active backlog table; added a new "Cancelled / dropped" section listing it with rationale.
 - [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md) — moved "Mac installer" out of the tester-facing backlog table and into "What we are not planning".
-- [README.md](README.md) — changed the Windows SmartScreen note from "new open-source project" to "new, free and source-available project" to match the licensing decision.
-- [linux_build.md](../linux_build.md) — removed a personal Gmail address that had been hardcoded into an example SSH key output; replaced with the same generic placeholder used elsewhere in that doc.
-- [README.md](README.md) — Support section now points to `auroraaccessibility@gmail.com` instead of naming C.F. Drake directly, so no personal contact info is exposed once the repo is public.
+- [README.md](../README.md) — SmartScreen note uses "free and source-available project"; Support uses `auroraaccessibility@gmail.com`.
+- [linux_build.md](linux_build.md) — removed personal email from SSH key example.
+- Git history scrub and remote cleanup — **done Aug 2026** (`fresh_public_repo.ps1`, [github_cleanup.ps1](github_cleanup.ps1)).
+- GitHub Release **v2.06** with Windows and Linux zip installers — **done Aug 2026** (manual upload).
+- Carrd publish script — [publish_github_release.ps1](publish_github_release.ps1).
 
 ---
 
@@ -86,67 +111,65 @@ Needs work: sectioned layout cleanup, features/benefits as proper lists, demo fo
 
 ### Main Aurora site
 - [x] Carrd layout: hero, product links, About section
-- [x] About copy drafted and published on test site
-- [x] No public email on main site (product sites handle contact)
+- [x] About copy on test site
+- [x] No public email on main site
 - [x] DNS/custom domains configured (Porkbun)
 - [ ] Dominic content review and sign-off
 - [ ] Braille display users mentioned in copy (after Dominic meeting)
-- [ ] Publish to `auroraaccessibility.com` and confirm SSL
+- [ ] Publish to `auroraaccessibility.com`, indexing on, confirm SSL
 
 ### AbCS Carrd site
-- [ ] Finish product page content (features, accessibility, downloads)
-- [ ] Replace tutorial placeholders with **one** help-docs link to GitHub `help_docs/01_overview.md` (not per-doc pages); fix link text
-- [ ] Add contact/questions section with `auroraaccessibility@gmail.com`
-- [ ] Add Ko-fi link
-- [ ] Accessibility pass (headings, lists, contrast)
-- [ ] Wire download buttons to GitHub Release assets when ready
-- [ ] Publish to `abcs.auroraaccessibility.com`
-- [ ] Video tutorials — out of scope for v1 (deferred)
+- [x] Product page content (features, accessibility, downloads)
+- [x] Download buttons → GitHub Release v2.06
+- [x] No public contact email (by design)
+- [ ] Ko-fi link (optional)
+- [ ] Help-docs link to GitHub entry point (optional)
+- [ ] Publish to `abcs.auroraaccessibility.com`, indexing on
 
 ### Talk3270 Carrd site
-- [ ] Dominic review of demo form and business copy
-- [ ] Clean up sectioned layout and duplicate headings
-- [ ] Publish to `talk3270.auroraaccessibility.com`
-- [ ] Client package delivery via Google Drive shared link (manual, per client)
-- [ ] Unlisted Carrd support page for licensed clients (tutorials/docs; direct link only)
+- [x] Features/benefits lists and demo form working
+- [x] Form recipient and Filter messages off
+- [ ] Dominic review of form and business copy
+- [ ] Publish to `talk3270.auroraaccessibility.com`, indexing on
+- [ ] Google Drive delivery for licensed clients
+- [ ] Unlisted client support page
 
 ### Repo / code (AbCS)
-- [x] **Blocker:** Scrub personal email from AbCS git commit history (author/committer → Aurora Accessibility / GitHub noreply) before flipping public. Same rewrite for `pyside6-accessible-ui-reference` (already public). **Done Aug 2026** via `fresh_public_repo.ps1` (single clean commit on main).
-- [x] GitHub remote cleanup: deleted stale `cursor/...` branches and old `AudioBook` / `ScreenReader` tags (Aug 2026). Script: [github_cleanup.ps1](github_cleanup.ps1).
-- [ ] Security/content pass on the AbCS repo before flipping public: search commit history and current tree for API keys, tokens, personal paths, or personal info.
-- [ ] Confirm `AbCS_License.txt` and the README License section both read "free and source-available" (or equivalent) consistently — no lingering "open source" wording.
-- [ ] Confirm Dominic's AbCS help doc pass is merged before flipping the repo public.
-- [ ] Flip the AbCS GitHub repo from private to public.
-- [ ] Create a GitHub Release and attach the Windows installer (and Linux build, if ready) as release assets.
-- [ ] Verify the unsigned-installer SmartScreen note in README/INSTALL still matches the actual install experience.
+- [x] Scrub personal email from git history
+- [x] GitHub remote branch/tag cleanup
+- [x] GitHub Release v2.06 with installers
+- [x] Align **Audiobook Collector Scanner** naming in code/docs (excluding `help_docs/` — Dominic)
+- [x] Help → Website… opens AbCS product page
+- [x] Aurora Accessibility in About, License, and installer publisher
+- [x] Root doc tidy (`linux_build.md`, `abcs_linux_fixes.md`, `CLEANUP_VULTURE_FINDINGS.md` → `doc/`)
+- [ ] Security/content pass before public flip
+- [ ] Confirm license/README wording ("free and source-available")
+- [ ] Merge Dominic's help doc pass before or soon after public flip
+- [ ] Flip repo to public (if not already)
+- [ ] Verify SmartScreen note in README/INSTALL
 
 ### Marketing / cross-cutting
-- [ ] Add a Ko-fi link to the README (Support section) if desired.
-- [ ] Make sure the AbCS site describes AbCS as "free and source-available", not "open source".
-- [ ] Do not reference a macOS installer or "coming to Mac" anywhere on the sites — macOS is source-only.
-- [x] Public contact email decided: `auroraaccessibility@gmail.com` (README; AbCS and Talk3270 sites as appropriate).
+- [ ] Ko-fi on README and/or AbCS site (optional)
+- [ ] Sites describe AbCS as "free and source-available", not "open source"
+- [x] Public contact email: `auroraaccessibility@gmail.com` (README; Talk3270 form)
 
 ---
 
 ## 5. Suggested sequencing
 
-1. **Git history privacy fix** — rewrite personal Hotmail out of AbCS and `pyside6-accessible-ui-reference` commit metadata; update local git config; enable GitHub "Keep my email private" / block-push settings (manual).
-2. **Dominic meeting** — sign off main site About copy; agree braille-display wording; confirm Talk3270 form/copy expectations.
-3. **AbCS Carrd site** — finish product page (downloads, one help-docs link, contact, Ko-fi). This is on the critical path for the AbCS launch.
-4. Security/content pass on the AbCS repo (can overlap with step 3).
-5. Merge Dominic's help docs.
-6. Publish main + AbCS Carrd sites to custom domains.
-7. Flip AbCS repo to public.
-8. Cut a GitHub Release with installer(s) attached; wire AbCS site download buttons.
-9. **Talk3270 Carrd site** — polish and publish (can follow AbCS; not blocking AbCS repo/release); set up Google Drive delivery and unlisted client support page.
+1. **Dominic meeting** — sign off all three Carrd sites; braille-display wording; Talk3270 form/copy; help docs timeline.
+2. ~~**Naming pass in repo**~~ — **done Aug 2026** (code/docs; `help_docs/` for Dominic).
+3. Security/content pass on AbCS repo.
+4. Publish all three Carrd sites to custom domains; indexing on.
+5. Flip AbCS repo public (if not done); confirm Release assets and download links.
+6. Talk3270 client delivery (Google Drive) and unlisted support page when needed.
 
 ---
 
 ## 6. Open items
 
-- Dominic review of main site test URL: https://auroratesting.carrd.co/
+- Dominic review: https://auroratesting.carrd.co/ , https://abcstest.carrd.co/ , https://talk3270.carrd.co/
 - Braille display users — copy expansion deferred until Dominic meeting
-- Confirm whether the Linux build should attach to the first GitHub Release, or Windows-only for v1
-- Talk3270 site timing — after AbCS unless Dominic wants it prioritized at the meeting
-- AbCS video tutorials — deferred; revisit after launch if needed
-- Manual GitHub account settings: enable "Keep my email addresses private" and "Block command line pushes that expose my email"
+- Talk3270 fixed email subject (`Request Talk3270 Demo`) — requires Pro Plus or Gmail filter; Pro Standard uses default Carrd subject
+- Dominic help docs merge — do not edit `help_docs/` locally until merged
+- Manual GitHub settings: "Keep my email addresses private", "Block command line pushes that expose my email"

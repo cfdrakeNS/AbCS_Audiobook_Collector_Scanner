@@ -1,5 +1,5 @@
 """
-Web Book API - Audio Book Collection
+Web Book API - Audiobook Collection
 Fetches book metadata from Open Library, Google Books, and WikiData APIs (in that order).
 """
 

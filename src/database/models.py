@@ -79,7 +79,7 @@ class Collection:
 @dataclass
 class Book:
     """
-    Audio book model - represents a row from the 'books' table in SQLite.
+    Audiobook model - represents a row from the 'books' table in SQLite.
 
     Database fields from 'books' table:
     - book_id: Primary key (unique identifier)

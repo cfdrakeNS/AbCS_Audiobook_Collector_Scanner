@@ -3,7 +3,7 @@ apt install linux-image-virtual linux-tools-virtual linux-cloud-tools-virtual
 
 # Linux Build Guide for AbCS
 
-This guide covers building AbCS (Audio Book Collector Scanner) on Ubuntu for distribution.
+This guide covers building AbCS (Audiobook Collector Scanner) on Ubuntu for distribution.
 
 For Linux-specific UI fixes and verification status, see [`abcs_linux_fixes.md`](abcs_linux_fixes.md).
 
@@ -58,8 +58,8 @@ git config --global init.defaultBranch main
 In the terminal, run:
 
 ```bash
-# Generate SSH key - use your GitHub email (hotmail account)
-ssh-keygen -t ed25519 -C "your-hotmail@hotmail.com"
+# Generate SSH key - use your GitHub email (e.g. auroraaccessibility@gmail.com)
+ssh-keygen -t ed25519 -C "auroraaccessibility@gmail.com"
 
 # Display the public key (run this in terminal)
 cat ~/.ssh/id_ed25519.pub
@@ -67,7 +67,7 @@ cat ~/.ssh/id_ed25519.pub
 
 **Important:** Copy from the TERMINAL OUTPUT, not from this document. The output will look like:
 ```
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIME8AOTbmZGmcP/d7B69FukNm+rMwf2shH83EYjCUsWZ your-hotmail@hotmail.com
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAExamplePublicKeyReplaceWithYourOwn auroraaccessibility@gmail.com
 ```
 
 To copy in terminal: Select the text with your mouse, then right-click → Copy. Or use Ctrl+Shift+C after selecting.

@@ -73,7 +73,7 @@ abcs_write_linux_dist_assets() {
 Type=Application
 Name=AbCS
 GenericName=Audiobook Collection Manager
-Comment=Audio Book Collector Scanner
+Comment=Audiobook Collector Scanner
 Exec=${exec_path}
 Icon=${icon_path}
 Terminal=false
@@ -97,7 +97,7 @@ EOF
   chmod +x "${dist_dir}/install_abcs.sh"
 
   cat >"${dist_dir}/README.txt" <<EOF
-AbCS (Audio Book Collector Scanner) — Linux test build
+AbCS (Audiobook Collector Scanner) — Linux test build
 Version: ${version}
 
 WHAT IS IN THIS FOLDER

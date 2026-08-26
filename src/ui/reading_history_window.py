@@ -1,5 +1,5 @@
 """
-Reading History Window - Audio Book Collection
+Reading History Window - Audiobook Collection
 Shows reading statistics and history with full accessibility support.
 """
 

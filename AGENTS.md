@@ -1,6 +1,6 @@
 # AGENTS.md — AbCS Project AI Agent Instructions
 
-This file provides essential guidance for AI coding agents working on the AbCS (Audio Book Collector Scanner) project. It summarizes project-specific conventions, accessibility requirements, and key references to ensure productive, accessible, and consistent contributions.
+This file provides essential guidance for AI coding agents working on the AbCS (Audiobook Collector Scanner) project. It summarizes project-specific conventions, accessibility requirements, and key references to ensure productive, accessible, and consistent contributions.
 
 ---
 ## user uses screen readers both JAWS and NVDA 

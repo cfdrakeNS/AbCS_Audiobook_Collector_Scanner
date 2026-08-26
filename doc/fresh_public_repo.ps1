@@ -56,7 +56,7 @@ if (-not $status) {
     throw "Nothing to commit - working tree empty."
 }
 
-git commit -m "Initial public release of AbCS (Audio Book Collector Scanner)."
+git commit -m "Initial public release of AbCS (Audiobook Collector Scanner)."
 Require-GitOk "git commit"
 git log -1 --format='Author: %an <%ae>'
 

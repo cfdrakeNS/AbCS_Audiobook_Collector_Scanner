@@ -1,6 +1,6 @@
 # AbCS Code Inventory — June 24, 2026
 
-Inventory of Python source modules in the AbCS (Audio Book Collector Scanner) project. Line counts include all lines in each file (blank lines and comments included). Last modified dates are from the local filesystem.
+Inventory of Python source modules in the AbCS (Audiobook Collector Scanner) project. Line counts include all lines in each file (blank lines and comments included). Last modified dates are from the local filesystem.
 
 Previous inventory: [abcs_code_inventory_June08_2026.md](abcs_code_inventory_June08_2026.md)
 

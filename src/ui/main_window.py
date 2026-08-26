@@ -1,5 +1,5 @@
 """
-Main Window - Audio Book Window
+Main Window - Audiobook Window
 Primary interface for browsing and managing audiobook collection.
 """
 
@@ -430,7 +430,7 @@ class MainWindow(QMainWindow):
             self.table.setFocus()
 
     """
-    Main application window - Audio Book Window.
+    Main application window - Audiobook Window.
     Displays list of books with filtering and search.
     """
 
@@ -682,8 +682,8 @@ class MainWindow(QMainWindow):
 
         # Window settings
         version_str = get_app_version()
-        self.setWindowTitle(f"AbCS - Audio Book Collector Scanner {version_str}")
-        self.setAccessibleName("AbCS Audio Book Collector Scanner main window")
+        self.setWindowTitle(f"AbCS - Audiobook Collector Scanner {version_str}")
+        self.setAccessibleName("AbCS Audiobook Collector Scanner main window")
         self.setAccessibleDescription(
             "Main window for browsing and managing the audiobook collection"
         )
@@ -876,7 +876,7 @@ class MainWindow(QMainWindow):
         """Create books table."""
         self.table = BookTableView()
         self.book_list = self.table
-        self.table.setAccessibleName("Audio books")
+        self.table.setAccessibleName("Audiobooks")
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
         # Columns: Author, Title, Year, Series, Genre, Time, Read
@@ -1420,6 +1420,10 @@ class MainWindow(QMainWindow):
         help_action = QAction("&Help...", self)
         help_action.triggered.connect(lambda: show_overview_help(self))
         help_menu.addAction(help_action)
+
+        website_action = QAction("&Website...", self)
+        website_action.triggered.connect(self.on_open_website)
+        help_menu.addAction(website_action)
 
         help_menu.addSeparator()
 
@@ -4282,6 +4286,26 @@ class MainWindow(QMainWindow):
         dlg.exec()
         self.set_status("License dialog opened. Press Tab to move to OK button.")
         self.restore_main_focus_after_modal()
+
+    def on_open_website(self):
+        """Open the AbCS product page in the default browser."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        from src.app_urls import ABCS_WEBSITE_URL
+
+        if QDesktopServices.openUrl(QUrl(ABCS_WEBSITE_URL)):
+            self.set_status(
+                f"Opened AbCS website in your browser: {ABCS_WEBSITE_URL}",
+                timeout_ms=5000,
+                announce=True,
+            )
+        else:
+            self.set_status(
+                f"Could not open browser. Visit {ABCS_WEBSITE_URL}",
+                timeout_ms=0,
+                announce=True,
+            )
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for screen reader accessibility."""

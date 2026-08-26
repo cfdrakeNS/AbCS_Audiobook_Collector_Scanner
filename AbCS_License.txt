@@ -1,9 +1,11 @@
-AbCS - Audio Book Collector Scanner
+AbCS - Audiobook Collector Scanner
 Custom Non-Commercial License
 
 License Terms
 
 Copyright (c) 2025-2026 C.F. Drake & Contributors
+
+Published by Aurora Accessibility (https://auroraaccessibility.com/)
 
 Permission is granted, free of charge, to use, copy, and share this
 software for personal, educational, testing, and non-commercial use.

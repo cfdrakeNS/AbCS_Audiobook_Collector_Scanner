@@ -1,10 +1,10 @@
-# AbCS - Audio Book Collector Scanner
+# AbCS - Audiobook Collector Scanner
 
 A cross-platform audiobook collection manager with full accessibility support (JAWS, NVDA, and other screen readers).
 
 ## Features
 
-- **Audio book management** — track your collection with full metadata
+- **Audiobook management** — track your collection with full metadata
 - **ID3 tag import** — scan folders and import from audio file tags
 - **Book list import** — import from CSV, Excel, or ODS spreadsheets
 - **Advanced search** — filter by title, author, genre, series, plot, and read status
@@ -161,7 +161,7 @@ See [TESTING.md](TESTING.md) for CI-style runs, headless Qt, and useful pytest s
 ### Building installers
 
 - **Windows:** `build_installer.bat` (PyInstaller + Inno Setup)
-- **Linux:** [linux_build.md](linux_build.md)
+- **Linux:** [doc/linux_build.md](doc/linux_build.md)
 
 ## Migrating from the MS Access version
 
@@ -200,7 +200,8 @@ AbCS is provided under a custom non-commercial license:
 
 ## Support
 
-For support or licensing requests, contact [auroraaccessibility@gmail.com](mailto:auroraaccessibility@gmail.com).
+- **Product page and downloads:** [abcs.auroraaccessibility.com](https://abcs.auroraaccessibility.com/)
+- **Licensing requests:** [auroraaccessibility@gmail.com](mailto:auroraaccessibility@gmail.com)
 
 ## Credits
 

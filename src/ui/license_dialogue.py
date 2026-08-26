@@ -32,10 +32,11 @@ class LicenseDialog(AccessibleDialog):
         layout.setSpacing(self.scaler.get_scaled_size(8))
 
         license_blocks = [
-            ("body", "AbCS - Audio Book Collector Scanner"),
+            ("body", "AbCS - Audiobook Collector Scanner"),
             ("heading", "Custom Non-Commercial License"),
             ("heading", "License Terms"),
             ("body", "Copyright (c) 2025-2026 C.F. Drake & Contributors"),
+            ("body", "Published by Aurora Accessibility — auroraaccessibility.com"),
             (
                 "body",
                 "Permission is granted, free of charge, to use, copy, and share this "

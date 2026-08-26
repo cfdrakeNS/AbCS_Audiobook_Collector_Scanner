@@ -2,7 +2,7 @@
 
 **Status:** Planned (not yet implemented)  
 **Created:** June 2026  
-**Related:** [CLEANUP_VULTURE_FINDINGS.md](../CLEANUP_VULTURE_FINDINGS.md)
+**Related:** [CLEANUP_VULTURE_FINDINGS.md](CLEANUP_VULTURE_FINDINGS.md)
 
 ---
 
@@ -21,7 +21,7 @@ Small dead symbols accumulate (`_plot_title`, unused helpers). Low risk but adds
 ## Design
 
 1. Run `python -m vulture src test --min-confidence 60`
-2. Update [CLEANUP_VULTURE_FINDINGS.md](../CLEANUP_VULTURE_FINDINGS.md)
+2. Update [CLEANUP_VULTURE_FINDINGS.md](CLEANUP_VULTURE_FINDINGS.md)
 3. Remove confirmed dead code only; respect documented false positives
 4. Run full pytest after removals
 

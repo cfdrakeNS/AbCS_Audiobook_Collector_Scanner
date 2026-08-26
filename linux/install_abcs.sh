@@ -35,7 +35,7 @@ cat >"${DESKTOP_SRC}" <<DESKTOP_EOF
 Type=Application
 Name=AbCS
 GenericName=Audiobook Collection Manager
-Comment=Audio Book Collector Scanner
+Comment=Audiobook Collector Scanner
 Exec=${APP_BIN}
 ${icon_line}
 Terminal=false

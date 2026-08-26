@@ -69,7 +69,7 @@ CREATE INDEX idx_genres_name ON genres (name ASC);
 CREATE INDEX idx_series_name ON series (name ASC);
 CREATE INDEX idx_collections_active_name ON collections(active, name ASC);
 
-INSERT INTO collections (name, active) VALUES ('Audio Books', 1);
+INSERT INTO collections (name, active) VALUES ('Audiobooks', 1);
 
 COMMIT TRANSACTION;
 PRAGMA foreign_keys = on;

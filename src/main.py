@@ -1,5 +1,5 @@
 """
-AbCS - Audio Book Collector Scanner
+AbCS - Audiobook Collector Scanner
 Main application entry point.
 """
 import sys

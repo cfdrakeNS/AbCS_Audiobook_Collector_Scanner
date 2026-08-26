@@ -49,7 +49,7 @@ Trial builds set `TRIAL_BUILD_DATE` in `src/build_config.py` (normally via `buil
 
 ## Linux build
 
-See [linux_build.md](../linux_build.md) and `build_linux.sh`.
+See [linux_build.md](linux_build.md) and `build_linux.sh`.
 
 ## Version alignment
 
@@ -60,4 +60,4 @@ See [linux_build.md](../linux_build.md) and `build_linux.sh`.
 
 - [INSTALL.md](../INSTALL.md) — run from source
 - [TESTING.md](../TESTING.md) — automated tests
-- [linux_build.md](../linux_build.md) — Linux packaging
+- [linux_build.md](linux_build.md) — Linux packaging

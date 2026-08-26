@@ -10,7 +10,7 @@
 
 A **Want to read** (TBR) flag on each book, independent of **collection** and **read date**. Users mark books they plan to listen to, filter the main list to show only those books, and clear the flag automatically when they mark a book as read.
 
-**Option B (this plan):** boolean column on `books` — books **stay in their current collection** (Audible, Audio Books, etc.). This is **not** a separate "Want to Read" collection.
+**Option B (this plan):** boolean column on `books` — books **stay in their current collection** (Audible, Audiobooks, etc.). This is **not** a separate "Want to Read" collection.
 
 **User decision:** When `read_date` is set, **automatically clear** `want_to_read`.
 

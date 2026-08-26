@@ -1,4 +1,4 @@
-; AbCS - Audio Book Collector Scanner
+; AbCS - Audiobook Collector Scanner
 ; Inno Setup 6 Installer Script
 ;
 ; To compile: run build_installer.bat
@@ -10,12 +10,14 @@
 ; build_installer.bat passes MyAppVersion from APP_VERSION via /D.
 ; The fallback below is used when compiling this .iss directly in ISCC IDE.
 #define MyAppName      "AbCS"
-#define MyAppFullName  "AbCS - Audio Book Collector Scanner"
+#define MyAppFullName  "AbCS - Audiobook Collector Scanner"
 #ifndef MyAppVersion
     #define MyAppVersion "2.01"
 #endif
-#define MyAppPublisher "AbCS Project"
-#define MyAppURL       "https://github.com/cfdrakeNS/redevelop-AbCS-project"
+#define MyAppPublisher "Aurora Accessibility"
+#define MyAppURL       "https://abcs.auroraaccessibility.com/"
+#define MyAppSupportURL "https://abcs.auroraaccessibility.com/"
+#define MyAppUpdatesURL "https://github.com/cfdrakeNS/AbCS_Audio_book_Collector_Scanner/releases"
 #define MyAppExeName   "AbCS.exe"
 
 ; ──────────────────────────────────────────────────────────────────
@@ -31,8 +33,8 @@ AppVersion={#MyAppVersion}
 AppVerName={#MyAppFullName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
-AppSupportURL={#MyAppURL}
-AppUpdatesURL={#MyAppURL}
+AppSupportURL={#MyAppSupportURL}
+AppUpdatesURL={#MyAppUpdatesURL}
 
 ; Install to C:\Program Files\AbCS\ by default
 DefaultDirName={autopf}\{#MyAppName}
@@ -191,7 +193,7 @@ begin
   { Construct the Features and Accessibility text }
   FeaturesText :=
     'FEATURES -' + #13#10 +
-    '• Audio Book Management with full metadata.' + #13#10 +
+    '• Audiobook management with full metadata.' + #13#10 +
     '• ID3 Tag Import from Most Audio Format Files.' + #13#10 +
     '• Web import & Updated Metadata.' + #13#10 +
     '• Advanced Search and Filtering.' + #13#10 +

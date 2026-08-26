@@ -40,7 +40,7 @@ What we build
 
 ### Subheading (H3)
 
-AbCS — Audio Book Collector Scanner
+AbCS — Audiobook Collector Scanner
 
 ### Paragraph
 

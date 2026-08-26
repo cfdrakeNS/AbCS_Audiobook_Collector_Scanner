@@ -164,7 +164,7 @@ The following plan areas were implemented and verified in code:
 
 - Toolbar/filter shortcuts
 
-- Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](../abcs_linux_fixes.md))
+- Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](abcs_linux_fixes.md))
 
 - Dynamic SQLite pragmas
 
@@ -182,6 +182,6 @@ Cursor plan files under `.cursor/plans/` on the development machine may still sh
 
 - Manual QA log: [qa_verification.md](qa_verification.md)
 
-- Dead-code review: [CLEANUP_VULTURE_FINDINGS.md](../CLEANUP_VULTURE_FINDINGS.md)
+- Dead-code review: [CLEANUP_VULTURE_FINDINGS.md](CLEANUP_VULTURE_FINDINGS.md)
 
 
