@@ -111,7 +111,8 @@ Needs work: sectioned layout cleanup, features/benefits as proper lists, demo fo
 - [ ] Unlisted Carrd support page for licensed clients (tutorials/docs; direct link only)
 
 ### Repo / code (AbCS)
-- [ ] **Blocker:** Scrub personal email from AbCS git commit history (author/committer → Aurora Accessibility / GitHub noreply) before flipping public. Same rewrite for `pyside6-accessible-ui-reference` (already public).
+- [x] **Blocker:** Scrub personal email from AbCS git commit history (author/committer → Aurora Accessibility / GitHub noreply) before flipping public. Same rewrite for `pyside6-accessible-ui-reference` (already public). **Done Aug 2026** via `fresh_public_repo.ps1` (single clean commit on main).
+- [x] GitHub remote cleanup: deleted stale `cursor/...` branches and old `AudioBook` / `ScreenReader` tags (Aug 2026). Script: [github_cleanup.ps1](github_cleanup.ps1).
 - [ ] Security/content pass on the AbCS repo before flipping public: search commit history and current tree for API keys, tokens, personal paths, or personal info.
 - [ ] Confirm `AbCS_License.txt` and the README License section both read "free and source-available" (or equivalent) consistently — no lingering "open source" wording.
 - [ ] Confirm Dominic's AbCS help doc pass is merged before flipping the repo public.
