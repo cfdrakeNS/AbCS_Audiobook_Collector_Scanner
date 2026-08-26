@@ -100,7 +100,7 @@ You should see: `Hi cfdrakeNS! You've successfully authenticated...`
 
 ```bash
 cd ~
-git clone git@github.com:cfdrakeNS/redevelop-AbCS-project.git abcs
+git clone git@github.com:cfdrakeNS/AbCS_Audiobook_Collector_Scanner.git abcs
 cd abcs
 ```
 
@@ -321,7 +321,7 @@ Your CPU doesn't support the required instruction set. Use the legacy CPU script
 
 | Task | Command |
 |------|---------|
-| Clone repo | `git clone https://github.com/cfdrakeNS/redevelop-AbCS-project.git abcs` |
+| Clone repo | `git clone https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner.git abcs` |
 | Switch branch | `git checkout final` |
 | Create venv | `python3 -m venv venv` |
 | Activate venv | `source venv/bin/activate` |

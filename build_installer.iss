@@ -17,7 +17,7 @@
 #define MyAppPublisher "Aurora Accessibility"
 #define MyAppURL       "https://abcs.auroraaccessibility.com/"
 #define MyAppSupportURL "https://abcs.auroraaccessibility.com/"
-#define MyAppUpdatesURL "https://github.com/cfdrakeNS/AbCS_Audio_book_Collector_Scanner/releases"
+#define MyAppUpdatesURL "https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases"
 #define MyAppExeName   "AbCS.exe"
 
 ; ──────────────────────────────────────────────────────────────────

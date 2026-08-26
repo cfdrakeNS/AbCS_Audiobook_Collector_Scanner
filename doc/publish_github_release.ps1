@@ -12,7 +12,7 @@
 $ErrorActionPreference = "Stop"
 $Abcs = "C:\projects\AbCS"
 $Owner = "cfdrakeNS"
-$Repo = "AbCS_Audio_book_Collector_Scanner"
+$Repo = "AbCS_Audiobook_Collector_Scanner"
 $Version = "2.06"
 $Tag = "v$Version"
 $ReleaseName = "AbCS v$Version"
