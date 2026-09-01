@@ -99,24 +99,38 @@ if exist "dist\AbCS" (
 :step2
 REM ------------------------------------------------------------
 REM  Step 2: Locate Inno Setup Compiler (ISCC.exe)
+REM  Prefer Inno Setup 7 (64-bit Program Files, then 32-bit), then 6
 REM ------------------------------------------------------------
 echo Creating installer package...
 
 set ISCC=
 
-if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
-    set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+if exist "%ProgramFiles%\Inno Setup 7\ISCC.exe" (
+    set "ISCC=%ProgramFiles%\Inno Setup 7\ISCC.exe"
+    goto found_iscc
+)
+if exist "%ProgramFiles(x86)%\Inno Setup 7\ISCC.exe" (
+    set "ISCC=%ProgramFiles(x86)%\Inno Setup 7\ISCC.exe"
     goto found_iscc
 )
 if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" (
     set "ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe"
     goto found_iscc
 )
+if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
+    set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+    goto found_iscc
+)
+
+for /f "delims=" %%I in ('where ISCC.exe 2^>nul') do (
+    set "ISCC=%%I"
+    goto found_iscc
+)
 
 REM Not found
 echo.
-echo ERROR: Inno Setup 6 not found on this machine.
-echo Install it from: https://jrsoftware.org/isdl.php
+echo ERROR: Inno Setup compiler (ISCC.exe) not found on this machine.
+echo Install Inno Setup 7 from: https://jrsoftware.org/isdl.php
 pause
 exit /b 1
 
@@ -127,7 +141,7 @@ if not exist releases mkdir releases
 REM ------------------------------------------------------------
 
 REM  Step 2 (cont): Compile the installer
-REM  (Icon and splash PNGs are referenced in build_installer.jss)
+REM  (Icon and splash PNGs are referenced in build_installer.iss)
 "%ISCC%" /Qp /DMyAppVersion=%VER% build_installer.iss >>"%BUILD_LOG%" 2>&1
 
 if errorlevel 1 (

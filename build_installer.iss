@@ -1,9 +1,9 @@
 ; AbCS - Audiobook Collector Scanner
-; Inno Setup 6 Installer Script
+; Inno Setup 7 Installer Script (compatible with Inno Setup 6)
 ;
 ; To compile: run build_installer.bat
 ;
-; or open this file in Inno Setup IDE and press F9
+; or open this file in Inno Setup 7 IDE and press F9
 ;
 ; Version source of truth is src/build_config.py APP_VERSION.
 ;
@@ -56,15 +56,18 @@ UninstallDisplayIcon={app}\abcs_icon_256x256.ico
 
 ; Large portrait image: left sidebar on Welcome and Finish pages
 WizardImageFile=installer_graphics\abcs_wizard_164x314.png
+WizardImageFileDynamicDark=installer_graphics\abcs_wizard_164x314.png
 
 ; Small square image: top-right corner on all inner wizard pages
 WizardSmallImageFile=installer_graphics\abcs_small_55x55.png
+WizardSmallImageFileDynamicDark=installer_graphics\abcs_small_55x55.png
 
 LicenseFile=AbCS_License.txt
 
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
+; Follow Windows light/dark setting (high-contrast and /NOSTYLE skip custom dark style)
+WizardStyle=modern dynamic
 WizardResizable=yes
 
 ; Require Windows 10 or later
@@ -92,11 +95,10 @@ SetupWindowTitle=Setup - {#MyAppFullName} {#MyAppVersion}
 ; [Tasks] - Optional install choices shown to the user
 ; ──────────────────────────────────────────────────────────────────
 [Tasks]
-; Desktop shortcut is optional (unchecked by default)
+; Desktop shortcut is on by default (easier to find after install for screen reader users)
 Name: "desktopicon"; \
     Description: "{cm:CreateDesktopIcon}"; \
-    GroupDescription: "{cm:AdditionalIcons}"; \
-    Flags: unchecked
+    GroupDescription: "{cm:AdditionalIcons}"
 
 ; ──────────────────────────────────────────────────────────────────
 ; [Files] - Files to install
