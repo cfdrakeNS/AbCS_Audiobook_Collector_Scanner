@@ -2,7 +2,7 @@
 
 **Status:** All three Carrd sites ready on test URLs; awaiting Dominic content review before custom domains and repo flip.
 **Created:** Aug 2026
-**Updated:** Aug 2026
+**Updated:** Aug 27, 2026
 **Source of decisions:** [launch_open_questions.md](launch_open_questions.md) (keep for the record; this document is the actionable plan built from those answers).
 
 ---
@@ -17,7 +17,7 @@
 | 4 | macOS support | **Dropped from the roadmap** — no packaged macOS installer. macOS users continue to run AbCS from source (already documented). Backlog/status docs updated to reflect this (see Doc cleanup below). |
 | 5 | Talk3270 | Separate JAWS-scripting product for AS/400 terminal access (sold to businesses since 1998); demo-request form only, no public download. Carrd site supports lead gen; not on the critical path for the AbCS repo/release launch. |
 | 6 | Web presence | **Three Carrd sites** under `auroraaccessibility.com`: main brand/home (`auroraaccessibility.com`), AbCS (`abcs.auroraaccessibility.com`), Talk3270 (`talk3270.auroraaccessibility.com`). DNS via Porkbun; Cloudflare not used. |
-| 7 | Donation link | **Ko-fi** confirmed. Add a Ko-fi link/button to the README and the AbCS Carrd page (optional for v1). |
+| 7 | Donation link (Ko-fi) | **Ko-fi for AbCS only** — not Aurora corporate donations and not Talk3270. Use existing personal Ko-fi account; **display name** and **username** show publicly (not personal name). Signup email stays private. **Defer public Ko-fi link** until AbCS is on live URL (`abcs.auroraaccessibility.com`); optional quiet setup before then (see §7). Add link to README and AbCS Carrd only — not installer, About, or main Aurora site. |
 | 8 | Public contact | **`auroraaccessibility@gmail.com`** in README Support. **Main Aurora site:** no public email. **AbCS site:** no public email (free product; in-app help only — no support inbox). **Talk3270 site:** demo form → `auroraaccessibility@gmail.com` as form recipient. |
 | 9 | AbCS help docs on the site | Optional: one link from the AbCS Carrd site to GitHub `help_docs/01_overview.md`. In-app help (Shift+F1 / bundled `help_docs`) remains primary. Dominic owns help doc copy — do not edit `help_docs/` in repo until his pass is merged. |
 | 10 | AbCS video tutorials | **Deferred** — not part of v1 launch. Text and in-app help are enough for now; revisit later if users ask for video. |
@@ -67,7 +67,7 @@ Done:
 
 Pending (optional / post-Dominic):
 
-- Ko-fi link (optional)
+- Ko-fi link — **after** live AbCS URL (see §7); not required for launch day
 - One help-docs link to GitHub `help_docs/01_overview.md` (optional)
 - Publish to custom domain; turn indexing on
 
@@ -122,7 +122,7 @@ Pending (after Dominic meeting):
 - [x] Product page content (features, accessibility, downloads)
 - [x] Download buttons → GitHub Release v2.06
 - [x] No public contact email (by design)
-- [ ] Ko-fi link (optional)
+- [ ] Ko-fi link on AbCS site + README (after live URL — see §7)
 - [ ] Help-docs link to GitHub entry point (optional)
 - [ ] Publish to `abcs.auroraaccessibility.com`, indexing on
 
@@ -149,7 +149,7 @@ Pending (after Dominic meeting):
 - [ ] Verify SmartScreen note in README/INSTALL
 
 ### Marketing / cross-cutting
-- [ ] Ko-fi on README and/or AbCS site (optional)
+- [ ] Ko-fi on README and AbCS site (after live URL — see §7)
 - [ ] Sites describe AbCS as "free and source-available", not "open source"
 - [x] Public contact email: `auroraaccessibility@gmail.com` (README; Talk3270 form)
 
@@ -161,15 +161,73 @@ Pending (after Dominic meeting):
 2. ~~**Naming pass in repo**~~ — **done Aug 2026** (code/docs; `help_docs/` for Dominic).
 3. Security/content pass on AbCS repo.
 4. Publish all three Carrd sites to custom domains; indexing on.
-5. Flip AbCS repo public (if not done); confirm Release assets and download links.
-6. Talk3270 client delivery (Google Drive) and unlisted support page when needed.
+5. **Ko-fi** — finish profile and add public link on AbCS site + README (§7).
+6. Flip AbCS repo public (if not done); confirm Release assets and download links.
+7. Talk3270 client delivery (Google Drive) and unlisted support page when needed.
 
 ---
 
-## 6. Open items
+## 7. Ko-fi (AbCS only)
+
+Ko-fi is **optional tips for AbCS development** — not Aurora Accessibility as a company and not Talk3270.
+
+### Account and privacy
+
+- **Existing account:** personal Ko-fi login is fine; signup email is not shown on the public page.
+- **Public identity:** set **Display name** to `AbCS`; set **Username** to something product-related (e.g. `abcs`) — avoid personal name on the page and in the URL.
+- **Payment note:** personal PayPal may show legal name on receipts; Stripe business descriptor or PayPal Business can reduce that later — not a launch blocker.
+
+### No draft / unlisted mode
+
+Ko-fi has **no hide-until-live setting**. Once the page exists it is technically public, but **only discoverable if the URL is shared**. “Page unpublished” means Ko-fi suspended the account — not a user-controlled draft.
+
+**Website link on Ko-fi is optional** — leave empty until AbCS has a live URL.
+
+### Timing
+
+**Recommended:** wait until Dominic sign-off and **AbCS is on `abcs.auroraaccessibility.com`**, then wire Ko-fi in one pass (avoids linking a test Carrd URL that will change).
+
+**Alternative:** configure Ko-fi now (display name, bio, payment) but **do not** add the Ko-fi URL to Carrd, README, or GitHub until the live AbCS site is up.
+
+AbCS does **not** require Ko-fi on launch day.
+
+### Ko-fi page content
+
+**Display name:** AbCS
+
+**Bio (short):**
+
+> AbCS — Audiobook Collector Scanner  
+> A free audiobook collection manager for Windows and Linux, built with full screen reader and keyboard access.  
+> Tips are optional and help cover hosting and development time. Thank you for using AbCS.
+
+**Disable** shop, commissions, memberships if not needed — tip jar only.
+
+**Do not** mention Aurora donations, Talk3270, or personal developer name on the public page.
+
+### Where to link Ko-fi (when live)
+
+| Place | Link? |
+|-------|-------|
+| AbCS Carrd site | Yes — footer or under downloads; text e.g. *Support AbCS development (optional)* |
+| GitHub README | Yes — one line in Support |
+| Main Aurora site | No |
+| Installer / About dialog | No |
+| Talk3270 site | No |
+
+### After live URL
+
+1. Add `https://abcs.auroraaccessibility.com/` to Ko-fi profile links.
+2. Add Ko-fi URL to AbCS Carrd and README.
+3. Record final Ko-fi URL here: _(fill in when ready, e.g. `https://ko-fi.com/abcs`)_
+
+---
+
+## 8. Open items
 
 - Dominic review: https://auroratesting.carrd.co/ , https://abcstest.carrd.co/ , https://talk3270.carrd.co/
 - Braille display users — copy expansion deferred until Dominic meeting
 - Talk3270 fixed email subject (`Request Talk3270 Demo`) — requires Pro Plus or Gmail filter; Pro Standard uses default Carrd subject
 - Dominic help docs merge — do not edit `help_docs/` locally until merged
+- Ko-fi — defer public link until live AbCS URL (§7); existing personal account OK
 - Manual GitHub settings: "Keep my email addresses private", "Block command line pushes that expose my email"

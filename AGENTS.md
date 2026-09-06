@@ -6,6 +6,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 ## user uses screen readers both JAWS and NVDA 
 ## don't put large blocks of code in the response panel 
 ##  Format: Factual summaries only (What changed / What will change).
+## NEVER use question cards / multiple-choice pickers (the AskQuestion tool). They are not readable with JAWS. Ask clarifying questions as plain numbered text in the chat response and wait for a typed reply.
 
 ## 1. Project Overview
 - **Purpose:** Cross-platform audiobook collection manager with full accessibility support (JAWS, NVDA, Narrator, Orca).

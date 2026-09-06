@@ -3,6 +3,7 @@ Web Metadata Window - Built from PROVEN accessible skeleton
 Accessibility works out of box: F1, Alt+/, Escape
 """
 
+import re
 import sys
 import os
 
@@ -414,7 +415,7 @@ class WebMetadataWindow(AccessibleDialog):
         self.series_number_edit.setAccessibleName("Series Number")
         self.series_number_edit.setAccessibleDescription("Alt+N")
         self.series_number_edit.setReadOnly(True)
-        self.series_number_edit.setMaxLength(2)  # Only 2 digits
+        self.series_number_edit.setMaxLength(4)  # e.g. 6.5 or 10.5
         self.series_number_edit.setMaximumWidth(50)  # Small width
         self.series_number_edit.setObjectName(
             "series_number_edit"
@@ -443,7 +444,7 @@ class WebMetadataWindow(AccessibleDialog):
             "Series number from web source"
         )
         self.series_number_web_edit.setReadOnly(True)
-        self.series_number_web_edit.setMaxLength(2)
+        self.series_number_web_edit.setMaxLength(4)
         self.series_number_web_edit.setMaximumWidth(50)
         self.series_number_web_edit.setVisible(False)
         series_layout.addWidget(self.series_number_web_edit)
@@ -627,17 +628,25 @@ class WebMetadataWindow(AccessibleDialog):
         self.series_row.setVisible(bool(db_name or db_num or web_name or web_num))
         self.set_tab_order()
 
-    def _series_number_from_web_apply(self) -> int | None:
+    def _parse_series_number_value(self, text: str):
+        """Parse a series number; whole numbers as int, decimals as string."""
+        text = (text or "").strip()
+        if not text:
+            return None
+        if re.fullmatch(r"\d+", text):
+            try:
+                return int(text)
+            except ValueError:
+                return None
+        if re.fullmatch(r"\d+\.\d+", text):
+            return text
+        return None
+
+    def _series_number_from_web_apply(self):
         """Read web series number field when it was offered as a difference."""
         if "series_number" not in self.field_differences:
             return None
-        text = self.series_number_web_edit.text().strip()
-        if not text:
-            return None
-        try:
-            return int(text)
-        except ValueError:
-            return None
+        return self._parse_series_number_value(self.series_number_web_edit.text())
 
     def _tab_candidate_widgets(self) -> list:
         """All widgets that may participate in tab order, in navigation sequence."""
@@ -1326,10 +1335,9 @@ class WebMetadataWindow(AccessibleDialog):
                             if " - " in series_text:
                                 parts = series_text.split(" - ")
                                 series_name = parts[0].strip()
-                                try:
-                                    series_number = int(parts[1].strip())
-                                except ValueError:
-                                    series_number = None
+                                series_number = self._parse_series_number_value(
+                                    parts[1].strip()
+                                )
                             else:
                                 series_name = series_text
                             if series_name:

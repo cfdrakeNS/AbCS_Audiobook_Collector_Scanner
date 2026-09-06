@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import csv
 import io
-import re
 import shutil
 import sqlite3
 import sys
@@ -40,18 +39,12 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from src.utils.text_utils import (  # noqa: E402
+    format_series_suffix,
     normalize_author,
     normalize_title,
     similarity_percentage,
+    split_series_number,
 )
-
-SERIES_STRIP_PATTERNS = [
-    r"^(.*?)\s*-\s*(\d+)$",
-    r"^(.*?)\s*#\s*(\d+)$",
-    r"^(.*?)\s+Book\s*(\d+)$",
-    r"^(.*?)\s+Volume\s*(\d+)$",
-    r"^(.*?)\s*,\s*(\d+)$",
-]
 
 AMBIGUITY_TITLE_GAP = 1.0
 SAMPLE_LINES = 20
@@ -75,26 +68,6 @@ class MatchResult:
     title_similarity: float
     author_similarity: float
     exact_title: bool
-
-
-def strip_series_number(title: str) -> Tuple[str, str]:
-    """Return (base_title, series_number) using the same rules as WebBookAPI."""
-    if not title:
-        return "", ""
-    text = title.strip()
-    for pattern in SERIES_STRIP_PATTERNS:
-        match = re.match(pattern, text, re.IGNORECASE)
-        if match:
-            clean_title = match.group(1).strip()
-            series_number = match.group(2)
-            if clean_title:
-                return clean_title, series_number
-    return text, ""
-
-
-def format_suffix(series_no: str) -> str:
-    digits = re.sub(r"[^\d]", "", (series_no or "").strip())
-    return digits.zfill(2) if digits else ""
 
 
 def build_title(base_title: str, suffix: str) -> str:
@@ -157,8 +130,8 @@ def load_catalog(csv_path: Path) -> Tuple[Dict[str, List[CatalogEntry]], int]:
             skipped += 1
             continue
 
-        base_title, _ = strip_series_number(title)
-        suffix = format_suffix(series_no)
+        base_title, _ = split_series_number(title)
+        suffix = format_series_suffix(series_no)
         if not suffix:
             skipped += 1
             continue
@@ -337,7 +310,7 @@ def run_update(
         db_series_id = row["series_id"]
         db_series_name = row["series_name"] or ""
 
-        base_title, _ = strip_series_number(db_title)
+        base_title, _ = split_series_number(db_title)
         norm_author = normalize_author(author_name, aggressive=True)
         norm_title = normalize_title(base_title, aggressive=True)
 

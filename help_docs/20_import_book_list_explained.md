@@ -77,7 +77,7 @@ For each row, values are pulled from the spreadsheet columns you mapped:
 | Year | Optional |
 | Plot | Optional → stored as comments |
 | Series | Optional |
-| Series # | Optional — may be appended to title as `(Series #N)` |
+| Series # | Optional — appended to title as `- NN` (series name stored separately) |
 | Genre | Optional |
 | Reader | Optional |
 | Read Date | Optional |
@@ -117,7 +117,7 @@ If the row passes, the app creates records **inside AbCS only**:
 2. **Series** — looked up or created if series was mapped.
 3. **Genre** — looked up or created if genre was mapped.
 4. **Book record** — written with:
-   - Title (may include series number suffix)
+   - Title (series number only, as `- NN`, when Series and Series # are both mapped)
    - Author, year, series, genre, collection
    - Plot → comments field
    - Reader, read date, duration, track count

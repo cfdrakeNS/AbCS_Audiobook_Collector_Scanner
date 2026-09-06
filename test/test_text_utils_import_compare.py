@@ -3,8 +3,11 @@
 import pytest
 
 from src.utils.text_utils import (
+    append_series_suffix,
     compare_normalize_title,
+    format_series_suffix,
     pre_normalize_title,
+    split_series_number,
     strip_series_number,
 )
 
@@ -36,3 +39,50 @@ def test_strip_series_number_does_not_strip_four_digit_year_suffix():
 
 def test_pre_normalize_title_order_series_before_article():
     assert pre_normalize_title("Sentinel, The - 02") == "The Sentinel"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (2.0, "02"),
+        (2, "02"),
+        ("#2", "02"),
+        ("6.5", "6.5"),
+        (6.5, "6.5"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_format_series_suffix(raw, expected):
+    assert format_series_suffix(raw) == expected
+
+
+def test_append_series_suffix_pads_whole_number():
+    assert append_series_suffix("The Moon", 2.0) == "The Moon - 02"
+
+
+def test_append_series_suffix_preserves_decimal():
+    assert append_series_suffix("Busted", "6.5") == "Busted - 6.5"
+
+
+def test_append_series_suffix_skips_when_already_present():
+    assert append_series_suffix("The Moon - 02", 3) == "The Moon - 02"
+
+
+def test_append_series_suffix_never_includes_series_name():
+    result = append_series_suffix("The Moon", 2)
+    assert "Sci Fi" not in result
+    assert "(" not in result
+    assert result == "The Moon - 02"
+
+
+@pytest.mark.parametrize(
+    ("title", "clean", "number"),
+    [
+        ("The Moon - 02", "The Moon", "02"),
+        ("Busted - 6.5", "Busted", "6.5"),
+        ("Triptych", "Triptych", ""),
+    ],
+)
+def test_split_series_number(title, clean, number):
+    assert split_series_number(title) == (clean, number)

@@ -130,6 +130,29 @@ def test_strip_series_number_rejects_year_suffix(api):
     assert number == ""
 
 
+def test_strip_series_number_handles_zero_padded_suffix(api):
+    clean, number = api._strip_series_number("The Moon - 02")
+    assert clean == "The Moon"
+    assert number == "02"
+
+
+def test_strip_series_number_handles_decimal_suffix(api):
+    clean, number = api._strip_series_number("Busted - 6.5")
+    assert clean == "Busted"
+    assert number == "6.5"
+
+
+def test_seed_series_from_db_title_preserves_decimal(api):
+    metadata = {
+        "title": "Busted - 6.5",
+        "author": "Lee Child",
+        "plot": "A Jack Reacher story with enough plot text for testing.",
+        "series": "Jack Reacher",
+    }
+    assert api._seed_series_from_db_title(metadata, "6.5", "Lee Child")
+    assert metadata["series_number"] == "6.5"
+
+
 def test_seed_series_from_db_title_skips_orphan_number(api):
     metadata = {
         "title": "Murder Mystery - 2",

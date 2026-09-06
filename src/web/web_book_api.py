@@ -12,6 +12,8 @@ import re
 import time
 from typing import Callable, Optional, Dict, List
 
+from src.utils.text_utils import split_series_number
+
 # Common stopwords to ignore in title matching
 STOPWORDS = {"the", "a", "an", "and", "or", "of", "in", "on", "to", "for"}
 
@@ -558,7 +560,9 @@ class WebBookAPI:
         if not metadata:
             return False
         changed = False
-        sn_digits = re.sub(r"[^\d]", "", str(title_series_number or ""))
+        raw = str(title_series_number or "").strip()
+        token_match = re.match(r"^\d+(?:\.\d+)?$", raw)
+        sn_digits = token_match.group(0) if token_match else ""
         if sn_digits and self._looks_like_year(sn_digits):
             sn_digits = ""
 
@@ -1994,28 +1998,7 @@ class WebBookAPI:
 
     def _strip_series_number(self, title: str) -> tuple[str, str]:
         """Strip series number from title and return (clean_title, series_number)."""
-        if not title:
-            return "", ""
-
-        # Patterns to match series numbers (only if clearly separated)
-        patterns = [
-            r"^(.*?)\s*-\s*(\d+)$",  # "Title - 09"
-            r"^(.*?)\s*#\s*(\d+)$",  # "Title #09"
-            r"^(.*?)\s+Book\s*(\d+)$",  # "Title Book 09"
-            r"^(.*?)\s+Volume\s*(\d+)$",  # "Title Volume 09"
-            r"^(.*?)\s*,\s*(\d+)$",  # "Title, 09"
-        ]
-
-        for pattern in patterns:
-            match = re.match(pattern, title.strip(), re.IGNORECASE)
-            if match:
-                clean_title = match.group(1).strip()
-                series_number = match.group(2)
-                if clean_title and not self._looks_like_year(series_number):
-                    return clean_title, series_number
-
-        # No series number found
-        return title.strip(), ""
+        return split_series_number(title)
 
     def _clean_text_field(self, text: str) -> str:
         """Clean text field: remove extra spaces, special chars, capitalize properly."""

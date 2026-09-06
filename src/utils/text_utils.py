@@ -14,8 +14,8 @@ from difflib import SequenceMatcher
 _TRAILING_ARTICLE_RE = re.compile(r"^(.*?),\s*(the|a|an)\s*$", re.IGNORECASE)
 _TRAILING_PARENS_RE = re.compile(r"\s*\([^)]*\)\s*$")
 
-# Series suffix patterns aligned with web_book_api._strip_series_number, plus decimals
-# (e.g. "Busted - 6.5"). Import-only; web metadata is unchanged.
+# Shared series suffix patterns used by import, web metadata, and catalog tools.
+# Decimals allowed (e.g. "Busted - 6.5"); comma form stays integer-only for year guard.
 _SERIES_NUMBER_PATTERNS = (
     r"^(.*?)\s*-\s*(\d+(?:\.\d+)?)$",  # "Title - 09", "Title - 6.5"
     r"^(.*?)\s*#\s*(\d+(?:\.\d+)?)$",  # "Title #09"
@@ -23,6 +23,7 @@ _SERIES_NUMBER_PATTERNS = (
     r"^(.*?)\s+Volume\s*(\d+(?:\.\d+)?)$",  # "Title Volume 09"
     r"^(.*?)\s*,\s*(\d+)$",  # "Title, 09" (integer only; comma-year guard below)
 )
+_SERIES_NUMBER_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 
 def _looks_like_year(number: str) -> bool:
@@ -37,13 +38,14 @@ def _looks_like_year(number: str) -> bool:
     return 1700 <= value <= 2099
 
 
-def strip_series_number(title: str) -> str:
-    """Return title with trailing series number removed when clearly separated.
+def split_series_number(title: str) -> tuple:
+    """Return ``(clean_title, series_number)`` when a trailing series index is found.
 
-    Mirrors web_book_api._strip_series_number for book-list import compare only.
+    ``series_number`` is kept as a string so decimals like ``6.5`` survive.
+    Returns ``(stripped_title, "")`` when no series index is present.
     """
     if not isinstance(title, str) or not title.strip():
-        return ""
+        return "", ""
 
     t = title.strip()
     for pattern in _SERIES_NUMBER_PATTERNS:
@@ -53,9 +55,76 @@ def strip_series_number(title: str) -> str:
         clean_title = match.group(1).strip()
         series_number = match.group(2)
         if clean_title and not _looks_like_year(series_number):
-            return clean_title
+            return clean_title, series_number
 
-    return t
+    return t, ""
+
+
+def strip_series_number(title: str) -> str:
+    """Return title with trailing series number removed when clearly separated."""
+    clean_title, _ = split_series_number(title)
+    return clean_title
+
+
+def format_series_suffix(value) -> str:
+    """Normalize a raw series-number cell or field for title suffixes.
+
+    Whole numbers are zero-padded to two digits (``2`` / ``2.0`` → ``02``).
+    Decimals are left as written (``6.5`` → ``6.5``). Leading ``#`` is stripped.
+    """
+    if value is None:
+        return ""
+
+    if isinstance(value, float):
+        if value != value:  # NaN
+            return ""
+        if value == int(value):
+            value = int(value)
+        else:
+            text = str(value).strip()
+            return text if _SERIES_NUMBER_TOKEN_RE.match(text) else ""
+
+    if isinstance(value, int):
+        return str(value).zfill(2)
+
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.startswith("#"):
+        text = text[1:].strip()
+    if not text:
+        return ""
+
+    # Integral float strings from spreadsheets: "2.0" → "02"
+    if re.fullmatch(r"\d+\.0+", text):
+        text = text.split(".", 1)[0]
+
+    if _SERIES_NUMBER_TOKEN_RE.match(text):
+        if "." in text:
+            return text
+        return text.zfill(2)
+
+    return text
+
+
+def append_series_suffix(title: str, value) -> str:
+    """Return ``title - NN`` when a series number is present and not already on title."""
+    if not isinstance(title, str):
+        title = str(title or "")
+    title = title.strip()
+    if not title:
+        return title
+
+    clean_title, existing = split_series_number(title)
+    if existing:
+        return title
+
+    suffix = format_series_suffix(value)
+    if not suffix:
+        return title
+
+    base = clean_title or title
+    return f"{base} - {suffix}"
 
 
 def pre_normalize_title(title: str) -> str:

@@ -95,6 +95,7 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.utils.text_utils import (
+    append_series_suffix,
     compare_normalize_title,
     normalize_author,
     similarity_percentage,
@@ -1695,16 +1696,10 @@ class BookListImportWindow(AccessibleDialog):
                         validator.sanitize_metadata(temp)
                         series = temp["series"]
 
-                # Append series number to title if both present
+                # Append series number only (not series name) when both are mapped
                 title_for_save = title
                 if series and series_no:
-                    # Only append if not already present
-                    if not re.search(
-                        rf"\\(\\s*{re.escape(series)}\\s*#?\\s*{re.escape(series_no)}\\s*\\)",
-                        title,
-                        re.IGNORECASE,
-                    ):
-                        title_for_save = f"{title} ({series} #{series_no})"
+                    title_for_save = append_series_suffix(title, series_no)
 
                 # Extract year for duplicate checking (before book object is created)
                 import_year = None
@@ -1903,15 +1898,10 @@ class BookListImportWindow(AccessibleDialog):
                     ):
                         series = str(val).strip()
 
-                # Append series number to title if both present
+                # Append series number only (not series name) when both are mapped
                 title_for_save = title
                 if series and series_no:
-                    if not re.search(
-                        rf"\\(\\s*{re.escape(series)}\\s*#?\\s*{re.escape(series_no)}\\s*\\)",
-                        title,
-                        re.IGNORECASE,
-                    ):
-                        title_for_save = f"{title} ({series} #{series_no})"
+                    title_for_save = append_series_suffix(title, series_no)
 
                 # compare_normalize_title massages DB/sheet titles (series suffix, articles).
                 import_title_for_compare = compare_normalize_title(title_for_save)
