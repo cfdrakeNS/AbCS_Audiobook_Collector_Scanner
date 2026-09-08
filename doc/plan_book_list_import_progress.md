@@ -1,8 +1,11 @@
 # Book List Import Progress Window — Future Improvement Plan
 
-**Status:** Implemented (Sep 2026)  
+**Status:** Completed (Sep 2026, AbCS 2.09)  
 **Related:** [Import Book List](../help_docs/11_import_book_list.md), [Import Book List explained](../help_docs/20_import_book_list_explained.md), [Import Progress](../src/ui/import_progress_window.py), Phase 1 series-number / Find work (Sep 2026)
----
+
+Implemented in 2.09: Book List Import reuses `ImportProgressWindow` with live counters, Esc cancel keeping partial results, Esc/Alt+/ forwarding, and Shift+F1 routed to `11_import_book_list.md`. Date-flake fix for reading-history month assertion included.
+
+**Performance (Sep 2026):** Add Books mode now uses the folder-import O(1) duplicate index, throttles `processEvents` to ~150 ms (same as folder import), caches author/series/genre ids for the run, and iterates with `itertuples` instead of `iterrows`.
 
 ## Goal
 

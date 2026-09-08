@@ -176,7 +176,7 @@ Then **`normalize_title(aggressive=True)`** removes all spaces and punctuation a
 | Review title normalize | `web_book_api.normalize_title()`, `WebMetadataWindow._compare_scalar_field()` |
 | Field diff table | `WebMetadataWindow.compute_field_differences()` |
 | Import compare | `text_utils.pre_normalize_title()`, `compare_normalize_title()` |
-| Import UI | `BookListImportWindow._check_duplicate()`, `update_read_dates()` |
+| Import UI | `ImportValidator.is_duplicate_fast()` (book list + folder), `BookListImportWindow.update_read_dates()` |
 
 ---
 

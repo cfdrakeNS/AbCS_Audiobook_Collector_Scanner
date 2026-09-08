@@ -97,15 +97,8 @@ from src.accessibility.style_helpers import (
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
-from src.utils.text_utils import (
-    append_series_suffix,
-    compare_normalize_title,
-    normalize_author,
-    series_number_key,
-    series_numbers_compatible,
-    similarity_percentage,
-    split_series_number,
-)
+from src.core.validator import ImportValidator
+from src.utils.text_utils import append_series_suffix, compare_normalize_title
 
 
 class BookListImportWindow(AccessibleDialog):
@@ -113,93 +106,6 @@ class BookListImportWindow(AccessibleDialog):
 
     # Alt+Key filtering for accessibility
     ALLOWED_ALT_LETTERS = "B M T A Y P S G R I H F C V O E /"
-
-    def _check_duplicate(
-        self,
-        title: str,
-        author: str,
-        year: int | None,
-        collection_id: int,
-        preexisting_books: list,
-        match_mode: str,
-        fuzzy_threshold: int,
-    ) -> bool:
-        """Check if a book is a duplicate based on preferences settings.
-
-        Args:
-            title: Book title
-            author: Book author
-            year: Book year (optional)
-            collection_id: Target collection ID
-            preexisting_books: List of existing books from DB
-            match_mode: Duplicate matching mode from preferences
-            fuzzy_threshold: Fuzzy matching threshold (0-100, 0=disabled)
-
-        Returns:
-            True if duplicate found, False otherwise
-        """
-        norm_title = compare_normalize_title(title)
-        norm_author = normalize_author(author, aggressive=True)
-        _, incoming_series = split_series_number(title)
-        incoming_series_key = series_number_key(incoming_series)
-
-        for db_book in preexisting_books:
-            norm_db_title = db_book["norm_title"]
-            norm_db_author = db_book["norm_author"]
-            db_year = db_book["year"]
-            db_collection_id = db_book["collection_id"]
-            db_series_key = db_book.get("series_key", "")
-
-            # Different series numbers on the same bare title are not duplicates
-            if not series_numbers_compatible(incoming_series_key, db_series_key):
-                continue
-
-            # Check title and author match (always required)
-            title_match = norm_db_title == norm_title
-            author_match = norm_db_author == norm_author
-
-            if not (title_match and author_match):
-                # Check fuzzy matching if enabled and threshold > 0
-                if fuzzy_threshold > 0:
-                    title_similarity = similarity_percentage(norm_db_title, norm_title)
-                    author_similarity = similarity_percentage(norm_db_author, norm_author)
-                    if (
-                        title_similarity >= fuzzy_threshold
-                        and author_similarity >= fuzzy_threshold
-                    ):
-                        title_match = True
-                        author_match = True
-                    else:
-                        continue
-                else:
-                    continue
-
-            # Apply match mode rules (strictest modes checked first in preferences)
-            if match_mode == "title_author_only":
-                return True
-            elif match_mode == "title_author":
-                if db_collection_id == collection_id:
-                    return True
-            elif match_mode == "title_author_year":
-                # Match by title + author + year
-                if year is not None and db_year is not None and year == db_year:
-                    return True
-                elif year is None or db_year is None:
-                    # If year missing, consider it a match
-                    return True
-            elif match_mode == "title_author_year_collection":
-                # Match by title + author + year + collection
-                collection_match = db_collection_id == collection_id
-                if collection_match:
-                    if year is not None and db_year is not None and year == db_year:
-                        return True
-                    elif year is None or db_year is None:
-                        return True
-            else:
-                # Default: title + author
-                return True
-
-        return False
 
     def __init__(
         self,
@@ -1215,8 +1121,8 @@ class BookListImportWindow(AccessibleDialog):
             and processed < total
             and now < self._progress_ui_next
         ):
-            # Still poll cancel frequently even when UI is throttled
-            QApplication.processEvents()
+            # Match folder import: skip processEvents between UI ticks (~150ms).
+            # Esc/Alt+/ still work when the timer fires.
             return
 
         if current_title:
@@ -1801,60 +1707,87 @@ class BookListImportWindow(AccessibleDialog):
             self.set_status("Error: No collection selected")
             return 0, 1, 0, 0
 
-        # Load duplicate checking settings from preferences
-        from src.utils.settings_helpers import read_setting
+        # Same duplicate prefs / series-number index path as folder import
+        validator = ImportValidator()
 
-        duplicate_match_mode = read_setting(
-            "import/rules/duplicate/match_mode",
-            "title_author_year_collection",
-            type=str,
-        )
-        fuzzy_threshold = read_setting(
-            "import/rules/duplicate/fuzzy_threshold", 0, type=int
-        )
-
-        # Fetch all existing books in the DB before import starts
-        # Include collection_id for collection-based duplicate checking
         preexisting_rows = self.db.fetch_all(
             "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
             "JOIN authors a ON b.author_id = a.author_id"
         )
-        
-        # Pre-normalize DB records once to avoid millions of repeated string operations.
-        # compare_normalize_title strips DB series suffixes (e.g. "Triptych - 01")
-        # and moves trailing articles before aggressive normalization.
-        # series_key keeps the stripped number as a tiebreaker so 01 vs 02 do not collide.
-        preexisting_books = []
-        for row_data in preexisting_rows:
-            raw_title = row_data[1]
-            _, series_num = split_series_number(raw_title if isinstance(raw_title, str) else "")
-            preexisting_books.append({
-                "title": raw_title,
+        existing_books = [
+            {
+                "title": row_data[1],
                 "author": row_data[2],
-                "norm_title": compare_normalize_title(raw_title),
-                "norm_author": normalize_author(row_data[2], aggressive=True),
-                "series_key": series_number_key(series_num),
                 "year": row_data[3],
-                "collection_id": row_data[4]
-            })
+                "collection_id": row_data[4],
+            }
+            for row_data in preexisting_rows
+        ]
+        dup_index = validator.build_duplicate_index(
+            existing_books,
+            target_collection_id=selected_collection_id,
+        )
 
-        # Import validator for sanitizing metadata fields
-        from src.core.validator import ImportValidator
+        # Prefetch entity ids so repeated names avoid per-row SELECTs
+        author_cache = {
+            (a.name or "").strip().lower(): a.author_id
+            for a in self.author_queries.get_all()
+            if a.author_id is not None
+        }
+        series_cache = {
+            (s.name or "").strip().lower(): s.series_id
+            for s in self.series_queries.get_all()
+            if s.series_id is not None
+        }
+        genre_cache = {
+            (g.name or "").strip().lower(): g.genre_id
+            for g in self.genre_queries.get_all()
+            if g.genre_id is not None
+        }
 
-        validator = ImportValidator()
+        def _cached_author_id(name: str) -> int:
+            key = name.strip().lower()
+            cached = author_cache.get(key)
+            if cached is not None:
+                return cached
+            author_id = self.author_queries.get_or_create(name, commit=False)
+            author_cache[key] = author_id
+            return author_id
+
+        def _cached_series_id(name: str) -> int:
+            key = name.strip().lower()
+            cached = series_cache.get(key)
+            if cached is not None:
+                return cached
+            series_id = self.series_queries.get_or_create(name, commit=False)
+            series_cache[key] = series_id
+            return series_id
+
+        def _cached_genre_id(name: str) -> int:
+            key = name.strip().lower()
+            cached = genre_cache.get(key)
+            if cached is not None:
+                return cached
+            genre_id = self.genre_queries.get_or_create(name, commit=False)
+            genre_cache[key] = genre_id
+            return genre_id
 
         total_rows = len(self.file_data)
-        for row_num, (index, row) in enumerate(self.file_data.iterrows(), start=1):
+        # itertuples is much faster than DataFrame.iterrows(); Index is row[0]
+        for row_num, row in enumerate(
+            self.file_data.itertuples(index=True, name=None), start=1
+        ):
             if self.progress_window is not None and self.progress_window.cancel_requested:
                 skipped_count = total_rows - (row_num - 1)
                 break
 
+            index = row[0]
             title = ""
             author = ""
             try:
-                # Extract required fields
-                title = str(row.iloc[mapping["title"]]).strip()
-                author = str(row.iloc[mapping["author"]]).strip()
+                # Extract required fields (column i is at tuple offset i + 1)
+                title = str(row[mapping["title"] + 1]).strip()
+                author = str(row[mapping["author"] + 1]).strip()
 
                 # Sanitize title and author fields before processing
                 temp_meta = {"title": title, "author": author}
@@ -1877,7 +1810,7 @@ class BookListImportWindow(AccessibleDialog):
                 # Series number logic
                 series_no = None
                 if "series_no" in mapping and mapping["series_no"] is not None:
-                    val = row.iloc[mapping["series_no"]]
+                    val = row[mapping["series_no"] + 1]
                     if (
                         pd.notna(val)
                         and str(val).strip()
@@ -1888,7 +1821,7 @@ class BookListImportWindow(AccessibleDialog):
                 # Series logic
                 series = None
                 if mapping.get("series") is not None:
-                    val = row.iloc[mapping["series"]]
+                    val = row[mapping["series"] + 1]
                     if (
                         pd.notna(val)
                         and str(val).strip()
@@ -1908,24 +1841,24 @@ class BookListImportWindow(AccessibleDialog):
                 # Extract year for duplicate checking (before book object is created)
                 import_year = None
                 if mapping.get("year") is not None:
-                    year_val = row.iloc[mapping["year"]]
+                    year_val = row[mapping["year"] + 1]
                     if pd.notna(year_val):
                         try:
                             import_year = int(year_val)
                         except (ValueError, TypeError):
                             pass
 
-                # Check for duplicates based on preferences settings
-                duplicate_found = self._check_duplicate(
-                    title_for_save,
-                    author,
-                    import_year,
-                    selected_collection_id,
-                    preexisting_books,
-                    duplicate_match_mode,
-                    fuzzy_threshold,
-                )
-                if duplicate_found:
+                candidate = {
+                    "title": title_for_save,
+                    "author": author,
+                    "year": import_year,
+                    "collection_id": selected_collection_id,
+                }
+                if validator.is_duplicate_fast(
+                    candidate,
+                    dup_index,
+                    target_collection_id=selected_collection_id,
+                ):
                     self.import_errors.append({
                         "row": index + 1,
                         "title": title_for_save,
@@ -1935,20 +1868,15 @@ class BookListImportWindow(AccessibleDialog):
                     duplicate_count += 1
                     continue
 
-                # Add this book to preexisting_books so subsequent imports in the same file are checked
-                _, saved_series = split_series_number(title_for_save)
-                preexisting_books.append({
-                    "title": title_for_save,
-                    "author": author,
-                    "norm_title": compare_normalize_title(title_for_save),
-                    "norm_author": normalize_author(author, aggressive=True),
-                    "series_key": series_number_key(saved_series),
-                    "year": import_year,
-                    "collection_id": selected_collection_id
-                })
+                # Keep same-pass duplicates visible to later rows
+                validator.add_to_duplicate_index(
+                    dup_index,
+                    candidate,
+                    target_collection_id=selected_collection_id,
+                )
 
                 # Get or create author
-                author_id = self.author_queries.get_or_create(author, commit=False)
+                author_id = _cached_author_id(author)
 
                 # Build Book object
                 book = Book(
@@ -1959,7 +1887,7 @@ class BookListImportWindow(AccessibleDialog):
 
                 # Add optional fields
                 if mapping.get("year") is not None:
-                    year = row.iloc[mapping["year"]]
+                    year = row[mapping["year"] + 1]
                     if pd.notna(year):
                         try:
                             book.year = int(year)
@@ -1967,29 +1895,25 @@ class BookListImportWindow(AccessibleDialog):
                             pass
 
                 if mapping.get("plot") is not None:
-                    plot = row.iloc[mapping["plot"]]
+                    plot = row[mapping["plot"] + 1]
                     if pd.notna(plot) and str(plot) != "nan":
                         book.comments = str(plot)
 
                 if series:
-                    book.series_id = self.series_queries.get_or_create(
-                        series, commit=False
-                    )
+                    book.series_id = _cached_series_id(series)
 
                 if mapping.get("genre") is not None:
-                    genre = row.iloc[mapping["genre"]]
+                    genre = row[mapping["genre"] + 1]
                     if pd.notna(genre) and str(genre) != "nan":
                         genre = str(genre).strip()
                         # Sanitize genre field
                         temp = {"genre": genre}
                         validator.sanitize_metadata(temp)
                         genre = temp["genre"]
-                        book.genre_id = self.genre_queries.get_or_create(
-                            genre, commit=False
-                        )
+                        book.genre_id = _cached_genre_id(genre)
 
                 if mapping.get("reader") is not None:
-                    reader = row.iloc[mapping["reader"]]
+                    reader = row[mapping["reader"] + 1]
                     if pd.notna(reader) and str(reader) != "nan":
                         reader = str(reader).strip()
                         # Sanitize reader field
@@ -1999,20 +1923,20 @@ class BookListImportWindow(AccessibleDialog):
                         book.reader = reader
 
                 if mapping.get("read_date") is not None:
-                    read_date = row.iloc[mapping["read_date"]]
+                    read_date = row[mapping["read_date"] + 1]
                     if pd.notna(read_date) and str(read_date) != "nan":
                         parsed_read_date = self._parse_read_date_value(read_date)
                         if parsed_read_date is not None:
                             book.read_date = parsed_read_date
 
                 if mapping.get("time_hours") is not None:
-                    time_value = row.iloc[mapping["time_hours"]]
+                    time_value = row[mapping["time_hours"] + 1]
                     parsed_time = self._parse_time_value(time_value)
                     if parsed_time is not None:
                         book.time_hours, book.time_minutes = parsed_time
 
                 if mapping.get("tracks") is not None:
-                    tracks = row.iloc[mapping["tracks"]]
+                    tracks = row[mapping["tracks"] + 1]
                     if pd.notna(tracks) and str(tracks) != "nan":
                         try:
                             book.tracks = int(tracks)
