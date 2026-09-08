@@ -77,11 +77,25 @@ PY
 echo "Cleaning only private legacy build artifacts..."
 rm -rf "${WORK_DIR}" "${DIST_DIR}"
 
+# data/*.sql is gitignored; packaging needs the schema next to the repo root.
+mkdir -p data
+if [[ ! -f "data/abcdDB_def.sql" ]]; then
+  if [[ -f "test/fixtures/abcdDB_def.sql" ]]; then
+    echo "Copying schema from test/fixtures/abcdDB_def.sql -> data/abcdDB_def.sql"
+    cp -f "test/fixtures/abcdDB_def.sql" "data/abcdDB_def.sql"
+  else
+    echo "ERROR: data/abcdDB_def.sql missing and test/fixtures/abcdDB_def.sql not found."
+    exit 1
+  fi
+fi
+
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/build_linux_common.sh"
 mapfile -t GRAPHICS_ARGS < <(abcs_pyinstaller_graphics_args)
 mapfile -t HELP_DOCS_ARGS < <(abcs_pyinstaller_help_docs_args)
 
+# Do not set --specpath under WORK_DIR: PyInstaller resolves --add-data relative to
+# the .spec location, which would look for data/ under build-legacy-hp/.
 echo "Building private HP executable (${DIST_DIR}/AbCS)..."
 python -m PyInstaller \
   --name="AbCS" \
@@ -92,8 +106,7 @@ python -m PyInstaller \
   --noconfirm \
   --distpath="${DIST_DIR}" \
   --workpath="${WORK_DIR}" \
-  --specpath="${WORK_DIR}" \
-  --add-data="data/abcdDB_def.sql:data" \
+  --add-data="${SCRIPT_DIR}/data/abcdDB_def.sql:data" \
   "${GRAPHICS_ARGS[@]}" \
   "${HELP_DOCS_ARGS[@]}" \
   --hidden-import="PySide6.QtCore" \
