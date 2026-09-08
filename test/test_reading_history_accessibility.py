@@ -178,5 +178,19 @@ def test_screen_reader_announcements_structure(reading_history_window):
         assert "Showing" in window._period_message
         assert "books read between" in window._period_message
         assert "totaling" in window._period_message
-        # Check for readable date format (month name)
-        assert "March" in window._period_message or "April" in window._period_message or "May" in window._period_message
+        # Readable date format uses a month name (rolling range depends on today)
+        month_names = (
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        )
+        assert any(month in window._period_message for month in month_names)

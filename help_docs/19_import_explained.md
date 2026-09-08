@@ -192,6 +192,8 @@ Controlled by **duplicate match mode** in preferences:
 | Title + Author + Year | Same title, author, and year anywhere in the library |
 | Title + Author only | Same title and author, year ignored |
 
+Before comparing, the app **strips trailing series numbers** from both the incoming title and library titles (for example `Triptych - 01` compares as `Triptych`). If both sides still have a series number and those numbers differ (`01` vs `02`), the books are **not** treated as duplicates so a full series can import in one pass. A bare title with no series number still matches a titled-with-suffix library entry.
+
 ### Fuzzy matching
 
 If a **fuzzy threshold** is set (0–100%), near-matches count as duplicates — both title and author must reach that similarity percentage. At 0%, only exact matches count.

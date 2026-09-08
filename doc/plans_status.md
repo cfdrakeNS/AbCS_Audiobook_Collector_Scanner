@@ -94,6 +94,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 
 
+
 ## Active — backlog (larger scope)
 
 
@@ -163,6 +164,8 @@ The following plan areas were implemented and verified in code:
 - JAWS Book Details label fix (Insert+W pilot — code complete; formal verification checklist closed, not tracked)
 
 - Toolbar/filter shortcuts
+
+- Book List Import progress window ([plan_book_list_import_progress.md](plan_book_list_import_progress.md))
 
 - Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](abcs_linux_fixes.md))
 

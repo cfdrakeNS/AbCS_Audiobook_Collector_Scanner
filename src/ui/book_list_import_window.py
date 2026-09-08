@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -44,6 +45,7 @@ except ImportError:
 from PySide6.QtCore import Qt, QDate, QTimer
 from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -78,6 +80,7 @@ from src.database import (
 from src.database.models import Collection
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.scaling import UIScaler
+from src.ui.import_progress_window import ImportProgressWindow
 from src.accessibility.accessible_events import (
     announce_status_message,
     configure_status_bar_accessibility,
@@ -98,7 +101,10 @@ from src.utils.text_utils import (
     append_series_suffix,
     compare_normalize_title,
     normalize_author,
+    series_number_key,
+    series_numbers_compatible,
     similarity_percentage,
+    split_series_number,
 )
 
 
@@ -134,12 +140,19 @@ class BookListImportWindow(AccessibleDialog):
         """
         norm_title = compare_normalize_title(title)
         norm_author = normalize_author(author, aggressive=True)
+        _, incoming_series = split_series_number(title)
+        incoming_series_key = series_number_key(incoming_series)
 
         for db_book in preexisting_books:
             norm_db_title = db_book["norm_title"]
             norm_db_author = db_book["norm_author"]
             db_year = db_book["year"]
             db_collection_id = db_book["collection_id"]
+            db_series_key = db_book.get("series_key", "")
+
+            # Different series numbers on the same bare title are not duplicates
+            if not series_numbers_compatible(incoming_series_key, db_series_key):
+                continue
 
             # Check title and author match (always required)
             title_match = norm_db_title == norm_title
@@ -209,6 +222,9 @@ class BookListImportWindow(AccessibleDialog):
         self.series_queries = SeriesQueries(db)
         self.genre_queries = GenreQueries(db)
         self.import_errors = []  # Track errors for CSV export
+        self.progress_window: ImportProgressWindow | None = None
+        self._import_start_time = 0.0
+        self._progress_ui_next = 0.0
 
         # Check for pandas availability
         if not PANDAS_AVAILABLE:
@@ -429,8 +445,11 @@ class BookListImportWindow(AccessibleDialog):
             key = event.key()
             modifiers = event.modifiers()
 
-            # Handle Escape to close window
+            # Handle Escape to close window (progress owns Esc while visible)
             if key == Qt.Key_Escape:
+                if self.progress_window is not None and self.progress_window.isVisible():
+                    self.progress_window.on_close_requested()
+                    return True
                 self.reject()
                 return True
 
@@ -451,6 +470,16 @@ class BookListImportWindow(AccessibleDialog):
 
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts and Enter key properly for buttons."""
+        # Escape — progress window owns Esc while visible (this dialog is
+        # application-modal, so Esc arrives here, not on progress).
+        if event.key() == Qt.Key_Escape:
+            if self.progress_window is not None and self.progress_window.isVisible():
+                self.progress_window.on_close_requested()
+                event.accept()
+                return
+            self.reject()
+            event.accept()
+            return
         # Accessibility: Alt+B always triggers file dialog
         if event.modifiers() & Qt.AltModifier and event.key() == Qt.Key_B:
             self.browse_file()
@@ -1111,11 +1140,126 @@ class BookListImportWindow(AccessibleDialog):
         dlg.exec()
 
     def on_read_status_bar(self):
-        """Read status bar message for screen readers (matches main window pattern)."""
+        """Read status bar message for screen readers (matches main window pattern).
+
+        While the modeless progress window is open, this dialog remains the
+        application-modal focus owner, so forward Alt+/ there.
+        """
+        if self.progress_window is not None and self.progress_window.isVisible():
+            self.progress_window.on_read_status_bar()
+            return
         read_status_bar_message(
             self.status_bar,
             fallback=getattr(self, "_default_status_message", "") or "Ready",
         )
+
+    @staticmethod
+    def _format_elapsed(seconds: float) -> str:
+        """Format elapsed seconds as MM:SS or HH:MM:SS."""
+        total_seconds = max(0, int(round(seconds)))
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, secs = divmod(remainder, 60)
+        if hours > 0:
+            return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+        return f"{minutes:02d}:{secs:02d}"
+
+    def _show_import_progress(self, total_rows: int) -> None:
+        """Open the shared Import Progress window for a book-list run."""
+        if self.progress_window is not None:
+            try:
+                self.progress_window.close()
+            except Exception:
+                pass
+            self.progress_window = None
+
+        self.progress_window = ImportProgressWindow(
+            self.scaler, self.theme_manager, parent=self
+        )
+        self.progress_window.set_compact_mode(False)
+        self.progress_window.set_activity_label("import")
+        self.progress_window.help_doc_override = "11_import_book_list.md"
+        self.progress_window.finished.connect(self._on_progress_window_closed)
+        self.progress_window.prepare_for_add_phase(total_rows)
+        self.progress_window.show()
+        self.progress_window.raise_()
+        self.progress_window.activateWindow()
+        self._import_start_time = time.perf_counter()
+        self._progress_ui_next = 0.0
+        QApplication.processEvents()
+
+    def _on_progress_window_closed(self, _result: int) -> None:
+        """Clear progress reference and restore focus after Esc close."""
+        self.progress_window = None
+        if hasattr(self, "file_edit") and self.file_edit is not None:
+            self.file_edit.setFocus(Qt.TabFocusReason)
+
+    def _update_import_progress(
+        self,
+        *,
+        processed: int,
+        total: int,
+        added: int,
+        duplicates: int,
+        errors: int,
+        current_title: str = "",
+        current_author: str = "",
+        force: bool = False,
+    ) -> None:
+        """Throttle progress UI updates and pump the event loop."""
+        if self.progress_window is None:
+            return
+
+        now = time.perf_counter()
+        if (
+            not force
+            and processed < total
+            and now < self._progress_ui_next
+        ):
+            # Still poll cancel frequently even when UI is throttled
+            QApplication.processEvents()
+            return
+
+        if current_title:
+            self.progress_window.title_edit.setText(current_title)
+        if current_author:
+            self.progress_window.author_edit.setText(current_author)
+
+        elapsed_text = self._format_elapsed(now - self._import_start_time)
+        self.progress_window.update_add_progress(
+            processed=processed,
+            total=total,
+            books_added=added,
+            elapsed_text=elapsed_text,
+            scanned=processed,
+            fixed=0,
+            errors=errors,
+            warnings=0,
+            duplicates=duplicates,
+        )
+        self._progress_ui_next = now + 0.15
+        QApplication.processEvents()
+
+    def _finish_import_progress(
+        self,
+        *,
+        canceled: bool,
+        summary_text: str,
+    ) -> None:
+        """Mark progress complete; leave window open for Esc to close."""
+        if self.progress_window is None:
+            return
+        elapsed_text = self._format_elapsed(
+            time.perf_counter() - self._import_start_time
+        )
+        self.progress_window.mark_complete(
+            canceled=canceled,
+            elapsed_text=elapsed_text,
+            files_scanned=0,
+            books_added=0,
+            read_errors=0,
+            summary_text=summary_text,
+        )
+        QApplication.processEvents()
 
     def browse_file(self):
         """Browse for spreadsheet file."""
@@ -1543,35 +1687,72 @@ class BookListImportWindow(AccessibleDialog):
         # Perform import
         try:
             self.set_status("Importing books...")
+            total_rows = len(self.file_data) if self.file_data is not None else 0
+            self._show_import_progress(total_rows)
 
             if self.import_mode == "new":
-                success_count, error_count = self.import_new_books()
+                (
+                    success_count,
+                    error_count,
+                    duplicate_count,
+                    skipped_count,
+                ) = self.import_new_books()
             else:
-                success_count, error_count = self.update_read_dates()
+                (
+                    success_count,
+                    error_count,
+                    duplicate_count,
+                    skipped_count,
+                ) = self.update_read_dates()
 
+            canceled = skipped_count > 0
             self.export_button.setEnabled(bool(self.import_errors))
 
             # Show results
             selected_collection_name = self.collection_combo.currentText()
             if self.import_mode == "new":
                 result_text = f"{success_count} books added to {selected_collection_name} collection"
-                status_text = f"{success_count} books added to {selected_collection_name} collection, {error_count} errors"
+                status_parts = [
+                    f"{success_count} books added to {selected_collection_name} collection"
+                ]
+                if duplicate_count:
+                    status_parts.append(f"{duplicate_count} duplicates skipped")
+                status_parts.append(f"{error_count} errors")
+                if skipped_count:
+                    status_parts.append(f"{skipped_count} skipped")
+                status_text = ", ".join(status_parts)
             else:
                 result_text = f"{success_count} read dates added to books in {selected_collection_name} collection"
-                status_text = (
-                    f"{success_count} read dates added to books in {selected_collection_name} collection, {error_count} errors"
-                )
+                status_parts = [
+                    f"{success_count} read dates added to books in {selected_collection_name} collection",
+                    f"{error_count} errors",
+                ]
+                if skipped_count:
+                    status_parts.append(f"{skipped_count} skipped")
+                status_text = ", ".join(status_parts)
+            if duplicate_count > 0 and self.import_mode == "new":
+                result_text += f"\n{duplicate_count} duplicates skipped"
             if error_count > 0:
                 result_text += f"\n{error_count} books had errors"
                 result_text += (
                     "\nUse Export Errors (Alt+X) to save error details to CSV"
                 )
+            if skipped_count > 0:
+                result_text += (
+                    f"\nImport canceled: {skipped_count} remaining rows skipped"
+                )
 
+            self._finish_import_progress(
+                canceled=canceled,
+                summary_text=status_text,
+            )
+
+            dialog_title = "Import Canceled" if canceled else "Import Complete"
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Information,
-                title="Import Complete",
+                title=dialog_title,
                 text=result_text,
                 buttons=QMessageBox.Ok,
                 default_button=QMessageBox.Ok,
@@ -1582,6 +1763,11 @@ class BookListImportWindow(AccessibleDialog):
             self.file_edit.setFocus(Qt.TabFocusReason)
 
         except Exception as e:
+            if self.progress_window is not None:
+                self._finish_import_progress(
+                    canceled=True,
+                    summary_text=f"Import failed: {e}",
+                )
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -1593,20 +1779,27 @@ class BookListImportWindow(AccessibleDialog):
             )
             self.set_status("Import failed")
 
-    def import_new_books(self) -> Tuple[int, int]:
-        """Import new books from the spreadsheet."""
+    def import_new_books(self) -> Tuple[int, int, int, int]:
+        """Import new books from the spreadsheet.
+
+        Returns:
+            ``(success_count, error_count, duplicate_count, skipped_count)``
+            ``skipped_count`` is remaining rows left unprocessed after cancel.
+        """
         from src.database.models import Book
 
         mapping = self.get_field_mapping()
         success_count = 0
         error_count = 0
+        duplicate_count = 0
+        skipped_count = 0
         self.import_errors = []  # Reset errors
 
         # Get selected collection from combo box
         selected_collection_id = self.collection_combo.currentData()
         if selected_collection_id is None:
             self.set_status("Error: No collection selected")
-            return
+            return 0, 1, 0, 0
 
         # Load duplicate checking settings from preferences
         from src.utils.settings_helpers import read_setting
@@ -1630,13 +1823,17 @@ class BookListImportWindow(AccessibleDialog):
         # Pre-normalize DB records once to avoid millions of repeated string operations.
         # compare_normalize_title strips DB series suffixes (e.g. "Triptych - 01")
         # and moves trailing articles before aggressive normalization.
+        # series_key keeps the stripped number as a tiebreaker so 01 vs 02 do not collide.
         preexisting_books = []
         for row_data in preexisting_rows:
+            raw_title = row_data[1]
+            _, series_num = split_series_number(raw_title if isinstance(raw_title, str) else "")
             preexisting_books.append({
-                "title": row_data[1],
+                "title": raw_title,
                 "author": row_data[2],
-                "norm_title": compare_normalize_title(row_data[1]),
+                "norm_title": compare_normalize_title(raw_title),
                 "norm_author": normalize_author(row_data[2], aggressive=True),
+                "series_key": series_number_key(series_num),
                 "year": row_data[3],
                 "collection_id": row_data[4]
             })
@@ -1646,7 +1843,14 @@ class BookListImportWindow(AccessibleDialog):
 
         validator = ImportValidator()
 
-        for index, row in self.file_data.iterrows():
+        total_rows = len(self.file_data)
+        for row_num, (index, row) in enumerate(self.file_data.iterrows(), start=1):
+            if self.progress_window is not None and self.progress_window.cancel_requested:
+                skipped_count = total_rows - (row_num - 1)
+                break
+
+            title = ""
+            author = ""
             try:
                 # Extract required fields
                 title = str(row.iloc[mapping["title"]]).strip()
@@ -1728,15 +1932,17 @@ class BookListImportWindow(AccessibleDialog):
                         "author": author,
                         "reason": "Duplicate - book already exists",
                     })
-                    error_count += 1
+                    duplicate_count += 1
                     continue
 
                 # Add this book to preexisting_books so subsequent imports in the same file are checked
+                _, saved_series = split_series_number(title_for_save)
                 preexisting_books.append({
                     "title": title_for_save,
                     "author": author,
                     "norm_title": compare_normalize_title(title_for_save),
                     "norm_author": normalize_author(author, aggressive=True),
+                    "series_key": series_number_key(saved_series),
                     "year": import_year,
                     "collection_id": selected_collection_id
                 })
@@ -1829,29 +2035,60 @@ class BookListImportWindow(AccessibleDialog):
                     }
                 )
                 error_count += 1
-                continue
+            finally:
+                self._update_import_progress(
+                    processed=row_num,
+                    total=total_rows,
+                    added=success_count,
+                    duplicates=duplicate_count,
+                    errors=error_count,
+                    current_title=title,
+                    current_author=author,
+                    force=(row_num >= total_rows),
+                )
 
-        # Commit all changes at once
+        # Commit all changes at once (including partial results after cancel)
         self.db.connect().commit()
-        return success_count, error_count
+        self._update_import_progress(
+            processed=max(0, total_rows - skipped_count),
+            total=total_rows,
+            added=success_count,
+            duplicates=duplicate_count,
+            errors=error_count,
+            force=True,
+        )
+        return success_count, error_count, duplicate_count, skipped_count
 
-    def update_read_dates(self) -> Tuple[int, int]:
-        """Update read dates for existing books."""
+    def update_read_dates(self) -> Tuple[int, int, int, int]:
+        """Update read dates for existing books.
+
+        Returns:
+            ``(success_count, error_count, duplicate_count, skipped_count)`` —
+            duplicates are always 0 in read-date mode.
+        """
         mapping = self.get_field_mapping()
         success_count = 0
         error_count = 0
+        skipped_count = 0
         self.import_errors = []  # Reset errors
 
         # Get selected collection from combo box
         selected_collection_id = self.collection_combo.currentData()
         if selected_collection_id is None:
             self.set_status("Error: No collection selected")
-            return 0, 1
+            return 0, 1, 0, 0
 
         from src.core.validator import ImportValidator
         validator = ImportValidator()
 
-        for index, row in self.file_data.iterrows():
+        total_rows = len(self.file_data)
+        for row_num, (index, row) in enumerate(self.file_data.iterrows(), start=1):
+            if self.progress_window is not None and self.progress_window.cancel_requested:
+                skipped_count = total_rows - (row_num - 1)
+                break
+
+            title = ""
+            author = ""
             try:
                 # Extract required fields
                 title = str(row.iloc[mapping["title"]]).strip()
@@ -1995,9 +2232,27 @@ class BookListImportWindow(AccessibleDialog):
                     }
                 )
                 error_count += 1
-                continue
+            finally:
+                self._update_import_progress(
+                    processed=row_num,
+                    total=total_rows,
+                    added=success_count,
+                    duplicates=0,
+                    errors=error_count,
+                    current_title=title,
+                    current_author=author,
+                    force=(row_num >= total_rows),
+                )
 
-        return success_count, error_count
+        self._update_import_progress(
+            processed=max(0, total_rows - skipped_count),
+            total=total_rows,
+            added=success_count,
+            duplicates=0,
+            errors=error_count,
+            force=True,
+        )
+        return success_count, error_count, 0, skipped_count
 
     def export_errors_csv(self):
         """Export import errors to CSV spreadsheet."""

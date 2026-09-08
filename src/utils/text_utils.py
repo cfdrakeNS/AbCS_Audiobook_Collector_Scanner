@@ -66,6 +66,93 @@ def strip_series_number(title: str) -> str:
     return clean_title
 
 
+def series_number_key(value) -> str:
+    """Return a canonical series-number key for duplicate tiebreaking.
+
+    Whole numbers collapse to unpadded digits (``01``, ``1``, ``1.0`` → ``1``).
+    Decimals keep their fractional form (``6.5`` → ``6.5``). Empty / missing
+    values return ``""``.
+    """
+    if value is None:
+        return ""
+
+    if isinstance(value, float):
+        if value != value:  # NaN
+            return ""
+        if value == int(value):
+            return str(int(value))
+        text = str(value).strip()
+        return text if _SERIES_NUMBER_TOKEN_RE.match(text) else ""
+
+    if isinstance(value, int):
+        return str(value)
+
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if text.startswith("#"):
+        text = text[1:].strip()
+    if not text:
+        return ""
+
+    # Integral float strings: "1.0" / "01.0" → "1"
+    if re.fullmatch(r"0*\d+\.0+", text):
+        text = text.split(".", 1)[0]
+
+    if not _SERIES_NUMBER_TOKEN_RE.match(text):
+        return ""
+
+    if "." in text:
+        # "06.5" → "6.5"; leave "0.5" alone
+        if text.startswith("0.") or text.startswith("."):
+            return text
+        return text.lstrip("0") or text
+
+    # Strip leading zeros from whole numbers ("01" → "1"), keep bare "0"
+    stripped = text.lstrip("0")
+    return stripped if stripped else "0"
+
+
+def series_numbers_compatible(left, right) -> bool:
+    """True when series numbers do not conflict for duplicate matching.
+
+    An empty series number is compatible with any value so a bare title can
+    still match a titled-with-suffix DB entry. Two present and different keys
+    are incompatible (``01`` vs ``02``).
+    """
+    left_key = series_number_key(left)
+    right_key = series_number_key(right)
+    if not left_key or not right_key:
+        return True
+    return left_key == right_key
+
+
+def titles_match(left: str, right: str, fuzzy_threshold: int = 0) -> bool:
+    """Compare two raw titles for import duplicate purposes.
+
+    Strips series numbers via ``compare_normalize_title``, then applies the
+    series-number tiebreaker. When ``fuzzy_threshold`` is greater than 0 and
+    the normalized titles are not exact, uses ``similarity_percentage``.
+    """
+    left_norm = compare_normalize_title(left)
+    right_norm = compare_normalize_title(right)
+    if not left_norm or not right_norm:
+        return False
+
+    _, left_series = split_series_number(left if isinstance(left, str) else "")
+    _, right_series = split_series_number(right if isinstance(right, str) else "")
+    if not series_numbers_compatible(left_series, right_series):
+        return False
+
+    if left_norm == right_norm:
+        return True
+
+    if fuzzy_threshold > 0:
+        return similarity_percentage(left_norm, right_norm) >= fuzzy_threshold
+
+    return False
+
+
 def format_series_suffix(value) -> str:
     """Normalize a raw series-number cell or field for title suffixes.
 

@@ -9,7 +9,15 @@ from PySide6.QtCore import QSettings
 from typing import List, Dict, Any, Set, Tuple
 import re
 
-from src.utils.text_utils import normalize_title, normalize_author, similarity_ratio
+from src.utils.text_utils import (
+    compare_normalize_title,
+    normalize_author,
+    normalize_title,
+    series_number_key,
+    series_numbers_compatible,
+    similarity_ratio,
+    split_series_number,
+)
 
 
 class ImportValidator:
@@ -70,7 +78,10 @@ class ImportValidator:
         PHASE 2 OPTIMIZATION: Build an optimized index for duplicate checking.
 
         Pre-computes normalized keys and signatures for all existing books,
-        enabling O(1) exact lookups and filtered fuzzy checks.
+        enabling O(1) exact lookups and filtered fuzzy checks. Title keys use
+        ``compare_normalize_title`` so trailing series numbers are stripped
+        before compare; ``series_numbers_by_key`` keeps the number as a
+        tiebreaker (``01`` vs ``02`` do not collide).
 
         Args:
             existing_books: List of existing book dictionaries
@@ -80,6 +91,7 @@ class ImportValidator:
             Dictionary containing:
             - 'exact_keys': Set of exact match keys
             - 'books_by_key': Dict mapping keys to list of books
+            - 'series_numbers_by_key': Dict mapping exact keys to series-key sets
             - 'normalized_books': List of pre-normalized book data for fuzzy checks
             - 'build_time': Time taken to build index
         """
@@ -91,48 +103,115 @@ class ImportValidator:
 
         exact_keys: Set[str] = set()
         books_by_key: Dict[str, List[Dict]] = {}
+        series_numbers_by_key: Dict[str, Set[str]] = {}
         normalized_books: List[Dict] = []
 
         for book in existing_books:
-            # Pre-normalize all fields
-            title = normalize_title(book.get("title", ""), aggressive=True)
-            author = normalize_author(book.get("author", ""), aggressive=True)
-            year = book.get("year")
-            collection_id = book.get("collection_id", target_collection_id)
-
-            # Build exact match key
-            key_parts = [title, author]
-            if include_year and year:
-                key_parts.append(str(year))
-            if include_collection:
-                key_parts.append(str(collection_id or "none"))
-            exact_key = "|".join(key_parts)
-
-            exact_keys.add(exact_key)
-            books_by_key.setdefault(exact_key, []).append(book)
-
-            # Store normalized data for fuzzy matching
-            normalized_books.append({
-                "book": book,
-                "title": title,
-                "author": author,
-                "year": year,
-                "collection_id": collection_id,
-                "exact_key": exact_key,
-                "title_len": len(title),
-                "author_len": len(author),
-            })
+            self._index_book(
+                book,
+                exact_keys=exact_keys,
+                books_by_key=books_by_key,
+                series_numbers_by_key=series_numbers_by_key,
+                normalized_books=normalized_books,
+                include_year=include_year,
+                include_collection=include_collection,
+                target_collection_id=target_collection_id,
+            )
 
         build_time = time.perf_counter() - index_start
 
         return {
             "exact_keys": exact_keys,
             "books_by_key": books_by_key,
+            "series_numbers_by_key": series_numbers_by_key,
             "normalized_books": normalized_books,
             "build_time": build_time,
             "include_year": include_year,
             "include_collection": include_collection,
         }
+
+    def _book_exact_key_parts(
+        self,
+        book: Dict[str, Any],
+        *,
+        include_year: bool,
+        include_collection: bool,
+        target_collection_id: int | None = None,
+    ) -> Tuple[str, str, str, Any, Any, str]:
+        """Return title, author, series_key, year, collection_id, exact_key."""
+        raw_title = book.get("title", "")
+        title = compare_normalize_title(raw_title if isinstance(raw_title, str) else "")
+        author = normalize_author(book.get("author", ""), aggressive=True)
+        _, series_num = split_series_number(
+            raw_title if isinstance(raw_title, str) else ""
+        )
+        series_key = series_number_key(series_num)
+        year = book.get("year")
+        collection_id = book.get("collection_id", target_collection_id)
+
+        key_parts = [title, author]
+        if include_year and year:
+            key_parts.append(str(year))
+        if include_collection:
+            key_parts.append(str(collection_id or "none"))
+        exact_key = "|".join(key_parts)
+        return title, author, series_key, year, collection_id, exact_key
+
+    def _index_book(
+        self,
+        book: Dict[str, Any],
+        *,
+        exact_keys: Set[str],
+        books_by_key: Dict[str, List[Dict]],
+        series_numbers_by_key: Dict[str, Set[str]],
+        normalized_books: List[Dict],
+        include_year: bool,
+        include_collection: bool,
+        target_collection_id: int | None = None,
+    ) -> None:
+        """Add one book into an existing duplicate index structure."""
+        title, author, series_key, year, collection_id, exact_key = (
+            self._book_exact_key_parts(
+                book,
+                include_year=include_year,
+                include_collection=include_collection,
+                target_collection_id=target_collection_id,
+            )
+        )
+
+        exact_keys.add(exact_key)
+        books_by_key.setdefault(exact_key, []).append(book)
+        series_numbers_by_key.setdefault(exact_key, set()).add(series_key)
+
+        normalized_books.append({
+            "book": book,
+            "title": title,
+            "author": author,
+            "series_key": series_key,
+            "year": year,
+            "collection_id": collection_id,
+            "exact_key": exact_key,
+            "title_len": len(title),
+            "author_len": len(author),
+        })
+
+    def add_to_duplicate_index(
+        self,
+        index: Dict[str, Any],
+        book: Dict[str, Any],
+        target_collection_id: int | None = None,
+    ) -> None:
+        """Insert a newly added book into a live duplicate index."""
+        self._index_book(
+            book,
+            exact_keys=index["exact_keys"],
+            books_by_key=index["books_by_key"],
+            series_numbers_by_key=index.setdefault("series_numbers_by_key", {}),
+            normalized_books=index["normalized_books"],
+            include_year=index["include_year"],
+            include_collection=index["include_collection"],
+            target_collection_id=target_collection_id,
+        )
 
     def is_duplicate_fast(
         self,
@@ -144,36 +223,36 @@ class ImportValidator:
         PHASE 2 OPTIMIZATION: Fast duplicate check using pre-built index.
 
         O(1) exact lookup + O(k) fuzzy where k is small subset of candidates.
-
-        Args:
-            book: Book to check
-            index: Pre-built index from build_duplicate_index()
-            target_collection_id: Collection to scope duplicate checks to
-
-        Returns:
-            True if duplicate found
+        Series numbers are stripped from the title key; when the bare title
+        matches but series numbers conflict, fall through to fuzzy instead
+        of treating it as a duplicate.
         """
-        title = normalize_title(book.get("title", ""), aggressive=True)
-        author = normalize_author(book.get("author", ""), aggressive=True)
-        year = int(book.get("year")) if book.get("year") else None
-        collection_id = book.get("collection_id", target_collection_id)
+        title, author, series_key, year, collection_id, exact_key = (
+            self._book_exact_key_parts(
+                book,
+                include_year=index["include_year"],
+                include_collection=index["include_collection"],
+                target_collection_id=target_collection_id,
+            )
+        )
+        year = int(year) if year else None
 
         include_year = index["include_year"]
         include_collection = index["include_collection"]
         fuzzy_ratio_threshold = self.duplicate_fuzzy_threshold / 100.0
         fuzzy_enabled = self.duplicate_fuzzy_threshold > 0
+        series_by_key = index.get("series_numbers_by_key", {})
 
-        # Build exact key for O(1) lookup
-        key_parts = [title, author]
-        if include_year and year:
-            key_parts.append(str(year))
-        if include_collection:
-            key_parts.append(str(collection_id or "none"))
-        exact_key = "|".join(key_parts)
-
-        # O(1) exact match check
+        # O(1) exact match check with series-number tiebreaker
         if exact_key in index["exact_keys"]:
-            return True
+            existing_series = series_by_key.get(exact_key, set())
+            if any(
+                series_numbers_compatible(series_key, existing)
+                for existing in existing_series
+            ):
+                return True
+            # Bare-title key hit but series numbers conflict — fall through
+            # so fuzzy (if enabled) or a later non-match can resolve.
 
         if not fuzzy_enabled:
             return False
@@ -190,6 +269,11 @@ class ImportValidator:
             if abs(existing["title_len"] - title_len) > len_tolerance:
                 continue
             if abs(existing["author_len"] - author_len) > len_tolerance:
+                continue
+
+            if not series_numbers_compatible(
+                series_key, existing.get("series_key", "")
+            ):
                 continue
 
             # Check year if required

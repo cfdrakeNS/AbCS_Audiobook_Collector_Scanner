@@ -291,14 +291,26 @@ Book list import does **not** use the E:/W:/F:/C: prefix system. Row failures ar
 | Mode | Status pattern |
 |------|----------------|
 | New books | `{success} books added to {collection} collection, {errors} errors` |
+| New books (with duplicates) | `{success} books added to {collection} collection, {duplicates} duplicates skipped, {errors} errors` |
+| New books (canceled) | same as above, plus `, {skipped} skipped` |
 | Read dates | `{success} read dates added to books in {collection} collection, {errors} errors` |
-| During import | `Importing books...` |
+| Read dates (canceled) | same as above, plus `, {skipped} skipped` |
+| During import | `Importing books...` (Import Progress window also shows live counters) |
 | No collection (internal) | `Error: No collection selected` |
 
-**Import Complete dialog** adds, when `error_count > 0`:
+**Import Progress window** (modeless, during Book List Import):
 
-- `{error_count} books had errors`
-- `Use Export Errors (Alt+X) to save error details to CSV`
+- Shows current title/author, progress bar, and counters: Scanned, Added, Corrected (0), Errors, Warnings (0), Duplicates
+- Escape asks to cancel; **Yes** keeps partial results and skips remaining rows
+- Shift+F1 opens Book List Import help (`11_import_book_list.md`), not folder-import help
+
+**Import Complete / Import Canceled dialog** adds:
+
+- When `duplicate_count > 0` (new-book mode): `{duplicate_count} duplicates skipped`
+- When `error_count > 0`: `{error_count} books had errors` and `Use Export Errors (Alt+X) to save error details to CSV`
+- When canceled: `Import canceled: {skipped} remaining rows skipped`
+
+Duplicates are counted separately from other errors but still appear in the Export Errors CSV as `Duplicate - book already exists`.
 
 ### 3.5 Export errors CSV
 

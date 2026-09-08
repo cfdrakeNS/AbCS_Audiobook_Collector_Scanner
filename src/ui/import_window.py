@@ -1886,14 +1886,17 @@ class ImportWindow(AccessibleDialog):
                         outcomes.add("added")
                         added_count += 1
                         self.total_imported += 1
-                        # Update existing_list for future duplicate checks
-                        existing_list.append(
+                        # Keep the live duplicate index in sync so later books
+                        # in this same scan see the newly added title.
+                        self.validator.add_to_duplicate_index(
+                            dup_index,
                             {
                                 "title": book.get("title", ""),
                                 "author": book.get("author", ""),
                                 "year": book.get("year"),
                                 "collection_id": target_collection_id,
-                            }
+                            },
+                            target_collection_id=target_collection_id,
                         )
                     except Exception as exc:
                         # Add failed auto-add as error

@@ -42,6 +42,9 @@ def get_help_doc_filename(widget: QWidget | None) -> str:
     """Return the help markdown filename for a window or dialog."""
     if widget is None:
         return FALLBACK_DOC
+    override = getattr(widget, "help_doc_override", None)
+    if isinstance(override, str) and override.strip() and help_doc_exists(override.strip()):
+        return override.strip()
     class_name = widget.__class__.__name__
     if class_name == "MainWindow" and getattr(widget, "duplicate_mode_active", False):
         doc_name = DUPLICATE_MODE_DOC

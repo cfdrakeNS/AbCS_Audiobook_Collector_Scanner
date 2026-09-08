@@ -49,6 +49,23 @@ def test_duplicate_mode_main_window_help():
     assert get_help_doc_filename(normal_window) == WINDOW_HELP_MAP["MainWindow"]
 
 
+def test_help_doc_override_on_progress_window():
+    """Book List Import can force progress Shift+F1 to book-list help."""
+    window = type(
+        "ImportProgressWindow",
+        (),
+        {"help_doc_override": "11_import_book_list.md"},
+    )()
+    assert get_help_doc_filename(window) == "11_import_book_list.md"
+    # Invalid override falls through to class map
+    bad = type(
+        "ImportProgressWindow",
+        (),
+        {"help_doc_override": "does_not_exist.md"},
+    )()
+    assert get_help_doc_filename(bad) == WINDOW_HELP_MAP["ImportProgressWindow"]
+
+
 def test_markdown_to_html_renders_shortcut_tables_as_lines():
     md = (
         "## Shortcuts\n\n"

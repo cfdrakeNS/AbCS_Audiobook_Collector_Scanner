@@ -2772,8 +2772,7 @@ class MainWindow(QMainWindow):
             current_field = "Title"
         field_combo.setCurrentText(current_field)
 
-        if self.current_filter.search_text:
-            text_edit.setText(self.current_filter.search_text)
+        # Always start with an empty find text box; do not prefill last search.
         # Only override with filter if user changed during session
         # settings = QSettings('AbCS', 'AudioBookCollector')
         # Always start unchecked; do not override with previous session

@@ -61,6 +61,10 @@ class ImportProgressWindow(QDialog):
         self._scan_active = True
         self._compact_mode = False
         self._status_read_until = 0.0
+        # Optional Shift+F1 override (e.g. book-list import uses 11_import_book_list.md)
+        self.help_doc_override: str | None = None
+        # Wording for cancel prompt: "scan" (folder import) or "import" (book list)
+        self._activity_label = "scan"
 
         self.setup_ui()
         self.setup_shortcuts()
@@ -75,6 +79,11 @@ class ImportProgressWindow(QDialog):
     @property
     def cancel_requested(self) -> bool:
         return self._cancel_requested
+
+    def set_activity_label(self, label: str) -> None:
+        """Set cancel-dialog wording (``scan`` or ``import``)."""
+        text = (label or "scan").strip().lower()
+        self._activity_label = text if text else "scan"
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -368,13 +377,13 @@ class ImportProgressWindow(QDialog):
             percent = int((safe_processed / safe_total) * 100)
             self.scan_progress.setValue(percent)
             self.scan_progress.setFormat(f"Adding... {safe_processed}/{safe_total}")
-            progress_note = f"Adding {safe_processed}/{safe_total}"
         else:
             self.scan_progress.setValue(0)
             self.scan_progress.setFormat("Adding...")
-            progress_note = "Adding"
 
         if scanned is not None:
+            # Counters already include scanned/added counts; do not also prefix
+            # "Adding N/N" (that duplicates the progress-bar format).
             self.update_counters(
                 scanned=scanned,
                 added=books_added if books_added is not None else 0,
@@ -383,26 +392,30 @@ class ImportProgressWindow(QDialog):
                 warnings=warnings or 0,
                 duplicates=duplicates or 0,
                 elapsed_text=elapsed_text,
-                progress_note=progress_note,
+                progress_note=None,
             )
             return
 
-        status_text = progress_note
+        status_text = (
+            f"Adding {safe_processed}/{safe_total}" if safe_total > 0 else "Adding"
+        )
         if elapsed_text is not None:
             status_text = f"{status_text} | Elapsed {elapsed_text}"
         self.set_status(status_text)
 
     def on_close_requested(self):
         if self._scan_active and not self._cancel_requested:
+            activity = self._activity_label
+            activity_title = activity.capitalize()
             reply = exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
                 icon=QMessageBox.Question,
-                title="Cancel Scan",
+                title=f"Cancel {activity_title}",
                 text=(
-                    "Cancel the current scan?\n\n"
-                    "Yes: stop scanning and keep partial results.\n"
-                    "No: continue scanning."
+                    f"Cancel the current {activity}?\n\n"
+                    f"Yes: stop the {activity} and keep partial results.\n"
+                    f"No: continue the {activity}."
                 ),
                 buttons=QMessageBox.Yes | QMessageBox.No,
                 default_button=QMessageBox.No,
@@ -410,9 +423,11 @@ class ImportProgressWindow(QDialog):
             )
             if reply == QMessageBox.Yes:
                 self._cancel_requested = True
-                self.set_status("Cancel Scan: scan stopped, partial results kept.")
+                self.set_status(
+                    f"Cancel {activity_title}: {activity} stopped, partial results kept."
+                )
             else:
-                self.set_status("Continuing: scan not canceled.")
+                self.set_status(f"Continuing: {activity} not canceled.")
             return
         self.accept()
 
@@ -449,10 +464,14 @@ class ImportProgressWindow(QDialog):
         self._scan_active = False
 
         if canceled:
-            self.scan_progress.setFormat(f"Scan canceled ({elapsed_text})")
+            self.scan_progress.setFormat(
+                f"{self._activity_label.capitalize()} canceled ({elapsed_text})"
+            )
         else:
             self.scan_progress.setValue(100)
-            self.scan_progress.setFormat(f"Scan complete ({elapsed_text})")
+            self.scan_progress.setFormat(
+                f"{self._activity_label.capitalize()} complete ({elapsed_text})"
+            )
 
         self.setFocusPolicy(Qt.StrongFocus)
         self.raise_()
@@ -462,20 +481,25 @@ class ImportProgressWindow(QDialog):
         if summary_text:
             message = summary_text.strip()
             if canceled:
-                message = f"Cancel Scan: {message}"
+                activity_title = self._activity_label.capitalize()
+                if not message.lower().startswith("cancel"):
+                    message = f"Cancel {activity_title}: {message}"
             if "esc to close" not in message.lower():
                 message = f"{message}. Esc to close"
             self.set_status(message, announce=True)
             return
 
+        activity = self._activity_label
+        activity_title = activity.capitalize()
         if canceled:
             self.set_status(
-                f"Scan canceled! Elapsed: {elapsed_text}. Esc to close.",
+                f"{activity_title} canceled! Elapsed: {elapsed_text}. Esc to close.",
                 announce=True,
             )
         else:
             self.set_status(
-                f"Scan complete. Elapsed: {elapsed_text}. Esc to close.", announce=True
+                f"{activity_title} complete. Elapsed: {elapsed_text}. Esc to close.",
+                announce=True,
             )
 
     def mark_add_phase_complete(self, *, books_added: int, elapsed_text: str):

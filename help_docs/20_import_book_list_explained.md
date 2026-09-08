@@ -107,7 +107,9 @@ Match rules follow your duplicate preferences:
 
 If **fuzzy matching** is enabled, near-matches count when both title and author reach the similarity percentage you set.
 
-**Duplicate found** → row skipped, error: `Duplicate - book already exists`.
+Titles are compared after **stripping trailing series numbers** on both sides. Two different series numbers on the same bare title (`Triptych - 01` vs `Triptych - 02`) are **not** duplicates. A bare sheet title still matches a library title that has a series suffix.
+
+**Duplicate found** → row skipped, logged as `Duplicate - book already exists`, and counted separately from other errors.
 
 ### Build and save the book record
 
@@ -134,10 +136,12 @@ Any unexpected problem on a single row is caught, logged with the row number and
 
 ## 5. Add Book From List — once all rows are done
 
-- **One commit** saves every successful insert to the database.
-- An **Import Complete** dialog shows how many rows succeeded and how many failed.
-- Status bar shows something like `32 books added to Audiobooks collection, 3 errors`.
-- Focus returns to the file path field.
+While rows are processing, an **Import Progress** window shows the current title/author, a progress bar, and live counters (added, duplicates, errors). Press **Escape** to cancel: books already processed are kept, and remaining rows are reported as skipped.
+
+- **One commit** saves every successful insert to the database (including partial results if you canceled).
+- An **Import Complete** (or **Import Canceled**) dialog shows how many rows succeeded, how many duplicates were skipped, how many failed, and how many remaining rows were skipped on cancel.
+- Status bar shows something like `32 books added to Audiobooks collection, 2 duplicates skipped, 3 errors` (the duplicates clause is omitted when there were none; cancel adds `, N skipped`).
+- The progress window stays open with Esc to close; focus returns to the file path field when it closes or after the result dialog.
 - The **main book list does not refresh yet** — that happens when you close the Import Book List window.
 
 ### If errors occurred

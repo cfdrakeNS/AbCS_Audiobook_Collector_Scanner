@@ -7,8 +7,11 @@ from src.utils.text_utils import (
     compare_normalize_title,
     format_series_suffix,
     pre_normalize_title,
+    series_number_key,
+    series_numbers_compatible,
     split_series_number,
     strip_series_number,
+    titles_match,
 )
 
 
@@ -86,3 +89,52 @@ def test_append_series_suffix_never_includes_series_name():
 )
 def test_split_series_number(title, clean, number):
     assert split_series_number(title) == (clean, number)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("01", "1"),
+        ("1", "1"),
+        (1, "1"),
+        ("1.0", "1"),
+        (1.0, "1"),
+        ("#01", "1"),
+        ("6.5", "6.5"),
+        (6.5, "6.5"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_series_number_key(raw, expected):
+    assert series_number_key(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "compatible"),
+    [
+        ("", "01", True),
+        ("01", "", True),
+        ("", "", True),
+        ("01", "1", True),
+        ("1.0", "01", True),
+        ("01", "02", False),
+        ("6.5", "6.5", True),
+        ("6.5", "6", False),
+    ],
+)
+def test_series_numbers_compatible(left, right, compatible):
+    assert series_numbers_compatible(left, right) is compatible
+
+
+def test_titles_match_bare_to_series_suffix():
+    assert titles_match("Triptych - 01", "Triptych") is True
+
+
+def test_titles_match_different_series_numbers_are_not_duplicates():
+    assert titles_match("Triptych - 01", "Triptych - 02") is False
+
+
+def test_titles_match_same_series_number_variants():
+    assert titles_match("Triptych - 01", "Triptych - 1") is True
+    assert titles_match("Triptych - 01", "Triptych - 1.0") is True
