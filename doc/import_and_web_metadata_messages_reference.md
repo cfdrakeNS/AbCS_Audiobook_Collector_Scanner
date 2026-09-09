@@ -292,23 +292,24 @@ Book list import does **not** use the E:/W:/F:/C: prefix system. Row failures ar
 |------|----------------|
 | New books | `{success} books added to {collection} collection, {errors} errors` |
 | New books (with duplicates) | `{success} books added to {collection} collection, {duplicates} duplicates skipped, {errors} errors` |
-| New books (canceled) | same as above, plus `, {skipped} skipped` |
+| New books (canceled) | Progress only: `Import canceled \| Scanned: … \| Added: … \| Errors: … \| Duplicates: … \| Elapsed: …` then Esc to close (no result popup; matches folder Import). |
 | Read dates | `{success} read dates added to books in {collection} collection, {errors} errors` |
-| Read dates (canceled) | same as above, plus `, {skipped} skipped` |
+| Read dates (canceled) | same cancel progress pattern as new books (no result popup) |
 | During import | `Importing books...` (Import Progress window also shows live counters) |
 | No collection (internal) | `Error: No collection selected` |
 
-**Import Progress window** (modeless, during Book List Import):
+**Import Progress window** (during Book List Import):
 
-- Shows current title/author, progress bar, and counters: Scanned, Added, Corrected (0), Errors, Warnings (0), Duplicates
-- Escape asks to cancel; **Yes** keeps partial results and skips remaining rows
+- Shows current title/author, progress bar, and counters: Scanned, Added, Errors, Duplicates (same style as folder Import; Corrected/Warnings are omitted)
+- Escape asks to cancel; **Yes** status: `Cancel Import: import stopped, partial results kept.` then final `Import canceled | Scanned: … | Esc to close` (same sequence as folder Scan cancel)
 - Shift+F1 opens Book List Import help (`11_import_book_list.md`), not folder-import help
 
-**Import Complete / Import Canceled dialog** adds:
+**Import Complete dialog** (successful finish only; cancel uses progress status only):
 
 - When `duplicate_count > 0` (new-book mode): `{duplicate_count} duplicates skipped`
 - When `error_count > 0`: `{error_count} books had errors` and `Use Export Errors (Alt+X) to save error details to CSV`
-- When canceled: `Import canceled: {skipped} remaining rows skipped`
+
+On cancel, remaining/skipped rows are reflected in the progress counters (`Scanned` vs total); there is no separate **Import Canceled** popup.
 
 Duplicates are counted separately from other errors but still appear in the Export Errors CSV as `Duplicate - book already exists`.
 

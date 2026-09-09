@@ -2,7 +2,7 @@
 
 
 
-**Last updated:** June 2026
+**Last updated:** September 2026 (v2.10 prep)
 
 
 
@@ -86,6 +86,8 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 | Bulk web metadata | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) |
 
+| Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) |
+
 | Plot full-text search | [plan_plot_fulltext_search.md](plan_plot_fulltext_search.md) |
 
 | Import window action toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) — deferred June visual appeal item |
@@ -157,6 +159,8 @@ The following plan areas were implemented and verified in code:
 
 - Web fetch/matching improvements
 
+- **Web fetch Phases 1–5 (complete in 2.10):** budget, cooperative cancel, shared HTTP, cache, `web_fetch_service`, inert-pref removal, cleanup, tests — Phase 6 deferred: [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md)
+
 - Name list accessibility and focus
 
 - Book details layout and performance
@@ -165,7 +169,7 @@ The following plan areas were implemented and verified in code:
 
 - Toolbar/filter shortcuts
 
-- Book List Import progress window ([plan_book_list_import_progress.md](plan_book_list_import_progress.md))
+- Book List Import progress window + 2.10 cancel/counter parity ([plan_book_list_import_progress.md](../archive/plan_book_list_import_progress.md))
 
 - Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](abcs_linux_fixes.md))
 
@@ -187,4 +191,4 @@ Cursor plan files under `.cursor/plans/` on the development machine may still sh
 
 - Dead-code review: [CLEANUP_VULTURE_FINDINGS.md](CLEANUP_VULTURE_FINDINGS.md)
 
-
+- Messages reference (import + web): [import_and_web_metadata_messages_reference.md](import_and_web_metadata_messages_reference.md)

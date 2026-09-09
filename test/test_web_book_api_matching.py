@@ -225,7 +225,11 @@ def test_open_library_never_filters_by_db_year(urlopen_mock, api):
             return False
 
     urlopen_mock.return_value = FakeResponse()
-    with patch.object(api, "_get_open_library_description", return_value=""):
+    with patch.object(
+        api,
+        "_get_open_library_work_fields",
+        return_value={"description": "", "series": "", "series_number": ""},
+    ):
         result = api.get_book_metadata(
             "The Adventures Of Sherlock Holmes",
             "Sir Arthur Conan Doyle",
@@ -762,7 +766,9 @@ def test_open_library_search_sends_user_agent(urlopen_mock, api):
     urlopen_mock.return_value = FakeResponse()
     api._fetch_from_open_library("Pride and Prejudice", "Jane Austen")
     sent_request = urlopen_mock.call_args.args[0]
-    assert sent_request.get_header("User-agent") == "AbCS-Audiobook-Collector/1.0"
+    from src.web.web_book_api import USER_AGENT
+
+    assert sent_request.get_header("User-agent") == USER_AGENT
 
 
 def _http_error_429():

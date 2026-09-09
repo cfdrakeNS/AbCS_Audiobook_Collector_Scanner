@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $Abcs = "C:\projects\AbCS"
 $Owner = "cfdrakeNS"
 $Repo = "AbCS_Audiobook_Collector_Scanner"
-$Version = "2.09"
+$Version = "2.10"
 $Tag = "v$Version"
 $ReleaseName = "AbCS v$Version"
 $WinZip = "AbCS-Setup-v$Version.zip"
@@ -120,6 +120,14 @@ Set-Location $Abcs
 Write-Step "Verify installer zips exist"
 $winPath = Join-Path $Abcs "releases\$WinZip"
 $linuxPath = Join-Path $Abcs "releases\$LinuxZip"
+# Accept either AbCS_Linux_vX.zip or abcs_linux_vX.zip from the Linux build
+if (-not (Test-Path $linuxPath)) {
+    $linuxAlt = Join-Path $Abcs ("releases\abcs_linux_v{0}.zip" -f $Version)
+    if (Test-Path $linuxAlt) {
+        Copy-Item -LiteralPath $linuxAlt -Destination $linuxPath -Force
+        Write-Host "  Copied $(Split-Path $linuxAlt -Leaf) -> $LinuxZip"
+    }
+}
 foreach ($p in @($winPath, $linuxPath)) {
     if (-not (Test-Path $p)) { throw "Missing installer: $p" }
     $mb = [math]::Round((Get-Item $p).Length / 1MB, 1)
@@ -135,7 +143,13 @@ if (-not $localTag) {
 Invoke-Git @("push", "origin", $Tag)
 
 $releaseNotes = @"
-AbCS $Version — first public release.
+AbCS $Version
+
+**What's new**
+- Import duplicate detection strips series numbers on both sides and uses the number as a tiebreaker (``01`` vs ``02`` no longer collide; bare titles still match).
+- Folder import keeps the duplicate index live during a scan so same-pass duplicates are caught.
+- Find (Ctrl+F) opens with an empty search box each time.
+- Book List Import shows Import Progress with live counters; Escape cancels and keeps books already added.
 
 **Downloads**
 - **Windows:** ``$WinZip`` — extract and run ``AbCS-Setup.exe`` (SmartScreen may warn; see README).
@@ -162,11 +176,19 @@ Then re-run:
   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\publish_github_release.ps1
 "@
     }
-    Write-Host "Making repo public ..."
-    Invoke-Gh @("repo", "edit", "$Owner/$Repo", "--visibility", "public", "--accept-visibility-change-consequences")
+    Write-Host "Ensuring repo is public ..."
+    $prevVis = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $gh repo edit "$Owner/$Repo" --visibility public --accept-visibility-change-consequences 2>&1 | Out-Null
+    $ErrorActionPreference = $prevVis
+    # Ignore failure if already public
     Write-Host "Creating release $Tag ..."
-    $existing = & $gh release view $Tag --repo "$Owner/$Repo" 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    $prevRel = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $null = & $gh release view $Tag --repo "$Owner/$Repo" 2>$null
+    $releaseExists = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $prevRel
+    if (-not $releaseExists) {
         Invoke-Gh @(
             "release", "create", $Tag,
             "--repo", "$Owner/$Repo",
@@ -195,4 +217,3 @@ Write-Host ""
 Write-Host "Manual checks:"
 Write-Host "  - Settings -> Collaborators -> Dominic still has access"
 Write-Host "  - Wire AbCS Carrd download buttons to the release asset URLs"
-Write-Host "  - Linux zip dated Jul 2026; rebuild on Linux if you want a fresh build from today's source"

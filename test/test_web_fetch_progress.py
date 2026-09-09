@@ -45,3 +45,17 @@ def test_progress_dialog_update_message_replaces_label(qapp):
         assert popup.status_bar.currentMessage() == "Trying source 2: Google Books…"
     finally:
         popup.close()
+
+
+def test_progress_dialog_request_cancel_sets_flag(qapp):
+    popup = WebFetchProgressDialog()
+    try:
+        assert popup.cancel_requested is False
+        popup.request_cancel()
+        assert popup.cancel_requested is True
+        assert "Cancel" in popup._message_label.text()
+        # Second cancel is a no-op
+        popup.request_cancel()
+        assert popup.cancel_requested is True
+    finally:
+        popup.close()

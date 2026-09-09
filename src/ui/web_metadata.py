@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QEvent, QSettings
+from PySide6.QtCore import Qt, QTimer, Signal, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from src.ui.accessible_dialog import AccessibleDialog
 
@@ -118,6 +118,25 @@ class WebMetadataWindow(AccessibleDialog):
             return rating_str
         return plot_body
 
+    @staticmethod
+    def _series_number_difference(book, web_data: dict) -> str | None:
+        """Return web series number when it differs from the book, else None.
+
+        A number without a series name (web or DB) is ignored.
+        """
+        current_series_number = ""
+        if hasattr(book, "series_number") and book.series_number:
+            current_series_number = str(book.series_number)
+        web_num_str = str(web_data.get("series_number") or "").strip()
+        web_series_name = str(web_data.get("series") or "").strip()
+        db_series_name = (book.series_name or "").strip()
+        if web_num_str and not web_series_name and not db_series_name:
+            web_num_str = ""
+        cur_num_str = current_series_number.strip()
+        if web_num_str and (not cur_num_str or web_num_str != cur_num_str):
+            return web_num_str
+        return None
+
     @classmethod
     def compute_field_differences(cls, book, web_data: dict) -> dict:
         """Return savable field differences between web data and the current book."""
@@ -136,17 +155,9 @@ class WebMetadataWindow(AccessibleDialog):
             if diff is not None:
                 differences[field_name] = diff
 
-        current_series_number = ""
-        if hasattr(book, "series_number") and book.series_number:
-            current_series_number = str(book.series_number)
-        web_num_str = str(web_data.get("series_number") or "").strip()
-        web_series_name = str(web_data.get("series") or "").strip()
-        db_series_name = (book.series_name or "").strip()
-        if web_num_str and not web_series_name and not db_series_name:
-            web_num_str = ""
-        cur_num_str = current_series_number.strip()
-        if web_num_str and (not cur_num_str or web_num_str != cur_num_str):
-            differences["series_number"] = web_num_str
+        web_num = cls._series_number_difference(book, web_data)
+        if web_num is not None:
+            differences["series_number"] = web_num
 
         if web_data.get("plot"):
             plot_text_for_db = cls._build_plot_text_for_db(web_data)
@@ -795,12 +806,9 @@ class WebMetadataWindow(AccessibleDialog):
 
         # Auto-fetch web data when window opens (only if not pre-fetched)
         if self.pre_fetched_web_data:
-            # Use pre-fetched data and apply transformations
-            move_articles, flip_author = self._read_user_preferences()
             from src.web.web_book_api import clean_web_data
-            cleaned_web_data = clean_web_data(
-                self.pre_fetched_web_data, move_articles, flip_author
-            )
+
+            cleaned_web_data = clean_web_data(self.pre_fetched_web_data)
             self.update_fields_with_web_data(cleaned_web_data)
 
             prefix = (
@@ -830,30 +838,6 @@ class WebMetadataWindow(AccessibleDialog):
         self.title_edit.setFocus()
         return
 
-    def _read_user_preferences(self) -> tuple[bool, bool]:
-        """Read user preferences for title and author formatting."""
-        settings = QSettings("AbCS", "AudioBookCollector")
-
-        if not settings.contains("import/flip_author_name"):
-            legacy_settings = QSettings("AbCS", "AbCS")
-            flip_author = legacy_settings.value(
-                "import/flip_author_name", False, type=bool
-            )
-        else:
-            flip_author = settings.value("import/flip_author_name", False, type=bool)
-
-        if not settings.contains("import/autocorrect/move_leading_the_title"):
-            legacy_settings = QSettings("AbCS", "AbCS")
-            move_articles = legacy_settings.value(
-                "import/autocorrect/move_leading_the_title", False, type=bool
-            )
-        else:
-            move_articles = settings.value(
-                "import/autocorrect/move_leading_the_title", False, type=bool
-            )
-
-        return move_articles, flip_author
-
     def on_refetch_clicked(self):
         """Re-fetch web data using alternative sources (skip Open Library, refresh=1).
 
@@ -864,36 +848,23 @@ class WebMetadataWindow(AccessibleDialog):
             self._finish_refetch_ui("No book loaded for re-fetch.", self.title_edit)
             return
 
-        from src.ui.web_fetch_progress import WebFetchProgressDialog
-        from src.web.web_book_api import WebBookAPI
+        from src.web.web_fetch_service import fetch_web_metadata_for_book
 
-        popup = WebFetchProgressDialog(self)
-        popup.show()
-        QApplication.processEvents()
         self.refetch_button.setEnabled(False)
         status_msg = "Re-fetch complete - No plot"
         focus_after = self.title_edit
         try:
-            book = self._refetch_book
-            move_articles, flip_author = self._read_user_preferences()
-            api = WebBookAPI()
-            new_data = api.get_book_metadata(
-                book.title or "",
-                getattr(book, "author_name", "") or "",
-                str(book.year) if getattr(book, "year", None) else None,
+            fetch = fetch_web_metadata_for_book(
+                self._refetch_book,
+                parent=self,
                 refresh=1,
-                move_articles=move_articles,
-                flip_author=flip_author,
-                narrator=getattr(book, "reader", "") or "",
-                path=getattr(book, "path", "") or "",
-                source=getattr(book, "source", "") or "",
-                comments=getattr(book, "comments", "") or "",
-                progress_callback=popup.update_message,
+                bypass_cache=True,
             )
-            if new_data and not new_data.get("_no_result"):
-                from src.web.web_book_api import clean_web_data
-
-                cleaned = clean_web_data(new_data, move_articles, flip_author)
+            if fetch.canceled:
+                status_msg = fetch.status_message
+                focus_after = self.title_edit
+            elif fetch.cleaned_data:
+                cleaned = fetch.cleaned_data
                 self.update_fields_with_web_data(cleaned)
                 if self.field_differences:
                     status_msg = self._build_web_status_message(
@@ -907,18 +878,13 @@ class WebMetadataWindow(AccessibleDialog):
                     if plot_text and str(plot_text).strip()
                     else self.title_edit
                 )
+            elif fetch.errors:
+                status_msg = fetch.status_message
             else:
-                errors = (new_data or {}).get("_fetch_errors", [])
-                if errors:
-                    from src.web.web_book_api import format_web_fetch_status_message
-
-                    status_msg = format_web_fetch_status_message(errors)
-                else:
-                    status_msg = "Re-fetch: no data found."
+                status_msg = "Re-fetch: no data found."
         except Exception as exc:
             status_msg = f"Re-fetch error: {exc}"
         finally:
-            popup.close()
             self.refetch_button.setEnabled(True)
             self._finish_refetch_ui(status_msg, focus_after)
 
@@ -1011,20 +977,17 @@ class WebMetadataWindow(AccessibleDialog):
         current_series_number = ""
         if hasattr(self.book, "series_number") and self.book.series_number:
             current_series_number = str(self.book.series_number)
-        web_num_str = str(web_data.get("series_number") or "").strip()
-        web_series_name = str(web_data.get("series") or "").strip()
-        db_series_name = (self.book.series_name or "").strip()
-        if web_num_str and not web_series_name and not db_series_name:
-            web_num_str = ""
         cur_num_str = current_series_number.strip()
-        number_differs = bool(
-            web_num_str and (not cur_num_str or web_num_str != cur_num_str)
+        web_num_str = str(web_data.get("series_number") or "").strip()
+        number_differs = (
+            self._series_number_difference(self.book, web_data) is not None
         )
 
         if number_differs:
-            self.series_number_web_edit.setText(web_num_str)
+            shown_num = self._series_number_difference(self.book, web_data) or ""
+            self.series_number_web_edit.setText(shown_num)
             self.series_number_web_edit.setVisible(True)
-            self.field_differences["series_number"] = web_num_str
+            self.field_differences["series_number"] = shown_num
             if not series_name_shown:
                 self.series_row._web_label.setVisible(True)
                 db_series_empty = not (self.book.series_name or "").strip()
@@ -1256,74 +1219,61 @@ class WebMetadataWindow(AccessibleDialog):
         """Handle save button click - save and close without confirmation."""
         self.accept()  # Save and close directly
 
+    def _should_apply_web_field(self, field_name: str, checkbox, row_widget) -> bool:
+        """True when the field is in differences and should be applied."""
+        if field_name not in self.field_differences:
+            return False
+        if row_widget._checkbox.isVisible():
+            return checkbox.isChecked()
+        return True
+
+    def _resolve_named_entity_id(self, queries, name: str, id_attr: str):
+        """Get or insert a named entity and return its id attribute."""
+        if not name or not queries:
+            return None
+        existing = queries.get_by_name(name)
+        if existing:
+            return getattr(existing, id_attr)
+        return queries.insert(name)
+
     def accept(self):
-        """Save and accept - update database with web data based on checkbox selection and auto-apply logic."""
-        # Build list of applied fields for status bar
+        """Save and accept - update database with web data based on checkbox selection."""
         applied_fields = []
 
         if self.book and self.db:
             try:
-                # Apply web data based on field differences and checkbox state
-                # Title
-                if "title" in self.field_differences:
-                    if self.title_row._checkbox.isVisible():
-                        # Field differs - apply if checked
-                        if self.title_checkbox.isChecked():
-                            self.book.title = self.title_web_edit.text().strip()
-                            applied_fields.append("Title")
-                    else:
-                        # DB field was empty - auto-apply web data
-                        self.book.title = self.title_web_edit.text().strip()
-                        applied_fields.append("Title")
+                if self._should_apply_web_field(
+                    "title", self.title_checkbox, self.title_row
+                ):
+                    self.book.title = self.title_web_edit.text().strip()
+                    applied_fields.append("Title")
 
-                # Author
-                if "author" in self.field_differences:
-                    if self.author_row._checkbox.isVisible():
-                        # Field differs - apply if checked
-                        if self.author_checkbox.isChecked():
-                            author_name = self.author_web_edit.text().strip()
-                            if author_name:
-                                author = self.author_queries.get_by_name(author_name)
-                                if not author:
-                                    author_id = self.author_queries.insert(author_name)
-                                else:
-                                    author_id = author.author_id
-                                self.book.author_id = author_id
-                                applied_fields.append("Author")
-                    else:
-                        # DB field was empty - auto-apply web data
-                        author_name = self.author_web_edit.text().strip()
-                        if author_name:
-                            author = self.author_queries.get_by_name(author_name)
-                            if not author:
-                                author_id = self.author_queries.insert(author_name)
-                            else:
-                                author_id = author.author_id
+                if self._should_apply_web_field(
+                    "author", self.author_checkbox, self.author_row
+                ):
+                    author_name = self.author_web_edit.text().strip()
+                    if author_name:
+                        author_id = self._resolve_named_entity_id(
+                            self.author_queries, author_name, "author_id"
+                        )
+                        if author_id is not None:
                             self.book.author_id = author_id
                             applied_fields.append("Author")
 
-                # Year
-                if "year" in self.field_differences:
-                    if self.year_row._checkbox.isVisible():
-                        # Field differs - apply if checked
-                        if self.year_checkbox.isChecked():
-                            year_text = self.year_web_edit.text().strip()
-                            try:
-                                self.book.year = int(year_text) if year_text else None
-                                applied_fields.append("Year")
-                            except ValueError:
-                                self.book.year = None
-                    else:
-                        # DB field was empty - auto-apply web data
-                        year_text = self.year_web_edit.text().strip()
-                        try:
-                            self.book.year = int(year_text) if year_text else None
-                            applied_fields.append("Year")
-                        except ValueError:
-                            self.book.year = None
+                if self._should_apply_web_field(
+                    "year", self.year_checkbox, self.year_row
+                ):
+                    year_text = self.year_web_edit.text().strip()
+                    try:
+                        self.book.year = int(year_text) if year_text else None
+                        applied_fields.append("Year")
+                    except ValueError:
+                        self.book.year = None
 
-                # Series (name and/or number from web)
-                if "series" in self.field_differences or "series_number" in self.field_differences:
+                if (
+                    "series" in self.field_differences
+                    or "series_number" in self.field_differences
+                ):
                     apply_series = not self.series_row._checkbox.isVisible() or (
                         self.series_checkbox.isChecked()
                     )
@@ -1341,11 +1291,9 @@ class WebMetadataWindow(AccessibleDialog):
                             else:
                                 series_name = series_text
                             if series_name:
-                                series = self.series_queries.get_by_name(series_name)
-                                if not series:
-                                    series_id = self.series_queries.insert(series_name)
-                                else:
-                                    series_id = series.series_id
+                                series_id = self._resolve_named_entity_id(
+                                    self.series_queries, series_name, "series_id"
+                                )
                         web_num = self._series_number_from_web_apply()
                         if web_num is not None:
                             series_number = web_num
@@ -1355,46 +1303,24 @@ class WebMetadataWindow(AccessibleDialog):
                             self.book.series_number = series_number
                         applied_fields.append("Series")
 
-                # Genre
-                if "genre" in self.field_differences:
-                    if self.genre_row._checkbox.isVisible():
-                        # Field differs - apply if checked
-                        if self.genre_checkbox.isChecked():
-                            genre_name = self.genre_web_edit.text().strip()
-                            if genre_name:
-                                genre = self.genre_queries.get_by_name(genre_name)
-                                if not genre:
-                                    genre_id = self.genre_queries.insert(genre_name)
-                                else:
-                                    genre_id = genre.genre_id
-                                self.book.genre_id = genre_id
-                                applied_fields.append("Genre")
-                    else:
-                        # DB field was empty - auto-apply web data
-                        genre_name = self.genre_web_edit.text().strip()
-                        if genre_name:
-                            genre = self.genre_queries.get_by_name(genre_name)
-                            if not genre:
-                                genre_id = self.genre_queries.insert(genre_name)
-                            else:
-                                genre_id = genre.genre_id
+                if self._should_apply_web_field(
+                    "genre", self.genre_checkbox, self.genre_row
+                ):
+                    genre_name = self.genre_web_edit.text().strip()
+                    if genre_name:
+                        genre_id = self._resolve_named_entity_id(
+                            self.genre_queries, genre_name, "genre_id"
+                        )
+                        if genre_id is not None:
                             self.book.genre_id = genre_id
                             applied_fields.append("Genre")
 
-                # Plot (save only the actual plot content, rating and publisher are handled separately)
                 if "plot" in self.field_differences:
-                    # Save the combined rating+plot string (from field_differences) to comments
                     plot_text_for_db = self.field_differences["plot"].strip("\n")
                     if plot_text_for_db:
                         self.book.comments = plot_text_for_db
                         applied_fields.append("Plot")
 
-                # Publisher field removed - too much inconsistent data from web sources
-
-                # Source is NOT saved to database (display only for legal safety)
-
-                # Validate foreign keys before save (prevent IntegrityError)
-                # and sync denormalized name fields for view-mode refresh
                 if self.book.author_id and self.author_queries:
                     author = self.author_queries.get_by_id(self.book.author_id)
                     if not author:
@@ -1426,23 +1352,18 @@ class WebMetadataWindow(AccessibleDialog):
                 else:
                     self.book.collection_name = ""
 
-                # Save to database
                 try:
                     self.book_queries.update(self.book)
-                except Exception as e:
+                except Exception:
                     raise
 
-                # Emit signal to notify main window of data save
                 self.data_saved.emit()
 
-                # Call refresh callback to update parent window
                 if self.refresh_callback:
                     self.refresh_callback()
-                    # Clear dirty flag in parent window since data was just saved
                     if hasattr(self.parent(), "_clear_dirty"):
                         self.parent()._clear_dirty()
 
-                # Status message
                 if applied_fields:
                     status_msg = f"Updated: {', '.join(applied_fields)}"
                 else:
@@ -1454,14 +1375,11 @@ class WebMetadataWindow(AccessibleDialog):
 
             except Exception as e:
                 self.set_status(f"Error saving: {str(e)}", announce=True)
-                # Return focus to first field on error
                 self.set_focus_to_first_differing_field()
-                # Don't close on error
                 return
         else:
-            # No book or database - just close
             announce_dialog_closed(self)
-            super().accept()  # Use accept instead of reject for consistency
+            super().accept()
 
 
 def test_web_metadata():

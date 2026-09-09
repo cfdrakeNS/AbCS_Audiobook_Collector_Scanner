@@ -2334,77 +2334,22 @@ class BookDetailsWindow(AccessibleDialog):
         from PySide6.QtCore import QTimer
         from src.ui.web_fetch_progress import WebFetchProgressDialog
 
-        popup = WebFetchProgressDialog(self)
-        popup.show()
-        QApplication.processEvents()
         if not self.book:
-            popup.close()
             self.set_status("No book selected for web lookup")
             return
         try:
             from src.ui.web_metadata import WebMetadataWindow
-            from src.web.web_book_api import WebBookAPI
-            from PySide6.QtCore import QSettings
+            from src.web.web_fetch_service import fetch_web_metadata_for_book
 
-            # Get book data for search
-            title = self.book.title
-            author = self.book.author_name
-            year = str(self.book.year) if self.book.year else None
+            fetch = fetch_web_metadata_for_book(self.book, parent=self, refresh=0)
 
-            # Read user preferences
-            settings = QSettings("AbCS", "AudioBookCollector")
-            if not settings.contains("import/flip_author_name"):
-                legacy_settings = QSettings("AbCS", "AbCS")
-                flip_author = legacy_settings.value(
-                    "import/flip_author_name", False, type=bool
-                )
-            else:
-                flip_author = settings.value(
-                    "import/flip_author_name", False, type=bool
-                )
+            if fetch.canceled:
+                self.set_status(fetch.status_message, announce=True)
+                QTimer.singleShot(0, self.title_edit.setFocus)
+                return
 
-            if not settings.contains("import/autocorrect/move_leading_the_title"):
-                legacy_settings = QSettings("AbCS", "AbCS")
-                move_articles = legacy_settings.value(
-                    "import/autocorrect/move_leading_the_title", False, type=bool
-                )
-            else:
-                move_articles = settings.value(
-                    "import/autocorrect/move_leading_the_title", False, type=bool
-                )
-
-            # Try to fetch web data once. WebBookAPI cascades Open Library ->
-            # Google Books -> WikiData for refresh=0.
-            api = WebBookAPI()
-            web_data = None
-            last_error = None
-
-            try:
-                web_data = api.get_book_metadata(
-                    title,
-                    author,
-                    year,
-                    refresh=0,
-                    move_articles=move_articles,
-                    flip_author=flip_author,
-                    narrator=self.book.reader or "",
-                    path=self.book.path or "",
-                    source=self.book.source or "",
-                    comments=self.book.comments or "",
-                    progress_callback=popup.update_message,
-                )
-            except Exception as e:
-                last_error = str(e)
-            finally:
-                popup.close()
-
-            from src.web.web_book_api import clean_web_data
-
-            cleaned_web_data = (
-                clean_web_data(web_data, move_articles, flip_author)
-                if web_data and not web_data.get("_no_result")
-                else None
-            )
+            cleaned_web_data = fetch.cleaned_data
+            web_data = fetch.raw_data
             if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
                 self.book, cleaned_web_data
             ):
@@ -2425,31 +2370,18 @@ class BookDetailsWindow(AccessibleDialog):
                     )
                     QTimer.singleShot(0, self._focus_plot)
             else:
-                fetch_errors = (web_data or {}).get("_fetch_errors", [])
-                if fetch_errors:
-                    from src.web.web_book_api import format_web_fetch_status_message
-
-                    status_msg = format_web_fetch_status_message(fetch_errors)
-                    no_web_text = (
-                        "Unable to reach one or more web sources.\n\n"
-                        + "\n".join(f"  \u2022 {e}" for e in fetch_errors[:3])
-                        + "\n\nTry again later or use Re-fetch (Alt+F) in the web details window."
-                    )
+                if fetch.errors:
+                    status_msg = fetch.status_message
+                    no_web_text = fetch.dialog_text
                 elif cleaned_web_data:
                     status_msg = "No new web information found for this book."
                     no_web_text = (
                         "Web sources were searched but no new information was found "
                         "for this book. Existing metadata is already up to date."
                     )
-                elif last_error:
-                    status_msg = f"No web data found for this book. {last_error}"
-                    no_web_text = (
-                        f"No information found for this book in any web source.\n\n"
-                        f"Last error: {last_error}"
-                    )
                 else:
-                    status_msg = "No web data found for this book."
-                    no_web_text = (
+                    status_msg = fetch.status_message or "No web data found for this book."
+                    no_web_text = fetch.dialog_text or (
                         "No information found for this book in any web source."
                     )
                 self.set_status(status_msg, announce=True)

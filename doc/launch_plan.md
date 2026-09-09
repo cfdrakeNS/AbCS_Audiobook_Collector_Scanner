@@ -61,9 +61,10 @@ About-page draft reference: [aurora_about_page_draft.md](aurora_about_page_draft
 Done:
 
 - Product page: features, accessibility bullets, **AbCS — Audiobook Collector Scanner** title
-- Download buttons wired to GitHub Release v2.06 (Windows + Linux zips)
+- Download buttons wired to GitHub Release **v2.09** (Windows + Linux zips)
 - Footer link to Aurora main site
 - No public contact email (by design)
+- Sites remain on **test Carrd URLs** (not yet published to custom domains)
 
 Pending (optional / post-Dominic):
 
@@ -102,7 +103,8 @@ Pending (after Dominic meeting):
 - [README.md](../README.md) — SmartScreen note uses "free and source-available project"; Support uses `auroraaccessibility@gmail.com`.
 - [linux_build.md](linux_build.md) — removed personal email from SSH key example.
 - Git history scrub and remote cleanup — **done Aug 2026** (`fresh_public_repo.ps1`, [github_cleanup.ps1](github_cleanup.ps1)).
-- GitHub Release **v2.06** with Windows and Linux zip installers — **done Aug 2026** (manual upload).
+- GitHub Release **v2.06** with Windows and Linux zip installers — **done Aug 2026**.
+- GitHub Release **v2.09** with Windows and Linux zip installers — **done Sep 2026** ([release](https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases/tag/v2.09); [publish_github_release.ps1](publish_github_release.ps1)).
 - Carrd publish script — [publish_github_release.ps1](publish_github_release.ps1).
 
 ---
@@ -120,11 +122,11 @@ Pending (after Dominic meeting):
 
 ### AbCS Carrd site
 - [x] Product page content (features, accessibility, downloads)
-- [x] Download buttons → GitHub Release v2.06
+- [x] Download buttons → GitHub Release **v2.09** (Windows + Linux zips)
 - [x] No public contact email (by design)
 - [ ] Ko-fi link on AbCS site + README (after live URL — see §7)
 - [ ] Help-docs link to GitHub entry point (optional)
-- [ ] Publish to `abcs.auroraaccessibility.com`, indexing on
+- [ ] Publish to `abcs.auroraaccessibility.com`, indexing on (still on test Carrd URL)
 
 ### Talk3270 Carrd site
 - [x] Features/benefits lists and demo form working
@@ -138,6 +140,7 @@ Pending (after Dominic meeting):
 - [x] Scrub personal email from git history
 - [x] GitHub remote branch/tag cleanup
 - [x] GitHub Release v2.06 with installers
+- [x] GitHub Release v2.09 with installers (tag + Windows/Linux zips)
 - [x] Align **Audiobook Collector Scanner** naming in code/docs (excluding `help_docs/` — Dominic)
 - [x] Help → Website… opens AbCS product page
 - [x] Aurora Accessibility in About, License, and installer publisher
@@ -145,7 +148,7 @@ Pending (after Dominic meeting):
 - [ ] Security/content pass before public flip
 - [ ] Confirm license/README wording ("free and source-available")
 - [ ] Merge Dominic's help doc pass before or soon after public flip
-- [ ] Flip repo to public (if not already)
+- [x] Flip repo to public (if not already)
 - [ ] Verify SmartScreen note in README/INSTALL
 
 ### Marketing / cross-cutting

@@ -131,6 +131,8 @@ class BookListImportWindow(AccessibleDialog):
         self.progress_window: ImportProgressWindow | None = None
         self._import_start_time = 0.0
         self._progress_ui_next = 0.0
+        self._is_importing = False
+        self._export_was_enabled = False
 
         # Check for pandas availability
         if not PANDAS_AVAILABLE:
@@ -1069,6 +1071,35 @@ class BookListImportWindow(AccessibleDialog):
             return f"{hours:02d}:{minutes:02d}:{secs:02d}"
         return f"{minutes:02d}:{secs:02d}"
 
+    def _set_import_controls_enabled(self, enabled: bool) -> None:
+        """Enable/disable Book List Import controls while progress is running.
+
+        Matches folder Import: primary action is disabled during the run so
+        processEvents cannot start a second import. Other interactive controls
+        are blocked too so mapping/browse cannot change mid-run.
+        """
+        self.import_button.setEnabled(enabled)
+        self.browse_button.setEnabled(enabled)
+        self.collection_combo.setEnabled(enabled)
+        if hasattr(self, "file_edit") and self.file_edit is not None:
+            self.file_edit.setEnabled(enabled)
+        if hasattr(self, "load_books_check"):
+            self.load_books_check.setEnabled(enabled)
+        if hasattr(self, "add_read_date_check"):
+            self.add_read_date_check.setEnabled(enabled)
+        if hasattr(self, "file_has_header_check"):
+            self.file_has_header_check.setEnabled(enabled)
+        for combo in getattr(self, "field_mappings", {}).values():
+            combo.setEnabled(enabled)
+        if enabled:
+            # Restore mode-specific mapping enablement and export state.
+            self._apply_mode_field_availability()
+            self.export_button.setEnabled(
+                self._export_was_enabled or bool(self.import_errors)
+            )
+        else:
+            self.export_button.setEnabled(False)
+
     def _show_import_progress(self, total_rows: int) -> None:
         """Open the shared Import Progress window for a book-list run."""
         if self.progress_window is not None:
@@ -1081,6 +1112,9 @@ class BookListImportWindow(AccessibleDialog):
         self.progress_window = ImportProgressWindow(
             self.scaler, self.theme_manager, parent=self
         )
+        # Block interaction with this dialog while progress is open (folder
+        # Import disables Scan; WindowModal blocks the parent the same way).
+        self.progress_window.setWindowModality(Qt.WindowModal)
         self.progress_window.set_compact_mode(False)
         self.progress_window.set_activity_label("import")
         self.progress_window.help_doc_override = "11_import_book_list.md"
@@ -1137,9 +1171,7 @@ class BookListImportWindow(AccessibleDialog):
             books_added=added,
             elapsed_text=elapsed_text,
             scanned=processed,
-            fixed=0,
             errors=errors,
-            warnings=0,
             duplicates=duplicates,
         )
         self._progress_ui_next = now + 0.15
@@ -1167,8 +1199,32 @@ class BookListImportWindow(AccessibleDialog):
         )
         QApplication.processEvents()
 
+    def _build_progress_summary(
+        self,
+        *,
+        canceled: bool,
+        scanned: int,
+        added: int,
+        errors: int,
+        duplicates: int,
+        elapsed_text: str,
+    ) -> str:
+        """Match folder Import progress wording: counters with optional cancel prefix."""
+        counters = (
+            f"Scanned: {scanned} | Added: {added} | "
+            f"Errors: {errors} | Duplicates: {duplicates} | "
+            f"Elapsed: {elapsed_text}"
+        )
+        if canceled:
+            return f"Import canceled | {counters}"
+        return counters
+
     def browse_file(self):
         """Browse for spreadsheet file."""
+        if self._is_importing:
+            self.set_status("Browse canceled: import is in progress")
+            return
+
         file_filter = "Spreadsheet Files (*.xlsx *.xls *.ods *.csv);;Excel/OpenDocument Files (*.xlsx *.xls *.ods);;CSV Files (*.csv);;All Files (*.*)"
 
         file_path, _ = QFileDialog.getOpenFileName(
@@ -1521,6 +1577,10 @@ class BookListImportWindow(AccessibleDialog):
 
     def import_books(self):
         """Import books from the loaded file with preview confirmation."""
+        if self._is_importing:
+            self.set_status("Import already in progress")
+            return
+
         # Check if collection is selected
         if self.collection_combo.currentIndex() < 0:
             exec_styled_message_box(
@@ -1591,6 +1651,9 @@ class BookListImportWindow(AccessibleDialog):
             return
 
         # Perform import
+        self._is_importing = True
+        self._export_was_enabled = self.export_button.isEnabled()
+        self._set_import_controls_enabled(False)
         try:
             self.set_status("Importing books...")
             total_rows = len(self.file_data) if self.file_data is not None else 0
@@ -1612,9 +1675,22 @@ class BookListImportWindow(AccessibleDialog):
                 ) = self.update_read_dates()
 
             canceled = skipped_count > 0
-            self.export_button.setEnabled(bool(self.import_errors))
+            self._export_was_enabled = bool(self.import_errors)
 
-            # Show results
+            scanned = max(0, total_rows - skipped_count)
+            elapsed_text = self._format_elapsed(
+                time.perf_counter() - self._import_start_time
+            )
+            progress_summary = self._build_progress_summary(
+                canceled=canceled,
+                scanned=scanned,
+                added=success_count,
+                errors=error_count,
+                duplicates=duplicate_count,
+                elapsed_text=elapsed_text,
+            )
+
+            # Show results dialog text (human-readable); progress uses counter form.
             selected_collection_name = self.collection_combo.currentText()
             if self.import_mode == "new":
                 result_text = f"{success_count} books added to {selected_collection_name} collection"
@@ -1648,25 +1724,47 @@ class BookListImportWindow(AccessibleDialog):
                     f"\nImport canceled: {skipped_count} remaining rows skipped"
                 )
 
+            # Same progress-window sequence as folder Import:
+            # confirm → "Cancel Import: … partial results kept." → final
+            # "Import canceled | counters. Esc to close"
             self._finish_import_progress(
                 canceled=canceled,
-                summary_text=status_text,
+                summary_text=progress_summary,
             )
 
-            dialog_title = "Import Canceled" if canceled else "Import Complete"
-            exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Information,
-                title=dialog_title,
-                text=result_text,
-                buttons=QMessageBox.Ok,
-                default_button=QMessageBox.Ok,
-            )
-
-            self.set_status(status_text)
-            # Set focus to file text box after import completes
-            self.file_edit.setFocus(Qt.TabFocusReason)
+            if canceled:
+                # No extra popup on cancel (folder Import does not show one either).
+                # Counters and Esc-to-close live on the progress status bar.
+                self.set_status(progress_summary)
+                if (
+                    self.progress_window is not None
+                    and self.progress_window.isVisible()
+                ):
+                    self.progress_window.raise_()
+                    self.progress_window.activateWindow()
+                    self.progress_window.setFocus(Qt.TabFocusReason)
+                else:
+                    self.file_edit.setFocus(Qt.TabFocusReason)
+            else:
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Information,
+                    title="Import Complete",
+                    text=result_text,
+                    buttons=QMessageBox.Ok,
+                    default_button=QMessageBox.Ok,
+                )
+                self.set_status(status_text)
+                if (
+                    self.progress_window is not None
+                    and self.progress_window.isVisible()
+                ):
+                    self.progress_window.raise_()
+                    self.progress_window.activateWindow()
+                    self.progress_window.setFocus(Qt.TabFocusReason)
+                else:
+                    self.file_edit.setFocus(Qt.TabFocusReason)
 
         except Exception as e:
             if self.progress_window is not None:
@@ -1684,6 +1782,9 @@ class BookListImportWindow(AccessibleDialog):
                 default_button=QMessageBox.Ok,
             )
             self.set_status("Import failed")
+        finally:
+            self._is_importing = False
+            self._set_import_controls_enabled(True)
 
     def import_new_books(self) -> Tuple[int, int, int, int]:
         """Import new books from the spreadsheet.

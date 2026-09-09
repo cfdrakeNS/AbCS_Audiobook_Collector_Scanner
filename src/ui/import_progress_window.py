@@ -255,6 +255,7 @@ class ImportProgressWindow(QDialog):
         self.status_bar.setFixedHeight(max(self.scaler.get_scaled_size(22), 18))
 
     def set_status(self, message: str, announce: bool = False):
+        message = self._with_escape_hint(message or "")
         self._default_status_message = message
         # Only block passive updates, never explicit Alt+/ reads
         if (
@@ -264,6 +265,20 @@ class ImportProgressWindow(QDialog):
         ):
             return
         announce_status_message(self.status_bar, message, move_focus=announce)
+
+    def _with_escape_hint(self, message: str) -> str:
+        """Append Escape guidance while a run is active (or Esc to close when done)."""
+        text = (message or "").strip()
+        if not text:
+            return text
+        lower = text.lower()
+        if self._scan_active:
+            if "escape to cancel" in lower or "esc to cancel" in lower:
+                return text
+            if "esc to close" in lower:
+                return text
+            return f"{text.rstrip('. ')}. Press Escape to cancel"
+        return text
 
     def on_read_status_bar(self):
         status_text = self.status_bar.currentMessage() or self._default_status_message
@@ -313,6 +328,10 @@ class ImportProgressWindow(QDialog):
             self.scan_progress.setFormat("Adding...")
             self.set_status("Adding started.", announce=True)
 
+    def _book_list_counters(self) -> bool:
+        """True when this progress window is used for Book List Import."""
+        return self._activity_label == "import"
+
     @staticmethod
     def _format_counter_status(
         *,
@@ -322,12 +341,17 @@ class ImportProgressWindow(QDialog):
         errors: int,
         warnings: int,
         duplicates: int,
+        include_corrected: bool = True,
+        include_warnings: bool = True,
     ) -> str:
-        return (
-            f"Scanned: {scanned} | Added: {added} | "
-            f"Corrected: {fixed} | Errors: {errors} | Warnings: {warnings} | "
-            f"Duplicates: {duplicates}"
-        )
+        parts = [f"Scanned: {scanned}", f"Added: {added}"]
+        if include_corrected:
+            parts.append(f"Corrected: {fixed}")
+        parts.append(f"Errors: {errors}")
+        if include_warnings:
+            parts.append(f"Warnings: {warnings}")
+        parts.append(f"Duplicates: {duplicates}")
+        return " | ".join(parts)
 
     def update_counters(
         self,
@@ -342,6 +366,7 @@ class ImportProgressWindow(QDialog):
         progress_note: str | None = None,
     ):
         """Update status bar with live import counters."""
+        book_list = self._book_list_counters()
         status_text = self._format_counter_status(
             scanned=scanned,
             added=added,
@@ -349,6 +374,8 @@ class ImportProgressWindow(QDialog):
             errors=errors,
             warnings=warnings,
             duplicates=duplicates,
+            include_corrected=not book_list,
+            include_warnings=not book_list,
         )
         if progress_note:
             status_text = f"{progress_note} | {status_text}"
@@ -384,12 +411,13 @@ class ImportProgressWindow(QDialog):
         if scanned is not None:
             # Counters already include scanned/added counts; do not also prefix
             # "Adding N/N" (that duplicates the progress-bar format).
+            book_list = self._book_list_counters()
             self.update_counters(
                 scanned=scanned,
                 added=books_added if books_added is not None else 0,
-                fixed=fixed or 0,
+                fixed=0 if book_list else (fixed or 0),
                 errors=errors or 0,
-                warnings=warnings or 0,
+                warnings=0 if book_list else (warnings or 0),
                 duplicates=duplicates or 0,
                 elapsed_text=elapsed_text,
                 progress_note=None,
@@ -482,7 +510,15 @@ class ImportProgressWindow(QDialog):
             message = summary_text.strip()
             if canceled:
                 activity_title = self._activity_label.capitalize()
-                if not message.lower().startswith("cancel"):
+                lower = message.lower()
+                # Folder import passes "Scan canceled | …"; book list uses
+                # "Import canceled | …". Do not wrap those again.
+                already_labeled = (
+                    lower.startswith("cancel")
+                    or "canceled" in lower
+                    or "cancelled" in lower
+                )
+                if not already_labeled:
                     message = f"Cancel {activity_title}: {message}"
             if "esc to close" not in message.lower():
                 message = f"{message}. Esc to close"
@@ -530,7 +566,7 @@ class ImportProgressWindow(QDialog):
         layout.setSpacing(10)
 
         shortcuts = [
-            ("Escape", "Close window"),
+            ("Escape", "Cancel import or close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]

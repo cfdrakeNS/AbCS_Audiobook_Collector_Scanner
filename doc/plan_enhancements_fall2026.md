@@ -122,6 +122,8 @@ Rank these with **Your priority** to build Wave 4+ schedule.
 
 | Bulk web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Post-fall | — | Network heavy |
 
+| Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | 3–5 d | After current web fetch (Phases 1–5 done) | — | QThread worker + split `web_book_api.py`; first app background thread |
+
 | Plot full-text search (FTS) | [plan_plot_fulltext_search.md](plan_plot_fulltext_search.md) | 3–5 d | Post-fall | — | Large libraries |
 
 | Import window action toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) § Phase 5 | ~1 d | Anytime | — | Deferred from June visual appeal; reuse main toolbar pattern |

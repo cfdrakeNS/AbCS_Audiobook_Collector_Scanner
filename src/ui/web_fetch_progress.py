@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAccessible, QAccessibleEvent
+from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
 
 from src.accessibility.accessible_events import (
@@ -37,7 +37,11 @@ class FetchStatusLabel(QLabel):
 
 
 class WebFetchProgressDialog(AccessibleDialog):
-    """Modal wait dialog with live status text for web metadata fetch."""
+    """Modal wait dialog with live status text for web metadata fetch.
+
+    Cooperative cancel: Escape or Alt+C sets ``cancel_requested``. The fetch
+    loop checks the flag between requests (after ``update_message`` pumps events).
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,8 +54,11 @@ class WebFetchProgressDialog(AccessibleDialog):
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.setAccessibleName("Fetching web book information")
         self.setAccessibleDescription(
-            "Searching online sources for book metadata. Please wait."
+            "Searching online sources for book metadata. "
+            "Press Escape or Alt+C to cancel."
         )
+
+        self._cancel_requested = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 14, 16, 6)
@@ -76,6 +83,25 @@ class WebFetchProgressDialog(AccessibleDialog):
         self._initial_timer.setSingleShot(True)
         self._initial_timer.timeout.connect(self._announce_initial)
         self.setFocusPolicy(Qt.StrongFocus)
+
+        self._escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self._escape_shortcut.setContext(Qt.WindowShortcut)
+        self._escape_shortcut.activated.connect(self.request_cancel)
+
+        self._cancel_shortcut = QShortcut(QKeySequence("Alt+C"), self)
+        self._cancel_shortcut.setContext(Qt.WindowShortcut)
+        self._cancel_shortcut.activated.connect(self.request_cancel)
+
+    @property
+    def cancel_requested(self) -> bool:
+        return self._cancel_requested
+
+    def request_cancel(self) -> None:
+        """Mark the fetch as canceled; checked between network requests."""
+        if self._cancel_requested:
+            return
+        self._cancel_requested = True
+        self.update_message("Canceling web fetch…")
 
     def show(self):
         super().show()

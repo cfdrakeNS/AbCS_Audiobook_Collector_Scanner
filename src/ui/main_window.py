@@ -3715,62 +3715,18 @@ class MainWindow(QMainWindow):
 
         book = self.books[row]
 
-        from src.ui.web_fetch_progress import WebFetchProgressDialog
-
-        popup = WebFetchProgressDialog(self)
-        popup.show()
-        QApplication.processEvents()
-
-        # Check web data first before opening window
         from src.ui.web_metadata import WebMetadataWindow
+        from src.web.web_fetch_service import fetch_web_metadata_for_book
 
-        # Get book data for search
-        title = book.title
-        author = book.author_name
-        year = str(book.year) if book.year else None
+        fetch = fetch_web_metadata_for_book(book, parent=self, refresh=0)
 
-        # Try to fetch web data
-        web_data = None
-        try:
-            from src.web.web_book_api import WebBookAPI
-            from src.utils.settings_helpers import get_import_preferences
+        if fetch.canceled:
+            self.set_status(fetch.status_message, announce=True, timeout_ms=5000)
+            self.table.setFocus()
+            return
 
-            move_articles, flip_author = get_import_preferences()
-
-            # Try to fetch web data once. WebBookAPI cascades Open Library ->
-            # Google Books -> WikiData for refresh=0.
-            api = WebBookAPI()
-            last_error = None
-
-            try:
-                web_data = api.get_book_metadata(
-                    title,
-                    author,
-                    year,
-                    refresh=0,
-                    move_articles=move_articles,
-                    flip_author=flip_author,
-                    narrator=book.reader or "",
-                    path=book.path or "",
-                    source=book.source or "",
-                    comments=book.comments or "",
-                    progress_callback=popup.update_message,
-                )
-            except Exception as e:
-                last_error = str(e)
-
-        except Exception:
-            pass  # Silently fail if web fetch fails
-        finally:
-            popup.close()
-
-        from src.web.web_book_api import clean_web_data
-
-        cleaned_web_data = (
-            clean_web_data(web_data, move_articles, flip_author)
-            if web_data and not web_data.get("_no_result")
-            else None
-        )
+        cleaned_web_data = fetch.cleaned_data
+        web_data = fetch.raw_data
         if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
             book, cleaned_web_data
         ):
@@ -3788,17 +3744,9 @@ class MainWindow(QMainWindow):
             self._restore_table_focus_context(focus_ctx)
             return
 
-        # Build "No Web Data Found" message: distinguish network errors from clean misses.
-        fetch_errors = (web_data or {}).get("_fetch_errors", [])
-        if fetch_errors:
-            from src.web.web_book_api import format_web_fetch_status_message
-
-            no_data_text = (
-                "Unable to reach one or more web sources.\n\n"
-                + "\n".join(f"  • {e}" for e in fetch_errors[:3])
-                + "\n\nTry again later or use Re-fetch (Alt+F) in the web details window."
-            )
-            status_msg = format_web_fetch_status_message(fetch_errors)
+        if fetch.errors:
+            no_data_text = fetch.dialog_text
+            status_msg = fetch.status_message
         elif cleaned_web_data:
             no_data_text = (
                 "Web sources were searched but no new information was found "
@@ -3806,10 +3754,10 @@ class MainWindow(QMainWindow):
             )
             status_msg = "No new web information found for this book."
         else:
-            no_data_text = "No information found for this book in any web source."
-            status_msg = "No web data found for this book."
-        if last_error:
-            no_data_text = f"{no_data_text}\n\nLast error: {last_error}"
+            no_data_text = fetch.dialog_text or (
+                "No information found for this book in any web source."
+            )
+            status_msg = fetch.status_message or "No web data found for this book."
 
         exec_styled_message_box(
             self,
@@ -3820,7 +3768,6 @@ class MainWindow(QMainWindow):
         )
 
         self.set_status(status_msg, announce=True, timeout_ms=5000)
-        # Restore focus even when no web data is found
         self.table.setFocus()
 
     def on_cancel_clicked(self):

@@ -42,11 +42,12 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
 
 ## Settings that affect this
 
-None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online.
+None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online. Import Preferences options for title/author formatting (move articles, flip author name) do **not** apply to web fetch results.
 
 ## Mouse, shortcuts, and accessibility
 
 - Click **Search Web** on the main toolbar, or use **Edit → Fetch Web Info**.
+- In the progress dialog, press **Escape** or **Alt+C** to cancel the fetch.
 - In the review window, click checkboxes beside fields you want to update, then click **Save**, **Re-fetch**, or **Cancel**.
 
 | Shortcut | Action |
