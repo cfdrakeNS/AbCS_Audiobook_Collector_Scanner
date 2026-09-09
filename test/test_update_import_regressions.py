@@ -25,6 +25,16 @@ def suppress_import_confirmations(monkeypatch):
     monkeypatch.setattr(ImportWindow, "_confirm_close_window", lambda self: True)
     monkeypatch.setattr(ImportWindow, "_confirm_cancel_scan", lambda self: True)
 
+    def _progress_close_without_prompt(self, event):
+        # Failed asserts tear down via qtbot before cleanup_window; never block.
+        self._scan_active = False
+        self._cancel_requested = True
+        type(self).__bases__[0].closeEvent(self, event)
+
+    monkeypatch.setattr(
+        ImportProgressWindow, "closeEvent", _progress_close_without_prompt
+    )
+
 
 @pytest.fixture
 def isolated_qsettings(tmp_path):
@@ -737,6 +747,17 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(
     window.folder_edit.setText(str(scan_dir))
     _configure_mass_standard_scan(window, trim_whitespace=True)
 
+    # on_scan() reloads from QSettings (often the Windows registry). Keep trim
+    # reviewable so C: flags are not silently skipped by host preferences.
+    original_reload = window._reload_scan_settings
+
+    def _reload_with_reviewable_trim():
+        original_reload()
+        window.import_scanner.trim_whitespace = True
+        window.import_scanner.trim_whitespace_skip_review = False
+
+    monkeypatch.setattr(window, "_reload_scan_settings", _reload_with_reviewable_trim)
+
     corrected_book = {
         "title": "  Corrected Example  ",
         "author": "Author One",
@@ -949,8 +970,9 @@ def test_import_progress_add_phase_resets_then_increments(qapp, qtbot):
 
     assert window.scan_progress.value() == 50
     assert window.scan_progress.format() == "Adding... 2/4"
-    assert "Adding 2/4" in window.status_bar.currentMessage()
-    assert "Elapsed 00:05" in window.status_bar.currentMessage()
+    status_mid = window.status_bar.currentMessage()
+    assert "Adding 2/4" in status_mid
+    assert "Elapsed 00:05" in status_mid
 
     window.update_add_progress(
         processed=3,
@@ -963,10 +985,18 @@ def test_import_progress_add_phase_resets_then_increments(qapp, qtbot):
         warnings=1,
         duplicates=0,
     )
+    # Progress bar keeps Adding N/N; status switches to counter summary when
+    # scanned= is supplied (no duplicate "Adding 3/4" prefix).
+    assert window.scan_progress.format() == "Adding... 3/4"
+    assert window.scan_progress.value() == 75
     status_text = window.status_bar.currentMessage()
-    assert "Adding 3/4" in status_text
+    assert "Scanned: 10" in status_text
     assert "Valid:" not in status_text
     assert "Added: 2" in status_text
+    assert "Corrected: 1" in status_text
+    assert "Errors: 2" in status_text
+    assert "Warnings: 1" in status_text
     assert "Elapsed 00:08" in status_text
 
+    window._scan_active = False
     cleanup_window(window)
