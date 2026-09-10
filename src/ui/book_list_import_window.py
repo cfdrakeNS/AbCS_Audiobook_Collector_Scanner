@@ -1801,6 +1801,7 @@ class BookListImportWindow(AccessibleDialog):
         duplicate_count = 0
         skipped_count = 0
         self.import_errors = []  # Reset errors
+        INSERT_CHUNK = 500
 
         # Get selected collection from combo box
         selected_collection_id = self.collection_combo.currentData()
@@ -1811,10 +1812,19 @@ class BookListImportWindow(AccessibleDialog):
         # Same duplicate prefs / series-number index path as folder import
         validator = ImportValidator()
 
-        preexisting_rows = self.db.fetch_all(
-            "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
-            "JOIN authors a ON b.author_id = a.author_id"
-        )
+        # Scope duplicate prefetch to target collection when mode includes collection
+        if validator.duplicate_match_mode == "title_author_year_collection":
+            preexisting_rows = self.db.fetch_all(
+                "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
+                "JOIN authors a ON b.author_id = a.author_id "
+                "WHERE b.collection_id = ?",
+                (selected_collection_id,),
+            )
+        else:
+            preexisting_rows = self.db.fetch_all(
+                "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
+                "JOIN authors a ON b.author_id = a.author_id"
+            )
         existing_books = [
             {
                 "title": row_data[1],
@@ -1829,22 +1839,45 @@ class BookListImportWindow(AccessibleDialog):
             target_collection_id=selected_collection_id,
         )
 
-        # Prefetch entity ids so repeated names avoid per-row SELECTs
-        author_cache = {
-            (a.name or "").strip().lower(): a.author_id
-            for a in self.author_queries.get_all()
-            if a.author_id is not None
-        }
-        series_cache = {
-            (s.name or "").strip().lower(): s.series_id
-            for s in self.series_queries.get_all()
-            if s.series_id is not None
-        }
-        genre_cache = {
-            (g.name or "").strip().lower(): g.genre_id
-            for g in self.genre_queries.get_all()
-            if g.genre_id is not None
-        }
+        # Pre-collect unique entity names from the sheet, then bulk-create missing ones
+        author_names: List[str] = []
+        series_names: List[str] = []
+        genre_names: List[str] = []
+        for row in self.file_data.itertuples(index=True, name=None):
+            try:
+                title_raw = str(row[mapping["title"] + 1]).strip()
+                author_raw = str(row[mapping["author"] + 1]).strip()
+                temp_meta = {"title": title_raw, "author": author_raw}
+                validator.sanitize_metadata(temp_meta)
+                author_clean = temp_meta["author"]
+                if author_clean and author_clean.lower() != "nan":
+                    author_names.append(author_clean)
+                if mapping.get("series") is not None:
+                    val = row[mapping["series"] + 1]
+                    if (
+                        pd.notna(val)
+                        and str(val).strip()
+                        and str(val).strip().lower() != "nan"
+                    ):
+                        temp = {"series": str(val).strip()}
+                        validator.sanitize_metadata(temp)
+                        series_names.append(temp["series"])
+                if mapping.get("genre") is not None:
+                    val = row[mapping["genre"] + 1]
+                    if (
+                        pd.notna(val)
+                        and str(val).strip()
+                        and str(val).strip().lower() != "nan"
+                    ):
+                        temp = {"genre": str(val).strip()}
+                        validator.sanitize_metadata(temp)
+                        genre_names.append(temp["genre"])
+            except Exception:
+                continue
+
+        author_cache = self.author_queries.ensure_names(author_names, commit=False)
+        series_cache = self.series_queries.ensure_names(series_names, commit=False)
+        genre_cache = self.genre_queries.ensure_names(genre_names, commit=False)
 
         def _cached_author_id(name: str) -> int:
             key = name.strip().lower()
@@ -1872,6 +1905,20 @@ class BookListImportWindow(AccessibleDialog):
             genre_id = self.genre_queries.get_or_create(name, commit=False)
             genre_cache[key] = genre_id
             return genre_id
+
+        pending_books: List[Book] = []
+
+        def _flush_pending() -> None:
+            nonlocal pending_books, success_count
+            if not pending_books:
+                return
+            self.book_queries.insert_many(pending_books, commit=False)
+            success_count += len(pending_books)
+            pending_books = []
+
+        conn = self.db.connect()
+        if not conn.in_transaction:
+            conn.execute("BEGIN")
 
         total_rows = len(self.file_data)
         # itertuples is much faster than DataFrame.iterrows(); Index is row[0]
@@ -2046,9 +2093,9 @@ class BookListImportWindow(AccessibleDialog):
 
                 # Set source field for Book List import
                 book.source = "Bookh_list"
-                # Insert book
-                self.book_queries.insert(book, commit=False)
-                success_count += 1
+                pending_books.append(book)
+                if len(pending_books) >= INSERT_CHUNK:
+                    _flush_pending()
 
             except Exception as e:
                 self.import_errors.append(
@@ -2064,7 +2111,7 @@ class BookListImportWindow(AccessibleDialog):
                 self._update_import_progress(
                     processed=row_num,
                     total=total_rows,
-                    added=success_count,
+                    added=success_count + len(pending_books),
                     duplicates=duplicate_count,
                     errors=error_count,
                     current_title=title,
@@ -2072,7 +2119,8 @@ class BookListImportWindow(AccessibleDialog):
                     force=(row_num >= total_rows),
                 )
 
-        # Commit all changes at once (including partial results after cancel)
+        # Flush remaining books and commit (including partial results after cancel)
+        _flush_pending()
         self.db.connect().commit()
         self._update_import_progress(
             processed=max(0, total_rows - skipped_count),
@@ -2087,6 +2135,9 @@ class BookListImportWindow(AccessibleDialog):
     def update_read_dates(self) -> Tuple[int, int, int, int]:
         """Update read dates for existing books.
 
+        Prefetches books in the target collection once, matches titles in
+        memory, and applies read_date updates with a single batch write.
+
         Returns:
             ``(success_count, error_count, duplicate_count, skipped_count)`` —
             duplicates are always 0 in read-date mode.
@@ -2095,7 +2146,8 @@ class BookListImportWindow(AccessibleDialog):
         success_count = 0
         error_count = 0
         skipped_count = 0
-        self.import_errors = []  # Reset errors
+        self.import_errors = []
+        UPDATE_CHUNK = 500
 
         # Get selected collection from combo box
         selected_collection_id = self.collection_combo.currentData()
@@ -2103,21 +2155,51 @@ class BookListImportWindow(AccessibleDialog):
             self.set_status("Error: No collection selected")
             return 0, 1, 0, 0
 
-        from src.core.validator import ImportValidator
         validator = ImportValidator()
 
+        # One-shot prefetch: author (lower) → list of (book_id, normalized_title)
+        collection_rows = self.db.fetch_all(
+            "SELECT b.book_id, b.title, a.name FROM books b "
+            "JOIN authors a ON b.author_id = a.author_id "
+            "WHERE b.collection_id = ?",
+            (selected_collection_id,),
+        )
+        books_by_author: Dict[str, List[Tuple[int, str]]] = {}
+        for book_id, db_title, author_name in collection_rows:
+            author_key = (author_name or "").strip().lower()
+            books_by_author.setdefault(author_key, []).append(
+                (book_id, compare_normalize_title(db_title or ""))
+            )
+
+        pending_updates: List[Tuple[int, object]] = []
+
+        def _flush_pending() -> None:
+            nonlocal pending_updates, success_count
+            if not pending_updates:
+                return
+            self.book_queries.update_many(pending_updates, commit=False)
+            success_count += len(pending_updates)
+            pending_updates = []
+
+        conn = self.db.connect()
+        if not conn.in_transaction:
+            conn.execute("BEGIN")
+
         total_rows = len(self.file_data)
-        for row_num, (index, row) in enumerate(self.file_data.iterrows(), start=1):
+        for row_num, row in enumerate(
+            self.file_data.itertuples(index=True, name=None), start=1
+        ):
             if self.progress_window is not None and self.progress_window.cancel_requested:
                 skipped_count = total_rows - (row_num - 1)
                 break
 
+            index = row[0]
             title = ""
             author = ""
             try:
-                # Extract required fields
-                title = str(row.iloc[mapping["title"]]).strip()
-                author = str(row.iloc[mapping["author"]]).strip()
+                # Extract required fields (column i is at tuple offset i + 1)
+                title = str(row[mapping["title"] + 1]).strip()
+                author = str(row[mapping["author"] + 1]).strip()
 
                 # Sanitize title and author (trim, proper-case, collapse spaces)
                 # to match the same pre-processing that add-book mode applies.
@@ -2141,7 +2223,7 @@ class BookListImportWindow(AccessibleDialog):
                 # Series number logic
                 series_no = None
                 if "series_no" in mapping and mapping["series_no"] is not None:
-                    val = row.iloc[mapping["series_no"]]
+                    val = row[mapping["series_no"] + 1]
                     if (
                         pd.notna(val)
                         and str(val).strip()
@@ -2152,7 +2234,7 @@ class BookListImportWindow(AccessibleDialog):
                 # Series logic
                 series = None
                 if mapping.get("series") is not None:
-                    val = row.iloc[mapping["series"]]
+                    val = row[mapping["series"] + 1]
                     if (
                         pd.notna(val)
                         and str(val).strip()
@@ -2165,21 +2247,12 @@ class BookListImportWindow(AccessibleDialog):
                 if series and series_no:
                     title_for_save = append_series_suffix(title, series_no)
 
-                # compare_normalize_title massages DB/sheet titles (series suffix, articles).
                 import_title_for_compare = compare_normalize_title(title_for_save)
-                # Fetch all books by this author in the selected collection (case-insensitive, trimmed)
-                candidate_rows = self.db.fetch_all(
-                    "SELECT b.book_id, b.title, a.name FROM books b "
-                    "JOIN authors a ON b.author_id = a.author_id "
-                    "WHERE lower(trim(a.name)) = ? AND b.collection_id = ?",
-                    (author.strip().lower(), selected_collection_id),
-                )
+                author_key = author.strip().lower()
                 found_book_id = None
-                for db_row in candidate_rows:
-                    db_title = db_row[1]
-                    norm_db_title = compare_normalize_title(db_title)
+                for book_id, norm_db_title in books_by_author.get(author_key, []):
                     if norm_db_title == import_title_for_compare:
-                        found_book_id = db_row[0]
+                        found_book_id = book_id
                         break
                 if not found_book_id:
                     self.import_errors.append(
@@ -2187,21 +2260,10 @@ class BookListImportWindow(AccessibleDialog):
                             "row": index + 1,
                             "title": title_for_save,
                             "author": author,
-                            "reason": f"Book not found in selected collection: {self.collection_combo.currentText()}",
-                        }
-                    )
-                    error_count += 1
-                    continue
-
-                # Get the full book object
-                existing_book = self.book_queries.get_by_id(found_book_id)
-                if not existing_book:
-                    self.import_errors.append(
-                        {
-                            "row": index + 1,
-                            "title": title_for_save,
-                            "author": author,
-                            "reason": "Could not load book record",
+                            "reason": (
+                                "Book not found in selected collection: "
+                                f"{self.collection_combo.currentText()}"
+                            ),
                         }
                     )
                     error_count += 1
@@ -2209,20 +2271,25 @@ class BookListImportWindow(AccessibleDialog):
 
                 # Update read date if provided
                 if mapping.get("read_date") is not None:
-                    read_date = row.iloc[mapping["read_date"]]
+                    read_date = row[mapping["read_date"] + 1]
                     if pd.notna(read_date) and str(read_date) != "nan":
                         parsed_read_date = self._parse_read_date_value(read_date)
                         if parsed_read_date is not None:
-                            existing_book.read_date = parsed_read_date
-                            self.book_queries.update(existing_book)
-                            success_count += 1
+                            pending_updates.append(
+                                (found_book_id, parsed_read_date)
+                            )
+                            if len(pending_updates) >= UPDATE_CHUNK:
+                                _flush_pending()
                         else:
                             self.import_errors.append(
                                 {
                                     "row": index + 1,
                                     "title": title_for_save,
                                     "author": author,
-                                    "reason": "Invalid date format. Supported examples: YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY",
+                                    "reason": (
+                                        "Invalid date format. Supported examples: "
+                                        "YYYY-MM-DD, DD-MM-YY, DD/MM/YYYY"
+                                    ),
                                 }
                             )
                             error_count += 1
@@ -2261,7 +2328,7 @@ class BookListImportWindow(AccessibleDialog):
                 self._update_import_progress(
                     processed=row_num,
                     total=total_rows,
-                    added=success_count,
+                    added=success_count + len(pending_updates),
                     duplicates=0,
                     errors=error_count,
                     current_title=title,
@@ -2269,6 +2336,8 @@ class BookListImportWindow(AccessibleDialog):
                     force=(row_num >= total_rows),
                 )
 
+        _flush_pending()
+        self.db.connect().commit()
         self._update_import_progress(
             processed=max(0, total_rows - skipped_count),
             total=total_rows,

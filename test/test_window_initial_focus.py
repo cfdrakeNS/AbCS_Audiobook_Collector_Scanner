@@ -7,47 +7,23 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QComboBox, QLabel, QScrollArea
+from PySide6.QtWidgets import QComboBox, QLabel, QScrollArea
 
-from src.accessibility.scaling import UIScaler
-from src.accessibility.theme_manager import ThemeManager
-from src.database.connection import DatabaseManager
 from src.ui.book_list_import_window import BookListImportWindow
 from src.ui.preferences_window import PreferencesWindow
 
 pandas = pytest.importorskip("pandas")
 
-
-@pytest.fixture(scope="session")
-def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
-
-@pytest.fixture
-def db(tmp_path):
-    database = DatabaseManager(str(tmp_path / "test.db"))
-    database.initialize_database()
-    return database
-
-
-def test_book_list_import_opens_with_collection_focus(qapp, db):
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = BookListImportWindow(db, scaler, theme)
+def test_book_list_import_opens_with_collection_focus(qapp, temp_db, ui_scaler, theme_manager):
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
     window.show()
     qapp.processEvents()
     assert isinstance(window.focusWidget(), QComboBox)
     assert window.focusWidget() is window.collection_combo
     window.close()
 
-
-def test_preferences_tab_descriptions_are_tab_focusable(qapp):
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = PreferencesWindow(scaler, theme)
+def test_preferences_tab_descriptions_are_tab_focusable(qapp, ui_scaler, theme_manager):
+    window = PreferencesWindow(ui_scaler, theme_manager)
     assert len(window._tab_description_labels) == 4
     for label in window._tab_description_labels.values():
         assert isinstance(label, QLabel)
@@ -56,22 +32,16 @@ def test_preferences_tab_descriptions_are_tab_focusable(qapp):
         assert "palette(base)" in label.styleSheet()
     window.close()
 
-
-def test_preferences_show_event_focuses_tab_description(qapp):
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = PreferencesWindow(scaler, theme)
+def test_preferences_show_event_focuses_tab_description(qapp, ui_scaler, theme_manager):
+    window = PreferencesWindow(ui_scaler, theme_manager)
     window.show()
     qapp.processEvents()
     focused = window.focusWidget()
     assert focused in window._tab_description_labels.values()
     window.close()
 
-
-def test_preferences_tab_from_blurb_reaches_first_control(qapp):
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = PreferencesWindow(scaler, theme)
+def test_preferences_tab_from_blurb_reaches_first_control(qapp, ui_scaler, theme_manager):
+    window = PreferencesWindow(ui_scaler, theme_manager)
     window.show()
     qapp.processEvents()
 

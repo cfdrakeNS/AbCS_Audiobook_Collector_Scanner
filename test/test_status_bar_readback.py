@@ -1,7 +1,7 @@
 """Tests for centralized status bar Alt+/ readback (bug 102)."""
 
 import pytest
-from PySide6.QtWidgets import QApplication, QStatusBar
+from PySide6.QtWidgets import QStatusBar
 
 from src.accessibility.accessible_events import (
     _status_bar_focus_delay_ms,
@@ -11,12 +11,6 @@ from src.accessibility.accessible_events import (
 )
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
 
 
 def test_configure_status_bar_accessibility_clears_metadata(qapp):

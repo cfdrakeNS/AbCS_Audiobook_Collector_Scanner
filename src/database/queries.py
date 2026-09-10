@@ -179,18 +179,17 @@ class BookQueries:
         # Detail form benefits from parsed dates.
         return self._row_to_book(row, parse_dates=True) if row else None
 
-    def insert(self, book: Book, commit: bool = True) -> int:
-        """Insert a new book into the 'books' table."""
-        read_date_value = self._serialize_read_date(book.read_date)
-        date_added_value = self._serialize_date_added(book.date_added)
-        query = """
+    _INSERT_BOOK_SQL = """
             INSERT INTO books(
                 title, author_id, year, series_id, genre_id, collection_id,
                 reader, time_hours, time_minutes, tracks, size_mb, bitrate,
                 file_format, path, comments, read_date, date_added, source
             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        params = (
+
+    def _book_insert_params(self, book: Book) -> tuple:
+        """Build the parameter tuple used by insert / insert_many."""
+        return (
             book.title,
             book.author_id,
             book.year,
@@ -206,16 +205,29 @@ class BookQueries:
             book.file_format,
             book.path,
             book.comments,
-            read_date_value,
-            date_added_value,
+            self._serialize_read_date(book.read_date),
+            self._serialize_date_added(book.date_added),
             book.source,
         )
-        cursor = self.db.execute(query, params)
+
+    def insert(self, book: Book, commit: bool = True) -> int:
+        """Insert a new book into the 'books' table."""
+        cursor = self.db.execute(self._INSERT_BOOK_SQL, self._book_insert_params(book))
         if commit:
             self.db.connect().commit()
         return cursor.lastrowid
 
-    def update(self, book: Book):
+    def insert_many(self, books: List[Book], commit: bool = True) -> int:
+        """Insert many books with one executemany call. Returns number inserted."""
+        if not books:
+            return 0
+        params_seq = [self._book_insert_params(book) for book in books]
+        self.db.executemany(self._INSERT_BOOK_SQL, params_seq)
+        if commit:
+            self.db.connect().commit()
+        return len(params_seq)
+
+    def update(self, book: Book, commit: bool = True):
         """Update an existing book."""
         read_date_value = self._serialize_read_date(book.read_date)
         query = """
@@ -248,7 +260,38 @@ class BookQueries:
             book.book_id,
         )
         self.db.execute(query, params)
-        self.db.connect().commit()
+        if commit:
+            self.db.connect().commit()
+
+    def update_many(
+        self,
+        read_date_updates: List[tuple],
+        commit: bool = True,
+    ) -> int:
+        """
+        Batch-update read_date for many books.
+
+        Args:
+            read_date_updates: Sequence of ``(book_id, read_date)`` where
+                ``read_date`` is a date/datetime/str (serialized like insert).
+            commit: When True, commit after the batch.
+
+        Returns:
+            Number of update statements executed.
+        """
+        if not read_date_updates:
+            return 0
+        params_seq = [
+            (self._serialize_read_date(read_date), book_id)
+            for book_id, read_date in read_date_updates
+        ]
+        self.db.executemany(
+            "UPDATE books SET read_date = ? WHERE book_id = ?",
+            params_seq,
+        )
+        if commit:
+            self.db.connect().commit()
+        return len(params_seq)
 
     def delete(self, book_id: int):
         """Delete a book."""
@@ -449,6 +492,39 @@ class AuthorQueries:
             return author.author_id
         return self.insert(name, commit=commit)
 
+    def ensure_names(self, names: List[str], commit: bool = True) -> dict:
+        """
+        Ensure all author names exist; return lowercased trimmed name → id map.
+
+        Existing authors are loaded once; missing names are inserted with
+        INSERT OR IGNORE then reloaded so concurrent duplicates resolve.
+        """
+        cache = {
+            (a.name or "").strip().lower(): a.author_id
+            for a in self.get_all()
+            if a.author_id is not None
+        }
+        missing = []
+        seen_missing = set()
+        for raw in names:
+            key = (raw or "").strip().lower()
+            if not key or key in cache or key in seen_missing:
+                continue
+            seen_missing.add(key)
+            missing.append((raw.strip(),))
+        if missing:
+            self.db.executemany(
+                "INSERT INTO authors (name) VALUES (?)",
+                missing,
+            )
+            if commit:
+                self.db.connect().commit()
+            # Refresh cache for newly inserted rows (case-insensitive keys)
+            for a in self.get_all():
+                if a.author_id is not None:
+                    cache[(a.name or "").strip().lower()] = a.author_id
+        return cache
+
     def update(self, author_id: int, name: str):
         """Update author name."""
         self.db.execute(
@@ -512,6 +588,33 @@ class SeriesQueries:
             return series.series_id
         return self.insert(name, commit=commit)
 
+    def ensure_names(self, names: List[str], commit: bool = True) -> dict:
+        """Ensure all series names exist; return lowercased trimmed name → id map."""
+        cache = {
+            (s.name or "").strip().lower(): s.series_id
+            for s in self.get_all()
+            if s.series_id is not None
+        }
+        missing = []
+        seen_missing = set()
+        for raw in names:
+            key = (raw or "").strip().lower()
+            if not key or key in cache or key in seen_missing:
+                continue
+            seen_missing.add(key)
+            missing.append((raw.strip(),))
+        if missing:
+            self.db.executemany(
+                "INSERT INTO series (name) VALUES (?)",
+                missing,
+            )
+            if commit:
+                self.db.connect().commit()
+            for s in self.get_all():
+                if s.series_id is not None:
+                    cache[(s.name or "").strip().lower()] = s.series_id
+        return cache
+
     def update(self, series_id: int, name: str):
         """Update series name."""
         self.db.execute(
@@ -570,6 +673,33 @@ class GenreQueries:
         if genre:
             return genre.genre_id
         return self.insert(name, commit=commit)
+
+    def ensure_names(self, names: List[str], commit: bool = True) -> dict:
+        """Ensure all genre names exist; return lowercased trimmed name → id map."""
+        cache = {
+            (g.name or "").strip().lower(): g.genre_id
+            for g in self.get_all()
+            if g.genre_id is not None
+        }
+        missing = []
+        seen_missing = set()
+        for raw in names:
+            key = (raw or "").strip().lower()
+            if not key or key in cache or key in seen_missing:
+                continue
+            seen_missing.add(key)
+            missing.append((raw.strip(),))
+        if missing:
+            self.db.executemany(
+                "INSERT INTO genres (name) VALUES (?)",
+                missing,
+            )
+            if commit:
+                self.db.connect().commit()
+            for g in self.get_all():
+                if g.genre_id is not None:
+                    cache[(g.name or "").strip().lower()] = g.genre_id
+        return cache
 
     def update(self, genre_id: int, name: str):
         """Update genre name."""

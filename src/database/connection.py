@@ -170,6 +170,11 @@ class DatabaseManager:
         # If no params, just execute the query as-is
         return conn.execute(query)
 
+    def executemany(self, query: str, params_seq) -> sqlite3.Cursor:
+        """Execute one parameterized statement for each params tuple in params_seq."""
+        conn = self.connect()
+        return conn.executemany(query, params_seq)
+
     def fetch_one(self, query: str, params: tuple = None) -> Optional[sqlite3.Row]:
         """
         Fetch a single row from a SELECT query.

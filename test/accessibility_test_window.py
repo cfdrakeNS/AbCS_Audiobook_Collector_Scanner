@@ -1,6 +1,10 @@
 """
-Minimal accessibility test window
-Just test F1 and Alt+/ to see if basic shortcuts work
+Minimal accessibility test window (manual harness only).
+
+Not collected by pytest (filename has no test_ prefix). Run directly:
+    python test/accessibility_test_window.py
+
+Just test F1 and Alt+/ to see if basic shortcuts work.
 """
 
 import sys

@@ -23,4 +23,4 @@ jobs:
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest test/ -q --tb=line
+        run: python -m pytest test/ -q --tb=line --durations=15 --cov=src/core --cov=src/database --cov-report=term-missing:skip-covered

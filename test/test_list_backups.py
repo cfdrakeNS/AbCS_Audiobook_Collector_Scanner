@@ -4,15 +4,25 @@ import os
 import time
 from pathlib import Path
 
+import pytest
+
 from src.database.connection import DatabaseManager
 
 
-def test_list_backups_finds_lowercase_manual_backups(tmp_path: Path):
+@pytest.mark.parametrize(
+    "backup_filename",
+    [
+        "abcs_backup_Friday_June_05_26_at_12_00.db",
+        "AbCS_backup_Friday_June_05_26_at_12_00.db",
+    ],
+    ids=["lowercase", "legacy_mixed_case"],
+)
+def test_list_backups_finds_manual_backups(tmp_path: Path, backup_filename: str):
     db_path = tmp_path / "abcs.db"
     db_path.write_bytes(b"sqlite")
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
-    backup_file = backup_dir / "abcs_backup_Friday_June_05_26_at_12_00.db"
+    backup_file = backup_dir / backup_filename
     backup_file.write_bytes(b"backup")
 
     manager = DatabaseManager(str(db_path))
@@ -20,19 +30,6 @@ def test_list_backups_finds_lowercase_manual_backups(tmp_path: Path):
 
     assert backups == [backup_file.resolve()]
 
-
-def test_list_backups_finds_legacy_mixed_case_manual_backups(tmp_path: Path):
-    db_path = tmp_path / "abcs.db"
-    db_path.write_bytes(b"sqlite")
-    backup_dir = tmp_path / "backups"
-    backup_dir.mkdir()
-    backup_file = backup_dir / "AbCS_backup_Friday_June_05_26_at_12_00.db"
-    backup_file.write_bytes(b"backup")
-
-    manager = DatabaseManager(str(db_path))
-    backups = manager.list_backups()
-
-    assert backups == [backup_file.resolve()]
 
 
 def test_list_backups_finds_schema_repair_backups(tmp_path: Path):
@@ -133,3 +130,31 @@ def test_restore_from_backup_removes_wal_sidecars(tmp_path: Path):
         assert wal.read_bytes() != b"stale-wal"
     if shm.exists():
         assert shm.read_bytes() != b"stale-shm"
+
+
+def test_delete_backup_file_removes_backup(tmp_path: Path):
+    db_path = tmp_path / "abcs.db"
+    db_path.write_bytes(b"sqlite")
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    backup_file = backup_dir / "abcs_backup_to_delete.db"
+    backup_file.write_bytes(b"backup")
+
+    manager = DatabaseManager(str(db_path))
+    deleted = manager.delete_backup_file(backup_file)
+
+    assert deleted == backup_file.resolve()
+    assert not backup_file.exists()
+    assert db_path.exists()
+
+
+def test_delete_backup_file_rejects_missing_and_active_db(tmp_path: Path):
+    db_path = tmp_path / "abcs.db"
+    db_path.write_bytes(b"sqlite")
+    manager = DatabaseManager(str(db_path))
+
+    with pytest.raises(FileNotFoundError):
+        manager.delete_backup_file(tmp_path / "missing_backup.db")
+
+    with pytest.raises(ValueError, match="active database"):
+        manager.delete_backup_file(db_path)

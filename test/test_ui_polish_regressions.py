@@ -16,35 +16,24 @@ from PySide6.QtCore import QSettings
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication
 
-from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     build_modern_button_style,
     build_table_polish_style,
 )
 from src.accessibility.theme_manager import ThemeManager, ThemeName
+from helpers.import_window_helpers import (
+    apply_suppress_import_confirmations,
+    cleanup_window,
+)
 from src.ui.book_list_import_window import BookListImportWindow
 from src.ui.help_window import HelpWindow
 from src.ui.import_window import ImportWindow
-
+from src.ui.update_window import UpdateWindow
 
 @pytest.fixture(autouse=True)
 def suppress_import_confirmations(monkeypatch):
     """Avoid modal close/cancel prompts during automated test teardown."""
-    monkeypatch.setattr(ImportWindow, "_confirm_close_window", lambda self: True)
-    monkeypatch.setattr(ImportWindow, "_confirm_cancel_scan", lambda self: True)
-
-
-@pytest.fixture
-def isolated_qsettings(tmp_path):
-    """Use temporary INI-based QSettings to avoid user-profile settings writes."""
-    original_format = QSettings.defaultFormat()
-    QSettings.setDefaultFormat(QSettings.IniFormat)
-    QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(tmp_path))
-    try:
-        yield
-    finally:
-        QSettings.setDefaultFormat(original_format)
-
+    apply_suppress_import_confirmations(monkeypatch, patch_progress_close=False)
 
 def _close(window):
     """Force-close a window and flush events, mirroring cleanup_window."""
@@ -69,7 +58,6 @@ def _close(window):
         QApplication.processEvents()
     QApplication.sendPostedEvents()
 
-
 def _extract_block(style: str, header: str) -> str:
     """Return the rule body following the first occurrence of header."""
     start = style.index(header)
@@ -77,13 +65,10 @@ def _extract_block(style: str, header: str) -> str:
     close_brace = style.index("}", open_brace)
     return style[open_brace : close_brace + 1]
 
-
 # --- Help window: Enter must not activate zoom out ---
 
-
-def test_help_window_buttons_not_auto_default(qapp, isolated_qsettings):
-    scaler = UIScaler(qapp)
-    window = HelpWindow(scaler)
+def test_help_window_buttons_not_auto_default(ui_scaler, isolated_qsettings):
+    window = HelpWindow(ui_scaler)
     try:
         for button in (
             window.zoom_out_button,
@@ -95,15 +80,12 @@ def test_help_window_buttons_not_auto_default(qapp, isolated_qsettings):
     finally:
         _close(window)
 
-
 # --- Shared table polish: cell borders with opt-out ---
-
 
 def test_table_polish_default_has_cell_borders():
     style = build_table_polish_style("QTableView")
     item_block = _extract_block(style, "QTableView::item")
     assert "border: 1px solid palette(mid);" in item_block
-
 
 def test_table_polish_cell_borders_opt_out():
     style = build_table_polish_style("QTableWidget", cell_borders=False)
@@ -111,9 +93,7 @@ def test_table_polish_cell_borders_opt_out():
     assert "border: none;" in item_block
     assert "palette(mid)" not in item_block
 
-
 # --- Primary buttons: bold only, no standing highlight border ---
-
 
 def test_primary_button_style_is_bold_without_border():
     style = build_modern_button_style(20)
@@ -121,9 +101,7 @@ def test_primary_button_style_is_bold_without_border():
     assert "font-weight: bold" in primary_block
     assert "border" not in primary_block
 
-
 # --- Theme Mid role: gridlines visible on dark and light themes ---
-
 
 @pytest.mark.parametrize(
     "theme_enum",
@@ -141,14 +119,10 @@ def test_derived_mid_color_contrasts_with_base(qapp, theme_enum):
     base = palette.color(QPalette.Base)
     assert abs(mid.lightness() - base.lightness()) >= 40
 
-
 # --- Import window: gate Add Selected, Export, and error filter ---
 
-
-def test_import_window_action_buttons_gated(qapp, temp_db, isolated_qsettings):
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
-    window = ImportWindow(temp_db, scaler, theme_manager)
+def test_import_window_action_buttons_gated(temp_db, ui_scaler, theme_manager, isolated_qsettings):
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
     try:
         # Fresh window: nothing scanned yet
         assert not window.import_selected_button.isEnabled()
@@ -182,18 +156,25 @@ def test_import_window_action_buttons_gated(qapp, temp_db, isolated_qsettings):
     finally:
         _close(window)
 
-
 # --- Book List Import: Export Errors gated on errors existing ---
 
-
-def test_book_list_import_export_errors_starts_disabled(
-    qapp, temp_db, isolated_qsettings
-):
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
-    window = BookListImportWindow(temp_db, scaler, theme_manager)
+def test_book_list_import_export_errors_starts_disabled(temp_db, ui_scaler, theme_manager, isolated_qsettings):
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
     try:
         assert not window.export_button.isEnabled()
         assert window.import_button.isEnabled()
     finally:
         _close(window)
+
+
+def test_update_window_series_and_genre_combo_widths_match(qtbot, temp_db, ui_scaler):
+    """Series and Genre combos should keep the same minimum width."""
+    window = UpdateWindow(temp_db, ui_scaler, selected_book_ids=set())
+    qtbot.addWidget(window)
+
+    assert window.series_combo.minimumWidth() == window.genre_combo.minimumWidth()
+    assert window.series_combo.minimumWidth() > 0
+
+    # Cleanup
+    cleanup_window(window)
+

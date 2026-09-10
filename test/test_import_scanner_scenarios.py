@@ -1,4 +1,6 @@
-"""Tests for import scanner fallback behavior (Scenario 2 focus)."""
+"""Import scanner scenario fallbacks and series-from-filename parsing."""
+
+import pytest
 
 from src.core.import_scanner import ImportScanner
 
@@ -7,6 +9,17 @@ def _apply_scenario_2(book: dict, *, title_fallback_mode: str | None = None):
     scanner = ImportScanner()
     scanner.configure(
         scenario_mode="series_from_directory",
+        author_fallback_mode=None,
+        title_fallback_mode=title_fallback_mode,
+    )
+    scanner.apply_preferences(book)
+    return book
+
+
+def _apply_nested_scenario(book: dict, *, title_fallback_mode: str | None = None):
+    scanner = ImportScanner()
+    scanner.configure(
+        scenario_mode="series_from_directory_nested",
         author_fallback_mode=None,
         title_fallback_mode=title_fallback_mode,
     )
@@ -31,24 +44,47 @@ def test_series_from_directory_expected_depth_sets_series():
                    for err in updated["errors"])
 
 
-def test_series_from_directory_ambiguous_path_skips_series_with_warning():
-    book = {
-        "title": "Book One",
-        "author": "Test Author",
-        "series": "",
-        "folder": r"C:\Library\Other Author\Great Series",
-        "files": [r"C:\Library\Other Author\Great Series\01 - Book One.mp3"],
-        "errors": [],
-    }
-
-    updated = _apply_scenario_2(book)
+@pytest.mark.parametrize(
+    "apply_fn, book, warning",
+    [
+        (
+            _apply_scenario_2,
+            {
+                "title": "Book One",
+                "author": "Test Author",
+                "series": "",
+                "folder": r"C:\Library\Other Author\Great Series",
+                "files": [r"C:\Library\Other Author\Great Series\01 - Book One.mp3"],
+                "errors": [],
+            },
+            "W: Series from directory skipped (folder does not match author/series pattern)",
+        ),
+        (
+            _apply_nested_scenario,
+            {
+                "title": "Rules of Prey",
+                "author": "John Sandford",
+                "series": "",
+                "folder": (
+                    r"F:\Audio Books\Other Author\Lucas Deavenport Series"
+                    r"\1- Rules of Prey"
+                ),
+                "files": [
+                    r"F:\Audio Books\Other Author\Lucas Deavenport Series"
+                    r"\1- Rules of Prey\01 Rules of Prey.mp3"
+                ],
+                "errors": [],
+            },
+            "W: Series from directory skipped (author not found in path)",
+        ),
+    ],
+    ids=["flat", "nested"],
+)
+def test_ambiguous_path_skips_series_with_warning(apply_fn, book, warning):
+    updated = apply_fn(book)
 
     assert updated["series"] == ""
-    assert any(
-        "W: Series from directory skipped (folder does not match author/series pattern)" in str(
-            err)
-        for err in updated["errors"]
-    )
+    assert any(warning in str(err) for err in updated["errors"])
 
 
 def test_series_from_directory_keeps_title_fallback_behavior():
@@ -67,17 +103,6 @@ def test_series_from_directory_keeps_title_fallback_behavior():
     assert updated["series"] == "Great Series"
     assert any("F: Title fallback from file used" in str(err)
                for err in updated["errors"])
-
-
-def _apply_nested_scenario(book: dict, *, title_fallback_mode: str | None = None):
-    scanner = ImportScanner()
-    scanner.configure(
-        scenario_mode="series_from_directory_nested",
-        author_fallback_mode=None,
-        title_fallback_mode=title_fallback_mode,
-    )
-    scanner.apply_preferences(book)
-    return book
 
 
 def test_nested_series_sets_series_and_title_from_book_folder():
@@ -146,29 +171,6 @@ def test_nested_cd_subfolder_uses_series_and_book_folder_for_title():
     )
 
 
-def test_nested_ambiguous_path_skips_series_with_warning():
-    book = {
-        "title": "Rules of Prey",
-        "author": "John Sandford",
-        "series": "",
-        "folder": (
-            r"F:\Audio Books\Other Author\Lucas Deavenport Series\1- Rules of Prey"
-        ),
-        "files": [
-            r"F:\Audio Books\Other Author\Lucas Deavenport Series\1- Rules of Prey\01 Rules of Prey.mp3"
-        ],
-        "errors": [],
-    }
-
-    updated = _apply_nested_scenario(book)
-
-    assert updated["series"] == ""
-    assert any(
-        "W: Series from directory skipped (author not found in path)" in str(err)
-        for err in updated["errors"]
-    )
-
-
 def test_nested_author_fallback_from_path_depth():
     book = {
         "title": "Dead Watch",
@@ -192,7 +194,6 @@ def test_nested_author_fallback_from_path_depth():
         "F: Author fallback from folder used" in str(err) for err in book["errors"]
     )
 
-
 def test_trim_whitespace_flags_correction_by_default():
     scanner = ImportScanner()
     scanner.configure(
@@ -210,7 +211,6 @@ def test_trim_whitespace_flags_correction_by_default():
 
     assert book["title"] == "Spaced Title"
     assert any("C: Title whitespace trimmed" in str(err) for err in book["errors"])
-
 
 def test_trim_whitespace_skip_review_suppresses_correction_flag():
     scanner = ImportScanner()
@@ -230,7 +230,6 @@ def test_trim_whitespace_skip_review_suppresses_correction_flag():
     assert book["title"] == "Spaced Title"
     assert not any(str(err).startswith("C:") for err in book["errors"])
 
-
 def test_proper_case_skip_review_suppresses_correction_flag():
     scanner = ImportScanner()
     scanner.configure(
@@ -248,7 +247,6 @@ def test_proper_case_skip_review_suppresses_correction_flag():
 
     assert book["title"] == "The Hobbit"
     assert not any(str(err).startswith("C:") for err in book["errors"])
-
 
 def test_author_equals_title_skipped_when_author_fallback_disabled():
     book = {
@@ -271,7 +269,6 @@ def test_author_equals_title_skipped_when_author_fallback_disabled():
     assert book["author"] == "Dead Watch"
     assert not any(str(err).startswith("F:") for err in book["errors"])
 
-
 def test_nested_title_from_folder_skipped_when_title_fallback_disabled():
     book = {
         "title": "unknown",
@@ -291,3 +288,54 @@ def test_nested_title_from_folder_skipped_when_title_fallback_disabled():
     assert updated["series"] == "Lucas Deavenport Series"
     assert updated["title"] == "unknown"
     assert not any(str(err).startswith("F:") for err in updated["errors"])
+
+
+def _apply_scenario_3(file_name: str, title: str):
+    scanner = ImportScanner()
+    scanner.configure(
+        scenario_mode="series_from_filename",
+        author_fallback_mode=None,
+        title_fallback_mode=None,
+    )
+
+    book = {
+        "title": title,
+        "author": "Test Author",
+        "series": "",
+        "folder": r"C:\\Library\\Author",
+        "files": [rf"C:\\Library\\Author\\{file_name}"],
+        "errors": [],
+    }
+
+    scanner.apply_preferences(book)
+    return book
+
+
+@pytest.mark.parametrize(
+    "file_name, title, expected_series, expected_title",
+    [
+        (
+            "Book Title (Series Name 04).mp3",
+            "Book Title",
+            "Series Name",
+            "Book Title - 04",
+        ),
+        ("Book (Trilogy 1).mp3", "Book", "Trilogy", "Book - 1"),
+        ("Title (No Number Here).mp3", "Title", "No Number Here", "Title"),
+        ("Title.mp3", "Title", "", "Title"),
+        ("Title (First) (Second).mp3", "Title", "First", "Title"),
+    ],
+    ids=[
+        "name_and_number",
+        "single_digit_number",
+        "name_without_number",
+        "without_parentheses",
+        "first_parenthesized_block_only",
+    ],
+)
+def test_series_filename_parsing(file_name, title, expected_series, expected_title):
+    book = _apply_scenario_3(file_name, title)
+
+    assert book["series"] == expected_series
+    assert book["title"] == expected_title
+

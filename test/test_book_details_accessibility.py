@@ -5,13 +5,10 @@ from __future__ import annotations
 import pytest
 from PySide6.QtCore import Qt
 
-from src.accessibility.scaling import UIScaler
-from src.accessibility.theme_manager import ThemeManager
 from src.database.connection import DatabaseManager
 from src.database.models import Book
 from src.database.queries import AuthorQueries, BookQueries
 from src.ui.book_details import BookDetailsWindow
-
 
 def _ensure_sample_books(db: DatabaseManager, count: int = 2) -> list[Book]:
     books = BookQueries(db).get_all()
@@ -24,15 +21,12 @@ def _ensure_sample_books(db: DatabaseManager, count: int = 2) -> list[Book]:
         books = BookQueries(db).get_all()
     return books
 
-
-def test_idle_status_includes_title_and_author(qapp, temp_db):
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
+def test_idle_status_includes_title_and_author(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=1)
 
     window = BookDetailsWindow(
         temp_db,
-        scaler,
+        ui_scaler,
         book=books[0],
         parent=None,
         theme_manager=theme_manager,
@@ -43,15 +37,12 @@ def test_idle_status_includes_title_and_author(qapp, temp_db):
     assert window.status_bar.currentMessage() == message
     window.close()
 
-
-def test_status_bar_has_no_sighted_tooltip(qapp, temp_db):
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
+def test_status_bar_has_no_sighted_tooltip(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=1)
 
     window = BookDetailsWindow(
         temp_db,
-        scaler,
+        ui_scaler,
         book=books[0],
         parent=None,
         theme_manager=theme_manager,
@@ -59,15 +50,12 @@ def test_status_bar_has_no_sighted_tooltip(qapp, temp_db):
     assert window.status_bar.toolTip() == ""
     window.close()
 
-
-def test_page_navigation_focuses_title(qapp, temp_db, monkeypatch):
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
+def test_page_navigation_focuses_title(temp_db, ui_scaler, theme_manager, monkeypatch):
     books = _ensure_sample_books(temp_db, count=2)
 
     window = BookDetailsWindow(
         temp_db,
-        scaler,
+        ui_scaler,
         book=books[0],
         books_list=books,
         current_index=0,

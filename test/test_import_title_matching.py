@@ -1,4 +1,4 @@
-"""Series-number tiebreaker for import duplicate detection."""
+"""Series-number tiebreaker and import title matching."""
 
 from src.core.validator import ImportValidator
 
@@ -13,59 +13,6 @@ def _validator(
     validator.duplicate_fuzzy_threshold = fuzzy_threshold
     return validator
 
-
-def _dup_check(
-    title: str,
-    preexisting: list,
-    *,
-    author: str = "Karin Slaughter",
-    year: int | None = 2006,
-    collection_id: int = 1,
-    match_mode: str = "title_author_only",
-    fuzzy_threshold: int = 0,
-) -> bool:
-    """Book-list path: build index once, then is_duplicate_fast (same as import_new_books)."""
-    validator = _validator(match_mode=match_mode, fuzzy_threshold=fuzzy_threshold)
-    index = validator.build_duplicate_index(
-        preexisting,
-        target_collection_id=collection_id,
-    )
-    return validator.is_duplicate_fast(
-        {
-            "title": title,
-            "author": author,
-            "year": year,
-            "collection_id": collection_id,
-        },
-        index,
-        target_collection_id=collection_id,
-    )
-
-
-def _entry(title: str, author: str = "Karin Slaughter", **extra) -> dict:
-    return {
-        "title": title,
-        "author": author,
-        "year": extra.get("year", 2006),
-        "collection_id": extra.get("collection_id", 1),
-    }
-
-
-def test_book_list_different_series_numbers_not_duplicate():
-    preexisting = [_entry("Triptych - 01")]
-    assert _dup_check("Triptych - 02", preexisting) is False
-
-
-def test_book_list_bare_title_matches_series_suffix():
-    preexisting = [_entry("Triptych - 01")]
-    assert _dup_check("Triptych", preexisting) is True
-
-
-def test_book_list_same_series_number_is_duplicate():
-    preexisting = [_entry("Triptych - 01")]
-    assert _dup_check("Triptych - 1", preexisting) is True
-
-
 def test_validator_different_series_numbers_not_duplicate():
     validator = _validator()
     index = validator.build_duplicate_index(
@@ -78,7 +25,6 @@ def test_validator_different_series_numbers_not_duplicate():
         )
         is False
     )
-
 
 def test_validator_bare_title_matches_series_suffix():
     validator = _validator()
@@ -93,7 +39,6 @@ def test_validator_bare_title_matches_series_suffix():
         is True
     )
 
-
 def test_validator_live_index_sees_same_pass_add():
     """A book added mid-scan must be visible to a later identical check."""
     validator = _validator()
@@ -107,7 +52,6 @@ def test_validator_live_index_sees_same_pass_add():
     # Different series number in the same pass still imports
     second = {"title": "Triptych - 02", "author": "Karin Slaughter", "year": 2006}
     assert validator.is_duplicate_fast(second, index) is False
-
 
 def test_progress_throttle_skips_process_events_between_ticks():
     """Throttled progress updates must not pump the event loop every row."""
@@ -159,3 +103,4 @@ def test_progress_throttle_skips_process_events_between_ticks():
         assert calls["processEvents"] == 1
     finally:
         bli_mod.QApplication.processEvents = original
+

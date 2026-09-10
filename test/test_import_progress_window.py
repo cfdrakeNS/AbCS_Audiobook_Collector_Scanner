@@ -1,22 +1,20 @@
-"""Book List Import progress-window wiring smoke tests."""
+"""Import and Book List Import progress-window tests."""
+
+from __future__ import annotations
+
+from helpers.import_window_helpers import cleanup_window
 
 from src.ui.book_list_import_window import BookListImportWindow
 from src.ui.import_progress_window import ImportProgressWindow
-
 
 def test_format_elapsed_mmss():
     assert BookListImportWindow._format_elapsed(65) == "01:05"
     assert BookListImportWindow._format_elapsed(3661) == "01:01:01"
 
-
-def test_progress_window_activity_and_help_override(qapp):
-    from src.accessibility.scaling import UIScaler
-    from src.accessibility.theme_manager import ThemeManager
+def test_progress_window_activity_and_help_override(ui_scaler, theme_manager):
     from src.ui.help_router import get_help_doc_filename
 
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = ImportProgressWindow(scaler, theme)
+    window = ImportProgressWindow(ui_scaler, theme_manager)
     window.set_activity_label("import")
     window.help_doc_override = "11_import_book_list.md"
     assert window._activity_label == "import"
@@ -25,14 +23,8 @@ def test_progress_window_activity_and_help_override(qapp):
     window._scan_active = False
     window.close()
 
-
-def test_book_list_progress_omits_unused_counters(qapp):
-    from src.accessibility.scaling import UIScaler
-    from src.accessibility.theme_manager import ThemeManager
-
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = ImportProgressWindow(scaler, theme)
+def test_book_list_progress_omits_unused_counters(ui_scaler, theme_manager):
+    window = ImportProgressWindow(ui_scaler, theme_manager)
     window.set_activity_label("import")
     window._scan_active = True
     window.update_counters(
@@ -55,14 +47,8 @@ def test_book_list_progress_omits_unused_counters(qapp):
     window._scan_active = False
     window.close()
 
-
-def test_folder_import_progress_keeps_corrected_warnings(qapp):
-    from src.accessibility.scaling import UIScaler
-    from src.accessibility.theme_manager import ThemeManager
-
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = ImportProgressWindow(scaler, theme)
+def test_folder_import_progress_keeps_corrected_warnings(ui_scaler, theme_manager):
+    window = ImportProgressWindow(ui_scaler, theme_manager)
     window.set_activity_label("scan")
     window._scan_active = True
     window.update_counters(
@@ -80,7 +66,6 @@ def test_folder_import_progress_keeps_corrected_warnings(qapp):
     assert "Press Escape to cancel" in msg
     window._scan_active = False
     window.close()
-
 
 def test_build_progress_summary_matches_folder_cancel_pattern():
     summary = BookListImportWindow._build_progress_summary(
@@ -100,14 +85,8 @@ def test_build_progress_summary_matches_folder_cancel_pattern():
     assert "Elapsed: 00:12" in summary
     assert "Corrected" not in summary
 
-
-def test_mark_complete_does_not_double_prefix_canceled(qapp):
-    from src.accessibility.scaling import UIScaler
-    from src.accessibility.theme_manager import ThemeManager
-
-    scaler = UIScaler(qapp)
-    theme = ThemeManager(qapp)
-    window = ImportProgressWindow(scaler, theme)
+def test_mark_complete_does_not_double_prefix_canceled(ui_scaler, theme_manager):
+    window = ImportProgressWindow(ui_scaler, theme_manager)
     window.set_activity_label("import")
     window.mark_complete(
         canceled=True,
@@ -126,7 +105,6 @@ def test_mark_complete_does_not_double_prefix_canceled(qapp):
     assert "Esc to close" in msg
     window.close()
 
-
 def test_book_list_import_blocks_reentry(qapp, monkeypatch):
     """Import button / Alt+I must not start a second run while one is active."""
     win = BookListImportWindow.__new__(BookListImportWindow)
@@ -140,7 +118,6 @@ def test_book_list_import_blocks_reentry(qapp, monkeypatch):
     win._is_importing = True
     BookListImportWindow.browse_file(win)
     assert any("import is in progress" in s.lower() for s in statuses)
-
 
 def test_set_import_controls_enabled_toggles_import_button(qapp):
     from unittest.mock import MagicMock
@@ -167,3 +144,55 @@ def test_set_import_controls_enabled_toggles_import_button(qapp):
     BookListImportWindow._set_import_controls_enabled(win, True)
     win.import_button.setEnabled.assert_called_with(True)
     win._apply_mode_field_availability.assert_called()
+
+
+def test_import_progress_add_phase_resets_then_increments(qtbot, ui_scaler, theme_manager):
+    """Progress bar should reset at add-phase start, then increment as items process."""
+    window = ImportProgressWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    window.prepare_for_add_phase(4)
+
+    assert window.scan_progress.value() == 0
+    assert window.scan_progress.format() == "Adding... 0/4"
+
+    window.update_add_progress(
+        processed=2,
+        total=4,
+        books_added=1,
+        elapsed_text="00:05",
+    )
+
+    assert window.scan_progress.value() == 50
+    assert window.scan_progress.format() == "Adding... 2/4"
+    status_mid = window.status_bar.currentMessage()
+    assert "Adding 2/4" in status_mid
+    assert "Elapsed 00:05" in status_mid
+
+    window.update_add_progress(
+        processed=3,
+        total=4,
+        books_added=2,
+        elapsed_text="00:08",
+        scanned=10,
+        fixed=1,
+        errors=2,
+        warnings=1,
+        duplicates=0,
+    )
+    # Progress bar keeps Adding N/N; status switches to counter summary when
+    # scanned= is supplied (no duplicate "Adding 3/4" prefix).
+    assert window.scan_progress.format() == "Adding... 3/4"
+    assert window.scan_progress.value() == 75
+    status_text = window.status_bar.currentMessage()
+    assert "Scanned: 10" in status_text
+    assert "Valid:" not in status_text
+    assert "Added: 2" in status_text
+    assert "Corrected: 1" in status_text
+    assert "Errors: 2" in status_text
+    assert "Warnings: 1" in status_text
+    assert "Elapsed 00:08" in status_text
+
+    window._scan_active = False
+    cleanup_window(window)
+

@@ -1,33 +1,16 @@
 """Pytest coverage for the Web Metadata dialog."""
 
-import os
-import sys
-from pathlib import Path
+from __future__ import annotations
 
-# Ensure Qt can initialize in headless test environments.
+import os
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtWidgets import QApplication
-
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from src.accessibility.read_only_text import plot_text_equivalent
-from src.accessibility.scaling import UIScaler
-from src.accessibility.theme_manager import ThemeManager
 from src.database.models import Book
 from src.ui.web_metadata import WebMetadataWindow
-
-
-@pytest.fixture(scope="session")
-def qapp():
-    """Provide a single QApplication instance for all tests."""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
 
 @pytest.fixture
 def sample_book():
@@ -48,22 +31,18 @@ def sample_book():
         source="test",
     )
 
-
 @pytest.fixture
-def window(qapp, sample_book):
+def window(ui_scaler, theme_manager, sample_book):
     """Construct the window without DB writes/network calls."""
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
     dlg = WebMetadataWindow(
         db=None,
         book=sample_book,
-        scaler=scaler,
+        scaler=ui_scaler,
         theme_manager=theme_manager,
         web_data=None,
     )
     yield dlg
     dlg.close()
-
 
 def test_web_metadata_window_constructs(window):
     assert window.windowTitle() == "Web Metadata"
@@ -71,14 +50,12 @@ def test_web_metadata_window_constructs(window):
     assert hasattr(window, "load_book_data")
     assert hasattr(window, "update_fields_with_web_data")
 
-
 def test_web_metadata_loads_book_values(window, sample_book):
     assert window.title_edit.text() == sample_book.title
     assert window.author_edit.text() == sample_book.author_name
     assert window.year_edit.text() == str(sample_book.year)
     assert window.genre_edit.text() == sample_book.genre_name
     assert plot_text_equivalent(window.plot_edit.plot_text(), sample_book.comments)
-
 
 def test_update_fields_with_web_data_tracks_differences(window):
     web_data = {
@@ -105,16 +82,13 @@ def test_update_fields_with_web_data_tracks_differences(window):
     assert window.plot_edit.plot_text().startswith("A portrait of wealth")
     assert window.rating_edit.text().startswith("4.2")
 
-
 def test_set_status_updates_status_bar(window):
     msg = "Web data found - Difference - Title, Author"
     window.set_status(msg)
     assert window.status_bar.currentMessage() == msg
 
-
 def test_series_row_hidden_when_db_and_web_empty(window):
     assert window.series_row.isHidden()
-
 
 def test_series_row_visible_when_web_has_series(window):
     window.update_fields_with_web_data(
@@ -128,8 +102,7 @@ def test_series_row_visible_when_web_has_series(window):
     assert not window.series_row.isHidden()
     assert not window.series_web_edit.isHidden()
 
-
-def test_series_web_number_visible_when_name_matches_db(qapp):
+def test_series_web_number_visible_when_name_matches_db(ui_scaler, theme_manager):
     book = Book(
         book_id=3,
         title="Book Three",
@@ -137,12 +110,10 @@ def test_series_web_number_visible_when_name_matches_db(qapp):
         series_name="Gamache",
         genre_name="Fiction",
     )
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
     dlg = WebMetadataWindow(
         db=None,
         book=book,
-        scaler=scaler,
+        scaler=ui_scaler,
         theme_manager=theme_manager,
         web_data=None,
     )
@@ -162,7 +133,6 @@ def test_series_web_number_visible_when_name_matches_db(qapp):
     finally:
         dlg.close()
 
-
 def test_series_web_number_hidden_when_only_orphan_number_returned(window):
     window.update_fields_with_web_data(
         {
@@ -175,7 +145,6 @@ def test_series_web_number_hidden_when_only_orphan_number_returned(window):
     assert window.series_number_web_edit.isHidden()
     assert "series_number" not in window.field_differences
 
-
 def test_web_status_message_includes_plot_found(window):
     window.update_fields_with_web_data(
         {
@@ -187,7 +156,6 @@ def test_web_status_message_includes_plot_found(window):
     msg = window._build_web_status_message("Web data found", window.web_data)
     assert "Plot found" in msg
 
-
 def test_compute_field_differences_empty_when_data_matches(sample_book):
     web_data = {
         "title": sample_book.title,
@@ -198,7 +166,6 @@ def test_compute_field_differences_empty_when_data_matches(sample_book):
     }
     assert WebMetadataWindow.compute_field_differences(sample_book, web_data) == {}
 
-
 def test_web_data_offers_changes_false_for_matching_metadata(sample_book):
     web_data = {
         "title": sample_book.title,
@@ -207,7 +174,6 @@ def test_web_data_offers_changes_false_for_matching_metadata(sample_book):
         "genre": sample_book.genre_name,
     }
     assert not WebMetadataWindow.web_data_offers_changes(sample_book, web_data)
-
 
 def test_plot_preserved_when_web_has_no_plot(window, sample_book):
     window.update_fields_with_web_data(
@@ -218,7 +184,6 @@ def test_plot_preserved_when_web_has_no_plot(window, sample_book):
     )
     assert plot_text_equivalent(window.plot_edit.plot_text(), sample_book.comments)
 
-
 def test_web_status_message_includes_no_plot(window):
     window.update_fields_with_web_data(
         {
@@ -228,7 +193,6 @@ def test_web_status_message_includes_no_plot(window):
     )
     msg = window._build_web_status_message("Web data found", window.web_data)
     assert "No plot" in msg
-
 
 def test_tab_order_web_series_fields_before_buttons(window):
     window.update_fields_with_web_data(
@@ -249,7 +213,6 @@ def test_tab_order_web_series_fields_before_buttons(window):
     assert chain.index(window.series_web_edit) < chain.index(window.refetch_button)
     assert chain.index(window.series_number_web_edit) < chain.index(window.save_button)
 
-
 def _tab_focus_names(widget, qapp, *, start_widget, steps: int) -> list[str]:
     from PySide6.QtCore import QEvent, Qt
     from PySide6.QtGui import QKeyEvent
@@ -268,14 +231,11 @@ def _tab_focus_names(widget, qapp, *, start_widget, steps: int) -> list[str]:
         qapp.processEvents()
     return names
 
-
-def test_tab_order_genre_web_and_checkbox_after_show(qapp, sample_book):
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
+def test_tab_order_genre_web_and_checkbox_after_show(qapp, ui_scaler, theme_manager, sample_book):
     dlg = WebMetadataWindow(
         db=None,
         book=sample_book,
-        scaler=scaler,
+        scaler=ui_scaler,
         theme_manager=theme_manager,
         web_data={
             "title": sample_book.title,
@@ -295,8 +255,7 @@ def test_tab_order_genre_web_and_checkbox_after_show(qapp, sample_book):
     finally:
         dlg.close()
 
-
-def test_series_row_visible_when_db_has_series(qapp):
+def test_series_row_visible_when_db_has_series(ui_scaler, theme_manager):
     book = Book(
         book_id=2,
         title="Book Two",
@@ -304,12 +263,10 @@ def test_series_row_visible_when_db_has_series(qapp):
         series_name="Test Saga",
         genre_name="Fiction",
     )
-    scaler = UIScaler(qapp)
-    theme_manager = ThemeManager(qapp)
     dlg = WebMetadataWindow(
         db=None,
         book=book,
-        scaler=scaler,
+        scaler=ui_scaler,
         theme_manager=theme_manager,
         web_data=None,
     )
@@ -318,3 +275,4 @@ def test_series_row_visible_when_db_has_series(qapp):
         assert dlg.series_edit.text() == "Test Saga"
     finally:
         dlg.close()
+

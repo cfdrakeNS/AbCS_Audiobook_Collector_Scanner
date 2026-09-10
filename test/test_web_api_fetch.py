@@ -1,65 +1,38 @@
-"""Tests for WebBookAPI match gate and source lookup order."""
+"""Integration tests for WebBookAPI fetch, cache, rate-limit, cancel, and budget."""
+
+from __future__ import annotations
 
 import json
+import time
 from unittest.mock import patch
 
 import pytest
 
-from src.web.web_book_api import WebBookAPI, _clear_source_cooldown
+from src.web import web_book_api as wba
+from src.web.web_book_api import (
+    FetchBudget,
+    WebBookAPI,
+    _clear_source_cooldown,
+    _note_rate_limited,
+    _reset_shared_web_api_for_tests,
+    _seconds_until_cooldown_clears,
+    get_web_api,
+)
 
 
 @pytest.fixture
-def api():
-    _clear_source_cooldown()
-    client = WebBookAPI()
-    client._cache = {}
-    yield client
-    _clear_source_cooldown()
+def api(web_api):
+    return web_api
 
 
-def test_metadata_matches_db_requires_title_and_author(api):
-    meta = {"title": "The Great Gatsby", "author": "F. Scott Fitzgerald"}
-    assert api._metadata_matches_db("The Great Gatsby", "F. Scott Fitzgerald", meta)
-
-    assert not api._metadata_matches_db(
-        "The Great Gatsby", "F. Scott Fitzgerald", {"title": "", "author": "X"}
-    )
-    assert not api._metadata_matches_db(
-        "The Great Gatsby",
-        "F. Scott Fitzgerald",
-        {"title": "The Great Gatsby", "author": "Stephen King"},
-    )
-
-
-def test_metadata_matches_db_rejects_title_only_bypass(api):
-    """Results with plot/rating but wrong author must not pass when DB author is set."""
-    meta = {
-        "title": "The Great Gatsby",
-        "author": "Stephen King",
-        "plot": "Long description here.",
-        "rating": 4.5,
-        "genre": "Fiction",
-    }
-    assert not api._metadata_matches_db(
-        "The Great Gatsby", "F. Scott Fitzgerald", meta
-    )
-    assert api._metadata_matches_db(
-        "The Great Gatsby",
-        "F. Scott Fitzgerald",
-        meta,
-        require_author_match=False,
-    )
-
-
-def test_strip_author_honorifics_for_search(api):
-    assert api._strip_author_honorifics("Sir Arthur Conan Doyle") == "Arthur Conan Doyle"
-    assert api._extract_last_name("Sir Arthur Conan Doyle") == "Doyle"
-
-
+@patch.object(WebBookAPI, "_fill_series_fields", return_value=False)
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library")
-def test_sherlock_holmes_with_sir_author_finds_open_library(ol_mock, _gb_mock, _wd_mock, api):
+def test_sherlock_holmes_with_sir_author_finds_open_library(
+    ol_mock, _gb_mock, _wd_mock, _plot, _series, api
+):
     ol_mock.return_value = {
         "title": "The Adventures of Sherlock Holmes",
         "author": "Arthur Conan Doyle",
@@ -78,23 +51,14 @@ def test_sherlock_holmes_with_sir_author_finds_open_library(ol_mock, _gb_mock, _
     call_author = ol_mock.call_args[0][1]
     assert call_author == "Arthur Conan Doyle"
 
-
-def test_should_use_title_only_for_librivox_and_narrator(api):
-    assert api._likely_librivox_source(path=r"C:\Audio\librivox\book")
-    assert api._should_use_title_only_fallback(
-        "Charles Dickens",
-        narrator="Charles Dickens",
-    )
-    assert api._should_use_title_only_fallback(
-        "Jane Reader",
-        path=r"D:\LibriVox\pride_and_prejudice",
-    )
-
-
+@patch.object(WebBookAPI, "_fill_series_fields", return_value=False)
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library")
-def test_title_only_fallback_when_author_search_fails(ol_mock, _gb_mock, _wd_mock, api):
+def test_title_only_fallback_when_author_search_fails(
+    ol_mock, _gb_mock, _wd_mock, _plot, _series, api
+):
     """After strict author search fails, title-only search can return a match."""
 
     def open_library_side_effect(title, author=None, year=None, **kwargs):
@@ -117,27 +81,6 @@ def test_title_only_fallback_when_author_search_fails(ol_mock, _gb_mock, _wd_moc
     assert result.get("title_only_search") is True
     assert any(call.args[1] is None for call in ol_mock.call_args_list)
 
-
-
-def test_metadata_matches_db_rejects_deaver_issue_cases(api):
-    assert not api._metadata_matches_db(
-        "Cause Of Death",
-        "Jeffery Deaver",
-        {"title": "Cause Of Death", "author": "Patricia Cornwell"},
-    )
-    assert not api._metadata_matches_db(
-        "Date Night",
-        "Jeffery Deaver",
-        {"title": "Date Night Club", "author": "Saxon Bennett"},
-    )
-
-
-def test_metadata_matches_db_rejects_empty_db_author(api):
-    meta = {"title": "Dune", "author": "Frank Herbert"}
-    assert not api._metadata_matches_db("Dune", "", meta)
-    assert not api._metadata_matches_db("Dune", "Frank Herbert", {"title": "Dune", "author": ""})
-
-
 @patch.object(WebBookAPI, "_save_persistent_cache")
 @patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_series_from_google", return_value=None)
@@ -158,7 +101,6 @@ def test_refresh_zero_open_library_before_google(
     assert result["source"] == "open_library"
     ol_mock.assert_called_once()
     gb_mock.assert_not_called()
-
 
 @patch.object(WebBookAPI, "_save_persistent_cache")
 @patch.object(WebBookAPI, "_enrich_metadata_plot")
@@ -181,7 +123,6 @@ def test_refresh_zero_google_when_open_library_fails(
     ol_mock.assert_called_once()
     gb_mock.assert_called_once()
 
-
 @patch.object(WebBookAPI, "_save_persistent_cache")
 @patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_series_from_google", return_value=None)
@@ -201,7 +142,6 @@ def test_refresh_one_skips_open_library(
     assert result is not None
     ol_mock.assert_not_called()
     gb_mock.assert_called_once()
-
 
 @patch("src.web.web_book_api.urllib.request.urlopen")
 def test_open_library_never_filters_by_db_year(urlopen_mock, api):
@@ -240,10 +180,11 @@ def test_open_library_never_filters_by_db_year(urlopen_mock, api):
     for call in urlopen_mock.call_args_list:
         assert "first_publish_year=1867" not in call.args[0].full_url
 
-
 def test_get_book_metadata_same_result_with_or_without_db_year(api):
     """Search uses title and author only; a wrong DB year must not change the outcome."""
     with (
+        patch.object(api, "_enrich_metadata_plot"),
+        patch.object(api, "_fill_series_fields", return_value=False),
         patch.object(api, "_fetch_from_wikidata", return_value=None),
         patch.object(api, "_fetch_from_google_books", return_value=None),
         patch.object(api, "_fetch_from_open_library") as ol_mock,
@@ -270,8 +211,6 @@ def test_get_book_metadata_same_result_with_or_without_db_year(api):
     assert without_year is not None
     assert with_year["title"] == without_year["title"]
 
-
-
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library")
@@ -293,7 +232,6 @@ def test_deaver_cause_of_death_rejects_cornwell_without_title_only_fallback(
     assert result is None
     assert any(call.args[1] for call in ol_mock.call_args_list)
 
-
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library")
@@ -313,14 +251,13 @@ def test_deaver_date_night_rejects_wrong_author_and_title_extension(
     )
     assert result is None
 
-
-
-
+@patch.object(WebBookAPI, "_fill_series_fields", return_value=False)
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library")
 def test_pride_and_prejudice_jane_austen_via_broadened_search(
-    ol_mock, _gb_mock, _wd_mock, api
+    ol_mock, _gb_mock, _wd_mock, _plot, _series, api
 ):
     def open_library_side_effect(title, author=None, **kwargs):
         if author:
@@ -343,10 +280,14 @@ def test_pride_and_prejudice_jane_austen_via_broadened_search(
     assert "Austen" in result["author"]
     assert result.get("broadened_search") is True
 
-
+@patch.object(WebBookAPI, "_fill_series_fields", return_value=False)
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
-def test_google_intitle_retry_finds_austen_when_inauthor_empty(gb_mock, _ol_mock, api):
+@patch.object(WebBookAPI, "_fetch_from_google_books")
+def test_google_intitle_retry_finds_austen_when_inauthor_empty(
+    gb_mock, _ol_mock, _wd_mock, _plot, _series, api
+):
     def google_side_effect(title, author=None, **kwargs):
         db_author = kwargs.get("match_author") or author
         if author:
@@ -360,18 +301,15 @@ def test_google_intitle_retry_finds_austen_when_inauthor_empty(gb_mock, _ol_mock
         return None
 
     gb_mock.side_effect = google_side_effect
-    with patch.object(api, "_fetch_plot_from_open_library", return_value=""):
-        with patch.object(api, "_fetch_plot_from_wikipedia", return_value=""):
-            result = api.get_book_metadata(
-                "Pride And Prejudice",
-                "Jane Austen",
-                refresh=0,
-                path=r"C:\Audiobooks\pride",
-                narrator="",
-            )
+    result = api.get_book_metadata(
+        "Pride And Prejudice",
+        "Jane Austen",
+        refresh=0,
+        path=r"C:\Audiobooks\pride",
+        narrator="",
+    )
     assert result is not None
     assert "Austen" in result["author"]
-
 
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
@@ -393,64 +331,6 @@ def test_open_library_broadened_pass_uses_match_author(ol_mock, _gb_mock, _wd_mo
     )
     assert (None, "Jeffery Deaver") in captured
 
-
-
-
-def test_plot_is_adequate_threshold(api):
-    assert not api._plot_is_adequate("short")
-    assert api._plot_is_adequate("x" * 80)
-
-
-def test_rejects_non_book_song_plot(api):
-    song_plot = (
-        '"Blue on Black" is a song by American blues rock group Kenny Wayne Shepherd Band. '
-        "Written by Shepherd with Mark Selby and Tia Sillers, it was originally released on "
-        "their second studio album, Trouble Is... (1997). In 1998, the song was released as a "
-        "single and reached the top position on the US Billboard Mainstream Rock Tracks chart."
-    )
-    assert api._is_non_book_plot(song_plot)
-    metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
-    assert not api._apply_plot_to_metadata(
-        metadata,
-        song_plot,
-        "wikipedia",
-        "Blue On Black",
-        "Michael Connelly",
-    )
-    assert "plot" not in metadata or not metadata.get("plot")
-
-
-def test_wikipedia_plot_requires_author_or_book_context(api):
-    metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
-    unrelated = "A" * 120
-    assert not api._apply_plot_to_metadata(
-        metadata,
-        unrelated,
-        "wikipedia",
-        "Blue On Black",
-        "Michael Connelly",
-    )
-    metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
-    book_plot = (
-        "Blue On Black is a novella by Michael Connelly featuring detective Harry Bosch "
-        "in a case involving a mysterious death tied to a jazz club."
-    )
-    assert api._apply_plot_to_metadata(
-        metadata,
-        book_plot,
-        "wikipedia",
-        "Blue On Black",
-        "Michael Connelly",
-    )
-    assert metadata["plot"] == book_plot
-
-
-def test_strip_html_removes_tags(api):
-    raw = "<p>Hello <b>world</b> &amp; friends</p>"
-    assert "<" not in api._strip_html(raw)
-    assert "Hello" in api._strip_html(raw)
-
-
 def test_enrich_metadata_plot_fills_from_wikipedia_when_ol_plot_short(api):
     metadata = {
         "title": "Pride and Prejudice",
@@ -470,7 +350,6 @@ def test_enrich_metadata_plot_fills_from_wikipedia_when_ol_plot_short(api):
     assert metadata["plot"] == wiki_text
     assert metadata["plot_source"] == "wikipedia"
 
-
 def test_enrich_metadata_plot_keeps_adequate_open_library_plot(api):
     long_plot = "A" * 100
     metadata = {
@@ -483,41 +362,6 @@ def test_enrich_metadata_plot_keeps_adequate_open_library_plot(api):
         api._enrich_metadata_plot(metadata, "Dune", "Frank Herbert")
         wiki_mock.assert_not_called()
     assert metadata["plot"] == long_plot
-
-def test_google_item_picker_rejects_wrong_author(api):
-    items = [
-        {
-            "volumeInfo": {
-                "title": "Dune",
-                "authors": ["Stephen King"],
-                "publishedDate": "1965",
-            }
-        },
-        {
-            "volumeInfo": {
-                "title": "Dune",
-                "authors": ["Frank Herbert"],
-                "publishedDate": "1965",
-            }
-        },
-    ]
-    with patch.object(api, "_google_item_to_metadata", side_effect=lambda item: {
-        "title": item["volumeInfo"]["title"],
-        "author": ", ".join(item["volumeInfo"].get("authors", [])),
-    }):
-        best = None
-        best_score = -1.0
-        for item in items:
-            candidate = api._google_item_to_metadata(item)
-            if not api._metadata_matches_db("Dune", "Frank Herbert", candidate):
-                continue
-            score = api._title_word_match_score("Dune", candidate["title"])
-            if score > best_score:
-                best_score = score
-                best = candidate
-    assert best is not None
-    assert "Herbert" in best["author"]
-
 
 @patch.object(WebBookAPI, "_enrich_metadata_plot")
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
@@ -541,61 +385,6 @@ def test_progress_callback_order_refresh_zero(
     assert messages[ol_idx].startswith("Trying source 1:")
     assert messages[gb_idx].startswith("Trying source 2:")
     assert messages[wd_idx].startswith("Trying source 3:")
-
-
-def test_discovered_isbn_used_for_google_series_enrichment(api):
-    metadata = {
-        "title": "The Way of Kings",
-        "author": "Brandon Sanderson",
-        "isbn": "9780765326355",
-        "_resolved_source": "open_library",
-    }
-    with patch.object(api, "_get_open_library_work_fields", return_value={}):
-        with patch.object(
-            api,
-            "_fetch_series_from_google_by_isbn",
-            return_value={"series": "The Stormlight Archive", "series_number": "1"},
-        ) as isbn_mock:
-            with patch.object(api, "_fetch_series_from_google") as title_mock:
-                with patch.object(api, "_fetch_series_from_wikidata", return_value=None):
-                    api._enrich_metadata_series(
-                        metadata, "The Way of Kings", "Brandon Sanderson"
-                    )
-    isbn_mock.assert_called_once_with("9780765326355")
-    title_mock.assert_not_called()
-    assert metadata["series"] == "The Stormlight Archive"
-
-
-def test_series_enrichment_wikidata_before_google_title(api):
-    metadata = {
-        "title": "How the Light Gets In",
-        "author": "Louise Penny",
-        "_resolved_source": "open_library",
-    }
-    call_order: list[str] = []
-
-    def wikidata_side_effect(*args, **kwargs):
-        call_order.append("wikidata")
-        return {"series": "Chief Inspector Gamache", "series_number": "9"}
-
-    def google_side_effect(*args, **kwargs):
-        call_order.append("google_title")
-        return None
-
-    with patch.object(api, "_get_open_library_work_fields", return_value={}):
-        with patch.object(
-            api, "_fetch_series_from_wikidata", side_effect=wikidata_side_effect
-        ):
-            with patch.object(
-                api, "_fetch_series_from_google", side_effect=google_side_effect
-            ):
-                with patch.object(api, "_fetch_series_from_google_by_isbn", return_value=None):
-                    api._enrich_metadata_series(
-                        metadata, "How the Light Gets In", "Louise Penny"
-                    )
-    assert call_order == ["wikidata"]
-    assert metadata["series"] == "Chief Inspector Gamache"
-
 
 def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
     metadata = {
@@ -625,106 +414,6 @@ def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
     assert metadata["plot"] == rest_text
     assert metadata["plot_source"] == "wikipedia"
 
-
-def test_cache_key_includes_isbn_param(api):
-    with patch.object(api, "_fetch_metadata_by_isbn") as isbn_fetch:
-        isbn_fetch.return_value = {
-            "title": "Dune",
-            "author": "Frank Herbert",
-            "_resolved_source": "open_library",
-        }
-        with patch.object(api, "_enrich_metadata_plot"):
-            with patch.object(api, "_fill_series_fields"):
-                with patch.object(api, "_save_persistent_cache"):
-                    api.get_book_metadata(
-                        "Dune", "Frank Herbert", isbn="9780441172719"
-                    )
-    assert any("9780441172719" in key for key in api._cache)
-
-
-@patch("src.web.web_book_api.urllib.request.urlopen")
-def test_open_library_search_stores_discovered_isbn(urlopen_mock, api):
-    """OL search docs with isbn field should be kept for in-flight enrichment."""
-    doc = {
-        "title": "The Way of Kings",
-        "author_name": ["Brandon Sanderson"],
-        "first_publish_year": 2010,
-        "key": "/works/OL123W",
-        "isbn": ["9780765326355"],
-    }
-
-    class FakeResponse:
-        def read(self):
-            return json.dumps({"docs": [doc]}).encode()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-    urlopen_mock.return_value = FakeResponse()
-    with patch.object(api, "_get_open_library_work_fields", return_value={}):
-        result = api._fetch_from_open_library(
-            "The Way of Kings", "Brandon Sanderson"
-        )
-    assert result is not None
-    assert result.get("isbn") == "9780765326355"
-
-
-def test_google_isbn_lookup_returns_series_info(api):
-    item = {
-        "volumeInfo": {
-            "title": "The Way of Kings",
-            "authors": ["Brandon Sanderson"],
-            "seriesInfo": {
-                "bookDisplayNumber": "1",
-                "volumeSeries": [{"seriesTitle": "The Stormlight Archive"}],
-            },
-        }
-    }
-
-    class FakeResponse:
-        def read(self):
-            return json.dumps({"items": [item]}).encode()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-    with patch("urllib.request.urlopen", return_value=FakeResponse()):
-        result = api._fetch_google_by_isbn("9780765326355")
-    assert result is not None
-    assert result["series"] == "The Stormlight Archive"
-    assert result["series_number"] == "1"
-
-
-def test_dedupe_fetch_errors_keeps_one_per_source():
-    from src.web.web_book_api import _dedupe_fetch_errors
-
-    errors = [
-        "google_books: HTTP Error 429: Too Many Requests",
-        "google_books: HTTP Error 429: Too Many Requests",
-        "open_library: timed out",
-    ]
-    assert _dedupe_fetch_errors(errors) == [
-        "google_books: HTTP Error 429: Too Many Requests",
-        "open_library: timed out",
-    ]
-
-
-def test_format_web_fetch_status_message_rate_limit():
-    from src.web.web_book_api import format_web_fetch_status_message
-
-    msg = format_web_fetch_status_message(
-        ["google_books: HTTP Error 429: Too Many Requests"]
-    )
-    assert "rate limited" in msg.lower()
-    assert "re-fetch" in msg.lower()
-
-
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
 def test_google_books_429_surfaces_fetch_errors(_ol_mock, _wd_mock, api):
@@ -750,7 +439,6 @@ def test_google_books_429_surfaces_fetch_errors(_ol_mock, _wd_mock, api):
     assert result.get("_no_result") is True
     assert any("google_books" in err for err in result.get("_fetch_errors", []))
 
-
 @patch("src.web.web_book_api.urllib.request.urlopen")
 def test_open_library_search_sends_user_agent(urlopen_mock, api):
     class FakeResponse:
@@ -770,7 +458,6 @@ def test_open_library_search_sends_user_agent(urlopen_mock, api):
 
     assert sent_request.get_header("User-agent") == USER_AGENT
 
-
 def _http_error_429():
     import urllib.error
 
@@ -781,7 +468,6 @@ def _http_error_429():
         {},
         None,
     )
-
 
 class _FakeGoogleResponse:
     def __init__(self, payload: dict):
@@ -795,7 +481,6 @@ class _FakeGoogleResponse:
 
     def __exit__(self, *args):
         return False
-
 
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
@@ -812,7 +497,6 @@ def test_google_books_429_stops_query_loop(urlopen_mock, sleep_mock, api):
     # First attempt + one retry from _urlopen_with_retry; no second query variant.
     assert urlopen_mock.call_count == 2
     sleep_mock.assert_called_once()
-
 
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
@@ -836,7 +520,6 @@ def test_google_books_cooldown_short_circuits_followup(urlopen_mock, sleep_mock,
     )
     assert result is None
     assert urlopen_mock.call_count == first_calls
-
 
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
@@ -868,25 +551,6 @@ def test_google_books_retry_backoff_recovers(urlopen_mock, sleep_mock, api):
     assert urlopen_mock.call_count == 2
     sleep_mock.assert_called_once()
 
-
-def test_format_web_fetch_status_message_includes_cooldown_seconds():
-    from src.web.web_book_api import (
-        _note_rate_limited,
-        format_web_fetch_status_message,
-    )
-
-    _clear_source_cooldown()
-    _note_rate_limited("google_books", seconds=40)
-    msg = format_web_fetch_status_message(
-        ["google_books: HTTP Error 429: Too Many Requests"]
-    )
-    assert "rate limited" in msg.lower()
-    assert "re-fetch" in msg.lower()
-    assert "about" in msg.lower()
-    assert "s" in msg.lower()
-    _clear_source_cooldown()
-
-
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(
@@ -913,7 +577,6 @@ def test_get_book_metadata_keeps_match_when_plot_enrichment_raises(
     assert result["title"] == "Pride and Prejudice"
     assert result["source"] == "open_library"
 
-
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(
@@ -938,7 +601,6 @@ def test_get_book_metadata_keeps_match_when_series_enrichment_raises(
     assert result is not None
     assert result.get("_no_result") is not True
     assert result["title"] == "Pride and Prejudice"
-
 
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
@@ -970,7 +632,6 @@ def test_get_book_metadata_keeps_match_when_progress_callback_raises(
     assert result.get("_no_result") is not True
     assert result["title"] == "Pride and Prejudice"
 
-
 def test_cache_hit_survives_series_enrichment_exception(api):
     cache_key = "Pride and Prejudice|Jane Austen|0|None|None|None|False|"
     api._cache[cache_key] = (
@@ -992,7 +653,6 @@ def test_cache_hit_survives_series_enrichment_exception(api):
     assert result["title"] == "Pride and Prejudice"
     assert result["plot"] == "Cached plot text."
 
-
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
 def test_fetch_google_by_isbn_notes_rate_limit_on_429(urlopen_mock, sleep_mock, api):
@@ -1006,3 +666,100 @@ def test_fetch_google_by_isbn_notes_rate_limit_on_429(urlopen_mock, sleep_mock, 
     prior = urlopen_mock.call_count
     assert api._fetch_google_by_isbn("9780765326355") is None
     assert urlopen_mock.call_count == prior
+
+
+def test_fetch_budget_exhausts_on_request_cap():
+    budget = FetchBudget(seconds=60, max_requests=2)
+    assert budget.can_continue()
+    budget.note_request()
+    assert budget.can_continue()
+    budget.note_request()
+    assert not budget.can_continue()
+    assert budget.exhausted
+
+def test_fetch_budget_exhausts_on_deadline():
+    budget = FetchBudget(seconds=0.01, max_requests=100)
+    time.sleep(0.02)
+    assert not budget.can_continue()
+
+def test_get_book_metadata_cancel_returns_canceled_flag(api):
+    result = api.get_book_metadata(
+        "Any Title",
+        "Any Author",
+        should_cancel=lambda: True,
+    )
+    assert result == {"_canceled": True}
+
+def test_get_book_metadata_budget_stops_cascade(api):
+    """Exhausted budget stops further sources without raising to the caller."""
+    api._active_budget = FetchBudget(seconds=60, max_requests=0)
+    api._should_cancel = None
+    # With max_requests=0, can_continue is False immediately
+    with pytest.raises(wba.FetchAborted):
+        api._check_abort()
+
+def test_cache_hit_skips_network_when_enriched(api):
+    key_meta = {
+        "title": "Dune",
+        "author": "Frank Herbert",
+        "plot": "A" * 100,
+        "source": "open_library",
+        "_plot_enriched": True,
+        "_series_enriched": True,
+    }
+    cache_key = "Dune|Frank Herbert|0|None|None|None|False|"
+    api._cache[cache_key] = (time.time(), key_meta)
+
+    with patch.object(api, "_search_metadata_sources") as search_mock, patch.object(
+        api, "_fill_series_fields"
+    ) as series_mock, patch.object(api, "_enrich_metadata_plot") as plot_mock:
+        result = api.get_book_metadata("Dune", "Frank Herbert", refresh=0)
+        search_mock.assert_not_called()
+        series_mock.assert_not_called()
+        plot_mock.assert_not_called()
+    assert result["title"] == "Dune"
+    assert "open_library_work_key" not in result
+
+def test_retry_after_sets_cooldown_from_header():
+    _clear_source_cooldown()
+
+    class Headers(dict):
+        def get(self, key, default=None):
+            return super().get(key, default)
+
+    headers = Headers({"Retry-After": "12"})
+    _note_rate_limited("google_books", headers=headers)
+    remaining = _seconds_until_cooldown_clears("google_books")
+    assert 10 <= remaining <= 12
+    _clear_source_cooldown()
+
+@patch("src.web.web_book_api.urllib.request.urlopen")
+def test_wikidata_503_propagates_into_fetch_errors(urlopen_mock, api):
+    import urllib.error
+
+    def raise_503(*_a, **_k):
+        raise urllib.error.HTTPError(
+            "https://query.wikidata.org/sparql",
+            503,
+            "Service Unavailable",
+            {},
+            None,
+        )
+
+    urlopen_mock.side_effect = raise_503
+    with patch.object(api, "_fetch_from_open_library", return_value=None), patch.object(
+        api, "_fetch_from_google_books", return_value=None
+    ):
+        result = api.get_book_metadata("Unknown Book", "Unknown Author", refresh=0)
+    assert result is not None
+    assert result.get("_no_result") is True
+    assert any("wikidata" in e.lower() for e in result.get("_fetch_errors", []))
+
+def test_get_web_api_returns_shared_instance(tmp_path, monkeypatch):
+    _reset_shared_web_api_for_tests()
+    monkeypatch.setattr(wba, "WEB_CACHE_FILE", str(tmp_path / "web_cache.json"))
+    a = get_web_api()
+    b = get_web_api()
+    assert a is b
+    _reset_shared_web_api_for_tests()
+

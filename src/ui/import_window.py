@@ -260,6 +260,10 @@ class ImportWindow(AccessibleDialog):
         self.scanner = BookScanner()
         self.validator = ImportValidator()
         self.import_scanner = ImportScanner()
+        # Lowercased name → id caches for scan/add batching
+        self._author_id_cache: dict = {}
+        self._series_id_cache: dict = {}
+        self._genre_id_cache: dict = {}
 
         self._loading = False
         self.scanned_items = []
@@ -341,16 +345,72 @@ class ImportWindow(AccessibleDialog):
                 return int(value)
         return None
 
+    def _ensure_entity_caches(self, book_dicts: list, *, commit: bool = False) -> None:
+        """Bulk-create missing authors/series/genres and refresh id caches."""
+        author_names: list[str] = []
+        series_names: list[str] = []
+        genre_names: list[str] = []
+        for data in book_dicts:
+            author_text = (data.get("author") or "").strip()
+            if author_text:
+                temp = {"author": author_text}
+                self.validator.sanitize_metadata(temp)
+                author_names.append(temp["author"])
+            series_text = (data.get("series") or "").strip()
+            if series_text:
+                series_names.append(series_text)
+            genre_text = (data.get("genre") or "").strip()
+            if genre_text:
+                genre_names.append(genre_text)
+        self._author_id_cache = self.author_queries.ensure_names(
+            author_names, commit=commit
+        )
+        self._series_id_cache = self.series_queries.ensure_names(
+            series_names, commit=commit
+        )
+        self._genre_id_cache = self.genre_queries.ensure_names(
+            genre_names, commit=commit
+        )
+
+    def _cached_author_id(self, name: str, *, defer_commits: bool = False) -> int:
+        key = (name or "").strip().lower()
+        cached = self._author_id_cache.get(key)
+        if cached is not None:
+            return cached
+        author_id = self.author_queries.get_or_create(
+            name, commit=not defer_commits
+        )
+        self._author_id_cache[key] = author_id
+        return author_id
+
+    def _cached_series_id(self, name: str, *, defer_commits: bool = False) -> int:
+        key = (name or "").strip().lower()
+        cached = self._series_id_cache.get(key)
+        if cached is not None:
+            return cached
+        series_id = self.series_queries.get_or_create(
+            name, commit=not defer_commits
+        )
+        self._series_id_cache[key] = series_id
+        return series_id
+
+    def _cached_genre_id(self, name: str, *, defer_commits: bool = False) -> int:
+        key = (name or "").strip().lower()
+        cached = self._genre_id_cache.get(key)
+        if cached is not None:
+            return cached
+        genre_id = self.genre_queries.get_or_create(
+            name, commit=not defer_commits
+        )
+        self._genre_id_cache[key] = genre_id
+        return genre_id
+
     def _build_book_from_scan(self, data: dict, defer_commits: bool = False) -> Book:
         """Create a Book object from scanned data."""
         title = (data.get("title") or "").strip()
-        # Sanitize author field before using
-        from src.core.validator import ImportValidator
-
-        validator = ImportValidator()
         author_text = (data.get("author") or "").strip()
         temp = {"author": author_text}
-        validator.sanitize_metadata(temp)
+        self.validator.sanitize_metadata(temp)
         author_text = temp["author"]
         series_text = (data.get("series") or "").strip()
         genre_text = (data.get("genre") or "").strip()
@@ -359,23 +419,14 @@ class ImportWindow(AccessibleDialog):
         if target_collection_id is None:
             raise ValueError("No collection selected")
 
-        author_id = self.author_queries.get_or_create(
-            author_text,
-            commit=not defer_commits,
-        )
+        author_id = self._cached_author_id(author_text, defer_commits=defer_commits)
         genre_id = None
         if genre_text:
-            genre_id = self.genre_queries.get_or_create(
-                genre_text,
-                commit=not defer_commits,
-            )
+            genre_id = self._cached_genre_id(genre_text, defer_commits=defer_commits)
 
         series_id = None
         if series_text:
-            series_id = self.series_queries.get_or_create(
-                series_text,
-                commit=not defer_commits,
-            )
+            series_id = self._cached_series_id(series_text, defer_commits=defer_commits)
 
         return Book(
             title=title,
@@ -1809,9 +1860,22 @@ class ImportWindow(AccessibleDialog):
                 )
                 QApplication.processEvents()
 
+            # Prefetch/create entity ids once for the whole scan batch
+            self._ensure_entity_caches(books, commit=False)
+
             # PHASE 1 OPTIMIZATION: Block table repaint and sorting during batch load
             self.table.setUpdatesEnabled(False)
             self.table.setSortingEnabled(False)
+
+            pending_auto_adds: list = []
+            AUTO_ADD_CHUNK = 200
+
+            def _flush_auto_adds() -> None:
+                nonlocal pending_auto_adds
+                if not pending_auto_adds:
+                    return
+                self.book_queries.insert_many(pending_auto_adds, commit=False)
+                pending_auto_adds = []
 
             for row, book in enumerate(books):
                 auto_added = False
@@ -1881,7 +1945,9 @@ class ImportWindow(AccessibleDialog):
                             book,
                             defer_commits=True,
                         )
-                        self.book_queries.insert(book_to_add, commit=False)
+                        pending_auto_adds.append(book_to_add)
+                        if len(pending_auto_adds) >= AUTO_ADD_CHUNK:
+                            _flush_auto_adds()
                         auto_added = True
                         outcomes.add("added")
                         added_count += 1
@@ -2005,6 +2071,7 @@ class ImportWindow(AccessibleDialog):
             self.table.setUpdatesEnabled(True)
             # Note: Qt sorting stays disabled - we handle sorting manually
 
+            _flush_auto_adds()
             if transaction_open:
                 conn.commit()
                 transaction_open = False
@@ -2306,11 +2373,38 @@ class ImportWindow(AccessibleDialog):
             self.progress_window.activateWindow()
             QApplication.processEvents()
 
+        # Prefetch entity ids for selected add rows
+        books_for_entities = []
+        for row in row_indices:
+            if 0 <= row < len(self.scanned_items):
+                books_for_entities.append(
+                    self.scanned_items[row].get("book", {}) or {}
+                )
+        self._ensure_entity_caches(books_for_entities, commit=False)
+
         try:
             # Only start transaction if not already in one (WAL mode may have implicit transaction)
             if not conn.in_transaction:
                 conn.execute("BEGIN")
             transaction_open = True
+
+            pending_books = []
+            pending_rows = []
+            pending_book_data = []
+            INSERT_CHUNK = 500
+
+            def _flush_pending_adds() -> None:
+                nonlocal imported, pending_books, pending_rows, pending_book_data
+                if not pending_books:
+                    return
+                self.book_queries.insert_many(pending_books, commit=False)
+                imported += len(pending_books)
+                for row_idx, book_payload in zip(pending_rows, pending_book_data):
+                    self._mark_scan_outcome_added(book_payload)
+                    rows_to_remove.append(row_idx)
+                pending_books = []
+                pending_rows = []
+                pending_book_data = []
 
             for row in row_indices:
                 QApplication.processEvents()
@@ -2340,10 +2434,11 @@ class ImportWindow(AccessibleDialog):
                         book_data,
                         defer_commits=True,
                     )
-                    self.book_queries.insert(book, commit=False)
-                    imported += 1
-                    self._mark_scan_outcome_added(book_data)
-                    rows_to_remove.append(row)
+                    pending_books.append(book)
+                    pending_rows.append(row)
+                    pending_book_data.append(book_data)
+                    if len(pending_books) >= INSERT_CHUNK:
+                        _flush_pending_adds()
                 except Exception as exc:
                     failed += 1
                     item["status"] = "Failed"
@@ -2360,7 +2455,7 @@ class ImportWindow(AccessibleDialog):
                     self.progress_window.update_add_progress(
                         processed=processed_valid,
                         total=valid_count,
-                        books_added=imported,
+                        books_added=imported + len(pending_books),
                         scanned=self._summary_counts.get("scanned", 0),
                         fixed=self._summary_counts.get("fixed", 0),
                         errors=self._summary_counts.get("errors", 0),
@@ -2378,6 +2473,7 @@ class ImportWindow(AccessibleDialog):
                 )
                 return
 
+            _flush_pending_adds()
             if transaction_open:
                 conn.commit()
                 transaction_open = False

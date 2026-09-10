@@ -1,22 +1,22 @@
-"""Tests for web fetch progress dialog and message numbering."""
+"""Web fetch progress dialog and fetch-service UI wiring tests."""
+
+from __future__ import annotations
 
 import os
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtWidgets import QApplication
 
 from src.ui.web_fetch_progress import WebFetchProgressDialog
 from src.web.web_book_api import _source_progress_message
+from src.web.web_fetch_service import fetch_web_metadata_for_book
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
+@pytest.fixture
+def api(web_api):
+    return web_api
 
 
 def test_source_progress_message_fixed_numbers():
@@ -32,7 +32,6 @@ def test_source_progress_message_fixed_numbers():
         == "Title-only search, Google Books…"
     )
 
-
 def test_progress_dialog_update_message_replaces_label(qapp):
     popup = WebFetchProgressDialog()
     try:
@@ -46,7 +45,6 @@ def test_progress_dialog_update_message_replaces_label(qapp):
     finally:
         popup.close()
 
-
 def test_progress_dialog_request_cancel_sets_flag(qapp):
     popup = WebFetchProgressDialog()
     try:
@@ -59,3 +57,47 @@ def test_progress_dialog_request_cancel_sets_flag(qapp):
         assert popup.cancel_requested is True
     finally:
         popup.close()
+
+
+def test_fetch_service_canceled(qapp, api, monkeypatch):
+    class Book:
+        title = "Test"
+        author_name = "Author"
+        year = None
+        reader = ""
+        path = ""
+        source = ""
+        comments = ""
+
+    def fake_get(*_a, **_k):
+        return {"_canceled": True}
+
+    monkeypatch.setattr("src.web.web_fetch_service.get_web_api", lambda: api)
+    monkeypatch.setattr(api, "get_book_metadata", fake_get)
+    result = fetch_web_metadata_for_book(Book(), show_progress=False)
+    assert result.canceled
+    assert "canceled" in result.status_message.lower()
+
+def test_fetch_service_cleans_success(qapp, api, monkeypatch):
+    class Book:
+        title = "Pride and Prejudice"
+        author_name = "Jane Austen"
+        year = None
+        reader = ""
+        path = ""
+        source = ""
+        comments = ""
+
+    raw = {
+        "title": "Pride and Prejudice",
+        "author": "Jane Austen",
+        "plot": "A" * 100,
+        "source": "open_library",
+    }
+
+    monkeypatch.setattr("src.web.web_fetch_service.get_web_api", lambda: api)
+    monkeypatch.setattr(api, "get_book_metadata", lambda *a, **k: raw)
+    result = fetch_web_metadata_for_book(Book(), show_progress=False)
+    assert result.has_usable_data
+    assert result.cleaned_data["title"] == "Pride and Prejudice"
+

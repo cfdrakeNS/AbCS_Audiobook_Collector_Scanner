@@ -4,23 +4,11 @@ import pytest
 from PySide6.QtCore import QSettings
 
 from src.utils.settings_helpers import (
-    get_import_preferences,
     is_proper_case_enabled,
     migrate_legacy_import_settings,
     purge_stale_settings,
     read_setting,
 )
-
-
-@pytest.fixture
-def isolated_qsettings(tmp_path):
-    original_format = QSettings.defaultFormat()
-    QSettings.setDefaultFormat(QSettings.IniFormat)
-    QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(tmp_path))
-    try:
-        yield
-    finally:
-        QSettings.setDefaultFormat(original_format)
 
 
 def _fresh_settings(app: str) -> QSettings:
@@ -91,24 +79,16 @@ def test_migrate_legacy_import_settings_copies_prefs_and_removes_legacy_import(
 ):
     current = _fresh_settings("AudioBookCollector")
     legacy = _fresh_settings("AbCS")
-    legacy.setValue("import/flip_author_name", True)
-    legacy.setValue("import/autocorrect/move_leading_the_title", True)
     legacy.setValue("import/autocorrect/proper_case", True)
     legacy.sync()
 
     migrate_legacy_import_settings()
 
-    assert current.value("import/flip_author_name", type=bool) is True
-    assert (
-        current.value("import/autocorrect/move_leading_the_title", type=bool) is True
-    )
     assert current.value("import/scan/proper_case", type=bool) is True
     assert not legacy.contains("import")
 
 
 def test_purge_stale_settings_removes_obsolete_import_rules(isolated_qsettings):
-    from src.utils.settings_helpers import purge_stale_settings
-
     settings = _fresh_settings("AudioBookCollector")
     settings.setValue("import/rules/genre_missing/enabled", True)
     settings.setValue("import/rules/bitrate_below_minimum/enabled", True)
@@ -122,20 +102,9 @@ def test_purge_stale_settings_removes_obsolete_import_rules(isolated_qsettings):
     assert not settings.contains("import/rules/bitrate_below_minimum/enabled")
 
 
-def test_get_import_preferences_reads_legacy_keys(isolated_qsettings):
-    _fresh_settings("AudioBookCollector")
-    legacy = _fresh_settings("AbCS")
-    legacy.setValue("import/flip_author_name", True)
-    legacy.setValue("import/autocorrect/move_leading_the_title", False)
-    legacy.sync()
-
-    move_articles, flip_author = get_import_preferences()
-
-    assert move_articles is False
-    assert flip_author is True
-
-
-def test_purge_stale_settings_preserves_web_metadata_pref_keys(isolated_qsettings):
+def test_purge_stale_settings_removes_flip_author_and_move_articles(
+    isolated_qsettings,
+):
     settings = _fresh_settings("AudioBookCollector")
     settings.setValue("import/flip_author_name", True)
     settings.setValue("import/autocorrect/move_leading_the_title", True)
@@ -143,7 +112,5 @@ def test_purge_stale_settings_preserves_web_metadata_pref_keys(isolated_qsetting
 
     purge_stale_settings()
 
-    assert settings.value("import/flip_author_name", type=bool) is True
-    assert (
-        settings.value("import/autocorrect/move_leading_the_title", type=bool) is True
-    )
+    assert not settings.contains("import/flip_author_name")
+    assert not settings.contains("import/autocorrect/move_leading_the_title")
