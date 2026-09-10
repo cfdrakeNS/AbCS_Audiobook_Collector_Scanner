@@ -1,6 +1,6 @@
 # GitHub cleanup for AbCS after fresh_public_repo.ps1
 # Run in PowerShell:
-#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\github_cleanup.ps1
+#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\github_cleanup.ps1
 #
 # Removes stale remote branches and tags that still point at old history.
 # Does NOT change repo visibility or collaborator access.

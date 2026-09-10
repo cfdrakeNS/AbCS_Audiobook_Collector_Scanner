@@ -1,6 +1,6 @@
 # Publish AbCS: flip repo public + GitHub Release with Windows/Linux zip installers.
 # Run in PowerShell (outside Cursor if gh auth is needed):
-#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\publish_github_release.ps1
+#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\publish_github_release.ps1
 #
 # Auth (pick one):
 #   A) GitHub CLI:  winget install GitHub.cli  then  gh auth login
@@ -13,11 +13,12 @@ $ErrorActionPreference = "Stop"
 $Abcs = "C:\projects\AbCS"
 $Owner = "cfdrakeNS"
 $Repo = "AbCS_Audiobook_Collector_Scanner"
-$Version = "2.10"
+$Version = "2.11"
 $Tag = "v$Version"
 $ReleaseName = "AbCS v$Version"
 $WinZip = "AbCS-Setup-v$Version.zip"
-$LinuxZip = "AbCS_Linux_v$Version.zip"
+$LinuxZip = "abcs_linux_v$Version.zip"  # Linux build always lowercase
+$LinuxZipLegacy = "AbCS_Linux_v$Version.zip"  # rejected; do not upload this name
 
 function Write-Step($msg) {
     Write-Host ""
@@ -120,17 +121,24 @@ Set-Location $Abcs
 Write-Step "Verify installer zips exist"
 $winPath = Join-Path $Abcs "releases\$WinZip"
 $linuxPath = Join-Path $Abcs "releases\$LinuxZip"
-# Accept either AbCS_Linux_vX.zip or abcs_linux_vX.zip from the Linux build
-if (-not (Test-Path $linuxPath)) {
-    $linuxAlt = Join-Path $Abcs ("releases\abcs_linux_v{0}.zip" -f $Version)
-    if (Test-Path $linuxAlt) {
-        Copy-Item -LiteralPath $linuxAlt -Destination $linuxPath -Force
-        Write-Host "  Copied $(Split-Path $linuxAlt -Leaf) -> $LinuxZip"
+$linuxLegacyPath = Join-Path $Abcs "releases\$LinuxZipLegacy"
+if (-not (Test-Path -LiteralPath $linuxPath)) {
+    if (Test-Path -LiteralPath $linuxLegacyPath) {
+        throw (
+            "Linux zip must be lowercase '$LinuxZip'. " +
+            "Found legacy/mixed-case '$LinuxZipLegacy' - rename it to lowercase and re-run."
+        )
     }
+    throw "Missing Linux installer: $linuxPath (expected lowercase build output)"
+}
+if (Test-Path -LiteralPath $linuxLegacyPath) {
+    Write-Host (
+        "  WARNING: also found legacy '$LinuxZipLegacy' - upload uses lowercase '$LinuxZip' only."
+    ) -ForegroundColor Yellow
 }
 foreach ($p in @($winPath, $linuxPath)) {
-    if (-not (Test-Path $p)) { throw "Missing installer: $p" }
-    $mb = [math]::Round((Get-Item $p).Length / 1MB, 1)
+    if (-not (Test-Path -LiteralPath $p)) { throw "Missing installer: $p" }
+    $mb = [math]::Round((Get-Item -LiteralPath $p).Length / 1MB, 1)
     Write-Host "  $(Split-Path $p -Leaf) ($mb MB)"
 }
 
@@ -152,8 +160,8 @@ AbCS $Version
 - Book List Import shows Import Progress with live counters; Escape cancels and keeps books already added.
 
 **Downloads**
-- **Windows:** ``$WinZip`` — extract and run ``AbCS-Setup.exe`` (SmartScreen may warn; see README).
-- **Linux:** ``$LinuxZip`` — extract and run the install script inside the archive.
+- **Windows:** ``$WinZip`` - extract and run ``AbCS-Setup.exe`` (SmartScreen may warn; see README).
+- **Linux:** ``$LinuxZip`` - extract and run the install script inside the archive.
 
 **License:** Free and source-available (custom non-commercial license). See ``AbCS_License.txt``.
 "@
@@ -173,7 +181,7 @@ GitHub CLI is installed but not logged in.
 Run in PowerShell:
   gh auth login
 Then re-run:
-  powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\publish_github_release.ps1
+  powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\publish_github_release.ps1
 "@
     }
     Write-Host "Ensuring repo is public ..."

@@ -1,5 +1,5 @@
 # Export AbCS git history to CSV (run before fresh-public-repo if desired)
-# Usage: powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\export_git_history.ps1
+# Usage: powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\export_git_history.ps1
 #
 # Output (in doc/):
 #   git_history_full.csv      — all commits (Date column = full timestamp with timezone)

@@ -42,7 +42,7 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
 
 ## Settings that affect this
 
-None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online. Import Preferences options for title/author formatting (move articles, flip author name) do **not** apply to web fetch results.
+None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online.
 
 ## Mouse, shortcuts, and accessibility
 

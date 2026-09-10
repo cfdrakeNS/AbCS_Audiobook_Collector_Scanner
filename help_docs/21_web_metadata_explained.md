@@ -286,7 +286,6 @@ Repeat Alt+W on the next focused row. There is no batch mode.
 | Works offline                         | No — internet required                         |
 | Uses your file path for the search    | No — title and author from the library record  |
 | Has its own Preferences page          | No — behavior is fixed for all users           |
-| Applies import title/author formatting | No — move-articles / flip-author prefs are ignored |
 
 
 ---

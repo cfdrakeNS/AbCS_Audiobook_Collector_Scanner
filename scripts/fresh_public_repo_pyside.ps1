@@ -1,7 +1,7 @@
 # Fresh public repo — pyside6-accessible-ui-reference (drops old commit history)
 #
 # Run AFTER AbCS fresh repo, or standalone for the reference repo only:
-#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\fresh_public_repo_pyside.ps1
+#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\fresh_public_repo_pyside.ps1
 
 $ErrorActionPreference = "Stop"
 $Repo     = "C:\projects\pyside6-accessible-ui-reference"

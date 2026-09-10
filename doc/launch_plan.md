@@ -102,10 +102,10 @@ Pending (after Dominic meeting):
 - [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md) — moved "Mac installer" out of the tester-facing backlog table and into "What we are not planning".
 - [README.md](../README.md) — SmartScreen note uses "free and source-available project"; Support uses `auroraaccessibility@gmail.com`.
 - [linux_build.md](linux_build.md) — removed personal email from SSH key example.
-- Git history scrub and remote cleanup — **done Aug 2026** (`fresh_public_repo.ps1`, [github_cleanup.ps1](github_cleanup.ps1)).
+- Git history scrub and remote cleanup — **done Aug 2026** (`scripts/fresh_public_repo.ps1`, [github_cleanup.ps1](../scripts/github_cleanup.ps1)).
 - GitHub Release **v2.06** with Windows and Linux zip installers — **done Aug 2026**.
-- GitHub Release **v2.09** with Windows and Linux zip installers — **done Sep 2026** ([release](https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases/tag/v2.09); [publish_github_release.ps1](publish_github_release.ps1)).
-- Carrd publish script — [publish_github_release.ps1](publish_github_release.ps1).
+- GitHub Release **v2.09** with Windows and Linux zip installers — **done Sep 2026** ([release](https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases/tag/v2.09); [publish_github_release.ps1](../scripts/publish_github_release.ps1)).
+- Carrd publish script — [publish_github_release.ps1](../scripts/publish_github_release.ps1).
 
 ---
 

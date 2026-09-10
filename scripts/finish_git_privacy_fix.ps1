@@ -1,6 +1,6 @@
 # Finish Launch Prep: Git History Privacy Fix (rewrite all commits)
 # Run in Windows PowerShell (NOT via Cursor Run button):
-#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\finish_git_privacy_fix.ps1
+#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\finish_git_privacy_fix.ps1
 #
 # If this keeps failing, use fresh_public_repo.ps1 instead (simpler, drops old history).
 

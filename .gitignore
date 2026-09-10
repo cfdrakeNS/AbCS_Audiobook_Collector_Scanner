@@ -22,11 +22,14 @@ dist-legacy-hp/
 *.pkg
 *.spec
 
-# Python cache
+# Python cache / coverage
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.coverage
+htmlcov/
+.pytest_cache/
 
 # IDE/Editor
 .vscode/

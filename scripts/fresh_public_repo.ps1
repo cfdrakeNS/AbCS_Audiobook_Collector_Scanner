@@ -1,7 +1,7 @@
 # Fresh public repo — AbCS (drops old commit history, one clean commit)
 #
 # Run in PowerShell OUTSIDE Cursor:
-#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\doc\fresh_public_repo.ps1
+#   powershell -ExecutionPolicy Bypass -File C:\projects\AbCS\scripts\fresh_public_repo.ps1
 
 $ErrorActionPreference = "Stop"
 $Abcs       = "C:\projects\AbCS"
