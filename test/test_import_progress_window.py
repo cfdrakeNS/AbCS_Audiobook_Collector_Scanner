@@ -196,3 +196,20 @@ def test_import_progress_add_phase_resets_then_increments(qtbot, ui_scaler, them
     window._scan_active = False
     cleanup_window(window)
 
+
+def test_book_list_progress_bar_says_importing(qtbot, ui_scaler, theme_manager):
+    """Book List Import progress bar uses Importing N/N, not Adding."""
+    window = ImportProgressWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.set_activity_label("import")
+
+    window.prepare_for_add_phase(4)
+    assert window.scan_progress.format() == "Importing 0/4"
+
+    window.update_add_progress(processed=2, total=4, books_added=1, elapsed_text="00:05")
+    assert window.scan_progress.format() == "Importing 2/4"
+    assert "Importing 2/4" in window.status_bar.currentMessage()
+
+    window._scan_active = False
+    cleanup_window(window)
+

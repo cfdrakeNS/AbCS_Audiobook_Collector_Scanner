@@ -38,11 +38,12 @@ from datetime import datetime
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     apply_visual_tooltip_map,
-    build_accessible_message_box_style,
     build_accessible_spinbox_style,
     build_card_group_box_style,
     build_modern_button_style,
     build_preferences_tab_style,
+    exec_styled_message_box,
+    MESSAGE_BOX_RESTORE_CONFIRM_ICONS,
     _is_linux,
 )
 from src.accessibility.icon_helper import apply_decorative_action_icon
@@ -2046,40 +2047,36 @@ class PreferencesWindow(AccessibleDialog):
 
     def on_restore_defaults(self):
         """Restore all settings to default values with confirmation."""
-        # Build confirmation message for screen reader accessibility
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Restore Defaults")
-        msg_box.setAccessibleName("Restore Defaults Confirmation")
-        msg_box.setAccessibleDescription(
-            "Warning, this will reset all preferences to their default values. "
-            "This action cannot be undone. Are you sure you want to continue?"
-        )
-        msg_box.setText(
-            "Are you sure you want to restore all preferences to their default values?"
-        )
-        msg_box.setInformativeText(
-            "This will reset: Display settings (theme, zoom), Import settings "
-            "(directory, formats, scenario, fallback options), and Validation rules. "
-            "This action cannot be undone."
-        )
-        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg_box.setDefaultButton(QMessageBox.No)
-        msg_box.button(QMessageBox.Yes).setAccessibleName("Yes, restore defaults")
-        msg_box.button(QMessageBox.No).setAccessibleName("No, keep current settings")
+        from src.accessibility.icon_helper import get_app_icon
 
-        from src.accessibility.style_helpers import (
-            apply_message_box_button_icons,
-            MESSAGE_BOX_RESTORE_CONFIRM_ICONS,
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Warning,
+            title="Restore Defaults",
+            text=(
+                "Are you sure you want to restore all preferences to their default "
+                "values?\n\n"
+                "This will reset: Display settings (theme, zoom), Import settings "
+                "(directory, formats, scenario, fallback options), and Validation "
+                "rules. This action cannot be undone."
+            ),
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+            button_accessibility={
+                QMessageBox.Yes: (
+                    "Yes, restore defaults",
+                    "Restore all preferences to default values",
+                ),
+                QMessageBox.No: (
+                    "No, keep current settings",
+                    "Keep current preference settings",
+                ),
+            },
+            window_icon=get_app_icon(),
+            scaler=self.scaler,
+            button_icon_roles=MESSAGE_BOX_RESTORE_CONFIRM_ICONS,
         )
-
-        apply_message_box_button_icons(
-            msg_box, self.scaler, MESSAGE_BOX_RESTORE_CONFIRM_ICONS
-        )
-        msg_box.setStyleSheet(
-            build_accessible_message_box_style(self.scaler.current_scale)
-        )
-
-        reply = msg_box.exec()
 
         if reply != QMessageBox.Yes:
             self.set_status("Restore defaults cancelled")

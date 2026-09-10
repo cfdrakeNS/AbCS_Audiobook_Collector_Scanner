@@ -318,15 +318,27 @@ class ImportProgressWindow(QDialog):
         safe_total = max(0, int(total_books))
         self._scan_active = True
         self.scan_progress.setValue(0)
+        book_list = self._book_list_counters()
         if safe_total > 0:
-            self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
-            self.set_status(
-                f"Adding started. 0/{safe_total}.",
-                announce=True,
-            )
+            if book_list:
+                self.scan_progress.setFormat(f"Importing 0/{safe_total}")
+                self.set_status(
+                    f"Importing started. 0/{safe_total}.",
+                    announce=True,
+                )
+            else:
+                self.scan_progress.setFormat(f"Adding... 0/{safe_total}")
+                self.set_status(
+                    f"Adding started. 0/{safe_total}.",
+                    announce=True,
+                )
         else:
-            self.scan_progress.setFormat("Adding...")
-            self.set_status("Adding started.", announce=True)
+            if book_list:
+                self.scan_progress.setFormat("Importing...")
+                self.set_status("Importing started.", announce=True)
+            else:
+                self.scan_progress.setFormat("Adding...")
+                self.set_status("Adding started.", announce=True)
 
     def _book_list_counters(self) -> bool:
         """True when this progress window is used for Book List Import."""
@@ -399,19 +411,28 @@ class ImportProgressWindow(QDialog):
         """Update progress during add/processing phase."""
         safe_total = max(0, int(total))
         safe_processed = max(0, int(processed))
+        book_list = self._book_list_counters()
         if safe_total > 0:
             safe_processed = min(safe_processed, safe_total)
             percent = int((safe_processed / safe_total) * 100)
             self.scan_progress.setValue(percent)
-            self.scan_progress.setFormat(f"Adding... {safe_processed}/{safe_total}")
+            if book_list:
+                self.scan_progress.setFormat(
+                    f"Importing {safe_processed}/{safe_total}"
+                )
+            else:
+                self.scan_progress.setFormat(
+                    f"Adding... {safe_processed}/{safe_total}"
+                )
         else:
             self.scan_progress.setValue(0)
-            self.scan_progress.setFormat("Adding...")
+            self.scan_progress.setFormat(
+                "Importing..." if book_list else "Adding..."
+            )
 
         if scanned is not None:
             # Counters already include scanned/added counts; do not also prefix
-            # "Adding N/N" (that duplicates the progress-bar format).
-            book_list = self._book_list_counters()
+            # progress N/N (that duplicates the progress-bar format).
             self.update_counters(
                 scanned=scanned,
                 added=books_added if books_added is not None else 0,
@@ -424,9 +445,18 @@ class ImportProgressWindow(QDialog):
             )
             return
 
-        status_text = (
-            f"Adding {safe_processed}/{safe_total}" if safe_total > 0 else "Adding"
-        )
+        if book_list:
+            status_text = (
+                f"Importing {safe_processed}/{safe_total}"
+                if safe_total > 0
+                else "Importing"
+            )
+        else:
+            status_text = (
+                f"Adding {safe_processed}/{safe_total}"
+                if safe_total > 0
+                else "Adding"
+            )
         if elapsed_text is not None:
             status_text = f"{status_text} | Elapsed {elapsed_text}"
         self.set_status(status_text)

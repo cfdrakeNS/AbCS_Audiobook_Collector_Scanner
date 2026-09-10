@@ -17,6 +17,7 @@ from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication
 
 from src.accessibility.style_helpers import (
+    build_accessible_message_box_style,
     build_modern_button_style,
     build_table_polish_style,
 )
@@ -64,6 +65,16 @@ def _extract_block(style: str, header: str) -> str:
     open_brace = style.index("{", start)
     close_brace = style.index("}", open_brace)
     return style[open_brace : close_brace + 1]
+
+
+def test_message_box_style_uses_scaled_pixel_height_not_zoom_pct():
+    """Message-box buttons must get pixel height (e.g. 20), not zoom % (e.g. 100)."""
+    style = build_accessible_message_box_style(20)
+    block = _extract_block(style, "QMessageBox QPushButton")
+    assert "min-height: 16px" in block
+    assert "max-height: 16px" in block
+    assert "min-height: 96px" not in style
+
 
 # --- Help window: Enter must not activate zoom out ---
 
