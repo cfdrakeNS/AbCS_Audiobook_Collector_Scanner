@@ -43,9 +43,9 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 
-; Output: releases\AbCS-Setup-{version}.exe (version from APP_VERSION)
+; Output: releases\AbCS-Setup.exe (version lives in the zip name, not the installer filename)
 OutputDir=releases
-OutputBaseFilename=AbCS-Setup-{#MyAppVersion}
+OutputBaseFilename=AbCS-Setup
 
 ; ── Installer branding ────────────────────────────────────────────
 ; Icon embedded into Setup.exe itself and shown in taskbar/title bar

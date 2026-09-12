@@ -152,5 +152,5 @@ if errorlevel 1 (
 )
 
 echo Installer build complete.
-echo Output: releases\AbCS-Setup-%VER%.exe
+echo Output: releases\AbCS-Setup.exe
 pause

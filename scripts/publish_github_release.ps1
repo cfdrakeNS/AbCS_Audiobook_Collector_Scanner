@@ -142,6 +142,21 @@ foreach ($p in @($winPath, $linuxPath)) {
     Write-Host "  $(Split-Path $p -Leaf) ($mb MB)"
 }
 
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$winZip = [System.IO.Compression.ZipFile]::OpenRead($winPath)
+try {
+    $winExeNames = @($winZip.Entries | ForEach-Object { $_.Name } | Where-Object { $_ -like "*.exe" })
+}
+finally {
+    $winZip.Dispose()
+}
+if ($winExeNames -notcontains "AbCS-Setup.exe") {
+    throw "Windows zip must contain AbCS-Setup.exe (no version in the installer filename). Found: $($winExeNames -join ', ')"
+}
+if ($winExeNames | Where-Object { $_ -match '^AbCS-Setup-.+\.exe$' }) {
+    throw "Windows zip must not include a versioned installer name (SmartScreen). Found: $($winExeNames -join ', ')"
+}
+
 Write-Step "Verify git tag $Tag on main (create/push if missing)"
 Invoke-Git @("fetch", "origin", "main")
 $localTag = git tag -l $Tag
