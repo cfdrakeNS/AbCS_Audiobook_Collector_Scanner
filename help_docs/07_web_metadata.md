@@ -78,4 +78,4 @@ Not in its own field. The review window shows **Rating** for reference (Alt+R). 
 No. Only the currently focused book in the main window is used. Use Book Details to fetch one book at a time from that view.
 
 **Why does the message say "rate limited" or show a countdown?**
-Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS does not retry a 429 immediately; it waits for a cooldown (often several minutes) before contacting that source again. A message such as *Try again in about 30s or use Re-fetch (Alt+F)* tells you roughly when it will work again. Other sources continue in their normal order.
+Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown (often about 15 minutes for Google Books) before contacting that source again. The web details window only opens when data is found — there is no Re-fetch button on that error popup. Wait for the cooldown, then press Alt+W again. Other sources continue in their normal order when one source is limited.

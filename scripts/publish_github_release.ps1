@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $Abcs = "C:\projects\AbCS"
 $Owner = "cfdrakeNS"
 $Repo = "AbCS_Audiobook_Collector_Scanner"
-$Version = "2.12"
+$Version = "2.13"
 $Tag = "v$Version"
 $ReleaseName = "AbCS v$Version"
 $WinZip = "AbCS-Setup-v$Version.zip"
@@ -155,7 +155,7 @@ AbCS $Version
 
 **What's new**
 - Web metadata: writable cache in the user data folder (installed builds no longer lose the cache).
-- Rate limits: no retry on HTTP 429, longer persisted cooldowns, policy-compliant User-Agent.
+- Rate limits: no retry on HTTP 429 or Google Books 403 quota; 15-minute cooldown floor; no Re-fetch hint on a miss (use Alt+W after the wait).
 - WikiData uses indexed entity search instead of a full SPARQL scan.
 - Optional Google Books API key in Preferences (Display) or ``ABCS_GOOGLE_BOOKS_API_KEY``.
 - Fewer requests per fetch and short-lived caching of misses.

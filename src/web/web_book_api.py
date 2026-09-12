@@ -298,18 +298,33 @@ def _parse_retry_after_seconds(
         return float(default)
 
 
+def _is_rate_limit_http_code(source: str, code: int) -> bool:
+    """True when this status should start a source cooldown."""
+    if code == 429:
+        return True
+    # Google Books often returns 403 for anonymous/unregistered quota exhaustion.
+    if code == 403 and source == "google_books":
+        return True
+    return False
+
+
 def _note_rate_limited(
     source: str,
     seconds: float | None = None,
     *,
     headers=None,
 ) -> None:
-    """Mark a source as cooling down so later calls skip the network briefly."""
+    """Mark a source as cooling down so later calls skip the network.
+
+    Retry-After may lengthen the cooldown but never shortens it below the
+    per-source policy default (Google often sends Retry-After of a few seconds).
+    """
     default = _default_cooldown_seconds(source)
     if seconds is None:
         seconds = default
     if headers is not None:
-        seconds = _parse_retry_after_seconds(headers, default=default)
+        parsed = _parse_retry_after_seconds(headers, default=default)
+        seconds = max(float(default), float(parsed))
     until = time.time() + max(0.0, float(seconds))
     previous = _source_cooldown_until.get(source, 0.0)
     if until > previous:
@@ -357,13 +372,13 @@ def _raise_cooldown_http_error(source: str = "google_books") -> None:
 
 
 def _urlopen_with_retry(req, timeout: float, *, source: str = "google_books"):
-    """Open URL once; on 503 wait briefly and retry once. Never retry 429."""
+    """Open URL once; on 503 wait briefly and retry once. Never retry 429/403 quota."""
     try:
         return urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as exc:
         if isinstance(exc, SourceCooldownError):
             raise
-        if exc.code == 429:
+        if _is_rate_limit_http_code(source, exc.code):
             # Caller (_http_get_json) records cooldown once; do not retry.
             raise
         if exc.code not in _RETRYABLE_HTTP_CODES:
@@ -375,7 +390,10 @@ def _urlopen_with_retry(req, timeout: float, *, source: str = "google_books"):
         except urllib.error.HTTPError as retry_exc:
             if isinstance(retry_exc, SourceCooldownError):
                 raise
-            if retry_exc.code in _FATAL_HTTP_CODES:
+            if (
+                retry_exc.code in _FATAL_HTTP_CODES
+                or _is_rate_limit_http_code(source, retry_exc.code)
+            ):
                 _note_rate_limited(
                     source, headers=getattr(retry_exc, "headers", None)
                 )
@@ -417,7 +435,10 @@ def _http_get_json(
     except SourceCooldownError:
         raise
     except urllib.error.HTTPError as exc:
-        if exc.code in _FATAL_HTTP_CODES:
+        if (
+            exc.code in _FATAL_HTTP_CODES
+            or _is_rate_limit_http_code(source, exc.code)
+        ):
             _note_rate_limited(source, headers=getattr(exc, "headers", None))
         raise
 
@@ -456,17 +477,29 @@ def format_web_fetch_status_message(fetch_errors: list) -> str:
         return "Web fetch failed: unable to reach web sources."
     first = str(fetch_errors[0])
     lowered = first.lower()
-    if "429" in first or "too many requests" in lowered:
+    if (
+        "429" in first
+        or "too many requests" in lowered
+        or "403" in first
+        or "rate limit" in lowered
+        or "quota" in lowered
+    ):
         remaining = _seconds_until_cooldown_clears("google_books")
+        if remaining <= 0:
+            for source in ("wikidata", "wikipedia", "open_library"):
+                remaining = _seconds_until_cooldown_clears(source)
+                if remaining > 0:
+                    break
         if remaining > 0:
+            if remaining >= 60:
+                minutes = max(1, int(round(remaining / 60.0)))
+                return (
+                    f"Web source rate limited. Try again in about {minutes} "
+                    f"minute{'s' if minutes != 1 else ''}."
+                )
             seconds = max(1, int(round(remaining)))
-            return (
-                f"Google Books rate limited. Try again in about {seconds}s "
-                "or use Re-fetch (Alt+F)."
-            )
-        return (
-            "Google Books rate limited. Try again later or use Re-fetch (Alt+F)."
-        )
+            return f"Web source rate limited. Try again in about {seconds}s."
+        return "Web source rate limited. Try again later."
     if "open_library" in lowered:
         return f"Open Library unavailable. {first.split(':', 1)[-1].strip()}"
     if "google_books" in lowered:
@@ -474,6 +507,23 @@ def format_web_fetch_status_message(fetch_errors: list) -> str:
     if "wikidata" in lowered:
         return f"WikiData unavailable. {first.split(':', 1)[-1].strip()}"
     return f"Web fetch failed: {first}"
+
+
+def format_web_fetch_dialog_text(fetch_errors: list) -> str:
+    """Build popup text for a failed fetch (no Re-fetch hint — window never opens)."""
+    fetch_errors = _dedupe_fetch_errors(list(fetch_errors or []))
+    status = format_web_fetch_status_message(fetch_errors)
+    lines = [status, ""]
+    if fetch_errors:
+        lines.append("Details:")
+        for err in fetch_errors[:3]:
+            lines.append(f"  • {err}")
+        lines.append("")
+    lines.append(
+        "The web details window only opens when data is found. "
+        "Wait for the cooldown, then press Alt+W again on this book."
+    )
+    return "\n".join(lines)
 
 
 def _source_progress_message(source_key: str, *, phase: str = "primary") -> str:
@@ -1302,7 +1352,10 @@ class WebBookAPI:
         except urllib.error.HTTPError as exc:
             if isinstance(exc, SourceCooldownError):
                 return None
-            if exc.code in _FATAL_HTTP_CODES:
+            if (
+                exc.code in _FATAL_HTTP_CODES
+                or _is_rate_limit_http_code("google_books", exc.code)
+            ):
                 _note_rate_limited("google_books", headers=getattr(exc, "headers", None))
             return None
         except Exception:
@@ -1986,7 +2039,10 @@ class WebBookAPI:
                     if propagate_fatal_errors:
                         raise
                     break
-                if exc.code in _FATAL_HTTP_CODES:
+                if (
+                    exc.code in _FATAL_HTTP_CODES
+                    or _is_rate_limit_http_code("google_books", exc.code)
+                ):
                     _note_rate_limited(
                         "google_books", headers=getattr(exc, "headers", None)
                     )

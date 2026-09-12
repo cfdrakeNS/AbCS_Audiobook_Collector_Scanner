@@ -86,11 +86,11 @@ A repeat fetch for the same book may return cached results without hitting the n
 
 Google Books, WikiData, and Wikipedia may answer with "too many requests" (HTTP 429) or "temporarily unavailable" (HTTP 503).
 
-- On **429**, AbCS does **not** retry the same request. It records a cooldown (from the `Retry-After` header when present, otherwise about 15 minutes for Google Books and 5 minutes for WikiData/Wikipedia) and skips that source.
+- On **429** (and Google Books **403** quota errors), AbCS does **not** retry. It records a cooldown of at least about **15 minutes** for Google Books (5 minutes for WikiData/Wikipedia), or longer if the server asks. Short `Retry-After` values are ignored when they would undercut that floor.
 - On **503**, AbCS waits briefly and retries **once**.
 - Cooldowns are saved next to the web cache so restarting AbCS does not immediately resume banned traffic.
 
-Any status or error message shown may include a live countdown, for example *Try again in about 30s*, so you know roughly when that source will be tried again.
+Any status or error message may include a countdown such as *Try again in about 15 minutes*. The web details window only opens when data is found — wait for the cooldown, then press Alt+W again.
 
 Other sources continue in their normal order while one source is cooling down.
 

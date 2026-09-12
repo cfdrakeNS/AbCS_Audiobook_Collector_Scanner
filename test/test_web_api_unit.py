@@ -311,7 +311,8 @@ def test_format_web_fetch_status_message_rate_limit():
         ["google_books: HTTP Error 429: Too Many Requests"]
     )
     assert "rate limited" in msg.lower()
-    assert "re-fetch" in msg.lower()
+    assert "re-fetch" not in msg.lower()
+    assert "alt+f" not in msg.lower()
 
 def test_format_web_fetch_status_message_includes_cooldown_seconds():
     from src.web.web_book_api import (
@@ -325,9 +326,27 @@ def test_format_web_fetch_status_message_includes_cooldown_seconds():
         ["google_books: HTTP Error 429: Too Many Requests"]
     )
     assert "rate limited" in msg.lower()
-    assert "re-fetch" in msg.lower()
+    assert "re-fetch" not in msg.lower()
     assert "about" in msg.lower()
-    assert "s" in msg.lower()
+    assert "40" in msg or "s" in msg.lower()
+    _clear_source_cooldown()
+
+
+def test_format_web_fetch_dialog_text_explains_no_window():
+    from src.web.web_book_api import (
+        _note_rate_limited,
+        format_web_fetch_dialog_text,
+    )
+
+    _clear_source_cooldown()
+    _note_rate_limited("google_books", seconds=120)
+    text = format_web_fetch_dialog_text(
+        ["google_books: HTTP Error 429: Too Many Requests"]
+    )
+    assert "rate limited" in text.lower()
+    assert "re-fetch" not in text.lower()
+    assert "alt+w" in text.lower()
+    assert "web details window only opens" in text.lower()
     _clear_source_cooldown()
 
 

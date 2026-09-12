@@ -730,7 +730,8 @@ def test_cache_hit_skips_network_when_enriched(api):
     assert result["title"] == "Dune"
     assert "open_library_work_key" not in result
 
-def test_retry_after_sets_cooldown_from_header():
+def test_retry_after_floors_to_source_default():
+    """Short Retry-After must not undercut the Google Books policy cooldown."""
     _clear_source_cooldown()
 
     class Headers(dict):
@@ -740,7 +741,22 @@ def test_retry_after_sets_cooldown_from_header():
     headers = Headers({"Retry-After": "12"})
     _note_rate_limited("google_books", headers=headers)
     remaining = _seconds_until_cooldown_clears("google_books")
-    assert 10 <= remaining <= 12
+    # Default Google cooldown is 15 minutes; 12s header must not win.
+    assert remaining >= 14 * 60
+    _clear_source_cooldown()
+
+
+def test_retry_after_can_lengthen_beyond_default():
+    _clear_source_cooldown()
+
+    class Headers(dict):
+        def get(self, key, default=None):
+            return super().get(key, default)
+
+    headers = Headers({"Retry-After": "2000"})
+    _note_rate_limited("google_books", headers=headers)
+    remaining = _seconds_until_cooldown_clears("google_books")
+    assert remaining >= 1990
     _clear_source_cooldown()
 
 @patch("src.web.web_book_api.urllib.request.urlopen")

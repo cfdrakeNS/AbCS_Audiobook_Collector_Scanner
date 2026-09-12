@@ -3763,7 +3763,11 @@ class MainWindow(QMainWindow):
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Information,
-            title="No Web Data Found",
+            title=(
+                "Web Source Unavailable"
+                if "rate limited" in (status_msg or "").lower()
+                else "No Web Data Found"
+            ),
             text=no_data_text,
         )
 

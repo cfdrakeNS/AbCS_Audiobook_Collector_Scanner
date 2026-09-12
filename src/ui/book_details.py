@@ -2389,7 +2389,11 @@ class BookDetailsWindow(AccessibleDialog):
                     self,
                     self.scaler.get_scaled_size(20),
                     icon=QMessageBox.Information,
-                    title="No Web Data Found",
+                    title=(
+                        "Web Source Unavailable"
+                        if "rate limited" in (status_msg or "").lower()
+                        else "No Web Data Found"
+                    ),
                     text=no_web_text,
                 )
                 QTimer.singleShot(0, self.title_edit.setFocus)

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 from src.ui.web_fetch_progress import WebFetchProgressDialog
 from src.web.web_book_api import (
     clean_web_data,
+    format_web_fetch_dialog_text,
     format_web_fetch_status_message,
     get_web_api,
 )
@@ -105,11 +106,7 @@ def fetch_web_metadata_for_book(
 
         if result.errors:
             result.status_message = format_web_fetch_status_message(result.errors)
-            result.dialog_text = (
-                "Unable to reach one or more web sources.\n\n"
-                + "\n".join(f"  • {e}" for e in result.errors[:3])
-                + "\n\nTry again later or use Re-fetch (Alt+F) in the web details window."
-            )
+            result.dialog_text = format_web_fetch_dialog_text(result.errors)
         elif result.cleaned_data:
             result.status_message = "Web data found."
             result.dialog_text = ""
