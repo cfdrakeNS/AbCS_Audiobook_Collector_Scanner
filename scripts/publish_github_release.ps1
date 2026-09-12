@@ -154,10 +154,11 @@ $releaseNotes = @"
 AbCS $Version
 
 **What's new**
-- Import duplicate detection strips series numbers on both sides and uses the number as a tiebreaker (``01`` vs ``02`` no longer collide; bare titles still match).
-- Folder import keeps the duplicate index live during a scan so same-pass duplicates are caught.
-- Find (Ctrl+F) opens with an empty search box each time.
-- Book List Import shows Import Progress with live counters; Escape cancels and keeps books already added.
+- Web metadata: writable cache in the user data folder (installed builds no longer lose the cache).
+- Rate limits: no retry on HTTP 429, longer persisted cooldowns, policy-compliant User-Agent.
+- WikiData uses indexed entity search instead of a full SPARQL scan.
+- Optional Google Books API key in Preferences (Display) or ``ABCS_GOOGLE_BOOKS_API_KEY``.
+- Fewer requests per fetch and short-lived caching of misses.
 
 **Downloads**
 - **Windows:** ``$WinZip`` - extract and run ``AbCS-Setup.exe`` (SmartScreen may warn; see README).
