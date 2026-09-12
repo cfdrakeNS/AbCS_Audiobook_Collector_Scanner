@@ -75,3 +75,5 @@ ltr_demo/**
 
 # Generated ODT user documentation (built from doc/*.md)
 doc/user_docs/
+
+data/web_source_cooldowns.json

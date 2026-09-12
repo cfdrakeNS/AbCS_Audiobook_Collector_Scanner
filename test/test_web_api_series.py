@@ -74,21 +74,67 @@ def test_get_open_library_work_fields_parses_series(api):
     assert fields["series"] == "How the Light Gets In"
     assert fields["series_number"] == "9"
 
-def test_wikidata_metadata_includes_series_from_bindings(api):
-    sparql_payload = {
-        "results": {
-            "bindings": [
-                {
-                    "bookLabel": {"value": "How the Light Gets In"},
-                    "authorLabel": {"value": "Louise Penny"},
-                    "seriesLabel": {"value": "Chief Inspector Armand Gamache"},
-                    "seriesOrdinal": {"value": "9"},
-                }
-            ]
+def test_wikidata_metadata_includes_series_from_entity_claims(api):
+    search_payload = {
+        "search": [
+            {
+                "id": "Q123",
+                "label": "How the Light Gets In",
+                "description": "novel by Louise Penny",
+            }
+        ]
+    }
+    entities_payload = {
+        "entities": {
+            "Q123": {
+                "labels": {"en": {"value": "How the Light Gets In"}},
+                "claims": {
+                    "P50": [
+                        {
+                            "mainsnak": {
+                                "datavalue": {
+                                    "value": {"id": "Q456"},
+                                    "type": "wikibase-entityid",
+                                }
+                            }
+                        }
+                    ],
+                    "P179": [
+                        {
+                            "mainsnak": {
+                                "datavalue": {
+                                    "value": {"id": "Q789"},
+                                    "type": "wikibase-entityid",
+                                }
+                            }
+                        }
+                    ],
+                    "P1545": [
+                        {
+                            "mainsnak": {
+                                "datavalue": {"value": "9", "type": "string"}
+                            }
+                        }
+                    ],
+                },
+            }
         }
     }
+    labels_payload = {
+        "entities": {
+            "Q456": {"labels": {"en": {"value": "Louise Penny"}}},
+            "Q789": {
+                "labels": {"en": {"value": "Chief Inspector Armand Gamache"}}
+            },
+        }
+    }
+    responses = [search_payload, entities_payload, labels_payload]
+
+    def fake_http_get_json(*_args, **_kwargs):
+        return responses.pop(0)
+
     with patch(
-        "src.web.web_book_api._http_get_json", return_value=sparql_payload
+        "src.web.web_book_api._http_get_json", side_effect=fake_http_get_json
     ):
         result = api._fetch_from_wikidata(
             "How the Light Gets In", "Louise Penny"

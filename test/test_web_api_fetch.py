@@ -485,7 +485,7 @@ class _FakeGoogleResponse:
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
 def test_google_books_429_stops_query_loop(urlopen_mock, sleep_mock, api):
-    """Fatal 429 must not try the next query variant against the same endpoint."""
+    """Fatal 429 must not retry and must not try the next query variant."""
     urlopen_mock.side_effect = _http_error_429()
     result = api._fetch_from_google_books(
         "Pride and Prejudice",
@@ -494,9 +494,8 @@ def test_google_books_429_stops_query_loop(urlopen_mock, sleep_mock, api):
         propagate_fatal_errors=False,
     )
     assert result is None
-    # First attempt + one retry from _urlopen_with_retry; no second query variant.
-    assert urlopen_mock.call_count == 2
-    sleep_mock.assert_called_once()
+    assert urlopen_mock.call_count == 1
+    sleep_mock.assert_not_called()
 
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
@@ -521,10 +520,21 @@ def test_google_books_cooldown_short_circuits_followup(urlopen_mock, sleep_mock,
     assert result is None
     assert urlopen_mock.call_count == first_calls
 
+def _http_error_503():
+    import urllib.error
+
+    return urllib.error.HTTPError(
+        "https://www.googleapis.com/books/v1/volumes",
+        503,
+        "Service Unavailable",
+        {},
+        None,
+    )
+
 @patch("src.web.web_book_api.time.sleep")
 @patch("src.web.web_book_api.urllib.request.urlopen")
-def test_google_books_retry_backoff_recovers(urlopen_mock, sleep_mock, api):
-    """One 429 then a successful retry returns the matched volume."""
+def test_google_books_503_retry_recovers(urlopen_mock, sleep_mock, api):
+    """One 503 then a successful retry returns the matched volume."""
     success_payload = {
         "items": [
             {
@@ -537,7 +547,7 @@ def test_google_books_retry_backoff_recovers(urlopen_mock, sleep_mock, api):
         ]
     }
     urlopen_mock.side_effect = [
-        _http_error_429(),
+        _http_error_503(),
         _FakeGoogleResponse(success_payload),
     ]
     result = api._fetch_from_google_books(
@@ -762,4 +772,168 @@ def test_get_web_api_returns_shared_instance(tmp_path, monkeypatch):
     b = get_web_api()
     assert a is b
     _reset_shared_web_api_for_tests()
+
+
+def test_user_agent_includes_version_and_contact():
+    from src.build_config import APP_VERSION
+    from src.web.web_book_api import USER_AGENT
+
+    assert APP_VERSION in USER_AGENT
+    assert USER_AGENT.startswith("AbCS/")
+    assert "github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner" in USER_AGENT
+
+
+def test_resolve_web_cache_file_frozen_uses_user_data(tmp_path, monkeypatch):
+    monkeypatch.setattr(wba.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(
+        "src.app_paths.get_user_data_dir", lambda: tmp_path / "AbCSUser"
+    )
+    path = wba._resolve_web_cache_file()
+    assert path == str(tmp_path / "AbCSUser" / "web_cache.json")
+
+
+def test_source_cooldown_error_does_not_extend_cooldown(api):
+    from src.web.web_book_api import (
+        SourceCooldownError,
+        _note_rate_limited,
+        _raise_cooldown_http_error,
+        _seconds_until_cooldown_clears,
+        _clear_source_cooldown,
+    )
+
+    _clear_source_cooldown()
+    _note_rate_limited("google_books", seconds=40)
+    first = _seconds_until_cooldown_clears("google_books")
+    assert first > 30
+    try:
+        _raise_cooldown_http_error("google_books")
+    except SourceCooldownError:
+        pass
+    # Synthetic cooldown error must not push the deadline further out.
+    second = _seconds_until_cooldown_clears("google_books")
+    assert second <= first
+    _clear_source_cooldown()
+
+
+@patch("src.web.web_book_api.urllib.request.urlopen")
+def test_http_get_json_cooldown_does_not_re_note_limit(urlopen_mock, api):
+    from src.web.web_book_api import (
+        SourceCooldownError,
+        _http_get_json,
+        _note_rate_limited,
+        _seconds_until_cooldown_clears,
+        _clear_source_cooldown,
+    )
+
+    _clear_source_cooldown()
+    _note_rate_limited("google_books", seconds=40)
+    before = _seconds_until_cooldown_clears("google_books")
+    try:
+        _http_get_json(
+            "https://www.googleapis.com/books/v1/volumes?q=test",
+            timeout=5,
+            source="google_books",
+        )
+        assert False, "expected SourceCooldownError"
+    except SourceCooldownError:
+        pass
+    after = _seconds_until_cooldown_clears("google_books")
+    assert after <= before
+    urlopen_mock.assert_not_called()
+    _clear_source_cooldown()
+
+
+def test_negative_cache_short_circuits_repeat_miss(api, monkeypatch):
+    monkeypatch.setattr(
+        WebBookAPI,
+        "_search_metadata_sources",
+        lambda *a, **k: {"_no_result": True, "_fetch_errors": ["google_books: miss"]},
+    )
+    first = api.get_book_metadata("No Such Book XYZ", "Nobody Author")
+    assert first and first.get("_no_result")
+    # Second call must hit negative cache (search not invoked again).
+    calls = {"n": 0}
+
+    def boom(*_a, **_k):
+        calls["n"] += 1
+        return {"_no_result": True, "_fetch_errors": ["should-not-run"]}
+
+    monkeypatch.setattr(WebBookAPI, "_search_metadata_sources", boom)
+    second = api.get_book_metadata("No Such Book XYZ", "Nobody Author")
+    assert second and second.get("_no_result")
+    assert calls["n"] == 0
+
+
+@patch("src.web.web_book_api.urllib.request.urlopen")
+def test_wikidata_uses_wbsearchentities_not_sparql_scan(urlopen_mock, api):
+    search_payload = {
+        "search": [
+            {
+                "id": "Q170583",
+                "label": "Pride and Prejudice",
+                "description": "novel by Jane Austen",
+            }
+        ]
+    }
+    entities_payload = {
+        "entities": {
+            "Q170583": {
+                "labels": {"en": {"value": "Pride and Prejudice"}},
+                "claims": {
+                    "P50": [
+                        {
+                            "mainsnak": {
+                                "datavalue": {
+                                    "value": {"id": "Q36322"},
+                                    "type": "wikibase-entityid",
+                                }
+                            }
+                        }
+                    ]
+                },
+            }
+        }
+    }
+    labels_payload = {
+        "entities": {
+            "Q36322": {"labels": {"en": {"value": "Jane Austen"}}},
+        }
+    }
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def read(self):
+            return __import__("json").dumps(self._payload).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    urlopen_mock.side_effect = [
+        FakeResponse(search_payload),
+        FakeResponse(entities_payload),
+        FakeResponse(labels_payload),
+    ]
+    result = api._fetch_from_wikidata(
+        "Pride and Prejudice",
+        "Jane Austen",
+        require_author_match=True,
+    )
+    assert result is not None
+    assert result["title"] == "Pride and Prejudice"
+    assert result["author"] == "Jane Austen"
+    for call in urlopen_mock.call_args_list:
+        url = call.args[0].full_url
+        assert "query.wikidata.org/sparql" not in url
+        assert "wikidata.org/w/api.php" in url
+
+
+def test_google_books_api_key_appended(monkeypatch, api):
+    monkeypatch.setenv("ABCS_GOOGLE_BOOKS_API_KEY", "test-key-123")
+    params = api._google_books_params({"q": "intitle:Test"})
+    assert params["key"] == "test-key-123"
 

@@ -42,7 +42,7 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
 
 ## Settings that affect this
 
-None. Fetch Web Info has no settings of its own in Preferences. It uses the book's stored title and author when searching online.
+Optional: Preferences → Display → Web Metadata → Google Books API key (or environment variable `ABCS_GOOGLE_BOOKS_API_KEY`). Without a key, Google Books uses anonymous per-IP limits. Fetch still uses the book's stored title and author when searching online.
 
 ## Mouse, shortcuts, and accessibility
 
@@ -78,4 +78,4 @@ Not in its own field. The review window shows **Rating** for reference (Alt+R). 
 No. Only the currently focused book in the main window is used. Use Book Details to fetch one book at a time from that view.
 
 **Why does the message say "rate limited" or show a countdown?**
-Google Books sometimes limits how many searches AbCS can send in a short time. AbCS automatically retries once, and if it still fails, waits briefly before contacting Google Books again. A message such as *Try again in about 30s or use Re-fetch (Alt+F)* tells you roughly when it will work again. Open Library and WikiData are not affected and are still tried as usual.
+Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS does not retry a 429 immediately; it waits for a cooldown (often several minutes) before contacting that source again. A message such as *Try again in about 30s or use Re-fetch (Alt+F)* tells you roughly when it will work again. Other sources continue in their normal order.

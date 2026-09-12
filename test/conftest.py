@@ -171,9 +171,9 @@ def web_api(tmp_path, monkeypatch):
     from src.web import web_book_api as wba
     from src.web.web_book_api import WebBookAPI, _clear_source_cooldown, _reset_shared_web_api_for_tests
 
+    monkeypatch.setattr(wba, "WEB_CACHE_FILE", str(tmp_path / "web_cache.json"))
     _clear_source_cooldown()
     _reset_shared_web_api_for_tests()
-    monkeypatch.setattr(wba, "WEB_CACHE_FILE", str(tmp_path / "web_cache.json"))
     client = WebBookAPI()
     yield client
     _clear_source_cooldown()

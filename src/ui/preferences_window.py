@@ -411,9 +411,31 @@ class PreferencesWindow(AccessibleDialog):
         display_layout.addWidget(self.theme_picker)
 
         content_layout.addWidget(display_group)
+
+        web_group = QGroupBox("Web Metadata")
+        web_group.setFont(self._section_font())
+        web_layout = QVBoxLayout(web_group)
+        web_layout.setSpacing(8)
+        key_row = QHBoxLayout()
+        key_label = QLabel("Google Books API key:")
+        key_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        key_label.setMinimumWidth(display_label_width + 80)
+        self.google_books_api_key_edit = QLineEdit()
+        self.google_books_api_key_edit.setEchoMode(QLineEdit.Password)
+        self.google_books_api_key_edit.setAccessibleName("Google Books API key")
+        self.google_books_api_key_edit.setAccessibleDescription(
+            "Optional API key for Google Books. Leave blank to use anonymous access. "
+            "Environment variable ABCS_GOOGLE_BOOKS_API_KEY overrides this setting."
+        )
+        key_label.setBuddy(self.google_books_api_key_edit)
+        key_row.addWidget(key_label)
+        key_row.addWidget(self.google_books_api_key_edit, 1)
+        web_layout.addLayout(key_row)
+        content_layout.addWidget(web_group)
+
         content_layout.addStretch(1)
 
-        self._card_groups = [display_group]
+        self._card_groups = [display_group, web_group]
         return page
 
     def _build_import_tab(self) -> QWidget:
@@ -1259,6 +1281,7 @@ class PreferencesWindow(AccessibleDialog):
         return {
             "theme": self.theme_picker.current_theme_id(),
             "scale": self.zoom_spin.value(),
+            "google_books_api_key": self.google_books_api_key_edit.text().strip(),
             "import_directory": self.import_dir_edit.text().strip(),
             "formats": tuple(
                 self.format_checks[key].isChecked()
@@ -1366,6 +1389,12 @@ class PreferencesWindow(AccessibleDialog):
 
         # Zoom level
         self.zoom_spin.setValue(self.scaler.current_scale)
+
+        from src.web.web_book_api import GOOGLE_BOOKS_API_KEY_SETTING
+
+        self.google_books_api_key_edit.setText(
+            self.settings.value(GOOGLE_BOOKS_API_KEY_SETTING, "", type=str) or ""
+        )
 
         # Import settings
         import_dir = self.settings.value("import/default_directory", "", type=str)
@@ -2093,6 +2122,11 @@ class PreferencesWindow(AccessibleDialog):
         self.preset_combo.setCurrentText("Custom")
         self.zoom_spin.setValue(150)
 
+        from src.web.web_book_api import GOOGLE_BOOKS_API_KEY_SETTING
+
+        self.google_books_api_key_edit.clear()
+        self.settings.setValue(GOOGLE_BOOKS_API_KEY_SETTING, "")
+
         # Import settings
         self.import_dir_edit.setText("")
         self.settings.setValue("import/default_directory", "")
@@ -2223,6 +2257,12 @@ class PreferencesWindow(AccessibleDialog):
 
     def on_save(self):
         """Save settings and close dialog."""
+        from src.web.web_book_api import GOOGLE_BOOKS_API_KEY_SETTING
+
+        self.settings.setValue(
+            GOOGLE_BOOKS_API_KEY_SETTING,
+            self.google_books_api_key_edit.text().strip(),
+        )
         self.settings.setValue(
             "import/default_directory", self.import_dir_edit.text().strip()
         )

@@ -75,19 +75,28 @@ Skips Open Library and tries:
 
 ### Cache
 
-Recent lookups are cached in memory and on disk (`data/web_cache.json`) for about five minutes. A repeat fetch for the same book may return cached results without hitting the network.
+Successful lookups are cached in memory and on disk for about 24 hours. Misses are cached for about one hour so a failed book is not re-queried immediately.
 
-### Rate limits (Google Books)
+- Development: `data/web_cache.json` under the project folder
+- Installed app: `%LOCALAPPDATA%\AbCS\web_cache.json` (Windows) or the platform user-data folder
 
-Google Books occasionally answers with "too many requests" or "temporarily unavailable."
+A repeat fetch for the same book may return cached results without hitting the network. Re-fetch (Alt+F) bypasses the cache.
 
-When that happens, AbCS waits about one second and retries that request **once**.
+### Rate limits
 
-If the retry also fails, Google Books goes into a short **cooldown** (about 45 seconds) — AbCS skips straight to the next source instead of contacting Google Books again during that time.
+Google Books, WikiData, and Wikipedia may answer with "too many requests" (HTTP 429) or "temporarily unavailable" (HTTP 503).
 
-Any status or error message shown may include a live countdown, for example *Try again in about 30s*, so you know roughly when Google Books will be tried again.
+- On **429**, AbCS does **not** retry the same request. It records a cooldown (from the `Retry-After` header when present, otherwise about 15 minutes for Google Books and 5 minutes for WikiData/Wikipedia) and skips that source.
+- On **503**, AbCS waits briefly and retries **once**.
+- Cooldowns are saved next to the web cache so restarting AbCS does not immediately resume banned traffic.
 
-Open Library and WikiData are unaffected by a Google Books cooldown and are still tried in their normal order.
+Any status or error message shown may include a live countdown, for example *Try again in about 30s*, so you know roughly when that source will be tried again.
+
+Other sources continue in their normal order while one source is cooling down.
+
+### Google Books API key (optional)
+
+Anonymous Google Books access is throttled per IP. You can set an API key in Preferences (Display → Web Metadata) or via the environment variable `ABCS_GOOGLE_BOOKS_API_KEY`. The environment variable wins when both are set.
 
 ---
 

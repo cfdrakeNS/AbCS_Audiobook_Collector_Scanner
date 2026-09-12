@@ -8,13 +8,16 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import tempfile
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from src.build_config import APP_VERSION
 from src.utils.text_utils import split_series_number
 
 # Common stopwords to ignore in title matching
@@ -25,11 +28,9 @@ PLOT_MIN_LENGTH = 80
 PLOT_MAX_WIKIPEDIA_SENTENCES = 20
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 
-# Persistent cache file (JSON) in the app data folder
-WEB_CACHE_FILE = os.path.join(
-    os.path.dirname(__file__), "..", "..", "data", "web_cache.json"
-)
 WEB_CACHE_MAX_ENTRIES = 500
+NEGATIVE_CACHE_TTL_SECONDS = 3600  # 1 hour for miss / no-result entries
+CACHE_DURATION = 86400  # 24 hours for successful lookups
 
 # Network timeout constants (seconds)
 TIMEOUT_SEARCH = 10  # primary title/author searches
@@ -37,12 +38,18 @@ TIMEOUT_DETAIL = 6  # secondary calls (work description, extract)
 
 # Per-fetch wall-clock and request caps (checked between requests only).
 FETCH_BUDGET_SECONDS = 45.0
-FETCH_BUDGET_MAX_REQUESTS = 25
+FETCH_BUDGET_MAX_REQUESTS = 12
+FETCH_BUDGET_MAX_GOOGLE = 2
+FETCH_BUDGET_MAX_WIKIDATA = 4
 
-# Single User-Agent for all web metadata HTTP calls.
-USER_AGENT = (
-    "AbCS-Audiobook-Collector/1.0 (Educational audiobook metadata tool)"
+# Contact URL for Wikimedia User-Agent policy compliance.
+_USER_AGENT_CONTACT = (
+    "https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner"
 )
+USER_AGENT = f"AbCS/{APP_VERSION} (+{_USER_AGENT_CONTACT})"
+
+GOOGLE_BOOKS_API_KEY_ENV = "ABCS_GOOGLE_BOOKS_API_KEY"
+GOOGLE_BOOKS_API_KEY_SETTING = "web/google_books_api_key"
 
 # Leading honorifics to strip from author search
 AUTHOR_HONORIFIC_PREFIX = re.compile(
@@ -70,15 +77,120 @@ _SOURCE_PROGRESS_LABELS = {
 # HTTP status codes that indicate the source is unavailable (not a clean miss).
 _FATAL_HTTP_CODES = frozenset({429, 500, 502, 503})
 
-# Codes worth a single short retry before giving up on one request.
-_RETRYABLE_HTTP_CODES = frozenset({429, 503})
+# Only 503 is worth an immediate short retry; 429 must not be re-sent.
+_RETRYABLE_HTTP_CODES = frozenset({503})
 
-RATE_LIMIT_COOLDOWN_SECONDS = 45
-RATE_LIMIT_RETRY_DELAY_SECONDS = 1.0
+# Per-source default cooldowns when Retry-After is missing.
+RATE_LIMIT_COOLDOWN_SECONDS = 45  # legacy alias for tests
+RATE_LIMIT_COOLDOWN_DEFAULTS = {
+    "google_books": 15 * 60,
+    "wikidata": 5 * 60,
+    "wikipedia": 5 * 60,
+    "open_library": 60,
+}
+SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS = 2.0
+RATE_LIMIT_RETRY_DELAY_SECONDS = SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS  # tests
 _source_cooldown_until: dict[str, float] = {}
+_cooldown_persist_warned = False
+_cache_write_warned = False
 
 # Shared client so call sites reuse in-memory cache (and one disk load).
 _shared_web_api: Optional["WebBookAPI"] = None
+
+
+def _resolve_web_cache_file() -> str:
+    """Writable cache path: user data dir when frozen, project data/ in dev."""
+    if getattr(sys, "frozen", False):
+        from src.app_paths import get_user_data_dir
+
+        return str(get_user_data_dir() / "web_cache.json")
+    project_root = Path(__file__).resolve().parents[2]
+    return str(project_root / "data" / "web_cache.json")
+
+
+# Module-level name so tests can monkeypatch WEB_CACHE_FILE.
+WEB_CACHE_FILE = _resolve_web_cache_file()
+
+
+def _cooldown_state_path() -> Path:
+    """Path for persisted rate-limit cooldowns (next to the web cache)."""
+    return Path(WEB_CACHE_FILE).with_name("web_source_cooldowns.json")
+
+
+def _default_cooldown_seconds(source: str) -> float:
+    return float(
+        RATE_LIMIT_COOLDOWN_DEFAULTS.get(source, RATE_LIMIT_COOLDOWN_SECONDS)
+    )
+
+
+def _load_persisted_cooldowns() -> None:
+    """Load cooldown deadlines from disk into the process dict."""
+    path = _cooldown_state_path()
+    try:
+        if not path.exists():
+            return
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            return
+        now = time.time()
+        for source, until in raw.items():
+            try:
+                until_f = float(until)
+            except (TypeError, ValueError):
+                continue
+            if until_f > now:
+                previous = _source_cooldown_until.get(str(source), 0.0)
+                if until_f > previous:
+                    _source_cooldown_until[str(source)] = until_f
+    except Exception:
+        pass
+
+
+def _save_persisted_cooldowns() -> None:
+    """Persist active cooldowns so a restart does not resume banned traffic."""
+    global _cooldown_persist_warned
+    path = _cooldown_state_path()
+    try:
+        now = time.time()
+        active = {
+            source: until
+            for source, until in _source_cooldown_until.items()
+            if until > now
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(active, handle, separators=(",", ":"))
+            os.replace(tmp_path, path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+    except Exception as exc:
+        if not _cooldown_persist_warned:
+            print(
+                f"[AbCS] Warning: could not persist web source cooldowns "
+                f"({path}): {exc}",
+                file=sys.stderr,
+            )
+            _cooldown_persist_warned = True
+
+
+def get_google_books_api_key() -> str:
+    """Optional Google Books API key from env or Preferences QSettings."""
+    env_key = (os.environ.get(GOOGLE_BOOKS_API_KEY_ENV) or "").strip()
+    if env_key:
+        return env_key
+    try:
+        from src.utils.settings_helpers import read_setting
+
+        stored = read_setting(GOOGLE_BOOKS_API_KEY_SETTING, "", type=str)
+        return (stored or "").strip()
+    except Exception:
+        return ""
 
 
 class FetchBudget:
@@ -89,16 +201,22 @@ class FetchBudget:
         *,
         seconds: float = FETCH_BUDGET_SECONDS,
         max_requests: int = FETCH_BUDGET_MAX_REQUESTS,
+        max_google: int = FETCH_BUDGET_MAX_GOOGLE,
+        max_wikidata: int = FETCH_BUDGET_MAX_WIKIDATA,
     ) -> None:
         self.deadline = time.time() + max(0.0, float(seconds))
         self.max_requests = max(0, int(max_requests))
+        self.max_google = max(0, int(max_google))
+        self.max_wikidata = max(0, int(max_wikidata))
         self.request_count = 0
+        self.google_count = 0
+        self.wikidata_count = 0
         self.exhausted = False
 
     def remaining_seconds(self) -> float:
         return max(0.0, self.deadline - time.time())
 
-    def can_continue(self) -> bool:
+    def can_continue(self, source: str | None = None) -> bool:
         if self.exhausted:
             return False
         if self.request_count >= self.max_requests:
@@ -107,10 +225,18 @@ class FetchBudget:
         if time.time() >= self.deadline:
             self.exhausted = True
             return False
+        if source == "google_books" and self.google_count >= self.max_google:
+            return False
+        if source == "wikidata" and self.wikidata_count >= self.max_wikidata:
+            return False
         return True
 
-    def note_request(self) -> None:
+    def note_request(self, source: str | None = None) -> None:
         self.request_count += 1
+        if source == "google_books":
+            self.google_count += 1
+        elif source == "wikidata":
+            self.wikidata_count += 1
         if self.request_count >= self.max_requests or time.time() >= self.deadline:
             self.exhausted = True
 
@@ -123,10 +249,26 @@ class FetchAborted(Exception):
         super().__init__(reason)
 
 
+class SourceCooldownError(urllib.error.HTTPError):
+    """Synthetic 429 for a source still in cooldown — must not extend the cooldown."""
+
+    def __init__(self, source: str, remaining: int, url: str) -> None:
+        self.source = source
+        self.remaining = remaining
+        super().__init__(
+            f"{url} (cooldown {remaining}s)",
+            429,
+            "Too Many Requests",
+            {},
+            None,
+        )
+
+
 def get_web_api() -> "WebBookAPI":
     """Return the process-wide WebBookAPI (shared in-memory + disk cache)."""
     global _shared_web_api
     if _shared_web_api is None:
+        _load_persisted_cooldowns()
         _shared_web_api = WebBookAPI()
     return _shared_web_api
 
@@ -137,7 +279,9 @@ def _reset_shared_web_api_for_tests() -> None:
     _shared_web_api = None
 
 
-def _parse_retry_after_seconds(headers, default: float = RATE_LIMIT_COOLDOWN_SECONDS) -> float:
+def _parse_retry_after_seconds(
+    headers, default: float = RATE_LIMIT_COOLDOWN_SECONDS
+) -> float:
     """Parse Retry-After header (seconds or HTTP-date) into a cooldown duration."""
     if headers is None:
         return float(default)
@@ -156,17 +300,21 @@ def _parse_retry_after_seconds(headers, default: float = RATE_LIMIT_COOLDOWN_SEC
 
 def _note_rate_limited(
     source: str,
-    seconds: float = RATE_LIMIT_COOLDOWN_SECONDS,
+    seconds: float | None = None,
     *,
     headers=None,
 ) -> None:
     """Mark a source as cooling down so later calls skip the network briefly."""
+    default = _default_cooldown_seconds(source)
+    if seconds is None:
+        seconds = default
     if headers is not None:
-        seconds = _parse_retry_after_seconds(headers, default=seconds)
+        seconds = _parse_retry_after_seconds(headers, default=default)
     until = time.time() + max(0.0, float(seconds))
     previous = _source_cooldown_until.get(source, 0.0)
     if until > previous:
         _source_cooldown_until[source] = until
+        _save_persisted_cooldowns()
 
 
 def _seconds_until_cooldown_clears(source: str) -> float:
@@ -174,7 +322,9 @@ def _seconds_until_cooldown_clears(source: str) -> float:
     until = _source_cooldown_until.get(source, 0.0)
     remaining = until - time.time()
     if remaining <= 0:
-        _source_cooldown_until.pop(source, None)
+        if source in _source_cooldown_until:
+            _source_cooldown_until.pop(source, None)
+            _save_persisted_cooldowns()
         return 0.0
     return remaining
 
@@ -190,39 +340,41 @@ def _clear_source_cooldown(source: str | None = None) -> None:
         _source_cooldown_until.clear()
     else:
         _source_cooldown_until.pop(source, None)
+    _save_persisted_cooldowns()
 
 
 def _raise_cooldown_http_error(source: str = "google_books") -> None:
-    """Raise an HTTPError-shaped signal for a source still in cooldown."""
+    """Raise SourceCooldownError for a source still in cooldown (does not extend it)."""
     remaining = max(1, int(round(_seconds_until_cooldown_clears(source))))
     urls = {
         "google_books": "https://www.googleapis.com/books/v1/volumes",
         "open_library": "https://openlibrary.org/search.json",
-        "wikidata": "https://query.wikidata.org/sparql",
+        "wikidata": "https://www.wikidata.org/w/api.php",
         "wikipedia": "https://en.wikipedia.org/w/api.php",
     }
     base = urls.get(source, urls["google_books"])
-    raise urllib.error.HTTPError(
-        f"{base} (cooldown {remaining}s)",
-        429,
-        "Too Many Requests",
-        {},
-        None,
-    )
+    raise SourceCooldownError(source, remaining, base)
 
 
 def _urlopen_with_retry(req, timeout: float, *, source: str = "google_books"):
-    """Open URL once; on 429/503 wait briefly and retry a single time."""
+    """Open URL once; on 503 wait briefly and retry once. Never retry 429."""
     try:
         return urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as exc:
+        if isinstance(exc, SourceCooldownError):
+            raise
+        if exc.code == 429:
+            # Caller (_http_get_json) records cooldown once; do not retry.
+            raise
         if exc.code not in _RETRYABLE_HTTP_CODES:
             raise
         _note_rate_limited(source, headers=getattr(exc, "headers", None))
-        time.sleep(RATE_LIMIT_RETRY_DELAY_SECONDS)
+        time.sleep(SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS)
         try:
             return urllib.request.urlopen(req, timeout=timeout)
         except urllib.error.HTTPError as retry_exc:
+            if isinstance(retry_exc, SourceCooldownError):
+                raise
             if retry_exc.code in _FATAL_HTTP_CODES:
                 _note_rate_limited(
                     source, headers=getattr(retry_exc, "headers", None)
@@ -243,7 +395,7 @@ def _http_get_json(
 
     Always calls ``urllib.request.urlopen`` so existing test patches keep working.
     """
-    if budget is not None and not budget.can_continue():
+    if budget is not None and not budget.can_continue(source):
         raise FetchAborted("budget")
     if _is_source_cooling_down(source):
         _raise_cooldown_http_error(source)
@@ -257,11 +409,13 @@ def _http_get_json(
             req.add_header(key, value)
 
     if budget is not None:
-        budget.note_request()
+        budget.note_request(source)
 
     try:
         with _urlopen_with_retry(req, timeout, source=source) as response:
             raw = response.read().decode("utf-8")
+    except SourceCooldownError:
+        raise
     except urllib.error.HTTPError as exc:
         if exc.code in _FATAL_HTTP_CODES:
             _note_rate_limited(source, headers=getattr(exc, "headers", None))
@@ -276,6 +430,8 @@ def _http_get_json(
 
 def _reraise_if_fatal_http_error(exc: urllib.error.HTTPError) -> None:
     """Re-raise when the HTTP status means the source is down or rate-limited."""
+    if isinstance(exc, SourceCooldownError):
+        raise exc
     if exc.code in _FATAL_HTTP_CODES:
         raise exc
 
@@ -594,15 +750,14 @@ class WebBookAPI:
         seen_rest: set[str] = set()
         for candidate in (
             f"{wiki_title} {wiki_author} novel" if wiki_author else "",
-            f"{wiki_title} {wiki_author} book" if wiki_author else "",
-            f"{wiki_title} {wiki_author}" if wiki_author else "",
             f"{wiki_title} novel",
-            wiki_title,
         ):
             text = candidate.strip()
             if text and text not in seen_rest:
                 seen_rest.add(text)
                 rest_candidates.append(text)
+        if not rest_candidates and wiki_title:
+            rest_candidates.append(wiki_title)
 
         for candidate in rest_candidates:
             self._check_abort()
@@ -963,16 +1118,19 @@ class WebBookAPI:
         self.open_library_url = "https://openlibrary.org/search.json"
         self.open_library_work_url = "https://openlibrary.org/works"
         self.open_library_isbn_url = "https://openlibrary.org/isbn"
-        self.wikidata_url = "https://query.wikidata.org/sparql"
+        self.wikidata_api_url = "https://www.wikidata.org/w/api.php"
+        self.wikidata_url = "https://query.wikidata.org/sparql"  # legacy alias
         self.wikipedia_url = "https://en.wikipedia.org/w/api.php"
         self._cache: dict = {}
-        self.CACHE_DURATION = 86400  # 24 hours for in-memory TTL
+        self.CACHE_DURATION = CACHE_DURATION
+        self.NEGATIVE_CACHE_TTL = NEGATIVE_CACHE_TTL_SECONDS
         self._cache_dirty = False
         self._active_budget: FetchBudget | None = None
         self._should_cancel: Callable[[], bool] | None = None
+        _load_persisted_cooldowns()
         self._load_persistent_cache()
 
-    def _check_abort(self) -> None:
+    def _check_abort(self, source: str | None = None) -> None:
         """Raise FetchAborted when canceled or budget exhausted."""
         if self._should_cancel is not None:
             try:
@@ -982,8 +1140,19 @@ class WebBookAPI:
                 raise
             except Exception:
                 pass
-        if self._active_budget is not None and not self._active_budget.can_continue():
+        if self._active_budget is not None and not self._active_budget.can_continue(
+            source
+        ):
             raise FetchAborted("budget")
+
+    @staticmethod
+    def _google_books_params(params: dict) -> dict:
+        """Copy params and append optional Google Books API key."""
+        out = dict(params)
+        api_key = get_google_books_api_key()
+        if api_key:
+            out["key"] = api_key
+        return out
 
     def _load_persistent_cache(self) -> None:
         """Load the persistent cache from web_cache.json if it exists."""
@@ -1002,7 +1171,7 @@ class WebBookAPI:
                     stamp_f = float(stamp)
                 except (TypeError, ValueError):
                     continue
-                if now - stamp_f >= self.CACHE_DURATION:
+                if now - stamp_f >= self._cache_ttl_for(payload):
                     continue
                 self._cache[key] = (stamp_f, payload)
         except Exception:
@@ -1010,6 +1179,7 @@ class WebBookAPI:
 
     def _save_persistent_cache(self, *, force: bool = False) -> None:
         """Persist the in-memory cache when dirty (max WEB_CACHE_MAX_ENTRIES)."""
+        global _cache_write_warned
         if not force and not self._cache_dirty:
             return
         try:
@@ -1025,9 +1195,13 @@ class WebBookAPI:
                     stamp_f = float(stamp)
                 except (TypeError, ValueError):
                     continue
-                if now - stamp_f >= self.CACHE_DURATION:
+                payload = value[1]
+                ttl = self.NEGATIVE_CACHE_TTL if (
+                    isinstance(payload, dict) and payload.get("_no_result")
+                ) else self.CACHE_DURATION
+                if now - stamp_f >= ttl:
                     continue
-                entries.append((key, stamp_f, value[1]))
+                entries.append((key, stamp_f, payload))
             if len(entries) > WEB_CACHE_MAX_ENTRIES:
                 entries.sort(key=lambda x: x[1])
                 entries = entries[-WEB_CACHE_MAX_ENTRIES:]
@@ -1048,14 +1222,25 @@ class WebBookAPI:
                     pass
                 raise
             self._cache_dirty = False
-        except Exception:
-            pass  # Cache write failure is non-fatal
+        except Exception as exc:
+            if not _cache_write_warned:
+                print(
+                    f"[AbCS] Warning: could not write web cache "
+                    f"({WEB_CACHE_FILE}): {exc}",
+                    file=sys.stderr,
+                )
+                _cache_write_warned = True
 
     def _store_cache_entry(self, cache_key: str, metadata: Dict) -> None:
-        """Store a successful lookup and mark the disk cache dirty."""
+        """Store a successful or negative lookup and mark the disk cache dirty."""
         self._cache[cache_key] = (time.time(), metadata)
         self._cache_dirty = True
         self._save_persistent_cache()
+
+    def _cache_ttl_for(self, payload) -> float:
+        if isinstance(payload, dict) and payload.get("_no_result"):
+            return float(self.NEGATIVE_CACHE_TTL)
+        return float(self.CACHE_DURATION)
 
     @staticmethod
     def _normalize_isbn(isbn: str) -> str:
@@ -1093,7 +1278,10 @@ class WebBookAPI:
                     "averageRating,ratingsCount,seriesInfo))"
                 ),
             }
-            url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
+            url = (
+                f"{self.google_books_url}?"
+                f"{urllib.parse.urlencode(self._google_books_params(params))}"
+            )
             data = _http_get_json(
                 url,
                 timeout=TIMEOUT_DETAIL,
@@ -1109,7 +1297,11 @@ class WebBookAPI:
             return metadata
         except FetchAborted:
             raise
+        except SourceCooldownError:
+            return None
         except urllib.error.HTTPError as exc:
+            if isinstance(exc, SourceCooldownError):
+                return None
             if exc.code in _FATAL_HTTP_CODES:
                 _note_rate_limited("google_books", headers=getattr(exc, "headers", None))
             return None
@@ -1359,7 +1551,7 @@ class WebBookAPI:
             return _public_copy(metadata)
 
         try:
-            # Cache successful lookups only (do not cache failures).
+            # Cache successful lookups and short-TTL misses.
             if (
                 not bypass_cache
                 and hasattr(self, "_cache")
@@ -1369,8 +1561,12 @@ class WebBookAPI:
                 if (
                     cached_result
                     and cached_time
-                    and (current_time - cached_time) < self.CACHE_DURATION
+                    and (current_time - cached_time) < self._cache_ttl_for(cached_result)
                 ):
+                    if isinstance(cached_result, dict) and cached_result.get(
+                        "_no_result"
+                    ):
+                        return dict(cached_result)
                     refreshed = dict(cached_result)
                     if refreshed.get("_series_enriched") and refreshed.get(
                         "_plot_enriched"
@@ -1393,7 +1589,9 @@ class WebBookAPI:
                     refreshed["_plot_enriched"] = refreshed.get("_plot_enriched", True)
                     self._store_cache_entry(cache_key, refreshed)
                     return _public_copy(refreshed)
-                if cached_time and (current_time - cached_time) >= self.CACHE_DURATION:
+                if cached_time and (
+                    current_time - cached_time
+                ) >= self._cache_ttl_for(cached_result):
                     del self._cache[cache_key]
                     self._cache_dirty = True
 
@@ -1477,10 +1675,14 @@ class WebBookAPI:
                     _errors.extend(metadata.get("_fetch_errors", []))
 
             if _errors:
-                return {
+                miss = {
                     "_fetch_errors": _dedupe_fetch_errors(_errors),
                     "_no_result": True,
                 }
+                self._store_cache_entry(cache_key, dict(miss))
+                return miss
+            miss = {"_no_result": True, "_fetch_errors": []}
+            self._store_cache_entry(cache_key, dict(miss))
             return None
         except FetchAborted as abort:
             if abort.reason == "canceled":
@@ -1753,7 +1955,10 @@ class WebBookAPI:
                         "averageRating,ratingsCount,seriesInfo))"
                     ),
                 }
-                url = f"{self.google_books_url}?{urllib.parse.urlencode(params)}"
+                url = (
+                    f"{self.google_books_url}?"
+                    f"{urllib.parse.urlencode(self._google_books_params(params))}"
+                )
                 search_timeout = TIMEOUT_SEARCH if q_idx == 0 else TIMEOUT_DETAIL
                 data = _http_get_json(
                     url,
@@ -1772,7 +1977,15 @@ class WebBookAPI:
                         return best
             except FetchAborted:
                 raise
+            except SourceCooldownError:
+                if propagate_fatal_errors:
+                    raise
+                break
             except urllib.error.HTTPError as exc:
+                if isinstance(exc, SourceCooldownError):
+                    if propagate_fatal_errors:
+                        raise
+                    break
                 if exc.code in _FATAL_HTTP_CODES:
                     _note_rate_limited(
                         "google_books", headers=getattr(exc, "headers", None)
@@ -2181,101 +2394,146 @@ class WebBookAPI:
         match_author: str | None = None,
         propagate_fatal_errors: bool = False,
     ) -> Optional[Dict]:
-        """Fetch metadata from WikiData SPARQL endpoint."""
+        """Fetch metadata from WikiData via indexed entity search (not full SPARQL scan)."""
         db_author = match_author if match_author is not None else author
+        if not title:
+            return None
+        if _is_source_cooling_down("wikidata"):
+            if propagate_fatal_errors:
+                _raise_cooldown_http_error("wikidata")
+            return None
         try:
-            self._check_abort()
-            safe_title = title.replace('"', '\\"') if title else ""
-            safe_author = author.replace('"', '\\"') if author else ""
-
-            search_terms = [
-                safe_title,
-                safe_title.replace(" ", ""),
-                safe_title.replace(" and ", " & ").replace(" And ", " & "),
-            ]
-
-            title_conditions = []
-            for term in search_terms:
-                title_conditions.append(
-                    f'CONTAINS(LCASE(?bookLabel), LCASE("{term}"))'
-                )
-
-            title_filter = " || ".join(title_conditions)
-
-            author_filter = ""
+            self._check_abort("wikidata")
+            search_terms = [title]
             if author:
-                safe_author = author.replace('"', '\\"')
-                author_filter = f"""
-                ?book wdt:P50 ?author.
-                ?author rdfs:label ?authorLabel.
-                FILTER(LANG(?authorLabel) = "en")
-                FILTER(CONTAINS(LCASE(?authorLabel), LCASE("{safe_author}")))
-                """
+                search_terms.insert(0, f"{title} {author}")
+            if ORWELL_1984_TITLE_TOKEN in title.lower():
+                search_terms.insert(0, f"{title} {ORWELL_AUTHOR_LABEL}")
 
-            if ORWELL_1984_TITLE_TOKEN in safe_title.lower():
-                safe_title_escaped = safe_title.replace('"', '\\"')
-                sparql_query = f"""
-                SELECT DISTINCT ?book ?bookLabel ?bookDescription WHERE {{
-                  ?author rdfs:label "{ORWELL_AUTHOR_LABEL}"@en.
-                  ?book wdt:P50 ?author.
-                  {{ ?book rdfs:label ?label. }}
-                  UNION
-                  {{ ?book skos:altLabel ?label. }}
-                  FILTER(CONTAINS(LCASE(?label), LCASE("{safe_title_escaped}")))
-                  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
-                }}
-                LIMIT 10
-                """
-            else:
-                sparql_query = f"""
-                SELECT ?book ?bookLabel ?authorLabel ?seriesLabel ?seriesOrdinal WHERE {{
-                    VALUES ?type {{ wd:Q571 wd:Q8261 wd:Q7725634 wd:Q47461344 }}
-                    ?book wdt:P31 ?type .
-                    ?book rdfs:label ?bookLabel.
-                    FILTER(LANG(?bookLabel) = "en")
-                    FILTER({title_filter})
-                    
-                    {author_filter}
-                    
-                    OPTIONAL {{
-                        ?book wdt:P179 ?series.
-                        ?series rdfs:label ?seriesLabel.
-                        FILTER(LANG(?seriesLabel) = "en")
-                    }}
-                    OPTIONAL {{
-                        ?book wdt:P1545 ?seriesOrdinal.
-                    }}
-                }}
-                LIMIT 10
-                """
+            candidate_ids: list[str] = []
+            seen_ids: set[str] = set()
+            for search_term in search_terms:
+                if candidate_ids:
+                    break
+                params = {
+                    "action": "wbsearchentities",
+                    "search": search_term,
+                    "language": "en",
+                    "type": "item",
+                    "limit": 8,
+                    "format": "json",
+                }
+                url = (
+                    f"{self.wikidata_api_url}?"
+                    f"{urllib.parse.urlencode(params)}"
+                )
+                data = _http_get_json(
+                    url,
+                    timeout=TIMEOUT_SEARCH,
+                    source="wikidata",
+                    budget=self._active_budget,
+                )
+                for hit in data.get("search") or []:
+                    qid = (hit.get("id") or "").strip()
+                    if not qid or qid in seen_ids:
+                        continue
+                    label = hit.get("label") or ""
+                    if label and not self._title_matches(title, label):
+                        # Keep near-misses only when description mentions novel/book.
+                        desc = (hit.get("description") or "").lower()
+                        if not any(
+                            token in desc
+                            for token in ("novel", "book", "novella", "written work")
+                        ):
+                            continue
+                    seen_ids.add(qid)
+                    candidate_ids.append(qid)
+                    if len(candidate_ids) >= 8:
+                        break
 
-            encoded_query = urllib.parse.quote_plus(sparql_query.strip())
-            url = f"{self.wikidata_url}?query={encoded_query}&format=json"
+            if not candidate_ids:
+                return None
 
-            data = _http_get_json(
-                url,
+            self._check_abort("wikidata")
+            get_params = {
+                "action": "wbgetentities",
+                "ids": "|".join(candidate_ids),
+                "props": "labels|claims",
+                "languages": "en",
+                "format": "json",
+            }
+            get_url = (
+                f"{self.wikidata_api_url}?"
+                f"{urllib.parse.urlencode(get_params)}"
+            )
+            entities_data = _http_get_json(
+                get_url,
                 timeout=TIMEOUT_DETAIL,
                 source="wikidata",
                 budget=self._active_budget,
-                accept="application/sparql-results+json",
             )
+            entities = entities_data.get("entities") or {}
 
-            results = data.get("results", {}).get("bindings", [])
+            related_ids: list[str] = []
+            seen_related: set[str] = set()
+            for qid in candidate_ids:
+                entity = entities.get(qid) or {}
+                claims = entity.get("claims") or {}
+                for prop in ("P50", "P179"):
+                    for rid in self._wikidata_claim_ids(claims, prop):
+                        if rid not in seen_related:
+                            seen_related.add(rid)
+                            related_ids.append(rid)
+
+            label_map: dict[str, str] = {}
+            if related_ids:
+                self._check_abort("wikidata")
+                label_params = {
+                    "action": "wbgetentities",
+                    "ids": "|".join(related_ids[:50]),
+                    "props": "labels",
+                    "languages": "en",
+                    "format": "json",
+                }
+                label_url = (
+                    f"{self.wikidata_api_url}?"
+                    f"{urllib.parse.urlencode(label_params)}"
+                )
+                label_data = _http_get_json(
+                    label_url,
+                    timeout=TIMEOUT_DETAIL,
+                    source="wikidata",
+                    budget=self._active_budget,
+                )
+                for rid, ent in (label_data.get("entities") or {}).items():
+                    labels = (ent or {}).get("labels") or {}
+                    value = (labels.get("en") or {}).get("value") or ""
+                    if value:
+                        label_map[rid] = value
 
             best_metadata = None
             best_title_score = -1.0
-            for result in results:
-                series_label = self._get_sparql_value(result, "seriesLabel")
-                series_ordinal = self._get_sparql_value(result, "seriesOrdinal")
+            for qid in candidate_ids:
+                entity = entities.get(qid) or {}
+                if not entity or entity.get("missing") is not None:
+                    continue
+                labels = entity.get("labels") or {}
+                book_label = (labels.get("en") or {}).get("value") or ""
+                if not book_label:
+                    continue
+                claims = entity.get("claims") or {}
+                author_ids = self._wikidata_claim_ids(claims, "P50")
+                series_ids = self._wikidata_claim_ids(claims, "P179")
+                author_label = label_map.get(author_ids[0], "") if author_ids else ""
+                series_label = label_map.get(series_ids[0], "") if series_ids else ""
+                series_ordinal = self._wikidata_claim_string(claims, "P1545")
                 metadata = {
-                    "title": self._get_sparql_value(result, "bookLabel"),
-                    "author": self._get_sparql_value(result, "authorLabel"),
+                    "title": book_label,
+                    "author": author_label,
                     "series": series_label,
                     "series_number": series_ordinal,
                     "source": "WikiData",
                 }
-                if not metadata.get("title"):
-                    continue
                 if not self._metadata_matches_db(
                     title,
                     db_author,
@@ -2309,15 +2567,58 @@ class WebBookAPI:
             return None
         except FetchAborted:
             raise
+        except SourceCooldownError:
+            if propagate_fatal_errors:
+                raise
+            return None
         except urllib.error.HTTPError as exc:
+            if isinstance(exc, SourceCooldownError):
+                if propagate_fatal_errors:
+                    raise
+                return None
             if propagate_fatal_errors and exc.code in _FATAL_HTTP_CODES:
                 raise
             return None
         except Exception:
             return None
 
+    def _wikidata_claim_ids(self, claims: dict, property_id: str) -> list[str]:
+        """Return entity Q-ids from a Wikidata claim property."""
+        ids: list[str] = []
+        for statement in claims.get(property_id) or []:
+            try:
+                mainsnak = statement.get("mainsnak") or {}
+                datavalue = mainsnak.get("datavalue") or {}
+                value = datavalue.get("value") or {}
+                qid = value.get("id")
+                if qid:
+                    ids.append(str(qid))
+            except Exception:
+                continue
+        return ids
+
+    def _wikidata_claim_string(self, claims: dict, property_id: str) -> str:
+        """Return first string/quantity-like claim value for a property."""
+        for statement in claims.get(property_id) or []:
+            try:
+                mainsnak = statement.get("mainsnak") or {}
+                datavalue = mainsnak.get("datavalue") or {}
+                value = datavalue.get("value")
+                if isinstance(value, str):
+                    return value.strip()
+                if isinstance(value, dict):
+                    amount = value.get("amount")
+                    if amount is not None:
+                        text = str(amount).lstrip("+")
+                        return text
+                    if "text" in value:
+                        return str(value["text"]).strip()
+            except Exception:
+                continue
+        return ""
+
     def _get_sparql_value(self, result: dict, field: str) -> str:
-        """Extract value from SPARQL result binding."""
+        """Extract value from SPARQL result binding (legacy helper)."""
         try:
             if field in result and result[field]:
                 return result[field].get("value", "").strip()
