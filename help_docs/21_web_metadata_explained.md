@@ -126,7 +126,7 @@ If everything fails, you get a **No Web Data Found** message. No review window o
 
 ---
 
-## 4. Enriching the match — plot and series
+## 4. Enriching the match — plot
 
 Once a match is accepted, the app gathers more detail before showing you anything.
 
@@ -138,29 +138,21 @@ Collected from several places, in order of preference:
 2. Wikipedia summary
 3. Google Books description
 
-Plot text must be at least **80 characters** and must not be just a repeat of the series name. If a good plot is found, the progress dialog may announce it.
+Plot text must be at least **80 characters**. If a good plot is found, the progress dialog may announce it.
 
-If plot or series enrichment hits a temporary problem, the match itself is **not** discarded — you still get the review window with whatever fields were found.
+If Open Library and Wikipedia both return nothing usable, AbCS **stops plot enrichment** there (it does not spend another network call on Google Books by ISBN). An adequate plot already returned with the primary match is still kept. Timeouts for matching are unchanged.
 
-### Series
+If plot enrichment hits a temporary problem, the match itself is **not** discarded — you still get the review window with whatever fields were found.
 
-Gathered from:
-
-1. Series number already in your title (if any)
-2. Open Library work metadata
-3. WikiData
-4. Google Books (by ISBN or title/author search)
-
-If a series name is found, progress may announce *Series found…*.
+Series name and series number are **not** fetched from the web. Edit series in Book Details or the Update window.
 
 ### Final cleanup
 
 Before comparison with your book, web data is cleaned:
 
 - Title, author, genre, plot text normalized
-- Unlikely series names dropped (e.g. values that look like genres)
-- Plot text that is only a series label removed
-- Series number may be re-appended to the display title
+- Any leftover series keys from an old cache entry are dropped
+- Series number from your library title may be re-appended to the display title so applying a web title does not drop your `- 01` suffix
 
 ---
 
@@ -173,11 +165,9 @@ The app compares cleaned web values against what is already stored for your book
 
 | Field         | How difference is decided                                     |
 | ------------- | ------------------------------------------------------------- |
-| Title         | Normalized text compared (articles, case, spacing ignored)    |
-| Author        | Scalar text compared                                          |
+| Title         | Cosmetic differences ignored (case, punctuation, accents, `&`/`and`, article position, series suffix, filler tails like `: A Novel`) |
+| Author        | Cosmetic differences ignored (punctuation, name order, initials, accents) |
 | Year          | Compared as numbers                                           |
-| Series        | Compared as text                                              |
-| Series number | Compared when web has a number and a series name exists       |
 | Genre         | Compared as text                                              |
 | Plot          | Compared against your comments field (plot lives in comments) |
 
@@ -248,19 +238,18 @@ For each field you approved (or that was auto-filled because your field was empt
 | Title  | Updated on the book record                                                |
 | Author | Looked up or created in authors table → book's author link updated        |
 | Year   | Parsed to a number; invalid values ignored                                |
-| Series | Looked up or created in series table → book's series link updated         |
 | Genre  | Looked up or created in genres table → book's genre link updated          |
 | Plot   | Written to the book's **comments** field (may include rating prefix text) |
 
 
-Before writing, the app verifies that author, series, genre, and collection links still exist. Broken links are cleared rather than saved.
+Before writing, the app verifies that author, series, genre, and collection links still exist. Broken links are cleared rather than saved. Series is never changed by Fetch Web Info.
 
 **One update** writes all approved fields to the `books` row and commits.
 
 After Save:
 
 - Main book list or Book Details refreshes
-- Status announces which fields changed (e.g. *Updated: Plot, Series*)
+- Status announces which fields changed (e.g. *Updated: Plot, Year*)
 - Focus returns to a sensible place on the main window
 
 If Save fails, an error is announced and the review window **stays open**.

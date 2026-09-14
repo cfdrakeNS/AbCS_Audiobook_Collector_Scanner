@@ -3,7 +3,6 @@ Web Metadata Window - Built from PROVEN accessible skeleton
 Accessibility works out of box: F1, Alt+/, Escape
 """
 
-import re
 import sys
 import os
 
@@ -58,19 +57,10 @@ from src.accessibility.style_helpers import (
 
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
-from src.web.web_book_api import WebBookAPI
+from src.utils.text_utils import web_authors_match, web_titles_match
 
 
 class WebMetadataWindow(AccessibleDialog):
-
-    @staticmethod
-    def normalize_db_title(title: str) -> str:
-        """Normalize DB title for search/compare.
-
-        Delegates to the shared normalize_title function in web_book_api.
-        """
-        from src.web.web_book_api import normalize_title
-        return normalize_title(title)
 
     @staticmethod
     def _compare_scalar_field(
@@ -83,13 +73,19 @@ class WebMetadataWindow(AccessibleDialog):
             str(current_value).strip() if current_value is not None else ""
         )
         web_str = str(web_value).strip()
+        if current_str == "":
+            return web_str
         if field_name == "title":
-            norm_current = WebMetadataWindow.normalize_db_title(current_str)
-            norm_web = WebMetadataWindow.normalize_db_title(web_str)
-        else:
-            norm_current = current_str.lower()
-            norm_web = web_str.lower()
-        if current_str == "" or norm_web != norm_current:
+            if web_titles_match(current_str, web_str):
+                return None
+            return web_str
+        if field_name == "author":
+            if web_authors_match(current_str, web_str):
+                return None
+            return web_str
+        norm_current = current_str.lower()
+        norm_web = web_str.lower()
+        if norm_web != norm_current:
             return web_str
         return None
 
@@ -118,25 +114,6 @@ class WebMetadataWindow(AccessibleDialog):
             return rating_str
         return plot_body
 
-    @staticmethod
-    def _series_number_difference(book, web_data: dict) -> str | None:
-        """Return web series number when it differs from the book, else None.
-
-        A number without a series name (web or DB) is ignored.
-        """
-        current_series_number = ""
-        if hasattr(book, "series_number") and book.series_number:
-            current_series_number = str(book.series_number)
-        web_num_str = str(web_data.get("series_number") or "").strip()
-        web_series_name = str(web_data.get("series") or "").strip()
-        db_series_name = (book.series_name or "").strip()
-        if web_num_str and not web_series_name and not db_series_name:
-            web_num_str = ""
-        cur_num_str = current_series_number.strip()
-        if web_num_str and (not cur_num_str or web_num_str != cur_num_str):
-            return web_num_str
-        return None
-
     @classmethod
     def compute_field_differences(cls, book, web_data: dict) -> dict:
         """Return savable field differences between web data and the current book."""
@@ -145,7 +122,6 @@ class WebMetadataWindow(AccessibleDialog):
             ("title", "title", book.title),
             ("author", "author", book.author_name),
             ("year", "year", book.year),
-            ("series", "series", book.series_name),
             ("genre", "genre", book.genre_name),
         )
         for field_name, web_key, current_value in scalar_fields:
@@ -154,10 +130,6 @@ class WebMetadataWindow(AccessibleDialog):
             )
             if diff is not None:
                 differences[field_name] = diff
-
-        web_num = cls._series_number_difference(book, web_data)
-        if web_num is not None:
-            differences["series_number"] = web_num
 
         if web_data.get("plot"):
             plot_text_for_db = cls._build_plot_text_for_db(web_data)
@@ -180,7 +152,7 @@ class WebMetadataWindow(AccessibleDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
-    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "I", "N", "G", "S", "R", "F", "/", "F1"}
+    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "G", "S", "R", "F", "/", "F1"}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -397,88 +369,6 @@ class WebMetadataWindow(AccessibleDialog):
         self.year_row = year_row
         self.main_layout.addWidget(year_row)
 
-        # Series fields (with series number)
-        series_row = QWidget()
-        series_layout = QHBoxLayout(series_row)
-        series_layout.setContentsMargins(0, 0, 0, 0)
-        series_layout.setSpacing(10)
-
-        # Left column - Current data
-        left_label = QLabel("Series:")
-        left_label.setMinimumWidth(80)
-        left_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        series_layout.addWidget(left_label)
-
-        self.series_edit = QLineEdit()
-        self.series_edit.setAccessibleName("Current Series")
-        self.series_edit.setAccessibleDescription("Current series name")
-        self.series_edit.setReadOnly(True)  # Make read-only
-        self.series_edit.setObjectName("series_edit")  # For shortcut manager
-        self.series_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        series_layout.addWidget(self.series_edit)
-
-        # Series number label and field
-        series_number_label = QLabel("#:")
-        series_number_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        series_layout.addWidget(series_number_label)
-
-        self.series_number_edit = QLineEdit()
-        self.series_number_edit.setAccessibleName("Series Number")
-        self.series_number_edit.setAccessibleDescription("Alt+N")
-        self.series_number_edit.setReadOnly(True)
-        self.series_number_edit.setMaxLength(4)  # e.g. 6.5 or 10.5
-        self.series_number_edit.setMaximumWidth(50)  # Small width
-        self.series_number_edit.setObjectName(
-            "series_number_edit"
-        )  # For shortcut manager
-        series_layout.addWidget(self.series_number_edit)
-
-        # Right column - Web data label (initially hidden)
-        web_label = QLabel("Web")
-        web_label.setMinimumWidth(80)
-        web_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        web_label.setVisible(False)
-        series_layout.addWidget(web_label)
-
-        self.series_web_edit = QLineEdit()
-        self.series_web_edit.setAccessibleName("Web Series")
-        self.series_web_edit.setAccessibleDescription("Series name from web source")
-        self.series_web_edit.setReadOnly(True)
-        self.series_web_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.series_web_edit.setVisible(False)
-        series_layout.addWidget(self.series_web_edit)
-
-        # Web series number
-        self.series_number_web_edit = QLineEdit()
-        self.series_number_web_edit.setAccessibleName("Web Series Number")
-        self.series_number_web_edit.setAccessibleDescription(
-            "Series number from web source"
-        )
-        self.series_number_web_edit.setReadOnly(True)
-        self.series_number_web_edit.setMaxLength(4)
-        self.series_number_web_edit.setMaximumWidth(50)
-        self.series_number_web_edit.setVisible(False)
-        series_layout.addWidget(self.series_number_web_edit)
-
-        # Checkbox
-        self.series_checkbox = QCheckBox()
-        self.series_checkbox.setAccessibleName("Keep Web Series")
-        self.series_checkbox.setAccessibleDescription(
-            "Checked: web series will be saved. Unchecked: current series is kept."
-        )
-        self.series_checkbox.setChecked(False)
-        self.series_checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.series_checkbox.setVisible(False)
-        series_layout.addWidget(self.series_checkbox)
-
-        # Store reference for toggling
-        series_row._web_label = web_label
-        series_row._web_edit = self.series_web_edit
-        series_row._web_number_edit = self.series_number_web_edit
-        series_row._checkbox = self.series_checkbox
-        self.series_row = series_row
-        self.main_layout.addWidget(series_row)
-
         # Genre fields
         self.genre_edit = QLineEdit()
         self.genre_edit.setAccessibleName("Current Genre")
@@ -600,9 +490,6 @@ class WebMetadataWindow(AccessibleDialog):
                 self.year_edit: "Current publication year",
                 self.year_web_edit: "Year from web search",
                 self.year_checkbox: "Keep the web year",
-                self.series_edit: "Current series",
-                self.series_web_edit: "Series from web search",
-                self.series_checkbox: "Keep the web series",
                 self.genre_edit: "Current genre",
                 self.genre_web_edit: "Genre from web search",
                 self.genre_checkbox: "Keep the web genre",
@@ -617,51 +504,26 @@ class WebMetadataWindow(AccessibleDialog):
         plot = str((web_data or {}).get("plot") or "").strip()
         return "Plot found" if plot else "No plot"
 
-    def _build_web_status_message(self, prefix: str, web_data: dict | None) -> str:
-        """Build status text with plot found/no plot and optional field differences."""
-        diff_fields = [k.capitalize() for k in self.field_differences.keys()]
-        diff_str = (
-            f" - Difference - {', '.join(diff_fields)}" if diff_fields else ""
-        )
-        return f"{prefix} - {self._plot_status_phrase(web_data)}{diff_str}"
-
-    def _update_series_row_visibility(self, web_data: dict | None = None) -> None:
-        """Hide the series row when DB and web have no series name or number."""
-        db_name = (self.series_edit.text() or "").strip()
-        db_num = (self.series_number_edit.text() or "").strip()
-        web_name = (self.series_web_edit.text() or "").strip()
-        web_num = (self.series_number_web_edit.text() or "").strip()
-        if web_data:
-            web_name = web_name or str(web_data.get("series") or "").strip()
-            web_num = web_num or str(web_data.get("series_number") or "").strip()
-        if web_num and not (web_name or db_name):
-            web_num = ""
-        self.series_row.setVisible(bool(db_name or db_num or web_name or web_num))
-        self.set_tab_order()
-
-    def _parse_series_number_value(self, text: str):
-        """Parse a series number; whole numbers as int, decimals as string."""
-        text = (text or "").strip()
-        if not text:
-            return None
-        if re.fullmatch(r"\d+", text):
-            try:
-                return int(text)
-            except ValueError:
-                return None
-        if re.fullmatch(r"\d+\.\d+", text):
-            return text
-        return None
-
-    def _series_number_from_web_apply(self):
-        """Read web series number field when it was offered as a difference."""
-        if "series_number" not in self.field_differences:
-            return None
-        return self._parse_series_number_value(self.series_number_web_edit.text())
+    def _build_web_status_message(
+        self, web_data: dict | None, *, prefix: str | None = None
+    ) -> str:
+        """Build status: optional prefix, plot found/no plot, non-plot differences."""
+        parts: list[str] = []
+        if prefix:
+            parts.append(prefix)
+        parts.append(self._plot_status_phrase(web_data))
+        diff_fields = [
+            k.capitalize()
+            for k in self.field_differences.keys()
+            if k != "plot"
+        ]
+        if diff_fields:
+            parts.append(f"Difference - {', '.join(diff_fields)}")
+        return " - ".join(parts)
 
     def _tab_candidate_widgets(self) -> list:
         """All widgets that may participate in tab order, in navigation sequence."""
-        widgets: list = [
+        return [
             self.title_edit,
             self.title_web_edit,
             self.title_checkbox,
@@ -671,43 +533,18 @@ class WebMetadataWindow(AccessibleDialog):
             self.year_edit,
             self.year_web_edit,
             self.year_checkbox,
+            self.genre_edit,
+            self.genre_web_edit,
+            self.genre_checkbox,
+            self.plot_edit,
+            self.rating_edit,
+            self.refetch_button,
+            self.save_button,
         ]
-        if not self.series_row.isHidden():
-            widgets.extend(
-                [
-                    self.series_edit,
-                    self.series_number_edit,
-                    self.series_web_edit,
-                    self.series_number_web_edit,
-                    self.series_checkbox,
-                ]
-            )
-        widgets.extend(
-            [
-                self.genre_edit,
-                self.genre_web_edit,
-                self.genre_checkbox,
-                self.plot_edit,
-                self.rating_edit,
-                self.refetch_button,
-                self.save_button,
-            ]
-        )
-        return widgets
 
     def _widget_takes_tab_focus(self, widget) -> bool:
         """True when widget should be included in the tab chain."""
-        if widget is None or not widget.isVisible():
-            return False
-        if widget in (
-            self.series_edit,
-            self.series_number_edit,
-            self.series_web_edit,
-            self.series_number_web_edit,
-            self.series_checkbox,
-        ):
-            return not self.series_row.isHidden()
-        return True
+        return widget is not None and widget.isVisible()
 
     def _iter_tab_widgets(self) -> list:
         """Return focusable widgets in keyboard navigation order (visible only)."""
@@ -772,12 +609,6 @@ class WebMetadataWindow(AccessibleDialog):
             self.title_edit.setText(self.book.title or "")
             self.author_edit.setText(self.book.author_name or "")
             self.year_edit.setText(str(self.book.year) if self.book.year else "")
-            self.series_edit.setText(self.book.series_name or "")
-            # Check if series_number attribute exists (will be added to DB later)
-            if hasattr(self.book, "series_number") and self.book.series_number:
-                self.series_number_edit.setText(str(self.book.series_number))
-            else:
-                self.series_number_edit.clear()
             self.genre_edit.setText(self.book.genre_name or "")
             self.plot_edit.set_plot_text(self.book.comments or "")
 
@@ -793,16 +624,11 @@ class WebMetadataWindow(AccessibleDialog):
                 self.title_row,
                 self.author_row,
                 self.year_row,
-                self.series_row,
                 self.genre_row,
             ]:
                 row._web_label.setVisible(False)
                 row._web_edit.setVisible(False)
-                if hasattr(row, "_web_number_edit"):
-                    row._web_number_edit.setVisible(False)
                 row._checkbox.setVisible(False)
-
-            self._update_series_row_visibility()
 
         # Auto-fetch web data when window opens (only if not pre-fetched)
         if self.pre_fetched_web_data:
@@ -811,12 +637,8 @@ class WebMetadataWindow(AccessibleDialog):
             cleaned_web_data = clean_web_data(self.pre_fetched_web_data)
             self.update_fields_with_web_data(cleaned_web_data)
 
-            prefix = (
-                "Web data found"
-                if self.field_differences
-                else "No new web data"
-            )
-            msg = self._build_web_status_message(prefix, cleaned_web_data)
+            # Window open already implies a fetch result; announce plot + diffs only.
+            msg = self._build_web_status_message(cleaned_web_data)
             self.set_status(msg, announce=True)
             plot_text = cleaned_web_data.get("plot")
             if plot_text and str(plot_text).strip():
@@ -868,7 +690,7 @@ class WebMetadataWindow(AccessibleDialog):
                 self.update_fields_with_web_data(cleaned)
                 if self.field_differences:
                     status_msg = self._build_web_status_message(
-                        "Re-fetch complete", cleaned
+                        cleaned, prefix="Re-fetch complete"
                     )
                 else:
                     status_msg = "Re-fetch: no new data found."
@@ -964,49 +786,6 @@ class WebMetadataWindow(AccessibleDialog):
             self.year_row,
         )
 
-        # Series (name via shared helper; number uses same row chrome)
-        series_name_shown = handle_field_comparison(
-            web_data.get("series"),
-            self.book.series_name,
-            self.series_web_edit,
-            self.series_checkbox,
-            "series",
-            self.series_row,
-        )
-
-        current_series_number = ""
-        if hasattr(self.book, "series_number") and self.book.series_number:
-            current_series_number = str(self.book.series_number)
-        cur_num_str = current_series_number.strip()
-        web_num_str = str(web_data.get("series_number") or "").strip()
-        number_differs = (
-            self._series_number_difference(self.book, web_data) is not None
-        )
-
-        if number_differs:
-            shown_num = self._series_number_difference(self.book, web_data) or ""
-            self.series_number_web_edit.setText(shown_num)
-            self.series_number_web_edit.setVisible(True)
-            self.field_differences["series_number"] = shown_num
-            if not series_name_shown:
-                self.series_row._web_label.setVisible(True)
-                db_series_empty = not (self.book.series_name or "").strip()
-                if db_series_empty:
-                    self.series_checkbox.setVisible(False)
-                else:
-                    self.series_checkbox.setVisible(True)
-                    self.series_checkbox.setChecked(True)
-        elif series_name_shown and web_num_str:
-            self.series_number_web_edit.setText(web_num_str)
-            self.series_number_web_edit.setVisible(True)
-            if web_num_str != cur_num_str:
-                self.field_differences["series_number"] = web_num_str
-        else:
-            self.series_number_web_edit.setVisible(False)
-
-        self._update_series_row_visibility(web_data)
-        self.set_tab_order()
-
         # Genre
         handle_field_comparison(
             web_data.get("genre"),
@@ -1047,6 +826,8 @@ class WebMetadataWindow(AccessibleDialog):
             self.plot_edit.set_plot_text(self.book.comments or "")
             self.rating_edit.clear()
 
+        self.set_tab_order()
+
     def setup_shortcuts(self):
         """
         Setup shortcuts with local control keys and centralized field keys.
@@ -1063,8 +844,6 @@ class WebMetadataWindow(AccessibleDialog):
             "author_edit": lambda: self.author_edit.setFocus(),
             "plot_edit": lambda: self.plot_edit.setFocus(),
             "year_edit": lambda: self.year_edit.setFocus(),
-            "series_edit": lambda: self.series_edit.setFocus(),
-            "series_number_edit": lambda: self.series_number_edit.setFocus(),
             "genre_edit": lambda: self.genre_edit.setFocus(),
             "rating_edit": lambda: self.rating_edit.setFocus(),
             "save_button": lambda: (
@@ -1269,39 +1048,6 @@ class WebMetadataWindow(AccessibleDialog):
                         applied_fields.append("Year")
                     except ValueError:
                         self.book.year = None
-
-                if (
-                    "series" in self.field_differences
-                    or "series_number" in self.field_differences
-                ):
-                    apply_series = not self.series_row._checkbox.isVisible() or (
-                        self.series_checkbox.isChecked()
-                    )
-                    if apply_series:
-                        series_text = self.series_web_edit.text().strip()
-                        series_id = getattr(self.book, "series_id", None)
-                        series_number = getattr(self.book, "series_number", None)
-                        if series_text:
-                            if " - " in series_text:
-                                parts = series_text.split(" - ")
-                                series_name = parts[0].strip()
-                                series_number = self._parse_series_number_value(
-                                    parts[1].strip()
-                                )
-                            else:
-                                series_name = series_text
-                            if series_name:
-                                series_id = self._resolve_named_entity_id(
-                                    self.series_queries, series_name, "series_id"
-                                )
-                        web_num = self._series_number_from_web_apply()
-                        if web_num is not None:
-                            series_number = web_num
-                        if series_id is not None:
-                            self.book.series_id = series_id
-                        if series_number is not None:
-                            self.book.series_number = series_number
-                        applied_fields.append("Series")
 
                 if self._should_apply_web_field(
                     "genre", self.genre_checkbox, self.genre_row

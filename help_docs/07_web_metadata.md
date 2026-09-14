@@ -2,13 +2,13 @@
 
 ## What this is
 
-Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You can then choose which fields to update — such as plot, series, genre, year, title, or author.
+Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You can then choose which fields to update — such as plot, genre, year, title, or author. Series is not fetched from the web; edit series in Book Details or the Update window.
 
 For an explained walkthrough, see [Web metadata explained](21_web_metadata_explained.md). If a fetch matches but the review window still offers a title change, see [Web metadata title compare explained](22_web_metadata_title_compare.md).
 
 ## When to use it
 
-- A book is in your library but is missing a plot, series, or other details.
+- A book is in your library but is missing a plot or other details.
 - You want to compare your local record with online sources before saving changes.
 
 ## Before you start
@@ -27,7 +27,7 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
    - **Differences found** — a review window opens showing your current values side by side with web values.
    - **Nothing useful found** — a "No Web Data Found" message appears. This can mean no match was found, the book is already up to date, or there was a network problem.
 5. In the review window, fields that differ have **checkboxes**. Click each box for the fields you want to apply from the web.
-   - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+I** Series, **Alt+G** Genre, or **Alt+R** Rating.
+   - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
 6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
 7. Click **Save** (or press **Alt+S**) to apply checked fields, or click **Cancel** (or press **Alt+C**) to close without saving.
@@ -57,7 +57,6 @@ Optional: Preferences → Display → Web Metadata → Google Books API key (or 
 | Alt+A | Author (review window) |
 | Alt+P | Plot (review window) |
 | Alt+Y | Year (review window) |
-| Alt+I | Series (review window) |
 | Alt+G | Genre (review window) |
 | Alt+R | Rating (review window) |
 | Alt+F | Re-fetch (in review window) |

@@ -2,7 +2,7 @@
 
 How AbCS decides whether two titles are “the same book” in three different places. This is not a how-to guide — for Fetch Web Info steps see [Web Metadata](07_web_metadata.md); for the full fetch flow see [Web metadata explained](21_web_metadata_explained.md).
 
-**Important:** These three paths answer **different questions**. They do not use identical rules on purpose. A title that matches well online may still show as a difference in the review window — that is normal.
+**Important:** These three paths answer **different questions**. Path B (review window) now uses tolerant title and author comparison so cosmetic-only differences are usually not offered.
 
 ---
 
@@ -56,39 +56,38 @@ Web search strips **whole-number** suffixes (`- 01`, `# 3`). Decimal series such
 
 ---
 
-## 3. Path B — the review window title row
+## 3. Path B — the review window title and author rows
 
-After Path A picks a result, the **Web Metadata** review window compares web values to what is already in your library so it knows which fields to offer for save.
+After Path A picks a result, the **Web Metadata** review window compares web values to what is already in your library so it knows which fields to offer for save. Series is not compared here.
 
 ### How the title row is decided
 
-1. **Your library:** the title **as stored** (for example `Triptych - 01`) — series suffix is **not** stripped again.
-2. **Web value:** the title returned from the catalog (series number may have been re-appended).
-3. Both sides are **normalized** for comparison:
-   - Trailing articles moved (`Title, The` → treated like `the title`)
-   - Case ignored
-   - Spaces removed (punctuation handled as part of that normalization)
+1. Both sides are folded (accents stripped; `&` treated as `and`).
+2. Filler tails such as `: A Novel` or `(Unabridged)` are removed.
+3. Series suffixes, trailing articles, and punctuation are normalized the same way as import compare keys.
+4. A genuine extra subtitle (for example `: A Novel of Suspense`) still counts as a difference.
 
-Other scalar fields (author, series, genre) use simpler text comparison.
+### How the author row is decided
 
-A title appears as a difference when normalized web ≠ normalized current, or when your title field is empty.
+Author comparison ignores punctuation, case, accents, name order (`King, Stephen` vs `Stephen King`), and compatible initials (`J.R.R. Tolkien` vs `John Ronald Reuel Tolkien`).
+
+A title or author appears as a difference when the compare keys differ, or when your field is empty.
 
 ### Design intent
 
-- The review UI answers a simple question: “Is the title text different?”
-- **No** word-overlap scoring and **no** series-number strip on the library side.
-- Predictable field-by-field checkboxes.
+- The review UI should offer only **meaningful** changes, not cosmetic spelling variants.
+- Series suffixes on your library title no longer force a title checkbox when the web title is the bare book name.
 
-### Why Path A and Path B can disagree
+### Why Path A and Path B can still differ
 
 | Aspect | Path A (search) | Path B (review) |
 |--------|-----------------|-----------------|
-| Your title input | Prepared for search (series suffix stripped) | Stored title exactly as in the library |
-| Web title input | Raw catalog hit | Fetched metadata title |
-| Compare method | Word overlap (about 50%) | Normalized text equality |
-| Author | Required to accept a hit | Compared on its own row |
+| Your title input | Prepared for search (series suffix stripped) | Stored title, then tolerant normalize |
+| Web title input | Raw catalog hit | Fetched metadata title, then tolerant normalize |
+| Compare method | Word overlap (about 50%) | Cosmetic-tolerant key equality |
+| Author | Required to accept a hit | Compared on its own row with initials/order tolerance |
 
-**Example:** Library has `Triptych - 01`. Path A may match web title `Triptych` easily. Path B may still show a title difference because `Triptych - 01` and `Triptych` normalize to different strings. That does **not** mean the fetch picked the wrong book.
+**Example:** Library has `Triptych - 01`. Path A matches web title `Triptych`. Path B now treats those as the same title, so no title difference is offered unless something else differs.
 
 ---
 
@@ -127,10 +126,10 @@ Then both titles are reduced to a single **compare key**: lowercase, spaces and 
 
 | Stored in library | Spreadsheet / search input | Path A searches as | Path B title diff? | Path C import match? |
 |-------------------|----------------------------|--------------------|--------------------|----------------------|
-| `Triptych - 01` | `Triptych` | `Triptych` | Often **yes** (suffix vs plain) | **Yes** — keys match |
-| `Hobbit, The` | `The Hobbit` | `The Hobbit` | Depends on web title | **Yes** |
-| `Still Life (A Three Pines Mystery)` | `Still Life` | Unchanged (paren not stripped on web) | Often **yes** | May **not** match (paren kept unless series-like) |
-| `Bury Your Dead (Armand Gamache 6)` | `Bury Your Dead` | Unchanged on web strip | Often **yes** | **Yes** (digit in paren stripped for import) |
+| `Triptych - 01` | `Triptych` | `Triptych` | **No** (series suffix ignored) | **Yes** — keys match |
+| `Hobbit, The` | `The Hobbit` | `The Hobbit` | **No** if web is `The Hobbit` | **Yes** |
+| `Gone Girl` | `Gone Girl: A Novel` | `Gone Girl` | **No** (filler subtitle) | Depends |
+| `Gone Girl` | `Gone Girl: A Novel of Suspense` | (search words) | **Yes** (real subtitle) | Depends |
 
 ---
 
@@ -138,8 +137,8 @@ Then both titles are reduced to a single **compare key**: lowercase, spaces and 
 
 ### Fetch Web Info
 
-- A good online match does **not** always mean “no title difference” in the review window.
-- If you want to keep your series suffix (`- 01`), uncheck the title row on Save.
+- Cosmetic title or author differences usually do **not** open a checkbox.
+- Series is not fetched or offered in this window — edit it in Book Details or Update.
 - If the review window shows a title change you do not want, **Cancel** or uncheck that field — nothing is overwritten until you Save.
 
 ### Import Book List

@@ -1,28 +1,29 @@
 # Series Number in Database — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned (not yet implemented) — scope narrowed September 2026  
 **Created:** June 2026  
-**Related:** [Web Metadata](../src/ui/web_metadata.py), [plan_ratings.md](plan_ratings.md) (Wave 0 schema batch)
+**Related:** [plan_ratings.md](plan_ratings.md) (Wave 0 schema batch), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)
 
 ---
 
 ## What this is
 
-Persist **series number** (e.g. book 3 in a series) in SQLite and Book Details — today web metadata shows it but DB persistence is incomplete (`series_number` removed from queries historically).
+Persist **series number** (e.g. book 3 in a series) in SQLite and Book Details.
+
+**Scope note (2026-09):** Fetch Web Info no longer retrieves or displays series or series number. Series entry is **manual only** via Book Details, the Update window, and the offline catalog script. This plan’s UI work targets those surfaces, not the web metadata review window.
 
 ---
 
 ## Problem
 
-Series number appears in Web Metadata UI; not reliably stored on `Book`. Title sometimes carries `" - 3"` suffix instead.
+Series number is not reliably stored on `Book`. Title sometimes carries `" - 3"` suffix instead.
 
 ---
 
 ## Design
 
 - Column: `series_number INTEGER` nullable on `books` (add in schema wave if decided before fall coding).
-- Web Metadata save writes column; strip from title when number stored separately (careful migration).
-- Book Details: optional read-only or editable small field near Series row.
+- Book Details / Update window: editable small field near Series row; strip from title when number stored separately (careful migration).
 - Sort: optional series order in main table — defer.
 
 **Estimate:** 2–3 days (coordinate with Wave 0 schema if not yet shipped)
@@ -31,7 +32,7 @@ Series number appears in Web Metadata UI; not reliably stored on `Book`. Title s
 
 ## Tests
 
-Save from web metadata; title/number split migration.
+Save from Book Details / Update; title/number split migration.
 
 ---
 

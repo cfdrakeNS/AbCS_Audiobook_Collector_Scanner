@@ -101,41 +101,24 @@ def test_title_matches():
 
     print("[PASS] _title_matches works correctly")
 
-def test_clean_web_data_for_storage_removes_series_plot():
-    """Test that plot values equal to series names are cleared before UI update/db save."""
+def test_clean_web_data_for_storage_strips_series_keys():
+    """Series keys from legacy cache entries are removed before UI/DB use."""
     api = WebBookAPI()
 
     web_data = {
         "title": "A Great Mystery",
         "author": "Louise Penny",
         "series": "How The Light Gets In",
-        "plot": "How The Light Gets In",
+        "series_number": "9",
+        "plot": "A long enough plot description for the book.",
     }
 
     cleaned = api.clean_web_data_for_storage(web_data)
-    assert cleaned["plot"] == ""
+    assert "series" not in cleaned
+    assert "series_number" not in cleaned
+    assert cleaned["plot"]
 
-    web_data["plot"] = "How The Light Gets In series"
-    cleaned = api.clean_web_data_for_storage(web_data)
-    assert cleaned["plot"] == ""
-
-    print("[PASS] clean_web_data_for_storage filters redundant series plot text")
-
-def test_clean_web_data_for_storage_rejects_long_series_text():
-    """Test that series values containing plot-like narrative text are dropped."""
-    api = WebBookAPI()
-
-    web_data = {
-        "title": "How the Light Gets In",
-        "author": "Louise Penny",
-        "series": "New York Times bestselling author Louise Penny. \"There is a crack in everything. That's how the light gets in.\" Leonard Cohen Christmas is approaching, and in Québec it's a time of dazzling snowfalls, bright lights, and gatherings with friends in front of blazing hearths.",
-        "plot": "How the Light Gets In is the ninth Chief Inspector Gamache Novel from 1 New York Times bestselling author Louise Penny. \"There is a crack in everything. That's how the light gets in.\" Leonard Cohen Christmas is approaching, and in Québec it's a time of dazzling snowfalls, bright lights, and gatherings with friends in front of blazing hearths.",
-    }
-
-    cleaned = api.clean_web_data_for_storage(web_data)
-    assert cleaned["series"] == ""
-
-    print("[PASS] clean_web_data_for_storage rejects long narrative series text")
+    print("[PASS] clean_web_data_for_storage strips series keys")
 
 
 def test_metadata_matches_db_requires_title_and_author(api):
@@ -224,6 +207,21 @@ def test_rejects_non_book_song_plot(api):
     )
     assert "plot" not in metadata or not metadata.get("plot")
 
+
+def test_rejects_stub_metadata_placeholder_plot(api):
+    stub = "No metadata return.... " + ("x" * 80)
+    assert api._is_stub_plot(stub)
+    metadata = {"title": "Aliens", "author": "Murray Leinster"}
+    assert not api._apply_plot_to_metadata(
+        metadata,
+        stub,
+        "open_library",
+        "Aliens",
+        "Murray Leinster",
+    )
+    assert not metadata.get("plot")
+
+
 def test_wikipedia_plot_requires_author_or_book_context(api):
     metadata = {"title": "Blue On Black", "author": "Michael Connelly"}
     unrelated = "A" * 120
@@ -284,11 +282,10 @@ def test_cache_key_includes_isbn_param(api):
             "_resolved_source": "open_library",
         }
         with patch.object(api, "_enrich_metadata_plot"):
-            with patch.object(api, "_fill_series_fields"):
-                with patch.object(api, "_save_persistent_cache"):
-                    api.get_book_metadata(
-                        "Dune", "Frank Herbert", isbn="9780441172719"
-                    )
+            with patch.object(api, "_save_persistent_cache"):
+                api.get_book_metadata(
+                    "Dune", "Frank Herbert", isbn="9780441172719"
+                )
     assert any("9780441172719" in key for key in api._cache)
 
 def test_dedupe_fetch_errors_keeps_one_per_source():

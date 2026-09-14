@@ -4,10 +4,12 @@ Text Utilities - Unified text normalization and similarity functions.
 Centralizes fuzzy matching logic to eliminate duplication between:
 - validator.py (import validation)
 - book_list_import_window.py (list import duplicate checking)
+- web_metadata.py (web review title/author comparison)
 """
 
 import re
 import string
+import unicodedata
 from difflib import SequenceMatcher
 
 
@@ -24,6 +26,28 @@ _SERIES_NUMBER_PATTERNS = (
     r"^(.*?)\s*,\s*(\d+)$",  # "Title, 09" (integer only; comma-year guard below)
 )
 _SERIES_NUMBER_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
+
+# Web metadata review: cosmetic filler tails stripped before title compare.
+_TITLE_FILLER_TAIL_RE = re.compile(
+    r"(?:"
+    r"\s*:\s*a\s+(?:novel|thriller|memoir|mystery|romance|story|tale)\s*$"
+    r"|"
+    r"\s*\((?:unabridged|abridged)\)\s*$"
+    r"|"
+    r"\s+(?:library\s+edition|complete\s+and\s+unabridged)\s*$"
+    r")",
+    re.IGNORECASE,
+)
+
+# Honorifics / suffixes for web author comparison (mirrored from web_book_api).
+_AUTHOR_HONORIFIC_PREFIX = re.compile(
+    r"^(?:sir|dame|dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|lord|lady)\s+",
+    re.IGNORECASE,
+)
+_AUTHOR_SUFFIX_TOKENS = frozenset(
+    {"jr", "sr", "ii", "iii", "iv", "phd", "md", "esq"}
+)
+_AUTHOR_NON_ALNUM_RE = re.compile(r"[^\w]+", re.UNICODE)
 
 
 def _looks_like_year(number: str) -> bool:
@@ -308,6 +332,104 @@ def normalize_author(author: str, aggressive: bool = False) -> str:
         )
     
     return a
+
+
+def fold_text(value: str) -> str:
+    """Fold accents and rewrite ``&`` to ``and`` for web title/author compare."""
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    if not text:
+        return ""
+    # NFKD then drop combining marks so Émile → Emile
+    decomposed = unicodedata.normalize("NFKD", text)
+    without_marks = "".join(
+        c for c in decomposed if not unicodedata.combining(c)
+    )
+    without_marks = without_marks.replace("&", " and ")
+    return re.sub(r"\s+", " ", without_marks).strip()
+
+
+def web_compare_title_key(title: str) -> str:
+    """Canonical title key for Web Metadata review comparison."""
+    if not isinstance(title, str):
+        return ""
+    folded = fold_text(title)
+    folded = _TITLE_FILLER_TAIL_RE.sub("", folded).strip()
+    return compare_normalize_title(folded)
+
+
+def web_titles_match(left: str, right: str) -> bool:
+    """True when two titles differ only cosmetically for web review."""
+    left_key = web_compare_title_key(left)
+    right_key = web_compare_title_key(right)
+    if not left_key or not right_key:
+        return False
+    return left_key == right_key
+
+
+def _author_tokens(author: str) -> list[str]:
+    """Tokenize an author name after fold/honorific/suffix strip."""
+    text = fold_text(author)
+    if not text:
+        return []
+    # Strip leading honorifics repeatedly
+    while True:
+        match = _AUTHOR_HONORIFIC_PREFIX.match(text)
+        if not match:
+            break
+        text = text[match.end() :].strip()
+    # Split on non-alphanumerics; keep unicode letters/digits
+    raw_tokens = [
+        t.casefold()
+        for t in _AUTHOR_NON_ALNUM_RE.split(text)
+        if t
+    ]
+    return [t for t in raw_tokens if t and t not in _AUTHOR_SUFFIX_TOKENS]
+
+
+def web_compare_author_key(author: str) -> str:
+    """Sorted-token author key (order-independent) for web review."""
+    tokens = _author_tokens(author)
+    if not tokens:
+        return ""
+    return " ".join(sorted(tokens))
+
+
+def _given_names_compatible(left: list[str], right: list[str]) -> bool:
+    """Pairwise given-name compatibility (equal length; initials allowed)."""
+    if len(left) != len(right):
+        return False
+    for a, b in zip(left, right):
+        if a == b:
+            continue
+        if len(a) == 1 and b.startswith(a):
+            continue
+        if len(b) == 1 and a.startswith(b):
+            continue
+        return False
+    return True
+
+
+def web_authors_match(left: str, right: str) -> bool:
+    """True when two author names likely refer to the same person.
+
+    Matches when sorted-token keys are equal (covers ``King, Stephen`` vs
+    ``Stephen King`` and punctuation), or when surnames match and given-name
+    lists are initial-compatible pairwise.
+    """
+    left_tokens = _author_tokens(left)
+    right_tokens = _author_tokens(right)
+    if not left_tokens or not right_tokens:
+        return False
+
+    if " ".join(sorted(left_tokens)) == " ".join(sorted(right_tokens)):
+        return True
+
+    # Surname = last token; given names = everything before.
+    if left_tokens[-1] != right_tokens[-1]:
+        return False
+    return _given_names_compatible(left_tokens[:-1], right_tokens[:-1])
 
 
 def similarity_ratio(left: str, right: str) -> float:

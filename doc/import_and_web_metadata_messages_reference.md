@@ -342,7 +342,6 @@ Initial text: `Preparing web search…`
 | Broadened search | `Broadened search, {source name}…` |
 | Title-only search | `Title-only search, {source name}…` |
 | Other | `Trying {source name}…` |
-| Series resolved | `Series found: {series}` or `Series found: {series}; book {number}` |
 
 Source order: Open Library → Google Books → WikiData.
 
@@ -391,10 +390,8 @@ Used on the main window status bar and Web Metadata re-fetch:
 
 | Message pattern | When |
 |-----------------|------|
-| `Web data found - Plot found` / `… - No plot` | Window opened with pre-fetched data and field differences |
-| `No new web data - Plot found` / `… - No plot` | Pre-fetched but nothing differs from DB |
-| Optional suffix | ` - Difference - Title, Author, …` (capitalized field names) |
-| `Re-fetch complete - Plot found` / `… - No plot` | Re-fetch found differing fields |
+| `Plot found` / `No plot` | Window opened; optional ` - Difference - Title, Author, …` (plot omitted from difference list) |
+| `Re-fetch complete - Plot found` / `… - No plot` | Re-fetch found differing fields; same optional difference suffix |
 | `Re-fetch: no new data found.` | Re-fetch returned data but no differences |
 | `Re-fetch: no data found.` | Re-fetch clean miss |
 | Re-fetch network | Same as `format_web_fetch_status_message` |

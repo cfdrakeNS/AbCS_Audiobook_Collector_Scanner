@@ -153,8 +153,6 @@ Last updated: June 2026.
 | Alt+A | Author |
 | Alt+P | Plot |
 | Alt+Y | Year |
-| Alt+I | Series |
-| Alt+N | Series # |
 | Alt+G | Genre |
 | Alt+R | Rating |
 | Alt+F | Re-fetch web data |

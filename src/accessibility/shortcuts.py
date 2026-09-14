@@ -120,8 +120,6 @@ WEB_METADATA_SHORTCUTS = {
     "A": ("Author", "author_edit"),
     "P": ("Plot", "plot_edit"),
     "Y": ("Year", "year_edit"),
-    "I": ("Series", "series_edit"),
-    "N": ("Series number", "series_number_edit"),
     "G": ("Genre", "genre_edit"),
     "R": ("Rating", "rating_edit"),
     "F": ("Re-fetch web data", "refetch_button"),

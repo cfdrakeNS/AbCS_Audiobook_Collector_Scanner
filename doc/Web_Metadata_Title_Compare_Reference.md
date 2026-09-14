@@ -1,9 +1,10 @@
 # Web Metadata Title Compare — Technical Reference
 
-Read-only reference for how AbCS compares book titles during **web metadata fetch** and how that relates to **book list import**. This document describes current behavior; it does not propose changes to web fetch or the review window (those paths are working as intended).
+Read-only reference for how AbCS compares book titles during **web metadata fetch** and how that relates to **book list import**.
 
 **Related user guides:** [07_web_metadata.md](../help_docs/07_web_metadata.md), [21_web_metadata_explained.md](../help_docs/21_web_metadata_explained.md), [22_web_metadata_title_compare.md](../help_docs/22_web_metadata_title_compare.md)  
 **Related import logic:** `src/utils/text_utils.py` (`compare_normalize_title`)  
+**Web review compare:** `src/utils/text_utils.py` (`web_titles_match`, `web_authors_match`)  
 **Web implementation:** `src/web/web_book_api.py`, `src/ui/web_metadata.py`
 
 ---
@@ -91,40 +92,38 @@ Web `_strip_series_number` uses integer patterns (`\d+`). Decimal series entries
 
 ## Path B — Web metadata review window
 
-**Files:** `WebMetadataWindow._compare_scalar_field()`, `compute_field_differences()`, module function `web_book_api.normalize_title()`.
+**Files:** `WebMetadataWindow._compare_scalar_field()`, `compute_field_differences()`, helpers in `text_utils.py` (`web_titles_match`, `web_authors_match`).
 
-After path A returns metadata, the review window decides which fields differ from the **current DB record** so checkboxes can be shown.
+After path A returns metadata, the review window decides which fields differ from the **current DB record** so checkboxes can be shown. Series is not fetched or compared.
 
 ### Title comparison (review only)
 
-For the **title** field only:
+1. Fold accents; rewrite `&` to `and`.
+2. Strip filler tails (`: A Novel`, `(Unabridged)`, etc.) when they are the entire remaining suffix.
+3. Apply `compare_normalize_title` (series strip, parenthetical series markers, article move, aggressive punctuation strip).
+4. Keys equal → no title difference. A genuine extra subtitle still differs.
 
-1. Current DB value: `book.title` as stored (e.g. `Triptych - 01`) — **not** re-run through `_strip_series_number`.
-2. Web value: fetched title as returned from the API (possibly with series re-appended).
-3. Both sides passed through **`normalize_title()`** in `web_book_api.py`:
-   - Move trailing article: `Title, The` → `the title`
-   - Lowercase, remove **spaces** (punctuation kept until spaces removed by join)
+### Author comparison (review only)
 
-Other scalar fields use simple `.lower()` on trimmed strings.
+1. Fold accents; strip honorifics and suffixes.
+2. Tokenize on non-alphanumerics.
+3. Match when sorted tokens are equal (covers `King, Stephen` vs `Stephen King`), or surnames match and given names are initial-compatible pairwise.
 
-A title is offered as a change when normalized web ≠ normalized current, or when current is empty.
+Other scalar fields (year, genre) use simple `.lower()` on trimmed strings.
 
 ### Design intent
 
-- Simple, predictable “is the title text different?” for the UI.
-- Lighter than path A: **no** series-number strip, **no** word overlap.
-- A book can pass path A (good API match) yet still show a title difference in the review table — for example DB `Triptych - 01` vs web `Triptych`.
+- Offer only meaningful changes; ignore cosmetic punctuation and series-suffix noise.
+- Path A remains fuzzy word-overlap for candidate pick; Path B is tolerant exact-key equality for the UI.
 
 ### Why path A and path B differ
 
 | Aspect | Path A (search) | Path B (review) |
 |--------|------------------|-----------------|
-| DB title input | `search_title` after series strip + clean | Raw `book.title` |
-| Web title input | Raw candidate from API | Fetched metadata title |
-| Compare method | Word overlap ≥ 50% | Normalized string equality |
-| Author | Required for candidate gate | Compared separately in field diff |
-
-This split is **intentional**: search must be fuzzy; the review UI must be easy to reason about field-by-field.
+| DB title input | `search_title` after series strip + clean | Raw `book.title` then `web_titles_match` |
+| Web title input | Raw candidate from API | Fetched metadata title then `web_titles_match` |
+| Compare method | Word overlap ≥ 50% | Cosmetic-tolerant key equality |
+| Author | Required for candidate gate | `web_authors_match` on its own row |
 
 ---
 
@@ -159,10 +158,10 @@ Then **`normalize_title(aggressive=True)`** removes all spaces and punctuation a
 
 | DB stored | Sheet / search input | Path A (`search_title`) | Path A match style | Path B title diff? | Path C import key |
 |-----------|----------------------|-------------------------|--------------------|--------------------|-------------------|
-| `Triptych - 01` | `Triptych` | `Triptych` | Word overlap vs web `Triptych` | Often yes (suffix vs plain) | `triptych` = `triptych` |
-| `Hobbit, The` | `The Hobbit` | `The Hobbit` | Word overlap | Depends on web title | `thehobbit` = `thehobbit` |
-| `Still Life (A Three Pines Mystery)` | `Still Life` | Unchanged (paren not stripped in web) | May still match via word overlap | Often yes | May not match import (paren kept on DB side unless series-like) |
-| `Bury Your Dead (Armand Gamache 6)` | `Bury Your Dead` | Unchanged in web strip | Word overlap may match | Often yes | Matches import (digit in paren stripped) |
+| `Triptych - 01` | `Triptych` | `Triptych` | Word overlap vs web `Triptych` | No (series suffix ignored) | `triptych` = `triptych` |
+| `Hobbit, The` | `The Hobbit` | `The Hobbit` | Word overlap | No if web is `The Hobbit` | `thehobbit` = `thehobbit` |
+| `Gone Girl` | `Gone Girl: A Novel` | `Gone Girl` | Word overlap | No (filler tail) | Depends |
+| `Gone Girl` | `Gone Girl: A Novel of Suspense` | (search words) | Word overlap | Yes (real subtitle) | Depends |
 
 ---
 
@@ -170,10 +169,10 @@ Then **`normalize_title(aggressive=True)`** removes all spaces and punctuation a
 
 | Concern | Location |
 |---------|----------|
-| Series strip (web) | `WebBookAPI._strip_series_number()` |
-| Search title pipeline | `WebBookAPI.get_book_metadata()` (~lines 832–836) |
+| Series strip (web search prep) | `WebBookAPI._strip_series_number()` |
+| Search title pipeline | `WebBookAPI.get_book_metadata()` |
 | Word overlap / author gate | `WebBookAPI._title_word_match_score()`, `_metadata_matches_db()`, `_author_matches()` |
-| Review title normalize | `web_book_api.normalize_title()`, `WebMetadataWindow._compare_scalar_field()` |
+| Review title/author compare | `text_utils.web_titles_match()`, `web_authors_match()`, `WebMetadataWindow._compare_scalar_field()` |
 | Field diff table | `WebMetadataWindow.compute_field_differences()` |
 | Import compare | `text_utils.pre_normalize_title()`, `compare_normalize_title()` |
 | Import UI | `ImportValidator.is_duplicate_fast()` (book list + folder), `BookListImportWindow.update_read_dates()` |
@@ -182,10 +181,10 @@ Then **`normalize_title(aggressive=True)`** removes all spaces and punctuation a
 
 ## Summary
 
-- **Web fetch works in two steps:** fuzzy **pick** (path A) then strict **field diff** for the UI (path B). They serve different purposes; they are not meant to use identical title strings.
-- **Book list import** (path C) borrowed **search prep** (especially series suffix removal) but uses **exact** keys — fixing cases like Karin Slaughter `Triptych` vs `Triptych - 01` without modifying web metadata code.
-- **No web metadata changes are required** when import matching is the goal; keep web and import logic separate unless a real web-fetch miss is observed in testing.
+- **Web fetch works in two steps:** fuzzy **pick** (path A) then cosmetic-tolerant **field diff** for the UI (path B).
+- **Series is not part of web fetch or the review window**; edit series elsewhere.
+- **Book list import** (path C) still uses exact keys after shared prep; it remains separate from web review matching.
 
 ---
 
-*Document purpose: developer/agent reference. Last aligned with codebase: June 2026.*
+*Document purpose: developer/agent reference. Last aligned with codebase: September 2026.*

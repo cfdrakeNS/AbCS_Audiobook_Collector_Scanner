@@ -60,12 +60,6 @@ AUTHOR_HONORIFIC_PREFIX = re.compile(
 # Named heuristics (kept explicit for maintainability).
 ORWELL_1984_TITLE_TOKEN = "1984"
 ORWELL_AUTHOR_LABEL = "George Orwell"
-JACK_REACHER_SERIES = "Jack Reacher"
-UNLIKELY_SERIES_PHRASES = (
-    "new york times",
-    "bestselling author",
-)
-UNLIKELY_SERIES_COMBO = ("novel", "chief inspector")
 
 # Fixed display order for fetch-progress messages (1=OL, 2=Google, 3=WikiData).
 _SOURCE_PROGRESS_LABELS = {
@@ -703,11 +697,29 @@ class WebBookAPI:
         ]
         return any(re.search(pattern, plot_lower) for pattern in non_book_patterns)
 
+    @staticmethod
+    def _is_stub_plot(plot: str) -> bool:
+        """Return True when plot looks like an API/error placeholder, not a synopsis."""
+        text = re.sub(r"\s+", " ", (plot or "").strip().lower())
+        if not text:
+            return True
+        stub_patterns = (
+            r"^no metadata\b",
+            r"\bno metadata\b.{0,40}\b(return|returned|available|found|provided)\b",
+            r"\bmetadata (not |never )?(return|returned|available|found)\b",
+            r"^no description\b",
+            r"\bdescription not available\b",
+            r"^no information (found|available|returned)\b",
+            r"^not available\.?$",
+            r"^n/?a\.?$",
+        )
+        return any(re.search(pattern, text) for pattern in stub_patterns)
+
     def _plot_relates_to_book(
         self, plot: str, db_title: str, db_author: str, *, plot_source: str = ""
     ) -> bool:
         """Reject plot text that clearly belongs to another medium or wrong author."""
-        if self._is_non_book_plot(plot):
+        if self._is_non_book_plot(plot) or self._is_stub_plot(plot):
             return False
         if not db_author or plot_source != "wikipedia":
             return True
@@ -729,11 +741,11 @@ class WebBookAPI:
         db_title: str,
         db_author: str,
     ) -> bool:
-        """Set plot on metadata when text is long enough and not a series label."""
+        """Set plot on metadata when text is long enough and book-related."""
         plot = self._clean_plot_text(plot)
         if not self._plot_is_adequate(plot):
             return False
-        if self._is_redundant_plot(plot, metadata.get("series", "")):
+        if self._is_redundant_plot(plot):
             return False
         if not self._plot_relates_to_book(
             plot, db_title, db_author, plot_source=plot_source
@@ -833,22 +845,10 @@ class WebBookAPI:
         ):
             return
 
-        discovered_isbn = metadata.get("isbn", "")
-        if discovered_isbn and not self._plot_is_adequate(
-            self._clean_plot_text(metadata.get("plot", ""))
-        ):
-            self._check_abort()
-            _progress("Enriching plot: Google Books by ISBN…")
-            gb_hit = self._fetch_google_by_isbn(discovered_isbn)
-            if gb_hit and self._apply_plot_to_metadata(
-                metadata,
-                gb_hit.get("plot", ""),
-                "google_books",
-                db_title,
-                db_author,
-            ):
-                return
-
+        # Open Library and Wikipedia both returned nothing usable. Skip further
+        # network plot lookups (Google ISBN) to shorten UI freezes on hard misses.
+        # Still accept an adequate plot already attached from the primary match
+        # (no extra request).
         google_plot = self._clean_plot_text(metadata.get("plot", ""))
         if self._plot_is_adequate(google_plot):
             self._apply_plot_to_metadata(
@@ -859,264 +859,11 @@ class WebBookAPI:
                 db_author,
             )
 
-    def _parse_open_library_series_string(self, raw: str) -> tuple[str, str]:
-        """Split an Open Library series string into name and optional number."""
-        if not raw:
-            return "", ""
-        text = re.sub(r"\s+", " ", str(raw).strip())
-        patterns = [
-            r"^(.+?)\s*#\s*(\d+)\s*$",
-            r"^(.+?),\s*Book\s+(\d+)\s*$",
-            r"^(.+?)\s+Book\s+(\d+)\s*$",
-        ]
-        for pattern in patterns:
-            match = re.match(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(1).strip(), match.group(2).strip()
-        return text, ""
-
-    def _apply_series_to_metadata(
-        self,
-        metadata: Dict,
-        series: str,
-        series_number: str = "",
-        *,
-        db_title: str = "",
-        db_plot: str = "",
-    ) -> bool:
-        """Set series fields on metadata when values look valid. Does not overwrite."""
-        if not metadata:
-            return False
-        changed = False
-        plot_ref = db_plot or metadata.get("plot", "")
-        title_ref = db_title or metadata.get("title", "")
-
-        cleaned_series = self._clean_text_field(series or "")
-        if cleaned_series and not metadata.get("series"):
-            if not self._is_unlikely_series_name(
-                cleaned_series, title=title_ref, plot=plot_ref
-            ):
-                metadata["series"] = cleaned_series
-                changed = True
-
-        sn = str(series_number or "").strip()
-        if sn and not metadata.get("series_number"):
-            sn_digits = re.sub(r"[^\d]", "", sn)
-            if sn_digits:
-                metadata["series_number"] = sn_digits
-                changed = True
-        return changed
-
-    def _infer_series_name_from_author(self, author: str) -> str:
-        """Best-effort series name when the DB title carries a volume number only."""
-        norm = self._normalize_person_name(author)
-        if not norm:
-            return ""
-        if "child" in norm and (
-            "lee" in norm or "andrew" in norm or norm.startswith("child ")
-        ):
-            return JACK_REACHER_SERIES
-        return ""
-
-    @staticmethod
-    def _looks_like_year(number: str) -> bool:
-        """True when digits are probably a publication year, not a series index."""
-        digits = re.sub(r"[^\d]", "", str(number or ""))
-        if len(digits) != 4:
-            return False
-        try:
-            value = int(digits)
-        except ValueError:
-            return False
-        return 1700 <= value <= 2099
-
-    def _seed_series_from_db_title(
-        self,
-        metadata: Dict,
-        title_series_number: str,
-        author: str,
-    ) -> bool:
-        """Apply series number (and known author heuristics) from the library title."""
-        if not metadata:
-            return False
-        changed = False
-        raw = str(title_series_number or "").strip()
-        token_match = re.match(r"^\d+(?:\.\d+)?$", raw)
-        sn_digits = token_match.group(0) if token_match else ""
-        if sn_digits and self._looks_like_year(sn_digits):
-            sn_digits = ""
-
-        if not metadata.get("series") and sn_digits:
-            inferred = self._infer_series_name_from_author(author)
-            if inferred and not self._is_unlikely_series_name(
-                inferred,
-                title=metadata.get("title", ""),
-                plot=metadata.get("plot", ""),
-            ):
-                metadata["series"] = inferred
-                changed = True
-
-        if sn_digits and not metadata.get("series_number") and metadata.get("series"):
-            metadata["series_number"] = sn_digits
-            changed = True
-        return changed
-
-    @staticmethod
-    def _format_series_found_message(metadata: Dict) -> str:
-        """Short status text when series fields were resolved (for screen readers)."""
-        parts: list[str] = []
-        if metadata.get("series"):
-            parts.append(str(metadata["series"]))
-        if metadata.get("series_number"):
-            parts.append(f"book {metadata['series_number']}")
-        if not parts:
-            return ""
-        return f"Series found: {'; '.join(parts)}"
-
-    @staticmethod
-    def _series_fields_from(hit: Optional[Dict]) -> Optional[Dict]:
-        """Return series name/number from a metadata hit, or None when empty."""
-        if not hit:
-            return None
-        series = hit.get("series", "")
-        series_number = hit.get("series_number", "")
-        if series or series_number:
-            return {"series": series, "series_number": series_number}
-        return None
-
-    def _fetch_series_from_google(
-        self, title: str, author: str | None
-    ) -> Optional[Dict]:
-        """Return series fields from the best Google Books match, or None."""
-        if not title:
-            return None
-        hit = self._fetch_from_google_books(
-            title, author, require_author_match=bool(author)
-        )
-        return self._series_fields_from(hit)
-
-    def _fetch_series_from_google_by_isbn(self, isbn: str) -> Optional[Dict]:
-        """Return series fields from a Google Books ISBN lookup, or None."""
-        return self._series_fields_from(self._fetch_google_by_isbn(isbn))
-
-    def _fetch_series_from_wikidata(
-        self, title: str, author: str | None
-    ) -> Optional[Dict]:
-        """Lightweight WikiData lookup for series name and ordinal only."""
-        if not title:
-            return None
-        hit = self._fetch_from_wikidata(
-            title, author, require_author_match=bool(author)
-        )
-        return self._series_fields_from(hit)
-
-    def _enrich_metadata_series(
-        self,
-        metadata: Dict,
-        db_title: str,
-        db_author: str,
-        *,
-        report_progress=None,
-    ) -> bool:
-        """Fill series after primary match: Open Library work, Google, then WikiData."""
-        if not metadata:
-            return False
-        if metadata.get("series") and metadata.get("series_number"):
-            return False
-
-        def _progress(msg: str) -> None:
-            if report_progress:
-                try:
-                    report_progress(msg)
-                except Exception:
-                    pass
-
-        changed = False
-        work_key = metadata.get("open_library_work_key", "")
-        if not metadata.get("series") and work_key:
-            self._check_abort()
-            _progress("Looking up series: Open Library…")
-            work_fields = self._get_open_library_work_fields(work_key)
-            if self._apply_series_to_metadata(
-                metadata,
-                work_fields.get("series", ""),
-                work_fields.get("series_number", ""),
-                db_title=db_title,
-                db_plot=metadata.get("plot", ""),
-            ):
-                changed = True
-
-        if not metadata.get("series") and metadata.get("_resolved_source") != "wikidata":
-            self._check_abort()
-            _progress("Looking up series: WikiData…")
-            wiki_hit = self._fetch_series_from_wikidata(
-                db_title or metadata.get("title", ""),
-                db_author or metadata.get("author", ""),
-            )
-            if wiki_hit and self._apply_series_to_metadata(
-                metadata,
-                wiki_hit.get("series", ""),
-                wiki_hit.get("series_number", ""),
-                db_title=db_title,
-                db_plot=metadata.get("plot", ""),
-            ):
-                changed = True
-
-        discovered_isbn = metadata.get("isbn", "")
-        if not metadata.get("series") and discovered_isbn:
-            self._check_abort()
-            _progress("Looking up series: Google Books by ISBN…")
-            gb_isbn_hit = self._fetch_series_from_google_by_isbn(discovered_isbn)
-            if gb_isbn_hit and self._apply_series_to_metadata(
-                metadata,
-                gb_isbn_hit.get("series", ""),
-                gb_isbn_hit.get("series_number", ""),
-                db_title=db_title,
-                db_plot=metadata.get("plot", ""),
-            ):
-                changed = True
-
-        if not metadata.get("series"):
-            self._check_abort()
-            _progress("Looking up series: Google Books…")
-            google_hit = self._fetch_series_from_google(
-                db_title or metadata.get("title", ""),
-                db_author or metadata.get("author", ""),
-            )
-            if google_hit and self._apply_series_to_metadata(
-                metadata,
-                google_hit.get("series", ""),
-                google_hit.get("series_number", ""),
-                db_title=db_title,
-                db_plot=metadata.get("plot", ""),
-            ):
-                changed = True
-        return changed
-
-    def _fill_series_fields(
-        self,
-        metadata: Dict,
-        db_title: str,
-        db_author: str,
-        title_series_number: str = "",
-        *,
-        report_progress=None,
-    ) -> bool:
-        """Resolve series name/number; only announce when something was found."""
-        if not metadata:
-            return False
-        before = (metadata.get("series"), metadata.get("series_number"))
-        self._seed_series_from_db_title(metadata, title_series_number, db_author)
-        self._enrich_metadata_series(
-            metadata, db_title, db_author, report_progress=report_progress
-        )
-        self._seed_series_from_db_title(metadata, title_series_number, db_author)
-        after = (metadata.get("series"), metadata.get("series_number"))
-        if after != before and (after[0] or after[1]) and report_progress:
-            msg = self._format_series_found_message(metadata)
-            if msg:
-                report_progress(msg)
-        return after != before
+        # Never leave short/stub source text on metadata for the review UI or DB.
+        final = self._clean_plot_text(metadata.get("plot", ""))
+        if not self._plot_is_adequate(final) or self._is_stub_plot(final):
+            metadata.pop("plot", None)
+            metadata.pop("plot_source", None)
 
     @staticmethod
     def _normalize_person_name(value: str) -> str:
@@ -1397,9 +1144,8 @@ class WebBookAPI:
                 ):
                     if gb_meta.get(key) and not metadata.get(key):
                         metadata[key] = gb_meta[key]
-                for key in ("plot", "series", "series_number"):
-                    if gb_meta.get(key):
-                        metadata[key] = gb_meta[key]
+                if gb_meta.get("plot"):
+                    metadata["plot"] = gb_meta["plot"]
                 if gb_meta.get("genre") and not metadata.get("genre"):
                     metadata["genre"] = gb_meta["genre"]
             if ol_meta and ol_meta.get("open_library_work_key"):
@@ -1585,21 +1331,11 @@ class WebBookAPI:
                     return {"_canceled": True}
             except Exception:
                 pass
-            try:
-                self._fill_series_fields(
-                    metadata,
-                    search_title,
-                    search_author or "",
-                    series_number,
-                    report_progress=_report_progress,
-                )
-            except FetchAborted as abort:
-                if abort.reason == "canceled":
-                    return {"_canceled": True}
-            except Exception:
-                pass
-            metadata["_plot_enriched"] = True
-            metadata["_series_enriched"] = True
+            # True only when a usable plot was found — empty attempts must not
+            # block later cache hits from retrying enrichment.
+            metadata["_plot_enriched"] = self._plot_is_adequate(
+                metadata.get("plot", "")
+            )
             self._store_cache_entry(cache_key, dict(metadata))
             return _public_copy(metadata)
 
@@ -1621,16 +1357,19 @@ class WebBookAPI:
                     ):
                         return dict(cached_result)
                     refreshed = dict(cached_result)
-                    if refreshed.get("_series_enriched") and refreshed.get(
-                        "_plot_enriched"
-                    ):
+                    refreshed.pop("_series_enriched", None)
+                    refreshed.pop("series", None)
+                    refreshed.pop("series_number", None)
+                    if self._plot_is_adequate(refreshed.get("plot", "")):
+                        refreshed["_plot_enriched"] = True
                         return _public_copy(refreshed)
+                    # Match cached without plot: retry enrichment (e.g. WikiData
+                    # hit that previously exhausted budget / hit Wikipedia limits).
                     try:
-                        self._fill_series_fields(
+                        self._enrich_metadata_plot(
                             refreshed,
                             search_title,
                             search_author or "",
-                            series_number,
                             report_progress=_report_progress,
                         )
                     except FetchAborted as abort:
@@ -1638,9 +1377,10 @@ class WebBookAPI:
                             return {"_canceled": True}
                     except Exception:
                         pass
-                    refreshed["_series_enriched"] = True
-                    refreshed["_plot_enriched"] = refreshed.get("_plot_enriched", True)
-                    self._store_cache_entry(cache_key, refreshed)
+                    refreshed["_plot_enriched"] = self._plot_is_adequate(
+                        refreshed.get("plot", "")
+                    )
+                    self._store_cache_entry(cache_key, dict(refreshed))
                     return _public_copy(refreshed)
                 if cached_time and (
                     current_time - cached_time
@@ -1830,97 +1570,11 @@ class WebBookAPI:
             return {"_fetch_errors": fetch_errors, "_no_result": True}
         return None
 
-    def _extract_google_series(self, volume_info: dict) -> tuple[str, str]:
-        """Parse series name and number from Google Books volumeInfo."""
-        series = ""
-        series_number = ""
-
-        series_info = volume_info.get("seriesInfo", {})
-        if series_info:
-            series_number = str(series_info.get("bookDisplayNumber", "") or "").strip()
-            volume_series = series_info.get("volumeSeries", [])
-            if volume_series:
-                vs = volume_series[0]
-                for key in ("seriesTitle", "title", "name"):
-                    val = (vs.get(key) or "").strip()
-                    if val:
-                        series = val
-                        break
-                if not series:
-                    raw_id = (vs.get("seriesId") or "").strip()
-                    if raw_id and not re.match(r"^[a-f0-9]{12,}$", raw_id, re.IGNORECASE):
-                        series = raw_id.replace("_", " ").title()
-
-        subtitle = volume_info.get("subtitle", "") or ""
-        if subtitle:
-            book_of = re.search(
-                r"\(Book\s+(\d+)\s+of\s+([^)]+)\)",
-                subtitle,
-                re.IGNORECASE,
-            )
-            if book_of:
-                if not series_number:
-                    series_number = book_of.group(1).strip()
-                if not series:
-                    series = book_of.group(2).strip(" -")
-            else:
-                hash_match = re.search(
-                    r"\(([^)#]+?)\s*#\s*(\d+)\)",
-                    subtitle,
-                    re.IGNORECASE,
-                )
-                if hash_match:
-                    if not series:
-                        series = hash_match.group(1).strip(" -")
-                    if not series_number:
-                        series_number = hash_match.group(2).strip()
-                elif not series_number:
-                    for pattern in [
-                        r"(?:book|volume|#)\s*(\d+)",
-                        r"(?:part|novel)\s*(\w+)",
-                    ]:
-                        match = re.search(pattern, subtitle, re.IGNORECASE)
-                        if match:
-                            series_number = match.group(1)
-                            if not series:
-                                series = re.sub(
-                                    pattern, "", subtitle, flags=re.IGNORECASE
-                                ).strip(" -()")
-                            break
-
-        description = volume_info.get("description", "") or ""
-        if description and (not series or not series_number):
-            patterns = [
-                (
-                    r"(?:book|volume|#)\s*(\d+)\s+(?:in\s+)?(?:the\s+)?(.+?)(?:\s+series|\s+trilogy|\s+quartet|$)",
-                    True,
-                ),
-                (r"(.+?)\s+(?:book|volume|#)\s*(\d+)", False),
-            ]
-            for pattern, number_first in patterns:
-                match = re.search(pattern, description, re.IGNORECASE)
-                if match:
-                    if number_first:
-                        if not series_number:
-                            series_number = match.group(1)
-                        if not series:
-                            series = match.group(2).strip()
-                    else:
-                        if not series:
-                            series = match.group(1).strip()
-                        if not series_number:
-                            series_number = match.group(2)
-                    break
-
-        return series, series_number
-
     def _google_item_to_metadata(self, item: dict) -> Optional[Dict]:
         """Build metadata dict from one Google Books API item."""
         volume_info = item.get("volumeInfo", {})
         if not volume_info.get("title"):
             return None
-
-        series, series_number = self._extract_google_series(volume_info)
 
         return {
             "title": volume_info.get("title", ""),
@@ -1932,8 +1586,6 @@ class WebBookAPI:
             "isbn": self._extract_isbn(volume_info.get("industryIdentifiers", [])),
             "rating": volume_info.get("averageRating", 0),
             "ratings_count": volume_info.get("ratingsCount", 0),
-            "series": series,
-            "series_number": series_number,
             "source": "Google Books",
             "confidence": 0.9,
         }
@@ -2152,12 +1804,6 @@ class WebBookAPI:
                                 best_work_key
                             )
                             best_metadata["plot"] = work_fields.get("description", "")
-                            if work_fields.get("series"):
-                                best_metadata["series"] = work_fields["series"]
-                            if work_fields.get("series_number"):
-                                best_metadata["series_number"] = work_fields[
-                                    "series_number"
-                                ]
                         return best_metadata
             except FetchAborted:
                 raise
@@ -2170,8 +1816,8 @@ class WebBookAPI:
         return None
 
     def _get_open_library_work_fields(self, work_key: str) -> Dict[str, str]:
-        """Load description and series from an Open Library work record."""
-        empty = {"description": "", "series": "", "series_number": ""}
+        """Load description from an Open Library work record."""
+        empty = {"description": ""}
         if not work_key:
             return empty
         try:
@@ -2185,19 +1831,9 @@ class WebBookAPI:
                 budget=self._active_budget,
             )
 
-            result = {
+            return {
                 "description": self._extract_description(data.get("description", "")),
-                "series": "",
-                "series_number": "",
             }
-            series_list = data.get("series", [])
-            if isinstance(series_list, list) and series_list:
-                first = series_list[0]
-                if isinstance(first, str):
-                    name, number = self._parse_open_library_series_string(first)
-                    result["series"] = self._clean_text_field(name)
-                    result["series_number"] = number
-            return result
         except FetchAborted:
             raise
         except Exception:
@@ -2535,7 +2171,7 @@ class WebBookAPI:
             for qid in candidate_ids:
                 entity = entities.get(qid) or {}
                 claims = entity.get("claims") or {}
-                for prop in ("P50", "P179"):
+                for prop in ("P50",):
                     for rid in self._wikidata_claim_ids(claims, prop):
                         if rid not in seen_related:
                             seen_related.add(rid)
@@ -2579,15 +2215,10 @@ class WebBookAPI:
                     continue
                 claims = entity.get("claims") or {}
                 author_ids = self._wikidata_claim_ids(claims, "P50")
-                series_ids = self._wikidata_claim_ids(claims, "P179")
                 author_label = label_map.get(author_ids[0], "") if author_ids else ""
-                series_label = label_map.get(series_ids[0], "") if series_ids else ""
-                series_ordinal = self._wikidata_claim_string(claims, "P1545")
                 metadata = {
                     "title": book_label,
                     "author": author_label,
-                    "series": series_label,
-                    "series_number": series_ordinal,
                     "source": "WikiData",
                 }
                 if not self._metadata_matches_db(
@@ -2605,20 +2236,6 @@ class WebBookAPI:
                     best_metadata = metadata
 
             if best_metadata:
-                if best_metadata.get("series"):
-                    best_metadata["series"] = self._clean_text_field(
-                        best_metadata["series"]
-                    )
-                    if self._is_unlikely_series_name(
-                        best_metadata["series"],
-                        title=best_metadata.get("title", ""),
-                    ):
-                        best_metadata["series"] = ""
-                if best_metadata.get("series_number"):
-                    ordinal = re.sub(
-                        r"[^\d]", "", str(best_metadata["series_number"])
-                    )
-                    best_metadata["series_number"] = ordinal or ""
                 return best_metadata
             return None
         except FetchAborted:
@@ -2705,60 +2322,8 @@ class WebBookAPI:
 
         return text
 
-    def _is_redundant_plot(self, plot: str, series: str) -> bool:
-        """Return True when the plot appears to be just a series label rather than a real description."""
-        if not plot or not series:
-            return False
-
-        normalized_plot = re.sub(r"\s+", " ", plot.strip().lower())
-        normalized_series = re.sub(r"\s+", " ", series.strip().lower())
-
-        if normalized_plot == normalized_series:
-            return True
-
-        redundant_variants = [
-            f"{normalized_series} series",
-            f"{normalized_series} book",
-            f"{normalized_series} books",
-            f"book in the {normalized_series} series",
-            f"series: {normalized_series}",
-        ]
-        if normalized_plot in redundant_variants:
-            return True
-
-        return False
-
-    def _is_unlikely_series_name(
-        self, series: str, title: str = "", plot: str = ""
-    ) -> bool:
-        """Return True when the series value is too long or looks like plot/article text."""
-        if not series:
-            return False
-
-        normalized_series = re.sub(r"\s+", " ", series.strip())
-        if len(normalized_series) > 90:
-            return True
-        if len(normalized_series.split()) > 12:
-            return True
-        if len(re.findall(r"[\.\?!]", normalized_series)) > 1:
-            return True
-
-        series_lower = normalized_series.lower()
-        if any(phrase in series_lower for phrase in UNLIKELY_SERIES_PHRASES):
-            return True
-        if all(token in series_lower for token in UNLIKELY_SERIES_COMBO):
-            return True
-
-        if plot:
-            normalized_plot = re.sub(r"\s+", " ", plot.strip().lower())
-            if series_lower in normalized_plot and len(normalized_plot) > len(series_lower) + 20:
-                return True
-
-        if title:
-            title_lower = title.strip().lower()
-            if title_lower and title_lower in series_lower and len(series_lower) > len(title_lower) + 20:
-                return True
-
+    def _is_redundant_plot(self, plot: str) -> bool:
+        """Formerly rejected series-label plots; always False now that series is unused."""
         return False
 
     def _apply_title_transformations(self, title: str) -> str:
@@ -2799,20 +2364,16 @@ class WebBookAPI:
             if field in cleaned_data:
                 cleaned_data[field] = self._clean_text_field(cleaned_data[field])
 
-        if "series" in cleaned_data:
-            cleaned_data["series"] = self._clean_text_field(cleaned_data["series"])
-            if self._is_unlikely_series_name(
-                cleaned_data["series"],
-                title=cleaned_data.get("title", ""),
-                plot=cleaned_data.get("plot", ""),
-            ):
-                cleaned_data["series"] = ""
+        plot = self._clean_plot_text(cleaned_data.get("plot", ""))
+        if plot and (
+            not self._plot_is_adequate(plot) or self._is_stub_plot(plot)
+        ):
+            cleaned_data.pop("plot", None)
+            cleaned_data.pop("plot_source", None)
 
-        if "plot" in cleaned_data and cleaned_data.get("plot"):
-            if self._is_redundant_plot(
-                cleaned_data["plot"], cleaned_data.get("series", "")
-            ):
-                cleaned_data["plot"] = ""
+        # Drop series keys so legacy disk-cache entries cannot resurface in the UI.
+        cleaned_data.pop("series", None)
+        cleaned_data.pop("series_number", None)
 
         return cleaned_data
 
