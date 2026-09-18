@@ -94,7 +94,7 @@ Wire into:
 
 ### Main window — not in v1
 
-No toolbar/footer Play or Open buttons until users ask. Book Details is enough for fall.
+No toolbar/footer Play or Open buttons until users ask. Book Details is enough for version 3.
 
 ### Import Detail — not in v1
 
@@ -173,4 +173,4 @@ Mock `os.startfile` / `subprocess.run` — do not launch real apps in CI.
 
 ## Next steps
 
-Review in fall. Small, self-contained feature (~1 day) — can ship anytime.
+Review for version 3. Small, self-contained feature (~1 day) — can ship anytime.

@@ -2,13 +2,13 @@
 
 **Status:** Planned (not yet implemented)  
 **Created:** June 2026  
-**Related:** [TESTING.md](../TESTING.md), [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md)
+**Related:** [TESTING.md](../TESTING.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
 ---
 
 ## What this is
 
-Strengthen automated regression around fall waves — not a user-facing feature. Supports **unit testing as you go**.
+Strengthen automated regression around version 3 waves — not a user-facing feature. Supports **unit testing as you go**.
 
 ---
 

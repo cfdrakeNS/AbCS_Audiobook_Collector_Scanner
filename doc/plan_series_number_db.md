@@ -22,7 +22,7 @@ Series number is not reliably stored on `Book`. Title sometimes carries `" - 3"`
 
 ## Design
 
-- Column: `series_number INTEGER` nullable on `books` (add in schema wave if decided before fall coding).
+- Column: `series_number INTEGER` nullable on `books` (add in schema wave if decided before version 3 coding).
 - Book Details / Update window: editable small field near Series row; strip from title when number stored separately (careful migration).
 - Sort: optional series order in main table — defer.
 

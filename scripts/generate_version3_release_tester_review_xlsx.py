@@ -1,4 +1,4 @@
-"""Generate doc/AbCS_Fall_2026_Tester_Review.xlsx for tester feedback."""
+"""Generate doc/AbCS_Version3_Release_Tester_Review.xlsx for tester feedback."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, Side
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "doc" / "AbCS_Fall_2026_Tester_Review.xlsx"
+OUT = ROOT / "doc" / "AbCS_Version3_Release_Tester_Review.xlsx"
 
 # Item ID, category, enhancement, description, effort, risk, risk reason, timing
 # Excel order: description, then tester columns, then effort/risk/timing (developer notes).
@@ -135,8 +135,8 @@ ROWS = [
         "collection folder and update paths in AbCS. Preview and dry-run before any file changes.",
         "10-12 days",
         "High",
-        "Moves or copies real files on disk; partial failure and rollback are complex. Deferred from fall core.",
-        "After rescan A+B are stable; post-fall if needed",
+        "Moves or copies real files on disk; partial failure and rollback are complex. Deferred from version 3 core.",
+        "After rescan A+B are stable; post-v3 if needed",
     ),
     (
         "F01",
@@ -251,14 +251,14 @@ ROWS = [
     ),
     (
         "F12",
-        "Follow-on - Post-fall",
+        "Follow-on - Post-v3",
         "Fetch web info for many books",
         "Queue web metadata fetch for a selection of books with progress and cancel - instead "
         "of one book at a time. Per-book review remains recommended.",
         "1-2 weeks",
         "High",
         "Network-heavy; API rate limits; long runs on large selections.",
-        "Post-fall; benefits from background-thread work first",
+        "Post-v3; benefits from background-thread work first",
     ),
     (
         "F13",
@@ -273,13 +273,13 @@ ROWS = [
     ),
     (
         "F14",
-        "Follow-on - Post-fall",
+        "Follow-on - Post-v3",
         "Better plot search",
         "Faster search inside long plot summaries on very large libraries.",
         "3-5 days",
         "Medium",
         "Full-text index sync and rebuild add complexity.",
-        "Post-fall; most useful on very large libraries",
+        "Post-v3; most useful on very large libraries",
     ),
     (
         "F15",
@@ -361,12 +361,12 @@ ROWS = [
         "M01",
         "Maintenance - not user-facing",
         "CI / test hardening",
-        "Strengthen automated regression testing for fall waves. Supports safer development. "
+        "Strengthen automated regression testing for version 3 waves. Supports safer development. "
         "Not a user-visible feature.",
         "1-2 days setup + ongoing",
         "Low",
         "Infrastructure work; does not change app features for end users.",
-        "Between waves; early in fall cycle",
+        "Between waves; early in the version 3 cycle",
     ),
     (
         "M02",
@@ -396,13 +396,13 @@ HEADERS = [
 ]
 
 INSTRUCTIONS = [
-    "AbCS Fall 2026 Tester Review",
+    "AbCS Version 3 Release Tester Review",
     "",
     "Purpose",
-    "This workbook lists planned AbCS improvements for fall 2026 review. "
+    "This workbook lists planned AbCS improvements for the version 3 release review. "
     "Nothing here is a commitment to build or a fixed release date.",
     "",
-    "How to fill Fall Plans",
+    "How to fill Version 3 Plans",
     "1. Read each Brief description.",
     "2. In Should we do it?, type X if you think AbCS should build it. Leave blank if unsure or no.",
     "3. In Tester priority, type a number for your top choices (1 = most important). "
@@ -425,11 +425,11 @@ INSTRUCTIONS = [
     "Accessibility note",
     "This sheet uses plain cells (type X) instead of form-control checkboxes so JAWS and NVDA "
     "can fill it reliably.",
-    "Header row is frozen. Filters are available on Fall Plans.",
+    "Header row is frozen. Filters are available on Version 3 Plans.",
     "",
     "Related docs",
     "doc/abcs_proposed_enhancements.md - plain-language summary",
-    "doc/plan_enhancements_fall2026.md - internal schedule",
+    "doc/plan_enhancements_version3_release.md - internal schedule",
 ]
 
 
@@ -446,7 +446,7 @@ def main() -> None:
             cell.font = Font(bold=True, size=14)
         elif line in {
             "Purpose",
-            "How to fill Fall Plans",
+            "How to fill Version 3 Plans",
             "Column meanings",
             "Feedback tips",
             "Accessibility note",
@@ -456,7 +456,7 @@ def main() -> None:
         cell.alignment = Alignment(wrap_text=True, vertical="top")
     ws_i.column_dimensions["A"].width = 110
 
-    ws = wb.create_sheet("Fall Plans")
+    ws = wb.create_sheet("Version 3 Plans")
     ws.append(HEADERS)
     for cell in ws[1]:
         cell.font = Font(bold=True)

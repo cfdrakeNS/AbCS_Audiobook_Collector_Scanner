@@ -222,4 +222,4 @@ Mirror Book Details rating row.
 
 ## Next steps
 
-Review in fall. Implement phases 1–6. Then [`Plan_covers.md`](Plan_covers.md) if approved.
+Review for version 3. Implement phases 1–6. Then [`Plan_covers.md`](Plan_covers.md) if approved.

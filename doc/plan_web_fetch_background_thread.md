@@ -1,8 +1,8 @@
-# Web Fetch Background Thread + Module Split — Fall Follow-on
+# Web Fetch Background Thread + Module Split — Version 3 Follow-on
 
 **Status:** Planned (deferred; Phases 1–5 of web fetch improvements are done)  
 **Created:** September 2026  
-**Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md), [help_docs/07_web_metadata.md](../help_docs/07_web_metadata.md)
+**Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [help_docs/07_web_metadata.md](../help_docs/07_web_metadata.md)
 
 ---
 

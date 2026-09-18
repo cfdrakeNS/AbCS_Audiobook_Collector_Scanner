@@ -2,11 +2,11 @@
 
 
 
-**Last updated:** September 2026 (v2.10 prep)
+**Last updated:** September 2026 (doc archive tidy + Version 3 rename)
 
 
 
-**Fall schedule master:** [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md) — waves, combined sprints, test gates, **priority ranking column**.
+**Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) — waves, combined sprints, test gates, **priority ranking column**.
 
 **Tester summary (plain language):** [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md)
 
@@ -18,7 +18,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 
 
-## Active — core fall (waves 0–3)
+## Active — core version 3 (waves 0–3)
 
 
 
@@ -26,7 +26,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 |------|----------|--------|
 
-| **Fall 2026 roadmap** | [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md) | Schedule master |
+| **Version 3 release roadmap** | [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) | Schedule master |
 
 | Want to Read | [plan_want_to_read.md](plan_want_to_read.md) | Planned |
 
@@ -88,11 +88,11 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) |
 
-| Plot full-text search | [plan_plot_fulltext_search.md](plan_plot_fulltext_search.md) |
-
 | Import window action toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) — deferred June visual appeal item |
 
 | Preferences mini-toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) — deferred June visual appeal item |
+
+| View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) — silence edit/read-only noise without misleading “edit” |
 
 
 
@@ -135,7 +135,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 | Plan | Location | Why |
 |------|----------|-----|
-| macOS installer | [plan_macos_installer.md](plan_macos_installer.md) | Dropped from roadmap — too complex/expensive for the value; macOS still supported by running from source. See [launch_plan.md](launch_plan.md). |
+| macOS installer | [plan_macos_installer.md](../archive/plan_macos_installer.md) | Dropped from roadmap — too complex/expensive for the value; macOS still supported by running from source. See [launch_plan.md](launch_plan.md). |
 
 ## Completed
 
@@ -161,6 +161,8 @@ The following plan areas were implemented and verified in code:
 
 - **Web fetch Phases 1–5 (complete in 2.10):** budget, cooperative cancel, shared HTTP, cache, `web_fetch_service`, inert-pref removal, cleanup, tests — Phase 6 deferred: [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md)
 
+- **Web fetch series removal + title/author compare (complete):** drop series enrichment and Series row; tolerant title/author matching; plot cache/stub/status polish — commit `74341ee`; background thread still deferred
+
 - Name list accessibility and focus
 
 - Book details layout and performance
@@ -171,7 +173,7 @@ The following plan areas were implemented and verified in code:
 
 - Book List Import progress window + 2.10 cancel/counter parity ([plan_book_list_import_progress.md](../archive/plan_book_list_import_progress.md))
 
-- Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](abcs_linux_fixes.md))
+- Linux combo and packaging fixes (VM sign-off complete — see [abcs_linux_fixes.md](../archive/abcs_linux_fixes.md))
 
 - Dynamic SQLite pragmas
 
@@ -179,7 +181,7 @@ The following plan areas were implemented and verified in code:
 
 
 
-Cursor plan files under `.cursor/plans/` on the development machine may still show stale `pending` todos for superseded work. Treat this document and [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md) as the source of truth.
+Cursor plan files under `.cursor/plans/` on the development machine may still show stale `pending` todos for superseded work. Treat this document and [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) as the source of truth.
 
 
 
@@ -192,3 +194,5 @@ Cursor plan files under `.cursor/plans/` on the development machine may still sh
 - Dead-code review: [CLEANUP_VULTURE_FINDINGS.md](CLEANUP_VULTURE_FINDINGS.md)
 
 - Messages reference (import + web): [import_and_web_metadata_messages_reference.md](import_and_web_metadata_messages_reference.md)
+
+- Archived (local `archive/`, gitignored): cancelled macOS installer plan, Linux fixes sign-off, launch open questions, July 2026 tester changelog, git history CSVs, Sep 2026 code inventory

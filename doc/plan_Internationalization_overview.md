@@ -106,4 +106,4 @@ Language is set once at startup (from preferences) and held in a module-level si
 
 ## Next Steps
 
-Review this plan in fall and decide whether to proceed with i18n work. If approved, a detailed implementation plan can be written with file-by-file extraction order and translation workflow.
+Review this plan for version 3 and decide whether to proceed with i18n work. If approved, a detailed implementation plan can be written with file-by-file extraction order and translation workflow.

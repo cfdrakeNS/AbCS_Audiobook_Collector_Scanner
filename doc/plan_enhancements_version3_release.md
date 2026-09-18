@@ -1,8 +1,8 @@
-# Fall 2026 Enhancements — Master Roadmap
+# Version 3 Release Enhancements — Master Roadmap
 
 
 
-**Status:** Planning document (schedule for fall review)  
+**Status:** Planning document (schedule for version 3 release review)  
 
 **Created:** June 2026  
 
@@ -30,11 +30,11 @@ In the tables below, fill **Your priority** with a number (**1** = do first amon
 
 
 
-Suggested approach at fall review:
+Suggested approach at version 3 review:
 
 
 
-1. Complete **Core fall waves 0–3** first (fixed order).
+1. Complete **Core version 3 waves 0–3** first (fixed order).
 
 2. Rank **Follow-on** and **Backlog** items by filling the priority column.
 
@@ -46,7 +46,7 @@ Suggested approach at fall review:
 
 
 
-## Core fall schedule (waves 0–5)
+## Core version 3 schedule (waves 0–5)
 
 
 
@@ -58,7 +58,7 @@ Fixed implementation order — rank column optional (these are already sequenced
 
 |------|-------------|------------|------|---------------|-------|
 
-| 0 | Schema batch (TBR, rating, cover, collection root) | [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md) § Wave 0 | 2–3 d | — | Prerequisite for many features |
+| 0 | Schema batch (TBR, rating, cover, collection root) | [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) § Wave 0 | 2–3 d | — | Prerequisite for many features |
 
 | 1 | Want to Read | [plan_want_to_read.md](plan_want_to_read.md) | 3.5–4 d | — | Alt+T filter |
 
@@ -78,7 +78,7 @@ Fixed implementation order — rank column optional (these are already sequenced
 
 
 
-**Fall core (Waves 0–3):** ~5–6 weeks. **+ Name consistency:** ~8–9 weeks. **i18n:** separate release.
+**Version 3 core (Waves 0–3):** ~5–6 weeks. **+ Name consistency:** ~8–9 weeks. **i18n:** separate release.
 
 
 
@@ -120,15 +120,15 @@ Rank these with **Your priority** to build Wave 4+ schedule.
 
 | Preferences export/import | [plan_preferences_export_import.md](plan_preferences_export_import.md) | ~2 d | Anytime | — | Settings file |
 
-| Bulk web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Post-fall | — | Network heavy |
+| Bulk web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Post-v3 | — | Network heavy |
 
 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | 3–5 d | After current web fetch (Phases 1–5 done) | — | QThread worker + split `web_book_api.py`; first app background thread |
-
-| Plot full-text search (FTS) | [plan_plot_fulltext_search.md](plan_plot_fulltext_search.md) | 3–5 d | Post-fall | — | Large libraries |
 
 | Import window action toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) § Phase 5 | ~1 d | Anytime | — | Deferred from June visual appeal; reuse main toolbar pattern |
 
 | Preferences mini-toolbar (Save/Restore/Close) | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) § Phase 5 | 0.5–1 d | Anytime | — | Deferred from June visual appeal |
+
+| View-mode static text (no JAWS edit/read-only noise) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | Anytime / a11y | — | Spike StaticText vs focusable QLabel; do not clear Qt readOnly on edit widgets |
 
 
 
@@ -384,7 +384,7 @@ Pick from **Follow-on** and **Backlog** tables using **Your priority** column.
 
 
 
-1. **Fall review** — confirm waves 0–3; rank follow-on/backlog in tables above.
+1. **Version 3 review** — confirm waves 0–3; rank follow-on/backlog in tables above.
 
 2. **During implementation** — meet each wave **gate** before the next.
 

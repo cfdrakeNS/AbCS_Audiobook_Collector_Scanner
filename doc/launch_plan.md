@@ -3,7 +3,7 @@
 **Status:** All three Carrd sites ready on test URLs; awaiting Dominic content review before custom domains and repo flip.
 **Created:** Aug 2026
 **Updated:** Aug 27, 2026
-**Source of decisions:** [launch_open_questions.md](launch_open_questions.md) (keep for the record; this document is the actionable plan built from those answers).
+**Source of decisions:** [launch_open_questions.md](../archive/launch_open_questions.md) (archived; this document is the actionable plan built from those answers).
 
 ---
 
@@ -96,8 +96,8 @@ Pending (after Dominic meeting):
 
 ## 3. Doc cleanup already done (earlier pass)
 
-- [plan_macos_installer.md](plan_macos_installer.md) — status changed from "Planned" to "Cancelled — out of scope", with a note pointing back to this plan.
-- [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md) — removed the macOS installer row from the backlog table.
+- [plan_macos_installer.md](../archive/plan_macos_installer.md) — status changed from "Planned" to "Cancelled — out of scope", with a note pointing back to this plan.
+- [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) — removed the macOS installer row from the backlog table.
 - [plans_status.md](plans_status.md) — removed macOS installer from the active backlog table; added a new "Cancelled / dropped" section listing it with rationale.
 - [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md) — moved "Mac installer" out of the tester-facing backlog table and into "What we are not planning".
 - [README.md](../README.md) — SmartScreen note uses "free and source-available project"; Support uses `auroraaccessibility@gmail.com`.
@@ -144,7 +144,7 @@ Pending (after Dominic meeting):
 - [x] Align **Audiobook Collector Scanner** naming in code/docs (excluding `help_docs/` — Dominic)
 - [x] Help → Website… opens AbCS product page
 - [x] Aurora Accessibility in About, License, and installer publisher
-- [x] Root doc tidy (`linux_build.md`, `abcs_linux_fixes.md`, `CLEANUP_VULTURE_FINDINGS.md` → `doc/`)
+- [x] Root doc tidy (`linux_build.md`, `CLEANUP_VULTURE_FINDINGS.md` → `doc/`; completed Linux notes later moved to `archive/`)
 - [ ] Security/content pass before public flip
 - [ ] Confirm license/README wording ("free and source-available")
 - [ ] Merge Dominic's help doc pass before or soon after public flip

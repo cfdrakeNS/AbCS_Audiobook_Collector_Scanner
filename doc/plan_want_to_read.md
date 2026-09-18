@@ -243,4 +243,4 @@ Clearing read date does **not** auto-set want to read.
 
 ## Next steps
 
-Review in fall with other plans ([`plan_ratings.md`](plan_ratings.md), [`Plan_covers.md`](Plan_covers.md), etc.). Self-contained ~4-day feature; no dependency on other fall work.
+Review for version 3 with other plans ([`plan_ratings.md`](plan_ratings.md), [`Plan_covers.md`](Plan_covers.md), etc.). Self-contained ~4-day feature; no dependency on other version 3 work.

@@ -5,7 +5,7 @@ apt install linux-image-virtual linux-tools-virtual linux-cloud-tools-virtual
 
 This guide covers building AbCS (Audiobook Collector Scanner) on Ubuntu for distribution.
 
-For Linux-specific UI fixes and verification status, see [`abcs_linux_fixes.md`](abcs_linux_fixes.md).
+For Linux-specific UI fixes and verification status, see [`abcs_linux_fixes.md`](../archive/abcs_linux_fixes.md) (archived; work complete).
 
 ---
 

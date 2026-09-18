@@ -10,7 +10,7 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 ## Planned for the next major update (core)
 
-These are the main features under active planning for a fall 2026 development cycle (core work first, then name consistency and multiple languages if schedule allows).
+These are the main features under active planning for the version 3 release cycle (core work first, then name consistency and multiple languages if schedule allows).
 
 
 | Enhancement                     | What it would add                                                                                                                                                                                      |
@@ -22,8 +22,8 @@ These are the main features under active planning for a fall 2026 development cy
 | **Better backups**              | Backups would include cover images as well as your database, in one package file, so restore brings everything back together.                                                                          |
 | **Collection library folder**   | Optional folder path for each collection (e.g. where your Audible rips live). Import and rescan would default to that folder.                                                                          |
 | **Rescan / update from folder** | Scan a folder again and **update** books already in your library (length, file path, track count, etc.) instead of only adding new ones. You choose what to update.                                    |
-| **Name consistency check**      | Find similar spellings of author names, titles, and genres (e.g. “Connolly” vs “Connelly”) and help you merge them into one spelling — similar to Duplicate Check. Planned after rescan (fall wave 4). |
-| **Multiple languages**          | UI text, menus, and messages in languages such as French and Spanish, with English as the default. Help docs would be translated separately. Planned after English UI is stable (fall wave 5).         |
+| **Name consistency check**      | Find similar spellings of author names, titles, and genres (e.g. “Connolly” vs “Connelly”) and help you merge them into one spelling — similar to Duplicate Check. Planned after rescan (version 3 wave 4). |
+| **Multiple languages**          | UI text, menus, and messages in languages such as French and Spanish, with English as the default. Help docs would be translated separately. Planned after English UI is stable (version 3 wave 5).         |
 
 
 ---
@@ -32,7 +32,7 @@ These are the main features under active planning for a fall 2026 development cy
 
 ## Planned for a later update (optional)
 
-These may follow the fall work if time and priority allow.
+These may follow the version 3 work if time and priority allow.
 
 
 | Enhancement                            | What it would add                                                                                                                                                  |
@@ -109,6 +109,6 @@ If you test AbCS, tell us:
 2. Anything missing from this list you would use regularly.
 3. Anything here you would **not** use.
 
-Internal planning details live in [plan_enhancements_fall2026.md](plan_enhancements_fall2026.md). This document is the plain-language summary for sharing.
+Internal planning details live in [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). This document is the plain-language summary for sharing.
 
 **Status:** Proposed — not yet implemented (June 2026).

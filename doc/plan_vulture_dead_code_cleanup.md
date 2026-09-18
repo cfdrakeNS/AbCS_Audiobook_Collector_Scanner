@@ -31,7 +31,7 @@ Small dead symbols accumulate (`_plot_title`, unused helpers). Low risk but adds
 
 ## When to run
 
-Between fall waves or before a release tag — not during active feature branches.
+Between version 3 waves or before a release tag — not during active feature branches.
 
 ---
 

@@ -305,4 +305,4 @@ Optional v2: Manage → remove orphan cover files not referenced in DB.
 
 ## Next steps
 
-Review in fall with [`plan_ratings.md`](plan_ratings.md). Recommended order: ratings first, then covers + package backup.
+Review for version 3 with [`plan_ratings.md`](plan_ratings.md). Recommended order: ratings first, then covers + package backup.

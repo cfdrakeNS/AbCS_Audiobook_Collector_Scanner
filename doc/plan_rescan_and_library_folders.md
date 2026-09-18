@@ -215,7 +215,7 @@ Shift+F1 map in [`help_router.py`](src/ui/help_router.py): `RescanWindow` → th
 
 ## Part C — Organize into library (optional phase)
 
-**Ship only after Part A + B are stable.** Not required for fall MVP of rescan.
+**Ship only after Part A + B are stable.** Not required for version 3 MVP of rescan.
 
 ### What it does
 
@@ -246,7 +246,7 @@ User picks collection with `root_path` set. Wizard:
 
 `src/core/library_organizer.py` — path template, conflict detection, `shutil.copytree` / `shutil.move`.
 
-**Estimate:** 10–12 days (defer to post-fall if needed)
+**Estimate:** 10–12 days (defer to post-v3 if needed)
 
 ---
 
@@ -260,7 +260,7 @@ User picks collection with `root_path` set. Wizard:
 | B3 | Help + integration tests | 1–2 |
 | C | Organize wizard (optional) | 10–12 |
 
-**Fall MVP (recommended):** Part A + Part B only (~2 weeks).
+**Version 3 MVP (recommended):** Part A + Part B only (~2 weeks).
 
 ---
 
@@ -286,4 +286,4 @@ User picks collection with `root_path` set. Wizard:
 
 ## Next steps
 
-Review in fall. Implement Part A, then Part B. Schedule Part C separately if users need file consolidation.
+Review for version 3. Implement Part A, then Part B. Schedule Part C separately if users need file consolidation.
