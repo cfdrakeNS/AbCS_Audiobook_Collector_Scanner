@@ -16,8 +16,8 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 | **Fetch web info for many books** | Select several books and fetch web metadata in one queue, with a summary and options to apply all or review each. |
 | **Import tag mapping** | In Preferences, choose which audio tags fill title and author (album vs track title, album artist vs artist). Multi-part books still group by album. |
 | **Check for updates** | Help menu option to see if a newer AbCS version is available and open the download page. No silent install. |
-| **View-mode field announcements** | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. |
 | **Name consistency check** | Find similar spellings of author names, titles, and genres and help you merge them — similar to Duplicate Check. You confirm each group. |
+| **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. Decide after the other v3 items. |
 
 ---
 

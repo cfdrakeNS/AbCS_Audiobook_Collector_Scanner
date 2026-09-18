@@ -8,7 +8,7 @@
 
 **Related:** [plans_status.md](plans_status.md), [TESTING.md](../TESTING.md), [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md), [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx) (tester source of truth — do not overwrite filled answers)
 
-**Branch:** `feature/background-fetch-v3`
+**Branch:** work from `main` (or a short-lived phase branch per feature)
 
 ---
 
@@ -22,10 +22,10 @@ Six items marked for v3. Everything else stays planned but **deferred after v3**
 | 2 | F12 | Batch web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Phase 1 |
 | 3 | F17 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | 2–3 d | — |
 | 4 | B05 | Check for updates | [plan_auto_update.md](plan_auto_update.md) | 2–3 d | — |
-| 5 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
-| 6 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
+| 5 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
+| 6 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
 
-Phases 3–6 are independent of each other after Phase 1 exists. Recommended order follows tester priority, with Check for updates as Phase 4 (small, unranked).
+Phases 3–6 are independent of each other after Phase 1 exists. Recommended order follows tester priority, with Check for updates as Phase 4 (small, unranked). **Phase 6 (view-mode) is optional** — include only if still wanted after Phases 1–5.
 
 **Not in v3:** Want to Read, ratings, covers, zip backup, collection library folder, rescan, i18n, organize-on-disk, and remaining follow-on/backlog rows. No schema-batch Wave 0 in this release.
 
@@ -63,19 +63,21 @@ See [plan_auto_update.md](plan_auto_update.md).
 
 **Gate:** Help → Check for updates compares GitHub latest to `APP_VERSION`; offline failure is announced.
 
-### Phase 5 — View-mode announcements (2–4 days)
-
-See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
-
-**Gate:** JAWS spike accepted; Book Details view mode does not say edit or read only; edit mode still says edit.
-
-### Phase 6 — Name consistency (2–3 weeks)
+### Phase 5 — Name consistency (2–3 weeks)
 
 See [Plan_name_consistency_check.md](Plan_name_consistency_check.md).
 
 Does **not** require rescan. Confirm-each-group; no silent merges.
 
 **Gate:** Author/genre merge safe; import blocked while mode active; Escape restores filters.
+
+### Phase 6 — View-mode announcements (2–4 days, optional)
+
+See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
+
+**Optional for v3** — decide after Phases 1–5. Spike must pass JAWS before any Book Details change.
+
+**Gate:** JAWS spike accepted; Book Details view mode speaks name **and** value without edit or read only; edit mode still says edit.
 
 ---
 

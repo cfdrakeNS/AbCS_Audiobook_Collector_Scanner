@@ -10,7 +10,7 @@
 
 **Public launch plan:** [launch_plan.md](launch_plan.md)
 
-**Branch:** `feature/background-fetch-v3`
+**Branch:** work from `main` (or a short-lived phase branch per feature)
 
 All Cursor development plans from the 2025–2026 AbCS rollout are **complete** except the items listed below.
 
@@ -25,8 +25,8 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 2 | Bulk web metadata | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | Planned — Phase 2 |
 | 3 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | Planned — Phase 3 |
 | 4 | Auto-update check | [plan_auto_update.md](plan_auto_update.md) | Planned — Phase 4 |
-| 5 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 5 |
-| 6 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 6 |
+| 5 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 5 |
+| 6 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 6 (optional) |
 
 ---
 

@@ -1,6 +1,6 @@
-# Name Consistency Check — Version 3 Phase 6
+# Name Consistency Check — Version 3 Phase 5
 
-**Status:** Planned — **Version 3 Phase 6**  
+**Status:** Planned — **Version 3 Phase 5**
 **Created:** June 2026  
 **Updated:** September 2026  
 **Related:** [Duplicate Mode Process](../help_docs/08_duplicate_mode.md), [Import Process](../help_docs/02_import.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
