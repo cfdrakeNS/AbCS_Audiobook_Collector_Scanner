@@ -1,6 +1,6 @@
 # View-mode static text (silence JAWS edit / read-only noise)
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned — **Version 3 Phase 5**  
 **Created:** September 2026  
 **Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), Book Details view mode in [`src/ui/book_details.py`](../src/ui/book_details.py)
 

@@ -1,8 +1,8 @@
 # Import tag mapping (title / author)
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned — **Version 3 Phase 3**  
 **Created:** September 2026  
-**Related:** [Preferences Import Settings](../src/ui/preferences_window.py), [`src/core/tag_reader.py`](../src/core/tag_reader.py), [`src/core/import_scanner.py`](../src/core/import_scanner.py), [help_docs/19_import_explained.md](../help_docs/19_import_explained.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)
+**Related:** [Preferences Import Settings](../src/ui/preferences_window.py), [`src/core/tag_reader.py`](../src/core/tag_reader.py), [`src/core/import_scanner.py`](../src/core/import_scanner.py), [help_docs/19_import_explained.md](../help_docs/19_import_explained.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
 ---
 
@@ -58,12 +58,12 @@ Update [help_docs/19_import_explained.md](../help_docs/19_import_explained.md) t
 
 ---
 
-## Follow-on (same plan, not v1)
+## Follow-on (after Phase 3 / not required for v3 gate)
 
-- **Narrator mapping:** Composer (default) / Artist / Comment keywords only / Artist when author is album artist. Artist vs album artist is the other common mix-up.
-- **Rescan** ([plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)) must read the same QSettings keys when overwriting title/author from tags.
-- Year / genre / comments stay 1:1 with tags unless a real alternate source appears (for example year from filename).
-- Series from a **tag** (ID3 grouping / content group) is a tag-map row. Rare; add only if needed.
+- **Narrator mapping:** Composer (default) / Artist / Comment keywords only / Artist when author is album artist.
+- **Rescan** ([plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)) is **deferred after v3**; when it ships, it must read the same QSettings keys for title/author overwrite.
+- Year / genre / comments stay 1:1 with tags unless a real alternate source appears.
+- Series from a **tag** (ID3 grouping / content group) is a rare tag-map row — add only if needed.
 
 ---
 

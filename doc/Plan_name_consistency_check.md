@@ -1,8 +1,11 @@
-# Name Consistency Check — Future Improvement Plan
+# Name Consistency Check — Version 3 Phase 6
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned — **Version 3 Phase 6**  
 **Created:** June 2026  
-**Related:** [Duplicate Mode Process](08_duplicate_mode.md), [Import Process](02_import.md)
+**Updated:** September 2026  
+**Related:** [Duplicate Mode Process](../help_docs/08_duplicate_mode.md), [Import Process](../help_docs/02_import.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+
+**Note:** Does **not** require rescan. Rescan is deferred after v3; that dependency was schedule-only.
 
 ---
 

@@ -251,14 +251,14 @@ ROWS = [
     ),
     (
         "F12",
-        "Follow-on - Post-v3",
+        "Follow-on",
         "Fetch web info for many books",
         "Queue web metadata fetch for a selection of books with progress and cancel - instead "
         "of one book at a time. Per-book review remains recommended.",
         "1-2 weeks",
         "High",
         "Network-heavy; API rate limits; long runs on large selections.",
-        "Post-v3; benefits from background-thread work first",
+        "Version 3 Phase 2; after background-thread work",
     ),
     (
         "F13",

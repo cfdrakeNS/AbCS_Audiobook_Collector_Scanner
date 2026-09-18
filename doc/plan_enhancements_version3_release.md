@@ -1,409 +1,171 @@
 # Version 3 Release Enhancements — Master Roadmap
 
-
-
-**Status:** Planning document (schedule for version 3 release review)  
-
+**Status:** Active schedule (scoped from tester review, September 2026)  
 **Created:** June 2026  
+**Updated:** September 2026  
 
-**Purpose:** Single schedule for all `doc/plan_*.md` work — order, combinations, test gates, deferrals, and **your priority ranking**.
+**Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
+**Related:** [plans_status.md](plans_status.md), [TESTING.md](../TESTING.md), [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md), [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx) (tester source of truth — do not overwrite filled answers)
 
-
-Individual plans hold **what** to build; this document holds **when**, **how**, and **priority order** for review.
-
-
-
-**Related:** [plans_status.md](plans_status.md) (status tracking), [TESTING.md](../TESTING.md), [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md) (plain-language summary for testers)
-
-
+**Branch:** `feature/background-fetch-v3`
 
 ---
 
+## Version 3 scope (from tester review)
 
+Six items marked for v3. Everything else stays planned but **deferred after v3**.
 
-## How to rank priority
+| Phase | ID | Enhancement | Detail doc | Est. | Depends on |
+|-------|----|-------------|------------|------|------------|
+| 1 | F13 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | 3–5 d | — |
+| 2 | F12 | Batch web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Phase 1 |
+| 3 | F17 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | 2–3 d | — |
+| 4 | B05 | Check for updates | [plan_auto_update.md](plan_auto_update.md) | 2–3 d | — |
+| 5 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
+| 6 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
 
+Phases 3–6 are independent of each other after Phase 1 exists. Recommended order follows tester priority, with Check for updates as Phase 4 (small, unranked).
 
-
-In the tables below, fill **Your priority** with a number (**1** = do first among optional items, **2** = next, etc.). Leave **—** for items not yet ranked. Use the same number only when items are tied.
-
-
-
-Suggested approach at version 3 review:
-
-
-
-1. Complete **Core version 3 waves 0–3** first (fixed order).
-
-2. Rank **Follow-on** and **Backlog** items by filling the priority column.
-
-3. Re-sort Wave 4+ work by your ranks when scheduling.
-
-
+**Not in v3:** Want to Read, ratings, covers, zip backup, collection library folder, rescan, i18n, organize-on-disk, and remaining follow-on/backlog rows. No schema-batch Wave 0 in this release.
 
 ---
 
+## Phase details
 
+### Phase 1 — Background web fetch (3–5 days)
 
-## Core version 3 schedule (waves 0–5)
+See [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md).
 
+1. Throwaway JAWS spike (fake worker + real progress dialog + completion).
+2. Move fetch onto `QThread`; keep `fetch_web_metadata_for_book` blocking via `exec()`.
+3. Split `web_book_api.py` after the thread (not with it).
 
+**Gate:** Spike scenarios pass; Alt+W fetch stays responsive; cancel works; existing web tests green.
 
-Fixed implementation order — rank column optional (these are already sequenced).
+### Phase 2 — Batch web fetch (1–2 weeks)
 
+See [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md).
 
+Multi-select **Web fetch** button; N/M progress; accessible summary with Apply all / Review each / Cancel.
 
-| Wave | Enhancement | Detail doc | Est. | Your priority | Notes |
+**Gate:** Summary announced by JAWS; Apply all and Review each work; Alt+W unchanged for one book.
 
-|------|-------------|------------|------|---------------|-------|
+### Phase 3 — Import tag mapping (2–3 days)
 
-| 0 | Schema batch (TBR, rating, cover, collection root) | [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) § Wave 0 | 2–3 d | — | Prerequisite for many features |
+See [plan_import_tag_mapping.md](plan_import_tag_mapping.md).
 
-| 1 | Want to Read | [plan_want_to_read.md](plan_want_to_read.md) | 3.5–4 d | — | Alt+T filter |
+**Gate:** Defaults match today’s scan; grouping stays on album; prefs round-trip.
 
-| 1 | Open audiobook location | [plan_audiobook_preview.md](plan_audiobook_preview.md) | ~1 d | — | Not a player |
+### Phase 4 — Check for updates (2–3 days)
 
-| 2 | Ratings | [plan_ratings.md](plan_ratings.md) | 4–5 d | — | Numeric, not stars |
+See [plan_auto_update.md](plan_auto_update.md).
 
-| 2 | Covers + zip backup | [Plan_covers.md](Plan_covers.md) | 5–6 d | — | Combine with ratings sprint |
+**Gate:** Help → Check for updates compares GitHub latest to `APP_VERSION`; offline failure is announced.
 
-| 3 | Rescan + collection root (A+B) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) | ~2 wk | — | Not Part C organize |
+### Phase 5 — View-mode announcements (2–4 days)
 
-| 4 | Name consistency (optional) | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — | After rescan |
+See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
 
-| 5 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) | 3–5 wk | — | After English freeze |
+**Gate:** JAWS spike accepted; Book Details view mode does not say edit or read only; edit mode still says edit.
 
-| — | Rescan Part C organize | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part C | 10–12 d | — | Defer; high risk |
+### Phase 6 — Name consistency (2–3 weeks)
 
+See [Plan_name_consistency_check.md](Plan_name_consistency_check.md).
 
+Does **not** require rescan. Confirm-each-group; no silent merges.
 
-**Version 3 core (Waves 0–3):** ~5–6 weeks. **+ Name consistency:** ~8–9 weeks. **i18n:** separate release.
-
-
-
----
-
-
-
-## Follow-on enhancements (after wave 3 or between waves)
-
-
-
-Rank these with **Your priority** to build Wave 4+ schedule.
-
-
-
-| Enhancement | Detail doc | Est. | Suggested timing | Your priority | Notes |
-
-|-------------|------------|------|------------------|---------------|-------|
-
-| Path health report | [plan_path_health_report.md](plan_path_health_report.md) | 2–3 d | Wave 4 | — | Missing `path` on disk |
-
-| Export library metadata | [plan_export_library_metadata.md](plan_export_library_metadata.md) | ~2 d | Wave 4 | — | CSV/JSON |
-
-| Missing metadata filters | [plan_missing_metadata_filters.md](plan_missing_metadata_filters.md) | 2–3 d | After Wave 2 | — | No plot/cover/rating |
-
-| Bulk want-to-read on selection | [plan_bulk_want_to_read_selection.md](plan_bulk_want_to_read_selection.md) | ~1 d | After Wave 1 | — | Main window selection |
-
-| Want-to-read on Import Detail | [plan_want_to_read_import_detail.md](plan_want_to_read_import_detail.md) | ~1 d | After Wave 1 | — | During import review |
-
-| Update window extensions | [plan_update_window_extensions.md](plan_update_window_extensions.md) | 2–3 d | After Wave 1 | — | Bulk TBR, reader |
-
-| Scheduled backup reminder | [plan_scheduled_backup_reminder.md](plan_scheduled_backup_reminder.md) | 1–2 d | After zip backup | — | Prompt only |
-
-| Statistics extensions | [plan_statistics_extensions.md](plan_statistics_extensions.md) | 1–2 d | After Wave 2 | — | TBR, avg rating |
-
-| Reader / narrator filter | [plan_reader_filter.md](plan_reader_filter.md) | ~2 d | Wave 4 | — | View filter |
-
-| Series number in DB | [plan_series_number_db.md](plan_series_number_db.md) | 2–3 d | Wave 0 add or Wave 4 | — | May batch schema |
-
-| Preferences export/import | [plan_preferences_export_import.md](plan_preferences_export_import.md) | ~2 d | Anytime | — | Settings file |
-
-| Bulk web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Post-v3 | — | Network heavy |
-
-| Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | 3–5 d | After current web fetch (Phases 1–5 done) | — | QThread worker + split `web_book_api.py`; first app background thread |
-
-| Import window action toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) § Phase 5 | ~1 d | Anytime | — | Deferred from June visual appeal; reuse main toolbar pattern |
-
-| Preferences mini-toolbar (Save/Restore/Close) | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) § Phase 5 | 0.5–1 d | Anytime | — | Deferred from June visual appeal |
-
-| View-mode static text (no JAWS edit/read-only noise) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | Anytime / a11y | — | Spike StaticText vs focusable QLabel; do not clear Qt readOnly on edit widgets |
-
-| Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | 2–3 d | Anytime / import | — | Prefs Import Settings combos; keep grouping on album; series-from-filename stays a scenario |
-
-
+**Gate:** Author/genre merge safe; import blocked while mode active; Escape restores filters.
 
 ---
-
-
-
-## Backlog (larger scope — rank if interested)
-
-
-
-| Enhancement | Detail doc | Est. | Your priority | Notes |
-
-|-------------|------------|------|---------------|-------|
-
-| Third-party import (Libib, etc.) | [plan_third_party_import.md](plan_third_party_import.md) | 1–2 wk/format | — | Per-format adapters |
-
-| Smart collections (saved filters) | [plan_smart_collections.md](plan_smart_collections.md) | 1–2 wk | — | Virtual lists |
-
-| Reading progress / bookmark | [plan_reading_progress.md](plan_reading_progress.md) | 2–3 wk+ | — | Beyond read_date |
-
-| Book tags (multi-label) | [plan_book_tags.md](plan_book_tags.md) | 2–3 wk | — | Many-to-many |
-
-| Auto-update check | [plan_auto_update.md](plan_auto_update.md) | 2–3 d | — | Check only, no silent install |
-
-
-
----
-
-
-
-## Maintenance (no user feature — schedule between waves)
-
-
-
-| Item | Detail doc | Est. | Your priority | Notes |
-
-|------|------------|------|---------------|-------|
-
-| CI / test hardening | [plan_ci_test_hardening.md](plan_ci_test_hardening.md) | 1–2 d | — | Ongoing discipline |
-
-| Vulture dead-code cleanup | [plan_vulture_dead_code_cleanup.md](plan_vulture_dead_code_cleanup.md) | 0.5–1 d | — | Between waves |
-
-
-
----
-
-
 
 ## Cross-cutting principles
 
-
-
-### Unit testing as you go
-
-
-
-For **every wave**, before starting the next:
-
-
-
-1. Add or extend tests from that plan’s test checklist.
-
+1. Add or extend tests from each plan’s checklist before starting the next phase.
 2. Run `python -m pytest test/` — all green before merge.
+3. Test logic modules first; mock HTTP and DB in CI.
+4. Include tests in the same commit/PR as the feature.
+5. NVDA/JAWS smoke after each phase ([qa_verification.md](qa_verification.md)). Ship help with each feature.
 
-3. Test **logic modules first** before heavy UI tests.
-
-4. Mock DB, filesystem, and HTTP in CI.
-
-5. Include tests in the **same commit/PR** as the feature.
-
-
-
-### Schema — batch once (Wave 0)
-
-
-
-| Table | New columns |
-
-|-------|-------------|
-
-| `books` | `want_to_read`, `rating`, `ratings_count`, `cover_path` |
-
-| `collections` | `root_path` |
-
-
-
-Optional add to Wave 0 if prioritized: `series_number` ([plan_series_number_db.md](plan_series_number_db.md)).
-
-
-
-### Accessibility and help
-
-
-
-NVDA/JAWS smoke after each wave ([qa_verification.md](qa_verification.md)). Ship help with each feature.
-
-
+Optional at Phase 1 start: fix pre-existing plot-length test fixtures in `test_web_api_unit.py` / `test_web_api_fetch.py`.
 
 ---
-
-
 
 ## What to combine vs keep separate
 
-
-
-| Combine in one sprint? | Plans | Why |
-
-|------------------------|-------|-----|
-
-| **Yes** | Ratings + Covers + zip backup | Shared web metadata save path |
-
-| **Yes** | Rescan Part A + Part B | One doc; root_path enables rescan |
-
-| **Yes** | Want to Read + Open location | ~5 days; shared Book Details touch |
-
-| **Yes** | Path health + Export metadata | Both library hygiene; ~4–5 days |
-
-| **No** | i18n | After feature freeze |
-
-| **No** | Bulk web metadata | Separate release |
-
-| **No** | Rescan Part C organize | High risk |
-
-
+| Combine? | Plans | Why |
+|----------|-------|-----|
+| **Yes** | Background thread then API split | Split after thread so patch targets move once |
+| **Yes** | Background thread then batch fetch | Batch reuses the worker |
+| **No** | Tag mapping / updates / view-mode / name consistency with fetch | Independent |
+| **No** | Deferred Want to Read / ratings / covers / rescan | Out of v3 |
 
 ---
 
+## Deferred after v3 (keep plans)
 
+Former “core waves 0–5” and follow-ons not selected for this release.
 
-## Wave details (summary)
+| Enhancement | Detail doc | Notes |
+|-------------|------------|-------|
+| Schema batch (TBR, rating, cover, collection root) | this doc § historical Wave 0 | Prerequisite for deferred features |
+| Want to Read | [plan_want_to_read.md](plan_want_to_read.md) | |
+| Open audiobook location | [plan_audiobook_preview.md](plan_audiobook_preview.md) | |
+| Ratings | [plan_ratings.md](plan_ratings.md) | |
+| Covers + zip backup | [Plan_covers.md](Plan_covers.md) | |
+| Rescan + collection root (A+B) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) | Not Part C |
+| Rescan Part C organize | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part C | High risk |
+| Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) | After English freeze |
+| Path health report | [plan_path_health_report.md](plan_path_health_report.md) | |
+| Export library metadata | [plan_export_library_metadata.md](plan_export_library_metadata.md) | |
+| Missing metadata filters | [plan_missing_metadata_filters.md](plan_missing_metadata_filters.md) | |
+| Bulk want-to-read / Import Detail TBR / Update extensions | linked plans | After Want to Read |
+| Scheduled backup reminder | [plan_scheduled_backup_reminder.md](plan_scheduled_backup_reminder.md) | After zip backup |
+| Statistics extensions | [plan_statistics_extensions.md](plan_statistics_extensions.md) | |
+| Reader / narrator filter | [plan_reader_filter.md](plan_reader_filter.md) | |
+| Series number in DB | [plan_series_number_db.md](plan_series_number_db.md) | |
+| Preferences export/import | [plan_preferences_export_import.md](plan_preferences_export_import.md) | |
+| Import / Preferences toolbars | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) | |
+| Third-party import | [plan_third_party_import.md](plan_third_party_import.md) | |
+| Smart collections | [plan_smart_collections.md](plan_smart_collections.md) | |
+| Reading progress | [plan_reading_progress.md](plan_reading_progress.md) | |
+| Book tags | [plan_book_tags.md](plan_book_tags.md) | |
 
+### Historical schema batch (when deferred features start)
 
+| Table | New columns |
+|-------|-------------|
+| `books` | `want_to_read`, `rating`, `ratings_count`, `cover_path` |
+| `collections` | `root_path` |
 
-### Wave 0 — Foundation (2–3 days)
-
-
-
-Batch schema; model/query updates; tests.
-
-
-
-**Gate:** pytest green; import and legacy backup work.
-
-
-
-### Wave 1 — Quick UX (4–5 days)
-
-
-
-Want to Read + Open location. See [plan_want_to_read.md](plan_want_to_read.md), [plan_audiobook_preview.md](plan_audiobook_preview.md).
-
-
-
-**Gate:** Alt+T filter; open folder; help updated.
-
-
-
-### Wave 2 — Web enrichment (9–11 days)
-
-
-
-Ratings + Covers + zip backup. See [plan_ratings.md](plan_ratings.md), [Plan_covers.md](Plan_covers.md).
-
-
-
-**Gate:** Rating column; cover on save; zip backup round-trip.
-
-
-
-### Wave 3 — Library maintenance (10–12 days)
-
-
-
-Rescan A+B. See [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md).
-
-
-
-**Gate:** Rescan updates file fields; tag overwrite off by default.
-
-
-
-### Wave 4+ — Your ranked follow-on
-
-
-
-Pick from **Follow-on** and **Backlog** tables using **Your priority** column.
-
-
-
-### Wave 5 — i18n
-
-
-
-[plan_Internationalization_overview.md](plan_Internationalization_overview.md) — after English stable.
-
-
+Optional: `series_number` ([plan_series_number_db.md](plan_series_number_db.md)).
 
 ---
 
+## Maintenance (between phases)
 
-
-## Release milestones
-
-
-
-| Release | Contents | Version |
-
-|---------|----------|---------|
-
-| R1 | Wave 0 + 1 | minor |
-
-| R2 | Wave 2 | minor |
-
-| R3 | Wave 3 | minor |
-
-| R4 | Ranked follow-on items | minor |
-
-| R5 | i18n | minor or major |
-
-
+| Item | Detail doc | Est. |
+|------|------------|------|
+| CI / test hardening | [plan_ci_test_hardening.md](plan_ci_test_hardening.md) | 1–2 d |
+| Vulture dead-code cleanup | [plan_vulture_dead_code_cleanup.md](plan_vulture_dead_code_cleanup.md) | 0.5–1 d |
 
 ---
-
-
 
 ## Risks and mitigations
 
-
-
 | Risk | Mitigation |
-
 |------|------------|
-
-| Book Details crowded | Wave 1 layout first; cover above grid in Wave 2 |
-
-| Web Metadata save regression | Tests; single save refactor |
-
-| Legacy `.db` restore | Keep `.db` path; test zip and non-zip |
-
-| Too many follow-on items | Use **Your priority** column; defer backlog |
-
-| i18n during features | Wave 5 only |
-
-
+| First production background thread | JAWS spike before real work; no UI from worker; `threading.Event` cancel |
+| Batch completion silent to JAWS | Modal `AccessibleDialog` + `raise_`/`activateWindow`/focus (avoid Calibre overlay pattern) |
+| Tag mapping changes existing imports | Defaults = current album / album-artist-then-artist; grouping stays on album |
+| Name consistency merges many books | Confirm each group; no silent merges |
+| Tester xlsx overwritten | Never regenerate filled `AbCS_Version3_Release_Tester_Review.xlsx` |
 
 ---
-
-
 
 ## How to use this doc
 
-
-
-1. **Version 3 review** — confirm waves 0–3; rank follow-on/backlog in tables above.
-
-2. **During implementation** — meet each wave **gate** before the next.
-
-3. **Status** — update [plans_status.md](plans_status.md) when a plan ships.
-
-4. **Detail** — read linked `plan_*.md` for file paths and a11y checklists.
-
-
-
----
-
-
-
-## Next steps
-
-
-
-Fill **Your priority** in the follow-on and backlog tables. Confirm Wave 0 start date. Begin schema batch + tests.
-
-
+1. Implement phases in order (or 3–6 in parallel after Phase 1 if staffing allows).
+2. Meet each phase **gate** before the next.
+3. Update [plans_status.md](plans_status.md) when a plan ships.
+4. Read linked `plan_*.md` for file paths and a11y checklists.
