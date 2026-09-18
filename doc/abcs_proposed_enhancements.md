@@ -63,7 +63,8 @@ Smaller or supporting features that complement the core plans.
 | **Series book number**                | Store “book 3 in the series” as its own field instead of only in the title.                                 |
 | **Export / import settings**          | Save your preferences to a file and load them on another computer.                                          |
 | **Fetch web info for many books**     | Queue web metadata fetch for a selection of books with progress and cancel — instead of one book at a time. |
-| **Better plot search**                | Faster search inside long plot summaries on very large libraries.                                           |
+| **View-mode field announcements**     | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. |
+| **Import tag mapping**                | Choose which audio tags fill title and author on import (album vs track title, album artist vs artist).     |
 
 
 ---

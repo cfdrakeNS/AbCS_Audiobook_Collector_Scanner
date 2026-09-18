@@ -130,6 +130,8 @@ Rank these with **Your priority** to build Wave 4+ schedule.
 
 | View-mode static text (no JAWS edit/read-only noise) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | Anytime / a11y | — | Spike StaticText vs focusable QLabel; do not clear Qt readOnly on edit widgets |
 
+| Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | 2–3 d | Anytime / import | — | Prefs Import Settings combos; keep grouping on album; series-from-filename stays a scenario |
+
 
 
 ---

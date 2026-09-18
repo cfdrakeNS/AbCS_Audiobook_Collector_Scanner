@@ -273,13 +273,14 @@ ROWS = [
     ),
     (
         "F14",
-        "Follow-on - Post-v3",
-        "Better plot search",
-        "Faster search inside long plot summaries on very large libraries.",
-        "3-5 days",
+        "Follow-on",
+        "View-mode field announcements",
+        "In Book Details view mode, tabbing a field should speak the name and value "
+        "without JAWS saying edit or read only. Edit mode stays a real edit field.",
+        "2-4 days",
         "Medium",
-        "Full-text index sync and rebuild add complexity.",
-        "Post-v3; most useful on very large libraries",
+        "Must keep real edit widgets in edit mode; a prior attempt that cleared read-only made JAWS say edit.",
+        "Anytime / accessibility",
     ),
     (
         "F15",
@@ -302,6 +303,18 @@ ROWS = [
         "Low",
         "Visual/layout change only; existing handlers reused.",
         "Anytime; deferred from June visual appeal",
+    ),
+    (
+        "F17",
+        "Follow-on",
+        "Import tag mapping",
+        "In Preferences Import Settings, choose which audio tags fill book title and author "
+        "(album vs track title, album artist vs artist). Files still group by album so a "
+        "multi-part book stays one book. Series from the file name stays an import scenario.",
+        "2-3 days",
+        "Medium",
+        "Wrong default would change existing imports; grouping must stay on album, not track title.",
+        "Anytime / import",
     ),
     (
         "B01",
@@ -434,7 +447,7 @@ INSTRUCTIONS = [
 
 
 def main() -> None:
-    assert len(ROWS) == 34, f"Expected 34 rows, got {len(ROWS)}"
+    assert len(ROWS) == 35, f"Expected 35 rows, got {len(ROWS)}"
 
     wb = Workbook()
 

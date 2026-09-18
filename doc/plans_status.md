@@ -2,7 +2,7 @@
 
 
 
-**Last updated:** September 2026 (doc archive tidy + Version 3 rename)
+**Last updated:** September 2026 (import tag mapping plan added)
 
 
 
@@ -93,6 +93,8 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | Preferences mini-toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) — deferred June visual appeal item |
 
 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) — silence edit/read-only noise without misleading “edit” |
+
+| Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) — album vs track title, album artist vs artist; grouping stays on album |
 
 
 
