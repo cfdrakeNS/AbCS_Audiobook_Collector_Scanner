@@ -196,8 +196,14 @@ def test_summary_dialog_focus_default_apply(qapp):
         assert dlg.books_table.hasFocus()
         issue = dlg.books_table.item(0, 1).text()
         assert issue == "Metadata found"
-        assert dlg.books_table.columnWidth(0) >= 140
-        assert dlg.books_table.columnWidth(1) <= 220
+        from PySide6.QtWidgets import QHeaderView
+
+        header = dlg.books_table.horizontalHeader()
+        assert dlg.width() >= 720
+        assert header.sectionResizeMode(0) == QHeaderView.Stretch
+        assert header.sectionResizeMode(1) == QHeaderView.Stretch
+        assert dlg.books_table.columnWidth(0) >= 160
+        assert dlg.books_table.columnWidth(1) >= 160
         assert "Apply all" in dlg.status_bar.currentMessage()
         assert "Review" in dlg.status_bar.currentMessage()
         assert "Escape to close" in dlg.status_bar.currentMessage()
@@ -359,6 +365,9 @@ def test_progress_dialog_says_escape_to_cancel(qapp):
         dlg.update_progress(1, "Dune")
         assert "Escape to cancel" in dlg.status_label.text()
         assert "Book 1 of 3" in dlg.status_label.text()
+        assert dlg.minimumWidth() >= 580
+        assert dlg.bar.height() >= 22
+        assert "palette(highlight)" in dlg.bar.styleSheet()
     finally:
         dlg.close()
 
@@ -437,3 +446,47 @@ def test_result_reason_no_plot_vs_up_to_date():
     assert _result_reason(no_plot) == "no plot"
     assert _result_reason(stub_plot) == "no plot"
     assert _result_reason(up_to_date) == "up to date"
+
+
+def test_issue_text_short_results_and_google_pause(qapp):
+    from src.ui.batch_web_fetch_summary import _issue_text
+
+    book = SimpleNamespace(title="E", comments="")
+    no_match = BatchBookResult(
+        book=book,
+        fetch=WebFetchResult(),
+        has_changes=False,
+    )
+    no_plot = BatchBookResult(
+        book=book,
+        fetch=WebFetchResult(cleaned_data={"title": "E", "author": "A"}),
+        has_changes=False,
+    )
+    paused = BatchBookResult(
+        book=book,
+        fetch=WebFetchResult(
+            last_error="google_books: HTTP Error 429: Too Many Requests",
+            errors=["google_books: HTTP Error 429: Too Many Requests"],
+        ),
+        error="google_books: HTTP Error 429: Too Many Requests",
+    )
+    assert _issue_text(no_match) == "No match found"
+    assert _issue_text(no_plot) == "Match found. No plot was found."
+    assert _issue_text(paused) == "No match found"
+    from src.ui.batch_web_fetch_summary import (
+        BatchWebFetchSummaryDialog,
+        _result_reason,
+    )
+
+    assert _result_reason(paused) == "no match"
+    with patch(
+        "src.web.web_http._seconds_until_cooldown_clears", return_value=12 * 60
+    ):
+        dlg = BatchWebFetchSummaryDialog(BatchFetchOutcome(results=[paused]))
+    try:
+        assert "Google Books limit hit. Try in 12 minutes." in dlg.summary_label.text()
+        assert dlg.books_table.item(0, 1).text() == "No match found"
+        assert "0 with errors." in dlg.summary_label.text()
+        assert "1 with no match." in dlg.summary_label.text()
+    finally:
+        dlg.deleteLater()

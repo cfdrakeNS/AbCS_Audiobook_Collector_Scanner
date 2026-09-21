@@ -41,10 +41,69 @@ from src.web.batch_web_fetch import (
 )
 
 
+def _error_fragments(item: BatchBookResult) -> list[str]:
+    fragments: list[str] = []
+    if item.error:
+        fragments.extend(part.strip() for part in item.error.split(";") if part.strip())
+    if item.fetch.last_error:
+        fragments.append(item.fetch.last_error.strip())
+    fragments.extend(
+        str(err).strip() for err in (item.fetch.errors or []) if str(err).strip()
+    )
+    return fragments
+
+
+def _fragment_is_google_skip(fragment: str) -> bool:
+    low = fragment.lower()
+    if "google" not in low:
+        return False
+    return (
+        "paused" in low
+        or "429" in low
+        or "too many requests" in low
+        or "rate limit" in low
+    )
+
+
+def _google_skip_only(item: BatchBookResult) -> bool:
+    """True when the row failed only because Google Books was not searched."""
+    if item.fetch.cleaned_data or item.has_changes:
+        return False
+    fragments = _error_fragments(item)
+    if not fragments:
+        return False
+    return all(_fragment_is_google_skip(fragment) for fragment in fragments)
+
+
+def _batch_google_not_searched(items: list[BatchBookResult]) -> bool:
+    from src.web.web_http import _is_source_cooling_down
+
+    if _is_source_cooling_down("google_books"):
+        return True
+    return any(_fragment_is_google_skip(part) for item in items for part in _error_fragments(item))
+
+
+def _google_limit_note() -> str:
+    """Top-summary sentence with the minutes left on the Google Books pause."""
+    from src.web.web_http import (
+        RATE_LIMIT_COOLDOWN_DEFAULTS,
+        _seconds_until_cooldown_clears,
+    )
+
+    remaining = _seconds_until_cooldown_clears("google_books")
+    if remaining <= 0:
+        remaining = float(RATE_LIMIT_COOLDOWN_DEFAULTS["google_books"])
+    minutes = max(1, int(round(remaining / 60.0)))
+    unit = "minute" if minutes == 1 else "minutes"
+    return f" Google Books limit hit. Try in {minutes} {unit}."
+
+
 def _result_reason(item: BatchBookResult) -> str:
     if item.fetch.canceled:
         return "canceled"
     if item.error or item.fetch.last_error:
+        if _google_skip_only(item):
+            return "no match"
         return "error"
     if item.has_changes:
         return "new information"
@@ -60,14 +119,27 @@ def _issue_text(item: BatchBookResult) -> str:
     if reason == "new information":
         return _change_issue_label(item)
     if reason == "no match":
-        return "No match was found in web sources."
+        return "No match found"
     if reason == "no plot":
-        return "A match was found but no usable plot was available to save."
+        return "Match found. No plot was found."
     if reason == "up to date":
         return "Plot and metadata up to date."
     if reason == "canceled":
         return "Not fetched because the queue was canceled."
-    return item.error or item.fetch.last_error or "The fetch reported an error."
+    return _error_issue_text(item)
+
+
+def _error_issue_text(item: BatchBookResult) -> str:
+    """Row text for a real fetch error. Google skip notes stay on the window summary."""
+    kept = [
+        fragment
+        for fragment in _error_fragments(item)
+        if not _fragment_is_google_skip(fragment)
+    ]
+    # item.error may already join several sources; prefer the non-Google pieces.
+    if kept:
+        return "; ".join(dict.fromkeys(kept))
+    return "The fetch reported an error."
 
 
 def _change_issue_label(item: BatchBookResult) -> str:
@@ -115,21 +187,33 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self.outcome = outcome
         self._row_items: list[BatchBookResult] = list(outcome.results) or []
         self._total = len(outcome.results)
-        self._with_changes = len(outcome.with_changes)
-        self._no_match = len(outcome.no_match)
-        self._unchanged = len(outcome.unchanged)
-        self._no_plot = len(outcome.no_plot)
-        self._errored = len(outcome.errored)
+        self._google_not_searched = _batch_google_not_searched(self._row_items)
+        self._with_changes = sum(
+            1 for item in self._row_items if _result_reason(item) == "new information"
+        )
+        self._no_match = sum(
+            1 for item in self._row_items if _result_reason(item) == "no match"
+        )
+        self._unchanged = sum(
+            1 for item in self._row_items if _result_reason(item) == "up to date"
+        )
+        self._no_plot = sum(
+            1 for item in self._row_items if _result_reason(item) == "no plot"
+        )
+        self._errored = sum(
+            1 for item in self._row_items if _result_reason(item) == "error"
+        )
 
-        total = len(outcome.results)
-        with_changes = len(outcome.with_changes)
-        no_match = len(outcome.no_match)
-        unchanged = len(outcome.unchanged)
-        no_plot = len(outcome.no_plot)
-        errored = len(outcome.errored)
+        total = self._total
+        with_changes = self._with_changes
+        no_match = self._no_match
+        unchanged = self._unchanged
+        no_plot = self._no_plot
+        errored = self._errored
         canceled_note = (
             " Fetch was canceled before all books finished." if outcome.canceled else ""
         )
+        google_note = _google_limit_note() if self._google_not_searched else ""
 
         summary = (
             f"Batch web fetch finished. "
@@ -138,7 +222,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             f"{no_match} with no match. "
             f"{unchanged} already up to date. "
             f"{no_plot} with no plot. "
-            f"{errored} with errors.{canceled_note}"
+            f"{errored} with errors.{canceled_note}{google_note}"
         )
         self.setWindowTitle("Batch web fetch")
         self.setAccessibleName("Batch web fetch summary")
@@ -187,7 +271,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         vh.setHighlightSections(False)
         header = self.books_table.horizontalHeader()
         header.setHighlightSections(False)
-        header.setMinimumSectionSize(140)
+        header.setMinimumSectionSize(160)
         header.setStretchLastSection(False)
         self.books_table.setTextElideMode(Qt.ElideRight)
         self.books_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -272,7 +356,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         configure_status_bar_accessibility(self.status_bar)
         layout.addWidget(self.status_bar)
 
-        self.resize(560, 420)
+        self.resize(760, 420)
         QShortcut(QKeySequence(Qt.Key_Escape), self, activated=self._on_escape)
         QShortcut(QKeySequence("Alt+A"), self, activated=self.apply_btn.click)
         QShortcut(QKeySequence("Alt+R"), self, activated=self.review_btn.click)
@@ -365,14 +449,10 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             self.review_btn.setAccessibleName("Review each")
 
     def _size_summary_columns(self) -> None:
-        """Keep Title readable. Issue may elide; speech still has the full text."""
+        """Title and Issue both grow when the summary window is widened."""
         header = self.books_table.horizontalHeader()
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.books_table.resizeColumnToContents(1)
-        issue_width = min(max(header.sectionSize(1), 120), 220)
-        header.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.books_table.setColumnWidth(1, issue_width)
         header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
 
     def _fit_summary_label_height(self) -> None:
         text = self.summary_label.text() or " "

@@ -54,7 +54,9 @@ Multi-select starts from **Alt+W**, toolbar **Search Web**, or footer **Web fetc
 
 Follow-up after accept:
 
-- Issue column: **Plot found**, **Metadata found**, or **Plot and metadata up to date.** Title column keeps a readable width; long issue text may ellipsize. Speech still has the full issue.
+- Issue column: **Plot found**, **Metadata found**, **Plot and metadata up to date.**, **No match found**, or **Match found. No plot was found.** Title and Issue both stretch. The summary opens wider so the Issue text is visible.
+- Batch progress opens about one third wider and keeps that width. Long titles wrap. The bar is thicker and uses the highlight color.
+- After a Google Books limit, later books in that batch are not sent to Google. Those rows still say **No match found**. The summary at the top says **Google Books limit hit. Try in N minutes.**
 - Enter in the summary list does nothing. Apply all and Review are not default buttons.
 - Review hides the summary. Save or Skip returns to the summary without re-speaking the queue status.
 - With a screen reader, summary status is **Alt+A Apply all**, **Alt+R Review** (or Review each), and Escape. Without a screen reader, the status is the count line.

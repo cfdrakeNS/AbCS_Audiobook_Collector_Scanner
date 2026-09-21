@@ -92,6 +92,8 @@ Google Books, WikiData, and Wikipedia may answer with "too many requests" (HTTP 
 
 Any status or error message may include a countdown such as *Try again in about 15 minutes*. The web details window only opens when data is found — wait for the cooldown, then press Alt+W again.
 
+While Google Books is paused, AbCS does not call it. Open Library and WikiData are still tried. In a batch, the Issue column still says **No match found** for a book that only missed because of that pause. The summary at the top says **Google Books limit hit. Try in N minutes.**
+
 Other sources continue in their normal order while one source is cooling down.
 
 ### Google Books API key (optional)
@@ -191,9 +193,10 @@ The review window opens **only if** at least one savable difference exists.
 | --------------------------------------------- | ------------------------------------ |
 | Web data found with differences               | **Web Metadata** review window       |
 | Web data found but everything already matches | *Already up to date* message         |
-| Match found but no plot on web or in the library | *No plot* in the batch summary   |
+| Match found but no plot on web or in the library | Batch Issue column: **Match found. No plot was found.** |
 | Network errors but no match                   | Message listing which sources failed |
-| No match at all                               | *No information found…* message      |
+| No match at all                               | *No information found…* for one book. Batch Issue column: **No match found** |
+| Google Books limit during a batch             | Issue column stays **No match found**. Top summary: **Google Books limit hit. Try in N minutes.** |
 
 
 ---

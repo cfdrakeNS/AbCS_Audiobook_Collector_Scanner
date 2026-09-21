@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (v3 Phases 1–4 complete, including batch-summary and selection speech follow-up. Phase 5 not started.)
+**Last updated:** September 2026 (v3 Phases 1–4 complete. Later batch polish: wider progress and summary, short Issue text, Google limit sentence on the summary. Phase 5 not started.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 

@@ -594,6 +594,15 @@ def test_google_books_cooldown_short_circuits_followup(urlopen_mock, sleep_mock,
     assert result is None
     assert urlopen_mock.call_count == first_calls
 
+    skipped = api._fetch_from_google_books(
+        "Emma",
+        "Jane Austen",
+        require_author_match=True,
+        propagate_fatal_errors=True,
+    )
+    assert skipped is None
+    assert urlopen_mock.call_count == first_calls
+
 def _http_error_503():
     import urllib.error
 

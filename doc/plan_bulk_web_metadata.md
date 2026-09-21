@@ -25,15 +25,17 @@ Depends on **Phase 1** (background worker; tester accepted Alt+W after the API s
 
 ### Progress
 
-Worker thread runs `collect_batch_results` (sync `get_book_metadata` per book, shared cancel `Event`). Dialog: current title, N of M, Escape cancel (no Cancel button). Failures log a row; the queue continues unless canceled.
+Worker thread runs `collect_batch_results` (sync `get_book_metadata` per book, shared cancel `Event`). Dialog: current title, N of M, Escape cancel (no Cancel button). The window opens about one third wider than the first build and stays that width; long titles wrap. The progress bar is thicker and uses the highlight color. Failures log a row; the queue continues unless canceled.
 
-Google Books 429 / cooldown is unchanged from Phase 1. Large batches can still hit quota; that is expected, not a batch-wiring failure.
+Each book may call Google at most twice. That cap starts over on the next book. There is no wait between books. A real Google Books 429 starts the usual cooldown (about 15 minutes). Later books in that batch, and any batch while the pause is on, are not sent to Google. Open Library and WikiData are still tried. One 429 per pause is expected on a larger batch; it is not a wiring failure.
 
 ### Summary
 
 Modal [`BatchWebFetchSummaryDialog`](../src/ui/batch_web_fetch_summary.py): `raise_()` / `activateWindow()`, focus on the first list row. Apply all and Review are **not** default buttons, so Enter in the list does not run them.
 
-Issue column (spoken in full): **Plot found**, **Metadata found**, **Plot and metadata up to date**, or the no-match / no-plot / error text. Title keeps a readable width.
+Issue column (spoken in full): **Plot found**, **Metadata found**, **Plot and metadata up to date.**, **No match found**, or **Match found. No plot was found.** A Google-only miss uses **No match found**, not a Google error in the cell. Title and Issue both stretch when the window is widened. The dialog starts wide enough that the Issue text is not cut off.
+
+When Google Books was not searched because of the limit, the summary at the top adds **Google Books limit hit. Try in N minutes.** The number is the time left on the pause.
 
 With a screen reader, the status bar is **Alt+A Apply all**, **Alt+R Review** (or Review each), and Escape. Without a screen reader, the status bar is the count line. Arrowing the list does not re-read the status bar.
 
@@ -64,7 +66,7 @@ Passed.
 1. Footer **Web fetch** appears only with two or more selected. Search Web stays enabled.
 2. Alt+W, Search Web, and Web fetch run the same queue when two or more are selected. One book stays a single fetch. No main-window Alt+B.
 3. Progress N of M spoken; Escape stops the rest.
-4. Summary: Issue column uses plot/metadata wording; Enter does nothing; Apply all and Review work; Save/Skip return to the summary.
+4. Summary: Issue column uses the short plot, metadata, no-match, and no-plot wording. A Google limit is only on the top summary (**Google Books limit hit. Try in N minutes.**). Enter does nothing. Apply all and Review work. Save/Skip return to the summary.
 5. Escape closes the summary. Focus returns to the table.
 
 ---

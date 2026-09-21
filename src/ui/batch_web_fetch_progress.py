@@ -6,7 +6,13 @@ import threading
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeySequence, QShortcut
-from PySide6.QtWidgets import QApplication, QProgressBar, QStatusBar, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QProgressBar,
+    QSizePolicy,
+    QStatusBar,
+    QVBoxLayout,
+)
 
 from src.accessibility.accessible_events import (
     announce_dialog_opened,
@@ -45,12 +51,27 @@ class BatchWebFetchProgressDialog(AccessibleDialog):
         self.status_label = FetchStatusLabel("Escape to cancel.")
         self.status_label.setWordWrap(True)
         self.status_label.setFocusPolicy(Qt.NoFocus)
+        self.status_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         layout.addWidget(self.status_label)
 
         self.bar = QProgressBar()
         self.bar.setRange(0, self.total)
         self.bar.setValue(0)
         self.bar.setAccessibleName("Batch fetch progress")
+        self.bar.setFixedHeight(22)
+        self.bar.setStyleSheet(
+            "QProgressBar {"
+            "  min-height: 22px;"
+            "  max-height: 22px;"
+            "  border: 1px solid palette(dark);"
+            "  border-radius: 3px;"
+            "  text-align: center;"
+            "  background-color: palette(base);"
+            "}"
+            "QProgressBar::chunk {"
+            "  background-color: palette(highlight);"
+            "}"
+        )
         layout.addWidget(self.bar)
 
         self.status_bar = QStatusBar()
@@ -60,7 +81,8 @@ class BatchWebFetchProgressDialog(AccessibleDialog):
         self._escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self._escape_shortcut.setContext(Qt.WindowShortcut)
         self._escape_shortcut.activated.connect(self.request_cancel)
-        self.resize(440, 140)
+        self.setMinimumWidth(587)
+        self.resize(587, 160)
 
         from src.ui.help_router import install_shift_f1_help
 

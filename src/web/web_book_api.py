@@ -1084,22 +1084,25 @@ class WebBookAPI:
 
         if refresh <= 1:
             self._check_abort()
-            _report(_source_progress_message("google_books", phase=search_phase))
-            try:
-                metadata = self._fetch_from_google_books(
-                    search_title,
-                    query_author,
-                    require_author_match=require_author_match,
-                    match_author=db_author,
-                    propagate_fatal_errors=True,
-                )
-                if metadata:
-                    metadata["_resolved_source"] = "google_books"
-                    return metadata
-            except FetchAborted:
-                raise
-            except Exception as exc:
-                fetch_errors.append(f"google_books: {exc}")
+            if _is_source_cooling_down("google_books"):
+                fetch_errors.append("google_books: paused")
+            else:
+                _report(_source_progress_message("google_books", phase=search_phase))
+                try:
+                    metadata = self._fetch_from_google_books(
+                        search_title,
+                        query_author,
+                        require_author_match=require_author_match,
+                        match_author=db_author,
+                        propagate_fatal_errors=True,
+                    )
+                    if metadata:
+                        metadata["_resolved_source"] = "google_books"
+                        return metadata
+                except FetchAborted:
+                    raise
+                except Exception as exc:
+                    fetch_errors.append(f"google_books: {exc}")
 
         if refresh <= 2:
             self._check_abort()
@@ -1185,8 +1188,6 @@ class WebBookAPI:
         """Fetch metadata from Google Books API."""
         db_author = match_author if match_author is not None else author
         if _is_source_cooling_down("google_books"):
-            if propagate_fatal_errors:
-                _raise_cooldown_http_error("google_books")
             return None
 
         queries: list[str] = []
