@@ -2332,7 +2332,6 @@ class BookDetailsWindow(AccessibleDialog):
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""
         from PySide6.QtCore import QTimer
-        from src.ui.web_fetch_progress import WebFetchProgressDialog
 
         if not self.book:
             self.set_status("No book selected for web lookup")

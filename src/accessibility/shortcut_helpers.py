@@ -32,6 +32,56 @@ def get_accessible_shortcuts_list(shortcuts):
         return rest
 
 
+def exec_f1_shortcuts_dialog(parent, window_title: str, shortcuts) -> None:
+    """Show the standard one-column F1 shortcut table for a window."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import (
+        QAbstractItemView,
+        QHeaderView,
+        QTableWidget,
+        QTableWidgetItem,
+        QVBoxLayout,
+    )
+
+    from src.ui.accessible_dialog import AccessibleDialog
+
+    dlg = AccessibleDialog(parent)
+    dlg.setWindowTitle(window_title)
+    dlg.setAccessibleName("Keyboard Shortcuts")
+    dlg.resize(520, 360)
+    layout = QVBoxLayout(dlg)
+    layout.setContentsMargins(20, 20, 20, 20)
+
+    table = QTableWidget()
+    table.setAccessibleName("Shortcuts list")
+    table.setColumnCount(1)
+    table.setHorizontalHeaderLabels([""])
+    table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    table.setSelectionBehavior(QAbstractItemView.SelectRows)
+    table.setSelectionMode(QAbstractItemView.SingleSelection)
+    table.setTabKeyNavigation(False)
+    table.setAlternatingRowColors(False)
+    table.verticalHeader().setVisible(False)
+    table.horizontalHeader().setVisible(False)
+    table.setShowGrid(False)
+    table.setMouseTracking(False)
+    table.viewport().setMouseTracking(False)
+    table.setAttribute(Qt.WA_Hover, False)
+    table.viewport().setAttribute(Qt.WA_Hover, False)
+    table.setStyleSheet(build_accessible_f1_popup_style())
+
+    rows = prepend_help_doc_shortcut(get_accessible_shortcuts_list(list(shortcuts)))
+    table.setRowCount(len(rows))
+    table.setVerticalHeaderLabels([""] * len(rows))
+    for row, (key, desc) in enumerate(rows):
+        item = QTableWidgetItem(f"{desc} - {key}")
+        item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
+        table.setItem(row, 0, item)
+    table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+    layout.addWidget(table)
+    dlg.exec()
+
+
 def build_accessible_f1_popup_style() -> str:
     """
     Return a shared stylesheet for F1 help popups (QTableWidget).

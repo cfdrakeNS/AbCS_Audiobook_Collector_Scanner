@@ -73,6 +73,8 @@ The two-digit prefix (`nn`) is the stable ID for each topic. **Renaming** `02_im
 | 05 | `05_update.md` | `UpdateWindow` | Bulk update selected books |
 | 06 | `06_collections.md` | `CollectionWindow` | Collections manager |
 | 07 | `07_web_metadata.md` | `WebMetadataWindow` | Fetch web info |
+| 07 | `07_web_metadata.md` | `BatchWebFetchProgressDialog` | Batch fetch progress |
+| 07 | `07_web_metadata.md` | `BatchWebFetchSummaryDialog` | Batch fetch summary |
 | 09 | `09_backup_restore.md` | `BackupRestoreWindow` | Backup / restore / reset |
 | 10 | `10_preferences.md` | `PreferencesWindow` | App preferences |
 | 11 | `11_import_book_list.md` | `BookListImportWindow` | Spreadsheet import |

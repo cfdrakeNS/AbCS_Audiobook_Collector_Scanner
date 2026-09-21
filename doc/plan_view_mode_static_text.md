@@ -1,6 +1,6 @@
 # View-mode static text (silence JAWS edit / read-only noise)
 
-**Status:** Planned — **Version 3 Phase 6 (optional)**  
+**Status:** Planned — **Version 3 Phase 9 (optional)**  
 **Created:** September 2026  
 **Updated:** September 2026 (findings from failed first attempt)  
 **Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), Book Details view mode in [`src/ui/book_details.py`](../src/ui/book_details.py)
@@ -87,11 +87,14 @@ Ship only the approach that meets the pass criteria above.
 
 ## Accessibility checklist
 
+Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+
 - Tab order preserved in view and edit mode
 - Alt+/ status readback unchanged
 - Page Up/Down title focus still speaks title only
 - Plot review stays as `PlotLineList` (already non-edit)
 - **Tester JAWS confirmation after spike and after each Book Details batch**
+- Edit-mode buttons (Save, Cancel, etc.) keep existing accessible button styling — do not restyle as part of this phase
 
 ---
 

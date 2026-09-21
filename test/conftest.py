@@ -77,7 +77,7 @@ def _block_network(request):
             "or mark the test with @pytest.mark.network."
         )
 
-    with patch("src.web.web_book_api.urllib.request.urlopen", side_effect=_blocked):
+    with patch("src.web.web_http.urllib.request.urlopen", side_effect=_blocked):
         yield
 
 
@@ -169,9 +169,12 @@ def reading_history_window(qapp, temp_db, ui_scaler, theme_manager, qtbot):
 def web_api(tmp_path, monkeypatch):
     """Isolated WebBookAPI with empty cache and cleared rate-limit cooldowns."""
     from src.web import web_book_api as wba
+    from src.web import web_http as whttp
     from src.web.web_book_api import WebBookAPI, _clear_source_cooldown, _reset_shared_web_api_for_tests
 
-    monkeypatch.setattr(wba, "WEB_CACHE_FILE", str(tmp_path / "web_cache.json"))
+    cache_file = str(tmp_path / "web_cache.json")
+    monkeypatch.setattr(wba, "WEB_CACHE_FILE", cache_file)
+    monkeypatch.setattr(whttp, "WEB_CACHE_FILE", cache_file)
     _clear_source_cooldown()
     _reset_shared_web_api_for_tests()
     client = WebBookAPI()

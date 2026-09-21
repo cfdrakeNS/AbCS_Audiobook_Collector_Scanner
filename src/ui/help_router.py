@@ -29,6 +29,8 @@ WINDOW_HELP_MAP: dict[str, str] = {
     "UpdateWindow": "05_update.md",
     "CollectionWindow": "06_collections.md",
     "WebMetadataWindow": "07_web_metadata.md",
+    "BatchWebFetchProgressDialog": "07_web_metadata.md",
+    "BatchWebFetchSummaryDialog": "07_web_metadata.md",
     "BackupRestoreWindow": "09_backup_restore.md",
     "PreferencesWindow": "10_preferences.md",
     "BookListImportWindow": "11_import_book_list.md",

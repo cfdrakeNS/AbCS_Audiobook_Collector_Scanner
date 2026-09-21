@@ -72,6 +72,7 @@ MAIN_WINDOW_SHORTCUTS = {
     "R": ("Toggle read filter", "read_filter_toggle"),
     "A": ("Author filter", "author_filter_combo"),
     "W": ("Fetch web info", "get_web_info"),
+    "B": ("Batch web fetch", "batch_web_fetch"),
     # Alt+1..7 handled in main_window.py for column jump
 }
 
@@ -124,6 +125,7 @@ WEB_METADATA_SHORTCUTS = {
     "R": ("Rating", "rating_edit"),
     "F": ("Re-fetch web data", "refetch_button"),
     "S": ("Save", "save_button"),
+    "K": ("Skip this book", "skip_button"),
 }
 
 # Import Window

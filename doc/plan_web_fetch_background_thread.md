@@ -1,6 +1,6 @@
 # Web Fetch Background Thread + Module Split — Version 3 Phase 1
 
-**Status:** Planned — **Version 3 Phase 1**  
+**Status:** Complete — tester accepted Alt+W after the split (September 2026)  
 **Created:** September 2026  
 **Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [help_docs/07_web_metadata.md](../help_docs/07_web_metadata.md)
 
@@ -8,86 +8,69 @@
 
 ## What this is
 
-Finish **Phase 6** of the web metadata fetch improvements (background thread **and** split of `web_book_api.py`). This is **version 3 Phase 1**.
+Version 3 Phase 1 finishes the last web-fetch work: **background thread** and **split of `web_book_api.py`**.
 
-Phases 1–5 already shipped: fetch budget, cooperative cancel, shared HTTP helper, effective cache, `web_fetch_service`, removal of inert title/author formatting prefs. Fetch still runs on the **GUI thread**; cancel only applies between requests.
-
----
-
-## Problem
-
-A single `urlopen` (up to ~10s) can freeze the UI until that request returns. The wait dialog and Escape/Alt+C cancel work, but the app is not fully responsive during network I/O. The API module remains a large monolith (~2.4k lines), which makes bulk fetch harder.
+Phases 1–5 already shipped in 2.10: fetch budget, cooperative cancel, shared HTTP helper, effective cache, `web_fetch_service`, removal of inert title/author formatting prefs.
 
 ---
 
-## Design
+## Tester gate
 
-### 0 — Throwaway JAWS spike (before production code)
+Passed. Alt+W from main and Book Details matches the threaded fetch. Google Books 429 / `web_source_cooldowns.json` is quota cooldown, not a split regression.
 
-Fake worker emits progress strings with sleeps, drives the real [`WebFetchProgressDialog`](../src/ui/web_fetch_progress.py), then opens a real completion dialog. Scratch script or harness addition.
+---
 
-Verify with JAWS (NVDA optional):
+## Done
 
-1. Progress spoken while the worker runs.
-2. App accepts Tab/arrows during the fetch (work left the GUI thread).
-3. Completion in foreground: result dialog announced with title and default button.
-4. Completion after Alt+Tab away and back — if silent, fix with `raise_()` + `activateWindow()` + focus on default button before announce.
-5. Cancel (Escape / Alt+C) announced; focus returns to table or title field.
+### 0 — JAWS spike (tester accepted)
 
-Only proceed when 1–5 pass.
+Fake worker drove the real progress dialog, then a completion dialog. Progress spoken; Escape cancel; completion announced.
 
-### A — Background thread
+### A — Background thread (tester accepted)
 
-- Move `WebBookAPI.get_book_metadata` (via [`web_fetch_service.py`](../src/web/web_fetch_service.py)) onto a `QObject` worker on a `QThread`.
-- Keep **`fetch_web_metadata_for_book` blocking**: start worker, `popup.exec()`, return `WebFetchResult` as today. All call sites (Alt+W in main window, Book Details, Web Metadata refresh) use the worker.
-- Progress and completion via Qt **queued** signals so announcements stay on the GUI thread.
-- Cancel: replace bool `popup.cancel_requested` with a `threading.Event` set from the GUI thread; worker checks the event.
-- `QDialog.exec()` does not call Python `show()` — move `announce_dialog_opened()` / initial timer from `show()` into `showEvent`, or call `show()` before `exec()`.
-- First production background thread — no UI calls from the worker.
+- `WebBookAPI.get_book_metadata` runs on a `QObject` worker on a `QThread` via [`web_fetch_service.py`](../src/web/web_fetch_service.py).
+- `fetch_web_metadata_for_book` still **blocks** with `popup.exec()` and returns `WebFetchResult`.
+- Progress and completion use queued signals. GUI-thread `@Slot` bridge installs the wait-dialog event filter (not the worker).
+- Cancel uses `threading.Event` plus `_user_canceled` so shutdown does not look like Escape.
+- Initial announce is in `showEvent` on [`WebFetchProgressDialog`](../src/ui/web_fetch_progress.py).
+- Escape only — no Cancel button, no Alt+C on the wait dialog.
 
-### B — Split `web_book_api.py` (after the thread)
+### B — Split `web_book_api.py`
 
-Do the thread first, then the split, so test patch targets move only once.
+Public API unchanged (`WebBookAPI`, `get_web_api`, re-exported HTTP/matching/cache names).
 
 | Module | Responsibility |
 |--------|----------------|
-| `http` / shared helpers | `_http_get_json`, cooldown, budget, User-Agent |
-| `matching` | Title/author match scoring |
-| `cache` | Persistent / in-memory cache |
-| Per-source | Open Library, Google Books, WikiData, Wikipedia |
-| `enrich` | Plot enrichment |
-| Facade | `WebBookAPI` / `get_web_api` public API unchanged |
+| [`web_http.py`](../src/web/web_http.py) | `_http_get_json`, urlopen, cooldown, budget, User-Agent, `WEB_CACHE_FILE` |
+| [`web_matching.py`](../src/web/web_matching.py) | STOPWORDS, honorifics, Orwell tokens |
+| [`web_cache.py`](../src/web/web_cache.py) | TTL / cache-size constants |
+| [`web_book_api.py`](../src/web/web_book_api.py) | Facade + `WebBookAPI` (per-source fetch and plot enrich stay here) |
 
-Update patches that currently target `src.web.web_book_api.urllib.request.urlopen`, `_http_get_json`, `_fetch_from_*`, and `src.web.web_fetch_service.get_web_api`.
+Per-source Open Library / Google Books / WikiData / Wikipedia and plot enrich were **not** extracted. That keeps the split small and patch targets stable.
+
+**Test patches:** `src.web.web_http.urllib.request.urlopen` and `src.web.web_http.time.sleep`. `WebBookAPI._fetch_from_*` still patched on the class. Tests that patch `src.web.web_book_api._http_get_json` still work (facade global).
+
+Plot-length fixtures in `test_clean_web_data_for_storage_strips_series_keys` and `test_cache_hit_strips_legacy_series_keys` now use plots of at least `PLOT_MIN_LENGTH` (80).
+
+Web tests: `test_web_api_unit.py`, `test_web_api_fetch.py`, `test_web_api_series.py`, `test_web_fetch_ui.py` — 81 passed.
 
 ---
 
 ## Accessibility
 
-- Progress announcements must not move to the worker thread.
-- Cancel (Escape / Alt+C) remains keyboard-reachable; status announces cancel/complete.
-- Focus restore after fetch unchanged (main table / Book Details title).
+Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+
+- Progress dialog: announce on `showEvent`; Escape cancel; status updates on the GUI thread only (QObject bridge).
+- Completion dialog: `raise_()` + `activateWindow()` + focus default button; styled via `exec_styled_message_box` or `AccessibleDialog` + `build_accessible_button_style`.
+- Do not install event filters or touch widgets from the worker thread.
 - Never use Calibre’s non-modal NoFocus overlay for anything the user must answer.
-
----
-
-## Tests
-
-- Worker completes and emits cleaned result on the GUI thread.
-- Cancel mid-fetch yields `_canceled` without crashing.
-- Existing web API / fetch tests still pass after the module split.
-- Optional: fix plot-length fixtures in `test_clean_web_data_for_storage_strips_series_keys` and `test_cache_hit_strips_legacy_series_keys` (short plots dropped by `PLOT_MIN_LENGTH` 80).
-
----
-
-## Estimate
-
-~3–5 days (spike + thread + careful split + a11y/regression).
 
 ---
 
 ## Out of scope
 
 - Bulk multi-book queue ([plan_bulk_web_metadata.md](plan_bulk_web_metadata.md)) — Phase 2.
+- Non-modal keep-using-the-app jobs ([plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md)) — Phase 5.
+- Extracting per-source / enrich modules — later follow-on, not required to close Phase 1.
 - Parallel sources / merge-quality rework — later follow-on.
 - New metadata sources.

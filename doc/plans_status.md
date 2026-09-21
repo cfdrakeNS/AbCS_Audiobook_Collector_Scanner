@@ -1,8 +1,8 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (v3 scoped to six tester-selected phases)
+**Last updated:** September 2026 (v3: Phase 5 non-modal fetch jobs; later phases shifted)
 
-**Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) — six phases from tester review.
+**Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
 **Tester summary (plain language):** [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md)
 
@@ -16,17 +16,20 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 ---
 
-## Active — version 3 (six phases)
+## Active — version 3
 
 | Phase | Plan | Location | Status |
 |-------|------|----------|--------|
 | — | **Version 3 release roadmap** | [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) | Schedule master |
-| 1 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | Planned — Phase 1 |
-| 2 | Bulk web metadata | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | Planned — Phase 2 |
-| 3 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | Planned — Phase 3 |
-| 4 | Auto-update check | [plan_auto_update.md](plan_auto_update.md) | Planned — Phase 4 |
-| 5 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 5 |
-| 6 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 6 (optional) |
+| 1 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | Complete — tester accepted |
+| 2 | Bulk web metadata | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | Complete — tester accepted |
+| 3 | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) | Planned — Phase 3 |
+| 4 | Selection mode toolbar and shortcuts | [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) | Planned — Phase 4 |
+| 5 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | Planned — Phase 5 |
+| 6 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | Planned — Phase 6 |
+| 7 | Auto-update check | [plan_auto_update.md](plan_auto_update.md) | Planned — Phase 7 |
+| 8 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 8 |
+| 9 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 9 (optional) |
 
 ---
 

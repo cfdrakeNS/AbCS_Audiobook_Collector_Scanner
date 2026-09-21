@@ -51,6 +51,7 @@ def test_progress_dialog_request_cancel_sets_flag(qapp):
         assert popup.cancel_requested is False
         popup.request_cancel()
         assert popup.cancel_requested is True
+        assert popup.cancel_event.is_set() is True
         assert "Cancel" in popup._message_label.text()
         # Second cancel is a no-op
         popup.request_cancel()
@@ -100,4 +101,60 @@ def test_fetch_service_cleans_success(qapp, api, monkeypatch):
     result = fetch_web_metadata_for_book(Book(), show_progress=False)
     assert result.has_usable_data
     assert result.cleaned_data["title"] == "Pride and Prejudice"
+
+
+def test_fetch_service_runs_on_worker_thread(qapp, api, monkeypatch):
+    """Worker ``run`` executes get_book_metadata off the GUI thread."""
+    import threading
+
+    from PySide6.QtCore import QThread, Qt
+
+    from src.web.web_fetch_service import _WebFetchWorker
+
+    caller_ident = threading.get_ident()
+    seen = {"worker_ident": None}
+    cancel_event = threading.Event()
+
+    def fake_get(*_a, **_k):
+        seen["worker_ident"] = threading.get_ident()
+        return {
+            "title": "Pride and Prejudice",
+            "author": "Jane Austen",
+            "plot": "A" * 100,
+            "source": "open_library",
+        }
+
+    monkeypatch.setattr("src.web.web_fetch_service.get_web_api", lambda: api)
+    monkeypatch.setattr(api, "get_book_metadata", fake_get)
+
+    thread = QThread()
+    worker = _WebFetchWorker(
+        title="Pride and Prejudice",
+        author="Jane Austen",
+        year=None,
+        refresh=0,
+        narrator="",
+        path="",
+        source="",
+        comments="",
+        bypass_cache=False,
+        cancel_event=cancel_event,
+    )
+    worker.moveToThread(thread)
+    holder = {"raw": None}
+
+    def _on_finished(raw):
+        holder["raw"] = raw
+        thread.quit()
+
+    worker.finished.connect(_on_finished, Qt.ConnectionType.QueuedConnection)
+    thread.started.connect(worker.run)
+    thread.start()
+    assert thread.wait(10000)
+    worker.deleteLater()
+    thread.deleteLater()
+
+    assert holder["raw"] is not None
+    assert seen["worker_ident"] is not None
+    assert seen["worker_ident"] != caller_ident
 

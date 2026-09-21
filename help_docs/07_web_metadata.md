@@ -14,14 +14,15 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
 ## Before you start
 
 - You need an **internet connection**.
-- Select exactly **one book** in the main window (the focused row is used).
+- For one book, use the focused row in the main window (or Book Details).
+- For several books, select **two or more** rows and use **Web fetch** (Alt+B).
 - Fetch Web Info is **not available** while duplicate mode is active.
 
 ## Steps
 
 1. In the main window, move to the book you want to look up.
-2. Open **Edit → Fetch Web Info**, click **Search Web** on the toolbar, or press **Alt+W**.
-   - You can also open **Book Details** for a book and press **Alt+W** there.
+2. For one book: open **Edit → Fetch Web Info**, click **Search Web** on the toolbar, or press **Alt+W**. You can also press **Alt+W** in **Book Details**.
+   - For two or more selected books: click **Web fetch** in the footer or press **Alt+B**. A progress dialog shows book N of M. Escape cancels the remaining queue. Then a summary opens with focus on the first book in the list. It offers **Apply all** and **Review** (or **Review each** when more than one book has new information). **Up to date** means stored title, author, and other fields already match the web result. **No plot** means a match was found but neither the library nor the web result has a usable plot (short comments such as an author name or “Unabridged” do not count). Escape closes the summary and discards results. **Alt+L** jumps to the books table. **Enter** on a row opens Save / Review when that book has new information, or a result message when it does not. **F1** lists shortcuts. **Alt+/** re-reads the status bar.
 3. A **progress dialog** appears. Watch the status text, or listen for announcements as AbCS searches online sources in order: Open Library, then Google Books, then WikiData.
 4. When the search finishes, one of two things happens:
    - **Differences found** — a review window opens showing your current values side by side with web values.
@@ -30,7 +31,7 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
    - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
 6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
-7. Click **Save** (or press **Alt+S**) to apply checked fields, or click **Cancel** (or press **Alt+C**) to close without saving.
+7. Click **Save** (or press **Alt+S**) to apply checked fields, or press **Escape** to close. Escape asks *Save web data?* — Yes saves, No discards.
 8. Plot text is saved to the book's **comments** field. If the web source includes a rating and you save plot, the rating line (for example `Rating: 4.5 (1,234 ratings)`) may appear at the **top of that plot text**. It is not stored in a separate rating field.
 
 ## What happens next
@@ -47,12 +48,16 @@ Optional: Preferences → Display → Web Metadata → Google Books API key (or 
 ## Mouse, shortcuts, and accessibility
 
 - Click **Search Web** on the main toolbar, or use **Edit → Fetch Web Info**.
-- In the progress dialog, press **Escape** or **Alt+C** to cancel the fetch.
-- In the review window, click checkboxes beside fields you want to update, then click **Save**, **Re-fetch**, or **Cancel**.
+- In the progress dialog, press **Escape** to cancel the fetch.
+- In the review window, click checkboxes beside fields you want to update, then click **Save** or **Re-fetch**, or press **Escape** to close.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+W | Fetch Web Info (main window or Book Details) |
+| Alt+W | Fetch Web Info for the focused book (main window or Book Details) |
+| Alt+B | Batch web fetch for two or more selected books (main window) |
+| Alt+L | Books list (batch summary) |
+| Enter | Open the highlighted book in the batch summary table |
+| Alt+K | Skip this book (Review each queue) |
 | Alt+T | Title (review window) |
 | Alt+A | Author (review window) |
 | Alt+P | Plot (review window) |
@@ -61,10 +66,9 @@ Optional: Preferences → Display → Web Metadata → Google Books API key (or 
 | Alt+R | Rating (review window) |
 | Alt+F | Re-fetch (in review window) |
 | Alt+S | Save selected fields |
-| Alt+C | Cancel |
+| Escape | Close (asks whether to save) |
 | F1 | Help for this window |
 | Alt+/ | Re-read status |
-| Escape | Close window |
 ## Common confusion
 
 **Why does it search multiple sources?**
@@ -74,7 +78,7 @@ AbCS tries Open Library first, then Google Books, then WikiData, to find the bes
 Not in its own field. The review window shows **Rating** for reference (Alt+R). AbCS does not keep a separate rating column in the database today. If you save **Plot** and the web result includes a rating, that rating line is written at the **top of the plot/comments text** (for example `Rating: 4.5 (1,234 ratings)` followed by the plot). You can edit or remove that line later in Book Details like any other plot text.
 
 **Can I fetch for multiple books at once?**
-No. Only the currently focused book in the main window is used. Use Book Details to fetch one book at a time from that view.
+Yes. Select two or more books and use **Web fetch** (Alt+B). Alt+W still fetches only the focused book and does not add to a queue. Batch Apply all writes only fields that differ from what you already store. Review each opens the same review window, one book at a time; Save or Skip (Alt+K) moves to the next. Escape on the summary discards all fetched results. Large batches can hit Google Books rate limits; wait for the cooldown shown in the status message.
 
 **Why does the message say "rate limited" or show a countdown?**
 Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown (often about 15 minutes for Google Books) before contacting that source again. The web details window only opens when data is found — there is no Re-fetch button on that error popup. Wait for the cooldown, then press Alt+W again. Other sources continue in their normal order when one source is limited.

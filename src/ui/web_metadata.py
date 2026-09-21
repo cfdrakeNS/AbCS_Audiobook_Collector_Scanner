@@ -152,7 +152,7 @@ class WebMetadataWindow(AccessibleDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
-    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "G", "S", "R", "F", "/", "F1"}
+    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "G", "S", "R", "F", "K", "/", "F1"}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -166,11 +166,14 @@ class WebMetadataWindow(AccessibleDialog):
         parent=None,
         refresh_callback=None,
         web_data=None,
+        queue_index: int | None = None,
+        queue_total: int | None = None,
     ):
         """Initialize web metadata window.
 
         Args:
             web_data: Pre-fetched web data (if provided, skips auto-fetch)
+            queue_index / queue_total: When set, Review-each batch position.
         """
         super().__init__(parent)
         from src.accessibility.icon_helper import get_app_icon
@@ -179,6 +182,8 @@ class WebMetadataWindow(AccessibleDialog):
 
         # Store pre-fetched web data if provided
         self.pre_fetched_web_data = web_data
+        self.queue_index = queue_index
+        self.queue_total = queue_total
         # Store original query info for the Re-fetch button
         self._refetch_book = book
 
@@ -195,6 +200,14 @@ class WebMetadataWindow(AccessibleDialog):
         self.theme_manager = theme_manager
         self.refresh_callback = refresh_callback
         self.setWindowTitle("Web Metadata")
+        if (
+            self.queue_index
+            and self.queue_total
+            and self.queue_total > 1
+        ):
+            self.setWindowTitle(
+                f"Web Metadata — book {self.queue_index} of {self.queue_total}"
+            )
         self.setModal(True)
         # Make window taller for expanded plot field
         self.resize(800, 700)
@@ -254,6 +267,23 @@ class WebMetadataWindow(AccessibleDialog):
         """Rebuild tab order once the dialog is visible (required for Qt tab chain)."""
         super().showEvent(event)
         self.set_tab_order()
+        if self.queue_index and self.queue_total:
+            self.raise_()
+            self.activateWindow()
+            if self.queue_total > 1:
+                announce_dialog_opened(
+                    self,
+                    f"Web Metadata, book {self.queue_index} of {self.queue_total}",
+                )
+            else:
+                announce_dialog_opened(self, "Web Metadata")
+
+    def on_skip_clicked(self):
+        """Skip saving and close so the batch review queue can advance."""
+        if not self.skip_button.isVisible():
+            return
+        announce_dialog_closed(self)
+        self.reject()
 
     def setup_ui(self, layout):
         # Main layout with two-column structure
@@ -467,6 +497,22 @@ class WebMetadataWindow(AccessibleDialog):
         self.save_button.setObjectName("save_button")  # For shortcut manager
         button_layout.addWidget(self.save_button)
 
+        self.skip_button = QPushButton("Skip")
+        self.skip_button.setAccessibleName("Skip this book")
+        self.skip_button.setAccessibleDescription(
+            "Skip without saving and go to the next book - Alt+K"
+        )
+        self.skip_button.setFocusPolicy(Qt.StrongFocus)
+        self.skip_button.setDefault(False)
+        self.skip_button.setAutoDefault(False)
+        self.skip_button.clicked.connect(self.on_skip_clicked)
+        self.skip_button.setObjectName("skip_button")
+        in_queue = bool(
+            self.queue_index and self.queue_total and self.queue_total > 1
+        )
+        self.skip_button.setVisible(in_queue)
+        button_layout.addWidget(self.skip_button)
+
         self.main_layout.addLayout(button_layout)
 
         # CRITICAL: Add the main_layout to the window layout
@@ -481,6 +527,7 @@ class WebMetadataWindow(AccessibleDialog):
             {
                 self.refetch_button: "Re-fetch web data from alternative sources",
                 self.save_button: "Save selected web metadata to the book",
+                self.skip_button: "Skip this book in the review queue",
                 self.title_edit: "Current book title",
                 self.title_web_edit: "Title from web search",
                 self.title_checkbox: "Keep the web title",
@@ -540,6 +587,7 @@ class WebMetadataWindow(AccessibleDialog):
             self.rating_edit,
             self.refetch_button,
             self.save_button,
+            self.skip_button,
         ]
 
     def _widget_takes_tab_focus(self, widget) -> bool:
@@ -850,6 +898,7 @@ class WebMetadataWindow(AccessibleDialog):
                 self.on_save_clicked() if self.save_button.isVisible() else None
             ),
             "refetch_button": lambda: self.on_refetch_clicked(),
+            "skip_button": lambda: self.on_skip_clicked() if self.skip_button.isVisible() else None,
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map
@@ -916,6 +965,7 @@ class WebMetadataWindow(AccessibleDialog):
             ("Alt+R", "Rating"),
             ("Alt+F", "Re-fetch web data"),
             ("Alt+S", "Save"),
+            ("Alt+K", "Skip this book (review queue)"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
@@ -986,13 +1036,14 @@ class WebMetadataWindow(AccessibleDialog):
             self.accept()  # Save and close
         elif reply == QMessageBox.No:
             announce_dialog_closed(self)
-            # Return focus to parent window's table if available
+            if self.queue_index and self.queue_total:
+                super().reject()
+                return
             if self.parent_window and hasattr(self.parent_window, "table"):
-                # Use QTimer to ensure focus is set after dialog closes
                 QTimer.singleShot(
                     0, lambda: self.parent_window._restore_table_focus_context(None)
                 )
-            super().reject()  # Close without saving
+            super().reject()
 
     def on_save_clicked(self):
         """Handle save button click - save and close without confirmation."""

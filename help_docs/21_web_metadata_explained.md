@@ -2,7 +2,7 @@
 
 What AbCS does internally after you activate **Fetch Web Info** (Alt+W). This is not a how-to guide — for steps and shortcuts see [Web Metadata](07_web_metadata.md).
 
-**Important:** Fetch Web Info works on **one book at a time**. It does not download audiobook files. It only looks up text information online and, if you approve, updates fields inside AbCS. Your audio files on disk are never touched.
+**Important:** **Alt+W** still works on **one book at a time**. Select two or more books and use **Web fetch** (Alt+B) for a queue. Neither path downloads audiobook files. They only look up text information online and, if you approve, update fields inside AbCS. Your audio files on disk are never touched.
 
 ---
 
@@ -191,6 +191,7 @@ The review window opens **only if** at least one savable difference exists.
 | --------------------------------------------- | ------------------------------------ |
 | Web data found with differences               | **Web Metadata** review window       |
 | Web data found but everything already matches | *Already up to date* message         |
+| Match found but no plot on web or in the library | *No plot* in the batch summary   |
 | Network errors but no match                   | Message listing which sources failed |
 | No match at all                               | *No information found…* message      |
 
@@ -216,13 +217,12 @@ Plot has no checkbox — if plot differs, it appears in the difference list and 
 
 Runs the search again using the Google Books → WikiData order. Refreshes the right-hand column without closing the window.
 
-### Save or Cancel
+### Save or close
 
 
 | Action             | Result                                                |
 | ------------------ | ----------------------------------------------------- |
 | **Save** (Alt+S)   | Applies checked fields and auto-fills to the database |
-| **Cancel** (Alt+C) | Closes with no changes                                |
 | **Escape**         | Asks *Save web data?* — Yes saves, No discards        |
 
 
@@ -268,7 +268,7 @@ Your book record is exactly as it was before Alt+W.
 
 ### If you want another book
 
-Repeat Alt+W on the next focused row. There is no batch mode.
+Repeat Alt+W on the next focused row, or select several books and use **Web fetch** (Alt+B).
 
 ---
 

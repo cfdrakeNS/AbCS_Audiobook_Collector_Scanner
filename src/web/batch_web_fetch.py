@@ -4,14 +4,27 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable
 
 from PySide6.QtCore import QObject, QThread, Qt, Signal, Slot
 from PySide6.QtWidgets import QApplication
 
 from src.ui.batch_web_fetch_progress import BatchWebFetchProgressDialog
 from src.ui.web_metadata import WebMetadataWindow
+from src.web.web_book_api import PLOT_MIN_LENGTH
 from src.web.web_fetch_service import WebFetchResult, fetch_web_metadata_for_book
+
+
+def _has_usable_plot(text: str) -> bool:
+    return len((text or "").strip()) >= PLOT_MIN_LENGTH
+
+
+def _match_lacks_plot(result: "BatchBookResult") -> bool:
+    """True when a web match exists but neither side has a usable plot."""
+    web = result.fetch.cleaned_data or {}
+    web_plot = str(web.get("plot") or "").strip()
+    book_plot = str(getattr(result.book, "comments", None) or "").strip()
+    return not _has_usable_plot(web_plot) and not _has_usable_plot(book_plot)
 
 
 @dataclass
@@ -40,11 +53,88 @@ class BatchFetchOutcome:
             and not r.has_changes
             and not r.error
             and not r.fetch.last_error
+            and not r.fetch.cleaned_data
+        ]
+
+    @property
+    def unchanged(self) -> list[BatchBookResult]:
+        return [
+            r
+            for r in self.results
+            if not r.fetch.canceled
+            and not r.has_changes
+            and not r.error
+            and not r.fetch.last_error
+            and r.fetch.cleaned_data
+            and not _match_lacks_plot(r)
+        ]
+
+    @property
+    def no_plot(self) -> list[BatchBookResult]:
+        return [
+            r
+            for r in self.results
+            if not r.fetch.canceled
+            and not r.has_changes
+            and not r.error
+            and not r.fetch.last_error
+            and r.fetch.cleaned_data
+            and _match_lacks_plot(r)
         ]
 
     @property
     def errored(self) -> list[BatchBookResult]:
-        return [r for r in self.results if r.error or r.fetch.last_error]
+        return [
+            r
+            for r in self.results
+            if not r.fetch.canceled and (r.error or r.fetch.last_error)
+        ]
+
+
+def collect_batch_results(
+    books: list[Any],
+    cancel_event: threading.Event,
+    on_progress: Callable[[int, int, str], None] | None = None,
+) -> BatchFetchOutcome:
+    """Fetch each book (no GUI wait dialog). Cooperative cancel via ``cancel_event``."""
+    outcome = BatchFetchOutcome()
+    total = len(books)
+    for index, book in enumerate(books, start=1):
+        if cancel_event.is_set():
+            outcome.canceled = True
+            break
+        title = getattr(book, "title", "") or "Untitled"
+        if on_progress:
+            on_progress(index, total, title)
+        fetch = fetch_web_metadata_for_book(
+            book,
+            parent=None,
+            refresh=0,
+            show_progress=False,
+            cancel_event=cancel_event,
+        )
+        if fetch.canceled:
+            outcome.canceled = True
+            outcome.results.append(BatchBookResult(book=book, fetch=fetch))
+            break
+        has_changes = WebMetadataWindow.web_data_offers_changes(
+            book, fetch.cleaned_data
+        )
+        err = fetch.last_error or ""
+        if fetch.errors and not fetch.cleaned_data:
+            err = err or "; ".join(fetch.errors[:2])
+        outcome.results.append(
+            BatchBookResult(
+                book=book,
+                fetch=fetch,
+                has_changes=has_changes,
+                error=err,
+            )
+        )
+        if cancel_event.is_set():
+            outcome.canceled = True
+            break
+    return outcome
 
 
 class _BatchFetchWorker(QObject):
@@ -58,35 +148,12 @@ class _BatchFetchWorker(QObject):
 
     @Slot()
     def run(self) -> None:
-        outcome = BatchFetchOutcome()
-        total = len(self._books)
-        for index, book in enumerate(self._books, start=1):
-            if self._cancel_event.is_set():
-                outcome.canceled = True
-                break
-            title = getattr(book, "title", "") or "Untitled"
-            self.progress.emit(index, total, title)
-            fetch = fetch_web_metadata_for_book(
-                book, parent=None, refresh=0, show_progress=False
-            )
-            if fetch.canceled or self._cancel_event.is_set():
-                outcome.canceled = True
-                outcome.results.append(BatchBookResult(book=book, fetch=fetch))
-                break
-            has_changes = WebMetadataWindow.web_data_offers_changes(
-                book, fetch.cleaned_data
-            )
-            err = fetch.last_error or ""
-            if fetch.errors and not fetch.cleaned_data:
-                err = err or "; ".join(fetch.errors[:2])
-            outcome.results.append(
-                BatchBookResult(
-                    book=book,
-                    fetch=fetch,
-                    has_changes=has_changes,
-                    error=err,
-                )
-            )
+        def _progress(current: int, total: int, title: str) -> None:
+            self.progress.emit(current, total, title)
+
+        outcome = collect_batch_results(
+            self._books, self._cancel_event, on_progress=_progress
+        )
         self.finished.emit(outcome)
 
 
@@ -203,3 +270,34 @@ def apply_web_changes_to_book(db, book, web_data: dict) -> list[str]:
 
     book_queries.update(book)
     return applied
+
+
+def review_batch_results(
+    outcome: BatchFetchOutcome,
+    *,
+    db,
+    scaler,
+    theme_manager,
+    parent=None,
+    refresh_callback=None,
+) -> None:
+    """Open Web Metadata for each book with changes; Save or Skip advances."""
+    items = outcome.with_changes
+    total = len(items)
+    for index, item in enumerate(items, start=1):
+        dialog = WebMetadataWindow(
+            db,
+            item.book,
+            scaler,
+            theme_manager,
+            parent=parent,
+            refresh_callback=None,
+            web_data=item.fetch.raw_data or item.fetch.cleaned_data,
+            queue_index=index,
+            queue_total=total,
+        )
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog.exec()
+    if refresh_callback:
+        refresh_callback()

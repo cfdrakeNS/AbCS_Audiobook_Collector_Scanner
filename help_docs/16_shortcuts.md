@@ -24,6 +24,7 @@ Last updated: June 2026.
 | Alt+P | Toggle plot filter |
 | Alt+R | Toggle read filter |
 | Alt+W | Fetch web info |
+| Alt+B | Batch web fetch (two or more selected) |
 | Ctrl+F | Find |
 | Ctrl+I | Import |
 | Ctrl+N | New book |
@@ -157,7 +158,20 @@ Last updated: June 2026.
 | Alt+R | Rating |
 | Alt+F | Re-fetch web data |
 | Alt+S | Save |
+| Alt+K | Skip this book (batch Review each) |
 | Escape | Close window |
+| Alt+/ | Read status bar |
+| F1 | Show keyboard shortcuts |
+
+## Batch web fetch summary
+
+| Shortcut | Action |
+|----------|--------|
+| Enter | Open the highlighted book |
+| Alt+L | Books list |
+| Alt+A | Apply all |
+| Alt+R | Review each |
+| Escape | Close and discard results |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
 

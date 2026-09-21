@@ -579,11 +579,12 @@ class MainWindow(QMainWindow):
 
     def _apply_footer_button_roles(self):
         """Set primary/destructive object names for modern button styling."""
-        if not hasattr(self, "delete_button"):
+        if not hasattr(self, "delete_button") or not hasattr(self, "web_fetch_button"):
             return
 
         self.delete_button.setObjectName("destructiveActionButton")
         self.update_button.setObjectName("")
+        self.web_fetch_button.setObjectName("")
         self.export_button.setObjectName("")
 
         if self.duplicate_mode_active and self.export_button.isVisible():
@@ -593,7 +594,12 @@ class MainWindow(QMainWindow):
 
         scaled_height = int(20 * (self.scaler.current_scale / 100.0))
         button_stylesheet = build_modern_button_style(scaled_height)
-        for button in (self.update_button, self.delete_button, self.export_button):
+        for button in (
+            self.update_button,
+            self.web_fetch_button,
+            self.delete_button,
+            self.export_button,
+        ):
             button.setStyleSheet(button_stylesheet)
 
     def __init__(
@@ -1027,6 +1033,18 @@ class MainWindow(QMainWindow):
         self.update_button.setVisible(False)
         layout.addWidget(self.update_button)
 
+        self.web_fetch_button = QPushButton("Web fetch")
+        self.web_fetch_button.setAccessibleName("Web fetch selected books")
+        self.web_fetch_button.setAccessibleDescription(
+            "Fetch web metadata for the selected books - Alt+B"
+        )
+        self.web_fetch_button.setFocusPolicy(Qt.StrongFocus)
+        self.web_fetch_button.setAutoDefault(False)
+        self.web_fetch_button.setDefault(False)
+        self.web_fetch_button.clicked.connect(self.on_batch_web_fetch_clicked)
+        self.web_fetch_button.setVisible(False)
+        layout.addWidget(self.web_fetch_button)
+
         # Delete button (hidden initially)
 
         self.delete_button = QPushButton("Delete")
@@ -1058,6 +1076,7 @@ class MainWindow(QMainWindow):
     def _apply_footer_action_icons(self):
         """Decorative icons beside footer button text (accessible names unchanged)."""
         apply_decorative_action_icon(self.update_button, "update", self.scaler)
+        apply_decorative_action_icon(self.web_fetch_button, "search_web", self.scaler)
         apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
         apply_decorative_action_icon(self.export_button, "export", self.scaler)
 
@@ -1065,6 +1084,7 @@ class MainWindow(QMainWindow):
         tooltip_map = {
             self.table: "Browse the audiobook collection",
             self.update_button: "Update selected books",
+            self.web_fetch_button: "Fetch web metadata for selected books",
             self.delete_button: "Delete selected books",
             self.export_button: "Export duplicate books to CSV",
         }
@@ -1452,6 +1472,7 @@ class MainWindow(QMainWindow):
             "plot_filter_toggle": lambda: self.plot_filter_action.trigger(),
             "read_filter_toggle": self.on_read_filter_shortcut,
             "get_web_info": self.on_get_web_info_clicked,
+            "batch_web_fetch": self.on_batch_web_fetch_clicked,
             "cancel_button": self.on_escape_pressed,
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -3451,6 +3472,9 @@ class MainWindow(QMainWindow):
         show_action_buttons = has_selection or in_duplicate_mode
 
         self.update_button.setVisible(has_selection and not in_duplicate_mode)
+        self.web_fetch_button.setVisible(
+            count >= 2 and not in_duplicate_mode
+        )
         self.delete_button.setVisible(show_action_buttons)
         # Export button only visible in duplicate mode
         self.export_button.setVisible(in_duplicate_mode)
@@ -3772,6 +3796,78 @@ class MainWindow(QMainWindow):
         )
 
         self.set_status(status_msg, announce=True, timeout_ms=5000)
+        self.table.setFocus()
+
+    def _selected_books_in_table_order(self) -> list:
+        books = []
+        selected = self.selected_book_ids
+        for row in range(self.table.rowCount()):
+            if row < len(self.books) and self.books[row].book_id in selected:
+                books.append(self.books[row])
+        return books
+
+    def on_batch_web_fetch_clicked(self):
+        """Queue web fetch for two or more selected books."""
+        if self.duplicate_mode_active:
+            return
+        books = self._selected_books_in_table_order()
+        if len(books) < 2:
+            self.set_status(
+                "Select two or more books for batch web fetch.",
+                announce=True,
+                timeout_ms=4000,
+            )
+            return
+
+        from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+        from src.web.batch_web_fetch import (
+            apply_web_changes_to_book,
+            review_batch_results,
+            run_batch_web_fetch_with_progress,
+        )
+
+        outcome = run_batch_web_fetch_with_progress(books, parent=self)
+        if not outcome.results:
+            self.set_status("Batch web fetch canceled.", announce=True, timeout_ms=4000)
+            self.table.setFocus()
+            return
+
+        summary = BatchWebFetchSummaryDialog(outcome, parent=self)
+        summary.exec()
+        choice = summary.choice
+
+        if choice == BatchWebFetchSummaryDialog.APPLY_ALL:
+            applied_books = 0
+            for item in outcome.with_changes:
+                labels = apply_web_changes_to_book(
+                    self.db, item.book, item.fetch.cleaned_data or {}
+                )
+                if labels:
+                    applied_books += 1
+            self.refresh_books()
+            self.set_status(
+                f"Applied web metadata to {applied_books} books.",
+                announce=True,
+            )
+            self.table.setFocus()
+            return
+
+        if choice == BatchWebFetchSummaryDialog.REVIEW_EACH:
+            review_batch_results(
+                outcome,
+                db=self.db,
+                scaler=self.scaler,
+                theme_manager=self.theme_manager,
+                parent=self,
+                refresh_callback=self.refresh_books,
+            )
+            self.set_status("Batch web review finished.", announce=True)
+            self.table.setFocus()
+            return
+
+        self.set_status(
+            "Batch web fetch results discarded.", announce=True, timeout_ms=4000
+        )
         self.table.setFocus()
 
     def on_cancel_clicked(self):
@@ -4286,6 +4382,7 @@ class MainWindow(QMainWindow):
             ("Alt+P", "Toggle plot filter"),
             ("Alt+R", "Toggle read filter"),
             ("Alt+W", "Fetch web info"),
+            ("Alt+B", "Batch web fetch (two or more selected)"),
             ("Ctrl+I", "Import"),
             ("Ctrl+N", "New book"),
             ("Shift+Down/Up", "Start selection or extend selection"),

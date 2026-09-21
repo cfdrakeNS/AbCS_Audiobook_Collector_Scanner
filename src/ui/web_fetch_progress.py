@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import threading
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeySequence, QShortcut
-from PySide6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QLabel, QVBoxLayout
 
 from src.accessibility.accessible_events import (
     announce_dialog_opened,
@@ -39,8 +41,9 @@ class FetchStatusLabel(QLabel):
 class WebFetchProgressDialog(AccessibleDialog):
     """Modal wait dialog with live status text for web metadata fetch.
 
-    Cooperative cancel: Escape or Alt+C sets ``cancel_requested``. The fetch
-    loop checks the flag between requests (after ``update_message`` pumps events).
+    Cooperative cancel: Escape sets ``cancel_event``. The fetch
+    worker checks the event between requests. Announcements run from
+    ``showEvent`` so ``exec()`` still announces (Python ``show()`` is skipped).
     """
 
     def __init__(self, parent=None):
@@ -55,10 +58,12 @@ class WebFetchProgressDialog(AccessibleDialog):
         self.setAccessibleName("Fetching web book information")
         self.setAccessibleDescription(
             "Searching online sources for book metadata. "
-            "Press Escape or Alt+C to cancel."
+            "Press Escape to cancel."
         )
 
-        self._cancel_requested = False
+        self.cancel_event = threading.Event()
+        self._user_canceled = False
+        self._open_announced = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 14, 16, 6)
@@ -88,32 +93,27 @@ class WebFetchProgressDialog(AccessibleDialog):
         self._escape_shortcut.setContext(Qt.WindowShortcut)
         self._escape_shortcut.activated.connect(self.request_cancel)
 
-        self._cancel_shortcut = QShortcut(QKeySequence("Alt+C"), self)
-        self._cancel_shortcut.setContext(Qt.WindowShortcut)
-        self._cancel_shortcut.activated.connect(self.request_cancel)
-
     @property
     def cancel_requested(self) -> bool:
-        return self._cancel_requested
+        return self._user_canceled
 
     def request_cancel(self) -> None:
         """Mark the fetch as canceled; checked between network requests."""
-        if self._cancel_requested:
+        if self._user_canceled:
             return
-        self._cancel_requested = True
+        self._user_canceled = True
+        self.cancel_event.set()
         self.update_message("Canceling web fetch…")
-
-    def show(self):
-        super().show()
-        self.raise_()
-        self.activateWindow()
-        QApplication.processEvents()
-        announce_dialog_opened(self, "Fetching web book information")
-        delay = max(300, get_screen_reader_focus_delay_ms())
-        self._initial_timer.start(delay)
 
     def showEvent(self, event):
         super().showEvent(event)
+        self.raise_()
+        self.activateWindow()
+        if not self._open_announced:
+            self._open_announced = True
+            announce_dialog_opened(self, "Fetching web book information")
+            delay = max(300, get_screen_reader_focus_delay_ms())
+            self._initial_timer.start(delay)
         QTimer.singleShot(0, self._ensure_foreground)
 
     def _ensure_foreground(self):
@@ -128,7 +128,7 @@ class WebFetchProgressDialog(AccessibleDialog):
         self._speak_status(self._message_label.text(), force=True)
 
     def update_message(self, text: str) -> None:
-        """Update visible status and announce for JAWS/NVDA."""
+        """Update visible status and announce for JAWS/NVDA (GUI thread only)."""
         text = (text or "").strip()
         if not text:
             return

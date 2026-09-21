@@ -103,6 +103,8 @@ After path A returns metadata, the review window decides which fields differ fro
 3. Apply `compare_normalize_title` (series strip, parenthetical series markers, article move, aggressive punctuation strip).
 4. Keys equal → no title difference. A genuine extra subtitle still differs.
 
+**Known issue (v3 Phase 3):** trailing article *position* is done (`The Hobbit` = `Hobbit, The`). Optional **leading** A/An/The is not: `A Second Chance - 05` vs `Second Chance - 05` still differs. Tracked in [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md).
+
 ### Author comparison (review only)
 
 1. Fold accents; strip honorifics and suffixes.

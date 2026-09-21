@@ -1,6 +1,6 @@
-# Name Consistency Check — Version 3 Phase 5
+# Name Consistency Check — Version 3 Phase 8
 
-**Status:** Planned — **Version 3 Phase 5**
+**Status:** Planned — **Version 3 Phase 8**
 **Created:** June 2026  
 **Updated:** September 2026  
 **Related:** [Duplicate Mode Process](../help_docs/08_duplicate_mode.md), [Import Process](../help_docs/02_import.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
@@ -150,6 +150,8 @@ Accessible dialog/window (follow [`WebMetadataWindow`](../src/ui/web_metadata.py
 For **title groups:** show title variants under one author; applying fix updates book title strings directly.
 
 Register shortcuts via [`ShortcutContext`](../src/accessibility/shortcuts.py) (new `CONSISTENCY_DIALOG` context).
+
+**UI standards:** Follow [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases) — `AccessibleDialog`, `build_accessible_button_style` for Merge / Skip / Close / Export, accessible names on list and buttons, Alt+/ status, focus restore on exit, no `QAction.setAccessibleName`.
 
 ---
 

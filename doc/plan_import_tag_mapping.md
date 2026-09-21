@@ -1,6 +1,6 @@
 # Import tag mapping (title / author)
 
-**Status:** Planned — **Version 3 Phase 3**  
+**Status:** Planned — **Version 3 Phase 6**  
 **Created:** September 2026  
 **Related:** [Preferences Import Settings](../src/ui/preferences_window.py), [`src/core/tag_reader.py`](../src/core/tag_reader.py), [`src/core/import_scanner.py`](../src/core/import_scanner.py), [help_docs/19_import_explained.md](../help_docs/19_import_explained.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
@@ -58,7 +58,7 @@ Update [help_docs/19_import_explained.md](../help_docs/19_import_explained.md) t
 
 ---
 
-## Follow-on (after Phase 3 / not required for v3 gate)
+## Follow-on (after Phase 6 / not required for v3 gate)
 
 - **Narrator mapping:** Composer (default) / Artist / Comment keywords only / Artist when author is album artist.
 - **Rescan** ([plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)) is **deferred after v3**; when it ships, it must read the same QSettings keys for title/author overwrite.
@@ -90,7 +90,12 @@ Later optional: a **Series source** combo (none / directory / nested directory /
 
 ## Accessibility
 
+Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+
+Phase-specific:
+
 - Combos: accessible name “Book title tag”, “Author tag”; description lists the options and the default.
+- Use Preferences combo styling + anti-noise event filter (plain Up/Down blocked; Alt+arrows allowed).
 - Do not add a mapping grid that requires arrowing through many unlabeled cells.
 - Status announce on Save; Alt+/ still reads the preferences status.
 

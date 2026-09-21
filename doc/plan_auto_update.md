@@ -1,6 +1,6 @@
-# Auto-Update — Version 3 Phase 4
+# Auto-Update — Version 3 Phase 7
 
-**Status:** Planned — **Version 3 Phase 4**  
+**Status:** Planned — **Version 3 Phase 7**  
 **Created:** June 2026  
 **Updated:** September 2026  
 **Related:** [build_installer.iss](../build_installer.iss), [src/build_config.py](../src/build_config.py), [src/app_urls.py](../src/app_urls.py), GitHub releases
@@ -39,7 +39,14 @@ Mock manifest / API; newer / older / same version logic; offline error path.
 
 ## Accessibility
 
-Accessible dialog name and description; focus on Open download or Close; status announce of result.
+Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+
+Phase-specific:
+
+- `AccessibleDialog` (or styled message box) with name and description.
+- **Open download page** / **Close**: `build_accessible_button_style`; default focus on Open when an update exists, otherwise Close.
+- Focus on Open download or Close on show; status announce of result on the main window after close.
+- Offline / failure must be spoken — never a silent hang.
 
 ---
 

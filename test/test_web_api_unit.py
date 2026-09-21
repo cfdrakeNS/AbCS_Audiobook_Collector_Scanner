@@ -110,7 +110,10 @@ def test_clean_web_data_for_storage_strips_series_keys():
         "author": "Louise Penny",
         "series": "How The Light Gets In",
         "series_number": "9",
-        "plot": "A long enough plot description for the book.",
+        "plot": (
+            "A long enough plot description for the book that meets the "
+            "eighty-character minimum used when cleaning web data for storage."
+        ),
     }
 
     cleaned = api.clean_web_data_for_storage(web_data)

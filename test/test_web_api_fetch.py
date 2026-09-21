@@ -138,7 +138,7 @@ def test_refresh_one_skips_open_library(
     ol_mock.assert_not_called()
     gb_mock.assert_called_once()
 
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_open_library_never_filters_by_db_year(urlopen_mock, api):
     """Library year must not be sent to Open Library (often birth/import date, not publication)."""
 
@@ -513,7 +513,7 @@ def test_google_books_429_surfaces_fetch_errors(_ol_mock, _wd_mock, api):
     assert result.get("_no_result") is True
     assert any("google_books" in err for err in result.get("_fetch_errors", []))
 
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_open_library_search_sends_user_agent(urlopen_mock, api):
     class FakeResponse:
         def read(self):
@@ -556,8 +556,8 @@ class _FakeGoogleResponse:
     def __exit__(self, *args):
         return False
 
-@patch("src.web.web_book_api.time.sleep")
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.time.sleep")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_google_books_429_stops_query_loop(urlopen_mock, sleep_mock, api):
     """Fatal 429 must not retry and must not try the next query variant."""
     urlopen_mock.side_effect = _http_error_429()
@@ -571,8 +571,8 @@ def test_google_books_429_stops_query_loop(urlopen_mock, sleep_mock, api):
     assert urlopen_mock.call_count == 1
     sleep_mock.assert_not_called()
 
-@patch("src.web.web_book_api.time.sleep")
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.time.sleep")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_google_books_cooldown_short_circuits_followup(urlopen_mock, sleep_mock, api):
     """After a 429, a follow-up call within the cooldown window skips the network."""
     urlopen_mock.side_effect = _http_error_429()
@@ -605,8 +605,8 @@ def _http_error_503():
         None,
     )
 
-@patch("src.web.web_book_api.time.sleep")
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.time.sleep")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_google_books_503_retry_recovers(urlopen_mock, sleep_mock, api):
     """One 503 then a successful retry returns the matched volume."""
     success_payload = {
@@ -697,7 +697,10 @@ def test_cache_hit_strips_legacy_series_keys(api):
             "title": "Pride and Prejudice",
             "author": "Jane Austen",
             "year": "1813",
-            "plot": "Cached plot text that is long enough to count as adequate for reuse.",
+            "plot": (
+                "Cached plot text that is long enough to count as adequate "
+                "for reuse after the eighty-character plot minimum."
+            ),
             "source": "open_library",
             "first_attempt": True,
             "series": "Legacy Saga",
@@ -776,8 +779,8 @@ def test_cache_hit_skips_plot_enrichment_when_plot_adequate(api):
     assert "open_library_work_key" not in result
 
 
-@patch("src.web.web_book_api.time.sleep")
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.time.sleep")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_fetch_google_by_isbn_notes_rate_limit_on_429(urlopen_mock, sleep_mock, api):
     from src.web.web_book_api import _is_source_cooling_down
 
@@ -850,7 +853,7 @@ def test_retry_after_can_lengthen_beyond_default():
     assert remaining >= 1990
     _clear_source_cooldown()
 
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_wikidata_503_propagates_into_fetch_errors(urlopen_mock, api):
     import urllib.error
 
@@ -891,7 +894,9 @@ def test_user_agent_includes_version_and_contact():
 
 
 def test_resolve_web_cache_file_frozen_uses_user_data(tmp_path, monkeypatch):
-    monkeypatch.setattr(wba.sys, "frozen", True, raising=False)
+    from src.web import web_http as whttp
+
+    monkeypatch.setattr(whttp.sys, "frozen", True, raising=False)
     monkeypatch.setattr(
         "src.app_paths.get_user_data_dir", lambda: tmp_path / "AbCSUser"
     )
@@ -922,7 +927,7 @@ def test_source_cooldown_error_does_not_extend_cooldown(api):
     _clear_source_cooldown()
 
 
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_http_get_json_cooldown_does_not_re_note_limit(urlopen_mock, api):
     from src.web.web_book_api import (
         SourceCooldownError,
@@ -971,7 +976,7 @@ def test_negative_cache_short_circuits_repeat_miss(api, monkeypatch):
     assert calls["n"] == 0
 
 
-@patch("src.web.web_book_api.urllib.request.urlopen")
+@patch("src.web.web_http.urllib.request.urlopen")
 def test_wikidata_uses_wbsearchentities_not_sparql_scan(urlopen_mock, api):
     search_payload = {
         "search": [
