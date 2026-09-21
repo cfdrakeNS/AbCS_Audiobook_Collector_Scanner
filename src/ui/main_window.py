@@ -209,11 +209,60 @@ class BookTableModel(QAbstractTableModel):
     def __init__(self, books: list[Book] | None = None, parent=None):
         super().__init__(parent)
         self._books = books or []
+        self._selection_ids: set[int] = set()
 
     def set_books(self, books: list[Book]):
         self.beginResetModel()
         self._books = books
         self.endResetModel()
+
+    def set_selection_book_ids(self, book_ids: set[int] | None) -> None:
+        """Keep AccessibleTextRole in sync with multi-select (screen readers)."""
+        ids = set(book_ids or ())
+        if ids == self._selection_ids:
+            return
+        self._selection_ids = ids
+        n = len(self._books)
+        if n == 0:
+            return
+        last_col = max(self.columnCount() - 1, 0)
+        self.dataChanged.emit(
+            self.index(0, 0),
+            self.index(n - 1, last_col),
+            [Qt.AccessibleTextRole],
+        )
+
+    def _selection_accessible_suffix(self, book: Book) -> str:
+        book_id = getattr(book, "book_id", None)
+        if book_id is None or book_id not in self._selection_ids:
+            return ""
+        count = len(self._selection_ids)
+        if count == 1:
+            return " - selected. Escape to cancel selection"
+        return f" - {count} selected. Escape to cancel selection"
+
+    def _display_text(self, book: Book, col: int) -> str | None:
+        if col == 0:
+            return book.author_name or ""
+        if col == 1:
+            return book.title or ""
+        if col == 2:
+            return str(book.year) if book.year else ""
+        if col == 3:
+            return book.series_name or ""
+        if col == 4:
+            return book.genre_name or ""
+        if col == 5:
+            return book.time_display or ""
+        if col == 6:
+            if book.read_date:
+                return (
+                    book.read_date
+                    if isinstance(book.read_date, str)
+                    else str(book.read_date)
+                )
+            return ""
+        return None
 
     def rowCount(self, parent: QModelIndex | None = None) -> int:
         return len(self._books)
@@ -232,33 +281,22 @@ class BookTableModel(QAbstractTableModel):
 
         book = self._books[row]
 
-        if role == Qt.AccessibleTextRole and col == 1:
-            title = book.title or ""
-            if book_has_plot(book.comments):
-                return f"{title}, plot" if title else "plot"
-            return title
-
-        if role in (Qt.DisplayRole, Qt.AccessibleTextRole):
-            if col == 0:
-                return book.author_name or ""
+        if role == Qt.AccessibleTextRole:
+            suffix = self._selection_accessible_suffix(book)
             if col == 1:
-                return book.title or ""
-            if col == 2:
-                return str(book.year) if book.year else ""
-            if col == 3:
-                return book.series_name or ""
-            if col == 4:
-                return book.genre_name or ""
-            if col == 5:
-                return book.time_display or ""
-            if col == 6:
-                if book.read_date:
-                    return (
-                        book.read_date
-                        if isinstance(book.read_date, str)
-                        else str(book.read_date)
-                    )
-                return ""
+                title = book.title or ""
+                if book_has_plot(book.comments):
+                    base = f"{title}, plot" if title else "plot"
+                else:
+                    base = title
+                return f"{base}{suffix}"
+            display = self._display_text(book, col)
+            if display is None:
+                return suffix.lstrip(" - ") if suffix else None
+            return f"{display}{suffix}"
+
+        if role == Qt.DisplayRole:
+            return self._display_text(book, col)
 
         if role == Qt.TextAlignmentRole:
             if col == 2:  # Year column
@@ -1036,7 +1074,7 @@ class MainWindow(QMainWindow):
         self.web_fetch_button = QPushButton("Web fetch")
         self.web_fetch_button.setAccessibleName("Web fetch selected books")
         self.web_fetch_button.setAccessibleDescription(
-            "Fetch web metadata for the selected books - Alt+B"
+            "Fetch web metadata for the selected books - Alt+W"
         )
         self.web_fetch_button.setFocusPolicy(Qt.StrongFocus)
         self.web_fetch_button.setAutoDefault(False)
@@ -1174,8 +1212,8 @@ class MainWindow(QMainWindow):
             (
                 "Search Web",
                 "search_web",
-                "Search web metadata for the focused book - Alt+W",
-                "Search web metadata for the focused book - Alt+W",
+                "Search web metadata for the focused book, or the selection - Alt+W",
+                "Search web metadata. One book uses the focused row. Two or more selected books run a batch fetch - Alt+W",
                 self.on_get_web_info_clicked,
             ),
             (
@@ -1423,6 +1461,7 @@ class MainWindow(QMainWindow):
         prefs_action = QAction("&Preferences...", self)
         prefs_action.triggered.connect(self.on_preferences)
         view_menu.addAction(prefs_action)
+        self.preferences_action = prefs_action
 
         prefs_action = QAction("&Backup & Restore", self)
         prefs_action.triggered.connect(self.on_backup_restore)
@@ -1431,6 +1470,7 @@ class MainWindow(QMainWindow):
         splash_action = QAction("&Statistics...", self)
         splash_action.triggered.connect(self.on_show_splash)
         view_menu.addAction(splash_action)
+        self.statistics_action = splash_action
 
         # Help menu — single entry opens the help window topic list
         help_menu = menubar.addMenu("&Help")
@@ -1472,7 +1512,6 @@ class MainWindow(QMainWindow):
             "plot_filter_toggle": lambda: self.plot_filter_action.trigger(),
             "read_filter_toggle": self.on_read_filter_shortcut,
             "get_web_info": self.on_get_web_info_clicked,
-            "batch_web_fetch": self.on_batch_web_fetch_clicked,
             "cancel_button": self.on_escape_pressed,
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -2052,6 +2091,8 @@ class MainWindow(QMainWindow):
 
     def on_read_menu_selected(self, read_filter: str):
         """Handle View > Read menu selection."""
+        if self._block_if_selecting():
+            return
         target = read_filter if read_filter in {"All", "Read", "Unread"} else "All"
         self.on_read_filter_changed(target)
 
@@ -2077,11 +2118,15 @@ class MainWindow(QMainWindow):
 
     def on_read_filter_toggled(self, checked: bool):
         """Handle toolbar Read Filter toggle."""
+        if self._block_if_selecting():
+            return
         target = "Read" if checked else "All"
         self.on_read_filter_changed(target)
 
     def on_read_filter_shortcut(self):
         """Handle Alt+R — always toggle toward read-books filter."""
+        if self._block_if_selecting():
+            return
         if not hasattr(self, "read_filter_action"):
             return
         if self.current_filter.read_filter == "Unread":
@@ -2163,6 +2208,8 @@ class MainWindow(QMainWindow):
 
     def on_find_toolbar_clicked(self, checked: bool):
         """Open Find dialog or clear search, like plot filter toggle."""
+        if self._block_if_selecting():
+            return
         if checked:
             self.on_find()
             self._sync_find_toolbar_toggle()
@@ -2175,6 +2222,8 @@ class MainWindow(QMainWindow):
 
     def on_plot_menu_selected(self, plot_filter: str):
         """Handle View > Plot menu selection."""
+        if self._block_if_selecting():
+            return
         target = (
             plot_filter
             if plot_filter in set(self._plot_filter_options)
@@ -2184,6 +2233,8 @@ class MainWindow(QMainWindow):
 
     def on_plot_filter_toggled(self, checked: bool):
         """Handle toolbar Plot Filter toggle."""
+        if self._block_if_selecting():
+            return
         target = "With Plot" if checked else "All"
         self.on_plot_filter_changed(target)
 
@@ -2585,6 +2636,8 @@ class MainWindow(QMainWindow):
 
     def on_recently_added(self):
         """Open popup to filter books added on or after a selected date."""
+        if self._block_if_selecting():
+            return
         from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QDateEdit
         from PySide6.QtCore import QDate
         from PySide6.QtGui import QFontMetrics
@@ -2684,6 +2737,8 @@ class MainWindow(QMainWindow):
 
     def on_find(self):
         """Open popup Find dialog (Ctrl+F)."""
+        if self._block_if_selecting():
+            return
         dialog = AccessibleDialog(self)
         dialog.setWindowTitle("Find")
         dialog.setAccessibleName("Find")
@@ -3411,17 +3466,18 @@ class MainWindow(QMainWindow):
                 index = self.table.model().index(r, c)
                 self.table.selectionModel().select(index, QItemSelectionModel.Select)
 
-        self.table.setCurrentCell(target_row, col)
-        self.table.scrollTo(self.table.model().index(target_row, col))
-
-        self._updating_selection_ui = False
-
-        # Now manually sync selection tracking
+        # Sync ids and AccessibleTextRole before moving current cell so JAWS
+        # hears title, count, and Escape hint on the new row.
         self.selected_book_ids.clear()
         for r in range(start_row, end_row + 1):
             if 0 <= r < len(self.books):
                 self.selected_book_ids.add(self.books[r].book_id)
         self.update_selection_ui()
+
+        self.table.setCurrentCell(target_row, col)
+        self.table.scrollTo(self.table.model().index(target_row, col))
+
+        self._updating_selection_ui = False
         self.announce_selection()
 
     def on_current_cell_changed(self, current: QModelIndex, _previous: QModelIndex):
@@ -3458,11 +3514,61 @@ class MainWindow(QMainWindow):
         shortcuts_text = self._selection_shortcuts_text()
         announcement = f"{announcement}. {shortcuts_text}"
 
-        # Keep until selection changes
         self.set_status(announcement, timeout_ms=0, announce=True)
+
+    def _selection_blocks_navigation(self) -> bool:
+        """True in normal (not duplicate) selection mode."""
+        if self.duplicate_mode_active:
+            return False
+        return bool(self.selected_book_ids) or self.selection_anchor_row is not None
+
+    def _block_if_selecting(self) -> bool:
+        """Announce and skip navigation actions while books are selected."""
+        if not self._selection_blocks_navigation():
+            return False
+        self.set_status(
+            "Selection is active. Escape to cancel selection.",
+            announce=True,
+            timeout_ms=4000,
+        )
+        return True
+
+    def _set_selection_navigation_enabled(self, enabled: bool) -> None:
+        """Enable or disable toolbar/menu actions that leave selection mode."""
+        blocked_roles = {
+            "add_book",
+            "import",
+            "find",
+            "statistics",
+            "preferences",
+            "plot_filter",
+            "read_filter",
+            "recently_added_filter",
+        }
+        for action, role in getattr(self, "_toolbar_actions", ()):
+            if role in blocked_roles:
+                action.setEnabled(enabled)
+        for attr in (
+            "new_book_action",
+            "import_action",
+            "book_list_import_action",
+            "find_action",
+            "recently_added_action",
+            "preferences_action",
+            "statistics_action",
+        ):
+            action = getattr(self, attr, None)
+            if action is not None:
+                action.setEnabled(enabled)
+        if hasattr(self, "view_plot_menu"):
+            self.view_plot_menu.setEnabled(enabled)
+        if hasattr(self, "view_read_menu"):
+            self.view_read_menu.setEnabled(enabled)
 
     def update_selection_ui(self):
         """Update UI based on selection."""
+        if hasattr(self, "book_model"):
+            self.book_model.set_selection_book_ids(self.selected_book_ids)
         count = len(self.selected_book_ids)
 
         # Only show buttons if we have an actual selection
@@ -3493,6 +3599,10 @@ class MainWindow(QMainWindow):
             # It will use the currently focused book if no specific selection
             should_enable = not in_duplicate_mode
             self.get_web_info_action.setEnabled(should_enable)
+
+        self._set_selection_navigation_enabled(
+            not self._selection_blocks_navigation()
+        )
 
         self.sync_selection_indicators()
 
@@ -3724,16 +3834,15 @@ class MainWindow(QMainWindow):
         if self.duplicate_mode_active:
             return
 
-        # Handle focused book (no selection) first
+        if len(self.selected_book_ids) >= 2:
+            self.on_batch_web_fetch_clicked()
+            return
+
+        # Handle focused book (no multi-select) first
         row = self.table.currentRow()
         if row >= 0 and row < len(self.books):
-            # We have a focused book, proceed with web fetch
             pass
-        elif self.selected_book_ids:
-            # Multi-book selection - ignore
-            return
         else:
-            # No book available
             self.set_status("No book available for web info fetch", announce=True)
             return
 
@@ -3822,7 +3931,6 @@ class MainWindow(QMainWindow):
         from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
         from src.web.batch_web_fetch import (
             apply_web_changes_to_book,
-            review_batch_results,
             run_batch_web_fetch_with_progress,
         )
 
@@ -3852,15 +3960,8 @@ class MainWindow(QMainWindow):
             self.table.setFocus()
             return
 
-        if choice == BatchWebFetchSummaryDialog.REVIEW_EACH:
-            review_batch_results(
-                outcome,
-                db=self.db,
-                scaler=self.scaler,
-                theme_manager=self.theme_manager,
-                parent=self,
-                refresh_callback=self.refresh_books,
-            )
+        if summary.saved_any:
+            self.refresh_books()
             self.set_status("Batch web review finished.", announce=True)
             self.table.setFocus()
             return
@@ -4009,6 +4110,8 @@ class MainWindow(QMainWindow):
 
     def on_new_book(self):
         """Open book details for new book."""
+        if self._block_if_selecting():
+            return
         # bd#8: Pass current sort order to show in header
         details = BookDetailsWindow(
             self.db,
@@ -4030,6 +4133,8 @@ class MainWindow(QMainWindow):
 
     def on_book_list_import(self):
         """Open book list import window with collection defaulting logic matching ImportWindow."""
+        if self._block_if_selecting():
+            return
         from src.ui.book_list_import_window import BookListImportWindow
 
         if self.duplicate_mode_active:
@@ -4063,6 +4168,8 @@ class MainWindow(QMainWindow):
 
     def on_import(self):
         """Open import window with collection defaulting logic matching BookDetailsWindow."""
+        if self._block_if_selecting():
+            return
         if self.duplicate_mode_active:
             self.exit_duplicate_mode(message="Duplicate mode canceled", announce=False)
 
@@ -4192,6 +4299,8 @@ class MainWindow(QMainWindow):
 
     def on_preferences(self):
         """Open preferences dialog."""
+        if self._block_if_selecting():
+            return
         focus_ctx = self._capture_table_focus_context()
         dialog = PreferencesWindow(self.scaler, self.theme_manager, parent=self)
         dialog.exec()
@@ -4200,6 +4309,8 @@ class MainWindow(QMainWindow):
 
     def on_show_splash(self):
         """Show library statistics or setup dialog if empty DB."""
+        if self._block_if_selecting():
+            return
         stats_queries = StatisticsQueries(self.db)
         stats = stats_queries.get_statistics()
 
@@ -4365,37 +4476,55 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        shortcuts = [
-            ("Alt+1", "Jump to Author"),
-            ("Alt+2", "Jump to Title"),
-            ("Alt+3", "Jump to Year"),
-            ("Alt+4", "Jump to Series"),
-            ("Alt+5", "Jump to Genre"),
-            ("Alt+6", "Jump to Time"),
-            ("Alt+7", "Jump to Read Date"),
-            (
-                "Enter",
-                "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
-            ),
-            ("Ctrl+F", "Find"),
-            ("Alt+V, A", "View, Recently Added filter"),
-            ("Alt+P", "Toggle plot filter"),
-            ("Alt+R", "Toggle read filter"),
-            ("Alt+W", "Fetch web info"),
-            ("Alt+B", "Batch web fetch (two or more selected)"),
-            ("Ctrl+I", "Import"),
-            ("Ctrl+N", "New book"),
-            ("Shift+Down/Up", "Start selection or extend selection"),
-            ("Alt+U", "Update selected"),
-            ("Alt+D", "Delete selected"),
-            ("Alt+X", "Export duplicates (in duplicate mode)"),
-            ("Escape", "Clear selection / Find / read filter / plot filter / recently added"),
-            ("Ctrl+Plus", "Zoom in"),
-            ("Ctrl+Minus", "Zoom out"),
-            ("Ctrl+0", "Reset zoom"),
-            ("Alt+/", "Read status bar"),
-            ("F1", "Show keyboard shortcuts"),
-        ]
+        if self._selection_blocks_navigation():
+            shortcuts = [
+                ("Alt+W", "Fetch web info for the selected books"),
+                ("Alt+U", "Update selected"),
+                ("Alt+D", "Delete selected"),
+                ("Shift+Down/Up", "Extend selection"),
+                ("Escape", "Cancel selection"),
+                ("Alt+L", "Jump to list"),
+                ("Alt+1", "Jump to Author"),
+                ("Alt+2", "Jump to Title"),
+                ("Alt+3", "Jump to Year"),
+                ("Alt+4", "Jump to Series"),
+                ("Alt+5", "Jump to Genre"),
+                ("Alt+6", "Jump to Time"),
+                ("Alt+7", "Jump to Read Date"),
+                ("Alt+/", "Read status bar"),
+                ("F1", "Show keyboard shortcuts"),
+            ]
+        else:
+            shortcuts = [
+                ("Alt+1", "Jump to Author"),
+                ("Alt+2", "Jump to Title"),
+                ("Alt+3", "Jump to Year"),
+                ("Alt+4", "Jump to Series"),
+                ("Alt+5", "Jump to Genre"),
+                ("Alt+6", "Jump to Time"),
+                ("Alt+7", "Jump to Read Date"),
+                (
+                    "Enter",
+                    "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
+                ),
+                ("Ctrl+F", "Find"),
+                ("Alt+V, A", "View, Recently Added filter"),
+                ("Alt+P", "Toggle plot filter"),
+                ("Alt+R", "Toggle read filter"),
+                ("Alt+W", "Fetch web info (batch when two or more selected)"),
+                ("Ctrl+I", "Import"),
+                ("Ctrl+N", "New book"),
+                ("Shift+Down/Up", "Start selection or extend selection"),
+                ("Alt+U", "Update selected"),
+                ("Alt+D", "Delete selected"),
+                ("Alt+X", "Export duplicates (in duplicate mode)"),
+                ("Escape", "Clear selection / Find / read filter / plot filter / recently added"),
+                ("Ctrl+Plus", "Zoom in"),
+                ("Ctrl+Minus", "Zoom out"),
+                ("Ctrl+0", "Reset zoom"),
+                ("Alt+/", "Read status bar"),
+                ("F1", "Show keyboard shortcuts"),
+            ]
         # Centralize Alt+/ visibility and order
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,

@@ -14,6 +14,7 @@ from difflib import SequenceMatcher
 
 
 _TRAILING_ARTICLE_RE = re.compile(r"^(.*?),\s*(the|a|an)\s*$", re.IGNORECASE)
+_LEADING_ARTICLE_RE = re.compile(r"^(the|an|a)\s+", re.IGNORECASE)
 _TRAILING_PARENS_RE = re.compile(r"\s*\([^)]*\)\s*$")
 
 # Shared series suffix patterns used by import, web metadata, and catalog tools.
@@ -277,6 +278,16 @@ def pre_normalize_title(title: str) -> str:
     return t
 
 
+def _strip_optional_leading_article(title: str) -> str:
+    """Drop a leading A/An/The when the rest of the title is still non-empty."""
+    text = (title or "").strip()
+    match = _LEADING_ARTICLE_RE.match(text)
+    if not match:
+        return text
+    rest = text[match.end() :].strip()
+    return rest if rest else text
+
+
 def compare_normalize_title(title: str) -> str:
     """Normalize a title for import duplicate / read-date comparison."""
     return normalize_title(pre_normalize_title(title), aggressive=True)
@@ -350,8 +361,8 @@ def fold_text(value: str) -> str:
     return re.sub(r"\s+", " ", without_marks).strip()
 
 
-def web_compare_title_key(title: str) -> str:
-    """Canonical title key for Web Metadata review comparison."""
+def web_compare_title_storage_key(title: str) -> str:
+    """Title key for whether to *offer* a save (keeps leading A/An/The)."""
     if not isinstance(title, str):
         return ""
     folded = fold_text(title)
@@ -359,8 +370,19 @@ def web_compare_title_key(title: str) -> str:
     return compare_normalize_title(folded)
 
 
+def web_compare_title_key(title: str) -> str:
+    """Canonical title key for “same work” (optional leading A/An/The folded)."""
+    if not isinstance(title, str):
+        return ""
+    folded = fold_text(title)
+    folded = _TITLE_FILLER_TAIL_RE.sub("", folded).strip()
+    prepared = pre_normalize_title(folded)
+    prepared = _strip_optional_leading_article(prepared)
+    return normalize_title(prepared, aggressive=True)
+
+
 def web_titles_match(left: str, right: str) -> bool:
-    """True when two titles differ only cosmetically for web review."""
+    """True when two titles are the same work for web review (leading article optional)."""
     left_key = web_compare_title_key(left)
     right_key = web_compare_title_key(right)
     if not left_key or not right_key:

@@ -57,7 +57,11 @@ from src.accessibility.style_helpers import (
 
 from src.database import DatabaseManager, Book
 from src.database.queries import BookQueries, AuthorQueries, SeriesQueries, GenreQueries, CollectionQueries
-from src.utils.text_utils import web_authors_match, web_titles_match
+from src.utils.text_utils import (
+    web_authors_match,
+    web_compare_title_storage_key,
+    web_titles_match,
+)
 
 
 class WebMetadataWindow(AccessibleDialog):
@@ -77,7 +81,10 @@ class WebMetadataWindow(AccessibleDialog):
             return web_str
         if field_name == "title":
             if web_titles_match(current_str, web_str):
-                return None
+                if web_compare_title_storage_key(
+                    current_str
+                ) == web_compare_title_storage_key(web_str):
+                    return None
             return web_str
         if field_name == "author":
             if web_authors_match(current_str, web_str):
@@ -959,8 +966,6 @@ class WebMetadataWindow(AccessibleDialog):
             ("Alt+A", "Author"),
             ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
-            ("Alt+I", "Series"),
-            ("Alt+N", "Series #"),
             ("Alt+G", "Genre"),
             ("Alt+R", "Rating"),
             ("Alt+F", "Re-fetch web data"),

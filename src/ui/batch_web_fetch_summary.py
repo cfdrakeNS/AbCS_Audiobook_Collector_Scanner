@@ -7,10 +7,10 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QMessageBox,
     QPushButton,
     QSizePolicy,
     QStatusBar,
@@ -25,14 +25,15 @@ from src.accessibility.accessible_events import (
     configure_status_bar_accessibility,
     read_status_bar_message,
 )
+from src.accessibility.screen_reader import is_screen_reader_active
 from src.accessibility.shortcut_helpers import exec_f1_shortcuts_dialog
 from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
     build_accessible_button_style,
     build_table_polish_style,
-    exec_styled_message_box,
 )
 from src.ui.accessible_dialog import AccessibleDialog
+from src.ui.web_metadata import WebMetadataWindow
 from src.web.batch_web_fetch import (
     BatchBookResult,
     BatchFetchOutcome,
@@ -57,22 +58,40 @@ def _result_reason(item: BatchBookResult) -> str:
 def _issue_text(item: BatchBookResult) -> str:
     reason = _result_reason(item)
     if reason == "new information":
-        return "new information"
+        return _change_issue_label(item)
     if reason == "no match":
         return "No match was found in web sources."
     if reason == "no plot":
         return "A match was found but no usable plot was available to save."
     if reason == "up to date":
-        return "Stored fields are already up to date."
+        return "Plot and metadata up to date."
     if reason == "canceled":
         return "Not fetched because the queue was canceled."
     return item.error or item.fetch.last_error or "The fetch reported an error."
 
 
-def _row_status_message(item: BatchBookResult) -> str:
-    if _result_reason(item) == "new information":
-        return "Save. Review."
-    return _issue_text(item)
+def _change_issue_label(item: BatchBookResult) -> str:
+    """Match stand-alone fetch wording: Plot found and/or Metadata found."""
+    web = item.fetch.cleaned_data or item.fetch.raw_data or {}
+    plot = str(web.get("plot") or "").strip()
+    diffs: dict = {}
+    if web:
+        try:
+            diffs = WebMetadataWindow.compute_field_differences(item.book, web)
+        except Exception:
+            diffs = {
+                key: value
+                for key, value in web.items()
+                if key != "plot" and value
+            }
+    parts: list[str] = []
+    if plot:
+        parts.append("Plot found")
+    if any(key != "plot" for key in diffs):
+        parts.append("Metadata found")
+    if not parts:
+        parts.append("Metadata found")
+    return ". ".join(parts)
 
 
 class BatchWebFetchSummaryDialog(AccessibleDialog):
@@ -90,6 +109,9 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
 
         self.setWindowIcon(get_app_icon())
         self._choice = self.CANCEL
+        self._saved_any = False
+        self._silent_reshow = False
+        self._announce_focus_on_show = True
         self.outcome = outcome
         self._row_items: list[BatchBookResult] = list(outcome.results) or []
         self._total = len(outcome.results)
@@ -145,7 +167,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self.books_table.setAccessibleName("Books list")
         self.books_table.setAccessibleDescription(
             "Fetched books and their results. Use Up and Down arrows to move. "
-            "Enter opens details for the highlighted book. Alt+L to jump here."
+            "Alt+L to jump here. Alt+R to review books with changes."
         )
         self.books_table.setColumnCount(2)
         self.books_table.setHorizontalHeaderLabels(["Title", "Issue"])
@@ -165,8 +187,11 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         vh.setHighlightSections(False)
         header = self.books_table.horizontalHeader()
         header.setHighlightSections(False)
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setMinimumSectionSize(140)
+        header.setStretchLastSection(False)
+        self.books_table.setTextElideMode(Qt.ElideRight)
+        self.books_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.books_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.books_table.setStyleSheet(build_table_polish_style())
         apply_tooltip_accessibility(
             self.books_table,
@@ -183,10 +208,10 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         for row, item in enumerate(rows):
             book = item.book
             title = getattr(book, "title", "") or "Untitled"
-            reason = _result_reason(item)
+            issue = _issue_text(item)
             title_item = QTableWidgetItem(title)
-            issue_item = QTableWidgetItem(reason)
-            accessible = f"{title}: {reason}"
+            issue_item = QTableWidgetItem(issue)
+            accessible = f"{title}: {issue}"
             title_item.setData(Qt.AccessibleTextRole, accessible)
             issue_item.setData(Qt.AccessibleTextRole, accessible)
             for cell in (title_item, issue_item):
@@ -196,8 +221,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         if rows:
             self.books_table.selectRow(0)
             self.books_table.setCurrentCell(0, 0)
-        self.books_table.cellActivated.connect(self._on_row_activated)
-        self.books_table.currentCellChanged.connect(self._on_table_current_changed)
+        self._size_summary_columns()
         layout.addWidget(self.books_table)
 
         scaler = getattr(parent, "scaler", None)
@@ -216,7 +240,8 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self.apply_btn.setAccessibleDescription(
             "Apply new web fields to all books that have changes - Alt+A"
         )
-        self.apply_btn.setDefault(True)
+        self.apply_btn.setDefault(False)
+        self.apply_btn.setAutoDefault(False)
         self.apply_btn.setStyleSheet(button_style)
         self.apply_btn.clicked.connect(self._on_apply)
         self.apply_btn.setEnabled(with_changes > 0)
@@ -233,6 +258,8 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
                 "Open the web metadata window for the one book with new information - Alt+R"
             )
         self.review_btn.setStyleSheet(button_style)
+        self.review_btn.setDefault(False)
+        self.review_btn.setAutoDefault(False)
         self.review_btn.clicked.connect(self._on_review)
         self.review_btn.setEnabled(with_changes > 0)
 
@@ -268,6 +295,16 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         )
 
     def _idle_status_message(self) -> str:
+        if is_screen_reader_active():
+            parts: list[str] = []
+            if self._with_changes:
+                parts.append("Alt+A Apply all")
+                if self._with_changes == 1:
+                    parts.append("Alt+R Review")
+                else:
+                    parts.append("Alt+R Review each")
+            parts.append("Escape to close")
+            return ". ".join(parts) + "."
         parts = [
             f"{self._total} processed.",
             f"{self._with_changes} with new information.",
@@ -299,7 +336,6 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             self.books_table.selectRow(0)
             self.books_table.setCurrentCell(0, 0)
         self.books_table.setFocus(Qt.ShortcutFocusReason)
-        self._announce_row_status()
 
     def _refresh_counts_from_rows(self) -> None:
         self._with_changes = sum(
@@ -328,18 +364,15 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             self.review_btn.setText("Review each")
             self.review_btn.setAccessibleName("Review each")
 
-    def _announce_row_status(self) -> None:
-        row = self.books_table.currentRow()
-        if 0 <= row < len(self._row_items):
-            self._set_status(_row_status_message(self._row_items[row]), announce=False)
-            return
-        self._set_status(self._idle_status_message(), announce=False)
-
-    def _on_table_current_changed(
-        self, row: int, _col: int, _prev_row: int, _prev_col: int
-    ) -> None:
-        if 0 <= row < len(self._row_items):
-            self._set_status(_row_status_message(self._row_items[row]), announce=False)
+    def _size_summary_columns(self) -> None:
+        """Keep Title readable. Issue may elide; speech still has the full text."""
+        header = self.books_table.horizontalHeader()
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.books_table.resizeColumnToContents(1)
+        issue_width = min(max(header.sectionSize(1), 120), 220)
+        header.setSectionResizeMode(1, QHeaderView.Interactive)
+        self.books_table.setColumnWidth(1, issue_width)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
 
     def _fit_summary_label_height(self) -> None:
         text = self.summary_label.text() or " "
@@ -351,84 +384,9 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self.summary_label.setMinimumHeight(target)
         self.summary_label.setMaximumHeight(target)
 
-    def _on_row_activated(self, row: int, _column: int) -> None:
-        if row < 0 or row >= len(self._row_items):
-            return
-        item = self._row_items[row]
-        reason = _result_reason(item)
-        book = item.book
-        title = getattr(book, "title", "") or "Untitled"
-        if reason == "new information":
-            choice = self._exec_save_or_review_dialog(title)
-            if choice == "save":
-                self._save_row(row, item)
-            elif choice == "review":
-                self._review_row(item)
-            return
-        from src.accessibility.icon_helper import get_app_icon
-
-        exec_styled_message_box(
-            self,
-            self._scaled_height,
-            icon=QMessageBox.Information,
-            title="Web fetch result",
-            text=_issue_text(item),
-            window_icon=get_app_icon(),
-        )
-
-    def _exec_save_or_review_dialog(self, title: str) -> str:
-        dlg = AccessibleDialog(self)
-        dlg.setWindowTitle("Web fetch result")
-        dlg.setAccessibleName("Web fetch result")
-        dlg.setAccessibleDescription(
-            f"New information for {title}. Save, Review, or Escape to close."
-        )
-        dlg.setModal(True)
-        layout = QVBoxLayout(dlg)
-        label = QLabel(f"New information was found for {title}.")
-        label.setWordWrap(True)
-        label.setFocusPolicy(Qt.StrongFocus)
-        layout.addWidget(label)
-        buttons = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        save_btn.setAccessibleName("Save")
-        save_btn.setAccessibleDescription("Apply the new web fields to this book")
-        save_btn.setStyleSheet(build_accessible_button_style(self._scaled_height))
-        review_btn = QPushButton("Review")
-        review_btn.setAccessibleName("Review")
-        review_btn.setAccessibleDescription("Open the web metadata window for this book")
-        review_btn.setDefault(True)
-        review_btn.setStyleSheet(build_accessible_button_style(self._scaled_height))
-        buttons.addWidget(save_btn)
-        buttons.addWidget(review_btn)
-        layout.addLayout(buttons)
-        choice = {"value": "dismiss"}
-
-        def _save():
-            choice["value"] = "save"
-            dlg.accept()
-
-        def _review():
-            choice["value"] = "review"
-            dlg.accept()
-
-        save_btn.clicked.connect(_save)
-        review_btn.clicked.connect(_review)
-        QShortcut(QKeySequence(Qt.Key_Escape), dlg, activated=dlg.reject)
-        dlg.show()
-        review_btn.setFocus(Qt.OtherFocusReason)
-        dlg.exec()
-        return choice["value"]
-
-    def _save_row(self, row: int, item: BatchBookResult) -> None:
-        parent = self.owner_widget
-        db = getattr(parent, "db", None)
-        if db is None or not item.fetch.cleaned_data:
-            return
-        from src.web.batch_web_fetch import apply_web_changes_to_book
-
-        apply_web_changes_to_book(db, item.book, item.fetch.cleaned_data)
+    def _mark_row_saved(self, row: int, item: BatchBookResult) -> None:
         item.has_changes = False
+        self._saved_any = True
         result_item = self.books_table.item(row, 1)
         if result_item is not None:
             result_item.setText("saved")
@@ -439,15 +397,20 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             if title_item is not None:
                 title_item.setData(Qt.AccessibleTextRole, accessible)
         self._refresh_counts_from_rows()
-        self._announce_row_status()
+        if self.isVisible():
+            self._set_status(self._idle_status_message(), announce=False)
 
-    def _review_row(self, item: BatchBookResult) -> None:
+    def _review_row(
+        self,
+        item: BatchBookResult,
+        *,
+        queue_index: int | None = None,
+        queue_total: int | None = None,
+    ) -> int:
         parent = self.owner_widget
         scaler = getattr(parent, "scaler", None)
         theme_manager = getattr(parent, "theme_manager", None)
         db = getattr(parent, "db", None)
-        if scaler is None or theme_manager is None:
-            return
         from src.ui.web_metadata import WebMetadataWindow
 
         dialog = WebMetadataWindow(
@@ -455,24 +418,26 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             item.book,
             scaler,
             theme_manager,
-            parent=parent,
+            parent=self,
             refresh_callback=None,
             web_data=item.fetch.raw_data or item.fetch.cleaned_data,
+            queue_index=queue_index,
+            queue_total=queue_total,
         )
         dialog.raise_()
         dialog.activateWindow()
-        dialog.exec()
+        result = dialog.exec()
+        return int(result)
 
     def _show_shortcuts(self) -> None:
         exec_f1_shortcuts_dialog(
             self,
             "Keyboard Shortcuts - Batch web fetch",
             [
-                ("Enter", "Open the highlighted book"),
                 ("Alt+L", "Books list"),
                 ("Alt+A", "Apply all"),
                 ("Alt+R", "Review each"),
-                ("Escape", "Close and discard results"),
+                ("Escape", "Close"),
                 ("Alt+/", "Read status bar"),
                 ("F1", "Show keyboard shortcuts"),
             ],
@@ -487,12 +452,51 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
     def _on_review(self) -> None:
         if not self.review_btn.isEnabled():
             return
-        self._choice = self.REVIEW_EACH
-        self.accept()
+        pending = [
+            item
+            for item in self._row_items
+            if item.has_changes and not item.fetch.canceled
+        ]
+        total = len(pending)
+        self._silent_reshow = True
+        self._announce_focus_on_show = False
+        self.status_bar.clearMessage()
+        self.hide()
+        try:
+            for index, item in enumerate(pending, start=1):
+                row = self._row_items.index(item)
+                result = self._review_row(
+                    item, queue_index=index, queue_total=total
+                )
+                if result == QDialog.Accepted:
+                    self._mark_row_saved(row, item)
+        finally:
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            self._silent_reshow = False
+            self._announce_focus_on_show = True
+            self._focus_book_list()
+            self._set_status(self._idle_status_message(), announce=False)
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused = self.focusWidget()
+            if isinstance(focused, QPushButton) and focused.isEnabled():
+                focused.click()
+                event.accept()
+                return
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def _on_escape(self) -> None:
         self._choice = self.CANCEL
         self.reject()
+
+    @property
+    def saved_any(self) -> bool:
+        return self._saved_any
 
     @property
     def choice(self) -> int:
@@ -502,7 +506,9 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         super().showEvent(event)
         self.raise_()
         self.activateWindow()
-        announce_dialog_opened(self, "Batch web fetch summary")
         self._fit_summary_label_height()
+        if self._silent_reshow:
+            return
+        announce_dialog_opened(self, "Batch web fetch summary")
         self._set_status(self._idle_status_message(), announce=False)
         QTimer.singleShot(0, self._focus_book_list)

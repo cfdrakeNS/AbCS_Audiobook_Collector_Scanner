@@ -23,8 +23,7 @@ Last updated: June 2026.
 | Alt+X | Export duplicates (duplicate mode only) |
 | Alt+P | Toggle plot filter |
 | Alt+R | Toggle read filter |
-| Alt+W | Fetch web info |
-| Alt+B | Batch web fetch (two or more selected) |
+| Alt+W | Fetch web info (batch when two or more selected) |
 | Ctrl+F | Find |
 | Ctrl+I | Import |
 | Ctrl+N | New book |
@@ -167,7 +166,6 @@ Last updated: June 2026.
 
 | Shortcut | Action |
 |----------|--------|
-| Enter | Open the highlighted book |
 | Alt+L | Books list |
 | Alt+A | Apply all |
 | Alt+R | Review each |

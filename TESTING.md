@@ -20,6 +20,9 @@ That runs all tests under `test/` (currently ~440 tests). Only files matching
 `test_*.py` are collected (see `python_files` in `pytest.ini`), so scratch
 scripts such as `z_test.py` are ignored. Debug harnesses that do not follow
 that naming (for example `accessibility_test_window.py`) are not collected.
+A SyntaxError or import error in any collected file fails the whole suite
+before tests run. Version 3 work must keep `python -m pytest test/` green
+(see [plan_enhancements_version3_release.md](doc/plan_enhancements_version3_release.md)).
 
 ## CI-style run (quiet)
 

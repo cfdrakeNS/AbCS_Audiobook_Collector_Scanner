@@ -46,6 +46,31 @@ def test_title_accessible_text_includes_plot_suffix():
     assert without_plot_sr == "No Plot"
 
 
+def test_title_accessible_text_includes_selection_suffix():
+    model = BookTableModel(
+        [
+            Book(book_id=1, title="First", comments="p" * PLOT_MIN_LENGTH),
+            Book(book_id=2, title="Second"),
+        ]
+    )
+    model.set_selection_book_ids({1, 2})
+
+    first_sr = model.data(model.index(0, 1), Qt.AccessibleTextRole)
+    second_sr = model.data(model.index(1, 1), Qt.AccessibleTextRole)
+    second_display = model.data(model.index(1, 1), Qt.DisplayRole)
+
+    assert first_sr == "First, plot - 2 selected. Escape to cancel selection"
+    assert second_sr == "Second - 2 selected. Escape to cancel selection"
+    assert second_display == "Second"
+
+    model.set_selection_book_ids({2})
+    assert (
+        model.data(model.index(1, 1), Qt.AccessibleTextRole)
+        == "Second - selected. Escape to cancel selection"
+    )
+    assert model.data(model.index(0, 1), Qt.AccessibleTextRole) == "First, plot"
+
+
 def test_book_has_plot_requires_minimum_length():
     short = "Reader: Jane Doe"
     long_plot = "x" * PLOT_MIN_LENGTH

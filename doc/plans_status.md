@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (v3: Phase 5 non-modal fetch jobs; later phases shifted)
+**Last updated:** September 2026 (v3 Phases 1–4 complete, including batch-summary and selection speech follow-up. Phase 5 not started.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -23,9 +23,9 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | — | **Version 3 release roadmap** | [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) | Schedule master |
 | 1 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | Complete — tester accepted |
 | 2 | Bulk web metadata | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | Complete — tester accepted |
-| 3 | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) | Planned — Phase 3 |
-| 4 | Selection mode toolbar and shortcuts | [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) | Planned — Phase 4 |
-| 5 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | Planned — Phase 5 |
+| 3 | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) | Complete |
+| 4 | Selection mode toolbar and shortcuts | [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) | Complete |
+| 5 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | Not started — next, separate from Phases 1–4 |
 | 6 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | Planned — Phase 6 |
 | 7 | Auto-update check | [plan_auto_update.md](plan_auto_update.md) | Planned — Phase 7 |
 | 8 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 8 |

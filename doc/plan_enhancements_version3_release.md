@@ -48,27 +48,37 @@ See [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md). 
 
 ### Phase 2 — Batch web fetch (1–2 weeks)
 
-See [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md). **Complete — tester accepted** (summary list, no-plot vs up to date, first-row focus). Progress remains modal until Phase 5.
+See [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md). **Complete — tester accepted**, then follow-up polish (below). Progress remains modal until Phase 5.
 
-Multi-select **Web fetch** button; N/M progress; accessible summary with Apply all / Review each. Escape discards.
+Multi-select starts from **Alt+W**, toolbar **Search Web**, or footer **Web fetch**. There is no main-window Alt+B. N/M progress; summary with Apply all / Review. Escape closes the summary.
 
-**Gate:** Summary announced by JAWS; Apply all and Review each work; Alt+W unchanged for one book; footer **Web fetch** button uses shared accessible button style and selection visibility rules.
+Follow-up after accept:
+
+- Issue column: **Plot found**, **Metadata found**, or **Plot and metadata up to date.** Title column keeps a readable width; long issue text may ellipsize. Speech still has the full issue.
+- Enter in the summary list does nothing. Apply all and Review are not default buttons.
+- Review hides the summary. Save or Skip returns to the summary without re-speaking the queue status.
+- With a screen reader, summary status is **Alt+A Apply all**, **Alt+R Review** (or Review each), and Escape. Without a screen reader, the status is the count line.
+- Web metadata F1 does not list Series or Series #.
+
+**Gate:** Summary usable with JAWS; Apply all and Review work; Alt+W is one book or the selection; footer **Web fetch** uses shared button style and shows at two or more selected.
 
 ### Phase 3 — Leading article title compare (0.5–1 day)
 
-See [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md).
+See [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md). **Complete.**
 
-Path B: optional leading A/An/The so `A Second Chance - 05` matches `Second Chance - 05`. Trailing-article and series-suffix behavior from 2.14 stays.
+Path B: same-work match for optional leading A/An/The; review still **offers** the web title when the catalog includes the article. Trailing-article and series-suffix behavior from 2.14 stays.
 
-**Gate:** False title-change gone for leading article only; real subtitle still differs; Alt+W and batch Review unchanged otherwise.
+**Gate:** Same-work match for leading article; web title still offered to save; real subtitle still differs; Alt+W and batch Review unchanged otherwise.
 
 ### Phase 4 — Selection mode toolbar and shortcuts (1–2 days)
 
-See [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md).
+See [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md). **Complete.**
 
-While selection is active, disable Add/Import/Find/Search Web/Statistics/Preferences/filters. Intercept the same shortcuts; announce Escape. Keep Update/Delete/Web fetch, F1, Alt+/, Alt+L. Do not clear-and-run.
+While selection is active, disable Add/Import/Find/Statistics/Preferences/filters. Intercept those shortcuts; announce Escape. **Alt+W**, Search Web, and footer Web fetch stay available; two or more selected run **batch** fetch. Keep Update/Delete, F1, Alt+/, Alt+L. F1 during selection lists only shortcuts that still work. Shift+Up/Down **speaks** the selection status (`announce=True`). Do not clear-and-run.
 
-**Gate:** Blocked actions do not run; Alt+W does not open single-book fetch; Escape restores toolbar; duplicate mode unchanged.
+**Gate:** Blocked actions do not run; Alt+W with 2+ selected is batch; status speech is requested on selection (not only stored); Escape restores toolbar; duplicate mode unchanged.
+
+**Next:** Phase 5 is not started. It drops the blocking `exec()` wait so the main window stays usable. Treat it as a separate, larger change.
 
 ### Phase 5 — Non-modal web fetch jobs (3–5 days)
 
@@ -111,7 +121,7 @@ See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
 ## Cross-cutting principles
 
 1. Add or extend tests from each plan’s checklist before starting the next phase.
-2. Run `python -m pytest test/` — all green before merge.
+2. Run `python -m pytest test/` — **all** tests green before merge, including files this phase did not touch. Collection must succeed (a SyntaxError in any `test_*.py` fails the suite).
 3. Test logic modules first; mock HTTP and DB in CI.
 4. Include tests in the same commit/PR as the feature.
 5. NVDA/JAWS smoke after each phase ([qa_verification.md](qa_verification.md)). Ship help with each feature.

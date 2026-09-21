@@ -2,7 +2,7 @@
 
 What AbCS does internally after you activate **Fetch Web Info** (Alt+W). This is not a how-to guide — for steps and shortcuts see [Web Metadata](07_web_metadata.md).
 
-**Important:** **Alt+W** still works on **one book at a time**. Select two or more books and use **Web fetch** (Alt+B) for a queue. Neither path downloads audiobook files. They only look up text information online and, if you approve, update fields inside AbCS. Your audio files on disk are never touched.
+**Important:** **Alt+W** fetches one focused book, or a batch when two or more books are selected. Toolbar **Search Web** and the footer **Web fetch** button do the same thing. Neither path downloads audiobook files. They only look up text information online and, if you approve, update fields inside AbCS. Your audio files on disk are never touched.
 
 ---
 
@@ -165,7 +165,7 @@ The app compares cleaned web values against what is already stored for your book
 
 | Field         | How difference is decided                                     |
 | ------------- | ------------------------------------------------------------- |
-| Title         | Cosmetic differences ignored (case, punctuation, accents, `&`/`and`, article position, series suffix, filler tails like `: A Novel`) |
+| Title         | Same-work match ignores case, punctuation, accents, `&`/`and`, trailing article position, optional leading A/An/The, series suffix, filler tails. Leading A/An/The that is only on the web side is still offered to save. |
 | Author        | Cosmetic differences ignored (punctuation, name order, initials, accents) |
 | Year          | Compared as numbers                                           |
 | Genre         | Compared as text                                              |
@@ -268,7 +268,7 @@ Your book record is exactly as it was before Alt+W.
 
 ### If you want another book
 
-Repeat Alt+W on the next focused row, or select several books and use **Web fetch** (Alt+B).
+Repeat Alt+W on the next focused row, or select several books and use **Web fetch** or **Alt+W**.
 
 ---
 

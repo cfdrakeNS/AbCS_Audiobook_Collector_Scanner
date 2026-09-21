@@ -71,8 +71,7 @@ MAIN_WINDOW_SHORTCUTS = {
     "P": ("Toggle plot filter", "plot_filter_toggle"),
     "R": ("Toggle read filter", "read_filter_toggle"),
     "A": ("Author filter", "author_filter_combo"),
-    "W": ("Fetch web info", "get_web_info"),
-    "B": ("Batch web fetch", "batch_web_fetch"),
+    "W": ("Fetch web info (batch when two or more selected)", "get_web_info"),
     # Alt+1..7 handled in main_window.py for column jump
 }
 

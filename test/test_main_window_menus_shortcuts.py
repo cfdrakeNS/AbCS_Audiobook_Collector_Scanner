@@ -11,8 +11,8 @@ def test_main_window_shortcut_registry_includes_filter_toggles():
     """Main window shortcut map should include plot/read toggles and related keys."""
     keys = set(ShortcutManager.MAIN_WINDOW_SHORTCUTS.keys())
     assert {"P", "R", "W", "L", "U"}.issubset(keys)
-    assert "O" not in keys
     assert "B" not in keys
+    assert "O" not in keys
 
 
 def test_backup_restore_shortcut_registry_browse_and_backup_keys():
@@ -187,3 +187,101 @@ def test_invalid_collection_selection_falls_back_to_all(main_window):
         if action.isChecked()
     ]
     assert checked == [None]
+
+
+def _insert_two_books(window):
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries
+
+    authors = AuthorQueries(window.db)
+    books = BookQueries(window.db)
+    author_id = authors.insert("Selection Author")
+    id1 = books.insert(
+        Book(title="Select One", author_id=author_id, year=2000, tracks=1, path="/s1")
+    )
+    id2 = books.insert(
+        Book(title="Select Two", author_id=author_id, year=2001, tracks=1, path="/s2")
+    )
+    window.refresh_books()
+    return id1, id2
+
+
+def test_selection_disables_navigation_keeps_search_web(main_window):
+    window = main_window
+    id1, id2 = _insert_two_books(window)
+    window.selected_book_ids = {id1, id2}
+    window.update_selection_ui()
+    assert not window.find_action.isEnabled()
+    assert not window.new_book_action.isEnabled()
+    assert not window.import_action.isEnabled()
+    search = next(a for a, r in window._toolbar_actions if r == "search_web")
+    assert search.isEnabled()
+    assert window.web_fetch_button.isVisible()
+    assert window.web_fetch_button.isEnabled()
+    window.selected_book_ids.clear()
+    window.update_selection_ui()
+    assert window.find_action.isEnabled()
+    assert window.new_book_action.isEnabled()
+
+
+def test_alt_w_with_two_selected_runs_batch(main_window, monkeypatch):
+    window = main_window
+    id1, id2 = _insert_two_books(window)
+    window.selected_book_ids = {id1, id2}
+    window.update_selection_ui()
+    called = {"n": 0}
+    monkeypatch.setattr(
+        window, "on_batch_web_fetch_clicked", lambda: called.__setitem__("n", called["n"] + 1)
+    )
+    window.on_get_web_info_clicked()
+    assert called["n"] == 1
+
+
+def test_alt_w_with_one_selected_does_not_batch(main_window, monkeypatch):
+    from src.web.web_fetch_service import WebFetchResult
+
+    window = main_window
+    id1, _id2 = _insert_two_books(window)
+    window.selected_book_ids = {id1}
+    window.update_selection_ui()
+    called = {"n": 0}
+    monkeypatch.setattr(
+        window, "on_batch_web_fetch_clicked", lambda: called.__setitem__("n", 1)
+    )
+    monkeypatch.setattr(
+        "src.web.web_fetch_service.fetch_web_metadata_for_book",
+        lambda *a, **k: WebFetchResult(
+            canceled=True,
+            status_message="canceled",
+            dialog_text="canceled",
+        ),
+    )
+    window.on_get_web_info_clicked()
+    assert called["n"] == 0
+
+
+def test_announce_selection_requests_status_speech(main_window, monkeypatch):
+    window = main_window
+    id1, _id2 = _insert_two_books(window)
+    window.table.setCurrentCell(0, 1)
+    window.selected_book_ids = {id1}
+    calls = []
+
+    def capture(message, timeout_ms=0, announce=False):
+        calls.append((message, announce))
+
+    monkeypatch.setattr(window, "set_status", capture)
+    window.announce_selection()
+    assert calls
+    message, announce = calls[-1]
+    assert announce is True
+    assert "Escape to cancel selection" in message
+
+
+def test_new_book_blocked_while_selecting(main_window):
+    window = main_window
+    id1, id2 = _insert_two_books(window)
+    window.selected_book_ids = {id1, id2}
+    window.update_selection_ui()
+    window.on_new_book()
+    assert "Escape to cancel selection" in (window.statusBar().currentMessage() or "")

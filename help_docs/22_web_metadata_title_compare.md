@@ -64,8 +64,8 @@ After Path A picks a result, the **Web Metadata** review window compares web val
 
 1. Both sides are folded (accents stripped; `&` treated as `and`).
 2. Filler tails such as `: A Novel` or `(Unabridged)` are removed.
-3. Series suffixes, trailing articles, and punctuation are normalized the same way as import compare keys.
-4. A genuine extra subtitle (for example `: A Novel of Suspense`) still counts as a difference.
+3. Series suffixes, trailing articles, optional leading A/An/The (for **same work**), and punctuation are normalized.
+4. A leading A/An/The that is only on the web title is still **offered to save** (web wording is preferred). `Hobbit, The` vs `The Hobbit` is not offered. A genuine extra subtitle still counts as a difference.
 
 ### How the author row is decided
 
@@ -88,6 +88,8 @@ A title or author appears as a difference when the compare keys differ, or when 
 | Author | Required to accept a hit | Compared on its own row with initials/order tolerance |
 
 **Example:** Library has `Triptych - 01`. Path A matches web title `Triptych`. Path B now treats those as the same title, so no title difference is offered unless something else differs.
+
+**Example:** Library has `Second Chance - 05` and the web title is `A Second Chance - 05`. That is still a match. The review window offers the web title so you can save the catalog form.
 
 ---
 

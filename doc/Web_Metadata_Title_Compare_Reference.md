@@ -100,10 +100,8 @@ After path A returns metadata, the review window decides which fields differ fro
 
 1. Fold accents; rewrite `&` to `and`.
 2. Strip filler tails (`: A Novel`, `(Unabridged)`, etc.) when they are the entire remaining suffix.
-3. Apply `compare_normalize_title` (series strip, parenthetical series markers, article move, aggressive punctuation strip).
-4. Keys equal → no title difference. A genuine extra subtitle still differs.
-
-**Known issue (v3 Phase 3):** trailing article *position* is done (`The Hobbit` = `Hobbit, The`). Optional **leading** A/An/The is not: `A Second Chance - 05` vs `Second Chance - 05` still differs. Tracked in [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md).
+3. Apply `pre_normalize_title`, then aggressive punctuation strip. Optional leading A/An/The is **folded for “same work”** (`web_titles_match`) so the fetch is still a match.
+4. The review window **still offers the web title** when the stored form differs (library `Second Chance - 05`, web `A Second Chance - 05`) because the catalog wording is treated as the better save. Trailing article *position* (`The Hobbit` = `Hobbit, The`) is not offered. A genuine extra subtitle still differs and is offered.
 
 ### Author comparison (review only)
 

@@ -182,7 +182,10 @@ def test_summary_dialog_focus_default_apply(qapp):
     try:
         dlg.show()
         qapp.processEvents()
-        assert dlg.apply_btn.isDefault()
+        assert not dlg.apply_btn.isDefault()
+        assert not dlg.apply_btn.autoDefault()
+        assert not dlg.review_btn.isDefault()
+        assert not dlg.review_btn.autoDefault()
         assert dlg.apply_btn.isEnabled()
         assert not hasattr(dlg, "cancel_btn")
         assert "1 with new information" in dlg.accessibleDescription()
@@ -191,7 +194,158 @@ def test_summary_dialog_focus_default_apply(qapp):
         assert dlg.review_btn.text() == "Review"
         assert dlg.books_table.currentRow() == 0
         assert dlg.books_table.hasFocus()
-        assert dlg.status_bar.currentMessage() == "Save. Review."
+        issue = dlg.books_table.item(0, 1).text()
+        assert issue == "Metadata found"
+        assert dlg.books_table.columnWidth(0) >= 140
+        assert dlg.books_table.columnWidth(1) <= 220
+        assert "Apply all" in dlg.status_bar.currentMessage()
+        assert "Review" in dlg.status_bar.currentMessage()
+        assert "Escape to close" in dlg.status_bar.currentMessage()
+    finally:
+        dlg.close()
+
+
+def test_enter_in_summary_list_does_not_apply_all(qapp):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    book = SimpleNamespace(title="A", author_name="Auth")
+    outcome = BatchFetchOutcome(
+        results=[
+            BatchBookResult(
+                book=book,
+                fetch=WebFetchResult(cleaned_data={"title": "A"}),
+                has_changes=True,
+            )
+        ]
+    )
+    dlg = BatchWebFetchSummaryDialog(outcome)
+    try:
+        dlg.show()
+        qapp.processEvents()
+        dlg.books_table.setFocus()
+        QTest.keyClick(dlg.books_table, Qt.Key_Return)
+        qapp.processEvents()
+        assert dlg.isVisible()
+        assert dlg.choice == BatchWebFetchSummaryDialog.CANCEL
+        assert dlg.saved_any is False
+        assert dlg.books_table.item(0, 1).text() == "Metadata found"
+    finally:
+        dlg.close()
+
+
+def test_change_issue_label_plot_or_metadata():
+    from src.ui.batch_web_fetch_summary import _change_issue_label
+
+    book = SimpleNamespace(
+        title="A",
+        author_name="Auth",
+        year=None,
+        genre_name=None,
+        comments="",
+    )
+    plot_only = BatchBookResult(
+        book=book,
+        fetch=WebFetchResult(
+            cleaned_data={"title": "A", "author": "Auth", "plot": "A full plot from the web."}
+        ),
+        has_changes=True,
+    )
+    meta_only = BatchBookResult(
+        book=book,
+        fetch=WebFetchResult(cleaned_data={"title": "Changed Title From Web"}),
+        has_changes=True,
+    )
+    both = BatchBookResult(
+        book=book,
+        fetch=WebFetchResult(
+            cleaned_data={
+                "title": "Changed Title From Web",
+                "plot": "A full plot from the web.",
+            }
+        ),
+        has_changes=True,
+    )
+    assert _change_issue_label(plot_only) == "Plot found"
+    assert _change_issue_label(meta_only) == "Metadata found"
+    assert _change_issue_label(both) == "Plot found. Metadata found"
+
+
+def test_summary_status_alt_shortcuts_when_screen_reader(qapp, monkeypatch):
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    monkeypatch.setattr(
+        "src.ui.batch_web_fetch_summary.is_screen_reader_active",
+        lambda: True,
+    )
+    book = SimpleNamespace(title="A", author_name="Auth")
+    outcome = BatchFetchOutcome(
+        results=[
+            BatchBookResult(
+                book=book,
+                fetch=WebFetchResult(cleaned_data={"title": "A"}),
+                has_changes=True,
+            )
+        ]
+    )
+    dlg = BatchWebFetchSummaryDialog(outcome)
+    try:
+        dlg.show()
+        qapp.processEvents()
+        assert (
+            dlg.status_bar.currentMessage()
+            == "Alt+A Apply all. Alt+R Review. Escape to close."
+        )
+    finally:
+        dlg.close()
+
+
+def test_review_button_keeps_summary_open_after_save(qapp, monkeypatch):
+    from PySide6.QtWidgets import QDialog
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    visible_during_review = []
+
+    class FakeMeta:
+        def __init__(self, *args, **kwargs):
+            return None
+
+        def raise_(self):
+            return None
+
+        def activateWindow(self):
+            return None
+
+        def exec(self):
+            visible_during_review.append(dlg.isVisible())
+            return QDialog.Accepted
+
+    monkeypatch.setattr("src.ui.web_metadata.WebMetadataWindow", FakeMeta)
+    book = SimpleNamespace(title="A", author_name="Auth")
+    outcome = BatchFetchOutcome(
+        results=[
+            BatchBookResult(
+                book=book,
+                fetch=WebFetchResult(cleaned_data={"title": "A"}),
+                has_changes=True,
+            )
+        ]
+    )
+    dlg = BatchWebFetchSummaryDialog(outcome)
+    try:
+        dlg.show()
+        qapp.processEvents()
+        dlg._on_review()
+        qapp.processEvents()
+        assert visible_during_review == [False]
+        assert dlg.isVisible()
+        assert dlg.choice == BatchWebFetchSummaryDialog.CANCEL
+        assert dlg.saved_any is True
+        assert dlg.books_table.item(0, 1).text() == "saved"
+        assert not dlg.review_btn.isEnabled()
+        assert not hasattr(dlg, "_on_row_activated")
+        assert not hasattr(dlg, "_exec_save_or_review_dialog")
     finally:
         dlg.close()
 

@@ -19,9 +19,9 @@ Depends on **Phase 1** (background worker; tester accepted Alt+W after the API s
 
 ### Entry point
 
-- Main window when **two or more** books are selected: footer **Web fetch** (same visibility pattern as Update / Delete).
-- Shortcut **Alt+B**.
-- **Alt+W stays single-book** and still returns early when multi-select is active.
+- Main window when **two or more** books are selected: footer **Web fetch**, toolbar **Search Web**, or **Alt+W** (same batch).
+- One selected book, or no selection: **Alt+W** and Search Web fetch that book only.
+- Main window has **no Alt+B** for batch fetch.
 
 ### Progress
 
@@ -31,17 +31,17 @@ Google Books 429 / cooldown is unchanged from Phase 1. Large batches can still h
 
 ### Summary
 
-Modal [`BatchWebFetchSummaryDialog`](../src/ui/batch_web_fetch_summary.py): `raise_()` / `activateWindow()`, focus default **Apply all**.
+Modal [`BatchWebFetchSummaryDialog`](../src/ui/batch_web_fetch_summary.py): `raise_()` / `activateWindow()`, focus on the first list row. Apply all and Review are **not** default buttons, so Enter in the list does not run them.
 
-Status bar shows **counts only** (processed, new information, no match, up to date, errors) plus Apply / Review / Escape — not the highlighted title.
+Issue column (spoken in full): **Plot found**, **Metadata found**, **Plot and metadata up to date**, or the no-match / no-plot / error text. Title keeps a readable width.
 
-Buttons: **Apply all**, **Review** (one book with changes) or **Review each** (two or more). Escape discards (no Cancel button).
+With a screen reader, the status bar is **Alt+A Apply all**, **Alt+R Review** (or Review each), and Escape. Without a screen reader, the status bar is the count line. Arrowing the list does not re-read the status bar.
 
-Enter or click a table row: **Save** / **Review** when that book has new information; otherwise an information message with the fetch reason (no match, up to date, error).
+Buttons: **Apply all**, **Review** (one book with changes) or **Review each** (two or more). Escape closes the summary (no Cancel button). There is no per-row Save/Review prompt.
 
 ### Review each
 
-[`WebMetadataWindow`](../src/ui/web_metadata.py) with `queue_index` / `queue_total` only when **more than one** book is in the queue. A single-book review does not say “1 of 1” and does not show Skip. Save or Skip (Alt+K) advances when there are multiple books.
+[`WebMetadataWindow`](../src/ui/web_metadata.py) with `queue_index` / `queue_total` only when **more than one** book is in the queue. A single-book review does not say “1 of 1” and does not show Skip. The summary is **hidden** during review. Save or Skip (Alt+K) returns to the summary (and advances when there are multiple books) without re-speaking the queue status. Web metadata F1 does not list Series or Series #.
 
 ### Apply all
 
@@ -61,17 +61,17 @@ Uses `compute_field_differences` / `web_data_offers_changes`. Status announce on
 
 Passed.
 
-1. Footer **Web fetch** appears only with two or more selected.
-2. Alt+B runs the queue; Alt+W still one book.
+1. Footer **Web fetch** appears only with two or more selected. Search Web stays enabled.
+2. Alt+W, Search Web, and Web fetch run the same queue when two or more are selected. One book stays a single fetch. No main-window Alt+B.
 3. Progress N of M spoken; Escape stops the rest.
-4. Summary announced; Apply all and Review each work; Escape discards.
-5. Focus returns to the table.
+4. Summary: Issue column uses plot/metadata wording; Enter does nothing; Apply all and Review work; Save/Skip return to the summary.
+5. Escape closes the summary. Focus returns to the table.
 
 ---
 
 ## Tests
 
-`test/test_batch_web_fetch.py`: outcome counts; queue cancel; per-book fetch; Apply all field apply; summary default button.
+`test/test_batch_web_fetch.py`: outcome counts; queue cancel; per-book fetch; Apply all field apply; Issue labels; Enter does not apply; Review keeps the summary open and hides it during review. Main-window registry does **not** include Alt+B. Full suite: `python -m pytest test/`.
 
 ---
 
@@ -81,8 +81,8 @@ Follow the master checklist: [Accessibility and UI formatting standards](plan_en
 
 - Progress: announce on `showEvent`; Escape cancel; GUI-thread bridge.
 - Summary: modal `AccessibleDialog` — never Calibre’s NoFocus overlay.
-- Footer button: same modern footer style as Update / Delete; accessible name/description; Alt+B.
-- Summary buttons: `build_accessible_button_style`; default Apply all.
+- Footer button: same modern footer style as Update / Delete; accessible name/description; Alt+W.
+- Summary buttons: `build_accessible_button_style`; not auto-default, so Enter in the list does not activate them.
 
 ---
 

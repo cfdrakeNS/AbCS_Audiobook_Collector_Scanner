@@ -204,7 +204,7 @@ No new tables needed for Phase 1. Phase 2 alias map could be a simple `genre_ali
 | 4 | Wire Manage menu, config dialog, mode flag | `src/ui/main_window.py` |
 | 5 | Add threshold/scope preferences | `src/ui/preferences_window.py`, `doc/14_default_preference.md` |
 | 6 | Register shortcut context | `src/accessibility/shortcuts.py` |
-| 7 | Unit tests for clustering + merge | `test/test_name_consistency.py`, `test/test_author_genre_merge.py` |
+| 7 | Unit tests for clustering + merge | `test/test_name_consistency.py` (merge cases skipped until `AuthorQueries.merge` / `GenreQueries.merge` exist) |
 | 8 | User guide (when implemented) | New process doc parallel to `08_duplicate_mode.md` |
 | 9 | Cross-link from user index | `doc/01_user_index.md` |
 
