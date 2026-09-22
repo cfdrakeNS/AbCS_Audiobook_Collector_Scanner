@@ -75,8 +75,8 @@ For every audio file, the app opens it and reads embedded metadata. Your file is
 
 | What AbCS needs | Where it looks in the file |
 |-----------------|---------------------------|
-| **Title** | Album tag |
-| **Author** | Album Artist tag first; if missing, Artist tag |
+| **Title** | Album tag by default. Preferences → Import Settings → Tag mapping can use Track title, or Album then track title |
+| **Author** | Album Artist, then Artist, by default. Tag mapping can use Album artist only, or Artist only |
 | **Year** | Year / date tag (first four digits) |
 | **Genre** | Genre tag |
 | **Narrator** | Composer tag first; if empty, comment text after keywords like "read by" or "narrated by" |
@@ -90,7 +90,7 @@ Different file types use different tag names internally (MP3 ID3, MP4 atoms, FLA
 
 ### What gets accumulated per book
 
-When several files share the same album (one multi-part audiobook):
+When several files share the same album tag (one multi-part audiobook), they stay one book even if the book title is taken from the track title:
 
 - **Total duration** — sum of all part lengths → converted to hours and minutes.
 - **Total size** — sum of all file sizes → converted to megabytes.

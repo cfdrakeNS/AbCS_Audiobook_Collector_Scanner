@@ -55,7 +55,7 @@ Uses `compute_field_differences` / `web_data_offers_changes`. Status announce on
 
 - Leading A/An/The compare: [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) (Phase 3).
 - Selection-mode toolbar/shortcuts: [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) (Phase 4).
-- Non-modal fetch jobs (keep using the app): [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) (Phase 5).
+- Non-modal fetch jobs: [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md). Skipped for v3. Progress stays modal.
 
 ---
 

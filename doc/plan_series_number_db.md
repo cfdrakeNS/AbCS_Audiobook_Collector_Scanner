@@ -1,8 +1,8 @@
 # Series Number in Database — Future Improvement Plan
 
-**Status:** Planned (not yet implemented) — scope narrowed September 2026  
+**Status:** Planned — Version 3 Phase 12 (needs Phase 9 schema). Scope narrowed September 2026  
 **Created:** June 2026  
-**Related:** [plan_ratings.md](plan_ratings.md) (Wave 0 schema batch), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)
+**Related:** [plan_schema_batch.md](plan_schema_batch.md) (v3 Phase 9), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)
 
 ---
 

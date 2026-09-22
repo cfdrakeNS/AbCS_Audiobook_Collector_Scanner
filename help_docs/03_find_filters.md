@@ -60,6 +60,7 @@ This filter uses **date added** (when the book was imported or created in AbCS),
 2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date.
 3. Use **Tab** to move through table cells, or click a column header to sort by that column; click the same header again to reverse ascending/descending order.
 4. The filter summary shows the current sort (for example, "Sort: Title (ascending)").
+5. The book that had focus stays the current book. Filters do the same when that book is still in the list. If a filter hides it, focus moves to the first remaining book.
 
 ## Clearing filters
 
@@ -142,3 +143,6 @@ Collection and sort are not part of the Escape sequence. Change collection in **
 
 **Does sorting remove filters?**
 No. Sort only changes the order of books that already match your filters.
+
+**Does sort or filter move me to the first book?**
+No. You stay on the book that had focus if it is still in the list. If a filter hides that book, focus moves to the first remaining book.

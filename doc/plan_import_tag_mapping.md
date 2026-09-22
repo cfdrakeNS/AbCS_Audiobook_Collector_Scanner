@@ -1,6 +1,6 @@
 # Import tag mapping (title / author)
 
-**Status:** Planned — **Version 3 Phase 6**  
+**Status:** Complete — tester accepted  
 **Created:** September 2026  
 **Related:** [Preferences Import Settings](../src/ui/preferences_window.py), [`src/core/tag_reader.py`](../src/core/tag_reader.py), [`src/core/import_scanner.py`](../src/core/import_scanner.py), [help_docs/19_import_explained.md](../help_docs/19_import_explained.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
@@ -74,6 +74,18 @@ Update [help_docs/19_import_explained.md](../help_docs/19_import_explained.md) t
 Keep it as an **import scenario**. Do not add “Filename (parentheses)” to the title/author tag combos.
 
 Later optional: a **Series source** combo (none / directory / nested directory / filename) that replaces the five scenario names. That is a layout redesign, not part of v1 tag mapping.
+
+---
+
+## Tester gate
+
+Passed.
+
+1. Defaults stay Album and Album artist then artist, so an unchanged library scans as before.
+2. Track title uses the track tag and still groups files that share an album into one book.
+3. Artist only ignores album artist. Album then track title uses the album when it is present.
+4. Empty or placeholder tags still follow the Fallback tab.
+5. Save and Restore Defaults round-trip the two combos. Plain Up and Down do not change them.
 
 ---
 

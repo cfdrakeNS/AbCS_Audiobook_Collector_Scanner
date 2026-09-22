@@ -70,7 +70,7 @@ Follow the master checklist: [Accessibility and UI formatting standards](plan_en
 ## Out of scope
 
 - Bulk multi-book queue ([plan_bulk_web_metadata.md](plan_bulk_web_metadata.md)) — Phase 2.
-- Non-modal keep-using-the-app jobs ([plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md)) — Phase 5.
+- Non-modal keep-using-the-app jobs ([plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md)) — skipped for v3.
 - Extracting per-source / enrich modules — later follow-on, not required to close Phase 1.
 - Parallel sources / merge-quality rework — later follow-on.
 - New metadata sources.

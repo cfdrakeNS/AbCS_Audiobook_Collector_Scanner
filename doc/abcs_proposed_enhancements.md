@@ -16,6 +16,10 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 | **Fetch web info for many books** | Select several books and fetch web metadata in one queue, with a summary and options to apply all or review each. |
 | **Import tag mapping** | In Preferences, choose which audio tags fill title and author (album vs track title, album artist vs artist). Multi-part books still group by album. |
 | **Check for updates** | Help menu option to see if a newer AbCS version is available and open the download page. No silent install. |
+| **Keep current book on sort and filter** | Sorting and filtering leave you on the same book when it is still in the list. |
+| **Database upgrade on first start** | Existing libraries gain storage for ratings, series number, and later features without recreating the database. |
+| **Book ratings** | Store a numeric rating on each book; fill from web metadata. |
+| **Series book number** | Store book 3 in the series as its own field instead of only in the title. |
 | **Name consistency check** | Find similar spellings of author names, titles, and genres and help you merge them — similar to Duplicate Check. You confirm each group. |
 | **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. Decide after the other v3 items. |
 
@@ -27,7 +31,6 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 | ----------- | ----------------- |
 | **Want to Read** | Mark books you plan to listen to without moving them to a different collection. Filter the main list to your queue. |
 | **Open audiobook location** | From Book Details, open the folder (or show the file) so you can play in your own player. |
-| **Book ratings** | Store a numeric rating on each book; fill from web metadata. |
 | **Cover images** | Save cover images from web fetch; show in Book Details and Import Detail. |
 | **Better backups** | Zip package with database plus covers. |
 | **Collection library folder** | Optional folder path per collection for import/rescan defaults. |
@@ -50,7 +53,6 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 | **Backup reminder** | Gentle reminder if you have not backed up recently. |
 | **Richer statistics** | Counts for Want to Read, average rating, covers, etc. |
 | **Filter by narrator** | Show only books read by a chosen narrator. |
-| **Series book number** | Store series index as its own field. |
 | **Export / import settings** | Save preferences to a file for another computer. |
 | **Import / Preferences toolbars** | Labeled action toolbars for common actions. |
 
@@ -85,4 +87,4 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 scoped — September 2026.
+**Status:** Version 3 in progress — tester build **2.16**. Phases 1–4, 6, and 7 are in the app. Phase 8 (keep current book on sort/filter) is in 2.16 for test. Phase 5 is skipped.

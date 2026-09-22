@@ -20,7 +20,8 @@ class AudioFileInfo:
     """Information extracted from an audio file."""
 
     def __init__(self):
-        self.album: str = ""  # Book title
+        self.album: str = ""  # Album tag; grouping key
+        self.track_title: str = ""  # Track title tag (TIT2 / title)
         self.artist: str = ""
         self.album_artist: str = ""  # Primary author field
         self.year: Optional[int] = None
@@ -314,9 +315,8 @@ class TagReader:
             if "TPE1" in audio.tags:
                 info.artist = str(audio.tags["TPE1"])
 
-            # Title
-            # Parsed title tag is intentionally not stored separately;
-            # import flow uses album/title aggregation at book level.
+            if "TIT2" in audio.tags:
+                info.track_title = str(audio.tags["TIT2"])
 
             # Year
             if "TDRC" in audio.tags:
@@ -367,7 +367,7 @@ class TagReader:
             info.album = self._get_tag(audio, "album")
             info.album_artist = self._get_tag(audio, "albumartist")
             info.artist = self._get_tag(audio, "artist")
-            # Title tag is not used downstream.
+            info.track_title = self._get_tag(audio, "title")
             info.genre = self._get_tag(audio, "genre")
             info.comment = self._get_tags_joined(audio, "comment")
             info.composer = self._get_tag(audio, "composer")
@@ -388,7 +388,7 @@ class TagReader:
             info.album = self._get_mp4_tag(audio, "©alb")
             info.album_artist = self._get_mp4_tag(audio, "aART")
             info.artist = self._get_mp4_tag(audio, "©ART")
-            # Title tag is not used downstream.
+            info.track_title = self._get_mp4_tag(audio, "©nam")
             info.genre = self._get_mp4_tag(audio, "©gen")
             info.comment = self._get_mp4_tags_joined(audio, "©cmt")
             info.composer = self._get_mp4_tag(audio, "©wrt")
@@ -422,6 +422,10 @@ class TagReader:
             info.artist = self._get_any_tag(
                 audio,
                 ["artist", "ARTIST", "TPE1", "Author", "WM/Author"],
+            )
+            info.track_title = self._get_any_tag(
+                audio,
+                ["title", "TITLE", "TIT2", "WM/Title"],
             )
             info.genre = self._get_any_tag(
                 audio,
@@ -636,7 +640,17 @@ class BookScanner:
                     if is_allowed(entry.path):
                         add_audio_file(entry.path)
 
-        # Group by album (book)
+        from src.core.tag_mapping import (
+            read_author_mapping,
+            read_title_mapping,
+            resolve_book_author,
+            resolve_book_title,
+        )
+
+        title_mapping = read_title_mapping()
+        author_mapping = read_author_mapping()
+
+        # Group by album even when the book title comes from the track title.
         books = {}
 
         total_files = len(audio_files)
@@ -653,10 +667,13 @@ class BookScanner:
             # Use album as book identifier
             book_key = info.album or os.path.basename(os.path.dirname(file_path))
 
+            mapped_title = resolve_book_title(info, title_mapping)
+            mapped_author = resolve_book_author(info, author_mapping)
+
             if book_key not in books:
                 books[book_key] = {
-                    "title": info.album,
-                    "author": info.album_artist or info.artist,
+                    "title": mapped_title,
+                    "author": mapped_author,
                     "year": info.year,
                     "genre": info.genre,
                     "narrator": self.tag_reader.extract_narrator(
@@ -674,6 +691,10 @@ class BookScanner:
                 }
 
             book = books[book_key]
+            if not (book.get("title") or "").strip() and mapped_title:
+                book["title"] = mapped_title
+            if not (book.get("author") or "").strip() and mapped_author:
+                book["author"] = mapped_author
             if not book.get("narrator"):
                 narrator = self.tag_reader.extract_narrator(
                     info.comment, info.composer, reader_keywords
@@ -769,14 +790,18 @@ class BookScanner:
 
         info = self.tag_reader.read_file(file_path)
 
+        from src.core.tag_mapping import resolve_book_author, resolve_book_title
+
         # Use filename without extension as book key
         file_name = os.path.basename(file_path)
         book_key = os.path.splitext(file_name)[0]
+        mapped_title = resolve_book_title(info)
+        mapped_author = resolve_book_author(info)
 
         # Build book dictionary
         book = {
-            "title": info.album or book_key,
-            "author": info.album_artist or info.artist,
+            "title": mapped_title or book_key,
+            "author": mapped_author,
             "year": info.year,
             "genre": info.genre,
             "narrator": self.tag_reader.extract_narrator(

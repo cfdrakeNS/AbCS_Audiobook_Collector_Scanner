@@ -92,10 +92,20 @@ class WebFetchProgressDialog(AccessibleDialog):
         self._escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self._escape_shortcut.setContext(Qt.WindowShortcut)
         self._escape_shortcut.activated.connect(self.request_cancel)
+        self.status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
+        self.status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.status_shortcut.activated.connect(self._read_status)
 
     @property
     def cancel_requested(self) -> bool:
         return self._user_canceled
+
+    def _read_status(self) -> None:
+        from src.accessibility.accessible_events import read_status_bar_message
+
+        read_status_bar_message(
+            self.status_bar, fallback=self._message_label.text()
+        )
 
     def request_cancel(self) -> None:
         """Mark the fetch as canceled; checked between network requests."""

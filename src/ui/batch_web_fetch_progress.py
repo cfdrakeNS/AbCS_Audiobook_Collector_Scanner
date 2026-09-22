@@ -54,15 +54,19 @@ class BatchWebFetchProgressDialog(AccessibleDialog):
         self.status_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         layout.addWidget(self.status_label)
 
+        bar_height = 22
+        scaler = getattr(parent, "scaler", None)
+        if scaler is not None and hasattr(scaler, "get_scaled_size"):
+            bar_height = max(scaler.get_scaled_size(15), 22)
         self.bar = QProgressBar()
         self.bar.setRange(0, self.total)
         self.bar.setValue(0)
         self.bar.setAccessibleName("Batch fetch progress")
-        self.bar.setFixedHeight(22)
+        self.bar.setFixedHeight(bar_height)
         self.bar.setStyleSheet(
             "QProgressBar {"
-            "  min-height: 22px;"
-            "  max-height: 22px;"
+            f"  min-height: {bar_height}px;"
+            f"  max-height: {bar_height}px;"
             "  border: 1px solid palette(dark);"
             "  border-radius: 3px;"
             "  text-align: center;"

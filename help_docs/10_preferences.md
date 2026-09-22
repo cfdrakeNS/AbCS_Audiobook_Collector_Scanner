@@ -32,6 +32,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 - **Default import directory** — pre-fills Import window (Alt+B to browse).
 - **Audio formats** — which extensions to scan.
 - **Import scenario** — how folders map to author, title, and series (default: **Mass Standard Import**). See [Import preferences](18_import_preferences.md).
+- **Tag mapping** — which audio tags fill the book title and author. Defaults match the previous scan: **Album** for the title, and **Album artist then artist** for the author. Other choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album tag, so a multi-part book stays one book.
 
 ### Fallback & Auto Correct (Alt+F)
 

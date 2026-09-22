@@ -63,10 +63,10 @@ def resolve_book_title(info: Any, title_mapping: str | None = None) -> str:
     album = (getattr(info, "album", "") or "").strip()
     track = (getattr(info, "track_title", "") or "").strip()
     if mapping == TITLE_TRACK:
-        return track or album
+        return track
     if mapping == TITLE_ALBUM_THEN_TRACK:
         return album or track
-    return album or track
+    return album
 
 
 def resolve_book_author(info: Any, author_mapping: str | None = None) -> str:

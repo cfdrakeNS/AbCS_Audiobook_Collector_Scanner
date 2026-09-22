@@ -76,9 +76,9 @@ class PreferencesWindow(AccessibleDialog):
         ),
         TAB_IMPORT: (
             "Set defaults used when you open the Import window: where to scan, "
-            "which audio formats to include, and which import scenario matches your folder layout. "
-            "During scan, length and file count come from audio tags. Books are grouped by album tag; "
-            "use album for the book title and album artist for the author (not the narrator) when possible."
+            "which audio formats to include, which import scenario matches your folder layout, "
+            "and which audio tags supply the book title and author. "
+            "During scan, length and file count come from audio tags. Books are grouped by album tag."
         ),
         TAB_FALLBACK: (
             "Control how missing metadata is filled in during import, how narrator "
@@ -538,11 +538,61 @@ class PreferencesWindow(AccessibleDialog):
         source_scope_layout.addLayout(scenario_desc_layout)
 
         content_layout.addWidget(source_scope_group)
+
+        from src.core.tag_mapping import AUTHOR_CHOICES, TITLE_CHOICES
+
+        tag_group = QGroupBox("Tag mapping")
+        tag_group.setFont(self._section_font())
+        tag_layout = QVBoxLayout(tag_group)
+        tag_layout.setSpacing(8)
+
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(8)
+        title_tag_label = QLabel("Book title:")
+        title_tag_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        title_tag_label.setMinimumWidth(import_label_width)
+        self.title_tag_combo = QComboBox()
+        self.title_tag_combo.setAccessibleName("Book title tag")
+        self.title_tag_combo.setAccessibleDescription(
+            "Album, Track title, or Album then track title. Default is Album. "
+            "Alt+Up or Alt+Down changes the choice."
+        )
+        for value, label in TITLE_CHOICES:
+            self.title_tag_combo.addItem(label, value)
+        title_tag_label.setBuddy(self.title_tag_combo)
+        title_row.addWidget(title_tag_label)
+        title_row.addWidget(self.title_tag_combo)
+        title_row.addStretch(1)
+        tag_layout.addLayout(title_row)
+
+        author_row = QHBoxLayout()
+        author_row.setContentsMargins(0, 0, 0, 0)
+        author_row.setSpacing(8)
+        author_tag_label = QLabel("Author:")
+        author_tag_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        author_tag_label.setMinimumWidth(import_label_width)
+        self.author_tag_combo = QComboBox()
+        self.author_tag_combo.setAccessibleName("Author tag")
+        self.author_tag_combo.setAccessibleDescription(
+            "Album artist then artist, Album artist only, or Artist only. "
+            "Default is Album artist then artist. Alt+Up or Alt+Down changes the choice."
+        )
+        for value, label in AUTHOR_CHOICES:
+            self.author_tag_combo.addItem(label, value)
+        author_tag_label.setBuddy(self.author_tag_combo)
+        author_row.addWidget(author_tag_label)
+        author_row.addWidget(self.author_tag_combo)
+        author_row.addStretch(1)
+        tag_layout.addLayout(author_row)
+
+        content_layout.addWidget(tag_group)
         content_layout.addStretch(1)
 
         if not hasattr(self, "_card_groups"):
             self._card_groups = []
         self._card_groups.append(source_scope_group)
+        self._card_groups.append(tag_group)
         return page
 
     def _autocorrect_row_height(self) -> int:
@@ -1003,6 +1053,8 @@ class PreferencesWindow(AccessibleDialog):
             self.import_dir_edit: "Default folder used for audiobook imports",
             self.browse_button: "Choose an import folder",
             self.import_scenario_combo: "Choose how imports are interpreted",
+            self.title_tag_combo: "Choose which audio tag supplies the book title",
+            self.author_tag_combo: "Choose which audio tag supplies the author",
             self.scenario_description_edit: "Summary of the selected import scenario",
             self.author_fallback_checkbox: "Use folder names when author metadata is missing",
             self.title_fallback_checkbox: "Use file names when title metadata is missing",
@@ -1288,6 +1340,8 @@ class PreferencesWindow(AccessibleDialog):
                 for key in sorted(self.format_checks.keys())
             ),
             "scenario_mode": self.import_scenario_combo.currentData(),
+            "title_tag": self.title_tag_combo.currentData(),
+            "author_tag": self.author_tag_combo.currentData(),
             "author_fallback": self.author_fallback_checkbox.isChecked(),
             "title_fallback": self.title_fallback_checkbox.isChecked(),
             "reader_keywords": self.reader_keywords_edit.text().strip(),
@@ -1421,6 +1475,15 @@ class PreferencesWindow(AccessibleDialog):
             scenario_index = 0
         self.import_scenario_combo.setCurrentIndex(scenario_index)
         self.update_scenario_description()
+
+        from src.core.tag_mapping import read_author_mapping, read_title_mapping
+
+        title_tag = read_title_mapping(self.settings)
+        title_index = self.title_tag_combo.findData(title_tag)
+        self.title_tag_combo.setCurrentIndex(0 if title_index < 0 else title_index)
+        author_tag = read_author_mapping(self.settings)
+        author_index = self.author_tag_combo.findData(author_tag)
+        self.author_tag_combo.setCurrentIndex(0 if author_index < 0 else author_index)
 
         author_fallback_to_folder = self.settings.value(
             "import/fallback/author_to_folder", True, type=bool
@@ -2087,7 +2150,7 @@ class PreferencesWindow(AccessibleDialog):
                 "Are you sure you want to restore all preferences to their default "
                 "values?\n\n"
                 "This will reset: Display settings (theme, zoom), Import settings "
-                "(directory, formats, scenario, fallback options), and Validation "
+                "(directory, formats, scenario, tag mapping, fallback options), and Validation "
                 "rules. This action cannot be undone."
             ),
             buttons=QMessageBox.Yes | QMessageBox.No,
@@ -2141,6 +2204,20 @@ class PreferencesWindow(AccessibleDialog):
             self.import_scenario_combo.findData("mass_standard")
         )
         self.settings.setValue("import/scenario/mode", "mass_standard")
+
+        from src.core.tag_mapping import (
+            AUTHOR_ALBUM_ARTIST_THEN_ARTIST,
+            AUTHOR_TAG_SETTING,
+            TITLE_ALBUM,
+            TITLE_TAG_SETTING,
+        )
+
+        self.title_tag_combo.setCurrentIndex(self.title_tag_combo.findData(TITLE_ALBUM))
+        self.settings.setValue(TITLE_TAG_SETTING, TITLE_ALBUM)
+        self.author_tag_combo.setCurrentIndex(
+            self.author_tag_combo.findData(AUTHOR_ALBUM_ARTIST_THEN_ARTIST)
+        )
+        self.settings.setValue(AUTHOR_TAG_SETTING, AUTHOR_ALBUM_ARTIST_THEN_ARTIST)
 
         # Fallback options
         self.author_fallback_checkbox.setChecked(True)
@@ -2274,6 +2351,10 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue(
             "import/scenario/mode", self.import_scenario_combo.currentData()
         )
+        from src.core.tag_mapping import AUTHOR_TAG_SETTING, TITLE_TAG_SETTING
+
+        self.settings.setValue(TITLE_TAG_SETTING, self.title_tag_combo.currentData())
+        self.settings.setValue(AUTHOR_TAG_SETTING, self.author_tag_combo.currentData())
         self.settings.setValue(
             "import/fallback/author_to_folder",
             self.author_fallback_checkbox.isChecked(),

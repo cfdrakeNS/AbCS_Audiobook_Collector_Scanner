@@ -31,6 +31,8 @@ Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-r
 | Default import directory | Empty |
 | Audio formats | All checked: MP3, M4A, M4B, FLAC, OGG, WAV, WMA |
 | Import scenario | Mass Standard Import |
+| Book title tag | Album |
+| Author tag | Album artist then artist |
 | Include subfolders | On (always enabled when settings are saved) |
 
 ## Fallback & Auto Correct (third tab)

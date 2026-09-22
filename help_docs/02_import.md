@@ -50,6 +50,7 @@ Open **View → Preferences** (or **Manage → Preferences**). Import-related se
 - **Default directory** — pre-fills the folder field when Import opens.
 - **Audio formats** — which file types to scan (MP3, M4A, M4B, FLAC, OGG, WAV, WMA).
 - **Import scenario** — how your folders are organized. Choose the scenario in **Preferences → Import Settings** before scanning. The Import window shows the active scenario name in the status bar.
+- **Tag mapping** — Book title and Author combos on that same tab. Defaults are Album, and Album artist then artist. Grouping stays on the album tag.
 
 | Scenario | Folder layout | When to use |
 |----------|---------------|-------------|

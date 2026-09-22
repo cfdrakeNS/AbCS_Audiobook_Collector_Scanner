@@ -29,7 +29,7 @@ from src.accessibility.screen_reader import is_screen_reader_active
 from src.accessibility.shortcut_helpers import exec_f1_shortcuts_dialog
 from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
-    build_accessible_button_style,
+    build_modern_button_style,
     build_table_polish_style,
 )
 from src.ui.accessible_dialog import AccessibleDialog
@@ -309,15 +309,14 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         layout.addWidget(self.books_table)
 
         scaler = getattr(parent, "scaler", None)
-        if scaler is not None:
-            scaled_height = scaler.get_scaled_size(20)
-        else:
+        if scaler is None:
             from src.accessibility.scaling import UIScaler
 
-            scaled_height = UIScaler(QApplication.instance()).get_scaled_size(20)
+            scaler = UIScaler(QApplication.instance())
+        scaled_height = scaler.get_scaled_size(20)
         self._scaled_height = scaled_height
-        button_style = build_accessible_button_style(scaled_height)
-
+        button_style = build_modern_button_style(scaled_height)
+        from src.accessibility.icon_helper import apply_decorative_action_icon
         buttons = QHBoxLayout()
         self.apply_btn = QPushButton("Apply all")
         self.apply_btn.setAccessibleName("Apply all")
@@ -327,6 +326,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self.apply_btn.setDefault(False)
         self.apply_btn.setAutoDefault(False)
         self.apply_btn.setStyleSheet(button_style)
+        apply_decorative_action_icon(self.apply_btn, "save", scaler)
         self.apply_btn.clicked.connect(self._on_apply)
         self.apply_btn.setEnabled(with_changes > 0)
 
@@ -342,6 +342,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
                 "Open the web metadata window for the one book with new information - Alt+R"
             )
         self.review_btn.setStyleSheet(button_style)
+        apply_decorative_action_icon(self.review_btn, "edit", scaler)
         self.review_btn.setDefault(False)
         self.review_btn.setAutoDefault(False)
         self.review_btn.clicked.connect(self._on_review)

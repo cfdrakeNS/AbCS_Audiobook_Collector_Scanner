@@ -1,6 +1,6 @@
 # Non-Modal Web Fetch Jobs — Version 3 Phase 5
 
-**Status:** Not started — next after Phases 1–4. Larger change; do not fold into selection or batch-summary polish.  
+**Status:** Skipped for version 3. Plan kept for later. Fetch progress stays a blocking dialog.  
 **Created:** September 2026  
 **Related:** [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md), [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 

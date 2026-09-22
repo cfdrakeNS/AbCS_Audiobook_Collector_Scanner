@@ -688,9 +688,11 @@ class MainWindow(QMainWindow):
         # Guard for selection indicator updates
         self._updating_selection_ui = False
 
-        # Track last focused book in table (for ESC from search to restore focus)
+        # Track last focused book in table (sort/filter restore and ESC from search)
         self._last_table_book_id = None
         self._last_table_column = 1
+        self._focus_restore_token = 0
+        self._restoring_table_focus = False
 
         # Status message clear timer
         self.status_clear_timer = QTimer()
@@ -1484,6 +1486,10 @@ class MainWindow(QMainWindow):
         website_action = QAction("&Website...", self)
         website_action.triggered.connect(self.on_open_website)
         help_menu.addAction(website_action)
+
+        self.check_updates_action = QAction("Check for &updates...", self)
+        self.check_updates_action.triggered.connect(self.on_check_for_updates)
+        help_menu.addAction(self.check_updates_action)
 
         help_menu.addSeparator()
 
@@ -2441,12 +2447,20 @@ class MainWindow(QMainWindow):
             or self.current_filter.date_added_since is not None
         )
 
-    def refresh_books(self):
-        """Refresh books table based on current filter."""
+    def refresh_books(self) -> bool:
+        """Refresh books table based on current filter.
+
+        Keeps the focused book as current when it is still in the list.
+        """
+        kept = False
+        focus_ctx = None
+        self._focus_restore_token += 1
+        restore_token = self._focus_restore_token
         # BLOCK ALL EVENTS - This is critical!
         self.table.blockSignals(True)
 
         try:
+            focus_ctx = self._capture_table_focus_context()
             # Get books from database
             self.books = self.book_queries.get_all(self.current_filter)
 
@@ -2462,10 +2476,8 @@ class MainWindow(QMainWindow):
             self.table.setUpdatesEnabled(False)
             self.table.setSortingEnabled(False)
 
-            focus_ctx = self._capture_table_focus_context()
             self._reapply_active_sort_to_books()
             self.book_model.set_books(self.books)
-            self._restore_table_focus_context(focus_ctx)
             self._sync_sort_header_from_active_state()
 
             # RE-ENABLE UPDATES
@@ -2485,6 +2497,15 @@ class MainWindow(QMainWindow):
             self.table.setSortingEnabled(False)
             # Allow Qt to process pending UI events.
             QApplication.instance().processEvents()
+            if focus_ctx is not None:
+                kept = self._restore_table_focus_context(focus_ctx)
+                QTimer.singleShot(
+                    0,
+                    lambda ctx=focus_ctx, token=restore_token: self._restore_table_focus_if_current(
+                        ctx, token
+                    ),
+                )
+        return kept
 
     # Event handlers
 
@@ -2580,10 +2601,19 @@ class MainWindow(QMainWindow):
         if not self.books:
             return
 
+        self._focus_restore_token += 1
+        restore_token = self._focus_restore_token
         focus_ctx = self._capture_table_focus_context()
         self._apply_in_memory_sort_to_books(column, order)
         self.book_model.set_books(self.books)
+        QApplication.instance().processEvents()
         self._restore_table_focus_context(focus_ctx)
+        QTimer.singleShot(
+            0,
+            lambda ctx=focus_ctx, token=restore_token: self._restore_table_focus_if_current(
+                ctx, token
+            ),
+        )
 
     def _qt_order_for_active_direction(self) -> Qt.SortOrder:
         if self._active_sort_direction == "Descending":
@@ -2887,7 +2917,7 @@ class MainWindow(QMainWindow):
             self.current_filter.search_field = selected_field
             self.current_filter.search_text = query
             self.current_filter.is_keyword_search = not exact_check.isChecked()
-            self.refresh_books()
+            kept = self.refresh_books()
 
             if not self.books:
                 message = f"No match found for {selected_field.lower()}: {query}"
@@ -2929,7 +2959,10 @@ class MainWindow(QMainWindow):
 
             found_book = self.books[0]
             dialog.accept()
-            self.focus_book_by_id(found_book.book_id, selected_column)
+            if kept:
+                self.focus_book_by_id(self._last_table_book_id, selected_column)
+            else:
+                self.focus_book_by_id(found_book.book_id, selected_column)
             self._sync_find_toolbar_toggle()
 
         text_edit.returnPressed.connect(run_find)
@@ -2950,35 +2983,47 @@ class MainWindow(QMainWindow):
         self._find_filter_widgets = set()
         self._sync_find_toolbar_toggle()
 
-    def focus_book_by_id(self, book_id: int, column: int = 1):
+    def focus_book_by_id(
+        self,
+        book_id: int | None,
+        column: int = 1,
+        *,
+        fallback: bool = True,
+        reason=Qt.OtherFocusReason,
+    ):
         """Find a book by ID and focus its cell in the table."""
         found = False
         target_row = 0
 
-        for row, book in enumerate(self.books):
-            if book.book_id == book_id:
-                target_row = row
-                found = True
-                break
+        if book_id is not None:
+            for row, book in enumerate(self.books):
+                if book.book_id == book_id:
+                    target_row = row
+                    found = True
+                    break
 
-        # Ensure valid column
         if column < 0 or column >= self.table.columnCount():
-            column = 1  # Default to Title column
+            column = 1
 
-        # If not found, just focus row 0
+        if not found and not fallback:
+            return False
+
+        if not self._restoring_table_focus:
+            self._focus_restore_token += 1
+
         if not found and len(self.books) > 0:
             target_row = 0
 
-        # Focus the cell (even if book not found, focus something)
         if self.table.rowCount() > 0:
-            self.table.clearSelection()
             index = self.table.model().index(target_row, column)
             self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
             self.table.setCurrentCell(target_row, column)
             self.table.setCurrentIndex(index)
+            self.table.setFocus(reason)
+            if 0 <= target_row < len(self.books):
+                self._last_table_book_id = self.books[target_row].book_id
+                self._last_table_column = column
 
-        # Always ensure table has focus for keyboard navigation
-        self.table.setFocus(Qt.TabFocusReason)
         return found
 
     def _capture_table_focus_context(
@@ -2991,41 +3036,70 @@ class MainWindow(QMainWindow):
             column = self.table.currentColumn()
 
         if column is None or column < 0:
-            column = 1
+            column = self._last_table_column if self._last_table_column >= 0 else 1
 
-        book_id = None
+        book_id = self._last_table_book_id
+        title = ""
         if row is not None and 0 <= row < len(self.books):
-            book_id = self.books[row].book_id
+            row_book = self.books[row]
+            if book_id is None or row_book.book_id == book_id:
+                book_id = row_book.book_id
+                title = row_book.title or ""
+        if book_id is not None and not title:
+            for book in self.books:
+                if book.book_id == book_id:
+                    title = book.title or ""
+                    break
 
         return {
             "row": row,
             "column": column,
             "book_id": book_id,
+            "title": title,
+            "selected_ids": set(self.selected_book_ids),
         }
 
-    def _restore_table_focus_context(self, focus_ctx: dict | None):
-        """Restore focus to the same book/cell when possible after refresh."""
+    def _restore_table_focus_if_current(self, focus_ctx: dict | None, token: int) -> bool:
+        if token != self._focus_restore_token:
+            return False
+        return self._restore_table_focus_context(focus_ctx)
+
+    def _restore_table_focus_context(self, focus_ctx: dict | None) -> bool:
+        """Restore focus to the same book when it is still in the list."""
         if not focus_ctx or self.table.rowCount() <= 0:
-            return
+            return False
 
         column = focus_ctx.get("column", 1)
         if column < 0 or column >= self.table.columnCount():
             column = 1
 
+        selected_ids = set(focus_ctx.get("selected_ids") or ())
+        remaining_selected = {
+            book.book_id for book in self.books if book.book_id in selected_ids
+        }
+
         book_id = focus_ctx.get("book_id")
-        if book_id is not None and self.focus_book_by_id(book_id, column):
-            return
+        kept = False
+        self._restoring_table_focus = True
+        try:
+            if book_id is not None:
+                kept = self.focus_book_by_id(
+                    book_id, column, fallback=False, reason=Qt.OtherFocusReason
+                )
 
-        row = focus_ctx.get("row", 0)
-        if row is None or row < 0:
-            row = 0
-        row = min(row, self.table.rowCount() - 1)
+            if not kept:
+                first_id = self.books[0].book_id if self.books else None
+                self.focus_book_by_id(
+                    first_id, column, fallback=True, reason=Qt.OtherFocusReason
+                )
+        finally:
+            self._restoring_table_focus = False
 
-        index = self.table.model().index(row, column)
-        self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
-        self.table.setCurrentCell(row, column)
-        self.table.setCurrentIndex(index)
-        self.table.setFocus(Qt.TabFocusReason)
+        if selected_ids:
+            self.selected_book_ids = remaining_selected
+            self._apply_row_selection_by_book_ids(remaining_selected)
+            self.update_selection_ui()
+        return kept
 
     def on_book_double_click(self, row: int, column: int):
         """Handle double-click on book."""
@@ -4446,23 +4520,66 @@ class MainWindow(QMainWindow):
 
     def on_open_website(self):
         """Open the AbCS product page in the default browser."""
-        from PySide6.QtCore import QUrl
-        from PySide6.QtGui import QDesktopServices
+        from src.app_urls import ABCS_UPDATE_DOWNLOAD_URL, open_public_url
 
-        from src.app_urls import ABCS_WEBSITE_URL
-
-        if QDesktopServices.openUrl(QUrl(ABCS_WEBSITE_URL)):
+        if open_public_url(ABCS_UPDATE_DOWNLOAD_URL):
             self.set_status(
-                f"Opened AbCS website in your browser: {ABCS_WEBSITE_URL}",
+                f"Opened AbCS test site in your browser: {ABCS_UPDATE_DOWNLOAD_URL}",
                 timeout_ms=5000,
                 announce=True,
             )
         else:
             self.set_status(
-                f"Could not open browser. Visit {ABCS_WEBSITE_URL}",
+                f"Could not open browser. Visit {ABCS_UPDATE_DOWNLOAD_URL}",
                 timeout_ms=0,
                 announce=True,
             )
+
+    def on_check_for_updates(self):
+        """Compare this build with the latest GitHub release. Download page is the website."""
+        thread = getattr(self, "_update_check_thread", None)
+        if thread is not None and thread.isRunning():
+            self.set_status("Checking for updates.", announce=True)
+            return
+
+        from PySide6.QtCore import QThread
+
+        from src.ui.update_check_dialog import UpdateCheckWorker
+
+        self.check_updates_action.setEnabled(False)
+        self.set_status("Checking for updates.", announce=True)
+        self._update_check_thread = QThread(self)
+        self._update_check_worker = UpdateCheckWorker()
+        self._update_check_worker.moveToThread(self._update_check_thread)
+        self._update_check_thread.started.connect(self._update_check_worker.run)
+        self._update_check_worker.finished.connect(self._on_update_check_finished)
+        self._update_check_thread.finished.connect(self._update_check_worker.deleteLater)
+        self._update_check_thread.start()
+
+    def _on_update_check_finished(self, result) -> None:
+        from src.app_urls import ABCS_UPDATE_DOWNLOAD_URL
+        from src.core.update_check import result_message
+        from src.ui.update_check_dialog import UpdateCheckDialog
+
+        self.check_updates_action.setEnabled(True)
+        thread = getattr(self, "_update_check_thread", None)
+        if thread is not None:
+            thread.quit()
+        message = result_message(result)
+        dialog = UpdateCheckDialog(result, self.scaler, self)
+        choice = dialog.exec()
+        if choice == UpdateCheckDialog.OPEN_PAGE:
+            if dialog.browser_opened:
+                message = (
+                    f"{message} Opened the AbCS test site: {ABCS_UPDATE_DOWNLOAD_URL}"
+                )
+            else:
+                message = (
+                    f"{message} Could not open the browser. "
+                    f"Visit {ABCS_UPDATE_DOWNLOAD_URL}."
+                )
+        self.set_status(message, announce=True)
+        self.restore_main_focus_after_modal()
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for screen reader accessibility."""

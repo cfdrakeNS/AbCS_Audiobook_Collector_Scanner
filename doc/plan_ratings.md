@@ -1,6 +1,6 @@
 # Ratings — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned — Version 3 Phase 11 (needs Phase 9 schema)  
 **Created:** June 2026  
 **Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Import explained](help_docs/19_import_explained.md), [Plan_covers.md](Plan_covers.md)
 
