@@ -1,6 +1,6 @@
 # Want to Read — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Deferred after version 3 — **out of scope for v3**. Phase 9 does not add `want_to_read`.  
 **Created:** June 2026  
 **Related:** [Collections](help_docs/06_collections.md), [Book Details](help_docs/04_book_details.md), [Reading History](help_docs/13_reading_history.md)
 

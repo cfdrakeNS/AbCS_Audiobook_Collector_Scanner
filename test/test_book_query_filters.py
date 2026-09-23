@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 
 from src.database.connection import DatabaseManager
 from src.database.models import Book, SearchFilter, book_has_plot, PLOT_MIN_LENGTH
-from src.database.queries import AuthorQueries, BookQueries
+from src.database.queries import AuthorQueries, BookQueries, SeriesQueries
 from src.ui.main_window import BookTableModel
 
 
@@ -125,3 +125,34 @@ def test_date_added_filter_inactive_when_not_set(temp_db):
     titles = {book.title for book in books if book.title == title}
 
     assert titles == {title}
+
+
+def test_series_sort_is_name_then_number_with_blanks_last(temp_db):
+    authors = AuthorQueries(temp_db)
+    series = SeriesQueries(temp_db)
+    books = BookQueries(temp_db)
+    author_id = authors.insert("Series Sort Author")
+    series_id = series.insert("Prey")
+    other_id = series.insert("Alpha")
+    books.insert(
+        Book(title="No Number", author_id=author_id, series_id=series_id, series_number=None)
+    )
+    books.insert(
+        Book(title="Book Two", author_id=author_id, series_id=series_id, series_number=2)
+    )
+    books.insert(
+        Book(title="Book Six", author_id=author_id, series_id=series_id, series_number=6.5)
+    )
+    books.insert(
+        Book(title="Book Ten", author_id=author_id, series_id=series_id, series_number=10)
+    )
+    books.insert(
+        Book(title="Earlier Series", author_id=author_id, series_id=other_id, series_number=9)
+    )
+
+    ordered = [
+        book.title
+        for book in books.get_all(SearchFilter(order_by="Series"))
+        if book.author_id == author_id
+    ]
+    assert ordered == ["Earlier Series", "Book Two", "Book Six", "Book Ten", "No Number"]

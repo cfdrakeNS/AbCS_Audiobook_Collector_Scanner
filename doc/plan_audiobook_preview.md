@@ -1,17 +1,15 @@
-# Open Audiobook Location — Future Improvement Plan
+# Preview Audiobook — Version 3 Phase 12 / C03
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned — Version 3 Phase 12  
 **Created:** June 2026  
-**Revised:** June 2026 — simplified to open-folder only (no play-first-track in v1)  
-**Related:** [Book Details](help_docs/04_book_details.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)
+**Revised:** September 2026 — Preview via OS default media player (not open-folder-only)  
+**Related:** [Book Details](help_docs/04_book_details.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)
 
 ---
 
 ## What this is
 
-Let users **open the folder (or file location)** for an audiobook from Book Details so they can play files in their own player or file manager. v1 is **open location only** — not in-app playback and not “play first track.”
-
-AbCS stays a **collection manager** ([`README.md`](../README.md)); the user’s OS player and file manager handle listening.
+Let the user **preview** an audiobook by launching it in the **default OS media player** for that file format (file association). Not an in-app player. AbCS stays a collection manager ([`README.md`](../README.md)).
 
 ---
 
@@ -20,53 +18,45 @@ AbCS stays a **collection manager** ([`README.md`](../README.md)); the user’s 
 | Today | Gap |
 |-------|-----|
 | `books.path` stored in DB | User must copy path or navigate manually |
-| Book Details path field | Editable `QLineEdit` only — no quick way to open the location |
-| Multi-track books | `path` is often a folder; user needs to see all files |
+| Book Details path field | Editable `QLineEdit` only — no quick Preview |
+| Multi-track books | Import stores `path` as the book **folder** (`import_window` uses `data.get("folder")`), not a single file |
 
 ---
 
-## Design decisions (v1)
+## Design decisions (v3)
 
-| Approach | v1 | Rationale |
+| Approach | v3 | Rationale |
 |----------|-----|-----------|
-| **Open location** (folder or file in Explorer/Finder) | **Yes** | Works for single-file and multi-track books; low risk |
-| Play first file in OS default player | **No** | Weak for multi-chapter books (wrong track, sort issues); blurs “manager vs player” |
-| Double-click on path field | **No** | Path is an editable line edit; poor for keyboard/screen reader users |
-| Embedded Qt player | **No** | Large scope; defer to v2 only if requested |
+| **Preview** in OS default player | **Yes** | Matches “play in your player”; no embedded Qt player |
+| Open folder in file manager only | Deferred / optional helper | User asked for Preview play, not Explorer reveal |
+| Double-click on path field | **No** | Poor for keyboard/screen reader users |
+| Embedded `QMediaPlayer` | **No** | Out of project scope |
 
-### Why not “play track 1”?
+### Launch behavior
 
-- Filename sort may not match listening order.
-- User still needs their player for the rest of the book.
-- **Opening the folder** lets them pick the right file in a player they already use.
-
-### Why not double-click path?
-
-- `path_edit` is for viewing/editing text; double-click selects a word.
-- AbCS is keyboard-first; use a **labeled button + Alt+shortcut** instead.
-
----
-
-## Open location behavior
-
-New helper [`src/core/audio_launcher.py`](../src/core/audio_launcher.py) (name may stay generic for future use):
+New helper (e.g. [`src/core/audio_launcher.py`](../src/core/audio_launcher.py)):
 
 | `books.path` | Action |
 |--------------|--------|
-| **Folder** (exists) | Open folder in OS file manager |
-| **Single file** (exists) | Open **parent folder** with file highlighted when the OS supports it |
-| Missing / empty | Disabled button; clear message on activate attempt |
+| **Single audio file** (exists, supported extension) | Open with OS default association (`os.startfile` / `open` / `xdg-open`) |
+| **Folder** (exists) | Resolve one playable file inside (see multi-file rule below), then open that file |
+| Missing / empty / no playable file | Disable Preview; announce clear error on activate |
 
-### Platform notes
+Supported audio extensions: [`TagReader.SUPPORTED_EXTENSIONS`](../src/core/tag_reader.py) — `.mp3`, `.m4a`, `.m4b`, `.flac`, `.ogg`, `.oga`, `.wma`, `.wav`, `.aac`, `.opus`.
 
-| OS | Folder | Single file |
-|----|--------|-------------|
-| Windows | `os.startfile(folder)` | `explorer /select,"{path}"` |
-| macOS | `open folder` | `open -R file` (reveal in Finder) |
-| Linux | `xdg-open` on parent or folder | `xdg-open` parent dir (highlight varies by file manager) |
+### Multi-file rule (explicit)
 
-- Reuse [`TagReader.SUPPORTED_EXTENSIONS`](../src/core/tag_reader.py) only if needed to validate “path looks like audio” — optional for v1.
-- Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
+When `path` is a directory (typical multi-track import):
+
+1. Scan immediate children (and, if none, one level of subfolders if that matches how scans group books — document the chosen depth in implementation).
+2. Keep files whose extension is in `SUPPORTED_EXTENSIONS`.
+3. Sort by file name (case-insensitive) and launch the **first** file.
+
+Announce that Preview started that file (filename in status). Do **not** build a playlist or queue tracks.
+
+**Plan issue:** Filename sort may not match listening order; chapter 10 can sort before chapter 2. Acceptable for v3 Preview; document in help.
+
+Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
 
 ---
 
@@ -74,29 +64,27 @@ New helper [`src/core/audio_launcher.py`](../src/core/audio_launcher.py) (name m
 
 ### Book Details — [`src/ui/book_details.py`](../src/ui/book_details.py)
 
-Add one button on the **Path** row (next to `path_edit`):
+Book Details has **no menu bar**. Add a **Preview** button near the Path row / footer action buttons (same styled `QPushButton` pattern as Fetch Web Info).
 
-| Control | Shortcut | Action |
-|---------|----------|--------|
-| **Open location** | Alt+Shift+H | Open folder or reveal file per table above |
+| Control | Suggested shortcut | Action |
+|---------|-------------------|--------|
+| **Preview** | Alt+Shift+P | Launch default player for resolved file |
 
-- `setAccessibleName("Open audiobook location")`
-- `setAccessibleDescription("Open the folder for this book in the file manager - Alt+Shift+H")`
-- Disabled when path empty or path does not exist; description explains why when disabled.
+Alt+P is already Plot on Book Details (`BOOK_DETAILS_SHORTCUTS`). Do not reuse it.
 
-**Do not** add double-click handler on `path_edit`.
+- `setAccessibleName("Preview audiobook")`
+- `setAccessibleDescription("Play this book in your default media player - Alt+Shift+P")`
+- Disabled when path empty, missing, or no playable file; description explains why when disabled.
 
-Wire into:
+Wire into `ALLOWED_ALT_KEYS` / shortcut maps and [`shortcuts.py`](../src/accessibility/shortcuts.py) `BOOK_DETAILS_SHORTCUTS`.
 
-- `ALLOWED_ALT_KEYS` — register Alt+Shift+H (Path focus remains **Alt+H** per [`shortcuts.py`](../src/accessibility/shortcuts.py))
-- [`shortcuts.py`](../src/accessibility/shortcuts.py) `BOOK_DETAILS_SHORTCUTS` — document Open location
-- Path row horizontal layout: `[path_edit] [Open location] [added date fields…]`
+### Main window — Edit menu — [`src/ui/main_window.py`](../src/ui/main_window.py)
 
-### Main window — not in v1
+Edit menu today: Delete, Update, Fetch Web Info. Add **Preview** next to Fetch Web Info (same book-action group). Enables when one focused/selected book has a resolvable path. Does not require Book Details to be open.
 
-No toolbar/footer Play or Open buttons until users ask. Book Details is enough for version 3.
+No separate Book Details menu — that window has none.
 
-### Import Detail — not in v1
+### Import Detail — not in v3
 
 Path may not be final until import completes.
 
@@ -104,9 +92,10 @@ Path may not be final until import completes.
 
 ## Accessibility checklist
 
-- [ ] Open location: accessible name, description, shortcut in description
+- [ ] Preview button: accessible name, description, shortcut in description
+- [ ] Edit → Preview: menu text only (no `setAccessibleName` on `QAction`)
 - [ ] `set_status(..., announce=True)` on success and failure
-- [ ] Do not auto-open on window load
+- [ ] Do not auto-play on window load
 - [ ] Disabled state: accessible description states missing/invalid path
 - [ ] No reliance on double-click or mouse-only gestures
 
@@ -114,8 +103,8 @@ Path may not be final until import completes.
 
 ## Help
 
-- Update [`help_docs/04_book_details.md`](../help_docs/04_book_details.md) — Open location button, Alt+Shift+H, folder vs single-file behavior.
-- No separate help topic required unless Shift+F1 routing is desired later.
+- Update [`help_docs/04_book_details.md`](../help_docs/04_book_details.md) — Preview button, shortcut, OS player, multi-file first-file rule.
+- Update main-window shortcuts help for Edit → Preview.
 
 ---
 
@@ -123,9 +112,10 @@ Path may not be final until import completes.
 
 | Test | File |
 |------|------|
-| Resolve folder vs file paths | `test/test_audio_launcher.py` |
+| Resolve file vs folder → first audio file | `test/test_audio_launcher.py` |
 | Missing path returns error | same |
-| Open location disabled when path empty | book details UI test (mock launcher) |
+| Preview disabled when path empty | book details UI test (mock launcher) |
+| Edit menu Preview enabled/disabled with selection | main window menu test |
 
 Mock `os.startfile` / `subprocess.run` — do not launch real apps in CI.
 
@@ -135,42 +125,31 @@ Mock `os.startfile` / `subprocess.run` — do not launch real apps in CI.
 
 | Phase | Work | Estimate |
 |-------|------|----------|
-| 1 | `audio_launcher.py` (open location only) + tests | 0.5 day |
-| 2 | Book Details button + shortcut + status | 0.5 day |
+| 1 | `audio_launcher.py` (resolve + open) + tests | 0.5–1 day |
+| 2 | Book Details Preview button + main Edit menu | 0.5 day |
 | 3 | Help doc update | 0.25 day |
 
-**Total v1:** ~1 day
+**Total:** ~1–2 days
 
 ---
 
-## Out of scope (v1)
+## Out of scope (v3)
 
-- Play / open in default audio app (including first track only)
-- Double-click path to open
-- Main window Open location
-- Import Detail
-- Embedded `QMediaPlayer`
-- M3U playlist export
-
----
-
-## Future (v2) — only if users request
-
-| Feature | Notes |
-|---------|--------|
-| **Play** single-file books only | Button when `path` is one audio file, not a directory |
-| Embedded player | Separate plan; 2+ weeks |
-| Open location from main window | One selected book |
+- In-app / embedded player
+- Playlist / play all tracks
+- Open location in file manager (possible later helper; not this phase’s primary action)
+- Import Detail Preview
+- Double-click path to play
 
 ---
 
 ## Relation to other plans
 
-- **Rescan / library folders** ([`plan_rescan_and_library_folders.md`](plan_rescan_and_library_folders.md)): path updates keep Open location correct.
-- **Ratings / covers**: independent.
+- **Collection root / rescan** ([`plan_rescan_and_library_folders.md`](plan_rescan_and_library_folders.md)): path updates keep Preview correct; changing root alone does not rewrite `books.path`.
+- **Ratings / covers**: independent; out of scope for v3 UI.
 
 ---
 
 ## Next steps
 
-Review for version 3. Small, self-contained feature (~1 day) — can ship anytime.
+Implement as v3 Phase 12 per [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md).

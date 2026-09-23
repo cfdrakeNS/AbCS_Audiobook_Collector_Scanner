@@ -148,7 +148,10 @@ class BookQueries:
         elif filter_criteria.order_by == "Genre":
             query += " ORDER BY g.name IS NULL, g.name, b.title"
         elif filter_criteria.order_by == "Series":
-            query += " ORDER BY s.name IS NULL, s.name, b.year, b.title"
+            query += (
+                " ORDER BY s.name IS NULL, s.name,"
+                " b.series_number IS NULL, b.series_number, b.title"
+            )
         elif filter_criteria.order_by == "Read Date":
             query += " ORDER BY b.read_date IS NULL, b.read_date, b.title"
         else:  # Title
@@ -183,8 +186,9 @@ class BookQueries:
             INSERT INTO books(
                 title, author_id, year, series_id, genre_id, collection_id,
                 reader, time_hours, time_minutes, tracks, size_mb, bitrate,
-                file_format, path, comments, read_date, date_added, source
-            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                file_format, path, comments, read_date, date_added, source,
+                series_number
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
     def _book_insert_params(self, book: Book) -> tuple:
@@ -208,6 +212,7 @@ class BookQueries:
             self._serialize_read_date(book.read_date),
             self._serialize_date_added(book.date_added),
             book.source,
+            book.series_number,
         )
 
     def insert(self, book: Book, commit: bool = True) -> int:
@@ -236,7 +241,8 @@ class BookQueries:
                 genre_id = ?, collection_id = ?, reader = ?,
                 time_hours = ?, time_minutes = ?, tracks = ?,
                 size_mb = ?, bitrate = ?, file_format = ?,
-                path = ?, comments = ?, read_date = ?, source = ?
+                path = ?, comments = ?, read_date = ?, source = ?,
+                series_number = ?
             WHERE book_id = ?
         """
         params = (
@@ -257,6 +263,7 @@ class BookQueries:
             book.comments,
             read_date_value,
             book.source,
+            book.series_number,
             book.book_id,
         )
         self.db.execute(query, params)
@@ -403,6 +410,7 @@ class BookQueries:
             author_id=row_dict.get("author_id"),
             author_name=row_dict.get("author_name", ""),
             series_id=row_dict.get("series_id"),
+            series_number=row_dict.get("series_number"),
             series_name=row_dict.get("series_name", ""),
             genre_id=row_dict.get("genre_id"),
             genre_name=row_dict.get("genre_name", ""),
@@ -421,7 +429,6 @@ class BookQueries:
             read_date=read_date_obj,
             date_added=date_added_obj,
             source=row_dict.get("source", ""),
-            # rating and series_number removed
         )
 
     @staticmethod

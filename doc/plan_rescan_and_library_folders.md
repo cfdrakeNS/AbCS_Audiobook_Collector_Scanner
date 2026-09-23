@@ -1,8 +1,9 @@
-# Rescan / Update Metadata and Collection Library Folders — Future Improvement Plan
+# Rescan / Update Metadata and Collection Library Folders — Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Part A in Version 3 (Phase 11). Parts B and C deferred after v3.  
 **Created:** June 2026  
-**Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/05_collections.md), [Preferences](help_docs/10_preferences.md), [Plan_name_consistency_check.md](Plan_name_consistency_check.md)
+**Updated:** September 2026 — Part A promoted to v3; warn on missing/empty root  
+**Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/05_collections.md), [Preferences](help_docs/10_preferences.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_schema_batch.md](plan_schema_batch.md), [Plan_name_consistency_check.md](Plan_name_consistency_check.md)
 
 ---
 
@@ -15,15 +16,15 @@ This document covers:
 
 They belong together because a **collection `root_path`** is the natural anchor for “rescan this collection’s tree” without browsing every time. File **move/organize** is a separate phase with higher risk; it is not required for rescan to ship.
 
-**Open audiobook location** (file manager) is a separate plan: [`plan_audiobook_preview.md`](plan_audiobook_preview.md).
+**Preview audiobook** (OS default player) is a separate plan: [`plan_audiobook_preview.md`](plan_audiobook_preview.md).
 
 ---
 
 ## What this is
 
-### Part A — Collection root path (foundation)
+### Part A — Collection root path (foundation) — **v3 Phase 11**
 
-Each collection may have an optional **library root folder** on disk. Import and rescan default to that folder when the collection is selected. No files are moved in Part A.
+Each collection may have an optional **library root folder** on disk (example: `F:\audiobook`). The user can set and **change** that path. Import (and later rescan) may default to that folder when the collection is selected. No files are moved in Part A; `books.path` values stay absolute paths from import time and are **not** rewritten when `root_path` changes.
 
 ### Part B — Rescan / update from folder
 
@@ -47,56 +48,67 @@ Wizard to **copy or move** audiobook folders/files into a layout under the colle
 
 ---
 
-## Part A — Collection root path
+## Part A — Collection root path (v3)
 
 ### Schema
 
-Add to `collections` in [`connection.py`](src/database/connection.py) `column_specs`:
+Column added in Phase 11 (this feature), on first start for existing DBs, using the same upgrade path as [plan_schema_batch.md](plan_schema_batch.md). Not part of the Phase 9 series-number upgrade:
 
-```text
-root_path  TEXT
-```
+`root_path TEXT` on `collections`.
 
-Update [`models.py`](src/database/models.py) `Collection`:
+Update [`models.py`](../src/database/models.py) `Collection` with `root_path: str = ""`, [`CollectionQueries`](../src/database/queries.py), and [`test/fixtures/abcdDB_def.sql`](../test/fixtures/abcdDB_def.sql).
 
-```python
-root_path: str = ""
-```
-
-Update [`CollectionQueries`](src/database/queries.py): `insert`, `update`, `get_by_id`, list queries.
-
-Update [`test/fixtures/abcdDB_def.sql`](test/fixtures/abcdDB_def.sql).
+Today collections store only `name` and `active` ([`collection_window.py`](../src/ui/collection_window.py) / `Collection` model). Book file locations live on each book as absolute `books.path` (import sets path from the scanned book **folder**).
 
 ### UI — Collections manager
 
-[`src/ui/name_list_window.py`](src/ui/name_list_window.py) (collection mode) and/or [`collection_window.py`](src/ui/collection_window.py):
+Primary surface: [`src/ui/collection_window.py`](../src/ui/collection_window.py) (Manage → Collections).
 
-- Add **Library root folder** row: `QLineEdit` + **Browse** (Alt+B pattern from preferences).
+- Add **Library root folder** row: `QLineEdit` + **Browse** (Alt+B pattern from Preferences import directory).
 - `setAccessibleName("Collection library root folder")`
-- `setAccessibleDescription("Optional folder on disk where this collection's audiobooks live. Used as default for import and rescan.")`
-- Save to `collections.root_path` on add/rename flows.
+- `setAccessibleDescription("Optional folder on disk where this collection's audiobooks live. Used as default for import.")`
+- User may change the path later; save to `collections.root_path` on save flows.
+- Allow clearing the root (empty string).
+
+### Warn when selecting a folder
+
+When the user browses or commits a root folder (Collection Manager Browse, and Import folder pick when validating a collection root):
+
+1. **Folder does not exist** — warn (styled message + status announce). Do not silently save a dead path without confirmation; prefer requiring the user to confirm keep-anyway or cancel.
+2. **Folder exists but contains no audiobooks** — warn. “Contains audiobooks” means at least one file under the folder (recursive scan, same idea as import) whose extension is in [`TagReader.SUPPORTED_EXTENSIONS`](../src/core/tag_reader.py): `.mp3`, `.m4a`, `.m4b`, `.flac`, `.ogg`, `.oga`, `.wma`, `.wav`, `.aac`, `.opus`.
+
+Empty nested author/title trees with no audio files still warn. Metadata-only folders with no supported audio warn. User may still keep the path after confirming (drive not mounted yet, etc.).
 
 ### UI — Import window
 
-[`src/ui/import_window.py`](src/ui/import_window.py):
+[`src/ui/import_window.py`](../src/ui/import_window.py):
 
 - When user selects target collection, if `collection.root_path` is set and folder exists, pre-fill `folder_edit` (user can override).
 - Status: `Default folder from collection: {name}`
+- If `root_path` is set but missing on disk, do not pre-fill; announce that the collection root is missing.
 
 ### UI — Preferences
 
 Keep global **default import directory** as fallback when collection has no `root_path`. Document hierarchy in help:
 
-1. User-selected folder in Import/Rescan window  
+1. User-selected folder in Import window  
 2. Collection `root_path`  
 3. Preferences `import/default_directory`
 
 ### Tests
 
-- Collection CRUD with `root_path`
-- Import pre-fill when collection has root
+- Collection CRUD with `root_path` (set, change, clear)
+- Warn when path missing
+- Warn when path has no supported audio files
+- Import pre-fill when collection has existing root
 
-**Estimate:** 2–3 days
+**Estimate:** 2–3 days. This phase adds `root_path`. It does not wait on the Phase 9 series-number column.
+
+### Out of scope for Part A / v3
+
+- Rewriting `books.path` when root changes (that is Part C)
+- Rescan (Part B)
+- Organize/move files (Part C)
 
 ---
 

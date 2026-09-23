@@ -134,7 +134,8 @@ class PreferencesWindow(AccessibleDialog):
         ),
         "series_from_filename": (
             "Parses first parenthesized block in file name as series. "
-            "If that block ends in a number, title gets suffix: - NN."
+            "If that block ends in a number, such as 04 or 6.5, the title gets "
+            "suffix - NN and Series # is stored."
         ),
         "single_item": (
             "Import one author folder, one series/book folder, or one file. "

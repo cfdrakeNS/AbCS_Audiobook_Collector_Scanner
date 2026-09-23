@@ -1,8 +1,9 @@
 # Ratings — Future Improvement Plan
 
-**Status:** Planned — Version 3 Phase 11 (needs Phase 9 schema)  
+**Status:** Deferred after version 3 — **out of scope for v3**. Phase 9 does not add rating columns.  
 **Created:** June 2026  
-**Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Import explained](help_docs/19_import_explained.md), [Plan_covers.md](Plan_covers.md)
+**Updated:** September 2026  
+**Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Import explained](help_docs/19_import_explained.md), [Plan_covers.md](Plan_covers.md), [plan_schema_batch.md](plan_schema_batch.md)
 
 ---
 
@@ -222,4 +223,4 @@ Mirror Book Details rating row.
 
 ## Next steps
 
-Review for version 3. Implement phases 1–6. Then [`Plan_covers.md`](Plan_covers.md) if approved.
+Deferred after version 3. Schema columns may ship in C01; implement UI phases 1–6 in a later release. Then [`Plan_covers.md`](Plan_covers.md) if approved.

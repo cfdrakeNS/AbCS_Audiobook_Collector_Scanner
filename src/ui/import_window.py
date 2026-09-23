@@ -428,11 +428,14 @@ class ImportWindow(AccessibleDialog):
         if series_text:
             series_id = self._cached_series_id(series_text, defer_commits=defer_commits)
 
+        from src.utils.text_utils import series_number_for_storage
+
         return Book(
             title=title,
             author_id=author_id,
             year=self._normalize_year(data.get("year")),
             series_id=series_id,
+            series_number=series_number_for_storage(data.get("series_number")),
             genre_id=genre_id,
             collection_id=target_collection_id,
             reader=reader_text,

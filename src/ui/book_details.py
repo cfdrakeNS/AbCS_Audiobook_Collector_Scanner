@@ -22,6 +22,7 @@ from src.accessibility.style_helpers import (
     build_accessible_message_box_style,
     build_card_panel_style,
     build_modern_button_style,
+    FullDayNumberCalendar,
     exec_styled_message_box,
     MESSAGE_BOX_DELETE_CONFIRM_ICONS,
     MESSAGE_BOX_UNSAVED_THREE_ICONS,
@@ -65,8 +66,14 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject
-from PySide6.QtGui import QAccessible, QTextCursor, QShortcut, QKeySequence
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression
+from PySide6.QtGui import (
+    QAccessible,
+    QTextCursor,
+    QShortcut,
+    QKeySequence,
+    QRegularExpressionValidator,
+)
 from datetime import datetime
 from typing import List, Dict, Any
 from src.ui.accessible_dialog import AccessibleDialog
@@ -830,9 +837,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.read_date.setMaximumWidth(150)
         self.read_date.setDate(self._null_read_date)
 
-        from PySide6.QtWidgets import QCalendarWidget
-
-        class CustomCalendar(QCalendarWidget):
+        class CustomCalendar(FullDayNumberCalendar):
             def __init__(self, parent, date_edit, null_date):
                 super().__init__(parent)
                 self.date_edit = date_edit
@@ -902,8 +907,27 @@ class BookDetailsWindow(AccessibleDialog):
             self.series_label_display, self.series_combo
         )
         series_label.setBuddy(self.series_label_display)
+        series_number_label = QLabel("Series #:")
+        self.series_number_edit = QLineEdit()
+        self.series_number_edit.setMaxLength(9)
+        self.series_number_edit.setValidator(
+            QRegularExpressionValidator(QRegularExpression(r"[0-9]{0,4}(\.[0-9]{0,4})?"))
+        )
+        self.series_number_edit.setAccessibleName("Series number")
+        self.series_number_edit.setAccessibleDescription(
+            "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+I then Tab"
+        )
+        self.series_number_edit.setMaximumWidth(110)
+        series_number_label.setBuddy(self.series_number_edit)
+        series_row = QHBoxLayout()
+        series_row.setContentsMargins(0, 0, 0, 0)
+        series_row.addWidget(self.series_field_stack, 1)
+        series_row.addWidget(series_number_label)
+        series_row.addWidget(self.series_number_edit)
+        series_row_widget = QWidget()
+        series_row_widget.setLayout(series_row)
         grid.addWidget(series_label, ROW_SERIES, 0, label_align)
-        grid.addWidget(self.series_field_stack, ROW_SERIES, 1)
+        grid.addWidget(series_row_widget, ROW_SERIES, 1)
 
         # Genre — view label and combo share the same grid cell
         genre_label = QLabel("Genre:")
@@ -1125,7 +1149,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.setTabOrder(self.reader_edit, self.read_date)
         self.setTabOrder(self.read_date, self.series_label_display)
         self.setTabOrder(self.series_label_display, self.series_combo)
-        self.setTabOrder(self.series_combo, self.genre_label_display)
+        self.setTabOrder(self.series_combo, self.series_number_edit)
+        self.setTabOrder(self.series_number_edit, self.genre_label_display)
         self.setTabOrder(self.genre_label_display, self.genre_combo)
         self.setTabOrder(self.genre_combo, self.collection_label_display)
         self.setTabOrder(self.collection_label_display, self.collection_combo)
@@ -1188,6 +1213,10 @@ class BookDetailsWindow(AccessibleDialog):
                 self.series_label_display: (
                     "Series name",
                     "Series name - press Alt+I to focus, Alt+U to edit",
+                ),
+                self.series_number_edit: (
+                    "Series number",
+                    "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+I then Tab",
                 ),
                 self.genre_combo: (
                     "Genre",
@@ -1423,6 +1452,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.author_combo: "Author",
             self.year_spin: "Year",
             self.series_combo: "Series",
+            self.series_number_edit: "Series number",
             self.genre_combo: "Genre",
             self.collection_combo: "Collection",
             self.reader_edit: "Reader",
@@ -1485,6 +1515,9 @@ class BookDetailsWindow(AccessibleDialog):
 
         # Spinbox and date
         self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
+        self.series_number_edit.textChanged.connect(
+            lambda: self._mark_dirty(self.series_number_edit)
+        )
         self.read_date.dateChanged.connect(lambda: self._mark_dirty(self.read_date))
 
     def _mark_dirty(self, widget=None):
@@ -1664,6 +1697,46 @@ class BookDetailsWindow(AccessibleDialog):
         self.collection_combo.setMaxVisibleItems(20)
         self.collection_combo.blockSignals(False)
 
+    def _set_series_number_field(self, value) -> None:
+        """Show a stored series number, or leave the text box blank."""
+        from src.utils.text_utils import series_number_for_storage, series_number_key
+
+        number = series_number_for_storage(value)
+        if number:
+            self.series_number_edit.setText(series_number_key(number))
+        else:
+            self.series_number_edit.clear()
+
+    def _series_number_from_field(self) -> int | float | None:
+        """Number typed in Series number, or None when blank or zero."""
+        from src.utils.text_utils import series_number_for_storage
+
+        number = series_number_for_storage(self.series_number_edit.text().strip())
+        if not number:
+            return None
+        return number
+
+    def _store_blank_series_number_from_title(self) -> None:
+        """Save a series number from the title when Series # is blank.
+
+        The title is left as it is. No status message. The form stays clean.
+        A stored series number is left as it is.
+        """
+        from src.utils.text_utils import series_number_for_storage, split_series_number
+
+        if self.is_new or not self.book or not self.book.book_id:
+            return
+        if series_number_for_storage(self.book.series_number):
+            return
+        _clean, existing = split_series_number(self.book.title or "")
+        number = series_number_for_storage(existing)
+        if not number:
+            return
+        self.book.series_number = number
+        self.book_queries.update(self.book)
+        self._data_was_changed = True
+        self._set_series_number_field(number)
+
     def load_book_data(self):
         """Load book data into form, suppressing dirty tracking."""
         self._loading_fields = True
@@ -1677,6 +1750,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.year_spin.setValue(self.year_spin.minimum())
             # View mode: set label text instead of loading combos
             self.series_label_display.setText(self.book.series_name or "")
+            self._store_blank_series_number_from_title()
+            self._set_series_number_field(self.book.series_number)
             self.genre_label_display.setText(self.book.genre_name or "")
             self.reader_edit.setText(self.book.reader or "")
             if self.is_new:
@@ -1897,9 +1972,12 @@ class BookDetailsWindow(AccessibleDialog):
 
         year_value = self.year_spin.value()
         year_value = None if year_value == self.year_spin.minimum() else year_value
+        series_number = self._series_number_from_field()
+        self._set_series_number_field(series_number)
 
         # Removed legacy normalization methods (_to_proper_case, _is_proper_case_enabled, _normalize_name_field)
         self.book.year = year_value
+        self.book.series_number = series_number
         self.book.title = book_dict["title"]
         self.book.author_name = book_dict["author"]
         self.book.author_id = author_id
@@ -2221,6 +2299,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.plot_stack.setFocusProxy(self.comments_edit)
         # Year
         self.year_spin.setReadOnly(read_only)
+        self.series_number_edit.setReadOnly(read_only)
         # Time
         self.time_edit.setReadOnly(read_only)
         # Reader
@@ -2297,6 +2376,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.author_combo.setCurrentIndex(-1)
             self.author_combo.clearEditText()
             self.year_spin.setValue(self.year_spin.minimum())
+            self.series_number_edit.clear()
             self.series_combo.setCurrentIndex(-1)
             self.series_combo.clearEditText()
             self.genre_combo.setCurrentIndex(-1)

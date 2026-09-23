@@ -82,6 +82,7 @@ from src.accessibility.style_helpers import (
     apply_status_bar_tooltip,
     apply_tooltip_accessibility,
     apply_visual_tooltip_map,
+    FullDayNumberCalendar,
     exec_styled_message_box,
     MESSAGE_BOX_DELETE_CONFIRM_ICONS,
     build_accessible_button_style,
@@ -398,6 +399,7 @@ class MainWindow(QMainWindow):
         date_field.setFont(font)
 
         layout.addWidget(date_field)
+        date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
         date_field.setFocus()
         dlg.date_field = date_field
 
@@ -529,7 +531,7 @@ class MainWindow(QMainWindow):
         if key == "Author":
             return "Author, Year, Title"
         if key == "Series":
-            return "Series, Year, Title"
+            return "Series, Series number, Title"
         if key == "Genre":
             return "Genre, Title"
         return key or "Title"
@@ -2705,6 +2707,7 @@ class MainWindow(QMainWindow):
         date_field.setFont(font)
 
         date_row.addWidget(date_label)
+        date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
         date_row.addWidget(date_field, 1)
         layout.addLayout(date_row)
 

@@ -9,7 +9,7 @@ import pytest
 
 pd = pytest.importorskip("pandas")
 
-from src.database.models import Book
+from src.database.models import Book, SearchFilter
 from src.database.queries import (
     AuthorQueries,
     BookQueries,
@@ -207,3 +207,30 @@ class TestBookListImportDb:
         assert update_many.call_args.kwargs.get("commit") is False
         updated = books.get_by_id(book_id)
         assert updated.read_date == date(2024, 6, 15)
+
+    def test_import_stores_series_number_and_title_suffix(
+        self, empty_temp_db, ui_scaler, theme_manager, qtbot
+    ):
+        window = BookListImportWindow(empty_temp_db, ui_scaler, theme_manager)
+        qtbot.addWidget(window)
+        frame = pd.DataFrame(
+            {
+                "Title": ["Rules of Prey"],
+                "Author": ["John Sandford"],
+                "Series": ["Lucas Davenport"],
+                "SeriesNo": ["3"],
+            }
+        )
+        _prepare_window(
+            window,
+            frame,
+            {"title": 0, "author": 1, "series": 2, "series_no": 3},
+        )
+
+        success, errors, duplicates, skipped = window.import_new_books()
+        assert (success, errors, duplicates, skipped) == (1, 0, 0, 0)
+        saved = BookQueries(empty_temp_db).get_all(SearchFilter())
+        match = [book for book in saved if book.series_number == 3]
+        assert len(match) == 1
+        assert match[0].title == "Rules Of Prey - 03"
+        assert match[0].series_name == "Lucas Davenport"

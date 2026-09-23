@@ -206,11 +206,13 @@ def test_build_book_from_scan_uses_scanned_time_and_tracks(qtbot, temp_db, ui_sc
         "bitrate": 128,
         "format": "MP3",
         "comment": "",
+        "series_number": "6.5",
     }
     saved = window._build_book_from_scan(book)
     assert saved.time_hours == 5
     assert saved.time_minutes == 15
     assert saved.tracks == 3
+    assert saved.series_number == 6.5
 
     cleanup_window(window)
 

@@ -337,7 +337,22 @@ class AbCSApplication:
                 repair_message = getattr(self.db, "schema_repair_message", "")
                 if repair_message:
                     self.main_window.set_status(
-                        repair_message, timeout_ms=20000, announce=True
+                        repair_message, timeout_ms=0, announce=True
+                    )
+                    from PySide6.QtWidgets import QMessageBox
+
+                    from src.accessibility.icon_helper import get_app_icon
+                    from src.accessibility.style_helpers import exec_styled_message_box
+
+                    exec_styled_message_box(
+                        self.main_window,
+                        self.scaler.get_scaled_size(20),
+                        icon=QMessageBox.Information,
+                        title="Database upgraded",
+                        text=repair_message,
+                        buttons=QMessageBox.Ok,
+                        default_button=QMessageBox.Ok,
+                        window_icon=get_app_icon(),
                     )
 
             missing_dependencies = self._spreadsheet_dependency_report.get(

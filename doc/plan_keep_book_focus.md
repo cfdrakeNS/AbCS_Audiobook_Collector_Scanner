@@ -1,6 +1,6 @@
 # Keep current book on sort and filter — Version 3 Phase 8
 
-**Status:** Implemented — ready to test in 2.16  
+**Status:** Complete — tester accepted  
 **Created:** September 2026  
 **Related:** [main window](../src/ui/main_window.py), [Find and filters](../help_docs/03_find_filters.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 

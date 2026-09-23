@@ -85,6 +85,38 @@ def split_series_number(title: str) -> tuple:
     return t, ""
 
 
+def series_number_for_storage(value) -> int | float | None:
+    """Series index for the database column, or None.
+
+    Whole numbers collapse (``2``, ``2.0``, and ``02`` become ``2``).
+    Decimals stay (``6.5`` stays ``6.5``). Blank and zero are empty.
+    """
+    key = series_number_key(value)
+    if not key:
+        return None
+    try:
+        number = float(key) if "." in key else int(key)
+    except ValueError:
+        return None
+    if number == 0:
+        return None
+    return number
+
+
+def title_without_matching_series_suffix(
+    title: str, series_number: int | float | None
+) -> str:
+    """Drop a trailing `` - N`` only when it is the same number being stored."""
+    if series_number is None or not isinstance(title, str):
+        return title or ""
+    clean, existing = split_series_number(title)
+    if not existing or not clean:
+        return title
+    if series_number_key(existing) == series_number_key(series_number):
+        return clean
+    return title
+
+
 def strip_series_number(title: str) -> str:
     """Return title with trailing series number removed when clearly separated."""
     clean_title, _ = split_series_number(title)

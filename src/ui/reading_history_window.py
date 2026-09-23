@@ -42,6 +42,7 @@ from src.accessibility.style_helpers import (
     apply_visual_tooltip_map,
     build_card_group_box_style,
     build_modern_button_style,
+    FullDayNumberCalendar,
     build_table_polish_style,
 )
 
@@ -362,6 +363,9 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.start_date_edit.setCalendarPopup(True)
         self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.start_date_edit.setDate(QDate.currentDate().addMonths(-3))
+        self.start_date_edit.setCalendarWidget(
+            FullDayNumberCalendar(self.start_date_edit)
+        )
 
         # End date
         end_date_label = QLabel("To:")
@@ -371,6 +375,7 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.end_date_edit.setCalendarPopup(True)
         self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.end_date_edit.setDate(QDate.currentDate())
+        self.end_date_edit.setCalendarWidget(FullDayNumberCalendar(self.end_date_edit))
 
         date_layout.addWidget(start_date_label)
         date_layout.addWidget(self.start_date_edit)

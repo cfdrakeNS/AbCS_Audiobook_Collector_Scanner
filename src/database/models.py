@@ -104,6 +104,8 @@ class Book:
     year: Optional[int] = None  # SQLite column: year (publication year)
     # FOREIGN KEY - references series.series_id
     series_id: Optional[int] = None
+    # SQLite column: series_number (book position in the series). Nullable real.
+    series_number: Optional[float] = None
     # Denormalized (retrieved via LEFT JOIN with series table)
     series_name: str = ""
     genre_id: Optional[int] = None  # FOREIGN KEY - references genres.genre_id

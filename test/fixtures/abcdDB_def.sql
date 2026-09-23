@@ -50,6 +50,7 @@ CREATE TABLE books (
     read_date     DATE,
     date_added    DATETIME DEFAULT CURRENT_TIMESTAMP,
     source        TEXT,
+    series_number REAL,
     FOREIGN KEY (author_id) REFERENCES authors (author_id),
     FOREIGN KEY (series_id) REFERENCES series (series_id),
     FOREIGN KEY (genre_id) REFERENCES genres (genre_id),

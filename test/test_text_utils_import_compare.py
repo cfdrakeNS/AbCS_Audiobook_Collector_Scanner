@@ -4,6 +4,8 @@ import pytest
 
 from src.utils.text_utils import (
     append_series_suffix,
+    series_number_for_storage,
+    title_without_matching_series_suffix,
     compare_normalize_title,
     format_series_suffix,
     pre_normalize_title,
@@ -108,6 +110,23 @@ def test_split_series_number(title, clean, number):
 )
 def test_series_number_key(raw, expected):
     assert series_number_key(raw) == expected
+
+
+def test_series_number_for_storage_keeps_decimals():
+    assert series_number_for_storage("02") == 2
+    assert series_number_for_storage("2.0") == 2
+    assert series_number_for_storage("6.5") == 6.5
+    assert series_number_for_storage("0.5") == 0.5
+    assert series_number_for_storage("0") is None
+    assert series_number_for_storage("") is None
+
+
+def test_title_strip_only_when_suffix_matches_stored_number():
+    assert title_without_matching_series_suffix("The Moon - 03", 3) == "The Moon"
+    assert title_without_matching_series_suffix("The Moon - 02", 3) == "The Moon - 02"
+    assert title_without_matching_series_suffix("The Moon", 3) == "The Moon"
+    assert title_without_matching_series_suffix("Some Title, 1999", 1999) == "Some Title, 1999"
+    assert title_without_matching_series_suffix("Winter - 6.5", 6.5) == "Winter"
 
 
 @pytest.mark.parametrize(

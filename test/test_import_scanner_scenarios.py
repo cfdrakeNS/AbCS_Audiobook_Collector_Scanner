@@ -311,6 +311,14 @@ def _apply_scenario_3(file_name: str, title: str):
     return book
 
 
+def test_series_filename_decimal_number():
+    book = _apply_scenario_3("Book (Prey 6.5).mp3", "Book")
+
+    assert book["series"] == "Prey"
+    assert book["title"] == "Book - 6.5"
+    assert book["series_number"] == 6.5
+
+
 @pytest.mark.parametrize(
     "file_name, title, expected_series, expected_title",
     [
@@ -338,4 +346,11 @@ def test_series_filename_parsing(file_name, title, expected_series, expected_tit
 
     assert book["series"] == expected_series
     assert book["title"] == expected_title
+    if " - " in expected_title:
+        from src.utils.text_utils import series_number_for_storage
+
+        suffix = expected_title.rsplit(" - ", 1)[-1]
+        assert book["series_number"] == series_number_for_storage(suffix)
+    else:
+        assert book.get("series_number") is None
 

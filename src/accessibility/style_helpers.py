@@ -2,8 +2,9 @@
 
 import sys
 
-from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QDate, QTimer, Qt
+from PySide6.QtGui import QAction, QPalette, QPen
+from PySide6.QtWidgets import QCalendarWidget, QMessageBox, QTableView
 
 
 def build_accessible_checkbox_style(
@@ -419,6 +420,63 @@ def build_accessible_date_edit_style(
         }}
         {_dropdown_arrow_css(selector)}
     """
+
+
+class FullDayNumberCalendar(QCalendarWidget):
+    """Calendar popup that keeps days 10 through 31 visible.
+
+    A stylesheet font on the day grid leaves each cell sized for one digit.
+    Qt then clips 10 through 31. These cells are widened, and the day number
+    is drawn in the full cell.
+    """
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.fit_day_cells()
+        QTimer.singleShot(0, self.fit_day_cells)
+
+    def fit_day_cells(self) -> None:
+        view = self.findChild(QTableView, "qt_calendar_calendarview")
+        if view is None:
+            return
+        metrics = view.fontMetrics()
+        cell_w = metrics.horizontalAdvance("30") + 18
+        cell_h = metrics.height() + 12
+        header = view.horizontalHeader()
+        vheader = view.verticalHeader()
+        header.setMinimumSectionSize(cell_w)
+        header.setDefaultSectionSize(cell_w)
+        vheader.setMinimumSectionSize(cell_h)
+        vheader.setDefaultSectionSize(cell_h)
+        for col in range(max(header.count(), 7)):
+            view.setColumnWidth(col, cell_w)
+        for row in range(max(vheader.count(), 6)):
+            view.setRowHeight(row, cell_h)
+        week_w = metrics.horizontalAdvance("53") + 12
+        vheader.setMinimumWidth(week_w)
+        self.setMinimumWidth(cell_w * 7 + week_w + 28)
+        self.setMinimumHeight(cell_h * 6 + 56)
+
+    def paintCell(self, painter, rect, date):
+        painter.save()
+        selected = date == self.selectedDate()
+        in_month = date.month() == self.monthShown() and date.year() == self.yearShown()
+        enabled = self.minimumDate() <= date <= self.maximumDate()
+        if selected and enabled:
+            painter.fillRect(rect, self.palette().highlight())
+            color = self.palette().color(QPalette.HighlightedText)
+        elif not enabled or not in_month:
+            painter.fillRect(rect, self.palette().base())
+            color = self.palette().color(QPalette.Disabled, QPalette.Text)
+        else:
+            painter.fillRect(rect, self.palette().base())
+            color = self.palette().color(QPalette.Text)
+        if date == QDate.currentDate() and not selected:
+            painter.setPen(QPen(self.palette().highlight().color(), 2))
+            painter.drawRect(rect.adjusted(2, 2, -3, -3))
+        painter.setPen(color)
+        painter.drawText(rect, int(Qt.AlignCenter), str(date.day()))
+        painter.restore()
 
 
 def build_accessible_spinbox_style(

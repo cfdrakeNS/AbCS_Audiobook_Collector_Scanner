@@ -1,8 +1,9 @@
 # Covers — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Deferred after version 3 — **out of scope for v3** (covers and zip backup). Phase 9 does not add `cover_path`.  
 **Created:** June 2026  
-**Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Backup and Restore](help_docs/09_backup_restore.md), [plan_ratings.md](plan_ratings.md)
+**Updated:** September 2026  
+**Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Backup and Restore](help_docs/09_backup_restore.md), [plan_ratings.md](plan_ratings.md), [plan_schema_batch.md](plan_schema_batch.md)
 
 ---
 
@@ -305,4 +306,4 @@ Optional v2: Manage → remove orphan cover files not referenced in DB.
 
 ## Next steps
 
-Review for version 3 with [`plan_ratings.md`](plan_ratings.md). Recommended order: ratings first, then covers + package backup.
+Deferred after version 3 with [`plan_ratings.md`](plan_ratings.md). Recommended order when revived: ratings UI first, then covers + package backup.

@@ -55,6 +55,7 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | Shortcut | Action |
 |----------|--------|
 | Alt+T, Alt+A, Alt+Y, etc. | Jump to field |
+| Alt+I | Series. Tab moves to Series number |
 | Alt+S | Save |
 | Alt+N | Next book |
 | Alt+P | Previous book |
@@ -65,6 +66,8 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | F1 | Keyboard shortcuts |
 | Alt+/ | Re-read status |
 | Escape | Close |
+
+Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. When a book is shown and Series number is blank, a number at the end of the title, such as ` - 3` or ` - 6.5`, is stored in Series number. The title stays as it is. There is no status message. A year such as `1999` stays on the title.
 
 ## Common confusion
 

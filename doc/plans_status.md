@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (tester build 2.16. v3 Phases 1–4, 6, and 7 complete. Phase 5 skipped. Phase 8 keep-current-book in 2.16, ready to test. Next: Phase 9 schema.)
+**Last updated:** September 2026 (tester build 2.17. v3 Phases 1–4 and 6–9 complete. Phase 10 series number is in this build. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next: Phase 11 collection root.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -25,15 +25,15 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 2 | Bulk web metadata | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | Complete — tester accepted |
 | 3 | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) | Complete |
 | 4 | Selection mode toolbar and shortcuts | [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) | Complete |
-| 5 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | Skipped for v3. Plan kept. Fetch stays modal. |
 | 6 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | Complete — tester accepted |
 | 7 | Auto-update check | [plan_auto_update.md](plan_auto_update.md) | Complete — tester accepted |
-| 8 | Keep current book on sort and filter | [plan_keep_book_focus.md](plan_keep_book_focus.md) | Implemented — ready to test in 2.16 |
-| 9 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | Planned — Phase 9 |
-| 10 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 10 |
-| 11 | Book ratings | [plan_ratings.md](plan_ratings.md) | Planned — Phase 11 |
-| 12 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | Planned — Phase 12 |
-| 13 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 13 (optional) |
+| 8 | Keep current book on sort and filter | [plan_keep_book_focus.md](plan_keep_book_focus.md) | Complete — tester accepted |
+| 9 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | Complete — tester accepted |
+| 10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | In tester build 2.17 — Book Details display confirmed |
+| 11 | Collection library root (Part A) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | Planned — Phase 11 |
+| 12 | Preview audiobook (OS default player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | Planned — Phase 12 |
+| 13 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 13 (second to last) |
+| 14 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 14 (optional, last) |
 
 ---
 
@@ -41,11 +41,11 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 
 | Plan | Location |
 |------|----------|
-| Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) |
-| Want to Read | [plan_want_to_read.md](plan_want_to_read.md) |
-| Open audiobook location | [plan_audiobook_preview.md](plan_audiobook_preview.md) |
-| Covers + zip backup | [Plan_covers.md](Plan_covers.md) |
-| Rescan / library folders | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) |
+| Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) — out of scope for v3 (too risky) |
+| Book ratings | [plan_ratings.md](plan_ratings.md) — out of scope for v3 UI |
+| Want to Read | [plan_want_to_read.md](plan_want_to_read.md) — out of scope for v3; no column in Phase 9 |
+| Covers + zip backup | [Plan_covers.md](Plan_covers.md) — out of scope for v3 UI |
+| Rescan / organize (Parts B–C) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) — Part A is v3 Phase 11 |
 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) |
 | Path health report | [plan_path_health_report.md](plan_path_health_report.md) |
 | Export library metadata | [plan_export_library_metadata.md](plan_export_library_metadata.md) |

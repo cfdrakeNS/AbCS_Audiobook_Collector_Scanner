@@ -98,7 +98,11 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.core.validator import ImportValidator
-from src.utils.text_utils import append_series_suffix, compare_normalize_title
+from src.utils.text_utils import (
+    append_series_suffix,
+    compare_normalize_title,
+    series_number_for_storage,
+)
 
 
 class BookListImportWindow(AccessibleDialog):
@@ -1981,10 +1985,8 @@ class BookListImportWindow(AccessibleDialog):
                         validator.sanitize_metadata(temp)
                         series = temp["series"]
 
-                # Append series number only (not series name) when both are mapped
-                title_for_save = title
-                if series and series_no:
-                    title_for_save = append_series_suffix(title, series_no)
+                title_for_save = append_series_suffix(title, series_no)
+                stored_series_number = series_number_for_storage(series_no)
 
                 # Extract year for duplicate checking (before book object is created)
                 import_year = None
@@ -2049,6 +2051,8 @@ class BookListImportWindow(AccessibleDialog):
 
                 if series:
                     book.series_id = _cached_series_id(series)
+                if stored_series_number is not None:
+                    book.series_number = stored_series_number
 
                 if mapping.get("genre") is not None:
                     genre = row[mapping["genre"] + 1]
@@ -2220,32 +2224,7 @@ class BookListImportWindow(AccessibleDialog):
                     error_count += 1
                     continue
 
-                # Series number logic
-                series_no = None
-                if "series_no" in mapping and mapping["series_no"] is not None:
-                    val = row[mapping["series_no"] + 1]
-                    if (
-                        pd.notna(val)
-                        and str(val).strip()
-                        and str(val).strip().lower() != "nan"
-                    ):
-                        series_no = str(val).strip()
-
-                # Series logic
-                series = None
-                if mapping.get("series") is not None:
-                    val = row[mapping["series"] + 1]
-                    if (
-                        pd.notna(val)
-                        and str(val).strip()
-                        and str(val).strip().lower() != "nan"
-                    ):
-                        series = str(val).strip()
-
-                # Append series number only (not series name) when both are mapped
                 title_for_save = title
-                if series and series_no:
-                    title_for_save = append_series_suffix(title, series_no)
 
                 import_title_for_compare = compare_normalize_title(title_for_save)
                 author_key = author.strip().lower()

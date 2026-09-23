@@ -294,6 +294,7 @@ class DatabaseManager:
                     read_date DATE,
                     date_added DATETIME DEFAULT CURRENT_TIMESTAMP,
                     source TEXT,
+                    series_number REAL,
                     FOREIGN KEY (author_id) REFERENCES authors(author_id),
                     FOREIGN KEY (series_id) REFERENCES series(series_id),
                     FOREIGN KEY (genre_id) REFERENCES genres(genre_id),
@@ -340,6 +341,7 @@ class DatabaseManager:
                 "read_date": "DATE",
                 "date_added": "DATETIME",
                 "source": "TEXT",
+                "series_number": "REAL",
             },
         }
 
@@ -380,19 +382,33 @@ class DatabaseManager:
                 created_tables.append(table_name)
             conn.execute(create_sql)
 
-        for table_name, columns in column_specs.items():
-            if not self.table_exists(table_name):
-                continue
-            existing_columns = self._get_existing_columns(table_name)
-            for column_name, column_def in columns.items():
-                if column_name in existing_columns:
+        try:
+            for table_name, columns in column_specs.items():
+                if not self.table_exists(table_name):
                     continue
-                conn.execute(
-                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}"
-                )
-                added_columns.append(f"{table_name}.{column_name}")
-
-        conn.commit()
+                existing_columns = self._get_existing_columns(table_name)
+                for column_name, column_def in columns.items():
+                    if column_name in existing_columns:
+                        continue
+                    conn.execute(
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}"
+                    )
+                    added_columns.append(f"{table_name}.{column_name}")
+            conn.commit()
+        except sqlite3.Error as exc:
+            try:
+                conn.rollback()
+            except sqlite3.Error:
+                pass
+            backup_note = ""
+            if backup_path is not None:
+                backup_note = f" Backup: {backup_path.name}."
+            self.schema_repair_performed = True
+            self.schema_repair_message = (
+                "Database upgrade failed. Your library was left as it was."
+                f" {exc}.{backup_note}"
+            )
+            return
 
         for table_name, required in critical_columns.items():
             if not self.table_exists(table_name):
@@ -408,10 +424,17 @@ class DatabaseManager:
             backup_note = ""
             if backup_path is not None:
                 backup_note = f" Backup: {backup_path.name}."
-            self.schema_repair_message = (
-                "Database upgraded from legacy format for compatibility."
-                f"{backup_note}"
-            )
+            if added_columns == ["books.series_number"]:
+                self.schema_repair_message = (
+                    "Database upgraded. Series number storage was added. "
+                    "Your books were not changed."
+                    f"{backup_note}"
+                )
+            else:
+                self.schema_repair_message = (
+                    "Database upgraded from legacy format for compatibility."
+                    f"{backup_note}"
+                )
 
     def _get_existing_columns(self, table_name: str) -> set[str]:
         """Return existing column names for a table."""

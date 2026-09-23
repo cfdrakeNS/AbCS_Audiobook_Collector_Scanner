@@ -1,6 +1,6 @@
-# Non-Modal Web Fetch Jobs — Version 3 Phase 5
+# Non-Modal Web Fetch Jobs — Deferred (was v3 Phase 5)
 
-**Status:** Skipped for version 3. Plan kept for later. Fetch progress stays a blocking dialog.  
+**Status:** **Out of scope for version 3** (too risky). Plan kept for a later release. Fetch progress stays a blocking dialog.  
 **Created:** September 2026  
 **Related:** [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md), [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 

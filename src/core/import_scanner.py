@@ -247,6 +247,11 @@ class ImportScanner:
                 book["series"] = parsed_series
 
             if parsed_number:
+                from src.utils.text_utils import series_number_for_storage
+
+                stored_number = series_number_for_storage(parsed_number)
+                if stored_number is not None:
+                    book["series_number"] = stored_number
                 current_title = (book.get("title") or "").strip()
                 if current_title:
                     suffix = f" - {parsed_number}"
@@ -295,7 +300,7 @@ class ImportScanner:
         if not raw_block:
             return (None, None, "")
 
-        trailing_number_match = re.match(r"^(.*?)(?:\s+)(\d+)$", raw_block)
+        trailing_number_match = re.match(r"^(.*?)(?:\s+)(\d+(?:\.\d+)?)$", raw_block)
         if not trailing_number_match:
             return (raw_block, None, raw_block)
 

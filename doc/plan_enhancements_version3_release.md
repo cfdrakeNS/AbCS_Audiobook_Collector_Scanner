@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** 2.16 — Phases 1–4, 6, and 7 complete (tester accepted). Phase 5 skipped. Phase 8 keep-current-book is in this build, ready to test. Next coding after Phase 8 accept is Phase 9 (C01 in-place schema).  
+**Tester build:** 2.17 — Phases 1–4 and 6–9 complete (tester accepted). Phase 10 series number is in this build; Book Details display was confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Next is Phase 11 (collection root).  
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -16,7 +16,7 @@
 
 ## Version 3 scope (from tester review)
 
-Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, C04 ratings, and F10 series number. Non-modal fetch jobs are **skipped for v3**. Everything else stays planned but **deferred after v3**.
+Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), and audiobook preview (OS default player). **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings UI, covers UI. Everything else stays planned but **deferred after v3**.
 
 | Phase | ID | Enhancement | Detail doc | Est. | Depends on |
 |-------|----|-------------|------------|------|------------|
@@ -24,19 +24,19 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 2 | F12 | Batch web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Phase 1 |
 | 3 | — | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) | 0.5–1 d | Phase 1 matching |
 | 4 | — | Selection mode: block toolbar and shortcuts | [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) | 1–2 d | — |
-| 5 | — | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | — | **Skipped for v3.** Fetch stays modal. |
 | 6 | F17 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | 2–3 d | — |
 | 7 | B05 | Check for updates | [plan_auto_update.md](plan_auto_update.md) | 2–3 d | — |
 | 8 | — | Keep current book on sort and filter | [plan_keep_book_focus.md](plan_keep_book_focus.md) | 0.5–1 d | — |
 | 9 | C01 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | 2–3 d | — |
-| 10 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
-| 11 | C04 | Book ratings | [plan_ratings.md](plan_ratings.md) | 4–5 d | Phase 9 |
-| 12 | F10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | 2–3 d | Phase 9 |
-| 13 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
+| 10 | F10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | 2–3 d | Phase 9 |
+| 11 | C07 | Collection library root folder | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | 2–3 d | Adds `root_path` |
+| 12 | C03 | Preview audiobook (OS default player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | 1–2 d | — |
+| 13 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
+| 14 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
 
-**Phase 5 is skipped.** **Phase 13 (view-mode) is optional.** Want to Read and covers UI stay deferred; Phase 9 still adds their columns so later features do not need a second first-start migration.
+**Phase numbers 1–4 and 6–8 are historical (complete).** There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 13 is name consistency (second to last). Phase 14 (view-mode) is optional and last.** Phase 9 adds `series_number` only. Want to Read, ratings, and covers are out of v3. Collection `root_path` is added in Phase 11.
 
-**Not in v3:** Non-modal web fetch (keep using the app during a fetch), Want to Read UI, covers UI, zip backup, collection library folder, rescan, i18n, organize-on-disk, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog.
+**Not in v3:** Non-modal web fetch (keep using the app during a fetch), Want to Read, book ratings, covers and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred.
 
 ---
 
@@ -54,7 +54,7 @@ See [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md). 
 
 ### Phase 2 — Batch web fetch (1–2 weeks)
 
-See [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md). **Complete — tester accepted**, then follow-up polish (below). Progress stays modal for v3. Phase 5 will not change that.
+See [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md). **Complete — tester accepted**, then follow-up polish (below). Progress stays modal for v3. Non-modal jobs are out of scope and will not change that.
 
 Multi-select starts from **Alt+W**, toolbar **Search Web**, or footer **Web fetch**. There is no main-window Alt+B. N/M progress; summary with Apply all / Review. Escape closes the summary.
 
@@ -86,10 +86,6 @@ While selection is active, disable Add/Import/Find/Statistics/Preferences/filter
 
 **Gate:** Blocked actions do not run; Alt+W with 2+ selected is batch; status speech is requested on selection (not only stored); Escape restores toolbar; duplicate mode unchanged.
 
-### Phase 5 — Non-modal web fetch jobs
-
-**Skipped for v3.** The plan stays in [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) if it is wanted later. Fetch progress keeps blocking `exec()` so the main window waits until the fetch finishes.
-
 ### Phase 6 — Import tag mapping (2–3 days)
 
 See [plan_import_tag_mapping.md](plan_import_tag_mapping.md). **Complete — tester accepted.**
@@ -108,7 +104,7 @@ Help → Check for updates reads the latest GitHub release tag and compares it t
 
 ### Phase 8 — Keep current book on sort and filter (0.5–1 day)
 
-See [plan_keep_book_focus.md](plan_keep_book_focus.md). **Implemented — ready to test in 2.16.**
+See [plan_keep_book_focus.md](plan_keep_book_focus.md). **Complete — tester accepted.**
 
 Sort (menu or header) keeps the focused book as the current row. Filters do the same when that book is still in the list. If a filter drops it, focus moves to the first remaining book.
 
@@ -116,41 +112,51 @@ Sort (menu or header) keeps the focused book as the current row. Filters do the 
 
 ### Phase 9 — C01 Schema batch (2–3 days)
 
-See [plan_schema_batch.md](plan_schema_batch.md). **Next after Phase 8 tester accept.**
+See [plan_schema_batch.md](plan_schema_batch.md). **Complete — tester accepted.** The upgrade dialog was heard.
 
-In-place `ALTER TABLE` on first start. Adds `want_to_read`, `rating`, `ratings_count`, `cover_path`, `series_number` on `books`, and `root_path` on `collections`. No new buttons. Backup before change. Announce the upgrade for dev and installed builds.
+In-place `ALTER TABLE` on **first start** for existing libraries (not only new installs). Adds `series_number` on `books` only. Does not add `want_to_read`, `rating`, `ratings_count`, `cover_path`, or `collections.root_path`. No new buttons in this phase. Timestamped `schema_repair` backup before change. Announce the upgrade for dev and installed builds. Existing titles are not rewritten.
+
+The column is used by series number (Phase 10). Collection root adds `root_path` in Phase 11. Want to Read, ratings, and covers are not part of this upgrade.
 
 **Gate:** Old database opens with books intact; new columns present; upgrade announced once.
 
-### Phase 10 — Name consistency (2–3 weeks)
+### Phase 10 — F10 Series book number (2–3 days)
 
-See [Plan_name_consistency_check.md](Plan_name_consistency_check.md). Was Phase 8.
+See [plan_series_number_db.md](plan_series_number_db.md). **In tester build 2.17.** Book Details display confirmed. Needs Phase 9.
+
+The only series-number field is on **Book Details**, a text box to the right of Series. When a book is shown and Series # is blank, a title suffix such as ` - 3` or ` - 6.5` is stored in Series #. The title stays as it is. There is no status message. The main-window **Series** sort becomes series name, then series number, then title. Book List Import stores a mapped Series # and appends it to the title. Series From File Name does the same for a number in the file name. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
+
+**Gate:** Save/load from Book Details; showing a book with a blank Series # and a title suffix such as ` - 3` stores that number and leaves the title unchanged; Series sort is series then series number; JAWS reads the text box to the right of Series.
+
+### Phase 11 — C07 Collection library root folder (2–3 days)
+
+See [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) **Part A only**. This phase adds `collections.root_path` on first start for existing libraries, using the same upgrade path as Phase 9.
+
+Allow setting and changing the optional root folder for a collection (example: `F:\audiobook`). Edit in Collection Manager. When the user selects or browses a collection folder, **warn** if that folder does not exist, or if it contains no recognized audiobook files (extensions from `TagReader.SUPPORTED_EXTENSIONS`). Import may pre-fill from `root_path` when present. Rescan (Part B) and organize-on-disk (Part C) stay deferred.
+
+**Gate:** Save/load `root_path`; warn on missing folder; warn when folder has no supported audio; Import pre-fill when root is set and exists.
+
+### Phase 12 — C03 Preview audiobook (1–2 days)
+
+See [plan_audiobook_preview.md](plan_audiobook_preview.md).
+
+**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Opens the book in the user’s **default OS media player** for that file format (file association) — not an in-app player. Book Details has no menu bar today; menu entry is on the main window.
+
+**Gate:** Preview launches default player for a single-file book; missing path announced; JAWS can activate Preview from button and Edit menu.
+
+### Phase 13 — Name consistency (2–3 weeks)
+
+See [Plan_name_consistency_check.md](Plan_name_consistency_check.md).
 
 Does **not** require rescan. Confirm-each-group; no silent merges.
 
 **Gate:** Author/genre merge safe; import blocked while mode active; Escape restores filters; review dialog meets shared a11y/button standards.
 
-### Phase 11 — C04 Book ratings (4–5 days)
+### Phase 14 — View-mode announcements (2–4 days, optional)
 
-See [plan_ratings.md](plan_ratings.md). Needs Phase 9.
+See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
 
-Numeric rating on each book; main table, Book Details, Import Detail, web save. Numbers only (no stars).
-
-**Gate:** Save/load rating; web fill sets count; manual edit clears count; shared a11y/button/scaling rules.
-
-### Phase 12 — F10 Series book number (2–3 days)
-
-See [plan_series_number_db.md](plan_series_number_db.md). Needs Phase 9.
-
-Manual series number on Book Details and Update. Not on web fetch. No series-order sort in this phase.
-
-**Gate:** Save/load series number; title/number split does not drop existing titles.
-
-### Phase 13 — View-mode announcements (2–4 days, optional)
-
-See [plan_view_mode_static_text.md](plan_view_mode_static_text.md). Was Phase 9.
-
-**Optional for v3** — decide after Phases 9–12. Spike must pass JAWS before any Book Details change.
+**Optional for v3** — decide after Phases 9–13. Spike must pass JAWS before any Book Details change.
 
 **Gate:** JAWS spike accepted; Book Details view mode speaks name **and** value without edit or read only; edit mode still says edit.
 
@@ -221,12 +227,13 @@ Before marking a phase done:
 |----------|-------|-----|
 | **Yes** | Background thread then API split | Split after thread so patch targets move once |
 | **Yes** | Background thread then batch fetch | Batch reuses the worker |
-| **No** | Batch UI vs non-modal jobs | Non-modal jobs skipped for v3; progress stays modal |
+| **No** | Batch UI vs non-modal jobs | Non-modal jobs out of scope for v3; progress stays modal |
 | **No** | Leading article vs batch UI | Same Path B keys; separate plan and tester gate |
 | **No** | Selection toolbar vs batch UI | Same selection footer; block unrelated actions |
 | **No** | Tag mapping / updates / view-mode / name consistency with fetch | Independent |
-| **Yes** | C01 schema then C04 ratings and F10 series number | One first-start `ALTER TABLE` |
-| **No** | Deferred Want to Read UI / covers / rescan | Out of v3; columns added in C01 |
+| **Yes** | C01 schema then F10 series number | Phase 9 adds `series_number` only |
+| **No** | Collection root column vs Phase 9 | `root_path` is added in Phase 11 |
+| **No** | Want to Read / ratings / covers / rescan Parts B–C | Out of v3. No columns for them in Phase 9. |
 
 ---
 
@@ -236,11 +243,11 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 
 | Enhancement | Detail doc | Notes |
 |-------------|------------|-------|
-| Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | Skipped for v3. Was Phase 5. Progress stays modal. |
-| Want to Read UI | [plan_want_to_read.md](plan_want_to_read.md) | Column added in Phase 9 |
-| Open audiobook location | [plan_audiobook_preview.md](plan_audiobook_preview.md) | |
-| Covers + zip backup | [Plan_covers.md](Plan_covers.md) | `cover_path` added in Phase 9 |
-| Rescan + collection root (A+B) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) | Not Part C |
+| Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | **Out of scope for v3** (too risky). Was former Phase 5. Progress stays modal. |
+| Book ratings | [plan_ratings.md](plan_ratings.md) | **Out of scope for v3.** No rating columns in Phase 9. |
+| Want to Read | [plan_want_to_read.md](plan_want_to_read.md) | **Out of scope for v3.** No `want_to_read` column in Phase 9. |
+| Covers + zip backup | [Plan_covers.md](Plan_covers.md) | **Out of scope for v3.** No `cover_path` in Phase 9. |
+| Rescan / update from folder (Part B) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part B | Part A (root path) is v3 Phase 11 |
 | Rescan Part C organize | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part C | High risk |
 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) | After English freeze |
 | Path health report | [plan_path_health_report.md](plan_path_health_report.md) | |
@@ -261,10 +268,9 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 
 | Table | New columns |
 |-------|-------------|
-| `books` | `want_to_read`, `rating`, `ratings_count`, `cover_path`, `series_number` |
-| `collections` | `root_path` |
+| `books` | `series_number` |
 
-See [plan_schema_batch.md](plan_schema_batch.md). Want to Read and covers UI stay deferred.
+See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and covers are out of v3. Series number UI is Phase 10. Collection `root_path` is added in Phase 11. Name consistency is Phase 13, second to last.
 
 ---
 
@@ -283,16 +289,19 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read and covers UI sta
 |------|------------|
 | First production background thread | JAWS spike before real work; no UI from worker; `threading.Event` cancel |
 | Batch completion silent to JAWS | Modal `AccessibleDialog` + `raise_`/`activateWindow`/focus (avoid Calibre overlay pattern) |
-| Non-modal job loses JAWS | Not in v3. If revived later: real window + Alt+J; steal focus on finish; never a NoFocus overlay for answers |
+| Non-modal job loses JAWS | Not in v3 (out of scope). If revived later: real window + Alt+J; steal focus on finish; never a NoFocus overlay for answers |
 | Tag mapping changes existing imports | Defaults = current album / album-artist-then-artist; grouping stays on album |
 | Name consistency merges many books | Confirm each group; no silent merges |
+| Schema upgrade fails on existing DB | Backup before `ALTER TABLE`; announce failure; do not wipe library for non-critical columns |
+| Collection root change vs absolute `books.path` | Part A stores root only; does not rewrite book paths. Path rewrite is Part C (deferred) |
+| Preview of multi-file books | `books.path` is often a folder; plan must pick which file to launch (see preview plan) |
 | Tester xlsx overwritten | Never regenerate filled `AbCS_Version3_Release_Tester_Review.xlsx` |
 
 ---
 
 ## How to use this doc
 
-1. Implement the remaining phases in order. Phase 5 is skipped. After Phase 8 tester accept, Phase 9 schema must precede Phases 11 and 12.
+1. Implement the remaining phases in order. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Name consistency is Phase 13, just before optional Phase 14.
 2. Meet each phase **gate** before the next.
 3. Update [plans_status.md](plans_status.md) when a plan ships.
 4. Read linked `plan_*.md` for file paths and a11y checklists.
