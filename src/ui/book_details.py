@@ -1979,20 +1979,6 @@ class BookDetailsWindow(AccessibleDialog):
         year_value = None if year_value == self.year_spin.minimum() else year_value
         series_number = self._series_number_from_field()
         self._set_series_number_field(series_number)
-        from src.utils.text_utils import series_number_key, title_with_series_suffix
-
-        loaded_series_number = getattr(self, "_series_number_at_load", None)
-        if series_number and series_number_key(series_number) != series_number_key(
-            loaded_series_number
-        ):
-            titled = title_with_series_suffix(book_dict["title"], series_number)
-            if titled != book_dict["title"]:
-                book_dict["title"] = titled
-                self._loading_fields = True
-                try:
-                    self.title_edit.setText(titled)
-                finally:
-                    self._loading_fields = False
 
         # Removed legacy normalization methods (_to_proper_case, _is_proper_case_enabled, _normalize_name_field)
         self.book.year = year_value

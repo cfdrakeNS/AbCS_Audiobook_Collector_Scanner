@@ -13,6 +13,32 @@ def _validator(
     validator.duplicate_fuzzy_threshold = fuzzy_threshold
     return validator
 
+def test_validator_column_series_numbers_are_not_duplicates():
+    validator = _validator()
+    index = validator.build_duplicate_index(
+        [
+            {
+                "title": "Rules of Prey",
+                "author": "John Sandford",
+                "year": 1989,
+                "series_number": 1,
+            }
+        ]
+    )
+    assert (
+        validator.is_duplicate_fast(
+            {
+                "title": "Rules of Prey",
+                "author": "John Sandford",
+                "year": 1989,
+                "series_number": 2,
+            },
+            index,
+        )
+        is False
+    )
+
+
 def test_validator_different_series_numbers_not_duplicate():
     validator = _validator()
     index = validator.build_duplicate_index(

@@ -46,6 +46,23 @@ def test_title_accessible_text_includes_plot_suffix():
     assert without_plot_sr == "No Plot"
 
 
+def test_title_display_adds_series_suffix_without_changing_stored_title():
+    model = BookTableModel(
+        [
+            Book(title="Rules of Prey", series_number=3),
+            Book(title="Busted", series_number=6.5),
+            Book(title="Other - 9", series_number=9),
+            Book(title="Winter"),
+        ]
+    )
+
+    assert model.data(model.index(0, 1), Qt.DisplayRole) == "Rules of Prey - 03"
+    assert model.data(model.index(1, 1), Qt.DisplayRole) == "Busted - 6.5"
+    assert model.data(model.index(2, 1), Qt.DisplayRole) == "Other - 9"
+    assert model.data(model.index(3, 1), Qt.DisplayRole) == "Winter"
+    assert model._books[0].title == "Rules of Prey"
+
+
 def test_title_accessible_text_includes_selection_suffix():
     model = BookTableModel(
         [

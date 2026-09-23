@@ -252,11 +252,6 @@ class ImportScanner:
                 stored_number = series_number_for_storage(parsed_number)
                 if stored_number is not None:
                     book["series_number"] = stored_number
-                current_title = (book.get("title") or "").strip()
-                if current_title:
-                    suffix = f" - {parsed_number}"
-                    if not current_title.endswith(suffix):
-                        book["title"] = f"{current_title}{suffix}"
 
         field_corrections = self._apply_auto_corrections(book)
         # Only flag Title and Author corrections, but exclude fields that already have fallback flags

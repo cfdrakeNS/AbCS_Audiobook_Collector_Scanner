@@ -1461,6 +1461,7 @@ class ImportWindow(AccessibleDialog):
                 "author": b.author_name,
                 "year": b.year,
                 "collection_id": b.collection_id,
+                "series_number": b.series_number,
             }
             for b in existing_books
         ]
@@ -1824,6 +1825,7 @@ class ImportWindow(AccessibleDialog):
                 "author": b.author_name,
                 "year": b.year,
                 "collection_id": b.collection_id,
+                "series_number": b.series_number,
             }
             for b in existing_books
         ]

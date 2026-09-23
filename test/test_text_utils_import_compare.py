@@ -4,6 +4,7 @@ import pytest
 
 from src.utils.text_utils import (
     append_series_suffix,
+    title_for_display,
     title_with_series_suffix,
     series_number_for_storage,
     title_without_matching_series_suffix,
@@ -73,6 +74,13 @@ def test_append_series_suffix_preserves_decimal():
 
 def test_append_series_suffix_skips_when_already_present():
     assert append_series_suffix("The Moon - 02", 3) == "The Moon - 02"
+
+
+def test_title_for_display_adds_suffix_when_title_is_clean():
+    assert title_for_display("Rules of Prey", 3) == "Rules of Prey - 03"
+    assert title_for_display("Busted", 6.5) == "Busted - 6.5"
+    assert title_for_display("Other - 9", 9) == "Other - 9"
+    assert title_for_display("Winter", None) == "Winter"
 
 
 def test_title_with_series_suffix_adds_and_replaces():

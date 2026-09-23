@@ -26,6 +26,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 - **Theme** — system default or high-contrast themes.
 - **Zoom** — preset or custom scale (default **150%** after Restore Defaults).
 - **Help window zoom** — separate from main app zoom; adjusted at the top of the Help window when you open **Help → Help...** or press **Shift+F1**. See [Help overview](01_overview.md).
+- **Automatically check for updates** — off by default. When checked, AbCS runs the same GitHub version check as **Help → Check for updates** after the main window opens. A dialog opens only when a newer version is available. Help → Check for updates still always shows the result.
 
 ### Import Settings (Alt+P)
 

@@ -4,7 +4,39 @@ from __future__ import annotations
 
 from PySide6.QtCore import QSettings
 
+from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
 from src.ui.preferences_window import PreferencesWindow
+
+
+def test_auto_check_updates_defaults_off_and_restores(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot
+):
+    from unittest.mock import patch
+
+    from PySide6.QtWidgets import QMessageBox
+
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    assert window.auto_check_updates_checkbox.isChecked() is False
+
+    window.auto_check_updates_checkbox.setChecked(True)
+    window.on_save()
+
+    stored = QSettings("AbCS", "AudioBookCollector")
+    assert stored.value(AUTO_CHECK_UPDATES_SETTING, False, type=bool) is True
+
+    reopened = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(reopened)
+    assert reopened.auto_check_updates_checkbox.isChecked() is True
+
+    with patch(
+        "src.ui.preferences_window.exec_styled_message_box",
+        return_value=QMessageBox.Yes,
+    ):
+        reopened.on_restore_defaults()
+    assert reopened.auto_check_updates_checkbox.isChecked() is False
+    assert stored.value(AUTO_CHECK_UPDATES_SETTING, True, type=bool) is False
+    reopened.close()
 
 
 def test_preferences_author_fallback_persists_on_save(

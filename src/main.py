@@ -376,6 +376,8 @@ class AbCSApplication:
                     f"Shortcut conflict detected: {first_issue}"
                 )
 
+            self.main_window.maybe_start_startup_update_check()
+
             # Diagnostic: Check accessibility setup (commented out for production)
             # ...existing code...
 

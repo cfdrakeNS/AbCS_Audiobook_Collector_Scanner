@@ -85,4 +85,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.17**. Phases 1–4 and 6–10 are in the app. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is collection root, then Preview. Name consistency is second to last. View-mode announcements are optional and last.
+**Status:** Version 3 in progress — tester build **2.17**. Phases 1–4 and 6–10 are tester accepted. Series From File Name still needs a later test. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is collection root, then Preview. Name consistency is second to last. View-mode announcements are optional and last.

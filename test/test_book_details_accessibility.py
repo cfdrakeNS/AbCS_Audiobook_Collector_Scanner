@@ -104,7 +104,7 @@ def test_display_stores_blank_series_number_from_title(
     year.close()
 
 
-def test_save_puts_series_suffix_on_title_when_number_changes(
+def test_save_stores_series_number_without_changing_title(
     temp_db, ui_scaler, theme_manager
 ):
     author_id = AuthorQueries(temp_db).insert("Suffix Save Author")
@@ -153,7 +153,7 @@ def test_save_puts_series_suffix_on_title_when_number_changes(
     added.on_save()
     saved_added = books.get_by_id(added_id)
     assert saved_added.series_number == 3
-    assert saved_added.title == "Rules Of Prey - 03"
+    assert saved_added.title == "Rules Of Prey"
     added.close()
 
     changed = BookDetailsWindow(
@@ -168,7 +168,7 @@ def test_save_puts_series_suffix_on_title_when_number_changes(
     changed.on_save()
     saved_changed = books.get_by_id(changed_id)
     assert saved_changed.series_number == 6.5
-    assert saved_changed.title == "Winter - 6.5"
+    assert saved_changed.title == "Winter - 03"
     changed.close()
 
     unchanged = BookDetailsWindow(

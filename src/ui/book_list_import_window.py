@@ -99,7 +99,6 @@ from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.core.validator import ImportValidator
 from src.utils.text_utils import (
-    append_series_suffix,
     compare_normalize_title,
     series_number_for_storage,
 )
@@ -1819,14 +1818,14 @@ class BookListImportWindow(AccessibleDialog):
         # Scope duplicate prefetch to target collection when mode includes collection
         if validator.duplicate_match_mode == "title_author_year_collection":
             preexisting_rows = self.db.fetch_all(
-                "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
+                "SELECT b.book_id, b.title, a.name, b.year, b.collection_id, b.series_number FROM books b "
                 "JOIN authors a ON b.author_id = a.author_id "
                 "WHERE b.collection_id = ?",
                 (selected_collection_id,),
             )
         else:
             preexisting_rows = self.db.fetch_all(
-                "SELECT b.book_id, b.title, a.name, b.year, b.collection_id FROM books b "
+                "SELECT b.book_id, b.title, a.name, b.year, b.collection_id, b.series_number FROM books b "
                 "JOIN authors a ON b.author_id = a.author_id"
             )
         existing_books = [
@@ -1835,6 +1834,7 @@ class BookListImportWindow(AccessibleDialog):
                 "author": row_data[2],
                 "year": row_data[3],
                 "collection_id": row_data[4],
+                "series_number": row_data[5],
             }
             for row_data in preexisting_rows
         ]
@@ -1985,7 +1985,7 @@ class BookListImportWindow(AccessibleDialog):
                         validator.sanitize_metadata(temp)
                         series = temp["series"]
 
-                title_for_save = append_series_suffix(title, series_no)
+                title_for_save = title
                 stored_series_number = series_number_for_storage(series_no)
 
                 # Extract year for duplicate checking (before book object is created)
@@ -2003,6 +2003,7 @@ class BookListImportWindow(AccessibleDialog):
                     "author": author,
                     "year": import_year,
                     "collection_id": selected_collection_id,
+                    "series_number": stored_series_number,
                 }
                 if validator.is_duplicate_fast(
                     candidate,

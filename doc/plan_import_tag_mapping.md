@@ -69,7 +69,7 @@ Update [help_docs/19_import_explained.md](../help_docs/19_import_explained.md) t
 
 ## Series from filename — not a tag map
 
-`series_from_filename` parses the first `(…)` in the filename and may append ` - NN` to the title. That is **path parsing**, the same family as directory / nested-directory scenarios, not an ID3 field.
+`series_from_filename` parses the first `(…)` in the filename and stores a trailing number as `series_number`. The title is left without a suffix. That is **path parsing**, the same family as directory / nested-directory scenarios, not an ID3 field.
 
 Keep it as an **import scenario**. Do not add “Filename (parentheses)” to the title/author tag combos.
 

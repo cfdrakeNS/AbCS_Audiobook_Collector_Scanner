@@ -208,7 +208,7 @@ class TestBookListImportDb:
         updated = books.get_by_id(book_id)
         assert updated.read_date == date(2024, 6, 15)
 
-    def test_import_stores_series_number_and_title_suffix(
+    def test_import_stores_series_number_without_title_suffix(
         self, empty_temp_db, ui_scaler, theme_manager, qtbot
     ):
         window = BookListImportWindow(empty_temp_db, ui_scaler, theme_manager)
@@ -232,5 +232,5 @@ class TestBookListImportDb:
         saved = BookQueries(empty_temp_db).get_all(SearchFilter())
         match = [book for book in saved if book.series_number == 3]
         assert len(match) == 1
-        assert match[0].title == "Rules Of Prey - 03"
+        assert match[0].title == "Rules Of Prey"
         assert match[0].series_name == "Lucas Davenport"

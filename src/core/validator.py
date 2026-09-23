@@ -145,7 +145,9 @@ class ImportValidator:
         _, series_num = split_series_number(
             raw_title if isinstance(raw_title, str) else ""
         )
-        series_key = series_number_key(series_num)
+        series_key = series_number_key(book.get("series_number")) or series_number_key(
+            series_num
+        )
         year = book.get("year")
         collection_id = book.get("collection_id", target_collection_id)
 

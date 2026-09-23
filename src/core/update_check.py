@@ -11,6 +11,7 @@ from src.app_urls import ABCS_GITHUB_LATEST_RELEASE_API_URL
 from src.build_config import APP_VERSION
 
 CHECK_TIMEOUT_SECONDS = 8.0
+AUTO_CHECK_UPDATES_SETTING = "updates/auto_check"
 
 
 class UpdateCheckError(Exception):

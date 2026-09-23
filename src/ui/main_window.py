@@ -71,6 +71,7 @@ from src.database import (
     StatisticsQueries,
 )
 from src.database.models import book_has_plot
+from src.utils.text_utils import title_for_display
 from src.ui.statistics_dialog import StatisticsDialog
 from src.accessibility.scaling import UIScaler
 from src.accessibility.accessible_events import (
@@ -246,7 +247,7 @@ class BookTableModel(QAbstractTableModel):
         if col == 0:
             return book.author_name or ""
         if col == 1:
-            return book.title or ""
+            return title_for_display(book.title or "", book.series_number)
         if col == 2:
             return str(book.year) if book.year else ""
         if col == 3:
@@ -285,7 +286,7 @@ class BookTableModel(QAbstractTableModel):
         if role == Qt.AccessibleTextRole:
             suffix = self._selection_accessible_suffix(book)
             if col == 1:
-                title = book.title or ""
+                title = title_for_display(book.title or "", book.series_number)
                 if book_has_plot(book.comments):
                     base = f"{title}, plot" if title else "plot"
                 else:
@@ -1608,7 +1609,8 @@ class MainWindow(QMainWindow):
             # Include title of currently focused book (same as announce_selection)
             current_row = self.table.currentRow()
             if 0 <= current_row < len(self.books):
-                title = self.books[current_row].title or "Unknown"
+                book = self.books[current_row]
+                title = title_for_display(book.title or "Unknown", book.series_number)
                 if count == 1:
                     return f"{title} - selected. {shortcuts}"
                 else:
@@ -3577,7 +3579,9 @@ class MainWindow(QMainWindow):
         current_row = self.table.currentRow()
         if 0 <= current_row < len(self.books):
             last_book = self.books[current_row]
-            title = last_book.title or "Unknown"
+            title = title_for_display(
+                last_book.title or "Unknown", last_book.series_number
+            )
             if book_has_plot(last_book.comments):
                 title = f"{title}, plot"
 
@@ -4538,19 +4542,38 @@ class MainWindow(QMainWindow):
                 announce=True,
             )
 
+    def maybe_start_startup_update_check(self) -> None:
+        """Start Help-style update check when the Preferences option is on."""
+        from PySide6.QtCore import QSettings
+
+        from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
+
+        settings = QSettings("AbCS", "AudioBookCollector")
+        if not settings.value(AUTO_CHECK_UPDATES_SETTING, False, type=bool):
+            return
+        self._start_update_check(show_dialog_always=False, announce_progress=False)
+
     def on_check_for_updates(self):
         """Compare this build with the latest GitHub release. Download page is the website."""
+        self._start_update_check(show_dialog_always=True, announce_progress=True)
+
+    def _start_update_check(
+        self, *, show_dialog_always: bool, announce_progress: bool
+    ) -> None:
         thread = getattr(self, "_update_check_thread", None)
         if thread is not None and thread.isRunning():
-            self.set_status("Checking for updates.", announce=True)
+            if announce_progress:
+                self.set_status("Checking for updates.", announce=True)
             return
 
         from PySide6.QtCore import QThread
 
         from src.ui.update_check_dialog import UpdateCheckWorker
 
+        self._update_check_show_always = show_dialog_always
         self.check_updates_action.setEnabled(False)
-        self.set_status("Checking for updates.", announce=True)
+        if announce_progress:
+            self.set_status("Checking for updates.", announce=True)
         self._update_check_thread = QThread(self)
         self._update_check_worker = UpdateCheckWorker()
         self._update_check_worker.moveToThread(self._update_check_thread)
@@ -4568,6 +4591,9 @@ class MainWindow(QMainWindow):
         thread = getattr(self, "_update_check_thread", None)
         if thread is not None:
             thread.quit()
+        show_always = getattr(self, "_update_check_show_always", True)
+        if not show_always and not result.update_available:
+            return
         message = result_message(result)
         dialog = UpdateCheckDialog(result, self.scaler, self)
         choice = dialog.exec()

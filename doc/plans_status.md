@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (tester build 2.17. v3 Phases 1–4 and 6–9 complete. Phase 10 series number is in this build. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next: Phase 11 collection root.)
+**Last updated:** September 2026 (tester build 2.17. v3 Phases 1–4 and 6–10 complete, tester accepted. Series From File Name still needs a later test. Startup update check confirmed. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next: Phase 11 collection root.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -29,7 +29,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 7 | Auto-update check | [plan_auto_update.md](plan_auto_update.md) | Complete — tester accepted |
 | 8 | Keep current book on sort and filter | [plan_keep_book_focus.md](plan_keep_book_focus.md) | Complete — tester accepted |
 | 9 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | Complete — tester accepted |
-| 10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | In tester build 2.17 — Book Details display confirmed |
+| 10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | Complete — tester accepted. Later test: Series From File Name |
 | 11 | Collection library root (Part A) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | Planned — Phase 11 |
 | 12 | Preview audiobook (OS default player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | Planned — Phase 12 |
 | 13 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 13 (second to last) |

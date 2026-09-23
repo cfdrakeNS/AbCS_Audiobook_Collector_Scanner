@@ -72,7 +72,8 @@ class PreferencesWindow(AccessibleDialog):
     TAB_DESCRIPTIONS = {
         TAB_DISPLAY: (
             "Choose how AbCS looks: color theme, font scaling preset, and zoom level. "
-            "Changes to theme and zoom apply immediately so you can preview before saving."
+            "Changes to theme and zoom apply immediately so you can preview before saving. "
+            "Automatically check for updates is off unless you turn it on."
         ),
         TAB_IMPORT: (
             "Set defaults used when you open the Import window: where to scan, "
@@ -134,8 +135,8 @@ class PreferencesWindow(AccessibleDialog):
         ),
         "series_from_filename": (
             "Parses first parenthesized block in file name as series. "
-            "If that block ends in a number, such as 04 or 6.5, the title gets "
-            "suffix - NN and Series # is stored."
+            "If that block ends in a number, such as 04 or 6.5, Series # is stored. "
+            "The title is left without a series suffix."
         ),
         "single_item": (
             "Import one author folder, one series/book folder, or one file. "
@@ -434,9 +435,24 @@ class PreferencesWindow(AccessibleDialog):
         web_layout.addLayout(key_row)
         content_layout.addWidget(web_group)
 
+        updates_group = QGroupBox("Updates")
+        updates_group.setFont(self._section_font())
+        updates_layout = QVBoxLayout(updates_group)
+        updates_layout.setSpacing(8)
+        self.auto_check_updates_checkbox = QCheckBox("Automatically check for updates")
+        self.auto_check_updates_checkbox.setAccessibleName(
+            "Automatically check for updates"
+        )
+        self.auto_check_updates_checkbox.setAccessibleDescription(
+            "When checked, AbCS checks for a newer version after startup. "
+            "A dialog opens only when an update is available. Default is off."
+        )
+        updates_layout.addWidget(self.auto_check_updates_checkbox)
+        content_layout.addWidget(updates_group)
+
         content_layout.addStretch(1)
 
-        self._card_groups = [display_group, web_group]
+        self._card_groups = [display_group, web_group, updates_group]
         return page
 
     def _build_import_tab(self) -> QWidget:
@@ -1051,6 +1067,9 @@ class PreferencesWindow(AccessibleDialog):
             self.theme_picker: "Choose the application color theme",
             self.preset_combo: "Choose a preset font scaling level",
             self.zoom_spin: "Set the interface zoom percentage",
+            self.auto_check_updates_checkbox: (
+                "Check for a newer AbCS version after startup"
+            ),
             self.import_dir_edit: "Default folder used for audiobook imports",
             self.browse_button: "Choose an import folder",
             self.import_scenario_combo: "Choose how imports are interpreted",
@@ -1181,6 +1200,7 @@ class PreferencesWindow(AccessibleDialog):
         """
         self.author_fallback_checkbox.setStyleSheet(format_checkbox_style)
         self.title_fallback_checkbox.setStyleSheet(format_checkbox_style)
+        self.auto_check_updates_checkbox.setStyleSheet(format_checkbox_style)
         # Use theme manager styling for text boxes and combo boxes
         self.import_dir_edit.setStyleSheet("")  # Clear local style
         self.reader_keywords_edit.setStyleSheet("")  # Clear local style
@@ -1335,6 +1355,7 @@ class PreferencesWindow(AccessibleDialog):
             "theme": self.theme_picker.current_theme_id(),
             "scale": self.zoom_spin.value(),
             "google_books_api_key": self.google_books_api_key_edit.text().strip(),
+            "auto_check_updates": self.auto_check_updates_checkbox.isChecked(),
             "import_directory": self.import_dir_edit.text().strip(),
             "formats": tuple(
                 self.format_checks[key].isChecked()
@@ -1449,6 +1470,12 @@ class PreferencesWindow(AccessibleDialog):
 
         self.google_books_api_key_edit.setText(
             self.settings.value(GOOGLE_BOOKS_API_KEY_SETTING, "", type=str) or ""
+        )
+
+        from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
+
+        self.auto_check_updates_checkbox.setChecked(
+            self.settings.value(AUTO_CHECK_UPDATES_SETTING, False, type=bool)
         )
 
         # Import settings
@@ -2150,7 +2177,7 @@ class PreferencesWindow(AccessibleDialog):
             text=(
                 "Are you sure you want to restore all preferences to their default "
                 "values?\n\n"
-                "This will reset: Display settings (theme, zoom), Import settings "
+                "This will reset: Display settings (theme, zoom, update check), Import settings "
                 "(directory, formats, scenario, tag mapping, fallback options), and Validation "
                 "rules. This action cannot be undone."
             ),
@@ -2190,6 +2217,11 @@ class PreferencesWindow(AccessibleDialog):
 
         self.google_books_api_key_edit.clear()
         self.settings.setValue(GOOGLE_BOOKS_API_KEY_SETTING, "")
+
+        from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
+
+        self.auto_check_updates_checkbox.setChecked(False)
+        self.settings.setValue(AUTO_CHECK_UPDATES_SETTING, False)
 
         # Import settings
         self.import_dir_edit.setText("")
@@ -2340,6 +2372,12 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue(
             GOOGLE_BOOKS_API_KEY_SETTING,
             self.google_books_api_key_edit.text().strip(),
+        )
+        from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
+
+        self.settings.setValue(
+            AUTO_CHECK_UPDATES_SETTING,
+            self.auto_check_updates_checkbox.isChecked(),
         )
         self.settings.setValue(
             "import/default_directory", self.import_dir_edit.text().strip()

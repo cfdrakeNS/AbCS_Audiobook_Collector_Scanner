@@ -87,6 +87,58 @@ def test_fetch_rejects_unusable_payload():
             fetch_latest_release_tag()
 
 
+def test_startup_update_check_respects_preference(main_window, isolated_qsettings):
+    from PySide6.QtCore import QSettings
+
+    from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
+
+    started = []
+    main_window._start_update_check = lambda **kwargs: started.append(kwargs)
+
+    main_window.maybe_start_startup_update_check()
+    assert started == []
+
+    settings = QSettings("AbCS", "AudioBookCollector")
+    settings.setValue(AUTO_CHECK_UPDATES_SETTING, True)
+    settings.sync()
+    main_window.maybe_start_startup_update_check()
+    assert started == [
+        {"show_dialog_always": False, "announce_progress": False}
+    ]
+
+
+def test_startup_update_check_opens_dialog_only_when_update_exists(
+    main_window, monkeypatch
+):
+    from src.core.update_check import UpdateCheckResult
+
+    shown = []
+
+    class _FakeDialog:
+        OPEN_PAGE = 1
+
+        def __init__(self, *_args, **_kwargs):
+            self.browser_opened = False
+
+        def exec(self):
+            shown.append(True)
+            return 0
+
+    monkeypatch.setattr(
+        "src.ui.update_check_dialog.UpdateCheckDialog", _FakeDialog
+    )
+    main_window._update_check_show_always = False
+    main_window._on_update_check_finished(
+        UpdateCheckResult(current="2.17", latest="2.17", update_available=False)
+    )
+    assert shown == []
+
+    main_window._on_update_check_finished(
+        UpdateCheckResult(current="2.17", latest="2.18", update_available=True)
+    )
+    assert shown == [True]
+
+
 def test_update_dialog_focuses_open_only_when_update_exists(qapp, ui_scaler):
     from src.core.update_check import UpdateCheckResult
     from src.ui.update_check_dialog import UpdateCheckDialog

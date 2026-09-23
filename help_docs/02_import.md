@@ -57,7 +57,7 @@ Open **View → Preferences** (or **Manage → Preferences**). Import-related se
 | **Mass Standard Import** | Author → title subfolders or files | **Default.** Most libraries; does not auto-assign series from folders |
 | **Series From Directory** | Author → series folder → **audio files** (no book subfolders) | One file (or album) per book directly inside the series folder |
 | **Series From Directory (Nested Books)** | Author → series folder → **book folder** → audio files | Each book in its own subfolder under the series; standalone books under author get no series |
-| **Series From File Name** | Any layout | Series name is in the file name inside `( … )`. A trailing number such as 04 or 6.5 is appended to the title and stored as the series number |
+| **Series From File Name** | Any layout | Series name is in the file name inside `( … )`. A trailing number such as 04 or 6.5 is stored as the series number. The title is left without a suffix |
 | **Single Item** | One author, book, or file | Import a single folder or file at a time |
 
 **Choosing between the two series scenarios:**

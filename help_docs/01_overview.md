@@ -62,7 +62,7 @@ The **Help window size** still follows your main app zoom so the frame stays rea
 
 - Press **Enter** after choosing a preset in the list. If the preset dropdown is open, **Escape** closes the list first; press **Escape** again to close Help.
 - Open the full help viewer from **Help → Help...** or **Shift+F1**. **F1** alone shows keyboard shortcuts for the current window, not the full help viewer.
-- **Help → Check for updates** compares this copy of AbCS with the latest GitHub release. If a newer version is listed, **Open download page** opens the AbCS website. The check does not install anything.
+- **Help → Check for updates** compares this copy of AbCS with the latest GitHub release. If a newer version is listed, **Open website** opens the AbCS website. The check does not install anything. **Manage → Preferences** has **Automatically check for updates**, off by default. When it is on, the same check runs after startup. A dialog opens only when a newer version is available.
 
 ### Topics and sections
 

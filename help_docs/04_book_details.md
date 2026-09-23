@@ -67,7 +67,7 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | Alt+/ | Re-read status |
 | Escape | Close |
 
-Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. When a book is shown and Series number is blank, a number at the end of the title, such as ` - 3` or ` - 6.5`, is stored in Series number. The title stays as it is. There is no status message. A year such as `1999` stays on the title. When Series number is added or changed, saving puts that number on the title, such as ` - 03` or ` - 6.5`. A number already on the title is replaced. Clearing Series number leaves the title as it is.
+Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores Series number only. The title is not changed. The main book table shows ` - 03` or ` - 6.5` after the title when Series number is set. When a book is shown and Series number is blank, a number at the end of the title, such as ` - 3` or ` - 6.5`, is stored in Series number. The title stays as it is. There is no status message. A year such as `1999` stays on the title.
 
 ## Common confusion
 

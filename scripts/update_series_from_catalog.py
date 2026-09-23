@@ -1,9 +1,10 @@
 r"""
-One-time script: update series_id and title suffix from Audio_book_catalog_mp3.csv.
+One-time script: update series_id and series_number from Audio_book_catalog_mp3.csv.
 
 Matches DB books to catalog rows by author + title (fuzzy). On match:
   - sets books.series_id from CSV Series column
-  - sets title to "{base_title} - {NN}" (series number zero-padded to 2 digits)
+  - sets books.series_number from CSV SeriesNumber
+  - leaves the title as it is
 
 Close AbCS before running (--apply) to avoid SQLite lock errors.
 
@@ -45,6 +46,8 @@ from src.utils.text_utils import (  # noqa: E402
     format_series_suffix,
     normalize_author,
     normalize_title,
+    series_number_for_storage,
+    series_number_key,
     similarity_percentage,
     split_series_number,
 )
@@ -74,6 +77,7 @@ class MatchResult:
 
 
 def build_title(base_title: str, suffix: str) -> str:
+    """Kept for older call sites; catalog updates no longer rewrite titles."""
     return f"{base_title} - {suffix}".strip()
 
 
@@ -295,7 +299,7 @@ def run_update(
 
     cursor.execute(
         """
-        SELECT b.book_id, b.title, b.series_id,
+        SELECT b.book_id, b.title, b.series_id, b.series_number,
                a.name AS author_name, s.name AS series_name
         FROM books b
         JOIN authors a ON b.author_id = a.author_id
@@ -322,6 +326,7 @@ def run_update(
         author_name = row["author_name"] or ""
         db_series_id = row["series_id"]
         db_series_name = row["series_name"] or ""
+        db_series_number = row["series_number"]
 
         base_title, _ = split_series_number(db_title)
         norm_author = normalize_author(author_name, aggressive=True)
@@ -342,17 +347,16 @@ def run_update(
 
         entry = match.entry
         new_series_id = get_or_create_series_id(cursor, entry.series, dry_run=dry_run)
-        new_title = build_title(base_title, entry.formatted_suffix)
+        new_series_number = series_number_for_storage(entry.series_no)
 
-        if (
-            not dry_run
-            and db_series_id == new_series_id
-            and db_title == new_title
-        ) or (
-            dry_run
-            and db_title == new_title
-            and (db_series_name or "").strip().lower()
-            == entry.series.strip().lower()
+        same_series_name = (
+            (db_series_name or "").strip().lower() == entry.series.strip().lower()
+        )
+        same_number = series_number_key(db_series_number) == series_number_key(
+            new_series_number
+        )
+        if (not dry_run and db_series_id == new_series_id and same_number) or (
+            dry_run and same_series_name and same_number
         ):
             unchanged.append(label)
             continue
@@ -361,14 +365,14 @@ def run_update(
             f"{label}\n"
             f"    CSV: {entry.title} / {entry.series} #{entry.series_no}\n"
             f"    series: {db_series_name or '(none)'} -> {entry.series}\n"
-            f"    title: {db_title} -> {new_title}"
+            f"    series_number: {db_series_number} -> {new_series_number}"
         )
         updated.append(detail)
 
         if not dry_run:
             cursor.execute(
-                "UPDATE books SET title = ?, series_id = ? WHERE book_id = ?",
-                (new_title, new_series_id, book_id),
+                "UPDATE books SET series_id = ?, series_number = ? WHERE book_id = ?",
+                (new_series_id, new_series_number, book_id),
             )
             changes_applied += 1
 
@@ -422,7 +426,7 @@ def run_update(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Update abcs.db series and title suffixes from catalog CSV."
+        description="Update abcs.db series name and series_number from catalog CSV."
     )
     parser.add_argument(
         "--apply",

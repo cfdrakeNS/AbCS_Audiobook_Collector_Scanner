@@ -100,7 +100,7 @@ class AboutDialog(AccessibleDialog):
             ("item", "Help menu, Website... — product page and downloads."),
             (
                 "item",
-                "Help menu, Check for updates... — compares this version with the latest GitHub release. The download page is the AbCS website.",
+                "Help menu, Check for updates... — compares this version with the latest GitHub release. Preferences can run the same check after startup. The download page is the AbCS website.",
             ),
             ("item", "Shift+F1 — context-sensitive help for the current window."),
             ("item", "F1 — keyboard shortcuts for the current window."),

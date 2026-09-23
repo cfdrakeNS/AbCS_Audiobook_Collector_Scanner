@@ -251,6 +251,25 @@ def format_series_suffix(value) -> str:
     return text
 
 
+def title_for_display(title: str, series_number=None) -> str:
+    """Stored title plus a display-only `` - NN`` when series_number is set.
+
+    The stored title is not changed. A series suffix already on the title is
+    left as written. Whole numbers use two digits (``03``). Decimals stay
+    (``6.5``).
+    """
+    if not isinstance(title, str):
+        title = str(title or "")
+    title = title.strip()
+    suffix = format_series_suffix(series_number)
+    if not suffix or not title:
+        return title
+    _clean, existing = split_series_number(title)
+    if existing:
+        return title
+    return f"{title} - {suffix}"
+
+
 def title_with_series_suffix(title: str, value) -> str:
     """Return the title with a `` - NN`` suffix for this series number.
 

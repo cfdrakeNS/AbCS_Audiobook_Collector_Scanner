@@ -315,23 +315,24 @@ def test_series_filename_decimal_number():
     book = _apply_scenario_3("Book (Prey 6.5).mp3", "Book")
 
     assert book["series"] == "Prey"
-    assert book["title"] == "Book - 6.5"
+    assert book["title"] == "Book"
     assert book["series_number"] == 6.5
 
 
 @pytest.mark.parametrize(
-    "file_name, title, expected_series, expected_title",
+    "file_name, title, expected_series, expected_title, expected_number",
     [
         (
             "Book Title (Series Name 04).mp3",
             "Book Title",
             "Series Name",
-            "Book Title - 04",
+            "Book Title",
+            4,
         ),
-        ("Book (Trilogy 1).mp3", "Book", "Trilogy", "Book - 1"),
-        ("Title (No Number Here).mp3", "Title", "No Number Here", "Title"),
-        ("Title.mp3", "Title", "", "Title"),
-        ("Title (First) (Second).mp3", "Title", "First", "Title"),
+        ("Book (Trilogy 1).mp3", "Book", "Trilogy", "Book", 1),
+        ("Title (No Number Here).mp3", "Title", "No Number Here", "Title", None),
+        ("Title.mp3", "Title", "", "Title", None),
+        ("Title (First) (Second).mp3", "Title", "First", "Title", None),
     ],
     ids=[
         "name_and_number",
@@ -341,16 +342,12 @@ def test_series_filename_decimal_number():
         "first_parenthesized_block_only",
     ],
 )
-def test_series_filename_parsing(file_name, title, expected_series, expected_title):
+def test_series_filename_parsing(
+    file_name, title, expected_series, expected_title, expected_number
+):
     book = _apply_scenario_3(file_name, title)
 
     assert book["series"] == expected_series
     assert book["title"] == expected_title
-    if " - " in expected_title:
-        from src.utils.text_utils import series_number_for_storage
-
-        suffix = expected_title.rsplit(" - ", 1)[-1]
-        assert book["series_number"] == series_number_for_storage(suffix)
-    else:
-        assert book.get("series_number") is None
+    assert book.get("series_number") == expected_number
 
