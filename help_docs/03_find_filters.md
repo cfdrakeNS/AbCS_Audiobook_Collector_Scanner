@@ -57,7 +57,7 @@ This filter uses **date added** (when the book was imported or created in AbCS),
 ## Steps — Sort
 
 1. Open the **Sort** menu on the menu bar (**Alt+S**).
-2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date.
+2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date. **Series** sorts by series name, then series number, then year, then title. The summary label is **Series, Series #, Year, Title**. Books with no series number come after numbered books in that series. A blank year comes before a filled year.
 3. Use **Tab** to move through table cells, or click a column header to sort by that column; click the same header again to reverse ascending/descending order.
 4. The filter summary shows the current sort (for example, "Sort: Title (ascending)").
 5. The book that had focus stays the current book. Filters do the same when that book is still in the list. If a filter hides it, focus moves to the first remaining book.

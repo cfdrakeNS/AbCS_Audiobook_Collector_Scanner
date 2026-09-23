@@ -141,6 +141,24 @@ def test_series_sort_is_name_then_number_with_blanks_last(temp_db):
         Book(title="Book Two", author_id=author_id, series_id=series_id, series_number=2)
     )
     books.insert(
+        Book(
+            title="Year Late",
+            author_id=author_id,
+            series_id=series_id,
+            series_number=2,
+            year=2010,
+        )
+    )
+    books.insert(
+        Book(
+            title="Year Early",
+            author_id=author_id,
+            series_id=series_id,
+            series_number=2,
+            year=1999,
+        )
+    )
+    books.insert(
         Book(title="Book Six", author_id=author_id, series_id=series_id, series_number=6.5)
     )
     books.insert(
@@ -155,4 +173,12 @@ def test_series_sort_is_name_then_number_with_blanks_last(temp_db):
         for book in books.get_all(SearchFilter(order_by="Series"))
         if book.author_id == author_id
     ]
-    assert ordered == ["Earlier Series", "Book Two", "Book Six", "Book Ten", "No Number"]
+    assert ordered == [
+        "Earlier Series",
+        "Book Two",
+        "Year Early",
+        "Year Late",
+        "Book Six",
+        "Book Ten",
+        "No Number",
+    ]

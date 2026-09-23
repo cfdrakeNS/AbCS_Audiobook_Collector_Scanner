@@ -251,6 +251,30 @@ def format_series_suffix(value) -> str:
     return text
 
 
+def title_with_series_suffix(title: str, value) -> str:
+    """Return the title with a `` - NN`` suffix for this series number.
+
+    A different trailing series number is replaced. The same number is left
+    as written (`` - 3`` stays `` - 3``). A blank series number leaves the
+    title unchanged.
+    """
+    if not isinstance(title, str):
+        title = str(title or "")
+    title = title.strip()
+    suffix = format_series_suffix(value)
+    if not suffix or not title:
+        return title
+
+    clean_title, existing = split_series_number(title)
+    if existing and series_number_key(existing) == series_number_key(value):
+        return title
+
+    base = (clean_title or title).strip()
+    if not base:
+        return title
+    return f"{base} - {suffix}"
+
+
 def append_series_suffix(title: str, value) -> str:
     """Return ``title - NN`` when a series number is present and not already on title."""
     if not isinstance(title, str):

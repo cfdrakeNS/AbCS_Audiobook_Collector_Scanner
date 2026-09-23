@@ -3,15 +3,15 @@
 **Status:** In tester build 2.17. Book Details display confirmed. Version 3 Phase 10.  
 **Created:** June 2026  
 **Updated:** September 2026 — shipped behavior below. Phase 9 schema accepted.  
-**Related:** [plan_schema_batch.md](plan_schema_batch.md) (v3 Phase 9), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)
+**Related:** [plan_schema_batch.md](plan_schema_batch.md) (v3 Phase 9), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [scripts/update_series_number_from_title.py](../scripts/update_series_number_from_title.py), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)
 
 ---
 
 ## What this is
 
-Persist **series number** (for example book 3, or 6.5) in SQLite as a real number. The only place it shows in the UI is **Book Details**, a text box to the right of Series. There is no shortcut for that box. Alt+I focuses Series, then Tab moves to Series #. When a book is shown and Series # is blank, a number at the end of the title is stored. The title stays as it is. There is no status message. A stored Series # is left as it is. A year such as 1999 stays on the title. **Book List Import** stores a mapped Series # and appends it to the title. **Series From File Name** does the same for a number in the file name, including 6.5. Import Detail, the main table, and the Update window do not show a series-number field. The main-window **Series** sort is series name, then series number, then title.
+Persist **series number** (for example book 3, or 6.5) in SQLite as a real number. The only place it shows in the UI is **Book Details**, a text box to the right of Series. There is no shortcut for that box. Alt+I focuses Series, then Tab moves to Series #. When a book is shown and Series # is blank, a number at the end of the title is stored. The title stays as it is. There is no status message. A stored Series # is left as it is. A year such as 1999 stays on the title. When Series # is added or changed, saving puts that number on the title (` - 03` or ` - 6.5`) and replaces a number already on the title. Clearing Series # leaves the title as it is. **Book List Import** stores a mapped Series # and appends it to the title. **Series From File Name** does the same for a number in the file name, including 6.5. Import Detail, the main table, and the Update window do not show a series-number field. The main-window **Series** sort is series name, then series number, then year, then title.
 
-**Scope note (2026-09):** Fetch Web Info does not retrieve or display series or series number. Series entry is **manual only** on Book Details. Import Detail, the main book table, and the Update window do not show a series-number field. The main-window **Series** sort orders by series name, then series number.
+**Scope note (2026-09):** Fetch Web Info does not retrieve or display series or series number. Series entry is **manual only** on Book Details. Import Detail, the main book table, and the Update window do not show a series-number field. The main-window **Series** sort orders by series name, then series number, then year, then title.
 
 ---
 
@@ -51,11 +51,11 @@ Keep the existing Series and Series # column mapping. When Series # has a value,
 
 ### Sort — main window
 
-The existing **Series** sort (Sort menu and the Series column header) changes. Today it is series name, then year, then title (`ORDER BY s.name, b.year, b.title` in [`queries.py`](../src/database/queries.py)). It becomes series name, then series number, then title.
-
-Books with no series number sort after numbered books in that series. The sort label that now says “Series, Year, Title” becomes “Series, Series number, Title”. No new sort item. No series-number column on the main table.
+The existing **Series** sort (Sort menu and the Series column header) is series name, then series number, then year, then title. Books with no series number sort after numbered books in that series. Within one series number, year is ascending and title breaks remaining ties. The sort label is “Series, Series #, Year, Title”. No new sort item. No series-number column on the main table.
 
 ### Optional offline
+
+[`scripts/update_series_number_from_title.py`](../scripts/update_series_number_from_title.py) fills a blank `series_number` from a title suffix. The title is left as it is. Dry-run is the default. `--apply` copies the database to a timestamped backup first.
 
 [`scripts/update_series_from_catalog.py`](../scripts/update_series_from_catalog.py) may write the column once it exists — keep in sync with field name.
 
@@ -66,10 +66,11 @@ Books with no series number sort after numbered books in that series. The sort l
 ## Tests
 
 - Save/load from Book Details; field is to the right of Series
+- Saving after Series # is added or changed puts that number on the title. Clearing Series # leaves the title as it is
 - Showing a book with a blank Series # and a title suffix stores that number, leaves the title unchanged, and does not mark the form dirty
 - A Series # that is already stored is left as it is
 - Book List Import with Series and Series # mapped saves the number on `series_number` and appends it to the title
-- Series sort order is series name, then series number, then title
+- Series sort order is series name, then series number, then year, then title
 - Books with an empty series number come after numbered books in the same series
 - Title/number split does not drop or duplicate existing titles
 - Main table, Import Detail, and Update window have no series-number field

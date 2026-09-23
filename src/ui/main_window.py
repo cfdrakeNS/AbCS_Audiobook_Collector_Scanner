@@ -531,7 +531,7 @@ class MainWindow(QMainWindow):
         if key == "Author":
             return "Author, Year, Title"
         if key == "Series":
-            return "Series, Series number, Title"
+            return "Series, Series #, Year, Title"
         if key == "Genre":
             return "Genre, Title"
         return key or "Title"

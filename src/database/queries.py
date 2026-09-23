@@ -150,7 +150,7 @@ class BookQueries:
         elif filter_criteria.order_by == "Series":
             query += (
                 " ORDER BY s.name IS NULL, s.name,"
-                " b.series_number IS NULL, b.series_number, b.title"
+                " b.series_number IS NULL, b.series_number, b.year, b.title"
             )
         elif filter_criteria.order_by == "Read Date":
             query += " ORDER BY b.read_date IS NULL, b.read_date, b.title"

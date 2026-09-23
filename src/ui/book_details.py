@@ -1811,6 +1811,11 @@ class BookDetailsWindow(AccessibleDialog):
             self._original_author = self.book.author_name or ""
             self._original_series = self.book.series_name or ""
             self._original_genre = self.book.genre_name or ""
+            from src.utils.text_utils import series_number_for_storage
+
+            self._series_number_at_load = series_number_for_storage(
+                self.book.series_number
+            )
         finally:
             self._loading_fields = False
         self._update_header_card()
@@ -1974,6 +1979,20 @@ class BookDetailsWindow(AccessibleDialog):
         year_value = None if year_value == self.year_spin.minimum() else year_value
         series_number = self._series_number_from_field()
         self._set_series_number_field(series_number)
+        from src.utils.text_utils import series_number_key, title_with_series_suffix
+
+        loaded_series_number = getattr(self, "_series_number_at_load", None)
+        if series_number and series_number_key(series_number) != series_number_key(
+            loaded_series_number
+        ):
+            titled = title_with_series_suffix(book_dict["title"], series_number)
+            if titled != book_dict["title"]:
+                book_dict["title"] = titled
+                self._loading_fields = True
+                try:
+                    self.title_edit.setText(titled)
+                finally:
+                    self._loading_fields = False
 
         # Removed legacy normalization methods (_to_proper_case, _is_proper_case_enabled, _normalize_name_field)
         self.book.year = year_value
@@ -2048,6 +2067,7 @@ class BookDetailsWindow(AccessibleDialog):
                 self.set_status("Book updated successfully")
 
             self._data_was_changed = True
+            self._series_number_at_load = series_number
 
             # Clear dirty and update original values (don't close window)
             self._clear_dirty(preserve_status=True)
@@ -2377,6 +2397,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.author_combo.clearEditText()
             self.year_spin.setValue(self.year_spin.minimum())
             self.series_number_edit.clear()
+            self._series_number_at_load = None
             self.series_combo.setCurrentIndex(-1)
             self.series_combo.clearEditText()
             self.genre_combo.setCurrentIndex(-1)

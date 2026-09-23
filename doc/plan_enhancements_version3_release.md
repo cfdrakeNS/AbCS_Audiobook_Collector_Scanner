@@ -124,9 +124,9 @@ The column is used by series number (Phase 10). Collection root adds `root_path`
 
 See [plan_series_number_db.md](plan_series_number_db.md). **In tester build 2.17.** Book Details display confirmed. Needs Phase 9.
 
-The only series-number field is on **Book Details**, a text box to the right of Series. When a book is shown and Series # is blank, a title suffix such as ` - 3` or ` - 6.5` is stored in Series #. The title stays as it is. There is no status message. The main-window **Series** sort becomes series name, then series number, then title. Book List Import stores a mapped Series # and appends it to the title. Series From File Name does the same for a number in the file name. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
+The only series-number field is on **Book Details**, a text box to the right of Series. When a book is shown and Series # is blank, a title suffix such as ` - 3` or ` - 6.5` is stored in Series #. The title stays as it is. There is no status message. When Series # is added or changed, saving puts that number on the title (` - 03` or ` - 6.5`). Clearing Series # leaves the title as it is. The main-window **Series** sort becomes series name, then series number, then year, then title. Book List Import stores a mapped Series # and appends it to the title. Series From File Name does the same for a number in the file name. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
 
-**Gate:** Save/load from Book Details; showing a book with a blank Series # and a title suffix such as ` - 3` stores that number and leaves the title unchanged; Series sort is series then series number; JAWS reads the text box to the right of Series.
+**Gate:** Save/load from Book Details; showing a book with a blank Series # and a title suffix such as ` - 3` stores that number and leaves the title unchanged; saving after Series # is added or changed puts that number on the title; Series sort is series, series number, year, then title; JAWS reads the text box to the right of Series.
 
 ### Phase 11 — C07 Collection library root folder (2–3 days)
 

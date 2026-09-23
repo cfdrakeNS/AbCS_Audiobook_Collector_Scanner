@@ -6,8 +6,8 @@ import pytest
 from PySide6.QtCore import Qt
 
 from src.database.connection import DatabaseManager
-from src.database.models import Book
-from src.database.queries import AuthorQueries, BookQueries
+from src.database.models import Book, Collection
+from src.database.queries import AuthorQueries, BookQueries, CollectionQueries
 from src.ui.book_details import BookDetailsWindow
 
 def _ensure_sample_books(db: DatabaseManager, count: int = 2) -> list[Book]:
@@ -102,6 +102,88 @@ def test_display_stores_blank_series_number_from_title(
     assert books.get_by_id(year_id).series_number is None
     assert books.get_by_id(year_id).title == "Some Title, 1999"
     year.close()
+
+
+def test_save_puts_series_suffix_on_title_when_number_changes(
+    temp_db, ui_scaler, theme_manager
+):
+    author_id = AuthorQueries(temp_db).insert("Suffix Save Author")
+    collections = CollectionQueries(temp_db).get_all()
+    if collections:
+        collection_id = collections[0].collection_id
+    else:
+        collection_id = CollectionQueries(temp_db).insert(
+            Collection(name="Suffix Save Collection", active=True)
+        )
+    books = BookQueries(temp_db)
+    added_id = books.insert(
+        Book(
+            title="Rules of Prey",
+            author_id=author_id,
+            collection_id=collection_id,
+            series_number=None,
+        )
+    )
+    changed_id = books.insert(
+        Book(
+            title="Winter - 03",
+            author_id=author_id,
+            collection_id=collection_id,
+            series_number=3,
+        )
+    )
+    unchanged_id = books.insert(
+        Book(
+            title="Other - 9",
+            author_id=author_id,
+            collection_id=collection_id,
+            series_number=9,
+        )
+    )
+
+    added = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books.get_by_id(added_id),
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    added.on_edit_mode()
+    added.series_number_edit.setText("3")
+    added.on_save()
+    saved_added = books.get_by_id(added_id)
+    assert saved_added.series_number == 3
+    assert saved_added.title == "Rules Of Prey - 03"
+    added.close()
+
+    changed = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books.get_by_id(changed_id),
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    changed.on_edit_mode()
+    changed.series_number_edit.setText("6.5")
+    changed.on_save()
+    saved_changed = books.get_by_id(changed_id)
+    assert saved_changed.series_number == 6.5
+    assert saved_changed.title == "Winter - 6.5"
+    changed.close()
+
+    unchanged = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books.get_by_id(unchanged_id),
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    unchanged.on_edit_mode()
+    unchanged.on_save()
+    saved_unchanged = books.get_by_id(unchanged_id)
+    assert saved_unchanged.series_number == 9
+    assert saved_unchanged.title == "Other - 9"
+    unchanged.close()
 
 
 def test_page_navigation_focuses_title(temp_db, ui_scaler, theme_manager, monkeypatch):

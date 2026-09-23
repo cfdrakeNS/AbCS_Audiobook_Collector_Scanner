@@ -113,7 +113,7 @@ After all files are read, the app processes each grouped book through your **imp
 | **Mass standard** | Uses tags only; standard fallbacks and corrections apply |
 | **Series from directory** | Series name from the book's folder; author from the parent folder |
 | **Series from directory (nested)** | Series and title from nested folders after the author segment |
-| **Series from filename** | Series from text inside `(…)` in the filename; may append a series number to the title |
+| **Series from filename** | Series from text inside `(…)` in the filename. A trailing number such as 04 or 6.5 is appended to the title and stored as the series number |
 | **Single item** | One file or folder treated as one book |
 
 ### Fallbacks when tags are weak
