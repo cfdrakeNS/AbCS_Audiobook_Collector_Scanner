@@ -17,11 +17,12 @@ The Name List window lets you view and manage author, series and genres, or othe
 ## Steps
 
 1. Open the name list from the main book table (double-click a name cell, or focus a cell and press **Enter**), or from a collection workflow.
-2. Click a row in the list, or press **Alt+L** to move focus to the list with the keyboard.
+2. Click a row in the list, or press **Alt+L** to move focus to the list with the keyboard. Tab does not stop on the list.
 3. Click **Edit**, double-click a row, or press **Alt+E** to edit the selected entry.
 4. Type in the name field; in collection mode, click the **Active** checkbox as needed (or press **Alt+A**).
 5. Click **Save** when your edits are complete.
-6. Click **Close** or press **Escape** to leave the window.
+6. If the new author, series, or genre name already exists, AbCS asks whether to move this name’s books onto that existing name. **No** leaves both names unchanged. **Yes** moves the books, removes the name you were editing, and reports how many books changed. Collections still show a duplicate-name warning only.
+7. Click **Close** or press **Escape** to leave the window. If focus is in **Find**, **Escape** clears the find text if needed and returns to the list instead of closing.
 
 ## Mouse, shortcuts, and accessibility
 
@@ -39,7 +40,7 @@ The Name List window lets you view and manage author, series and genres, or othe
 | Alt+A | Active checkbox (collection mode) |
 | Alt+F | Clear find (non-collection mode) |
 | Alt+/ | Re-read the status bar |
-| Escape | Cancel edit or close window |
+| Escape | In Find, return to the list. Otherwise cancel edit or close window |
 
 ## Related guides
 

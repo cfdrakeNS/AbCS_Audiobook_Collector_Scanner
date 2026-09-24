@@ -91,7 +91,7 @@ def test_table_focus_policy_no_focus_while_searching():
     from PySide6.QtCore import Qt
 
     assert NameListWindow._table_focus_policy_for_find_filter(True) == Qt.NoFocus
-    assert NameListWindow._table_focus_policy_for_find_filter(False) == Qt.StrongFocus
+    assert NameListWindow._table_focus_policy_for_find_filter(False) == Qt.ClickFocus
 
 def test_best_match_row_from_entries_prefers_exact_over_collaborative():
     entries = [

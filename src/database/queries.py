@@ -539,6 +539,25 @@ class AuthorQueries:
         )
         self.db.connect().commit()
 
+    def merge(self, source_id: int, target_id: int) -> int:
+        """Move all books from source author to target, then delete source.
+
+        Returns the number of books reassigned.
+        """
+        if source_id == target_id:
+            return 0
+        row = self.db.fetch_one(
+            "SELECT COUNT(*) FROM books WHERE author_id = ?", (source_id,)
+        )
+        count = int(row[0]) if row else 0
+        self.db.execute(
+            "UPDATE books SET author_id = ? WHERE author_id = ?",
+            (target_id, source_id),
+        )
+        self.db.execute("DELETE FROM authors WHERE author_id = ?", (source_id,))
+        self.db.connect().commit()
+        return count
+
     def delete(self, author_id: int):
         """Delete author if no books reference it."""
         self.db.execute("DELETE FROM authors WHERE author_id = ?", (author_id,))
@@ -629,6 +648,25 @@ class SeriesQueries:
         )
         self.db.connect().commit()
 
+    def merge(self, source_id: int, target_id: int) -> int:
+        """Move all books from source series to target, then delete source.
+
+        Returns the number of books reassigned. Series numbers on books stay as they are.
+        """
+        if source_id == target_id:
+            return 0
+        row = self.db.fetch_one(
+            "SELECT COUNT(*) FROM books WHERE series_id = ?", (source_id,)
+        )
+        count = int(row[0]) if row else 0
+        self.db.execute(
+            "UPDATE books SET series_id = ? WHERE series_id = ?",
+            (target_id, source_id),
+        )
+        self.db.execute("DELETE FROM series WHERE series_id = ?", (source_id,))
+        self.db.connect().commit()
+        return count
+
     def delete(self, series_id: int):
         """Delete series if no books reference it."""
         self.db.execute("DELETE FROM series WHERE series_id = ?", (series_id,))
@@ -714,6 +752,25 @@ class GenreQueries:
             "UPDATE genres SET name = ? WHERE genre_id = ?", (name, genre_id)
         )
         self.db.connect().commit()
+
+    def merge(self, source_id: int, target_id: int) -> int:
+        """Move all books from source genre to target, then delete source.
+
+        Returns the number of books reassigned.
+        """
+        if source_id == target_id:
+            return 0
+        row = self.db.fetch_one(
+            "SELECT COUNT(*) FROM books WHERE genre_id = ?", (source_id,)
+        )
+        count = int(row[0]) if row else 0
+        self.db.execute(
+            "UPDATE books SET genre_id = ? WHERE genre_id = ?",
+            (target_id, source_id),
+        )
+        self.db.execute("DELETE FROM genres WHERE genre_id = ?", (source_id,))
+        self.db.connect().commit()
+        return count
 
     def delete(self, genre_id: int):
         """Delete genre if no books reference it."""

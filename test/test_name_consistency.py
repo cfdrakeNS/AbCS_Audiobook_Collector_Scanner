@@ -11,7 +11,7 @@ from src.core.name_consistency import (
     find_similar_genre_groups,
 )
 from src.database.models import Book
-from src.database.queries import AuthorQueries, BookQueries, GenreQueries
+from src.database.queries import AuthorQueries, BookQueries, GenreQueries, SeriesQueries
 
 
 def test_find_similar_author_groups_clusters_near_spellings():
@@ -45,7 +45,6 @@ def test_find_similar_genre_groups_clusters_near_spellings():
     assert groups[0].suggested_id == 10
 
 
-@pytest.mark.skip(reason="Author/genre merge ships in version 3 Phase 8")
 def test_author_merge_reassigns_books_and_deletes_source(temp_db):
     authors = AuthorQueries(temp_db)
     books = BookQueries(temp_db)
@@ -67,7 +66,6 @@ def test_author_merge_reassigns_books_and_deletes_source(temp_db):
     assert any(b.author_id == target and b.title == "Merge Book" for b in remaining)
 
 
-@pytest.mark.skip(reason="Author/genre merge ships in version 3 Phase 8")
 def test_genre_merge_reassigns_books_and_deletes_source(temp_db):
     authors = AuthorQueries(temp_db)
     genres = GenreQueries(temp_db)
@@ -90,3 +88,30 @@ def test_genre_merge_reassigns_books_and_deletes_source(temp_db):
     assert genres.get_by_id(source) is None
     remaining = books.get_all()
     assert any(b.genre_id == target and b.title == "Genre Merge Book" for b in remaining)
+
+
+def test_series_merge_reassigns_books_and_keeps_series_number(temp_db):
+    authors = AuthorQueries(temp_db)
+    series = SeriesQueries(temp_db)
+    books = BookQueries(temp_db)
+    author_id = authors.insert("Series Merge Author")
+    source = series.insert("Merge Series Source")
+    target = series.insert("Merge Series Target")
+    books.insert(
+        Book(
+            title="Series Merge Book",
+            author_id=author_id,
+            series_id=source,
+            series_number=6.5,
+            year=2022,
+            tracks=1,
+            path="/tmp/series-merge",
+        )
+    )
+    updated = series.merge(source, target)
+    assert updated == 1
+    assert series.get_by_id(source) is None
+    remaining = [b for b in books.get_all() if b.title == "Series Merge Book"]
+    assert len(remaining) == 1
+    assert remaining[0].series_id == target
+    assert remaining[0].series_number == 6.5

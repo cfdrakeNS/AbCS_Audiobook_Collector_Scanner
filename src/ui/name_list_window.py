@@ -84,6 +84,23 @@ class NameListWindow(AccessibleDialog):
             announce=False,
         )
 
+    def _escape_from_find_to_list(self) -> None:
+        """Escape in Find: clear the filter if needed and move focus to the list."""
+        if self.find_edit.text().strip():
+            self.find_edit.clear()
+            self._apply_find_filter()
+        selected = self._selected_item_id()
+        if selected is not None:
+            name_item = self.table.item(self.table.currentRow(), self.COL_NAME)
+            name = name_item.text() if name_item else self.entity_singular.lower()
+            self.set_status(name, announce=False)
+        else:
+            self.set_status(
+                f"Showing all {self.table.rowCount()} {self.entity_plural.lower()}.",
+                announce=False,
+            )
+        self.focus_list()
+
     def on_alt_f_pressed(self):
         self.on_clear_find()
 
@@ -124,9 +141,12 @@ class NameListWindow(AccessibleDialog):
 
     @staticmethod
     def _table_focus_policy_for_find_filter(has_search: bool) -> Qt.FocusPolicy:
-        return Qt.NoFocus if has_search else Qt.StrongFocus
+        # ClickFocus: mouse and Alt+L / setFocus still work; Tab skips the list.
+        return Qt.NoFocus if has_search else Qt.ClickFocus
 
     def _sync_table_focus_for_find_filter(self, has_search: bool) -> None:
+        if self.is_collection_mode:
+            return
         self.table.setFocusPolicy(
             self._table_focus_policy_for_find_filter(has_search)
         )
@@ -295,7 +315,10 @@ class NameListWindow(AccessibleDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setTabKeyNavigation(False)
-        self.table.setFocusPolicy(Qt.StrongFocus)
+        if self.is_collection_mode:
+            self.table.setFocusPolicy(Qt.StrongFocus)
+        else:
+            self.table.setFocusPolicy(Qt.ClickFocus)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
         vh = self.table.verticalHeader()
@@ -413,7 +436,11 @@ class NameListWindow(AccessibleDialog):
         apply_status_bar_tooltip(self.status_bar, "Manager status")
 
     def _apply_tab_order(self):
-        """Apply tab order safely for current mode and visible controls."""
+        """Apply tab order safely for current mode and visible controls.
+
+        Author/series/genre: Tab skips the list table (use Alt+L). Find, Name, buttons only.
+        Collection: Tab includes the list, then editor controls and buttons.
+        """
         chain = []
 
         if self.is_collection_mode:
@@ -427,7 +454,6 @@ class NameListWindow(AccessibleDialog):
                 chain.append(self.find_edit)
             if self.name_edit.isVisible() and self.name_edit.isEnabled():
                 chain.append(self.name_edit)
-            chain.append(self.table)
 
         footer_buttons = [
             self.edit_button,
@@ -474,6 +500,10 @@ class NameListWindow(AccessibleDialog):
             if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                 event.accept()
                 self.on_find_enter_pressed()
+                return True
+            if event.key() == Qt.Key_Escape:
+                event.accept()
+                self._escape_from_find_to_list()
                 return True
 
         if (
@@ -537,6 +567,8 @@ class NameListWindow(AccessibleDialog):
                         self.edit_button.setFocus(Qt.BacktabFocusReason)
                     else:
                         self.active_check.setFocus(Qt.BacktabFocusReason)
+                elif self.find_edit.isVisible() and self.find_edit.isEnabled():
+                    self.find_edit.setFocus(Qt.BacktabFocusReason)
                 else:
                     self.name_edit.setFocus(Qt.BacktabFocusReason)
                 return True
@@ -952,7 +984,6 @@ class NameListWindow(AccessibleDialog):
                     )
                 )
             else:
-                # Handle case changes properly by using a temporary name
                 current_item = self.query.get_by_id(self.current_item_id)
                 if (
                     current_item
@@ -968,6 +999,20 @@ class NameListWindow(AccessibleDialog):
                         self.current_item_id, name
                     )  # Step 2: change to final case
                 else:
+                    existing_other = self.query.get_by_name(name)
+                    other_id = (
+                        getattr(existing_other, self.id_column, None)
+                        if existing_other is not None
+                        else None
+                    )
+                    if (
+                        existing_other is not None
+                        and other_id is not None
+                        and other_id != self.current_item_id
+                    ):
+                        return self._merge_into_existing_name(
+                            current_item, existing_other, other_id
+                        )
                     # Normal update
                     self.query.update(self.current_item_id, name)
         except sqlite3.IntegrityError:
@@ -986,7 +1031,56 @@ class NameListWindow(AccessibleDialog):
         self.load_items(preserve_id=self.current_item_id, populate_editor=False)
         self._set_collection_editor_locked(True)
         QTimer.singleShot(0, self._force_locked_button_state)
+        saved_id = self.current_item_id
         self.set_status(f"{self.entity_singular} saved: {name}.", announce=True)
+        QTimer.singleShot(
+            0, lambda item_id=saved_id: self.focus_and_select_row(item_id)
+        )
+        return True
+
+    def _merge_into_existing_name(self, current_item, existing_other, other_id: int) -> bool:
+        """Ask to move books onto an existing name, then merge or leave unchanged."""
+        source_name = (current_item.name if current_item else "") or ""
+        target_name = existing_other.name or ""
+        book_count = self._book_count_for_item(self.current_item_id)
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title=self.entity_singular,
+            text=(
+                f"A {self.entity_singular.lower()} with this name already exists. "
+                f"Update {book_count} books from {source_name} to {target_name}?"
+            ),
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            self.set_status(
+                f"Duplicate {self.entity_singular.lower()} name.", announce=True
+            )
+            return False
+
+        updated = self.query.merge(self.current_item_id, other_id)
+        result_text = (
+            f"{updated} books. {self.entity_singular} changed from "
+            f"{source_name} to {target_name}."
+        )
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title=self.entity_singular,
+            text=result_text,
+        )
+        self.current_item_id = other_id
+        self.load_items(preserve_id=other_id, populate_editor=False)
+        self._set_collection_editor_locked(True)
+        QTimer.singleShot(0, self._force_locked_button_state)
+        self.set_status(result_text, announce=True)
+        QTimer.singleShot(
+            0, lambda item_id=other_id: self.focus_and_select_row(item_id)
+        )
         return True
 
     def on_name_edit_enter_pressed(self):
@@ -1027,7 +1121,11 @@ class NameListWindow(AccessibleDialog):
                 if self.save_button.isVisible() and self.save_button.isEnabled()
                 else None
             ),
-            ("Escape", "Cancel edit/Close window"),
+            (
+                ("Escape", "Return to list from Find")
+                if not self.is_collection_mode
+                else ("Escape", "Cancel edit/Close window")
+            ),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
@@ -1093,6 +1191,14 @@ class NameListWindow(AccessibleDialog):
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode, or close window."""
+        if (
+            not self.is_collection_mode
+            and self.find_edit.hasFocus()
+            and self.find_edit.isVisible()
+        ):
+            self._escape_from_find_to_list()
+            return
+
         if self._collection_editor_locked:
             # If not editing, close the window
             self.accept()
@@ -1361,6 +1467,35 @@ class NameListWindow(AccessibleDialog):
             if name_item:
                 self._set_edit_hint_status(name_item.text())
         self.table.setFocus(Qt.TabFocusReason)
+
+    def focus_and_select_row(self, item_id: int | None) -> None:
+        """Focus and select the list row for the given author, series, genre, or collection id."""
+        if item_id is None:
+            self.focus_list()
+            return
+        for row in range(self.table.rowCount()):
+            name_item = self.table.item(row, self.COL_NAME)
+            if name_item is None:
+                continue
+            data = name_item.data(Qt.UserRole)
+            if data is None or int(data) != int(item_id):
+                continue
+            self.current_item_id = int(item_id)
+            selection_model = self.table.selectionModel()
+            table_blocker = QSignalBlocker(self.table)
+            selection_blocker = (
+                QSignalBlocker(selection_model) if selection_model else None
+            )
+            try:
+                self.table.selectRow(row)
+                self.table.setCurrentCell(row, self.COL_NAME)
+            finally:
+                del table_blocker
+                if selection_blocker is not None:
+                    del selection_blocker
+            self.table.setFocus(Qt.TabFocusReason)
+            return
+        self.focus_list()
 
     def _set_edit_hint_status(self, item_name: str):
         # Only show the name, no shortcut hints

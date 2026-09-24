@@ -10,13 +10,12 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 ## Planned for version 3 (next major update)
 
-Already in tester build **2.18:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted.
+Already in tester build **2.18:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted. Name-list merge on duplicate (Phase 13) is in 2.18: when you rename an author, series, or genre onto an existing name, AbCS asks whether to move that name’s books.
 
 Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **Name consistency check** | Find similar spellings of author names, titles, and genres and help you merge them — similar to Duplicate Check. You confirm each group. |
 | **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. Decide after the other v3 items. |
 
 ---
@@ -31,6 +30,7 @@ Still planned for v3:
 | **Cover images** | Save cover images from web fetch; show in Book Details and Import Detail. Out of scope for v3. |
 | **Better backups** | Zip package with database plus covers. |
 | **Rescan / update from folder** | Scan again and update books already in the library. |
+| **Library-wide name consistency scan** | Find similar author, series, and genre spellings across the library and merge after you confirm each group. Deferred; Version 3 uses name-list merge when you rename onto an existing name. |
 | **Organize files into library folder** | Optional wizard to copy/move folders into a tidy layout (high risk; later). |
 | **Multiple languages** | UI in French, Spanish, etc., after English feature freeze. |
 
@@ -83,4 +83,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.18**. Phases 1–4 and 6–12 are tester accepted. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is Phase 13 name consistency. View-mode announcements are optional and last.
+**Status:** Version 3 in progress — tester build **2.18**. Phases 1–4 and 6–13 are in 2.18 (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Library-wide fuzzy name scan deferred. View-mode announcements are optional and last.

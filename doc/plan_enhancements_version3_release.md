@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** 2.18 — Phases 1–4 and 6–12 complete (tester accepted). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Next is Phase 13 (name consistency).  
+**Tester build:** 2.18 — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Library-wide fuzzy name scan deferred after v3.
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -31,10 +31,10 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 10 | F10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | 2–3 d | Phase 9 |
 | 11 | C07 | Collection library root folder | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | 2–3 d | Adds `root_path` |
 | 12 | C03 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | 1–2 d | — |
-| 13 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
+| 13 | C09 | Name-list merge on duplicate | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 1–2 d | — |
 | 14 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
 
-**Phase numbers 1–4 and 6–8 are historical (complete).** There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 13 is name consistency (second to last). Phase 14 (view-mode) is optional and last.** Phase 9 adds `series_number` only. Want to Read, ratings, and covers are out of v3. Collection `root_path` is added in Phase 11.
+**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 13 is name-list merge when a duplicate author/series/genre name is saved. The library-wide fuzzy scan is deferred after v3. Phase 14 (view-mode) is optional and last.** Phase 9 adds `series_number` only. Want to Read, ratings, and covers are out of v3. Collection `root_path` is added in Phase 11.
 
 **Not in v3:** Non-modal web fetch (keep using the app during a fetch), Want to Read, book ratings, covers and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred.
 
@@ -144,13 +144,13 @@ See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Complete — teste
 
 **Gate:** Preview plays inside AbCS; missing path announced; JAWS can activate Preview from button and Edit menu; focus stays in AbCS.
 
-### Phase 13 — Name consistency (2–3 weeks)
+### Phase 13 — Name-list merge on duplicate (1–2 days)
 
-See [Plan_name_consistency_check.md](Plan_name_consistency_check.md).
+See [Plan_name_consistency_check.md](Plan_name_consistency_check.md). **Complete — implemented in tester build 2.18.**
 
-Does **not** require rescan. Confirm-each-group; no silent merges.
+When Save in the Name List hits an existing author, series, or genre name, ask Yes/No (default No). Yes moves books onto the existing name and deletes the edited name. Collections keep the warning only. Library-wide fuzzy scan is deferred after v3. Tab skips the list (use Alt+L); Escape in Find returns to the list.
 
-**Gate:** Author/genre merge safe; import blocked while mode active; Escape restores filters; review dialog meets shared a11y/button standards.
+**Gate:** Yes reassigns books and removes the source name; No changes nothing; same-row case change does not ask; JAWS hears the question and the result sentence.
 
 ### Phase 14 — View-mode announcements (2–4 days, optional)
 
@@ -270,7 +270,7 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 |-------|-------------|
 | `books` | `series_number` |
 
-See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and covers are out of v3. Series number UI is Phase 10. Collection `root_path` is added in Phase 11. Name consistency is Phase 13, second to last.
+See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and covers are out of v3. Series number UI is Phase 10. Collection `root_path` is added in Phase 11. Name-list merge on duplicate is Phase 13, second to last. Library-wide fuzzy name scan is deferred after v3.
 
 ---
 
@@ -291,7 +291,7 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and cov
 | Batch completion silent to JAWS | Modal `AccessibleDialog` + `raise_`/`activateWindow`/focus (avoid Calibre overlay pattern) |
 | Non-modal job loses JAWS | Not in v3 (out of scope). If revived later: real window + Alt+J; steal focus on finish; never a NoFocus overlay for answers |
 | Tag mapping changes existing imports | Defaults = current album / album-artist-then-artist; grouping stays on album |
-| Name consistency merges many books | Confirm each group; no silent merges |
+| Name-list merge moves many books | Confirm Yes/No; default No; no silent merges |
 | Schema upgrade fails on existing DB | Backup before `ALTER TABLE`; announce failure; do not wipe library for non-critical columns |
 | Collection root change vs absolute `books.path` | Part A stores root only; does not rewrite book paths. Path rewrite is Part C (deferred) |
 | Preview of multi-file books | `books.path` is often a folder; plan must pick which file to launch (see preview plan) |
@@ -301,7 +301,7 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and cov
 
 ## How to use this doc
 
-1. Implement the remaining phases in order. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Name consistency is Phase 13, just before optional Phase 14.
+1. Optional Phase 14 (view-mode) is the remaining v3 item. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
 2. Meet each phase **gate** before the next.
 3. Update [plans_status.md](plans_status.md) when a plan ships.
 4. Read linked `plan_*.md` for file paths and a11y checklists.
