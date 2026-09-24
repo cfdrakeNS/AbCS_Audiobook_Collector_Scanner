@@ -47,7 +47,7 @@ Open **View → Preferences** (or **Manage → Preferences**). Import-related se
 
 ### Import Settings
 
-- **Default directory** — fallback folder when Import opens and the selected collection has no library root, or that root is missing on disk.
+- **Default directory** — fallback folder when Import opens and the selected collection has no library root, or that root is missing on disk. With only one collection, an empty collection root and an empty default directory fill from each other.
 
 Folder used for a scan, in order:
 

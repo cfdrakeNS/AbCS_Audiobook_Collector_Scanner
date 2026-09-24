@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import sqlite3
 
-from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtCore import QEvent, QSettings, Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from src.ui.accessible_dialog import AccessibleDialog
 import sys
@@ -657,6 +657,7 @@ class CollectionWindow(AccessibleDialog):
                 return False
 
             self.current_collection_id = new_id
+            self._sync_single_collection_paths()
             self.load_collections(preserve_id=new_id, populate_editor=False)
             self._is_new_entry_mode = False
             self._set_editor_locked(True, clear_name=True)
@@ -709,6 +710,7 @@ class CollectionWindow(AccessibleDialog):
             self.set_status("Duplicate collection name.", announce=True)
             return False
 
+        self._sync_single_collection_paths()
         self.load_collections(
             preserve_id=self.current_collection_id, populate_editor=False
         )
@@ -884,11 +886,18 @@ class CollectionWindow(AccessibleDialog):
 
         self.collection_queries.delete(collection.collection_id)
         self.current_collection_id = None
+        self._sync_single_collection_paths()
         self.load_collections()
         self._set_editor_locked(True)
         self.set_status(f"Collection deleted: {collection.name}.", announce=True)
         # Focus management: focus first item after delete
         QTimer.singleShot(100, self.focus_first_item)
+
+    def _sync_single_collection_paths(self) -> None:
+        from src.core.library_root import sync_single_collection_import_path
+
+        settings = QSettings("AbCS", "AudioBookCollector")
+        sync_single_collection_import_path(self.collection_queries, settings)
 
     def on_read_status(self):
         read_status_bar_message(self.status_bar, fallback="Ready")

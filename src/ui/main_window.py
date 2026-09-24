@@ -726,6 +726,7 @@ class MainWindow(QMainWindow):
 
         # Load initial data
         self.refresh_collections()
+        self._sync_single_collection_paths()
         self._load_saved_collection_filter()
         self.refresh_books()
 
@@ -3914,11 +3915,25 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.set_status(f"Export failed: {str(e)}", announce=True)
 
+    def _sync_single_collection_paths(self) -> None:
+        from src.core.library_root import sync_single_collection_import_path
+
+        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        sync_single_collection_import_path(self.collection_queries, settings)
+
     def _current_book_for_preview(self):
         row = self.table.currentRow()
         if row < 0 or row >= len(self.books):
             return None
         return self.books[row]
+
+    def _preview_collection_root(self, book) -> str:
+        if book is None or not book.collection_id:
+            return ""
+        collection = self.collection_queries.get_by_id(book.collection_id)
+        if collection is None:
+            return ""
+        return collection.root_path or ""
 
     def _update_preview_action_enabled(self):
         if not hasattr(self, "preview_action"):
@@ -3948,6 +3963,7 @@ class MainWindow(QMainWindow):
             book_title=book.title or "",
             author_name=book.author_name or "",
             length_text=book.time_display,
+            collection_root=self._preview_collection_root(book),
         )
         if ok:
             self.restore_main_focus_after_modal()

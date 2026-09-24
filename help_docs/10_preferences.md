@@ -30,7 +30,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 
 ### Import Settings (Alt+P)
 
-- **Default import directory** — fallback folder for Import when the selected collection has no library root, or that root is missing (Alt+B to browse).
+- **Default import directory** — fallback folder for Import when the selected collection has no library root, or that root is missing (Alt+B to browse). If you have only one collection and that collection has no library root, saving this folder also stores it as the collection library root. If the collection already has a root and this folder is empty, AbCS fills this folder from the collection.
 - **Audio formats** — which extensions to scan.
 - **Import scenario** — how folders map to author, title, and series (default: **Mass Standard Import**). See [Import preferences](18_import_preferences.md).
 - **Tag mapping** — which audio tags fill the book title and author. Defaults match the previous scan: **Album** for the title, and **Album artist then artist** for the author. Other choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album tag, so a multi-part book stays one book.

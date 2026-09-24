@@ -2365,6 +2365,16 @@ class PreferencesWindow(AccessibleDialog):
         self.set_status("All preferences restored to default values")
         announce_status_message(self, "All preferences restored to default values")
 
+    def _sync_single_collection_paths(self) -> None:
+        owner = getattr(self, "owner_widget", None) or self.parent()
+        db = getattr(owner, "db", None)
+        if db is None:
+            return
+        from src.core.library_root import sync_single_collection_import_path
+        from src.database.queries import CollectionQueries
+
+        sync_single_collection_import_path(CollectionQueries(db), self.settings)
+
     def on_save(self):
         """Save settings and close dialog."""
         from src.web.web_book_api import GOOGLE_BOOKS_API_KEY_SETTING
@@ -2382,6 +2392,7 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue(
             "import/default_directory", self.import_dir_edit.text().strip()
         )
+        self._sync_single_collection_paths()
         self.settings.setValue("import/include_subfolders", True)
 
         for key, checkbox in self.format_checks.items():

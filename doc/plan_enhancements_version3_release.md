@@ -132,7 +132,7 @@ The only series-number field is on **Book Details**, a text box to the right of 
 
 See [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) **Part A only**. **Complete — tester accepted.** This phase adds `collections.root_path` on first start for existing libraries, using the same upgrade path as Phase 9.
 
-Allow setting and changing the optional root folder for a collection (example: `F:\audiobook`). Edit in Collection Manager. When the user selects or browses a collection folder, **warn** if that folder does not exist, or if it contains no recognized audiobook files (extensions from `TagReader.SUPPORTED_EXTENSIONS`). Import may pre-fill from `root_path` when present. Changing the root does not rewrite `books.path`. Rescan (Part B) and organize-on-disk (Part C) stay deferred.
+Allow setting and changing the optional root folder for a collection (example: `F:\audiobook`). Edit in Collection Manager. When the user selects or browses a collection folder, **warn** if that folder does not exist, or if it contains no recognized audiobook files (extensions from `TagReader.SUPPORTED_EXTENSIONS`). Import may pre-fill from `root_path` when present. Changing the root does not rewrite `books.path`. If there is only one collection, an empty library root and an empty Preferences import folder fill from each other. Rescan (Part B) and organize-on-disk (Part C) stay deferred.
 
 **Gate:** Save/load `root_path`; warn on missing folder; warn when folder has no supported audio; Import pre-fill when root is set and exists.
 
@@ -140,7 +140,7 @@ Allow setting and changing the optional root folder for a collection (example: `
 
 See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Complete — tester accepted** in tester build 2.18.
 
-**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Plays the book **inside AbCS** (Play/Pause, title, author, length). Book Details has no menu bar today; menu entry is on the main window. Shortcut is **Alt+Shift+P**. Enter plays or pauses. Escape closes and stops. Preview is blocked in selection mode. Closing Preview from the main window returns focus to the book table.
+**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Plays the book **inside AbCS** (Play/Pause, title, author, length). Book Details has no menu bar today; menu entry is on the main window. Shortcut is **Alt+Shift+P**. Enter plays or pauses. Escape closes and stops. Preview is blocked in selection mode. Closing Preview from the main window returns focus to the book table. When the collection has a library root, Preview remaps the stored path onto that folder. Shift+F1 follows the window that opened Preview.
 
 **Gate:** Preview plays inside AbCS; missing path announced; JAWS can activate Preview from button and Edit menu; focus stays in AbCS.
 

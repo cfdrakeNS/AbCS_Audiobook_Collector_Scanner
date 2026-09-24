@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.core.library_root import apply_collection_root
 from src.core.tag_reader import TagReader
 
 
@@ -14,8 +15,12 @@ class PreviewTarget:
     error: str = ""
 
 
-def resolve_preview_file(path: str) -> PreviewTarget:
+def resolve_preview_file(path: str, collection_root: str = "") -> PreviewTarget:
     """Return the file to play, or an error when Preview must stay off.
+
+    When a collection library root is set, the stored import path is
+    remapped onto that folder so a portable drive can move. If the
+    remapped location is missing, the stored path is tried next.
 
     Folder scan: immediate children first. If none, one level of
     subfolders. Files are sorted by name, case-insensitive. The first
@@ -25,6 +30,23 @@ def resolve_preview_file(path: str) -> PreviewTarget:
     text = (path or "").strip()
     if not text:
         return PreviewTarget(error="No file path is set.")
+    remapped = apply_collection_root(text, collection_root)
+    remapped_path = Path(remapped)
+    if remapped_path.exists():
+        return _resolve_existing_path(remapped)
+    if remapped != text:
+        stored_result = _resolve_existing_path(text)
+        if stored_result.path is not None:
+            return stored_result
+    return PreviewTarget(error=f"Book not found in - {remapped}")
+
+
+def preview_can_launch(path: str, collection_root: str = "") -> bool:
+    """True when Preview should be enabled for this stored path."""
+    return resolve_preview_file(path, collection_root=collection_root).path is not None
+
+
+def _resolve_existing_path(text: str) -> PreviewTarget:
     target = Path(text)
     if target.is_file():
         if target.suffix.lower() in TagReader.SUPPORTED_EXTENSIONS:
@@ -38,11 +60,6 @@ def resolve_preview_file(path: str) -> PreviewTarget:
             )
         return PreviewTarget(path=found)
     return PreviewTarget(error=f"Book not found in - {text}")
-
-
-def preview_can_launch(path: str) -> bool:
-    """True when Preview should be enabled for this stored path."""
-    return resolve_preview_file(path).path is not None
 
 
 def _first_audio_in_folder(folder: Path) -> Path | None:

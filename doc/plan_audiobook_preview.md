@@ -17,11 +17,11 @@ Preview plays **inside AbCS** so screen reader focus stays in the app. An OS-def
 | Title / Author / Length | Book title, author, and stored `hh:mm` to the right of the button. JAWS Insert+B reads the full lines. |
 | Status | **Playing. Press Escape to exit.** or **Paused. Press Escape to exit.** |
 | Escape | Closes Preview and stops playback. From the main window, focus returns to the Title cell. |
-| F1 | Preview shortcut list (Shift+F1 once). Shift+F1 opens Book Details help. |
+| F1 | Preview shortcut list (Shift+F1 once). Shift+F1 opens help for the window that opened Preview (main window or Book Details). |
 
 **Preview** is on Book Details and on the main window **Edit** menu. Shortcut is **Alt+Shift+P**. Preview is off in selection mode.
 
-Resolve path in [`src/core/audio_launcher.py`](../src/core/audio_launcher.py). Play in [`src/ui/preview_window.py`](../src/ui/preview_window.py) with Qt Multimedia. FFmpeg console chatter is quieted while Preview is open.
+Resolve path in [`src/core/audio_launcher.py`](../src/core/audio_launcher.py). When the book’s collection has a library root, Preview remaps the stored import path onto that folder (author and title folders stay) so a portable drive can move. `books.path` is not rewritten. If the remapped folder is missing, the stored path is tried next. Play in [`src/ui/preview_window.py`](../src/ui/preview_window.py) with Qt Multimedia. FFmpeg console chatter is quieted while Preview is open.
 
 ---
 
@@ -52,7 +52,8 @@ Helper: [`src/core/audio_launcher.py`](../src/core/audio_launcher.py).
 |--------------|--------|
 | **Single audio file** (exists, supported extension) | Play that file in Preview |
 | **Folder** (exists) | Resolve one playable file inside (see multi-file rule), then play that file |
-| Missing / empty / no playable file | Announce **No file path is set.** or **Book not found in -** and the path |
+| Collection has `root_path` | Remap stored path onto that folder, then play |
+| Missing / empty / no playable file | Announce **No file path is set.** or **Book not found in -** and the remapped or stored path |
 
 Supported audio extensions: [`TagReader.SUPPORTED_EXTENSIONS`](../src/core/tag_reader.py) — `.mp3`, `.m4a`, `.m4b`, `.flac`, `.ogg`, `.oga`, `.wma`, `.wav`, `.aac`, `.opus`.
 

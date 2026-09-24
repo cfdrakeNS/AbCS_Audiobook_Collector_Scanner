@@ -41,6 +41,16 @@ WINDOW_HELP_MAP: dict[str, str] = {
 }
 
 
+def preview_help_doc_for_owner(owner: QWidget | None) -> str:
+    """Shift+F1 for Preview follows the window that opened it."""
+    if owner is None:
+        return WINDOW_HELP_MAP["MainWindow"]
+    owner_doc = WINDOW_HELP_MAP.get(owner.__class__.__name__)
+    if owner_doc and help_doc_exists(owner_doc):
+        return owner_doc
+    return WINDOW_HELP_MAP["PreviewWindow"]
+
+
 def get_help_doc_filename(widget: QWidget | None) -> str:
     """Return the help markdown filename for a window or dialog."""
     if widget is None:

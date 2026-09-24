@@ -76,7 +76,7 @@ Last updated: June 2026.
 | Escape | Close and stop playback |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
-| Shift+F1 | Help for this window |
+| Shift+F1 | Help for the window that opened Preview |
 
 ## Import window
 

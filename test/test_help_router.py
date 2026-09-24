@@ -6,7 +6,12 @@ from src.accessibility.help_paths import (
     help_doc_exists,
     resolve_help_docs_dir,
 )
-from src.ui.help_router import DUPLICATE_MODE_DOC, WINDOW_HELP_MAP, get_help_doc_filename
+from src.ui.help_router import (
+    DUPLICATE_MODE_DOC,
+    WINDOW_HELP_MAP,
+    get_help_doc_filename,
+    preview_help_doc_for_owner,
+)
 from src.ui.help_window import markdown_to_html, markdown_to_plain_text
 
 
@@ -47,6 +52,19 @@ def test_duplicate_mode_main_window_help():
     normal_window = type("MainWindow", (), {"duplicate_mode_active": False})()
     assert get_help_doc_filename(dup_window) == DUPLICATE_MODE_DOC
     assert get_help_doc_filename(normal_window) == WINDOW_HELP_MAP["MainWindow"]
+
+
+def test_preview_help_follows_owner_window():
+    main = type("MainWindow", (), {})()
+    details = type("BookDetailsWindow", (), {})()
+    assert preview_help_doc_for_owner(main) == WINDOW_HELP_MAP["MainWindow"]
+    assert preview_help_doc_for_owner(details) == WINDOW_HELP_MAP["BookDetailsWindow"]
+    preview = type(
+        "PreviewWindow",
+        (),
+        {"help_doc_override": preview_help_doc_for_owner(main)},
+    )()
+    assert get_help_doc_filename(preview) == WINDOW_HELP_MAP["MainWindow"]
 
 
 def test_help_doc_override_on_progress_window():

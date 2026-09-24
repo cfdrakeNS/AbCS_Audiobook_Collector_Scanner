@@ -2451,7 +2451,8 @@ class BookDetailsWindow(AccessibleDialog):
         from src.core.audio_launcher import preview_can_launch
 
         available = (not self.is_new) and preview_can_launch(
-            self.path_edit.text() if hasattr(self, "path_edit") else ""
+            self.path_edit.text() if hasattr(self, "path_edit") else "",
+            collection_root=self._preview_collection_root(),
         )
         self.preview_button.setVisible(not self.is_new)
         self.preview_button.setEnabled(available)
@@ -2463,6 +2464,19 @@ class BookDetailsWindow(AccessibleDialog):
             self.preview_button.setAccessibleDescription(
                 "Preview is unavailable because the path is missing or has no playable file."
             )
+
+    def _preview_collection_root(self) -> str:
+        collection_id = None
+        if hasattr(self, "collection_combo"):
+            collection_id = self.collection_combo.currentData()
+        if collection_id is None and getattr(self, "book", None) is not None:
+            collection_id = self.book.collection_id
+        if collection_id is None or not hasattr(self, "collection_queries"):
+            return ""
+        collection = self.collection_queries.get_by_id(collection_id)
+        if collection is None:
+            return ""
+        return collection.root_path or ""
 
     def _preview_author_name(self) -> str:
         combo = getattr(self, "author_combo", None)
@@ -2490,6 +2504,7 @@ class BookDetailsWindow(AccessibleDialog):
             book_title=self.title_edit.text() if hasattr(self, "title_edit") else "",
             author_name=self._preview_author_name(),
             length_text=self.time_edit.text() if hasattr(self, "time_edit") else "",
+            collection_root=self._preview_collection_root(),
         )
         if ok:
             self.preview_button.setFocus(Qt.TabFocusReason)

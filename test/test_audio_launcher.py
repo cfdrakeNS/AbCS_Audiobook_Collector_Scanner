@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from src.core.audio_launcher import preview_can_launch, resolve_preview_file
 
 
@@ -54,6 +56,49 @@ def test_resolve_preview_folder_first_file_then_nested(tmp_path):
     empty_found = resolve_preview_file(str(empty))
     assert empty_found.path is None
     assert "no recognized audiobook" in empty_found.error
+
+
+def test_resolve_preview_uses_collection_root_not_import_path(tmp_path):
+    old_book = tmp_path / "old_drive" / "import" / "Jeffery Deaver" / "A Maiden's Grave"
+    new_book = tmp_path / "portable" / "import" / "Jeffery Deaver" / "A Maiden's Grave"
+    new_book.mkdir(parents=True)
+    audio = new_book / "01 A Maiden's Grave.mp3"
+    audio.write_bytes(b"x")
+    found = resolve_preview_file(str(old_book), collection_root=str(new_book.parent.parent))
+    assert found.path == audio
+    assert found.error == ""
+
+
+def test_resolve_preview_prefers_collection_root_when_both_exist(tmp_path):
+    rel = Path("Author") / "Title"
+    old_book = tmp_path / "old" / "lib" / rel
+    new_book = tmp_path / "new" / "lib" / rel
+    old_book.mkdir(parents=True)
+    new_book.mkdir(parents=True)
+    (old_book / "old.mp3").write_bytes(b"o")
+    (new_book / "new.mp3").write_bytes(b"n")
+    found = resolve_preview_file(str(old_book), collection_root=str(new_book.parent.parent))
+    assert found.path == new_book / "new.mp3"
+
+
+def test_resolve_preview_falls_back_to_stored_if_collection_copy_missing(tmp_path):
+    old_book = tmp_path / "old" / "lib" / "Author" / "Title"
+    new_root = tmp_path / "new" / "lib"
+    old_book.mkdir(parents=True)
+    new_root.mkdir(parents=True)
+    audio = old_book / "track.mp3"
+    audio.write_bytes(b"x")
+    found = resolve_preview_file(str(old_book), collection_root=str(new_root))
+    assert found.path == audio
+
+
+def test_resolve_preview_missing_on_collection_root_reports_remapped_path(tmp_path):
+    stored = tmp_path / "old" / "lib" / "Author" / "Title"
+    new_root = tmp_path / "portable" / "lib"
+    remapped = new_root / "Author" / "Title"
+    found = resolve_preview_file(str(stored), collection_root=str(new_root))
+    assert found.path is None
+    assert found.error == f"Book not found in - {remapped}"
 
 
 def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch):

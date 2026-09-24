@@ -72,9 +72,10 @@ def show_preview(
     book_title: str = "",
     author_name: str = "",
     length_text: str = "",
+    collection_root: str = "",
 ) -> tuple[bool, str]:
     """Resolve a book path and play it in the in-app Preview window."""
-    target = resolve_preview_file(stored_path)
+    target = resolve_preview_file(stored_path, collection_root=collection_root)
     if target.path is None:
         return False, target.error
     try:
@@ -131,6 +132,9 @@ class PreviewWindow(AccessibleDialog):
         self.setWindowIcon(get_app_icon())
         self.scaler = scaler
         self.theme_manager = theme_manager
+        from src.ui.help_router import preview_help_doc_for_owner
+
+        self.help_doc_override = preview_help_doc_for_owner(parent)
         self._display_title = ""
         self._player = None
         self._audio = None

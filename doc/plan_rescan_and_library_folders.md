@@ -2,8 +2,8 @@
 
 **Status:** Part A complete — tester accepted (Phase 11). Parts B and C deferred after v3.  
 **Created:** June 2026  
-**Updated:** September 2026 — Part A implemented (`collections.root_path`)  
-**Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/05_collections.md), [Preferences](help_docs/10_preferences.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_schema_batch.md](plan_schema_batch.md), [Plan_name_consistency_check.md](Plan_name_consistency_check.md)
+**Updated:** September 2026 — Part A implemented (`collections.root_path`); single-collection path sync with Preferences import folder  
+**Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/06_collections.md), [Preferences](help_docs/10_preferences.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_schema_batch.md](plan_schema_batch.md), [Plan_name_consistency_check.md](Plan_name_consistency_check.md)
 
 ---
 
@@ -94,6 +94,8 @@ Keep global **default import directory** as fallback when collection has no `roo
 1. User-selected folder in Import window  
 2. Collection `root_path`  
 3. Preferences `import/default_directory`
+
+When **exactly one collection** exists, fill the empty side from the other: an empty collection root takes the Preferences import folder, and an empty Preferences import folder takes the collection root. A path that is already set is not overwritten. Two or more collections are left as the user set them. This runs at startup, after Preferences save, and after Collection save or delete.
 
 ### Tests
 

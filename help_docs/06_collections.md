@@ -20,6 +20,7 @@ Every book belongs to one collection. A default collection named **Audio Books**
 - At least one collection must always remain **active**. You cannot deactivate or delete the last active collection.
 - A collection in use by books cannot be deleted until those books are moved or removed.
 - Each collection may have an optional **library root folder** on disk. Changing that folder does not move files or change stored book paths.
+- If you have only one collection, AbCS keeps that library root and the Preferences **default import directory** in step. When one is empty, the other fills it. Two or more collections are left as you set them.
 
 ## Steps — Manage collections
 
