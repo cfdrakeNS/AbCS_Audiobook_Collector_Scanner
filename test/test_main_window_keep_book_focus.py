@@ -91,3 +91,33 @@ def test_read_filter_moves_when_book_excluded(main_window, qapp, qtbot):
     qtbot.wait(20)
 
     assert _current_book_id(window) == id_alpha
+
+
+def test_update_returns_focus_to_first_selected_book(
+    main_window, qapp, qtbot, monkeypatch
+):
+    window = main_window
+    assert len(window.books) >= 2
+    first_id = window.books[0].book_id
+    second_id = window.books[1].book_id
+    window.focus_book_by_id(second_id, 1)
+    window.selected_book_ids = {first_id, second_id}
+    window.update_selection_ui()
+    assert _current_book_id(window) == second_id
+
+    class _FakeUpdate:
+        def __init__(self, *args, **kwargs):
+            self.changes_applied = True
+            self.selected_book_ids = {first_id, second_id}
+
+        def exec(self):
+            return 1
+
+    monkeypatch.setattr("src.ui.main_window.UpdateWindow", _FakeUpdate)
+    window.on_update_clicked()
+    qapp.processEvents()
+    qtbot.wait(20)
+
+    assert _current_book_id(window) == first_id
+    assert window.selected_book_ids == set()
+    assert window.table.hasFocus()

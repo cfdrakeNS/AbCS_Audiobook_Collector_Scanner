@@ -3736,15 +3736,8 @@ class MainWindow(QMainWindow):
             return
 
         if self.selected_book_ids:
-            # Track the first selected row to return focus after update
-            first_selected_row = None
-            for row in range(self.table.rowCount()):
-                if (
-                    row < len(self.books)
-                    and self.books[row].book_id in self.selected_book_ids
-                ):
-                    first_selected_row = row
-                    break
+            first_selected = self._selected_books_in_table_order()
+            first_book_id = first_selected[0].book_id if first_selected else None
 
             dialog = UpdateWindow(
                 db=self.db,
@@ -3752,16 +3745,13 @@ class MainWindow(QMainWindow):
                 selected_book_ids=self.selected_book_ids,
                 parent=self,
             )
-            result = dialog.exec()
+            dialog.exec()
 
-            # If changes were applied, refresh the book list and clear selection
             if dialog.changes_applied:
                 updated_count = len(dialog.selected_book_ids)
-                self.selected_book_ids.clear()
-                self.update_selection_ui()
+                self._clear_book_table_selection()
                 self.refresh_books()
 
-                # Check if filters resulted in 0 books - clear filters to prevent freeze
                 if self.table.rowCount() == 0 and self.has_active_filters():
                     self.clear_all_filters()
                     self.refresh_books()
@@ -3771,13 +3761,10 @@ class MainWindow(QMainWindow):
                     )
                 else:
                     self.set_status(f"Updated {updated_count} books")
+                self._focus_restore_token += 1
 
-            # Return focus to the first selected row (or same position)
-            if first_selected_row is not None:
-                target_row = min(first_selected_row, self.table.rowCount() - 1)
-                if target_row >= 0:
-                    self.table.setCurrentCell(target_row, 1)  # Title column
-                    self.table.setFocus()
+            self._return_focus_to_book(first_book_id)
+            QTimer.singleShot(0, lambda: self._return_focus_to_book(first_book_id))
 
     def on_delete_clicked(self):
         """Handle Delete button click."""
@@ -4427,6 +4414,14 @@ class MainWindow(QMainWindow):
         self.table.selectionModel().setCurrentIndex(index, QItemSelectionModel.NoUpdate)
         self.table.scrollTo(index)
         self.table.setFocus(Qt.TabFocusReason)
+
+    def _return_focus_to_book(self, book_id: int | None) -> None:
+        """Put table focus on a book after a modal, preferring that id."""
+        if book_id is not None:
+            self.focus_book_by_id(
+                book_id, 1, fallback=True, reason=Qt.TabFocusReason
+            )
+        self.restore_main_focus_after_modal()
 
     def restore_main_focus_after_modal(self):
         """Ensure Main Window regains focus on a sensible table cell after modal dialogs."""

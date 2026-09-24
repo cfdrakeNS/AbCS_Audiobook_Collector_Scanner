@@ -23,7 +23,7 @@ For editing a single book with full fields and navigation, use [Book Details](04
 3. The **Update** window opens showing fields you can change.
 4. Enter new values only in the fields you want to change. Leave fields blank to keep existing values.
 5. Click **Save** to apply your changes.
-6. Selection clears and the main list refreshes. Focus returns to the first updated row.
+6. Selection clears and the main list refreshes. Focus returns to the first selected book in list order.
 
 ## Steps — New Book
 
