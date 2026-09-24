@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** 2.17 — Phases 1–4 and 6–11 complete (tester accepted). Phase 12 preview is implemented, pending tester. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Next is Phase 13 (name consistency).  
+**Tester build:** 2.18 — Phases 1–4 and 6–12 complete (tester accepted). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Next is Phase 13 (name consistency).  
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -16,7 +16,7 @@
 
 ## Version 3 scope (from tester review)
 
-Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), and audiobook preview (OS default player). **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings UI, covers UI. Everything else stays planned but **deferred after v3**.
+Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), and audiobook preview (in-app player). **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings UI, covers UI. Everything else stays planned but **deferred after v3**.
 
 | Phase | ID | Enhancement | Detail doc | Est. | Depends on |
 |-------|----|-------------|------------|------|------------|
@@ -30,7 +30,7 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 9 | C01 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | 2–3 d | — |
 | 10 | F10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | 2–3 d | Phase 9 |
 | 11 | C07 | Collection library root folder | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | 2–3 d | Adds `root_path` |
-| 12 | C03 | Preview audiobook (OS default player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | 1–2 d | — |
+| 12 | C03 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | 1–2 d | — |
 | 13 | C09 | Name consistency check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 2–3 wk | — |
 | 14 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
 
@@ -138,11 +138,11 @@ Allow setting and changing the optional root folder for a collection (example: `
 
 ### Phase 12 — C03 Preview audiobook (1–2 days)
 
-See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Implemented — pending tester.**
+See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Complete — tester accepted** in tester build 2.18.
 
-**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Opens the book in the user’s **default OS media player** for that file format (file association) — not an in-app player. Book Details has no menu bar today; menu entry is on the main window. Shortcut is **Alt+Shift+P**.
+**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Plays the book **inside AbCS** (Play/Pause, title, author, length). Book Details has no menu bar today; menu entry is on the main window. Shortcut is **Alt+Shift+P**. Enter plays or pauses. Escape closes and stops. Preview is blocked in selection mode. Closing Preview from the main window returns focus to the book table.
 
-**Gate:** Preview launches default player for a single-file book; missing path announced; JAWS can activate Preview from button and Edit menu.
+**Gate:** Preview plays inside AbCS; missing path announced; JAWS can activate Preview from button and Edit menu; focus stays in AbCS.
 
 ### Phase 13 — Name consistency (2–3 weeks)
 

@@ -3923,24 +3923,34 @@ class MainWindow(QMainWindow):
     def _update_preview_action_enabled(self):
         if not hasattr(self, "preview_action"):
             return
-        if self.duplicate_mode_active:
+        if self.duplicate_mode_active or self._selection_blocks_navigation():
             self.preview_action.setEnabled(False)
             return
         self.preview_action.setEnabled(self._current_book_for_preview() is not None)
 
     def on_preview_clicked(self):
-        """Open the focused book in the default OS media player."""
+        """Play the focused book in the in-app Preview window."""
         if self.duplicate_mode_active:
+            return
+        if self._block_if_selecting():
             return
         book = self._current_book_for_preview()
         if book is None:
             self.set_status("No book available for preview.", announce=True)
             return
-        from src.core.audio_launcher import launch_preview
+        from src.ui.preview_window import show_preview
 
-        ok, message = launch_preview(book.path or "")
+        ok, message = show_preview(
+            self,
+            book.path or "",
+            self.scaler,
+            self.theme_manager,
+            book_title=book.title or "",
+            author_name=book.author_name or "",
+            length_text=book.time_display,
+        )
         if ok:
-            self.set_status(message, announce=True)
+            self.restore_main_focus_after_modal()
             return
         exec_styled_message_box(
             self,
@@ -3950,6 +3960,7 @@ class MainWindow(QMainWindow):
             text=message,
         )
         self.set_status(message, announce=True)
+        self.restore_main_focus_after_modal()
 
     def on_get_web_info_clicked(self, from_button=False):
         """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
@@ -4670,7 +4681,6 @@ class MainWindow(QMainWindow):
         if self._selection_blocks_navigation():
             shortcuts = [
                 ("Alt+W", "Fetch web info for the selected books"),
-                ("Alt+Shift+P", "Preview focused book"),
                 ("Alt+U", "Update selected"),
                 ("Alt+D", "Delete selected"),
                 ("Shift+Down/Up", "Extend selection"),
@@ -4704,7 +4714,7 @@ class MainWindow(QMainWindow):
                 ("Alt+P", "Toggle plot filter"),
                 ("Alt+R", "Toggle read filter"),
                 ("Alt+W", "Fetch web info (batch when two or more selected)"),
-                ("Alt+Shift+P", "Preview focused book"),
+                ("Alt+Shift+P", "Preview focused book inside AbCS"),
                 ("Ctrl+I", "Import"),
                 ("Ctrl+N", "New book"),
                 ("Shift+Down/Up", "Start selection or extend selection"),

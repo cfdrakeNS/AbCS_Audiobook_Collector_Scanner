@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from src.core.audio_launcher import (
-    launch_preview,
-    preview_can_launch,
-    resolve_preview_file,
-)
+from src.core.audio_launcher import preview_can_launch, resolve_preview_file
 
 
 def test_resolve_preview_empty_and_missing(tmp_path):
@@ -60,19 +56,77 @@ def test_resolve_preview_folder_first_file_then_nested(tmp_path):
     assert "no recognized audiobook" in empty_found.error
 
 
-def test_launch_preview_uses_open_helper(tmp_path, monkeypatch):
+def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch):
+    from src.ui.preview_window import show_preview
+
     audio = tmp_path / "play.mp3"
     audio.write_bytes(b"x")
-    opened = []
-    monkeypatch.setattr(
-        "src.core.audio_launcher.open_preview_file",
-        lambda path: opened.append(path),
-    )
-    ok, message = launch_preview(str(audio))
-    assert ok is True
-    assert opened == [audio]
-    assert "play.mp3" in message
+    played = []
 
-    ok, message = launch_preview("")
+    class DummySignal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+    class FakeAudio:
+        pass
+
+    class FakePlayer:
+        class PlaybackState:
+            StoppedState = 0
+            PlayingState = 1
+            PausedState = 2
+
+        def __init__(self):
+            self.playbackStateChanged = DummySignal()
+            self.errorOccurred = DummySignal()
+            self._state = 0
+
+        def setAudioOutput(self, *_args):
+            return None
+
+        def setSource(self, *_args):
+            return None
+
+        def play(self):
+            self._state = 1
+            played.append("play")
+
+        def pause(self):
+            self._state = 2
+
+        def stop(self):
+            self._state = 0
+
+        def playbackState(self):
+            return self._state
+
+    monkeypatch.setattr("PySide6.QtMultimedia.QMediaPlayer", FakePlayer)
+    monkeypatch.setattr("PySide6.QtMultimedia.QAudioOutput", FakeAudio)
+    monkeypatch.setattr(
+        "src.ui.preview_window.exec_styled_message_box",
+        lambda *_args, **_kwargs: 0,
+    )
+    ok, message = show_preview(
+        None,
+        str(audio),
+        ui_scaler,
+        theme_manager,
+        book_title="A Maiden's Grave",
+        author_name="Jeffrey Deaver",
+        length_text="10:35",
+    )
+    assert ok is True
+    assert message == "Playing. Press Escape to exit."
+    assert played
+    from src.ui import preview_window as preview_mod
+
+    preview = preview_mod._open_preview
+    assert preview is not None
+    assert preview.title_label.text() == "Title: A Maiden's Grave"
+    assert preview.author_label.text() == "Author: Jeffrey Deaver"
+    assert preview.length_label.text() == "Length: 10:35"
+    if preview_mod._open_preview is not None:
+        preview_mod._open_preview.close()
+    ok, message = show_preview(None, "", ui_scaler, theme_manager)
     assert ok is False
     assert "No file path" in message

@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (tester build 2.17. v3 Phases 1–4 and 6–11 complete, tester accepted. Phase 12 preview implemented, pending tester. Series From File Name confirmed. Startup update check confirmed. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next: Phase 13 name consistency.)
+**Last updated:** September 2026 (tester build 2.18. v3 Phases 1–4 and 6–12 complete, tester accepted. Preview plays inside AbCS. Series From File Name confirmed. Startup update check confirmed. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next: Phase 13 name consistency.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -31,7 +31,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 9 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | Complete — tester accepted |
 | 10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | Complete — tester accepted |
 | 11 | Collection library root (Part A) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | Complete — tester accepted |
-| 12 | Preview audiobook (OS default player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | Implemented — pending tester |
+| 12 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | Complete — tester accepted |
 | 13 | Name Consistency Check | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Planned — Phase 13 (second to last) |
 | 14 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 14 (optional, last) |
 

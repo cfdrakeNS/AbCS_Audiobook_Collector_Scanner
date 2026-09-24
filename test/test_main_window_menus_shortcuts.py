@@ -322,6 +322,31 @@ def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatc
             )
 
 
+def test_preview_blocked_while_selecting(main_window, tmp_path, monkeypatch):
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries
+
+    window = main_window
+    audio = tmp_path / "select_preview.mp3"
+    audio.write_bytes(b"x")
+    author_id = AuthorQueries(window.db).insert("Select Preview Author")
+    book_id = BookQueries(window.db).insert(
+        Book(title="Select Preview Book", author_id=author_id, path=str(audio))
+    )
+    window.refresh_books()
+    window.selected_book_ids = {book_id}
+    window.update_selection_ui()
+    opened = []
+    monkeypatch.setattr(
+        "src.ui.preview_window.show_preview",
+        lambda *args, **kwargs: opened.append(True) or (True, "Playing"),
+    )
+    assert window.preview_action.isEnabled() is False
+    window.on_preview_clicked()
+    assert opened == []
+    assert "Escape to cancel selection" in (window.statusBar().currentMessage() or "")
+
+
 def test_new_book_blocked_while_selecting(main_window):
     window = main_window
     id1, id2 = _insert_two_books(window)

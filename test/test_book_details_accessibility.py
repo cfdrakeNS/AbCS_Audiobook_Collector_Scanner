@@ -248,11 +248,13 @@ def test_preview_enabled_and_launches_for_audio_file(
         theme_manager=theme_manager,
     )
     assert window.preview_button.isEnabled() is True
-    opened = []
-    monkeypatch.setattr(
-        "src.core.audio_launcher.open_preview_file",
-        lambda path: opened.append(path),
-    )
+    called = []
+
+    def fake_show(parent, stored_path, scaler, theme_manager=None, **kwargs):
+        called.append((stored_path, kwargs.get("book_title", "")))
+        return True, "Playing"
+
+    monkeypatch.setattr("src.ui.preview_window.show_preview", fake_show)
     window.on_preview()
-    assert opened == [audio]
+    assert called == [(str(audio), "Preview Book")]
     window.close()

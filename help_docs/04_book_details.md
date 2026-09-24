@@ -12,7 +12,7 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 - You need to browse books one at a time in list order.
 - You want to add a book without audio files (New Book).
 - You want to fetch web metadata for the current book.
-- You want to play the book in your default media player.
+- You want to play the book inside AbCS without leaving the app.
 
 ## Before you start
 
@@ -26,7 +26,7 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 2. Double-click the **Title** column, open **View → Open Focused Item**, or press **Enter** when the title column is focused.
 3. The **Book Details** window shows all fields for that book. When no screen reader is running, a panel at the top also shows the book title, author, and series in larger text; with JAWS or NVDA running this panel is hidden and never spoken.
 4. Edit any field and **Save** (**Alt+S**).
-5. Click **Preview** or press **Alt+Shift+P** to open the book in your default media player. For a folder of tracks, AbCS starts the first audio file by file name. Filename order may not match listening order (for example chapter 10 before chapter 2). If the stored path is gone, status says **Book not found in -** and that path. The same shortcut works from the main window **Edit → Preview**.
+5. Click **Preview** or press **Alt+Shift+P** to play the book inside AbCS. The Preview window has **Play/Pause** on the left and Title, Author, and Length on the right. Enter plays or pauses. Escape closes Preview and stops playback. F1 lists Preview shortcuts. Preview is not available while books are selected on the main list. For a folder of tracks, AbCS starts the first audio file by file name. Filename order may not match listening order (for example chapter 10 before chapter 2). If the stored path is gone, status says **Book not found in -** and that path. The same shortcut works from the main window **Edit → Preview**.
 6. Click **Next** and **Previous** at the bottom of the window, or use Page Down / Page Up.
 7. Press **Escape** to close. The main list refreshes.
 
@@ -62,7 +62,10 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | Alt+N | Next book |
 | Alt+P | Previous book |
 | Alt+W | Fetch Web Info |
-| Alt+Shift+P | Preview in the default media player |
+| Alt+Shift+P | Preview inside AbCS |
+| Enter | Play or pause (Preview window) |
+| Escape | Close Preview and stop playback |
+| F1 | Preview keyboard shortcuts |
 | Insert | New book (from Book Details) |
 | Delete | Delete current book |
 | Shift+F1 | Help for this window |

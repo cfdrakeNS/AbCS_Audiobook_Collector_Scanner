@@ -10,7 +10,7 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 ## Planned for version 3 (next major update)
 
-Already in tester build **2.17:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) is tester accepted. Audiobook preview (Phase 12) is in the current build for tester review.
+Already in tester build **2.18:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted.
 
 Still planned for v3:
 
@@ -67,7 +67,7 @@ Still planned for v3:
 
 ## What we are not planning
 
-- **In-app audiobook player** — Preview uses your OS default player; AbCS does not embed a player.
+- **Full in-app library player** — Preview plays one book inside AbCS (Play/Pause). There is no playlist or listen-from-here player.
 - **Automatic move of all files on import** — organizing on disk stays optional and deferred.
 - **Cloud sync or online library** — AbCS remains local.
 - **Mac installer** — macOS from source (see INSTALL.md).
@@ -83,4 +83,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.17**. Phases 1–4 and 6–10 are tester accepted. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is collection root, then Preview. Name consistency is second to last. View-mode announcements are optional and last.
+**Status:** Version 3 in progress — tester build **2.18**. Phases 1–4 and 6–12 are tester accepted. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is Phase 13 name consistency. View-mode announcements are optional and last.

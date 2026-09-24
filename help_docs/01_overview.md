@@ -117,7 +117,7 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 |-------|----------------|
 | [Import (Folder Scan)](02_import.md) | Scan audiobook folders and import from audio file tags |
 | [Find and Filters](03_find_filters.md) | Search, filter, and sort the main book list |
-| [Book Details](04_book_details.md) | View or edit one book; preview in the default player; add a new book by hand |
+| [Book Details](04_book_details.md) | View or edit one book; preview inside AbCS; add a new book by hand |
 | [Update](05_update.md) | Change fields on several selected books at once |
 | [Collections](06_collections.md) | Create and manage collections; filter by collection |
 | [Web Metadata Fetch](07_web_metadata.md) | Look up plot, series, and other details online |

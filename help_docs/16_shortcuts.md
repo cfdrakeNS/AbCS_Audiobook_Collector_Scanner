@@ -24,7 +24,7 @@ Last updated: June 2026.
 | Alt+P | Toggle plot filter |
 | Alt+R | Toggle read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
-| Alt+Shift+P | Preview focused book |
+| Alt+Shift+P | Preview focused book inside AbCS |
 | Ctrl+F | Find |
 | Ctrl+I | Import |
 | Ctrl+N | New book |
@@ -59,7 +59,7 @@ Last updated: June 2026.
 | Alt+O | Format |
 | Alt+H | Path |
 | Alt+W | Get web info |
-| Alt+Shift+P | Preview audiobook |
+| Alt+Shift+P | Preview audiobook inside AbCS |
 | Alt+U | Update/Edit mode |
 | Alt+N | New book |
 | Alt+D | Delete book |
@@ -67,6 +67,16 @@ Last updated: June 2026.
 | Escape | Close window |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
+
+## Preview window
+
+| Shortcut | Action |
+|----------|--------|
+| Enter | Play or pause |
+| Escape | Close and stop playback |
+| Alt+/ | Read status bar |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Help for this window |
 
 ## Import window
 

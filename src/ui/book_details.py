@@ -1135,7 +1135,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.preview_button = QPushButton("Preview")
         self.preview_button.setAccessibleName("Preview audiobook")
         self.preview_button.setAccessibleDescription(
-            "Play this book in your default media player - Alt+Shift+P"
+            "Play this book inside AbCS - Alt+Shift+P"
         )
         self.preview_button.setFocusPolicy(Qt.StrongFocus)
         self.preview_button.clicked.connect(self.on_preview)
@@ -1296,8 +1296,8 @@ class BookDetailsWindow(AccessibleDialog):
                     "Fetch book info from web",
                 ),
                 self.preview_button: (
-                    "Play in the default media player",
-                    "Play this book in your default media player - Alt+Shift+P",
+                    "Play this book inside AbCS",
+                    "Play this book inside AbCS - Alt+Shift+P",
                 ),
             }
         )
@@ -2457,22 +2457,42 @@ class BookDetailsWindow(AccessibleDialog):
         self.preview_button.setEnabled(available)
         if available:
             self.preview_button.setAccessibleDescription(
-                "Play this book in your default media player - Alt+Shift+P"
+                "Play this book inside AbCS - Alt+Shift+P"
             )
         else:
             self.preview_button.setAccessibleDescription(
                 "Preview is unavailable because the path is missing or has no playable file."
             )
 
+    def _preview_author_name(self) -> str:
+        combo = getattr(self, "author_combo", None)
+        label = getattr(self, "author_label_display", None)
+        stack = getattr(self, "author_field_stack", None)
+        if stack is not None and combo is not None and stack.currentWidget() is combo:
+            return combo.currentText().strip()
+        if label is not None and label.text().strip():
+            return label.text().strip()
+        if combo is not None:
+            return combo.currentText().strip()
+        return ""
+
     def on_preview(self):
-        from src.core.audio_launcher import launch_preview
+        from src.ui.preview_window import show_preview
 
         if self.is_new:
             self.set_status("Save the book before preview.", announce=True)
             return
-        ok, message = launch_preview(self.path_edit.text())
+        ok, message = show_preview(
+            self,
+            self.path_edit.text(),
+            self.scaler,
+            self.theme_manager,
+            book_title=self.title_edit.text() if hasattr(self, "title_edit") else "",
+            author_name=self._preview_author_name(),
+            length_text=self.time_edit.text() if hasattr(self, "time_edit") else "",
+        )
         if ok:
-            self.set_status(message, announce=True)
+            self.preview_button.setFocus(Qt.TabFocusReason)
             return
         exec_styled_message_box(
             self,
@@ -2482,6 +2502,7 @@ class BookDetailsWindow(AccessibleDialog):
             text=message,
         )
         self.set_status(message, announce=True)
+        self.preview_button.setFocus(Qt.TabFocusReason)
 
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""
