@@ -9,7 +9,7 @@
 
 ## What this is
 
-Persist **series number** (for example book 3, or 6.5) in SQLite as a real number. The only edit field is **Book Details**, a text box to the right of Series. There is no shortcut for that box. Alt+I focuses Series, then Tab moves to Series #. Saving stores Series # only. The title is not rewritten. The main-window Title column shows ` - 03` or ` - 6.5` from the column when the stored title has no suffix. When a book is shown and Series # is blank, a number at the end of the title is stored. The title stays as it is. A year such as 1999 stays on the title. **Book List Import** and **Series From File Name** store Series # and leave the title clean. Duplicate matching uses the column, then a title suffix. Import Detail and the Update window do not show a series-number field. The main-window **Series** sort is series name, then series number, then year, then title.
+Persist **series number** (for example book 3, or 6.5) in SQLite as a real number. The only edit field is **Book Details**, a text box to the right of Series. There is no shortcut for that box. Alt+I focuses Series, then Tab moves to Series #. Saving stores Series # only. The title is not rewritten. The main-window Title column shows ` - 03` or ` - 6.5` from the column when the stored title has no suffix. Opening a book does not copy a title suffix into Series #. A one-time script fills a blank Series # from a title suffix. A year such as 1999 stays on the title. **Book List Import** and **Series From File Name** store Series # and leave the title clean. Duplicate matching uses the column, then a title suffix. Import Detail and the Update window do not show a series-number field. The main-window **Series** sort is series name, then series number, then year, then title.
 
 **Scope note (2026-09):** Fetch Web Info does not retrieve or display series or series number. Series entry is **manual only** on Book Details. Import Detail and the Update window do not show a series-number field. The main table shows the suffix in the Title cell only.
 
@@ -39,7 +39,7 @@ This runs through `_ensure_legacy_schema_compatibility` for **existing** librari
 
 ### UI — Book Details ([`src/ui/book_details.py`](../src/ui/book_details.py))
 
-The only series-number control. Place a text box on the Series row, **to the right of Series**. Save/load `book.series_number` as a real number, so `3` and `6.5` both store. Blank means no number. Saving does not change the title. When a book is shown and Series # is blank, if the title ends with a series suffix, store that number. Leave the title as it is. No status message. The form stays clean. A stored series number is left as it is. A year such as `1999` stays in the title.
+The only series-number control. Place a text box on the Series row, **to the right of Series**. Save/load `book.series_number` as a real number, so `3` and `6.5` both store. Blank means no number. Saving does not change the title. Opening a book shows the stored Series # only. A title suffix is not copied into the field. A year such as `1999` stays in the title.
 
 ### Main table
 
@@ -74,7 +74,7 @@ The existing **Series** sort (Sort menu and the Series column header) is series 
 - Save/load from Book Details; field is to the right of Series
 - Saving after Series # is added or changed stores the number and leaves the title as it is
 - Main table Title cell shows ` - 03` or ` - 6.5` from `series_number`
-- Showing a book with a blank Series # and a title suffix stores that number, leaves the title unchanged, and does not mark the form dirty
+- Showing a book with a blank Series # and a title suffix leaves Series # blank, leaves the title unchanged, and does not mark the form dirty
 - A Series # that is already stored is left as it is
 - Book List Import with Series and Series # mapped saves the number on `series_number` and leaves the title clean
 - Series sort order is series name, then series number, then year, then title

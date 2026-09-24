@@ -50,7 +50,7 @@ def test_status_bar_has_no_sighted_tooltip(temp_db, ui_scaler, theme_manager):
     assert window.status_bar.toolTip() == ""
     window.close()
 
-def test_display_stores_blank_series_number_from_title(
+def test_display_leaves_blank_series_number_when_title_has_suffix(
     temp_db, ui_scaler, theme_manager
 ):
     author_id = AuthorQueries(temp_db).insert("Series Display Author")
@@ -72,11 +72,11 @@ def test_display_stores_blank_series_number_from_title(
         parent=None,
         theme_manager=theme_manager,
     )
-    assert window.series_number_edit.text() == "6.5"
-    assert window.book.series_number == 6.5
+    assert window.series_number_edit.text() == ""
+    assert window.book.series_number is None
     assert window.book.title == "Busted - 6.5"
     assert window._dirty is False
-    assert books.get_by_id(blank_id).series_number == 6.5
+    assert books.get_by_id(blank_id).series_number is None
     window.close()
 
     kept = BookDetailsWindow(

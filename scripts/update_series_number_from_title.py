@@ -1,7 +1,7 @@
 r"""
 One-time script: store series_number from a trailing number on the title.
 
-Uses the same rules as Book Details:
+Book Details does not do this fill. This script does:
   - A blank series number is filled from the title suffix (3, 03, 6.5).
   - The title is left as it is.
   - A series number already stored is left as it is.

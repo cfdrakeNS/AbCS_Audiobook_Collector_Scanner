@@ -124,9 +124,9 @@ The column is used by series number (Phase 10). Collection root adds `root_path`
 
 See [plan_series_number_db.md](plan_series_number_db.md). **Complete — tester accepted** display-only title suffix, Book Details save, Book List Import, and Series From File Name in tester build 2.17. Needs Phase 9.
 
-The only series-number field is on **Book Details**, a text box to the right of Series. Saving stores Series # and leaves the title as it is. The main-window Title column shows ` - 03` or ` - 6.5` from that column. When a book is shown and Series # is blank, a title suffix such as ` - 3` or ` - 6.5` is stored in Series #. The title stays as it is. There is no status message. The main-window **Series** sort is series name, then series number, then year, then title. Book List Import and Series From File Name store Series # and leave the title clean. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
+The only series-number field is on **Book Details**, a text box to the right of Series. Saving stores Series # and leaves the title as it is. The main-window Title column shows ` - 03` or ` - 6.5` from that column. Opening a book does not copy a title suffix into Series #. A one-time script fills a blank Series # from a title suffix. The main-window **Series** sort is series name, then series number, then year, then title. Book List Import and Series From File Name store Series # and leave the title clean. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
 
-**Gate:** Save/load from Book Details; showing a book with a blank Series # and a title suffix such as ` - 3` stores that number and leaves the title unchanged; saving after Series # is added or changed leaves the title unchanged; the Title column shows ` - nn`; Series sort is series, series number, year, then title; JAWS reads the text box to the right of Series.
+**Gate:** Save/load from Book Details; showing a book with a blank Series # and a title suffix leaves Series # blank and leaves the title unchanged; saving after Series # is added or changed leaves the title unchanged; the Title column shows ` - nn`; Series sort is series, series number, year, then title; JAWS reads the text box to the right of Series.
 
 ### Phase 11 — C07 Collection library root folder (2–3 days)
 

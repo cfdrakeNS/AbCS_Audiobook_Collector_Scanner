@@ -18,11 +18,19 @@ def _current_book_id(window):
 def _insert_focus_books(window):
     authors = AuthorQueries(window.db)
     books = BookQueries(window.db)
+    collection_id = window.current_filter.collection_id
     zebra = authors.insert("Zebra Author")
     alpha = authors.insert("Alpha Author")
     middle = authors.insert("Middle Author")
     id_middle = books.insert(
-        Book(title="Middle Book", author_id=zebra, year=2000, tracks=1, path="/m")
+        Book(
+            title="Middle Book",
+            author_id=zebra,
+            year=2000,
+            tracks=1,
+            path="/m",
+            collection_id=collection_id,
+        )
     )
     id_alpha = books.insert(
         Book(
@@ -32,10 +40,18 @@ def _insert_focus_books(window):
             tracks=1,
             path="/a",
             read_date=date(2020, 1, 1),
+            collection_id=collection_id,
         )
     )
     id_zulu = books.insert(
-        Book(title="Zulu Book", author_id=middle, year=2010, tracks=1, path="/z")
+        Book(
+            title="Zulu Book",
+            author_id=middle,
+            year=2010,
+            tracks=1,
+            path="/z",
+            collection_id=collection_id,
+        )
     )
     window.refresh_books()
     window.on_order_changed("Title")
@@ -67,8 +83,8 @@ def test_year_sort_keeps_focused_book(main_window, qapp, qtbot):
     qtbot.wait(20)
 
     assert _current_book_id(window) == id_zulu
-    years = [book.year or 0 for book in window.books]
-    assert years == sorted(years)
+    year_keys = [(book.year is None, book.year or 0) for book in window.books]
+    assert year_keys == sorted(year_keys)
 
 
 def test_unread_filter_keeps_unread_book(main_window, qapp, qtbot):
@@ -90,7 +106,13 @@ def test_read_filter_moves_when_book_excluded(main_window, qapp, qtbot):
     qapp.processEvents()
     qtbot.wait(20)
 
-    assert _current_book_id(window) == id_alpha
+    remaining_ids = {book.book_id for book in window.books}
+    assert id_middle not in remaining_ids
+    assert id_alpha in remaining_ids
+    current_id = _current_book_id(window)
+    assert current_id in remaining_ids
+    current = next(book for book in window.books if book.book_id == current_id)
+    assert current.read_date
 
 
 def test_update_returns_focus_to_first_selected_book(

@@ -1740,27 +1740,6 @@ class BookDetailsWindow(AccessibleDialog):
             return None
         return number
 
-    def _store_blank_series_number_from_title(self) -> None:
-        """Save a series number from the title when Series # is blank.
-
-        The title is left as it is. No status message. The form stays clean.
-        A stored series number is left as it is.
-        """
-        from src.utils.text_utils import series_number_for_storage, split_series_number
-
-        if self.is_new or not self.book or not self.book.book_id:
-            return
-        if series_number_for_storage(self.book.series_number):
-            return
-        _clean, existing = split_series_number(self.book.title or "")
-        number = series_number_for_storage(existing)
-        if not number:
-            return
-        self.book.series_number = number
-        self.book_queries.update(self.book)
-        self._data_was_changed = True
-        self._set_series_number_field(number)
-
     def load_book_data(self):
         """Load book data into form, suppressing dirty tracking."""
         self._loading_fields = True
@@ -1774,7 +1753,6 @@ class BookDetailsWindow(AccessibleDialog):
                 self.year_spin.setValue(self.year_spin.minimum())
             # View mode: set label text instead of loading combos
             self.series_label_display.setText(self.book.series_name or "")
-            self._store_blank_series_number_from_title()
             self._set_series_number_field(self.book.series_number)
             self.genre_label_display.setText(self.book.genre_name or "")
             self.reader_edit.setText(self.book.reader or "")
