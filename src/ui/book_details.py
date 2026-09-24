@@ -2478,6 +2478,23 @@ class BookDetailsWindow(AccessibleDialog):
             return ""
         return collection.root_path or ""
 
+    def _preview_series_name(self) -> str:
+        combo = getattr(self, "series_combo", None)
+        label = getattr(self, "series_label_display", None)
+        stack = getattr(self, "series_field_stack", None)
+        if stack is not None and combo is not None and stack.currentWidget() is combo:
+            return combo.currentText().strip()
+        if label is not None and label.text().strip():
+            return label.text().strip()
+        if combo is not None:
+            return combo.currentText().strip()
+        return ""
+
+    def _preview_series_number(self) -> str:
+        if hasattr(self, "series_number_edit"):
+            return self.series_number_edit.text().strip()
+        return ""
+
     def _preview_author_name(self) -> str:
         combo = getattr(self, "author_combo", None)
         label = getattr(self, "author_label_display", None)
@@ -2503,6 +2520,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.theme_manager,
             book_title=self.title_edit.text() if hasattr(self, "title_edit") else "",
             author_name=self._preview_author_name(),
+            series_name=self._preview_series_name(),
+            series_number=self._preview_series_number(),
             length_text=self.time_edit.text() if hasattr(self, "time_edit") else "",
             collection_root=self._preview_collection_root(),
         )

@@ -14,12 +14,12 @@ Preview plays **inside AbCS** so screen reader focus stays in the app. An OS-def
 | Control | Action |
 |---------|--------|
 | **Play/Pause** | Enter plays or pauses. Focus starts on this button. No Alt letter. |
-| Title / Author / Length | Book title, author, and stored `hh:mm` to the right of the button. JAWS Insert+B reads the full lines. |
+| Title / Author / Series / Length | Book title, author, series (name and number when set), and stored `hh:mm` to the right of the button. JAWS Insert+B reads the full lines. |
 | Status | **Playing. Press Escape to exit.** or **Paused. Press Escape to exit.** |
 | Escape | Closes Preview and stops playback. From the main window, focus returns to the Title cell. |
 | F1 | Preview shortcut list (Shift+F1 once). Shift+F1 opens help for the window that opened Preview (main window or Book Details). |
 
-**Preview** is on Book Details and on the main window **Edit** menu. Shortcut is **Alt+Shift+P**. Preview is off in selection mode.
+**Preview** is on Book Details, the main window **Edit** menu, and the main toolbar after Find. Shortcut is **Alt+Shift+P**. Preview is off in selection mode. Duplicate mode keeps Preview on so you can hear which copy to keep.
 
 Resolve path in [`src/core/audio_launcher.py`](../src/core/audio_launcher.py). When the book’s collection has a library root, Preview remaps the stored import path onto that folder (author and title folders stay) so a portable drive can move. `books.path` is not rewritten. If the remapped folder is missing, the stored path is tried next. Play in [`src/ui/preview_window.py`](../src/ui/preview_window.py) with Qt Multimedia. FFmpeg console chatter is quieted while Preview is open.
 
@@ -79,7 +79,7 @@ Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
 
 ### Main window — Edit menu — [`src/ui/main_window.py`](../src/ui/main_window.py)
 
-**Preview** next to Fetch Web Info. Enabled when a book is focused, except in selection mode or duplicate mode. Missing path still announces so the user hears why Preview failed.
+**Preview** next to Fetch Web Info on Book Details, and on the main toolbar after Find. Enabled when a book is focused, except in selection mode. Duplicate mode keeps Preview on. Missing path still announces so the user hears why Preview failed.
 
 ### Import Detail — not in v3
 

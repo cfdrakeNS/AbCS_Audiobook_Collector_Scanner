@@ -1151,6 +1151,11 @@ class MainWindow(QMainWindow):
                 None,
             ),
             (
+                getattr(self, "preview_action", None),
+                "Preview the focused book inside AbCS - Alt+Shift+P",
+                "Play the focused book in the Preview window - Alt+Shift+P",
+            ),
+            (
                 getattr(self, "find_action", None),
                 "Find books by title, author, or other fields",
                 "Find books by field. Enter text and press Enter to find.",
@@ -1261,6 +1266,20 @@ class MainWindow(QMainWindow):
             self._toolbar_actions.append((action, role))
 
             if role == "find":
+                self.preview_toolbar_action = QAction("Preview", self)
+                self.preview_toolbar_action.setEnabled(False)
+                apply_tooltip_accessibility(
+                    self.preview_toolbar_action,
+                    "Preview the focused book inside AbCS - Alt+Shift+P",
+                    "Play the focused book in the Preview window - Alt+Shift+P",
+                )
+                self.preview_toolbar_action.triggered.connect(self.on_preview_clicked)
+                apply_decorative_action_icon(
+                    self.preview_toolbar_action, "preview", self.scaler
+                )
+                self.action_toolbar.addAction(self.preview_toolbar_action)
+                self._toolbar_actions.append((self.preview_toolbar_action, "preview"))
+
                 self.plot_filter_action = QAction("Plot Filter", self)
                 self.plot_filter_action.setCheckable(True)
                 self.plot_filter_action.setChecked(False)
@@ -3936,17 +3955,17 @@ class MainWindow(QMainWindow):
         return collection.root_path or ""
 
     def _update_preview_action_enabled(self):
-        if not hasattr(self, "preview_action"):
-            return
-        if self.duplicate_mode_active or self._selection_blocks_navigation():
-            self.preview_action.setEnabled(False)
-            return
-        self.preview_action.setEnabled(self._current_book_for_preview() is not None)
+        if self._selection_blocks_navigation():
+            enabled = False
+        else:
+            enabled = self._current_book_for_preview() is not None
+        if hasattr(self, "preview_action"):
+            self.preview_action.setEnabled(enabled)
+        if hasattr(self, "preview_toolbar_action"):
+            self.preview_toolbar_action.setEnabled(enabled)
 
     def on_preview_clicked(self):
         """Play the focused book in the in-app Preview window."""
-        if self.duplicate_mode_active:
-            return
         if self._block_if_selecting():
             return
         book = self._current_book_for_preview()
@@ -3962,6 +3981,8 @@ class MainWindow(QMainWindow):
             self.theme_manager,
             book_title=book.title or "",
             author_name=book.author_name or "",
+            series_name=book.series_name or "",
+            series_number=book.series_number,
             length_text=book.time_display,
             collection_root=self._preview_collection_root(book),
         )

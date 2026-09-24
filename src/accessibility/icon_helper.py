@@ -10,8 +10,8 @@ from __future__ import annotations
 import os
 import sys
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction, QIcon, QImageReader, QPixmap
+from PySide6.QtCore import QPoint, QRect, QSize, Qt
+from PySide6.QtGui import QAction, QColor, QIcon, QImageReader, QPainter, QPixmap, QPolygon
 from PySide6.QtWidgets import QApplication, QStyle
 
 from src.accessibility.graphics_paths import (
@@ -120,13 +120,62 @@ def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:
     }
     if hasattr(QStyle.StandardPixmap, "SP_DialogResetButton"):
         mapping["restore"] = QStyle.StandardPixmap.SP_DialogResetButton
-    if hasattr(QStyle.StandardPixmap, "SP_MediaPlay"):
-        mapping["preview"] = QStyle.StandardPixmap.SP_MediaPlay
     return mapping
 
 
-def get_action_icon(role: str) -> QIcon:
-    """Return a theme-aware standard icon for a known action role, or an empty icon."""
+def _icon_ink_color() -> QColor:
+    """Use button text so play/pause glyphs stay visible on dark themes."""
+    app = QApplication.instance()
+    if app is None:
+        return QColor("#ffffff")
+    color = app.palette().buttonText().color()
+    if not color.isValid() or color.alpha() == 0:
+        color = app.palette().windowText().color()
+    if not color.isValid() or color.alpha() == 0:
+        return QColor("#ffffff")
+    return color
+
+
+def _themed_media_icon(kind: str, scaler=None) -> QIcon:
+    """Draw a play triangle or pause bars in the current theme ink color."""
+    side = max(action_icon_size(scaler, base_pixels=20).width(), 16)
+    pixmap = QPixmap(side, side)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(_icon_ink_color())
+    inset = max(2, side // 6)
+    if kind == "pause":
+        bar_w = max(2, (side - inset * 2) // 4)
+        gap = max(2, bar_w)
+        left = inset + (side - inset * 2 - bar_w * 2 - gap) // 2
+        painter.drawRoundedRect(
+            QRect(left, inset, bar_w, side - inset * 2), 1, 1
+        )
+        painter.drawRoundedRect(
+            QRect(left + bar_w + gap, inset, bar_w, side - inset * 2), 1, 1
+        )
+    else:
+        painter.drawPolygon(
+            QPolygon(
+                [
+                    QPoint(inset, inset),
+                    QPoint(inset, side - inset),
+                    QPoint(side - inset, side // 2),
+                ]
+            )
+        )
+    painter.end()
+    return QIcon(pixmap)
+
+
+def get_action_icon(role: str, scaler=None) -> QIcon:
+    """Return a theme-aware icon for a known action role, or an empty icon."""
+    if role == "preview":
+        return _themed_media_icon("play", scaler)
+    if role == "pause":
+        return _themed_media_icon("pause", scaler)
     pixmap = _action_pixmap_map().get(role)
     if pixmap is None:
         return QIcon()
@@ -150,7 +199,7 @@ def action_icon_size(scaler=None, base_pixels: int = 16) -> QSize:
 
 def apply_decorative_action_icon(widget, role: str, scaler=None) -> None:
     """Place a standard icon beside visible text without changing accessible names."""
-    icon = get_action_icon(role)
+    icon = get_action_icon(role, scaler)
     if icon.isNull():
         return
     if isinstance(widget, QAction):

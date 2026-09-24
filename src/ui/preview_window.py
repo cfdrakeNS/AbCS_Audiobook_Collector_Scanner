@@ -60,6 +60,16 @@ def _format_preview_length(length_text: str) -> str:
     return raw
 
 
+def _format_preview_series(series_name: str, series_number="") -> str:
+    name = (series_name or "").strip()
+    from src.utils.text_utils import format_series_suffix
+
+    number = format_series_suffix(series_number)
+    if name and number:
+        return f"{name} - {number}"
+    return name or number
+
+
 def _playback_status(state: str) -> str:
     return f"{state}. Press Escape to exit."
 
@@ -71,6 +81,8 @@ def show_preview(
     theme_manager: ThemeManager | None = None,
     book_title: str = "",
     author_name: str = "",
+    series_name: str = "",
+    series_number: str = "",
     length_text: str = "",
     collection_root: str = "",
 ) -> tuple[bool, str]:
@@ -102,6 +114,8 @@ def show_preview(
         target.path,
         book_title=book_title,
         author_name=author_name,
+        series_name=series_name,
+        series_number=series_number,
         length_text=length_text,
     )
     if not ok:
@@ -160,7 +174,7 @@ class PreviewWindow(AccessibleDialog):
         self.setAccessibleDescription(
             "Play this audiobook inside AbCS. Enter plays or pauses. Escape closes."
         )
-        self.resize(640, 200)
+        self.resize(640, 220)
         self._setup_ui()
         self._setup_shortcuts()
         self.installEventFilter(self)
@@ -194,10 +208,14 @@ class PreviewWindow(AccessibleDialog):
         self.author_label = QLabel("Author:")
         self.author_label.setFocusPolicy(Qt.NoFocus)
         self.author_label.setWordWrap(True)
+        self.series_label = QLabel("Series:")
+        self.series_label.setFocusPolicy(Qt.NoFocus)
+        self.series_label.setWordWrap(True)
         self.length_label = QLabel("Length:")
         self.length_label.setFocusPolicy(Qt.NoFocus)
         details.addWidget(self.title_label)
         details.addWidget(self.author_label)
+        details.addWidget(self.series_label)
         details.addWidget(self.length_label)
         details.addStretch()
         info_row.addLayout(details, 1)
@@ -240,17 +258,23 @@ class PreviewWindow(AccessibleDialog):
         file_path: Path,
         book_title: str = "",
         author_name: str = "",
+        series_name: str = "",
+        series_number: str = "",
         length_text: str = "",
     ) -> tuple[bool, str]:
         if self._player is None:
             return False, "In-app preview needs Qt Multimedia."
         title = (book_title or "").strip() or file_path.name
         author = (author_name or "").strip()
+        series = _format_preview_series(series_name, series_number)
         length = _format_preview_length(length_text)
         self._display_title = title
         self._set_info_line(self.title_label, f"Title: {title}")
         self._set_info_line(
             self.author_label, f"Author: {author}" if author else "Author:"
+        )
+        self._set_info_line(
+            self.series_label, f"Series: {series}" if series else "Series:"
         )
         self._set_info_line(self.length_label, f"Length: {length}")
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
@@ -299,6 +323,11 @@ class PreviewWindow(AccessibleDialog):
             and self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
         )
         self.play_pause_button.setText("Pause" if playing else "Play")
+        apply_decorative_action_icon(
+            self.play_pause_button,
+            "pause" if playing else "preview",
+            self.scaler,
+        )
 
     def _on_state_changed(self, _state):
         self._sync_play_button()

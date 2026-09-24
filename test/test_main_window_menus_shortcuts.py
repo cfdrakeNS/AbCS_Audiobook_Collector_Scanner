@@ -312,6 +312,14 @@ def test_announce_selection_requests_status_speech(main_window, monkeypatch):
     assert "Escape to cancel selection" in message
 
 
+def test_preview_toolbar_follows_find(main_window):
+    window = main_window
+    roles = [role for _action, role in window._toolbar_actions]
+    assert roles.index("preview") == roles.index("find") + 1
+    assert hasattr(window, "preview_toolbar_action")
+    assert window.preview_toolbar_action.text() == "Preview"
+
+
 def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatch):
     from src.database.models import Book
     from src.database.queries import AuthorQueries, BookQueries
@@ -346,10 +354,12 @@ def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatc
             window.table.setCurrentCell(row, 1)
             window._update_preview_action_enabled()
             assert window.preview_action.isEnabled() is True
+            assert window.preview_toolbar_action.isEnabled() is True
         if book.book_id == bad_id:
             window.table.setCurrentCell(row, 1)
             window._update_preview_action_enabled()
             assert window.preview_action.isEnabled() is True
+            assert window.preview_toolbar_action.isEnabled() is True
             window.on_preview_clicked()
             assert any(
                 message == f"Book not found in - {missing}" for message in statuses
@@ -376,9 +386,37 @@ def test_preview_blocked_while_selecting(main_window, tmp_path, monkeypatch):
         lambda *args, **kwargs: opened.append(True) or (True, "Playing"),
     )
     assert window.preview_action.isEnabled() is False
+    assert window.preview_toolbar_action.isEnabled() is False
     window.on_preview_clicked()
     assert opened == []
     assert "Escape to cancel selection" in (window.statusBar().currentMessage() or "")
+
+
+def test_preview_enabled_in_duplicate_mode(main_window, tmp_path, monkeypatch):
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries
+
+    window = main_window
+    audio = tmp_path / "dup_preview.mp3"
+    audio.write_bytes(b"x")
+    author_id = AuthorQueries(window.db).insert("Dup Preview Author")
+    book_id = BookQueries(window.db).insert(
+        Book(title="Dup Preview Book", author_id=author_id, path=str(audio))
+    )
+    window.refresh_books()
+    window.table.setCurrentCell(0, 1)
+    window.duplicate_mode_active = True
+    window.duplicate_mode_book_ids = {book_id}
+    window.update_selection_ui()
+    opened = []
+    monkeypatch.setattr(
+        "src.ui.preview_window.show_preview",
+        lambda *args, **kwargs: opened.append(True) or (True, "Playing"),
+    )
+    assert window.preview_action.isEnabled() is True
+    assert window.preview_toolbar_action.isEnabled() is True
+    window.on_preview_clicked()
+    assert opened == [True]
 
 
 def test_new_book_blocked_while_selecting(main_window):

@@ -495,3 +495,13 @@ def test_message_box_button_accessibility_helper(qapp):
     assert msg.button(QMessageBox.Yes).accessibleDescription() == "Save changes"
     assert msg.button(QMessageBox.No).accessibleName() == "No, continue editing"
     assert msg.button(QMessageBox.No).accessibleDescription() == "Return to editing"
+
+
+def test_preview_and_pause_icons_use_theme_ink(qapp):
+    from src.accessibility.icon_helper import get_action_icon
+
+    play = get_action_icon("preview")
+    pause = get_action_icon("pause")
+    assert play.isNull() is False
+    assert pause.isNull() is False
+    assert play.cacheKey() != pause.cacheKey()

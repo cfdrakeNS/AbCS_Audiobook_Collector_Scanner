@@ -158,6 +158,8 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
         theme_manager,
         book_title="A Maiden's Grave",
         author_name="Jeffrey Deaver",
+        series_name="Lincoln Rhyme",
+        series_number="1",
         length_text="10:35",
     )
     assert ok is True
@@ -169,6 +171,7 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert preview is not None
     assert preview.title_label.text() == "Title: A Maiden's Grave"
     assert preview.author_label.text() == "Author: Jeffrey Deaver"
+    assert preview.series_label.text() == "Series: Lincoln Rhyme - 01"
     assert preview.length_label.text() == "Length: 10:35"
     if preview_mod._open_preview is not None:
         preview_mod._open_preview.close()

@@ -95,7 +95,7 @@ Add a new numbered markdown file to that folder and it appears in **All Help Top
 These patterns apply across the application:
 
 - **Menus** — click items on the menu bar (File, Edit, View, Manage, Help). Underlined letters show Alt-key shortcuts if you prefer the keyboard.
-- **Toolbar** — many main-window actions (Import, Update, Search Web, Statistics, filters) are on the toolbar as well as in menus.
+- **Toolbar** — many main-window actions (Import, Find, Preview, Search Web, Statistics, filters) are on the toolbar as well as in menus.
 - **Book table** — click a row to select it; **Ctrl+click** to add or remove rows from a selection; **Shift+click** to select a range. Double-click the **Title** column to open Book Details.
 - **Column headers** — click a header to sort by that column; click again to reverse ascending/descending order.
 - **Buttons** — **Save**, **Cancel**, **Browse**, **Import**, and similar controls work with a normal click.
