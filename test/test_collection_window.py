@@ -111,3 +111,49 @@ def test_collection_window_warns_missing_and_empty_root(
     assert window.on_save() is False
     assert queries.get_by_id(cid).root_path == str(missing)
     window.close()
+
+
+def _tab_targets_after(start, targets, limit=80):
+    order = []
+    widget = start
+    seen = {id(start)}
+    wanted = set(targets)
+    for _ in range(limit):
+        widget = widget.nextInFocusChain()
+        if widget is None or id(widget) in seen:
+            break
+        seen.add(id(widget))
+        if widget in wanted:
+            order.append(widget)
+    return order
+
+
+def test_collection_window_tab_order_matches_form(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    window = CollectionWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    assert _tab_targets_after(
+        window.table,
+        [window.new_button, window.edit_button, window.delete_button],
+    ) == [window.new_button, window.edit_button, window.delete_button]
+
+    window.on_new()
+    assert _tab_targets_after(
+        window.name_edit,
+        [
+            window.active_check,
+            window.root_edit,
+            window.browse_button,
+            window.table,
+            window.save_button,
+        ],
+    ) == [
+        window.active_check,
+        window.root_edit,
+        window.browse_button,
+        window.table,
+        window.save_button,
+    ]
+    window.close()

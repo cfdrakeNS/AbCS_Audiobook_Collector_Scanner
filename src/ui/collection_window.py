@@ -496,26 +496,32 @@ class CollectionWindow(AccessibleDialog):
         self._apply_tab_order()
 
     def _apply_tab_order(self):
-        """Apply tab order safely for currently visible controls."""
+        """Tab order matches the form: Name, Active, root, Browse, list, buttons."""
         footer_buttons = [
             self.new_button,
             self.edit_button,
             self.save_button,
             self.delete_button,
         ]
-        visible_footer_buttons = [
-            button
-            for button in footer_buttons
-            if button.isVisible() and button.isEnabled() and button.window() is self
-        ]
+        visible_footer_buttons = []
+        for button in footer_buttons:
+            if button.isVisible() and button.isEnabled() and button.window() is self:
+                button.setFocusPolicy(Qt.StrongFocus)
+                visible_footer_buttons.append(button)
+            else:
+                button.setFocusPolicy(Qt.NoFocus)
 
-        chain = [self.table]
-        if not self._editor_locked:
-            chain.extend(
-                [self.name_edit, self.root_edit, self.browse_button, self.active_check]
-            )
-        chain.extend(visible_footer_buttons)
-        chain.append(self.table)
+        if self._editor_locked:
+            chain = [self.table, *visible_footer_buttons]
+        else:
+            chain = [
+                self.name_edit,
+                self.active_check,
+                self.root_edit,
+                self.browse_button,
+                self.table,
+                *visible_footer_buttons,
+            ]
 
         for first, second in zip(chain, chain[1:]):
             if first.window() is self and second.window() is self:

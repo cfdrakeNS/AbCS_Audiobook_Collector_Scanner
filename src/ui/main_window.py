@@ -4060,6 +4060,13 @@ class MainWindow(QMainWindow):
         self.set_status(status_msg, announce=True, timeout_ms=5000)
         self.table.setFocus()
 
+    def _clear_book_table_selection(self) -> None:
+        """Leave selection mode after a batch action, same as Update."""
+        self.table.clearSelection()
+        self.selected_book_ids.clear()
+        self.selection_anchor_row = None
+        self.update_selection_ui()
+
     def _selected_books_in_table_order(self) -> list:
         books = []
         selected = self.selected_book_ids
@@ -4087,6 +4094,15 @@ class MainWindow(QMainWindow):
             run_batch_web_fetch_with_progress,
         )
 
+        first_selected_row = None
+        for row in range(self.table.rowCount()):
+            if (
+                row < len(self.books)
+                and self.books[row].book_id in self.selected_book_ids
+            ):
+                first_selected_row = row
+                break
+
         outcome = run_batch_web_fetch_with_progress(books, parent=self)
         if not outcome.results:
             self.set_status("Batch web fetch canceled.", announce=True, timeout_ms=4000)
@@ -4096,6 +4112,7 @@ class MainWindow(QMainWindow):
         summary = BatchWebFetchSummaryDialog(outcome, parent=self)
         summary.exec()
         choice = summary.choice
+        timeout_ms = 0
 
         if choice == BatchWebFetchSummaryDialog.APPLY_ALL:
             applied_books = 0
@@ -4106,22 +4123,19 @@ class MainWindow(QMainWindow):
                 if labels:
                     applied_books += 1
             self.refresh_books()
-            self.set_status(
-                f"Applied web metadata to {applied_books} books.",
-                announce=True,
-            )
-            self.table.setFocus()
-            return
-
-        if summary.saved_any:
+            message = f"Applied web metadata to {applied_books} books."
+        elif summary.saved_any:
             self.refresh_books()
-            self.set_status("Batch web review finished.", announce=True)
-            self.table.setFocus()
-            return
+            message = "Batch web review finished."
+        else:
+            message = "Batch web fetch results discarded."
+            timeout_ms = 4000
 
-        self.set_status(
-            "Batch web fetch results discarded.", announce=True, timeout_ms=4000
-        )
+        self._clear_book_table_selection()
+        self.set_status(message, announce=True, timeout_ms=timeout_ms)
+        if first_selected_row is not None and self.table.rowCount() > 0:
+            target_row = min(first_selected_row, self.table.rowCount() - 1)
+            self.table.setCurrentCell(target_row, 1)
         self.table.setFocus()
 
     def on_cancel_clicked(self):

@@ -224,6 +224,40 @@ def test_selection_disables_navigation_keeps_search_web(main_window):
     assert window.new_book_action.isEnabled()
 
 
+def test_batch_web_fetch_clears_selection_when_summary_closes(
+    main_window, monkeypatch
+):
+    from src.web.batch_web_fetch import BatchFetchOutcome
+
+    window = main_window
+    id1, id2 = _insert_two_books(window)
+    window.selected_book_ids = {id1, id2}
+    window.update_selection_ui()
+
+    class FakeSummary:
+        APPLY_ALL = "apply_all"
+        choice = None
+        saved_any = False
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def exec(self):
+            return 0
+
+    monkeypatch.setattr(
+        "src.web.batch_web_fetch.run_batch_web_fetch_with_progress",
+        lambda *_args, **_kwargs: BatchFetchOutcome(results=[object()]),
+    )
+    monkeypatch.setattr(
+        "src.ui.batch_web_fetch_summary.BatchWebFetchSummaryDialog",
+        FakeSummary,
+    )
+    window.on_batch_web_fetch_clicked()
+    assert window.selected_book_ids == set()
+    assert window.selection_anchor_row is None
+
+
 def test_alt_w_with_two_selected_runs_batch(main_window, monkeypatch):
     window = main_window
     id1, id2 = _insert_two_books(window)
