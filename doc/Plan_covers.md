@@ -1,6 +1,6 @@
 # Covers — Future Improvement Plan
 
-**Status:** Deferred after version 3 — **out of scope for v3** (covers and zip backup). Phase 9 does not add `cover_path`.  
+**Status:** Deferred after version 3 — **out of scope for v3** (web cover files and zip backup). Phase 9 does not add `cover_path`. Showing art already inside the audio file on the Preview window is [plan_preview_cover.md](plan_preview_cover.md). The same picture on Book Details is [plan_book_details_cover.md](plan_book_details_cover.md).  
 **Created:** June 2026  
 **Updated:** September 2026  
 **Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Backup and Restore](help_docs/09_backup_restore.md), [plan_ratings.md](plan_ratings.md), [plan_schema_batch.md](plan_schema_batch.md)

@@ -41,6 +41,65 @@ def resolve_preview_file(path: str, collection_root: str = "") -> PreviewTarget:
     return PreviewTarget(error=f"Book not found in - {remapped}")
 
 
+def _apic_bytes(tags) -> bytes | None:
+    if tags is None or not hasattr(tags, "getall"):
+        return None
+    for frame in tags.getall("APIC"):
+        data = getattr(frame, "data", None)
+        if data:
+            return bytes(data)
+    return None
+
+
+def embedded_cover_bytes(audio) -> bytes | None:
+    """Return embedded cover art from an open mutagen file, or None."""
+    if audio is None:
+        return None
+    pictures = getattr(audio, "pictures", None) or []
+    for picture in pictures:
+        data = getattr(picture, "data", None)
+        if data:
+            return bytes(data)
+    from_tags = _apic_bytes(getattr(audio, "tags", None))
+    if from_tags:
+        return from_tags
+    from_id3 = _apic_bytes(audio)
+    if from_id3:
+        return from_id3
+    tags = getattr(audio, "tags", None)
+    if tags is None:
+        return None
+    try:
+        covers = tags.get("covr")
+    except Exception:
+        covers = None
+    if covers:
+        return bytes(covers[0])
+    return None
+
+
+def read_embedded_cover(path: Path) -> bytes | None:
+    """Read embedded cover art from an audio file. Missing art is None."""
+    audio = None
+    try:
+        from mutagen import File as MutagenFile
+
+        audio = MutagenFile(str(path))
+    except Exception:
+        audio = None
+    found = embedded_cover_bytes(audio)
+    if found:
+        return found
+    if path.suffix.lower() != ".mp3":
+        return None
+    try:
+        from mutagen.id3 import ID3
+
+        return embedded_cover_bytes(ID3(str(path)))
+    except Exception:
+        return None
+
+
 def preview_can_launch(path: str, collection_root: str = "") -> bool:
     """True when Preview should be enabled for this stored path."""
     return resolve_preview_file(path, collection_root=collection_root).path is not None

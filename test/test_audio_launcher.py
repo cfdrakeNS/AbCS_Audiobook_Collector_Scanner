@@ -4,7 +4,45 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.core.audio_launcher import preview_can_launch, resolve_preview_file
+from src.core.audio_launcher import (
+    embedded_cover_bytes,
+    preview_can_launch,
+    read_embedded_cover,
+    resolve_preview_file,
+)
+
+
+def test_embedded_cover_bytes_returns_art_or_none():
+    class Picture:
+        def __init__(self, data):
+            self.data = data
+
+    class WithArt:
+        pictures = [Picture(b"jpeg-bytes")]
+
+    class NoArt:
+        pictures = []
+        tags = None
+
+    assert embedded_cover_bytes(WithArt()) == b"jpeg-bytes"
+    assert embedded_cover_bytes(NoArt()) is None
+    assert embedded_cover_bytes(None) is None
+
+
+def test_read_embedded_cover_from_id3_and_plain_file(tmp_path):
+    from mutagen.id3 import APIC, ID3
+
+    art = tmp_path / "with-art.mp3"
+    art.write_bytes(b"")
+    tags = ID3()
+    payload = b"\xff\xd8\xffcover"
+    tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="Cover", data=payload))
+    tags.save(art)
+    assert read_embedded_cover(art) == payload
+
+    plain = tmp_path / "no-art.mp3"
+    plain.write_bytes(b"no tags")
+    assert read_embedded_cover(plain) is None
 
 
 def test_resolve_preview_empty_and_missing(tmp_path):
@@ -173,6 +211,11 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert preview.author_label.text() == "Author: Jeffrey Deaver"
     assert preview.series_label.text() == "Series: Lincoln Rhyme - 01"
     assert preview.length_label.text() == "Length: 10:35"
+    from PySide6.QtCore import Qt
+
+    assert preview.cover_label.isHidden()
+    assert preview.cover_label.focusPolicy() == Qt.NoFocus
+    assert "cover" not in preview.status_bar.currentMessage().lower()
     if preview_mod._open_preview is not None:
         preview_mod._open_preview.close()
     ok, message = show_preview(None, "", ui_scaler, theme_manager)

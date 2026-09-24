@@ -136,10 +136,11 @@ Tests use a FakePlayer. They do not start real Qt Multimedia decode in CI.
 ## Relation to other plans
 
 - **Collection root / rescan** ([`plan_rescan_and_library_folders.md`](plan_rescan_and_library_folders.md)): path updates keep Preview correct; changing root alone does not rewrite `books.path`.
-- **Ratings / covers**: independent; out of scope for v3 UI.
+- **Ratings / web covers**: independent; web cover files stay out of v3. Embedded art on the Preview window is [plan_preview_cover.md](plan_preview_cover.md) (Phase 15).
+- **Later player:** next/previous, seek, global speed, resume, and an in-progress filter are [plan_preview_player_later.md](plan_preview_player_later.md).
 
 ---
 
 ## Next
 
-Phase 13 name consistency per [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md).
+Phase 16 help review per [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Phase 15 Preview cover is implemented.

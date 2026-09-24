@@ -72,6 +72,7 @@ from PySide6.QtGui import (
     QTextCursor,
     QShortcut,
     QKeySequence,
+    QPixmap,
     QRegularExpressionValidator,
 )
 from datetime import datetime
@@ -700,6 +701,12 @@ class BookDetailsWindow(AccessibleDialog):
         if is_screen_reader_active():
             self.header_card.hide()
         layout.addWidget(self.header_card)
+
+        self.cover_label = QLabel()
+        self.cover_label.setFocusPolicy(Qt.NoFocus)
+        self.cover_label.setAccessibleName("Cover")
+        self.cover_label.hide()
+        layout.addWidget(self.cover_label, 0, Qt.AlignLeft)
 
         # bd#8: Header section showing sort order
         header_layout = QHBoxLayout()
@@ -1533,6 +1540,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.collection_combo.currentIndexChanged.connect(
             lambda: self._mark_dirty(self.collection_combo)
         )
+        self.collection_combo.currentIndexChanged.connect(self._show_book_cover)
 
         # Spinbox and date
         self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
@@ -2442,6 +2450,33 @@ class BookDetailsWindow(AccessibleDialog):
             self.preview_button.setAccessibleDescription(
                 "Preview is unavailable because the path is missing or has no playable file."
             )
+        self._show_book_cover()
+
+    def _show_book_cover(self) -> None:
+        """Show embedded art for the current path. Say nothing when it is missing."""
+        from src.core.audio_launcher import read_embedded_cover, resolve_preview_file
+
+        if not hasattr(self, "cover_label"):
+            return
+        self.cover_label.clear()
+        self.cover_label.hide()
+        path_text = self.path_edit.text() if hasattr(self, "path_edit") else ""
+        target = resolve_preview_file(
+            path_text,
+            collection_root=self._preview_collection_root(),
+        )
+        if target.path is None:
+            return
+        data = read_embedded_cover(target.path)
+        pixmap = QPixmap()
+        if not data or not pixmap.loadFromData(data):
+            return
+        side = self.scaler.get_scaled_size(120)
+        self.cover_label.setPixmap(
+            pixmap.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        )
+        self.cover_label.setAccessibleName("Cover")
+        self.cover_label.show()
 
     def _preview_collection_root(self) -> str:
         collection_id = None

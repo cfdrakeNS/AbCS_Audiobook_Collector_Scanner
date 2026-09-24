@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** 2.18 — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Library-wide fuzzy name scan deferred after v3.
+**Tester build:** 2.18 — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover is implemented. Next: Phase 16 help review. Non-modal fetch is out of scope for v3. Web cover files and the rest of the player (transport, speed, resume, in-progress filter) are deferred after v3. Library-wide fuzzy name scan deferred after v3.
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -16,7 +16,7 @@
 
 ## Version 3 scope (from tester review)
 
-Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), and audiobook preview (in-app player). **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings UI, covers UI. Everything else stays planned but **deferred after v3**.
+Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), audiobook preview (in-app player), Preview embedded cover (Phase 15), and a help-doc review (Phase 16). **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings UI, web cover files and zip backup, and the rest of the Preview player. Everything else stays planned but **deferred after v3**.
 
 | Phase | ID | Enhancement | Detail doc | Est. | Depends on |
 |-------|----|-------------|------------|------|------------|
@@ -32,11 +32,14 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 11 | C07 | Collection library root folder | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | 2–3 d | Adds `root_path` |
 | 12 | C03 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | 1–2 d | — |
 | 13 | C09 | Name-list merge on duplicate | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 1–2 d | — |
+| 15 | — | Preview cover (embedded art) | [plan_preview_cover.md](plan_preview_cover.md) | 0.5–1 d | Phase 12 |
+| 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | — |
+| 17 | — | Book Details cover (embedded art) | [plan_book_details_cover.md](plan_book_details_cover.md) | 0.5 d | Phase 15 |
 | 14 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
 
-**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 13 is name-list merge when a duplicate author/series/genre name is saved. The library-wide fuzzy scan is deferred after v3. Phase 14 (view-mode) is optional and last.** Phase 9 adds `series_number` only. Want to Read, ratings, and covers are out of v3. Collection `root_path` is added in Phase 11.
+**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 15 (Preview cover) and Phase 17 (Book Details cover) are implemented. Phase 16 (help review) is next. Phase 14 (view-mode) is optional and last.** Phase 9 adds `series_number` only. Want to Read, ratings, and web cover files are out of v3. Collection `root_path` is added in Phase 11.
 
-**Not in v3:** Non-modal web fetch (keep using the app during a fetch), Want to Read, book ratings, covers and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred.
+**Not in v3:** Non-modal web fetch (keep using the app during a fetch), Want to Read, book ratings, web cover files and zip backup, Preview transport/speed/resume/in-progress filter ([plan_preview_player_later.md](plan_preview_player_later.md)), rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred.
 
 ---
 
@@ -151,6 +154,24 @@ See [Plan_name_consistency_check.md](Plan_name_consistency_check.md). **Complete
 When Save in the Name List hits an existing author, series, or genre name, ask Yes/No (default No). Yes moves books onto the existing name and deletes the edited name. Collections keep the warning only. Library-wide fuzzy scan is deferred after v3. Tab skips the list (use Alt+L); Escape in Find returns to the list.
 
 **Gate:** Yes reassigns books and removes the source name; No changes nothing; same-row case change does not ask; JAWS hears the question and the result sentence.
+
+### Phase 15 — Preview cover (0.5–1 day)
+
+See [plan_preview_cover.md](plan_preview_cover.md). **Implemented.** Show embedded art from the file Preview is playing. No database column. Not the deferred web-cover plan.
+
+**Gate:** Art shows and is not in the tab order; no art means no extra announcement; Play/Pause keeps focus.
+
+### Phase 16 — Help docs review (1 day)
+
+See [plan_help_docs_review.md](plan_help_docs_review.md). After Phase 15. Remove topics 22 and 23, drop “Steps” from section headings, and add missing shipped actions (Preview on the main window first).
+
+**Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Preview.
+
+### Phase 17 — Book Details cover (0.5 day)
+
+See [plan_book_details_cover.md](plan_book_details_cover.md). **Implemented.** Show the same embedded art as Preview at the top of Book Details. No database column. The picture stays outside the header card that is hidden for screen readers.
+
+**Gate:** Art shows and is not in the tab order; no art means no extra announcement; the title field keeps focus.
 
 ### Phase 14 — View-mode announcements (2–4 days, optional)
 
@@ -301,7 +322,7 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and cov
 
 ## How to use this doc
 
-1. Optional Phase 14 (view-mode) is the remaining v3 item. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
+1. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phase 16 help review is next. Optional Phase 14 (view-mode) stays last. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
 2. Meet each phase **gate** before the next.
 3. Update [plans_status.md](plans_status.md) when a plan ships.
 4. Read linked `plan_*.md` for file paths and a11y checklists.

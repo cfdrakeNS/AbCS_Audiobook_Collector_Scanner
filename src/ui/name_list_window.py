@@ -351,6 +351,7 @@ class NameListWindow(AccessibleDialog):
         # Note: For QTableWidget, we'll handle filtering differently
         # since QTableWidget doesn't work directly with QSortFilterProxyModel
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -854,6 +855,13 @@ class NameListWindow(AccessibleDialog):
         if self.is_collection_mode:
             self.active_check.setChecked(bool(item.active))
         self._set_edit_hint_status(item.name)
+
+    def _on_table_double_clicked(self, row: int, _column: int) -> None:
+        """Double-click a row to start Edit, same as Alt+E / Edit button."""
+        if row < 0:
+            return
+        self.table.setCurrentCell(row, self.COL_NAME)
+        self.on_edit()
 
     def on_edit(self):
         """Enable editing for the highlighted row in non-author lists."""

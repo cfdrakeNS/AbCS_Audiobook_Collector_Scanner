@@ -258,3 +258,72 @@ def test_preview_enabled_and_launches_for_audio_file(
     window.on_preview()
     assert called == [(str(audio), "Preview Book")]
     window.close()
+
+
+def _jpeg_bytes() -> bytes:
+    from PySide6.QtCore import QBuffer, QIODevice
+    from PySide6.QtGui import QImage
+
+    image = QImage(8, 8, QImage.Format.Format_RGB32)
+    image.fill(0x336699)
+    buffer = QBuffer()
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    image.save(buffer, "JPEG")
+    return bytes(buffer.data())
+
+
+def test_book_details_cover_hidden_without_art(temp_db, ui_scaler, theme_manager):
+    author_id = AuthorQueries(temp_db).insert("Plain Author")
+    book_id = BookQueries(temp_db).insert(
+        Book(title="Plain Book", author_id=author_id, path="")
+    )
+    book = BookQueries(temp_db).get_by_id(book_id)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=book,
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    assert window.cover_label.isHidden()
+    assert window.cover_label.focusPolicy() == Qt.NoFocus
+    assert window.cover_label.accessibleName() == "Cover"
+    assert "cover" not in (window.status_bar.currentMessage() or "").lower()
+    window.close()
+
+
+def test_book_details_cover_shows_embedded_art(
+    temp_db, ui_scaler, theme_manager, tmp_path
+):
+    from mutagen.id3 import APIC, ID3
+
+    art = tmp_path / "with-art.mp3"
+    art.write_bytes(b"")
+    tags = ID3()
+    tags.add(
+        APIC(
+            encoding=3,
+            mime="image/jpeg",
+            type=3,
+            desc="Cover",
+            data=_jpeg_bytes(),
+        )
+    )
+    tags.save(art)
+
+    books = _ensure_sample_books(temp_db, count=1)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    window.path_edit.setText(str(art))
+    assert window.cover_label.isHidden() is False
+    assert window.cover_label.pixmap() is not None
+    assert window.cover_label.focusPolicy() == Qt.NoFocus
+    assert "cover" not in (window.status_bar.currentMessage() or "").lower()
+    window.path_edit.clear()
+    assert window.cover_label.isHidden()
+    window.close()

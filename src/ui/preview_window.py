@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QTimer, QUrl, Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -32,7 +32,7 @@ from src.accessibility.style_helpers import (
     exec_styled_message_box,
 )
 from src.accessibility.theme_manager import ThemeManager
-from src.core.audio_launcher import resolve_preview_file
+from src.core.audio_launcher import read_embedded_cover, resolve_preview_file
 from src.core.media_log import (
     mute_preview_stderr,
     restore_preview_stderr,
@@ -219,6 +219,12 @@ class PreviewWindow(AccessibleDialog):
         details.addWidget(self.length_label)
         details.addStretch()
         info_row.addLayout(details, 1)
+
+        self.cover_label = QLabel()
+        self.cover_label.setFocusPolicy(Qt.NoFocus)
+        self.cover_label.setAccessibleName("Cover")
+        self.cover_label.hide()
+        info_row.addWidget(self.cover_label, 0, Qt.AlignTop)
         layout.addLayout(info_row)
         self.track_label = self.title_label
 
@@ -277,6 +283,7 @@ class PreviewWindow(AccessibleDialog):
             self.series_label, f"Series: {series}" if series else "Series:"
         )
         self._set_info_line(self.length_label, f"Length: {length}")
+        self._show_cover(file_path)
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
         self._player.play()
         self.set_status(_playback_status("Playing"), announce=True)
@@ -309,6 +316,22 @@ class PreviewWindow(AccessibleDialog):
                 ("F1", "Show this help"),
             ],
         )
+
+    def _show_cover(self, file_path: Path) -> None:
+        """Show embedded art when the file has it. Say nothing when it does not."""
+        data = read_embedded_cover(file_path)
+        pixmap = QPixmap()
+        if not data or not pixmap.loadFromData(data):
+            self.cover_label.clear()
+            self.cover_label.hide()
+            return
+        side = self.scaler.get_scaled_size(120)
+        self.cover_label.setPixmap(
+            pixmap.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        )
+        self.cover_label.setAccessibleName("Cover")
+        self.cover_label.show()
+        self.resize(max(self.width(), 640), max(self.height(), side + 100))
 
     def _set_info_line(self, label: QLabel, text: str) -> None:
         label.setText(text)

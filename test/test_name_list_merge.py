@@ -276,6 +276,26 @@ def test_merge_yes_moves_focus_to_kept_row(
     window.close()
 
 
+def test_double_click_row_starts_edit(
+    temp_db, ui_scaler, theme_manager, qtbot, qapp
+):
+    series_id = SeriesQueries(temp_db).insert("Double Click Series")
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
+    qtbot.addWidget(window)
+    window.show()
+    window.focus_and_select_row(series_id)
+    qapp.processEvents()
+
+    assert window._collection_editor_locked
+    window.table.cellDoubleClicked.emit(window.table.currentRow(), 0)
+    qapp.processEvents()
+
+    assert not window._collection_editor_locked
+    assert window.name_edit.hasFocus()
+    assert window.name_edit.text() == "Double Click Series"
+    window.close()
+
+
 def test_tab_order_skips_table_for_series(
     temp_db, ui_scaler, theme_manager, qtbot
 ):
