@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** 2.17 — Phases 1–4 and 6–10 complete (tester accepted). Series number is display-only ` - nn` on the main table. Book Details save and Book List Import confirmed. **Later test:** Series From File Name. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Next is Phase 11 (collection root).  
+**Tester build:** 2.17 — Phases 1–4 and 6–11 complete (tester accepted). Phase 12 preview is implemented, pending tester. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Non-modal fetch is out of scope for v3. Next is Phase 13 (name consistency).  
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -122,7 +122,7 @@ The column is used by series number (Phase 10). Collection root adds `root_path`
 
 ### Phase 10 — F10 Series book number (2–3 days)
 
-See [plan_series_number_db.md](plan_series_number_db.md). **Complete — tester accepted** display-only title suffix, Book Details save, and Book List Import in tester build 2.17. **Later test:** Series From File Name. Needs Phase 9.
+See [plan_series_number_db.md](plan_series_number_db.md). **Complete — tester accepted** display-only title suffix, Book Details save, Book List Import, and Series From File Name in tester build 2.17. Needs Phase 9.
 
 The only series-number field is on **Book Details**, a text box to the right of Series. Saving stores Series # and leaves the title as it is. The main-window Title column shows ` - 03` or ` - 6.5` from that column. When a book is shown and Series # is blank, a title suffix such as ` - 3` or ` - 6.5` is stored in Series #. The title stays as it is. There is no status message. The main-window **Series** sort is series name, then series number, then year, then title. Book List Import and Series From File Name store Series # and leave the title clean. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
 
@@ -130,17 +130,17 @@ The only series-number field is on **Book Details**, a text box to the right of 
 
 ### Phase 11 — C07 Collection library root folder (2–3 days)
 
-See [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) **Part A only**. This phase adds `collections.root_path` on first start for existing libraries, using the same upgrade path as Phase 9.
+See [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) **Part A only**. **Complete — tester accepted.** This phase adds `collections.root_path` on first start for existing libraries, using the same upgrade path as Phase 9.
 
-Allow setting and changing the optional root folder for a collection (example: `F:\audiobook`). Edit in Collection Manager. When the user selects or browses a collection folder, **warn** if that folder does not exist, or if it contains no recognized audiobook files (extensions from `TagReader.SUPPORTED_EXTENSIONS`). Import may pre-fill from `root_path` when present. Rescan (Part B) and organize-on-disk (Part C) stay deferred.
+Allow setting and changing the optional root folder for a collection (example: `F:\audiobook`). Edit in Collection Manager. When the user selects or browses a collection folder, **warn** if that folder does not exist, or if it contains no recognized audiobook files (extensions from `TagReader.SUPPORTED_EXTENSIONS`). Import may pre-fill from `root_path` when present. Changing the root does not rewrite `books.path`. Rescan (Part B) and organize-on-disk (Part C) stay deferred.
 
 **Gate:** Save/load `root_path`; warn on missing folder; warn when folder has no supported audio; Import pre-fill when root is set and exists.
 
 ### Phase 12 — C03 Preview audiobook (1–2 days)
 
-See [plan_audiobook_preview.md](plan_audiobook_preview.md).
+See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Implemented — pending tester.**
 
-**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Opens the book in the user’s **default OS media player** for that file format (file association) — not an in-app player. Book Details has no menu bar today; menu entry is on the main window.
+**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Opens the book in the user’s **default OS media player** for that file format (file association) — not an in-app player. Book Details has no menu bar today; menu entry is on the main window. Shortcut is **Alt+Shift+P**.
 
 **Gate:** Preview launches default player for a single-file book; missing path announced; JAWS can activate Preview from button and Edit menu.
 

@@ -120,6 +120,8 @@ def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:
     }
     if hasattr(QStyle.StandardPixmap, "SP_DialogResetButton"):
         mapping["restore"] = QStyle.StandardPixmap.SP_DialogResetButton
+    if hasattr(QStyle.StandardPixmap, "SP_MediaPlay"):
+        mapping["preview"] = QStyle.StandardPixmap.SP_MediaPlay
     return mapping
 
 

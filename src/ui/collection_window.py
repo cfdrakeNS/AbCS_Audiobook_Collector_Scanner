@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QDialog,
+    QFileDialog,
     QHeaderView,
     QHBoxLayout,
     QLabel,
@@ -58,7 +59,7 @@ class CollectionWindow(AccessibleDialog):
     """
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"E", "L", "N", "S", "D", "/"}
+    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "S", "D", "/"}
 
     def __init__(
         self,
@@ -101,14 +102,15 @@ class CollectionWindow(AccessibleDialog):
         )
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"E", "L", "N", "S", "D", "/"}
+    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "S", "D", "/"}
 
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
         super().keyPressEvent(event)
 
     COL_NAME = 0
-    COL_ACTIVE = 1
+    COL_PATH = 1
+    COL_STATUS = 2
 
     def __init__(
         self,
@@ -138,6 +140,7 @@ class CollectionWindow(AccessibleDialog):
         self.load_collections(populate_editor=False)
         self._set_editor_locked(True)
         self.name_edit.installEventFilter(self)
+        self.root_edit.installEventFilter(self)
         # Accessibility: Tab/Shift+Tab moves focus out of table
         self.table.keyPressEvent = self.accessible_table_key_press
         QTimer.singleShot(
@@ -148,9 +151,10 @@ class CollectionWindow(AccessibleDialog):
         self.setWindowTitle("Collection Manager")
         self.setAccessibleName("Collection Manager")
         self.setAccessibleDescription(
-            "Manage collections: add, edit active status, and delete when unused."
+            "Manage collections: add, edit active status, optional library "
+            "root folder, and delete when unused."
         )
-        self.resize(760, 480)
+        self.resize(880, 480)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -176,14 +180,39 @@ class CollectionWindow(AccessibleDialog):
 
         layout.addLayout(header_layout)
 
+        root_layout = QHBoxLayout()
+        root_layout.setSpacing(10)
+        root_label = QLabel("Library &root folder:")
+        self.root_edit = QLineEdit()
+        self.root_edit.setAccessibleName("Collection library root folder")
+        self.root_edit.setAccessibleDescription(
+            "Optional folder on disk where this collection's audiobooks live. "
+            "Used as default for import."
+        )
+        root_label.setBuddy(self.root_edit)
+        root_layout.addWidget(root_label)
+        root_layout.addWidget(self.root_edit, 1)
+
+        self.browse_button = QPushButton("Browse")
+        self.browse_button.clicked.connect(self.on_browse_root)
+        self.browse_button.setAccessibleName("Browse library root folder")
+        self.browse_button.setAccessibleDescription(
+            "Choose the optional library root folder for this collection - Alt+B"
+        )
+        self.browse_button.setDefault(False)
+        self.browse_button.setAutoDefault(False)
+        self.browse_button.installEventFilter(self)
+        root_layout.addWidget(self.browse_button)
+        layout.addLayout(root_layout)
+
         self.table = QTableWidget()
         self.table.setAccessibleName("Collections list")
         self.table.setAccessibleDescription(
-            "List of collections with active status. "
+            "List of collections with path and status. "
             "Use Up and Down arrows to move between entries."
         )
-        self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Collection", "Active"])
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Collection", "Path", "Status"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setTabKeyNavigation(False)
@@ -200,10 +229,12 @@ class CollectionWindow(AccessibleDialog):
         vh.setFocusPolicy(Qt.NoFocus)
         vh.setEnabled(False)
         self.table.setVerticalHeaderLabels([])
-        self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.horizontalHeader().setMinimumSectionSize(60)
-        self.table.setColumnWidth(self.COL_NAME, 520)
-        self.table.setColumnWidth(self.COL_ACTIVE, 120)
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(60)
+        header.setSectionResizeMode(self.COL_NAME, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(self.COL_PATH, QHeaderView.Stretch)
+        header.setSectionResizeMode(self.COL_STATUS, QHeaderView.ResizeToContents)
         self.table.currentCellChanged.connect(self.on_selection_changed)
         layout.addWidget(self.table, 1)
 
@@ -296,12 +327,14 @@ class CollectionWindow(AccessibleDialog):
         self.delete_button.setObjectName("destructiveActionButton")
         self.new_button.setObjectName("")
         self.edit_button.setObjectName("")
+        self.browse_button.setObjectName("")
 
         for button in (
             self.new_button,
             self.edit_button,
             self.save_button,
             self.delete_button,
+            self.browse_button,
         ):
             button.setStyleSheet(button_style)
 
@@ -328,6 +361,8 @@ class CollectionWindow(AccessibleDialog):
         apply_visual_tooltip_map(
             {
                 self.name_edit: "Collection name to add or edit",
+                self.root_edit: "Optional library root folder for this collection",
+                self.browse_button: "Browse for the collection library root folder",
                 self.active_check: "Include this collection in filters when active",
                 self.table: "List of collections",
                 self.new_button: "Create a new collection",
@@ -348,6 +383,7 @@ class CollectionWindow(AccessibleDialog):
             "edit_button": self.edit_button.click,
             "save_button": self.on_save,
             "delete_button": self.delete_button.click,
+            "browse_button": self.on_browse_root,
             "table": self.focus_list,
         }
         mgr.register_alt_shortcuts(
@@ -386,18 +422,26 @@ class CollectionWindow(AccessibleDialog):
         selected_row = -1
 
         for row, collection in enumerate(collections):
-            active_label = "Yes" if collection.active else "No"
-            accessible_text = f"{collection.name}, Active: {active_label}"
+            status_label = "Active" if collection.active else "Inactive"
+            path_text = (collection.root_path or "").strip()
+            path_spoken = path_text or "none"
+            accessible_text = (
+                f"{collection.name}, Path: {path_spoken}, Status: {status_label}"
+            )
 
             name_item = QTableWidgetItem(collection.name)
             name_item.setData(Qt.UserRole, collection.collection_id)
             name_item.setData(Qt.AccessibleTextRole, accessible_text)
 
-            active_item = QTableWidgetItem(active_label)
-            active_item.setData(Qt.AccessibleTextRole, accessible_text)
+            path_item = QTableWidgetItem(path_text)
+            path_item.setData(Qt.AccessibleTextRole, accessible_text)
+
+            status_item = QTableWidgetItem(status_label)
+            status_item.setData(Qt.AccessibleTextRole, accessible_text)
 
             self.table.setItem(row, self.COL_NAME, name_item)
-            self.table.setItem(row, self.COL_ACTIVE, active_item)
+            self.table.setItem(row, self.COL_PATH, path_item)
+            self.table.setItem(row, self.COL_STATUS, status_item)
 
             if preserve_id is not None and collection.collection_id == preserve_id:
                 selected_row = row
@@ -409,7 +453,7 @@ class CollectionWindow(AccessibleDialog):
             self.table.setCurrentCell(selected_row, self.COL_NAME)
             if not populate_editor:
                 self.table.blockSignals(False)
-                self.name_edit.clear()
+                self._clear_editor_fields()
             return
 
         if self.table.rowCount() > 0:
@@ -419,17 +463,24 @@ class CollectionWindow(AccessibleDialog):
             self.table.setCurrentCell(0, self.COL_NAME)
             if not populate_editor:
                 self.table.blockSignals(False)
-                self.name_edit.clear()
+                self._clear_editor_fields()
         else:
             self.on_new()
+
+    def _clear_editor_fields(self):
+        self.name_edit.clear()
+        self.root_edit.clear()
+        self.active_check.setChecked(True)
 
     def _set_editor_locked(self, locked: bool, clear_name: bool = False):
         self._editor_locked = locked
         self.name_edit.setEnabled(not locked)
+        self.root_edit.setEnabled(not locked)
+        self.browse_button.setEnabled(not locked)
         self.active_check.setEnabled(not locked)
 
         if clear_name:
-            self.name_edit.clear()
+            self._clear_editor_fields()
 
         if locked:
             self.name_edit.setPlaceholderText("Press Alt+N for New or Alt+E for Edit")
@@ -460,7 +511,9 @@ class CollectionWindow(AccessibleDialog):
 
         chain = [self.table]
         if not self._editor_locked:
-            chain.extend([self.name_edit, self.active_check])
+            chain.extend(
+                [self.name_edit, self.root_edit, self.browse_button, self.active_check]
+            )
         chain.extend(visible_footer_buttons)
         chain.append(self.table)
 
@@ -516,6 +569,7 @@ class CollectionWindow(AccessibleDialog):
 
         self._is_new_entry_mode = False
         self.name_edit.setText(collection.name)
+        self.root_edit.setText(collection.root_path or "")
         self.active_check.setChecked(collection.active)
 
     def on_new(self):
@@ -543,6 +597,7 @@ class CollectionWindow(AccessibleDialog):
         self._is_new_entry_mode = False
         self._set_editor_locked(False, clear_name=False)
         self.name_edit.setText(collection.name)
+        self.root_edit.setText(collection.root_path or "")
         self.active_check.setChecked(collection.active)
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.setCursorPosition(len(self.name_edit.text()))
@@ -558,6 +613,8 @@ class CollectionWindow(AccessibleDialog):
         name = temp["collection"]
         self.name_edit.setText(name)
         active = self.active_check.isChecked()
+        root_path = self.root_edit.text().strip()
+        self.root_edit.setText(root_path)
 
         if self._editor_locked:
             return False
@@ -580,10 +637,13 @@ class CollectionWindow(AccessibleDialog):
             )
             return False
 
+        if not self._confirm_library_root(root_path):
+            return False
+
         if self.current_collection_id is None or self._is_new_entry_mode:
             try:
                 new_id = self.collection_queries.insert(
-                    Collection(name=name, active=active)
+                    Collection(name=name, active=active, root_path=root_path)
                 )
             except sqlite3.IntegrityError:
                 exec_styled_message_box(
@@ -597,9 +657,9 @@ class CollectionWindow(AccessibleDialog):
                 return False
 
             self.current_collection_id = new_id
-            self.load_collections(preserve_id=new_id)
+            self.load_collections(preserve_id=new_id, populate_editor=False)
             self._is_new_entry_mode = False
-            self._set_editor_locked(True)
+            self._set_editor_locked(True, clear_name=True)
             # Show save message with delay to override navigation clearing
             QTimer.singleShot(
                 50, lambda: self.set_status(f"Collection saved: {name}.", announce=True)
@@ -635,6 +695,7 @@ class CollectionWindow(AccessibleDialog):
                     collection_id=self.current_collection_id,
                     name=name,
                     active=active,
+                    root_path=root_path,
                 )
             )
         except sqlite3.IntegrityError:
@@ -648,8 +709,10 @@ class CollectionWindow(AccessibleDialog):
             self.set_status("Duplicate collection name.", announce=True)
             return False
 
-        self.load_collections(preserve_id=self.current_collection_id)
-        self._set_editor_locked(True)
+        self.load_collections(
+            preserve_id=self.current_collection_id, populate_editor=False
+        )
+        self._set_editor_locked(True, clear_name=True)
         # Show save message with delay to override navigation clearing
         QTimer.singleShot(
             50, lambda: self.set_status(f"Collection saved: {name}.", announce=True)
@@ -661,6 +724,50 @@ class CollectionWindow(AccessibleDialog):
         # Explicitly ensure button visibility is correct (last operation)
         QTimer.singleShot(150, self.ensure_normal_buttons_visible)
         return True
+
+    def on_browse_root(self):
+        """Choose an optional library root folder for the current collection."""
+        if self._editor_locked:
+            return
+        current_dir = self.root_edit.text().strip() or ""
+        selected = QFileDialog.getExistingDirectory(
+            self, "Select collection library root folder", current_dir
+        )
+        if not selected:
+            return
+        if not self._confirm_library_root(selected):
+            self.set_status("Library root folder not changed.", announce=True)
+            return
+        self.root_edit.setText(selected)
+        self.set_status("Library root folder selected.", announce=True)
+
+    def _confirm_library_root(self, path: str) -> bool:
+        """Warn when a root is missing or has no supported audio. Empty is allowed."""
+        from src.core.library_root import root_path_issue
+
+        issue = root_path_issue(path)
+        if not issue:
+            return True
+        if issue == "missing":
+            text = "This folder does not exist.\n\nKeep this path anyway?"
+            status = "Library root folder does not exist."
+        else:
+            text = (
+                "This folder has no recognized audiobook files.\n\n"
+                "Keep this path anyway?"
+            )
+            status = "Library root folder has no recognized audiobook files."
+        self.set_status(status, announce=True)
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Warning,
+            title="Collection library root",
+            text=text,
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+        )
+        return reply == QMessageBox.Yes
 
     def on_name_edit_enter_pressed(self):
         """Enter in Name field should act like Save and return focus to updated row."""
@@ -682,7 +789,7 @@ class CollectionWindow(AccessibleDialog):
 
         self._is_new_entry_mode = False
         self.load_collections(preserve_id=preserve_id, populate_editor=False)
-        self._set_editor_locked(True)
+        self._set_editor_locked(True, clear_name=True)
         self.focus_list()
 
     def focus_list(self):
@@ -798,6 +905,7 @@ class CollectionWindow(AccessibleDialog):
             ("Alt+L", "Jump to list"),
             ("Alt+N", "New"),
             ("Alt+E", "Edit selected row"),
+            ("Alt+B", "Browse library root folder"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
             ("Escape", "Cancel edit/new or close window"),

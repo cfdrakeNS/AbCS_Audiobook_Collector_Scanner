@@ -744,33 +744,33 @@ class CollectionQueries:
         query += " ORDER BY name"
 
         rows = self.db.fetch_all(query)
-        return [
-            Collection(
-                collection_id=r["collection_id"],
-                name=r["name"],
-                active=bool(r["active"]),
-            )
-            for r in rows
-        ]
+        return [self._row_to_collection(r) for r in rows]
 
     def get_by_id(self, collection_id: int) -> Optional[Collection]:
         """Get collection by ID."""
         row = self.db.fetch_one(
             "SELECT * FROM collections WHERE collection_id = ?", (collection_id,)
         )
-        if row:
-            return Collection(
-                collection_id=row["collection_id"],
-                name=row["name"],
-                active=bool(row["active"]),
-            )
-        return None
+        return self._row_to_collection(row) if row else None
+
+    def _row_to_collection(self, row) -> Collection:
+        root = ""
+        try:
+            root = row["root_path"] or ""
+        except (IndexError, KeyError):
+            root = ""
+        return Collection(
+            collection_id=row["collection_id"],
+            name=row["name"],
+            active=bool(row["active"]),
+            root_path=root,
+        )
 
     def insert(self, collection: Collection) -> int:
         """Insert a new collection."""
         cursor = self.db.execute(
-            "INSERT INTO collections (name, active) VALUES (?, ?)",
-            (collection.name, collection.active),
+            "INSERT INTO collections (name, active, root_path) VALUES (?, ?, ?)",
+            (collection.name, collection.active, collection.root_path or ""),
         )
         self.db.connect().commit()
         return cursor.lastrowid
@@ -778,8 +778,14 @@ class CollectionQueries:
     def update(self, collection: Collection):
         """Update a collection."""
         self.db.execute(
-            "UPDATE collections SET name = ?, active = ? WHERE collection_id = ?",
-            (collection.name, collection.active, collection.collection_id),
+            "UPDATE collections SET name = ?, active = ?, root_path = ? "
+            "WHERE collection_id = ?",
+            (
+                collection.name,
+                collection.active,
+                collection.root_path or "",
+                collection.collection_id,
+            ),
         )
         self.db.connect().commit()
 

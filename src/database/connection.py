@@ -227,12 +227,18 @@ class DatabaseManager:
         If tables don't exist, create them from the bundled SQL schema file.
         """
         # Check if main tables exist
-        if not self.table_exists("books"):
+        created_new = not self.table_exists("books")
+        if created_new:
             self._create_schema()
 
         self.schema_repair_performed = False
         self.schema_repair_message = ""
         self._ensure_legacy_schema_compatibility()
+        if created_new:
+            # A brand-new library is not a legacy upgrade. Keep missing columns
+            # from a stale def file, but do not show the upgrade dialog.
+            self.schema_repair_performed = False
+            self.schema_repair_message = ""
         self._ensure_minimum_seed_data()
         self._ensure_indexes()
 
@@ -270,7 +276,8 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS collections (
                     collection_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
-                    active INTEGER DEFAULT 1
+                    active INTEGER DEFAULT 1,
+                    root_path TEXT
                 )
             """,
             "books": """
@@ -320,6 +327,7 @@ class DatabaseManager:
                 "collection_id": "INTEGER",
                 "name": "TEXT",
                 "active": "INTEGER DEFAULT 1",
+                "root_path": "TEXT",
             },
             "books": {
                 "book_id": "INTEGER",
@@ -424,10 +432,23 @@ class DatabaseManager:
             backup_note = ""
             if backup_path is not None:
                 backup_note = f" Backup: {backup_path.name}."
-            if added_columns == ["books.series_number"]:
+            added = set(added_columns)
+            if added == {"books.series_number"}:
                 self.schema_repair_message = (
                     "Database upgraded. Series number storage was added. "
                     "Your books were not changed."
+                    f"{backup_note}"
+                )
+            elif added == {"collections.root_path"}:
+                self.schema_repair_message = (
+                    "Database upgraded. Collection library root storage was added. "
+                    "Your books were not changed."
+                    f"{backup_note}"
+                )
+            elif added == {"books.series_number", "collections.root_path"}:
+                self.schema_repair_message = (
+                    "Database upgraded. Series number and collection library "
+                    "root storage were added. Your books were not changed."
                     f"{backup_note}"
                 )
             else:

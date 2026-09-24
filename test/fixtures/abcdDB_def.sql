@@ -15,7 +15,8 @@ CREATE TABLE collections (
     collection_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT    NOT NULL
                             UNIQUE,
-    active          INTEGER DEFAULT 1
+    active          INTEGER DEFAULT 1,
+    root_path       TEXT
 );
 
 CREATE TABLE genres (

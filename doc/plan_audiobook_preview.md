@@ -1,6 +1,6 @@
 # Preview Audiobook — Version 3 Phase 12 / C03
 
-**Status:** Planned — Version 3 Phase 12  
+**Status:** Implemented — pending tester (Version 3 Phase 12)  
 **Created:** June 2026  
 **Revised:** September 2026 — Preview via OS default media player (not open-folder-only)  
 **Related:** [Book Details](help_docs/04_book_details.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)

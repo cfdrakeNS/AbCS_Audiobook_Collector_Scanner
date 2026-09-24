@@ -1,8 +1,8 @@
 # Rescan / Update Metadata and Collection Library Folders — Improvement Plan
 
-**Status:** Part A in Version 3 (Phase 11). Parts B and C deferred after v3.  
+**Status:** Part A complete — tester accepted (Phase 11). Parts B and C deferred after v3.  
 **Created:** June 2026  
-**Updated:** September 2026 — Part A promoted to v3; warn on missing/empty root  
+**Updated:** September 2026 — Part A implemented (`collections.root_path`)  
 **Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/05_collections.md), [Preferences](help_docs/10_preferences.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_schema_batch.md](plan_schema_batch.md), [Plan_name_consistency_check.md](Plan_name_consistency_check.md)
 
 ---

@@ -1,6 +1,6 @@
 # Series Number in Database — Version 3 Phase 10 / F10
 
-**Status:** Complete — tester accepted display-only ` - nn` on the main table, Book Details save, and Book List Import. **Later test:** Series From File Name. Tester build 2.17. Version 3 Phase 10.  
+**Status:** Complete — tester accepted. Display-only ` - nn` on the main table, Book Details save, Book List Import, and Series From File Name. Tester build 2.17. Version 3 Phase 10.  
 **Created:** June 2026  
 **Updated:** September 2026 — display-only title suffix. Phase 9 schema accepted.  
 **Related:** [plan_schema_batch.md](plan_schema_batch.md) (v3 Phase 9), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [scripts/strip_series_suffix_from_titles.py](../scripts/strip_series_suffix_from_titles.py), [scripts/update_series_number_from_title.py](../scripts/update_series_number_from_title.py), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)

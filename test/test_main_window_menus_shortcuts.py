@@ -278,6 +278,50 @@ def test_announce_selection_requests_status_speech(main_window, monkeypatch):
     assert "Escape to cancel selection" in message
 
 
+def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatch):
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries
+
+    window = main_window
+    assert hasattr(window, "preview_action")
+    audio = tmp_path / "menu_preview.m4b"
+    audio.write_bytes(b"x")
+    missing = tmp_path / "gone"
+    author_id = AuthorQueries(window.db).insert("Preview Menu Author")
+    books = BookQueries(window.db)
+    good_id = books.insert(
+        Book(title="Preview Menu Good", author_id=author_id, path=str(audio))
+    )
+    bad_id = books.insert(
+        Book(title="Preview Menu Bad", author_id=author_id, path=str(missing))
+    )
+    window.refresh_books()
+    monkeypatch.setattr(
+        "src.ui.main_window.exec_styled_message_box",
+        lambda *args, **kwargs: 0,
+    )
+    statuses = []
+    monkeypatch.setattr(
+        window,
+        "set_status",
+        lambda message, announce=False, timeout_ms=0: statuses.append(message),
+    )
+
+    for row, book in enumerate(window.books):
+        if book.book_id == good_id:
+            window.table.setCurrentCell(row, 1)
+            window._update_preview_action_enabled()
+            assert window.preview_action.isEnabled() is True
+        if book.book_id == bad_id:
+            window.table.setCurrentCell(row, 1)
+            window._update_preview_action_enabled()
+            assert window.preview_action.isEnabled() is True
+            window.on_preview_clicked()
+            assert any(
+                message == f"Book not found in - {missing}" for message in statuses
+            )
+
+
 def test_new_book_blocked_while_selecting(main_window):
     window = main_window
     id1, id2 = _insert_two_books(window)

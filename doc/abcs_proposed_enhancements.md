@@ -10,14 +10,12 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 ## Planned for version 3 (next major update)
 
-Already in tester build **2.17:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31.
+Already in tester build **2.17:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) is tester accepted. Audiobook preview (Phase 12) is in the current build for tester review.
 
 Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **Collection library folder** | Optional root folder per collection (for example `F:\audiobook`). You can change it later. Warn if the folder is missing or has no audiobooks. Import can default to that folder. |
-| **Preview audiobook** | From Book Details (button) and the Edit menu, play the book in your default media player for that file type. Not an in-app player. |
 | **Name consistency check** | Find similar spellings of author names, titles, and genres and help you merge them — similar to Duplicate Check. You confirm each group. |
 | **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. Decide after the other v3 items. |
 
@@ -85,4 +83,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.17**. Phases 1–4 and 6–10 are tester accepted. Series From File Name still needs a later test. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is collection root, then Preview. Name consistency is second to last. View-mode announcements are optional and last.
+**Status:** Version 3 in progress — tester build **2.17**. Phases 1–4 and 6–10 are tester accepted. Non-modal fetch, Want to Read, ratings, and covers are out of scope for v3. Next is collection root, then Preview. Name consistency is second to last. View-mode announcements are optional and last.

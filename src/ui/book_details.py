@@ -603,6 +603,7 @@ class BookDetailsWindow(AccessibleDialog):
         apply_decorative_action_icon(
             self.get_web_details_button, "search_web", self.scaler
         )
+        apply_decorative_action_icon(self.preview_button, "preview", self.scaler)
 
     def _configure_field_combo(self, combo: QComboBox) -> None:
         """Keep combo fields within the form column, not the longest list item."""
@@ -1131,6 +1132,17 @@ class BookDetailsWindow(AccessibleDialog):
         )  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.get_web_details_button)
 
+        self.preview_button = QPushButton("Preview")
+        self.preview_button.setAccessibleName("Preview audiobook")
+        self.preview_button.setAccessibleDescription(
+            "Play this book in your default media player - Alt+Shift+P"
+        )
+        self.preview_button.setFocusPolicy(Qt.StrongFocus)
+        self.preview_button.clicked.connect(self.on_preview)
+        self.preview_button.setDefault(False)
+        self.preview_button.setAutoDefault(False)
+        button_layout.addWidget(self.preview_button)
+
         layout.addLayout(button_layout)
 
         self.status_bar = QStatusBar()
@@ -1166,6 +1178,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.setTabOrder(self.edit_button, self.save_button)
         self.setTabOrder(self.save_button, self.delete_button)
         self.setTabOrder(self.delete_button, self.get_web_details_button)
+        self.setTabOrder(self.get_web_details_button, self.preview_button)
 
         # bd#4: Setup keyboard shortcuts
         self.setup_shortcuts()
@@ -1282,6 +1295,10 @@ class BookDetailsWindow(AccessibleDialog):
                     "Fetch metadata from the web",
                     "Fetch book info from web",
                 ),
+                self.preview_button: (
+                    "Play in the default media player",
+                    "Play this book in your default media player - Alt+Shift+P",
+                ),
             }
         )
         apply_status_bar_tooltip(self.status_bar, "")
@@ -1389,6 +1406,10 @@ class BookDetailsWindow(AccessibleDialog):
             lambda: self.on_edit_mode() if self.edit_button.isVisible() else None
         )
 
+        self.preview_shortcut = QShortcut(QKeySequence("Alt+Shift+P"), self)
+        self.preview_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.preview_shortcut.activated.connect(self.on_preview)
+
         # Escape key for cancel functionality
         self.escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.escape_shortcut.activated.connect(self.on_cancel_edit)
@@ -1488,7 +1509,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.format_combo.currentIndexChanged.connect(
             lambda: self._mark_dirty(self.format_combo)
         )
-        self.path_edit.textChanged.connect(lambda: self._mark_dirty(self.path_edit))
+        self.path_edit.textChanged.connect(self._on_path_edit_changed)
 
         # Combos
         self.author_combo.currentIndexChanged.connect(
@@ -1578,6 +1599,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.save_button.setVisible(True)
             self.edit_button.setVisible(False)
             self.get_web_details_button.setVisible(False)
+            self._update_preview_button_state()
             return
 
         save_active = self._dirty or self.is_new
@@ -1588,6 +1610,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.get_web_details_button.setVisible(not self.is_new and not save_active)
         # Update button: hide for new books, hide in edit mode, show in view mode for existing
         self.edit_button.setVisible(not self.is_new and not save_active)
+        self._update_preview_button_state()
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
@@ -1629,6 +1652,7 @@ class BookDetailsWindow(AccessibleDialog):
             [
                 ("Alt+N", "New book"),
                 ("Alt+D", "Delete book"),
+                ("Alt+Shift+P", "Preview audiobook"),
                 ("Alt+/", "Read status bar"),
             ]
         )
@@ -1819,6 +1843,7 @@ class BookDetailsWindow(AccessibleDialog):
         finally:
             self._loading_fields = False
         self._update_header_card()
+        self._update_preview_button_state()
 
     def _check_combo_change(
         self, field_name: str, combo: QComboBox, original_value: str, query_obj
@@ -2265,6 +2290,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.edit_button.setVisible(False)
         self.save_button.setVisible(True)
         self.get_web_details_button.setVisible(False)
+        self._update_preview_button_state()
 
         # Focus the title field (most logical starting point for editing)
         self.title_edit.setFocus()
@@ -2415,6 +2441,47 @@ class BookDetailsWindow(AccessibleDialog):
             self.reader_edit.setText("")
         finally:
             self._loading_fields = False
+        self._update_preview_button_state()
+
+    def _on_path_edit_changed(self):
+        self._mark_dirty(self.path_edit)
+        self._update_preview_button_state()
+
+    def _update_preview_button_state(self):
+        from src.core.audio_launcher import preview_can_launch
+
+        available = (not self.is_new) and preview_can_launch(
+            self.path_edit.text() if hasattr(self, "path_edit") else ""
+        )
+        self.preview_button.setVisible(not self.is_new)
+        self.preview_button.setEnabled(available)
+        if available:
+            self.preview_button.setAccessibleDescription(
+                "Play this book in your default media player - Alt+Shift+P"
+            )
+        else:
+            self.preview_button.setAccessibleDescription(
+                "Preview is unavailable because the path is missing or has no playable file."
+            )
+
+    def on_preview(self):
+        from src.core.audio_launcher import launch_preview
+
+        if self.is_new:
+            self.set_status("Save the book before preview.", announce=True)
+            return
+        ok, message = launch_preview(self.path_edit.text())
+        if ok:
+            self.set_status(message, announce=True)
+            return
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Warning,
+            title="Preview",
+            text=message,
+        )
+        self.set_status(message, announce=True)
 
     def on_get_web_details(self):
         """Open web book details window to fetch and review web metadata."""

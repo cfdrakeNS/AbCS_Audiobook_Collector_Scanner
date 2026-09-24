@@ -71,6 +71,7 @@ class Collection:
     collection_id: Optional[int] = None
     name: str = ""
     active: bool = True
+    root_path: str = ""
 
     def __str__(self):
         return self.name

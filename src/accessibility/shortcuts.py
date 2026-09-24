@@ -29,6 +29,7 @@ COLLECTION_WINDOW_SHORTCUTS = {
     "E": ("Edit selected row", "edit_button"),
     "N": ("New", "new_button"),
     "D": ("Delete", "delete_button"),
+    "B": ("Browse library root", "browse_button"),
 }
 
 NAMELIST_WINDOW_SHORTCUTS = {

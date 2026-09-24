@@ -41,7 +41,7 @@ Announce the upgrade on first start for **dev and installed** builds (accessible
 
 ## Tests
 
-Open a copy of the current schema, call `initialize_database()`, assert `series_number` exists, existing rows unchanged, `series_number` is NULL, backup file created. Assert `want_to_read`, `rating`, `cover_path`, and `collections.root_path` were not added.
+Open a copy of the current schema, call `initialize_database()`, assert `series_number` exists, existing rows unchanged, `series_number` is NULL, backup file created. Assert `want_to_read`, `rating`, and `cover_path` were not added. Phase 11 later adds `collections.root_path` on the same first-start path; a fully legacy library now receives both columns.
 
 ---
 

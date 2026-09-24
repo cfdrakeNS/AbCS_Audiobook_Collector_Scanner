@@ -21,7 +21,7 @@ For an explained walkthrough of what happens when you import, see [Import explai
 
 1. Open **File → Import**, or press **Ctrl+I**.
 2. Choose a **Collection** (**Alt+C**). If the main window already shows a specific collection, it may be pre-selected.
-3. Choose a **Folder** (Alt+F, then **Browse** with Alt+B). This is the top-level folder to scan. Subfolders are included.
+3. Choose a **Folder** (Alt+F, then **Browse** with Alt+B). This is the top-level folder to scan. Subfolders are included. If the selected collection has a **library root folder** that exists on disk, that folder is pre-filled. You can browse a different folder.
 4. Click **Import** (Alt+I) to start the scan.
 5. A **progress window** appears while files are read. You can cancel if needed.
 6. When the scan finishes, books are handled in two ways:
@@ -47,7 +47,13 @@ Open **View → Preferences** (or **Manage → Preferences**). Import-related se
 
 ### Import Settings
 
-- **Default directory** — pre-fills the folder field when Import opens.
+- **Default directory** — fallback folder when Import opens and the selected collection has no library root, or that root is missing on disk.
+
+Folder used for a scan, in order:
+
+1. The folder you pick in the Import window
+2. The collection **library root folder**, when that folder exists
+3. Preferences **default import directory**
 - **Audio formats** — which file types to scan (MP3, M4A, M4B, FLAC, OGG, WAV, WMA).
 - **Import scenario** — how your folders are organized. Choose the scenario in **Preferences → Import Settings** before scanning. The Import window shows the active scenario name in the status bar.
 - **Tag mapping** — Book title and Author combos on that same tab. Defaults are Album, and Album artist then artist. Grouping stays on the album tag.

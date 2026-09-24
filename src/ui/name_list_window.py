@@ -948,6 +948,7 @@ class NameListWindow(AccessibleDialog):
                         collection_id=self.current_item_id,
                         name=name,
                         active=active,
+                        root_path=existing.root_path or "",
                     )
                 )
             else:

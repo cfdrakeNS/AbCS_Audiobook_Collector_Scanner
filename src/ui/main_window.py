@@ -1372,6 +1372,12 @@ class MainWindow(QMainWindow):
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
         self.edit_menu.addAction(self.get_web_info_action)
 
+        self.preview_action = QAction("&Preview", self)
+        self.preview_action.setShortcut(QKeySequence("Alt+Shift+P"))
+        self.preview_action.triggered.connect(self.on_preview_clicked)
+        self.preview_action.setEnabled(False)
+        self.edit_menu.addAction(self.preview_action)
+
         # View menu
         self.view_menu = menubar.addMenu("&View")
 
@@ -2489,6 +2495,7 @@ class MainWindow(QMainWindow):
 
             self.set_default_status(announce=False)
             self._update_filter_summary_label()
+            self._update_preview_action_enabled()
 
         except Exception as e:
             self.table.setUpdatesEnabled(True)
@@ -3680,6 +3687,7 @@ class MainWindow(QMainWindow):
             # It will use the currently focused book if no specific selection
             should_enable = not in_duplicate_mode
             self.get_web_info_action.setEnabled(should_enable)
+        self._update_preview_action_enabled()
 
         self._set_selection_navigation_enabled(
             not self._selection_blocks_navigation()
@@ -3905,6 +3913,43 @@ class MainWindow(QMainWindow):
             )
         except Exception as e:
             self.set_status(f"Export failed: {str(e)}", announce=True)
+
+    def _current_book_for_preview(self):
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self.books):
+            return None
+        return self.books[row]
+
+    def _update_preview_action_enabled(self):
+        if not hasattr(self, "preview_action"):
+            return
+        if self.duplicate_mode_active:
+            self.preview_action.setEnabled(False)
+            return
+        self.preview_action.setEnabled(self._current_book_for_preview() is not None)
+
+    def on_preview_clicked(self):
+        """Open the focused book in the default OS media player."""
+        if self.duplicate_mode_active:
+            return
+        book = self._current_book_for_preview()
+        if book is None:
+            self.set_status("No book available for preview.", announce=True)
+            return
+        from src.core.audio_launcher import launch_preview
+
+        ok, message = launch_preview(book.path or "")
+        if ok:
+            self.set_status(message, announce=True)
+            return
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Warning,
+            title="Preview",
+            text=message,
+        )
+        self.set_status(message, announce=True)
 
     def on_get_web_info_clicked(self, from_button=False):
         """Handle Fetch Web Info - opens web metadata window for focused/selected book."""
@@ -4625,6 +4670,7 @@ class MainWindow(QMainWindow):
         if self._selection_blocks_navigation():
             shortcuts = [
                 ("Alt+W", "Fetch web info for the selected books"),
+                ("Alt+Shift+P", "Preview focused book"),
                 ("Alt+U", "Update selected"),
                 ("Alt+D", "Delete selected"),
                 ("Shift+Down/Up", "Extend selection"),
@@ -4658,6 +4704,7 @@ class MainWindow(QMainWindow):
                 ("Alt+P", "Toggle plot filter"),
                 ("Alt+R", "Toggle read filter"),
                 ("Alt+W", "Fetch web info (batch when two or more selected)"),
+                ("Alt+Shift+P", "Preview focused book"),
                 ("Ctrl+I", "Import"),
                 ("Ctrl+N", "New book"),
                 ("Shift+Down/Up", "Start selection or extend selection"),

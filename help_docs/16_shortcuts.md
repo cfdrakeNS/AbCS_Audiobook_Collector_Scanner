@@ -24,6 +24,7 @@ Last updated: June 2026.
 | Alt+P | Toggle plot filter |
 | Alt+R | Toggle read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
+| Alt+Shift+P | Preview focused book |
 | Ctrl+F | Find |
 | Ctrl+I | Import |
 | Ctrl+N | New book |
@@ -58,6 +59,7 @@ Last updated: June 2026.
 | Alt+O | Format |
 | Alt+H | Path |
 | Alt+W | Get web info |
+| Alt+Shift+P | Preview audiobook |
 | Alt+U | Update/Edit mode |
 | Alt+N | New book |
 | Alt+D | Delete book |

@@ -112,6 +112,7 @@ def temp_db(tmp_path):
     if source_db is not None:
         shutil.copy2(source_db, target_db)
         db = DatabaseManager(str(target_db))
+        db.initialize_database()
     else:
         db = DatabaseManager(str(target_db))
         db.initialize_database()

@@ -828,6 +828,8 @@ class ImportWindow(AccessibleDialog):
 
         self._update_scan_enabled_state()
         self.collection_combo.blockSignals(False)
+        if self.collection_combo.currentData() is not None:
+            self._apply_collection_root_folder(announce=False)
 
     def _update_scan_enabled_state(self):
         """Keep scan enabled for accessibility - use popup validation instead."""
@@ -1316,6 +1318,7 @@ class ImportWindow(AccessibleDialog):
             self.default_collection_id = None
             self.current_collection_name = ""
             self.settings.setValue("import/collection_id", 0)
+            self._apply_collection_root_folder(announce=False)
             self._update_scan_enabled_state()
             exec_styled_message_box(
                 self,
@@ -1330,9 +1333,48 @@ class ImportWindow(AccessibleDialog):
         self.current_collection_name = self.collection_combo.currentText().strip()
         self.settings.setValue("import/collection_id", self.default_collection_id)
         self._update_scan_enabled_state()
-        self.set_status(
-            f"Import collection: {self.current_collection_name}", announce=True
-        )
+        collection = self.collection_queries.get_by_id(self.default_collection_id)
+        root = (collection.root_path or "").strip() if collection else ""
+        self._apply_collection_root_folder(announce=bool(root))
+        if not root:
+            self.set_status(
+                f"Import collection: {self.current_collection_name}", announce=True
+            )
+
+    def _prefs_import_directory(self) -> str:
+        return self.settings.value("import/default_directory", "", type=str)
+
+    def _apply_collection_root_folder(self, announce: bool) -> None:
+        """Pre-fill scan folder from collection root when that folder exists."""
+        from src.core.library_root import folder_exists
+
+        prefs_dir = self._prefs_import_directory()
+        selected_id = self.collection_combo.currentData()
+        if selected_id is None:
+            self.folder_edit.setText(prefs_dir)
+            return
+        collection = self.collection_queries.get_by_id(int(selected_id))
+        if collection is None:
+            self.folder_edit.setText(prefs_dir)
+            return
+        root = (collection.root_path or "").strip()
+        if not root:
+            self.folder_edit.setText(prefs_dir)
+            return
+        if folder_exists(root):
+            self.folder_edit.setText(root)
+            if announce:
+                self.set_status(
+                    f"Default folder from collection: {collection.name}",
+                    announce=True,
+                )
+            return
+        self.folder_edit.setText(prefs_dir)
+        if announce:
+            self.set_status(
+                f"Collection library root is missing for {collection.name}.",
+                announce=True,
+            )
 
     def _restore_focus_after_scan(self):
         """Return keyboard focus to Import Window after scan/progress window closes."""

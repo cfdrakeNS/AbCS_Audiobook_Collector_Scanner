@@ -213,3 +213,46 @@ def test_page_navigation_focuses_title(temp_db, ui_scaler, theme_manager, monkey
     assert focus_calls
     assert window.title_edit.text() == books[1].title
     window.close()
+
+
+def test_preview_disabled_when_path_empty(temp_db, ui_scaler, theme_manager):
+    books = _ensure_sample_books(temp_db, count=1)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    window.path_edit.setText("")
+    assert window.preview_button.isEnabled() is False
+    assert "unavailable" in window.preview_button.accessibleDescription()
+    window.close()
+
+
+def test_preview_enabled_and_launches_for_audio_file(
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch
+):
+    audio = tmp_path / "listen.mp3"
+    audio.write_bytes(b"x")
+    author_id = AuthorQueries(temp_db).insert("Preview Author")
+    book_id = BookQueries(temp_db).insert(
+        Book(title="Preview Book", author_id=author_id, path=str(audio))
+    )
+    book = BookQueries(temp_db).get_by_id(book_id)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=book,
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    assert window.preview_button.isEnabled() is True
+    opened = []
+    monkeypatch.setattr(
+        "src.core.audio_launcher.open_preview_file",
+        lambda path: opened.append(path),
+    )
+    window.on_preview()
+    assert opened == [audio]
+    window.close()
