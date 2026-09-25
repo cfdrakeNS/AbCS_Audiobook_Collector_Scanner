@@ -20,15 +20,19 @@ The **Import Detail** window lets you review and fix one held import item at a t
 1. In the Import window review table, click a held book row (or select it with the keyboard).
 2. Press **Enter**, or double-click the row, to open **Import Detail**.
 3. Review validation errors and edit fields as needed.
-4. Click **Save** (**Alt+S**) to keep your changes and return to the review list.
-5. Click **Discard** (**Alt+D**) to drop this item without adding it.
-6. Click **Previous** and **Next** if shown, or use **Page Up** and **Page Down**, to move between held items.
-7. Press **Escape** to close detail and return to Import.
+4. Click **Save** (**Alt+S**) to keep your changes and stay in detail.
+5. Click **Keep** (**Alt+K**) to accept fallback or correction warnings, add this book to the library (same rules as **Add Selected**), and move to the next review item without closing detail.
+6. Click **Discard** (**Alt+D**) to drop this item without adding it.
+7. Click **Previous** and **Next** if shown, or use **Page Up** and **Page Down**, to move between held items.
+8. Press **Escape** to close detail and return to Import.
+
+**Duplicates and unreadable files:** Import Detail opens for **duplicates** so you can edit and **Save** if you choose. **Keep** and **Add Selected** still will not add a duplicate. Unreadable-file problems that cannot be fixed by editing still block opening detail, with a message.
 
 ## What happens next
 
 - Saved changes update the row in the Import review table.
-- Use **Add Selected** (Alt+S) in Import to add approved rows to your library.
+- **Keep** adds that one book to your library, removes it from the review list, and advances to the next editable item in detail.
+- Use **Add Selected** (Alt+S) in Import to add several approved rows at once without opening detail.
 - Discarded items are removed from the review list.
 
 ## Related help
@@ -55,6 +59,7 @@ The **Import Detail** window lets you review and fix one held import item at a t
 | Alt+E | Errors |
 | Alt+H | Path |
 | Alt+S | Save |
+| Alt+K | Keep |
 | Alt+D | Discard |
 | Page Up | Previous item |
 | Page Down | Next item |
@@ -65,11 +70,14 @@ The **Import Detail** window lets you review and fix one held import item at a t
 
 ## Common confusion
 
-**Save vs Add Selected — what is the difference?**
-**Save** in Import Detail stores edits for one held item. **Add Selected** in the Import window adds checked rows to your library.
+**Save vs Keep vs Add Selected — what is the difference?**
+**Save** stores edits for this held item and leaves it in the review list. **Keep** (Alt+K) accepts fallback or correction warnings, adds **this** book to the library, and moves to the next item in detail. **Add Selected** on the Import window adds every selected OK or Warning row at once.
 
 **Discard vs skipping in Import**
 **Discard** in detail removes the current held item. You can also leave items in the review list and close Import; you will be asked to confirm if unscanned items remain.
 
 **Author Blank after I typed a name**
 **Save** (Alt+S) after editing author. Validation is refreshed on save, so **Author Blank** clears when the author field has text. A name you type that is not yet in the name list is kept when you save.
+
+**Why won’t Keep work on a Duplicate row?**
+Duplicates already match a book in the library. You can still open detail, edit, and **Save**. **Keep** and **Add Selected** skip duplicates. **Discard** removes the row from the review list.

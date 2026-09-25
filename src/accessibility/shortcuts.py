@@ -108,6 +108,7 @@ IMPORT_DETAIL_WINDOW_SHORTCUTS = {
     "E": ("Errors", "errors_edit"),
     "H": ("Path", "path_edit"),
     "S": ("Save", "save_return_button"),
+    "K": ("Keep", "keep_button"),
     "D": ("Discard", "skip_button"),
 }
 

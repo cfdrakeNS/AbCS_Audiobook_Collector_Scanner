@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** 2.18 — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phases 19, 18, and 20 are tester accepted. Next is Phase 22 Import Detail layout (no cover). Then Phase 21 full player, optional Phase 14 view-mode, then Phase 16 help last. Non-modal fetch, ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred after v3.
+**Tester build:** 2.18 — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phases 19, 18, and 20 are tester accepted. Phase 22 Import Detail layout is complete. Next is Phase 21 full player, optional Phase 14 view-mode, then Phase 16 help last. Non-modal fetch, ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred after v3.
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -44,7 +44,7 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 
 **To do in version 3 (not the next build item):** On the first start, if a screen reader is running, set Zoom to Normal, then speak once: "Screen reader detected. Text size is set to Normal. To choose a different size, open Preferences, then Theme and Zoom." Do not repeat it on later starts. Do not reset Zoom if they have already changed it.
 
-**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), and Phase 20 (Want to read) are tester accepted.** Next: **22 Import Detail layout, 21 full player, optional 14 view-mode, 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11.
+**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), and Phase 22 (Import Detail layout) are done** (18–20 tester accepted). Next: **21 full player, optional 14 view-mode, 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11.
 
 **Not in v3:** Non-modal web fetch (keep using the app during a fetch), book ratings, tags, web cover files and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred. Want to read on Import Detail and Update-window extensions stay deferred.
 
@@ -202,9 +202,9 @@ These columns are the only store for listen progress. The player and Book Detail
 
 ### Phase 22 — Import Detail layout (1 day)
 
-**In progress.** See [plan_import_detail_layout.md](plan_import_detail_layout.md). Same column arrangement as Book Details. No cover. No Want to read and no Listen progress. Existing Import Detail shortcuts stay. Errors stays under Path.
+**Complete.** See [plan_import_detail_layout.md](plan_import_detail_layout.md). Same column arrangement as Book Details. No cover. No Want to read and no Listen progress. **Keep** (Alt+K) adds an OK/Warning book and advances; **Discard** (Alt+D) removes and advances; both announce on the status bar. Duplicates may open for edit/Save but not Keep. Unreadable-file rows do not open detail. Status bar sits above the buttons (text-field look). No Alt for Files, Format, Bitrate, or Size. Errors stays under Path.
 
-**Gate:** Columns line up with Book Details. No picture. Tab and Alt+letter still reach the same fields.
+**Gate:** Passed. Columns line up with Book Details. No picture. Tab and Alt+letter still reach the same fields. Keep/Discard speak status.
 
 ### Phase 21 — Full Preview player (3–5 days)
 
@@ -368,7 +368,7 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and cov
 
 ## How to use this doc
 
-1. Phases 19, 18, and 20 are tester accepted. Next: Phase 22 Import Detail layout, Phase 21 full player, optional Phase 14 view-mode, Phase 16 help last. Also to do in v3: first-start screen reader Zoom message. Date/year validation bug fix is done ([fix_read_date.md](fix_read_date.md)); keep out of AGENTS/standards until a broader review. Phase 15 and Phase 17 are already implemented. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
+1. Phases 19, 18, 20, and 22 are done (18–20 tester accepted; 22 Import Detail layout complete). Next: Phase 21 full player, optional Phase 14 view-mode, Phase 16 help last. Also to do in v3: first-start screen reader Zoom message. Date/year validation bug fix is done ([fix_read_date.md](fix_read_date.md)); keep out of AGENTS/standards until a broader review. Phase 15 and Phase 17 are already implemented. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
 2. Meet each phase **gate** before the next.
 3. Update [plans_status.md](plans_status.md) when a plan ships.
 4. Read linked `plan_*.md` for file paths and a11y checklists.

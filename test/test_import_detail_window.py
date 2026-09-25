@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 from helpers.import_window_helpers import (
     apply_suppress_import_confirmations,
@@ -57,6 +57,12 @@ def test_import_detail_actions_return_focus_to_title(qtbot, temp_db, ui_scaler, 
 
     focus_requests = []
     monkeypatch.setattr(window, "_focus_title_field", lambda: focus_requests.append(1))
+    # Discard uses a delayed title focus; run it immediately in tests.
+    monkeypatch.setattr(
+        QTimer,
+        "singleShot",
+        lambda _ms, callback: callback(),
+    )
 
     window.on_save()
     monkeypatch.setattr(window, "_navigate_without_close", lambda target_index: True)
@@ -75,7 +81,9 @@ def test_import_detail_actions_return_focus_to_title(qtbot, temp_db, ui_scaler, 
     window._owner_widget = ParentStub()
     window.on_skip_discard()
 
-    assert len(focus_requests) == 4
+    # Save/prev/next use _focus_title_field; discard focuses title via QTimer.
+    assert len(focus_requests) == 3
+    assert window.title_edit.hasFocus() or window.current_index == 0
 
     cleanup_window(window)
 
@@ -248,6 +256,7 @@ def test_import_detail_tab_order_matches_book_details_columns(
         window.path_edit,
         window.errors_edit,
         window.save_return_button,
+        window.keep_button,
         window.skip_button,
     ]
     found = []
@@ -259,5 +268,128 @@ def test_import_detail_tab_order_matches_book_details_columns(
         if (widget.focusPolicy() & Qt.TabFocus) and widget in expected:
             found.append(widget)
     assert found == expected[1:]
+    cleanup_window(window)
+
+
+def test_import_detail_phase22_layout_and_shortcuts(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings
+):
+    """Phase 22 gate: no cover; no Files/Format/Bitrate/Size shortcuts; Alt set matches."""
+    window = ImportDetailWindow(
+        temp_db,
+        ui_scaler,
+        theme_manager,
+        book_data={"title": "Example", "author": "Author"},
+    )
+    qtbot.addWidget(window)
+
+    assert not hasattr(window, "cover_label")
+    shortcuts = ShortcutManager.IMPORT_DETAIL_WINDOW_SHORTCUTS
+    for letter in ("F", "O", "B", "Z"):
+        assert letter not in shortcuts
+    assert set(shortcuts) == set(ImportDetailWindow.ALLOWED_ALT_LETTERS)
+    assert shortcuts["P"] == ("Plot", "comments_edit")
+    assert shortcuts["H"] == ("Path", "path_edit")
+    assert shortcuts["K"] == ("Keep", "keep_button")
+    assert window.keep_button.text() == "Keep"
+
+    cleanup_window(window)
+
+
+def test_detail_blocked_for_duplicate_and_read_errors(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings, monkeypatch
+):
+    """Unreadable-file rows must not open Import Detail; duplicates may open."""
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    dup_item = {
+        "book": {"title": "Dup", "author": "A"},
+        "status": "Duplicate",
+        "errors": ["Duplicate"],
+        "is_duplicate": True,
+    }
+    read_item = {
+        "book": {"title": "Bad", "author": "A"},
+        "status": "Error",
+        "errors": ["Error reading file"],
+        "is_duplicate": False,
+    }
+    blank_item = {
+        "book": {"title": "Fixable", "author": ""},
+        "status": "Error",
+        "errors": ["Author Blank"],
+        "is_duplicate": False,
+    }
+    warn_item = {
+        "book": {"title": "Warn", "author": "A"},
+        "status": "Warning",
+        "errors": ["W: Title below minimum length"],
+        "is_duplicate": False,
+    }
+
+    assert window._detail_blocked_reason(dup_item) is None
+    assert window._detail_blocked_reason(read_item)
+    assert window._detail_blocked_reason(blank_item) is None
+    assert window._detail_blocked_reason(warn_item) is None
+
+    opened = []
+    monkeypatch.setattr(
+        "src.ui.import_window.ImportDetailWindow",
+        lambda *a, **k: opened.append(1) or (_ for _ in ()).throw(RuntimeError("should not open")),
+    )
+    shown = []
+    monkeypatch.setattr(
+        window,
+        "_focus_import_row",
+        lambda row: shown.append(row),
+    )
+    monkeypatch.setattr(
+        "src.ui.import_window.exec_styled_message_box",
+        lambda *a, **k: None,
+    )
+
+    window.scanned_items = [read_item]
+    window.table.setRowCount(1)
+    window.on_open_detail(0)
+    assert opened == []
+    assert shown == [0]
+
+    cleanup_window(window)
+
+
+def test_adjacent_editable_row_includes_duplicates(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings
+):
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    window.scanned_items = [
+        {
+            "book": {"title": "One", "author": "A"},
+            "status": "Warning",
+            "errors": ["W: Title below minimum length"],
+            "is_duplicate": False,
+        },
+        {
+            "book": {"title": "Two", "author": "A"},
+            "status": "Duplicate",
+            "errors": ["Duplicate"],
+            "is_duplicate": True,
+        },
+        {
+            "book": {"title": "Three", "author": "A"},
+            "status": "OK",
+            "errors": [],
+            "is_duplicate": False,
+        },
+    ]
+    window.table.setRowCount(3)
+    for row in range(3):
+        window.table.setRowHidden(row, False)
+
+    assert window._adjacent_editable_row(0, 1) == 1
+    assert window._adjacent_editable_row(2, -1) == 1
+
     cleanup_window(window)
 

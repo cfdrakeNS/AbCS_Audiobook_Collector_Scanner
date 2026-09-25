@@ -28,7 +28,8 @@ For an explained walkthrough of what happens when you import, see [Import explai
    - **Added automatically** — books with clean metadata and no problems.
    - **Held for review** — books with duplicates, errors, warnings, fallback guesses, or autocorrects.
 7. If any books need review, they appear in a **review table**. Click the **error filter** dropdown, or press **Alt+E**, to show only certain issue types: All, Corrected, Duplicate, Error, Fallback, or Warning.
-8. To work on one book, click a row (or select it with the keyboard) and press **Enter**, or double-click the row, to open the **detail window**. There you can edit fields, move to previous/next book, skip, or discard.
+8. To work on one book, click a row (or select it with the keyboard) and press **Enter**, or double-click the row, to open the **detail window**. There you can edit fields, Keep (add and go to next), Discard, or move previous/next. Unreadable-file problems that cannot be fixed by editing do not open detail.
+
 9. Click rows to select them, then click **Add Selected** (or press **Alt+S**).
 10. Optionally click **Export** (or press **Alt+X**) to save the review list to a spreadsheet for offline review.
 11. Press **Escape** to close Import. If unscanned review items remain, you will be asked to confirm.

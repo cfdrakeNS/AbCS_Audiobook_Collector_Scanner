@@ -2383,8 +2383,12 @@ class ImportWindow(AccessibleDialog):
                 outcome["outcomes"] = outcomes
                 return
 
-    def _import_rows(self, row_indices):
-        """Add rows by index from scanned_items."""
+    def _import_rows(self, row_indices, *, quiet: bool = False):
+        """Add rows by index from scanned_items.
+
+        quiet: When True (Import Detail Keep), skip the progress window and
+        Add Complete popup; the caller updates the status bar.
+        """
         self._is_adding = True
         self._cancel_add_requested = False
 
@@ -2413,7 +2417,7 @@ class ImportWindow(AccessibleDialog):
             valid_count += 1
 
         # Prepare progress window for add phase with actual valid count
-        if self.progress_window:
+        if self.progress_window and not quiet:
             self.progress_window.prepare_for_add_phase(valid_count)
             self.progress_window.show()
             self.progress_window.raise_()
@@ -2498,7 +2502,7 @@ class ImportWindow(AccessibleDialog):
                         row, self.COL_ERROR, self._cell_item(combined_error)
                     )
 
-                if self.progress_window:
+                if self.progress_window and not quiet:
                     self.progress_window.update_add_progress(
                         processed=processed_valid,
                         total=valid_count,
@@ -2540,7 +2544,9 @@ class ImportWindow(AccessibleDialog):
                 if self.table.rowCount() > 0:
                     target_row = min(next_focus_row, self.table.rowCount() - 1)
                     self.table.setCurrentCell(target_row, self.COL_TITLE)
-                    self.table.setFocus(Qt.TabFocusReason)
+                    # Keep in Import Detail must not steal focus from the dialog.
+                    if not quiet:
+                        self.table.setFocus(Qt.TabFocusReason)
 
             self._refresh_summary_from_items()
             self.restore_summary_status()
@@ -2556,18 +2562,18 @@ class ImportWindow(AccessibleDialog):
                 self.collection_combo.setEnabled(True)
 
             # Mark add phase complete in progress window
-            if self.progress_window:
+            if self.progress_window and not quiet:
                 self.progress_window.mark_add_phase_complete(
                     books_added=imported,
                     elapsed_text="",
                 )
 
-            # Show result popup
-            # Non-blocking show() keeps event loop responsive
-            self._show_info_popup(
-                "Add Complete",
-                f"Books added: {imported}\nLeft in import list: {remaining}",
-            )
+            if not quiet:
+                # Show result popup for Add Selected / batch add only
+                self._show_info_popup(
+                    "Add Complete",
+                    f"Books added: {imported}\nLeft in import list: {remaining}",
+                )
         finally:
             if transaction_open:
                 conn.rollback()
@@ -2678,6 +2684,46 @@ class ImportWindow(AccessibleDialog):
                 return row
         return None
 
+    def _detail_blocked_reason(self, item: dict) -> str | None:
+        """Return a user message when Import Detail must not open for this row.
+
+        Unreadable/corrupt file errors cannot be fixed here. Duplicates may open
+        so the user can edit and Save (their choice). Fixable validation issues
+        (Author Blank, etc.) still open. Keep/Add Selected still skip duplicates.
+        """
+        if not item:
+            return None
+
+        status = str(item.get("status", "")).strip()
+        errors = list(item.get("errors", []) or [])
+
+        unfixable: list[str] = []
+        for err in errors:
+            if self.validator.categorize_error(err) == "read":
+                unfixable.append(str(err))
+                continue
+            if self._is_fallback_error(err) or self._is_correction_error(err):
+                continue
+            if not self._is_revalidatable_scan_error(err):
+                unfixable.append(str(err))
+
+        if unfixable or status == "Failed":
+            return (
+                "This book cannot be added. The problem cannot be fixed by editing "
+                "fields here. Import Detail will not open."
+            )
+        return None
+
+    def _adjacent_editable_row(self, current_row: int, direction: int) -> int | None:
+        """Previous/next visible row that Import Detail is allowed to open."""
+        candidate = self._adjacent_visible_row(current_row, direction)
+        while candidate is not None:
+            item = self.scanned_items[candidate]
+            if self._detail_blocked_reason(item) is None:
+                return candidate
+            candidate = self._adjacent_visible_row(candidate, direction)
+        return None
+
     def on_open_detail(self, row: int = 0, col: int = 0):
         """Open import detail window to view/edit scanned metadata."""
         if self.table.rowCount() == 0:
@@ -2690,6 +2736,19 @@ class ImportWindow(AccessibleDialog):
 
         while 0 <= row < len(self.scanned_items):
             item = self.scanned_items[row]
+            blocked = self._detail_blocked_reason(item)
+            if blocked:
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    title="Cannot open Import Detail",
+                    text=blocked,
+                    icon=QMessageBox.Information,
+                )
+                self.set_status("Book cannot be added. Import Detail not opened.")
+                self._focus_import_row(row)
+                return
+
             book_data = item.get("book", {})
             errors = list(item.get("errors", []))
             if item.get("is_duplicate"):
@@ -2721,22 +2780,22 @@ class ImportWindow(AccessibleDialog):
 
             if result == ImportDetailWindow.RESULT_PREV:
                 self._apply_detail_edits(row, detail_window)
-                previous_row = self._adjacent_visible_row(row, -1)
+                previous_row = self._adjacent_editable_row(row, -1)
                 if previous_row is not None:
                     row = previous_row
                 else:
-                    self.set_status("Already at first item")
+                    self.set_status("Already at first editable item")
                     self._focus_import_row(row)
                     return
                 continue
 
             if result == ImportDetailWindow.RESULT_NEXT:
                 self._apply_detail_edits(row, detail_window)
-                next_row = self._adjacent_visible_row(row, 1)
+                next_row = self._adjacent_editable_row(row, 1)
                 if next_row is not None:
                     row = next_row
                 else:
-                    self.set_status("Already at last item")
+                    self.set_status("Already at last editable item")
                     self._focus_import_row(row)
                     return
                 continue
@@ -2752,6 +2811,17 @@ class ImportWindow(AccessibleDialog):
                     )
                     return
                 self.set_status("Import item discarded")
+                # Skip blocked rows when reopening after discard.
+                while (
+                    next_visible is not None
+                    and self._detail_blocked_reason(self.scanned_items[next_visible])
+                ):
+                    next_visible = self._adjacent_editable_row(next_visible, 1)
+                if next_visible is None:
+                    self.set_status(
+                        "Import item discarded. No further editable items"
+                    )
+                    return
                 row = next_visible
                 continue
 

@@ -142,12 +142,13 @@ class ImportDetailWindow(AccessibleDialog):
         "G",  # Genre
         "H",  # Path
         "I",  # Series
+        "K",  # Keep (accept warnings / add like Add Selected, stay open)
         "M",  # Length
+        "P",  # Plot
         "R",  # Reader
         "S",  # Save
         "T",  # Title
         "Y",  # Year
-        # Add any additional used keys here
     }
 
     @staticmethod
@@ -275,11 +276,13 @@ class ImportDetailWindow(AccessibleDialog):
         if hasattr(self, "status_bar") and self.status_bar is not None:
             announce_status_message(self.status_bar, message, move_focus=announce)
 
+        # Mirror text to Import without a second focus announcement.
         parent = self.owner_widget
-        if parent and hasattr(parent, "set_status"):
-            parent.set_status(message, announce=False)
-        elif parent and hasattr(parent, "status_bar"):
+        if parent and hasattr(parent, "status_bar") and parent.status_bar is not None:
+            parent._default_status_message = message
             announce_status_message(parent.status_bar, message, move_focus=False)
+        elif parent and hasattr(parent, "set_status"):
+            parent.set_status(message, announce=False)
 
     def get_status_summary(self) -> str:
         """Return a concise current-status summary for Alt+/ reading."""
@@ -750,10 +753,8 @@ class ImportDetailWindow(AccessibleDialog):
         validate_year_spin(self.year_spin, self, restore_to=stored)
 
     def _apply_duplicate_read_only_state(self):
-        """Keep duplicate entries editable (treated like other errors)."""
-        if not self.is_duplicate_item:
-            return
-        self.set_status("Duplicate item loaded. Edit fields to resolve and save.")
+        """Duplicates no longer open Import Detail (blocked in Import window)."""
+        return
 
     def load_combos(self):
         """Load author, series, genre, and collection combo boxes."""
@@ -953,15 +954,7 @@ class ImportDetailWindow(AccessibleDialog):
         if hasattr(parent, "_apply_detail_edits"):
             parent._apply_detail_edits(self.current_index, self)
 
-        next_item = parent.scanned_items[resolved_index]
-        self.book_data = next_item.get("book", {}).copy()
-        self.errors = self._build_errors_for_row(resolved_index)
-        self.current_index = resolved_index
-        self.total_count = len(parent.scanned_items)
-
-        self.setWindowTitle(self._detail_window_title(self.book_data, self.errors))
-        self.setAccessibleName(self.windowTitle())
-        self.load_book_data()
+        self._load_scanned_item_at(resolved_index)
         self.set_status(f"Viewing item {self.current_index + 1} of {self.total_count}")
         return True
 
@@ -998,10 +991,19 @@ class ImportDetailWindow(AccessibleDialog):
         direction = 1 if requested_index > self.current_index else -1
         if direction > 0:
             candidates = [row for row in visible_rows if row > self.current_index]
-            return candidates[0] if candidates else None
+        else:
+            candidates = [row for row in visible_rows if row < self.current_index]
+            candidates.reverse()
 
-        candidates = [row for row in visible_rows if row < self.current_index]
-        return candidates[-1] if candidates else None
+        for row in candidates:
+            item = parent.scanned_items[row]
+            if (
+                hasattr(parent, "_detail_blocked_reason")
+                and parent._detail_blocked_reason(item)
+            ):
+                continue
+            return row
+        return None
 
     def apply_control_styles(self):
         """Apply consistent control styling with scaling."""
@@ -1010,12 +1012,15 @@ class ImportDetailWindow(AccessibleDialog):
         scaled_height = int(base_height * (scale_pct / 100.0))
 
         button_style = build_modern_button_style(scaled_height)
+        # Match Book Details: theme status chrome (reads like a text field), not a flat strip.
         status_style = f"""
             QStatusBar {{
                 border: 1px solid palette(mid);
-                border-radius: {self.scaler.get_scaled_size(5)}px;
-                padding: 2px 6px;
+                border-radius: {self.scaler.get_scaled_size(3)}px;
+                padding: 4px 8px;
+                min-height: {max(scaled_height, 18)}px;
                 background-color: palette(base);
+                color: palette(text);
             }}
         """
 
@@ -1026,6 +1031,7 @@ class ImportDetailWindow(AccessibleDialog):
         """
 
         self.save_return_button.setObjectName("primaryActionButton")
+        self.keep_button.setObjectName("primaryActionButton")
         self.skip_button.setObjectName("")
 
         # Apply styles to widgets that need local styling
@@ -1038,8 +1044,9 @@ class ImportDetailWindow(AccessibleDialog):
         self._apply_action_button_icons()
 
     def _apply_action_button_icons(self):
-        """Decorative icons beside Save and Discard button text."""
+        """Decorative icons beside Save, Add, and Discard button text."""
         apply_decorative_action_icon(self.save_return_button, "save", self.scaler)
+        apply_decorative_action_icon(self.keep_button, "add", self.scaler)
         apply_decorative_action_icon(self.skip_button, "cancel", self.scaler)
 
     def on_scale_changed(self, _scale_percentage: int):
@@ -1260,7 +1267,7 @@ class ImportDetailWindow(AccessibleDialog):
 
         layout.addLayout(bottom_grid)
 
-        # Footer: status bar + buttons
+        # Status above action buttons (same text-field look as Book Details chrome).
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         configure_status_bar_accessibility(self.status_bar)
@@ -1281,6 +1288,16 @@ class ImportDetailWindow(AccessibleDialog):
         self.save_return_button.setEnabled(False)
         self.save_return_button.setVisible(False)
         button_layout.addWidget(self.save_return_button)
+
+        self.keep_button = QPushButton("Keep")
+        self.keep_button.setAccessibleName("Keep")
+        self.keep_button.setAccessibleDescription(
+            "Accept fallback or correction warnings, add this book to the "
+            "library like Add Selected, then move to the next item - Alt+K"
+        )
+        self.keep_button.setFocusPolicy(Qt.StrongFocus)
+        self.keep_button.clicked.connect(self.on_keep)
+        button_layout.addWidget(self.keep_button)
 
         self.skip_button = QPushButton("Discard")
         self.skip_button.setAccessibleName("Discard")
@@ -1311,7 +1328,8 @@ class ImportDetailWindow(AccessibleDialog):
         self.setTabOrder(self.source_edit, self.path_edit)
         self.setTabOrder(self.path_edit, self.errors_edit)
         self.setTabOrder(self.errors_edit, self.save_return_button)
-        self.setTabOrder(self.save_return_button, self.skip_button)
+        self.setTabOrder(self.save_return_button, self.keep_button)
+        self.setTabOrder(self.keep_button, self.skip_button)
 
         self.setup_shortcuts()
 
@@ -1357,6 +1375,10 @@ class ImportDetailWindow(AccessibleDialog):
                     "Save edits",
                     "Save edits and continue editing - Alt+S",
                 ),
+                self.keep_button: (
+                    "Keep and add",
+                    "Accept warnings or fallbacks, add this book, then next item - Alt+K",
+                ),
                 self.skip_button: (
                     "Discard item",
                     "Discard this import item and advance - Alt+D",
@@ -1383,6 +1405,7 @@ class ImportDetailWindow(AccessibleDialog):
             "errors_edit": lambda: self.errors_edit.setFocus(),  # Alt+E
             "path_edit": lambda: self.path_edit.setFocus(),  # Alt+H
             "save_return_button": lambda: self.save_return_button.click(),  # Alt+S
+            "keep_button": lambda: self.keep_button.click(),  # Alt+K
             "skip_button": lambda: self.skip_button.click(),  # Alt+D
         }
         mgr.register_alt_shortcuts(
@@ -1460,6 +1483,7 @@ class ImportDetailWindow(AccessibleDialog):
             ("Alt+E", "Errors"),
             ("Alt+H", "Path"),
             ("Alt+S", "Save"),
+            ("Alt+K", "Keep"),
             ("Alt+D", "Discard"),
             ("Page Up", "Previous item"),
             ("Page Down", "Next item"),
@@ -1513,37 +1537,56 @@ class ImportDetailWindow(AccessibleDialog):
             self.book_data["time_hours"] = 0
             self.book_data["time_minutes"] = 0
 
-    def on_skip_discard(self):
-        """Discard this import item and return skip result to parent."""
+    def on_keep(self):
+        """Accept warnings/fallbacks, add this book, then show the next item."""
+        if self.time_edit.hasFocus():
+            self._normalize_time_on_focus_out()
+
+        if not self.title_edit.text().strip():
+            self.set_status("Title is required.", announce=True)
+            self.title_edit.setFocus()
+            return
+        if not self.author_combo.currentText().strip():
+            self.set_status("Author is required.", announce=True)
+            self.author_combo.setFocus()
+            return
+        if not self._validate_year_before_save():
+            return
+
+        self._save_to_parent()
+
         parent = self.owner_widget
-        if (
-            parent
-            and hasattr(parent, "_discard_scanned_item")
-            and hasattr(parent, "scanned_items")
-        ):
-            next_row = parent._discard_scanned_item(self.current_index)
-            if next_row is not None and 0 <= next_row < len(parent.scanned_items):
-                next_item = parent.scanned_items[next_row]
-                self.book_data = next_item.get("book", {}).copy()
-                self.errors = self._build_errors_for_row(next_row)
-                self.current_index = next_row
-                self.total_count = len(parent.scanned_items)
-                title = self._detail_window_title(self.book_data, self.errors)
-                self.setWindowTitle(title)
-                self.setAccessibleName(title)
-                self.load_book_data()
-                self.set_status("Import item discarded")
-                self._focus_title_field()
-                return
+        if not parent or not hasattr(parent, "scanned_items"):
+            self.set_status("Cannot keep: import list is unavailable.", announce=True)
+            return
+        if self.current_index < 0 or self.current_index >= len(parent.scanned_items):
+            self.set_status("Cannot keep: item is no longer in the list.", announce=True)
+            return
 
-            if hasattr(parent, "table") and parent.table.rowCount() == 0:
-                if hasattr(parent, "set_status"):
-                    parent.set_status("Import item discarded. No items remain")
-            elif hasattr(parent, "set_status"):
-                parent.set_status(
-                    "Import item discarded. No items remain in current filter"
-                )
+        item = parent.scanned_items[self.current_index]
+        status = str(item.get("status", "")).strip()
+        if status == "Duplicate" or bool(item.get("is_duplicate")):
+            self.set_status(
+                "Duplicate cannot be kept. Save edits if you changed fields, or Discard.",
+                announce=True,
+            )
+            return
+        if status not in ("OK", "Warning"):
+            self.set_status(
+                "Cannot keep until errors are fixed. Edit the fields under Errors, then try Keep again.",
+                announce=True,
+            )
+            return
 
+        if not hasattr(parent, "_import_rows"):
+            self.set_status("Cannot keep: add is unavailable.", announce=True)
+            return
+
+        row = self.current_index
+        parent._import_rows([row], quiet=True)
+
+        if not parent.scanned_items:
+            self.set_status("Book kept. No items remain.", announce=True)
             self._closing_via_handler = True
             try:
                 announce_dialog_closed(self)
@@ -1552,10 +1595,105 @@ class ImportDetailWindow(AccessibleDialog):
                 self._closing_via_handler = False
             return
 
+        # After removal, the next review item slides into this index.
+        target = None
+        if row < len(parent.scanned_items) and parent._detail_blocked_reason(
+            parent.scanned_items[row]
+        ) is None:
+            target = row
+        else:
+            target = parent._adjacent_editable_row(row - 1, 1)
+            if target is None:
+                target = parent._adjacent_editable_row(row, -1)
+
+        if target is None:
+            self.set_status("Book kept. No further editable items.", announce=True)
+            self._closing_via_handler = True
+            try:
+                announce_dialog_closed(self)
+                super().reject()
+            finally:
+                self._closing_via_handler = False
+            return
+
+        self._load_scanned_item_at(target)
+        self.set_status(
+            f"Book kept. Viewing item {self.current_index + 1} of {self.total_count}",
+            announce=True,
+        )
+        # Delay title focus so announce_status_message can finish (JAWS/NVDA).
+        QTimer.singleShot(350, lambda: self.title_edit.setFocus(Qt.TabFocusReason))
+
+    def _load_scanned_item_at(self, index: int) -> None:
+        """Replace the form with another scanned item without closing the dialog."""
+        parent = self.owner_widget
+        next_item = parent.scanned_items[index]
+        self.book_data = next_item.get("book", {}).copy()
+        self.errors = self._build_errors_for_row(index)
+        self.is_duplicate_item = bool(next_item.get("is_duplicate"))
+        self.current_index = index
+        self.total_count = len(parent.scanned_items)
+        self.setWindowTitle(self._detail_window_title(self.book_data, self.errors))
+        self.setAccessibleName(self.windowTitle())
+        self.load_book_data()
+
+    def on_skip_discard(self):
+        """Discard this import item; announce on the status bar, then next or close."""
+        parent = self.owner_widget
+        if (
+            parent
+            and hasattr(parent, "_discard_scanned_item")
+            and hasattr(parent, "scanned_items")
+        ):
+            next_row = parent._discard_scanned_item(self.current_index)
+            if next_row is not None and 0 <= next_row < len(parent.scanned_items):
+                target = next_row
+                blocked = getattr(parent, "_detail_blocked_reason", None)
+                adjacent = getattr(parent, "_adjacent_editable_row", None)
+                if callable(blocked) and blocked(parent.scanned_items[target]):
+                    if callable(adjacent):
+                        target = adjacent(target - 1, 1)
+                        if target is None:
+                            target = adjacent(next_row, -1)
+                    else:
+                        target = None
+                if target is not None:
+                    self._load_scanned_item_at(target)
+                    self.set_status(
+                        f"Import item discarded. Viewing item "
+                        f"{self.current_index + 1} of {self.total_count}",
+                        announce=True,
+                    )
+                    QTimer.singleShot(
+                        350, lambda: self.title_edit.setFocus(Qt.TabFocusReason)
+                    )
+                    return
+
+            if hasattr(parent, "table") and parent.table.rowCount() == 0:
+                message = "Import item discarded. No items remain."
+            else:
+                message = (
+                    "Import item discarded. No further editable items in the list."
+                )
+            self.set_status(message, announce=True)
+            QTimer.singleShot(350, self._close_after_discard)
+            return
+
         self._closing_via_handler = True
         try:
             announce_dialog_closed(self)
             self.done(self.RESULT_SKIP)
+        finally:
+            self._closing_via_handler = False
+
+    def _close_after_discard(self) -> None:
+        """Close after Discard when the status announcement has had time to speak."""
+        if self._closing_via_handler:
+            return
+        self._closing_via_handler = True
+        try:
+            announce_dialog_closed(self)
+            super().reject()
         finally:
             self._closing_via_handler = False
 

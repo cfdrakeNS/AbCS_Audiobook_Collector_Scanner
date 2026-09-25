@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (tester build 2.18. v3 Phases 1–4 and 6–13 complete; 1–4 and 6–12 tester accepted. Phase 13 name-list merge implemented. Phases 15 and 17 covers implemented. Phases 19, 18, and 20 tester accepted. Next is Phase 22 Import Detail layout. Then Phase 21 full player, optional Phase 14, Phase 16 help last. Ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred.)
+**Last updated:** September 2026 (tester build 2.18. v3 Phases 1–4 and 6–13 complete; 1–4 and 6–12 tester accepted. Phase 13 name-list merge implemented. Phases 15 and 17 covers implemented. Phases 19, 18, 20, and 22 complete (18–20 tester accepted; 22 Import Detail layout done). Next is Phase 21 full player. Then optional Phase 14, Phase 16 help last. Ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -38,7 +38,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 19 | Want to read and listening progress columns | [plan_want_to_read.md](plan_want_to_read.md), [plan_reading_progress.md](plan_reading_progress.md) | Tester accepted |
 | 18 | Book Details layout, cover on the right | [plan_book_details_layout.md](plan_book_details_layout.md) | Tester accepted. Date/year validation bug fix done — [fix_read_date.md](fix_read_date.md). |
 | 20 | Want to read | [plan_want_to_read.md](plan_want_to_read.md) | Tester accepted. Filter, View menu, Edit → Add to want to read, and selection Add and Clear. Import Detail stays deferred. |
-| 22 | Import Detail layout, no cover | [plan_import_detail_layout.md](plan_import_detail_layout.md) | In progress |
+| 22 | Import Detail layout, no cover | [plan_import_detail_layout.md](plan_import_detail_layout.md) | Complete — layout, Keep/Discard, status bar; tester. |
 | 21 | Full Preview player | [plan_preview_player_later.md](plan_preview_player_later.md) | Planned — after Phase 19 |
 | 14 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — optional, before help |
 | 16 | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | Planned — last |

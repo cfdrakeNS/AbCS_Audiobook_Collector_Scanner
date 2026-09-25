@@ -110,6 +110,7 @@ Last updated: June 2026.
 | Alt+E | Errors |
 | Alt+H | Path |
 | Alt+S | Save |
+| Alt+K | Keep |
 | Alt+D | Discard |
 | Page Up | Previous item |
 | Page Down | Next item |
