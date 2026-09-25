@@ -1,6 +1,6 @@
 # Bulk Want to Read on Selection — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** In version 3. The main window selection footer and Edit menu mark or clear Want to read for every selected book.  
 **Created:** June 2026  
 **Related:** [plan_want_to_read.md](plan_want_to_read.md)
 

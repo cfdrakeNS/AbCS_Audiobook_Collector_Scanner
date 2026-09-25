@@ -205,6 +205,32 @@ def test_read_filter_toolbar_toggle(main_window):
     assert not window.read_filter_action.isChecked()
 
 
+def test_want_to_read_view_menu_sets_filter(main_window):
+    window = main_window
+    action = None
+    for item in window.view_want_to_read_menu.actions():
+        if item.data() == "Want to Read":
+            action = item
+            break
+    assert action is not None
+    action.trigger()
+    assert window.current_filter.want_to_read_filter == "Want to Read"
+    assert window.want_to_read_filter_action.isChecked()
+
+
+def test_want_to_read_filter_toolbar_toggle(main_window):
+    window = main_window
+
+    window.want_to_read_filter_action.trigger()
+    assert window.current_filter.want_to_read_filter == "Want to Read"
+    assert window.want_to_read_filter_action.isChecked()
+    assert "Want to read" in window._filter_summary_text()
+
+    window.want_to_read_filter_action.trigger()
+    assert window.current_filter.want_to_read_filter == "All"
+    assert not window.want_to_read_filter_action.isChecked()
+
+
 def test_unread_menu_unchecks_read_toolbar_toggle(main_window):
     window = main_window
 

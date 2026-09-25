@@ -1,6 +1,6 @@
 # Import Detail layout — Version 3 Phase 22
 
-**Status:** Planned — after Phase 18 Book Details layout is tested.  
+**Status:** In progress. Same column arrangement as Book Details. No cover.  
 **Created:** September 2026  
 **Related:** [plan_book_details_layout.md](plan_book_details_layout.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
@@ -27,13 +27,13 @@ Labels are right-aligned. No empty row. The short fields start at the top of the
            Path [................................................]
 ```
 
-Import Detail keeps the fields it has now. It does not gain Series number, Read, Added, Want to read, or Listen progress. Footer actions stay as they are.
+Import Detail keeps the fields it has now. It does not gain Series number, Read, Added, Want to read, or Listen progress. Errors stays as a full-width row under Path. Footer actions stay as they are.
 
 ## Tab order and shortcuts
 
 Set tab order to match the picture: Title, Author, Series, Genre, Plot, then Year, Time, Files, Format, Bitrate, then Reader, Collection, Size, Source, Path, then the footer buttons.
 
-Keep the existing Import Detail Alt+letter shortcuts. Do not copy Book Details letters onto this window.
+Keep the existing Import Detail Alt+letter shortcuts, except Files, Format, Bitrate, and Size. Those letters were removed on Book Details and are not shortcuts here either. Do not copy Book Details letters onto this window.
 
 ## Gate
 

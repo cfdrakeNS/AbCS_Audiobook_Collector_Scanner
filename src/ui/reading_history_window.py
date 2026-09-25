@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QTabWidget,
     QTextEdit,
+    QApplication,
 )
 from PySide6.QtCore import QEvent
 from PySide6.QtCore import Qt, QDate, QTimer
@@ -38,6 +39,12 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.masked_date_fields import (
+    configure_no_future_date_edit,
+    make_date_field,
+    validate_date_edit,
+    warn_masked_field_error,
+)
 from src.accessibility.style_helpers import (
     apply_visual_tooltip_map,
     build_card_group_box_style,
@@ -358,24 +365,54 @@ class ReadingHistoryWindow(AccessibleDialog):
         # Start date
         start_date_label = QLabel("From:")
         start_date_label.setAccessibleName("Start date")
-        self.start_date_edit = QDateEdit()
-        self.start_date_edit.setAccessibleName("Start date")
-        self.start_date_edit.setCalendarPopup(True)
-        self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
-        self.start_date_edit.setDate(QDate.currentDate().addMonths(-3))
-        self.start_date_edit.setCalendarWidget(
-            FullDayNumberCalendar(self.start_date_edit)
+        start_default = QDate.currentDate().addMonths(-3)
+        start_masked = make_date_field(
+            self, allow_blank=False, disallow_future=True
         )
+        if start_masked is not None:
+            self.start_date_edit = start_masked
+            self.start_date_edit.setAccessibleName("Start date")
+            self.start_date_edit.setDate(start_default)
+            self._dates_are_masked = True
+        else:
+            self.start_date_edit = QDateEdit()
+            self.start_date_edit.setAccessibleName("Start date")
+            self.start_date_edit.setCalendarPopup(True)
+            self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
+            self.start_date_edit.setDate(start_default)
+            self.start_date_edit.setCalendarWidget(
+                FullDayNumberCalendar(self.start_date_edit)
+            )
+            self._dates_are_masked = False
 
         # End date
         end_date_label = QLabel("To:")
         end_date_label.setAccessibleName("End date")
-        self.end_date_edit = QDateEdit()
-        self.end_date_edit.setAccessibleName("End date")
-        self.end_date_edit.setCalendarPopup(True)
-        self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
-        self.end_date_edit.setDate(QDate.currentDate())
-        self.end_date_edit.setCalendarWidget(FullDayNumberCalendar(self.end_date_edit))
+        end_default = QDate.currentDate()
+        end_masked = make_date_field(
+            self, allow_blank=False, disallow_future=True
+        )
+        if end_masked is not None:
+            self.end_date_edit = end_masked
+            self.end_date_edit.setAccessibleName("End date")
+            self.end_date_edit.setDate(end_default)
+        else:
+            self.end_date_edit = QDateEdit()
+            self.end_date_edit.setAccessibleName("End date")
+            self.end_date_edit.setCalendarPopup(True)
+            self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
+            self.end_date_edit.setDate(end_default)
+            self.end_date_edit.setCalendarWidget(FullDayNumberCalendar(self.end_date_edit))
+
+        configure_no_future_date_edit(self.start_date_edit)
+        configure_no_future_date_edit(self.end_date_edit)
+
+        self.start_date_edit.editingFinished.connect(
+            lambda: self._validate_history_date(self.start_date_edit, "Start date")
+        )
+        self.end_date_edit.editingFinished.connect(
+            lambda: self._validate_history_date(self.end_date_edit, "End date")
+        )
 
         date_layout.addWidget(start_date_label)
         date_layout.addWidget(self.start_date_edit)
@@ -802,10 +839,30 @@ class ReadingHistoryWindow(AccessibleDialog):
         # Set vertical header labels to prevent row announcements (like name_list_window)
         self.month_table.setVerticalHeaderLabels([""] * len(monthly_data))
 
+    def _validate_history_date(self, field, label: str) -> bool:
+        """Validate a history date (typed or classic). Returns False when bad."""
+        return validate_date_edit(
+            field, self, allow_blank=False, disallow_future=True
+        )
+
     def load_date_range_data(self):
         """Load data for date range tab."""
-        start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
-        end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
+        if not self._validate_history_date(self.start_date_edit, "Start date"):
+            return
+        if not self._validate_history_date(self.end_date_edit, "End date"):
+            return
+        start_q = self.start_date_edit.date()
+        end_q = self.end_date_edit.date()
+        if start_q > end_q:
+            warn_masked_field_error(
+                self,
+                "Start date must be on or before the end date.",
+                title="Invalid Date Range",
+            )
+            self.start_date_edit.setFocus(Qt.TabFocusReason)
+            return
+        start_date = start_q.toString("yyyy-MM-dd")
+        end_date = end_q.toString("yyyy-MM-dd")
 
         # Convert string dates to date objects for ReadingQueries
         from datetime import datetime

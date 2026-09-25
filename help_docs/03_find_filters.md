@@ -17,6 +17,8 @@ These tools help you narrow and organize the main book list without changing you
 - Filters combine: collection + plot + read + recently added + find text can all be active at once.
 - During **duplicate mode**, filters are cleared and restored when you exit. See [Duplicate Mode](08_duplicate_mode.md).
 
+The Title column shows a mark before the title. A circle means the book has a plot. A square means want to read. A triangle means listening is in progress. Screen readers speak those words after the title, for example "Dune, plot, want to read, in progress".
+
 ## Steps — Find (search)
 
 1. Open **View → Find**, or press **Ctrl+F**.
@@ -45,6 +47,14 @@ These tools help you narrow and organize the main book list without changing you
 2. Choose **All**, **Read**, or **Unread**.
 3. The list shows only books matching that read status.
 
+## Steps — Want to read filter
+
+1. Open **View → Want to read** (**Alt+V**, then **W**), or press **Alt+T** to toggle the filter.
+2. Choose **All** or **Want to Read**.
+3. The list shows only books marked want to read. Turning the filter off does not remove the marks.
+
+To mark a book, focus it and choose **Edit → Add to want to read**. A selection marks every selected book. The mark is saved immediately. With books selected, the footer also shows **Add to want to read** and **Clear want to read**. **Edit → Clear want to read** removes the mark from the selection only.
+
 ## Steps — Recently added filter
 
 1. Open **View → Recently Added...** (**Alt+V**, then **A**), or activate the **Recently Added Filter** toolbar button to the right of Read Filter.
@@ -72,9 +82,10 @@ Each press clears the first active step below and stops until you press Escape a
 2. **Find search** — if active. Focus returns to the book you were on before searching.
 3. **Plot filter** — if not All.
 4. **Read filter** — if set to Read or Unread (not All).
-5. **Recently added filter** — if active.
+5. **Want to read filter** — if it is on.
+6. **Recently added filter** — if active.
 
-After step 5, further Escape presses on the main window do **not** clear any more filters.
+After step 6, further Escape presses on the main window do **not** clear any more filters.
 
 **Not cleared by Escape**
 
@@ -106,12 +117,14 @@ After step 5, further Escape presses on the main window do **not** clear any mor
 | Alt+V, P | View → Plot filter |
 | Alt+P | Toggle plot filter |
 | Alt+V, R | View → Read filter |
+| Alt+V, W | View → Want to read filter |
+| Alt+T | Toggle want to read filter |
 | Alt+V, A | View → Recently Added filter (toolbar button after Read Filter) |
 | Alt+R | Toggle read filter |
 | Alt+S | Sort menu |
 | Alt+1–Alt+7 | Jump to table columns |
 | Alt+/ | Re-read filter summary and status |
-| Escape | Clear selection, then Find, Plot, Read, Recently added (fixed order, one step per press) |
+| Escape | Clear selection, then Find, Plot, Read, Want to read, Recently added (fixed order, one step per press) |
 | F1 | Help for main window |
 
 Find dialog shortcuts (while open):

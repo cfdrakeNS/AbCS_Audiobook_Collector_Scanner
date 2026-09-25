@@ -4,7 +4,13 @@ import sys
 
 from PySide6.QtCore import QDate, QTimer, Qt
 from PySide6.QtGui import QAction, QPalette, QPen
-from PySide6.QtWidgets import QCalendarWidget, QMessageBox, QTableView
+from PySide6.QtWidgets import (
+    QCalendarWidget,
+    QHeaderView,
+    QMessageBox,
+    QTableView,
+    QToolButton,
+)
 
 
 def build_accessible_checkbox_style(
@@ -423,39 +429,112 @@ def build_accessible_date_edit_style(
 
 
 class FullDayNumberCalendar(QCalendarWidget):
-    """Calendar popup that keeps days 10 through 31 visible.
+    """Calendar popup that keeps days 10–31 and weekday labels readable.
 
-    A stylesheet font on the day grid leaves each cell sized for one digit.
-    Qt then clips 10 through 31. These cells are widened, and the day number
-    is drawn in the full cell.
+    Qt stores weekday names in grid row 0 (not the QHeaderView, which is
+    only 1..7). Week numbers are omitted. Day headers use single letters
+    (S M T W T F S) so labels survive narrow QDateEdit popups. Column
+    widths are Fixed so Stretch does not clip the letters away. Font size
+    follows UIScaler (same base as the app font), not a fixed point size.
     """
+
+    # Base point size at 100% scale; scaled via UIScaler / app font.
+    _CALENDAR_BASE_POINT_SIZE = 9
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setNavigationBarVisible(True)
+        self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+        # Single letters fit; ShortDayNames ("Wed") clip in the QDateEdit popup.
+        self.setHorizontalHeaderFormat(QCalendarWidget.SingleLetterDayNames)
+        self._apply_calendar_font()
+
+    def _calendar_point_size(self) -> int:
+        """Point size that tracks UI scale (does not ignore zoom)."""
+        # Prefer live app font (already scaled by UIScaler).
+        from PySide6.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if app is not None:
+            pt = app.font().pointSize()
+            if pt > 0:
+                return max(self._CALENDAR_BASE_POINT_SIZE, pt)
+        # Lazy import: scaling.py imports style_helpers at module level.
+        try:
+            from src.accessibility.scaling import get_scaler
+
+            return max(
+                self._CALENDAR_BASE_POINT_SIZE,
+                get_scaler().get_scaled_size(self._CALENDAR_BASE_POINT_SIZE),
+            )
+        except Exception:
+            return self._CALENDAR_BASE_POINT_SIZE
+
+    def _apply_calendar_font(self) -> None:
+        font = self.font()
+        font.setPointSize(self._calendar_point_size())
+        self.setFont(font)
+        view = self.findChild(QTableView, "qt_calendar_calendarview")
+        if view is not None:
+            view.setFont(font)
+            view.setWordWrap(False)
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._apply_calendar_font()
         self.fit_day_cells()
         QTimer.singleShot(0, self.fit_day_cells)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.fit_day_cells()
 
     def fit_day_cells(self) -> None:
         view = self.findChild(QTableView, "qt_calendar_calendarview")
         if view is None:
             return
+        self._apply_calendar_font()
         metrics = view.fontMetrics()
-        cell_w = metrics.horizontalAdvance("30") + 18
-        cell_h = metrics.height() + 12
+        # Single-letter day + two-digit date; pad so letters are not edge-clipped.
+        cell_w = max(
+            metrics.horizontalAdvance("30") + 16,
+            metrics.horizontalAdvance("W") + 16,
+            28,
+        )
+        cell_h = metrics.height() + 10
+
         header = view.horizontalHeader()
         vheader = view.verticalHeader()
-        header.setMinimumSectionSize(cell_w)
-        header.setDefaultSectionSize(cell_w)
-        vheader.setMinimumSectionSize(cell_h)
-        vheader.setDefaultSectionSize(cell_h)
-        for col in range(max(header.count(), 7)):
+        if header is not None:
+            header.hide()
+            # Fixed: Stretch redistributes and clips day letters in small popups.
+            header.setSectionResizeMode(QHeaderView.Fixed)
+            header.setMinimumSectionSize(cell_w)
+        if vheader is not None:
+            vheader.hide()
+            vheader.setFixedWidth(0)
+            vheader.setSectionResizeMode(QHeaderView.Fixed)
+
+        model = view.model()
+        cols = model.columnCount() if model is not None else 7
+        rows = model.rowCount() if model is not None else 7
+        for col in range(cols):
             view.setColumnWidth(col, cell_w)
-        for row in range(max(vheader.count(), 6)):
+        for row in range(rows):
             view.setRowHeight(row, cell_h)
-        week_w = metrics.horizontalAdvance("53") + 12
-        vheader.setMinimumWidth(week_w)
-        self.setMinimumWidth(cell_w * 7 + week_w + 28)
-        self.setMinimumHeight(cell_h * 6 + 56)
+
+        nav_h = metrics.height() + 32
+        grid_w = cell_w * max(cols, 7) + 28
+        grid_h = cell_h * rows + nav_h + 12
+        self.setMinimumWidth(grid_w)
+        self.setMinimumHeight(grid_h)
+        # Keep popup from shrinking below the grid (QDateEdit otherwise squeezes it).
+        if self.width() < grid_w or self.height() < grid_h:
+            self.resize(max(self.width(), grid_w), max(self.height(), grid_h))
+        for button in self.findChildren(QToolButton):
+            button.setFont(self.font())
+            button.setMinimumHeight(max(metrics.height() + 6, 22))
+            button.setMinimumWidth(max(metrics.horizontalAdvance("MMMM") + 12, 28))
 
     def paintCell(self, painter, rect, date):
         painter.save()
@@ -475,6 +554,7 @@ class FullDayNumberCalendar(QCalendarWidget):
             painter.setPen(QPen(self.palette().highlight().color(), 2))
             painter.drawRect(rect.adjusted(2, 2, -3, -3))
         painter.setPen(color)
+        painter.setFont(self.font())
         painter.drawText(rect, int(Qt.AlignCenter), str(date.day()))
         painter.restore()
 

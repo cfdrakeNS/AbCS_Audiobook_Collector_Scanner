@@ -76,6 +76,8 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 
 Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores Series number only. The title is not changed. Opening a book does not copy a number from the title into Series number. The main book table shows ` - 03` or ` - 6.5` after the title when Series number is set.
 
+With a screen reader running, **Year** and **Read** are typed text fields (four-digit year, and date as year-month-day). Leave a field blank for no year or no read date. Invalid values show a warning message. Without a screen reader, use the calendar for Read; click **Clear** beside the date to remove a read date (you will be asked to confirm).
+
 ## Common confusion
 
 **Book Details vs Update — which should I use?**

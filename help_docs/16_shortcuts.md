@@ -23,6 +23,7 @@ Last updated: June 2026.
 | Alt+X | Export duplicates (duplicate mode only) |
 | Alt+P | Toggle plot filter |
 | Alt+R | Toggle read filter |
+| Alt+T | Toggle want to read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
 | Alt+Shift+P | Preview focused book inside AbCS |
 | Ctrl+F | Find |
@@ -33,7 +34,7 @@ Last updated: June 2026.
 | Ctrl+0 | Reset zoom |
 | Enter / Return | Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date) |
 | Shift+Down/Up | Start or extend selection |
-| Escape | Clear selection / close Find / clear plot or read filter |
+| Escape | Clear selection / close Find / clear plot, read, or want to read filter |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
 
@@ -106,9 +107,6 @@ Last updated: June 2026.
 | Alt+I | Series |
 | Alt+G | Genre |
 | Alt+C | Collection |
-| Alt+F | Files |
-| Alt+B | Bitrate |
-| Alt+Z | Size |
 | Alt+E | Errors |
 | Alt+H | Path |
 | Alt+S | Save |

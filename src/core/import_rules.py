@@ -182,9 +182,22 @@ class ImportRulesEngine:
             "author_title",
             type=str,
         )
-        # Fixed year consistency rule: >1800 and <= current year.
-        self.min_year = 1801
-        self.max_year = datetime.now().year
+        # Year consistency: Preferences range (default 1801 through current year).
+        self.min_year = self.settings.value(
+            "import/rules/year_out_of_range/min_year",
+            1801,
+            type=int,
+        )
+        self.max_year = self.settings.value(
+            "import/rules/year_out_of_range/max_year",
+            datetime.now().year,
+            type=int,
+        )
+        current = datetime.now().year
+        if self.max_year < current:
+            self.max_year = current
+        if self.min_year < 1:
+            self.min_year = 1801
 
     def validate(self, book: Dict[str, Any]) -> List[str]:
         errors: List[str] = []

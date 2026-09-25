@@ -28,7 +28,8 @@ Reading History shows how many books you have finished listening to, total hours
    - **Month** (Alt+M) — books and hours per month
    - **Date Range** (Alt+R) — custom from/to search
 4. On **Date Range**:
-   - Click the **From** and **To** date fields to open the calendar, or press **Alt+F** to focus **From**.
+   - Set the **From** and **To** dates, or press **Alt+F** to focus **From**.
+   - With a screen reader, type each date as year-month-day (for example `2024-03-15`). Invalid dates show a warning. Without a screen reader, you can use the calendar popup.
    - Click **Search** (or press **Alt+S**).
    - Results appear in the date-range table.
 5. Press **Alt+L** to focus the current tab's table.

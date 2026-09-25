@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from PySide6.QtCore import Qt
+
 from helpers.import_window_helpers import (
     apply_suppress_import_confirmations,
     cleanup_window,
@@ -214,5 +216,48 @@ def test_build_book_from_scan_uses_scanned_time_and_tracks(qtbot, temp_db, ui_sc
     assert saved.tracks == 3
     assert saved.series_number == 6.5
 
+    cleanup_window(window)
+
+
+def test_import_detail_tab_order_matches_book_details_columns(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings
+):
+    """Tab follows Title through Path, then Errors, then the footer."""
+    window = ImportDetailWindow(
+        temp_db,
+        ui_scaler,
+        theme_manager,
+        book_data={"title": "Example", "author": "Author"},
+    )
+    qtbot.addWidget(window)
+    expected = [
+        window.title_edit,
+        window.author_combo,
+        window.series_combo,
+        window.genre_combo,
+        window.comments_edit,
+        window.year_spin,
+        window.time_edit,
+        window.files_edit,
+        window.format_edit,
+        window.bitrate_edit,
+        window.reader_edit,
+        window.collection_combo,
+        window.size_edit,
+        window.source_edit,
+        window.path_edit,
+        window.errors_edit,
+        window.save_return_button,
+        window.skip_button,
+    ]
+    found = []
+    widget = window.title_edit
+    for _ in range(200):
+        widget = widget.nextInFocusChain()
+        if widget is window.title_edit:
+            break
+        if (widget.focusPolicy() & Qt.TabFocus) and widget in expected:
+            found.append(widget)
+    assert found == expected[1:]
     cleanup_window(window)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 
 from src.database.connection import DatabaseManager
-from src.database.models import Book
+from src.database.models import Book, SearchFilter
 from src.database.queries import BookQueries
 
 
@@ -146,4 +146,30 @@ def test_progress_values_round_trip(tmp_path):
     assert saved.want_to_read is False
     assert saved.listen_position_ms == 0
     assert saved.listen_file_name == ""
+    db.close()
+
+
+def test_want_to_read_filter_keeps_marks(tmp_path):
+    db = DatabaseManager(str(tmp_path / "abcs.db"))
+    db.initialize_database()
+    books = BookQueries(db)
+    from src.database.queries import AuthorQueries
+
+    author_id = AuthorQueries(db).insert("Ada Author")
+    collection_id = db.fetch_one("SELECT collection_id FROM collections")[0]
+    marked_id = books.insert(
+        Book(title="Marked", author_id=author_id, collection_id=collection_id, want_to_read=True)
+    )
+    other_id = books.insert(
+        Book(title="Other", author_id=author_id, collection_id=collection_id, want_to_read=False)
+    )
+    shown = books.get_all(SearchFilter(want_to_read_filter="Want to Read"))
+    assert [book.book_id for book in shown] == [marked_id]
+    books.get_all(SearchFilter())
+    assert books.get_by_id(marked_id).want_to_read is True
+    books.bulk_set_want_to_read([marked_id, other_id], True)
+    assert books.get_by_id(other_id).want_to_read is True
+    books.bulk_set_want_to_read([marked_id], False)
+    assert books.get_by_id(marked_id).want_to_read is False
+    assert books.get_by_id(other_id).want_to_read is True
     db.close()

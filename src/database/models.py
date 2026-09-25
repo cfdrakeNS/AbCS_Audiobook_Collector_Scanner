@@ -167,6 +167,7 @@ class SearchFilter:
     collection_id: Optional[int] = None  # None = All
     read_filter: str = "All"  # All, Read, Unread
     plot_filter: str = "All"  # All, With Plot, Without Plot
+    want_to_read_filter: str = "All"  # All, Want to Read
     order_by: str = "Title"  # Title, Author, Genre, Series
     search_text: str = ""
     is_keyword_search: bool = False  # True if search starts with "?"

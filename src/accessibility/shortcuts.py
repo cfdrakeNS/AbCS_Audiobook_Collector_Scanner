@@ -71,6 +71,7 @@ MAIN_WINDOW_SHORTCUTS = {
     "X": ("Export duplicates", "export_button"),
     "P": ("Toggle plot filter", "plot_filter_toggle"),
     "R": ("Toggle read filter", "read_filter_toggle"),
+    "T": ("Toggle want to read filter", "want_to_read_filter_toggle"),
     "A": ("Author filter", "author_filter_combo"),
     "W": ("Fetch web info (batch when two or more selected)", "get_web_info"),
     # Alt+1..7 handled in main_window.py for column jump
@@ -104,9 +105,6 @@ IMPORT_DETAIL_WINDOW_SHORTCUTS = {
     "I": ("Series", "series_combo"),
     "G": ("Genre", "genre_combo"),
     "C": ("Collection", "collection_combo"),
-    "F": ("Files", "files_edit"),
-    "B": ("Bitrate", "bitrate_edit"),
-    "Z": ("Size", "size_edit"),
     "E": ("Errors", "errors_edit"),
     "H": ("Path", "path_edit"),
     "S": ("Save", "save_return_button"),

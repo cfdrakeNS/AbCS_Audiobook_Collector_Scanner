@@ -95,6 +95,9 @@ class BookQueries:
         elif filter_criteria.read_filter == "Unread":
             query += " AND b.read_date IS NULL"
 
+        if filter_criteria.want_to_read_filter == "Want to Read":
+            query += " AND b.want_to_read = 1"
+
         # Plot synopsis filter
         if filter_criteria.plot_filter == "With Plot":
             query += " AND LENGTH(TRIM(COALESCE(b.comments, ''))) >= ?"
@@ -309,11 +312,21 @@ class BookQueries:
 
     def update_want_to_read(self, book_id: int, want_to_read: bool) -> None:
         """Write only the Want to read flag."""
-        self.db.execute(
-            "UPDATE books SET want_to_read = ? WHERE book_id = ?",
-            (1 if want_to_read else 0, book_id),
-        )
+        self.bulk_set_want_to_read([book_id], want_to_read)
+
+    def bulk_set_want_to_read(self, book_ids: List[int], want_to_read: bool) -> int:
+        """Set Want to read on many books in one write."""
+        if not book_ids:
+            return 0
+        flag = 1 if want_to_read else 0
+        for chunk in self._book_id_chunks(book_ids):
+            placeholders = ",".join("?" * len(chunk))
+            self.db.execute(
+                f"UPDATE books SET want_to_read = ? WHERE book_id IN ({placeholders})",
+                (flag, *chunk),
+            )
         self.db.connect().commit()
+        return len(book_ids)
 
     def delete(self, book_id: int):
         """Delete a book."""

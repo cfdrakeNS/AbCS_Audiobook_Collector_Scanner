@@ -10,17 +10,17 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 ## Planned for version 3 (next major update)
 
-Already in tester build **2.18:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted. Name-list merge on duplicate (Phase 13) is in 2.18: when you rename an author, series, or genre onto an existing name, AbCS asks whether to move that name’s books. Preview and Book Details show a picture when that picture is stored inside the audio file. Book Details layout is tester accepted: cover on the right, Want to read and read date save without Update, and a read date clears Want to read.
+Already in tester build **2.18:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted. Name-list merge on duplicate (Phase 13) is in 2.18: when you rename an author, series, or genre onto an existing name, AbCS asks whether to move that name’s books. Preview and Book Details show a picture when that picture is stored inside the audio file. Book Details layout is tester accepted: cover on the right, Want to read and read date save without Update, and a read date clears Want to read. The main list can show only books marked want to read (View → Want to read, or Alt+T). Edit → Add to want to read marks the focused book or the selection. The mark stays when the filter is turned off.
 
 Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **Want to read filter** | The main list can show only books marked want to read. The mark stays on the book. |
 | **Import Detail layout** | Same column arrangement as Book Details. No cover. |
 | **Full player** | Next and previous file, fast-forward and rewind, one speed for every book, resume from the saved position, and a main-list filter for books in progress. |
 | **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. |
 | **Help review** | Last. Help topics match the finished windows. Unused topics are removed. Section names do not start with “Steps”. |
+| **First-start screen reader message** | The first time AbCS starts with a screen reader running, Zoom is set to Normal. It speaks once that text size is Normal, and that a different size is chosen in Preferences, Theme and Zoom. |
 
 ---
 
@@ -87,4 +87,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.18**. Phases 1–4 and 6–13 are in 2.18 (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Preview cover, the Book Details picture, the new columns, and the Book Details layout are tester accepted. Next, in order: Want to read filter on the main list, Import Detail layout, full player, optional view-mode, then help last. Non-modal fetch, ratings, tags, and web cover files are out of scope for v3. Library-wide fuzzy name scan deferred.
+**Status:** Version 3 in progress — tester build **2.18**. Phases 1–4 and 6–13 are in 2.18 (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Preview cover, the Book Details picture, the new columns, the Book Details layout, and Want to read are tester accepted. Next, in order: Import Detail layout, full player, optional view-mode, then help last. Read date Alt+Up/Down is parked. Non-modal fetch, ratings, tags, and web cover files are out of scope for v3. Library-wide fuzzy name scan deferred.

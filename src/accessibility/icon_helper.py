@@ -114,6 +114,7 @@ def _action_pixmap_map() -> dict[str, QStyle.StandardPixmap]:
         "search_web": QStyle.StandardPixmap.SP_BrowserReload,
         "plot_filter": QStyle.StandardPixmap.SP_FileDialogDetailedView,
         "read_filter": QStyle.StandardPixmap.SP_DialogApplyButton,
+        "want_to_read_filter": QStyle.StandardPixmap.SP_DialogOkButton,
         "recently_added_filter": QStyle.StandardPixmap.SP_FileDialogListView,
         "statistics": QStyle.StandardPixmap.SP_ComputerIcon,
         "update": QStyle.StandardPixmap.SP_FileDialogContentsView,

@@ -2,7 +2,7 @@
 
 ## What this is
 
-The **Import Detail** window lets you review and fix one held import item at a time. Books land here when import finds duplicates, validation issues, fallback guesses, text auto-corrects (**C:** flags), or other problems that need your attention.
+The **Import Detail** window lets you review and fix one held import item at a time. Books land here when import finds duplicates, validation issues, fallback guesses, text auto-corrects (**C:** flags), or other problems that need your attention. The fields use the same two-column arrangement as Book Details. There is no cover. Collection, Time, Source, and Path are read only.
 
 ## When to use it
 
@@ -52,9 +52,6 @@ The **Import Detail** window lets you review and fix one held import item at a t
 | Alt+I | Series |
 | Alt+G | Genre |
 | Alt+C | Collection |
-| Alt+F | Files |
-| Alt+B | Bitrate |
-| Alt+Z | Size |
 | Alt+E | Errors |
 | Alt+H | Path |
 | Alt+S | Save |

@@ -1,6 +1,8 @@
 # Want to Read — Future Improvement Plan
 
-**Status:** Version 3 Phase 20, in progress. The column, Book Details checkbox, silent save, and clear-on-read-date are tester accepted. Next is the main-list filter. Bulk selection and Import Detail stay deferred.  
+**Status:** Version 3 Phase 20, tester accepted. The column, Book Details checkbox, silent save, clear-on-read-date, main-list filter, View menu, Edit → Add to want to read, and selection Add and Clear are in. Import Detail stays deferred.
+
+**Date/year follow-up:** Shared validation and calendars — [fix_read_date.md](fix_read_date.md) (testing miss after Phase 18/20; Alt+Up/Down abandoned).  
 **Created:** June 2026  
 **Related:** [Collections](help_docs/06_collections.md), [Book Details](help_docs/04_book_details.md), [Reading History](help_docs/13_reading_history.md)
 

@@ -54,6 +54,12 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.masked_date_fields import (
+    apply_preferred_year_spin_range,
+    make_year_field,
+    preferred_year_range,
+    validate_year_spin,
+)
 from src.accessibility.accessible_events import (
     announce_status_message,
     announce_dialog_closed,
@@ -127,26 +133,20 @@ class ImportDetailWindow(AccessibleDialog):
     RESULT_PREV = 2
     RESULT_NEXT = 3
     RESULT_SKIP = 4
-    MIN_VALID_YEAR = 1900
-    MAX_VALID_YEAR = 2100
     # Centralized Alt+letter shortcut mapping (parity with BookDetailsWindow)
     ALLOWED_ALT_LETTERS = {
         "A",  # Author
-        "B",  # Bitrate
         "C",  # Collection
         "D",  # Discard (Skip)
         "E",  # Errors
-        "F",  # Files
         "G",  # Genre
         "H",  # Path
         "I",  # Series
         "M",  # Length
-        "O",  # Comments
         "R",  # Reader
         "S",  # Save
         "T",  # Title
         "Y",  # Year
-        "Z",  # Size
         # Add any additional used keys here
     }
 
@@ -474,6 +474,38 @@ class ImportDetailWindow(AccessibleDialog):
             elif isinstance(source, QSpinBox):
                 QTimer.singleShot(0, lambda w=source: w.lineEdit().deselect())
 
+        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Up, Qt.Key_Down):
+            if not getattr(self, "_year_is_masked", False):
+                year_line = (
+                    self.year_spin.lineEdit() if hasattr(self, "year_spin") else None
+                )
+                if source is getattr(self, "year_spin", None) or source is year_line:
+                    QTimer.singleShot(0, lambda: self._announce_stepped_year())
+
+        if event.type() == QEvent.FocusOut:
+            year_line = None
+            if hasattr(self, "year_spin") and hasattr(self.year_spin, "lineEdit"):
+                year_line = self.year_spin.lineEdit()
+            if source is getattr(self, "year_spin", None) or source is year_line:
+                QTimer.singleShot(0, self._validate_year_on_focus_out)
+
+        if source is getattr(self, "collection_combo", None):
+            if event.type() in (
+                QEvent.Wheel,
+                QEvent.MouseButtonPress,
+                QEvent.MouseButtonDblClick,
+            ):
+                return True
+            if event.type() == QEvent.KeyPress and event.key() in (
+                Qt.Key_Up,
+                Qt.Key_Down,
+                Qt.Key_Space,
+                Qt.Key_F4,
+                Qt.Key_PageUp,
+                Qt.Key_PageDown,
+            ):
+                return True
+
         # Check for FocusOut on relevant fields to sanitize input silently
         # Only sanitize if field has been modified (is dirty) - prevents unwanted prompts for save
         if event.type() == QEvent.FocusOut:
@@ -617,6 +649,24 @@ class ImportDetailWindow(AccessibleDialog):
 
     def _mark_dirty(self, widget=None):
         """Mark form as having unsaved changes."""
+        if getattr(self, "_loading_fields", False):
+            return
+        # Editable combos often emit editTextChanged on focus with no real change.
+        if widget is self.author_combo and (
+            (widget.currentText() or "").strip()
+            == (getattr(self, "_original_author", "") or "").strip()
+        ):
+            return
+        if widget is self.series_combo and (
+            (widget.currentText() or "").strip()
+            == (getattr(self, "_original_series", "") or "").strip()
+        ):
+            return
+        if widget is self.genre_combo and (
+            (widget.currentText() or "").strip()
+            == (getattr(self, "_original_genre", "") or "").strip()
+        ):
+            return
         if widget is not None:
             self._pending_dirty_widgets.add(widget)
 
@@ -657,7 +707,6 @@ class ImportDetailWindow(AccessibleDialog):
             lambda: self._mark_dirty(self.comments_edit)
         )
         self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
-        self.time_edit.textChanged.connect(lambda: self._mark_dirty(self.time_edit))
         self.reader_edit.textChanged.connect(lambda: self._mark_dirty(self.reader_edit))
         self.series_combo.currentIndexChanged.connect(
             lambda: self._mark_dirty(self.series_combo)
@@ -671,9 +720,34 @@ class ImportDetailWindow(AccessibleDialog):
         self.genre_combo.editTextChanged.connect(
             lambda: self._mark_dirty(self.genre_combo)
         )
-        self.collection_combo.currentIndexChanged.connect(
-            lambda: self._mark_dirty(self.collection_combo)
+
+    def _announce_stepped_year(self):
+        """Clear the year highlight and speak the value after Up or Down."""
+        if getattr(self, "_year_is_masked", False):
+            return
+        spin = self.year_spin
+        line = spin.lineEdit()
+        if not spin.hasFocus() and not (line is not None and line.hasFocus()):
+            return
+        if line is not None:
+            line.deselect()
+            line.setCursorPosition(0)
+        spoken = line.text().strip() if line is not None else ""
+        spoken = spoken or "blank"
+        self.set_status(f"Year {spoken}", announce=True)
+
+    def _validate_year_on_focus_out(self):
+        """Warn on year outside Preferences range (masked or classic)."""
+        focus = QApplication.focusWidget()
+        year_line = (
+            self.year_spin.lineEdit()
+            if hasattr(self.year_spin, "lineEdit")
+            else None
         )
+        if focus is self.year_spin or focus is year_line:
+            return
+        stored = self._normalize_year_value(self.book_data.get("year"))
+        validate_year_spin(self.year_spin, self, restore_to=stored)
 
     def _apply_duplicate_read_only_state(self):
         """Keep duplicate entries editable (treated like other errors)."""
@@ -737,7 +811,8 @@ class ImportDetailWindow(AccessibleDialog):
         except (TypeError, ValueError):
             return 0
 
-        if cls.MIN_VALID_YEAR <= parsed_year <= cls.MAX_VALID_YEAR:
+        min_year, max_year = preferred_year_range()
+        if min_year <= parsed_year <= max_year:
             return parsed_year
         return 0
 
@@ -989,26 +1064,21 @@ class ImportDetailWindow(AccessibleDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        # Two-column grid layout — stable label column, expanding field column
-        grid = QGridLayout()
-        grid.setColumnStretch(1, 1)
-        grid.setColumnMinimumWidth(0, self.scaler.get_scaled_size(90))
-        grid.setVerticalSpacing(10)
-        grid.setHorizontalSpacing(8)
-
         label_align = Qt.AlignRight | Qt.AlignVCenter
+        label_width = self.scaler.get_scaled_size(110)
 
-        ROW_TITLE = 0
-        ROW_AUTHOR = 1
-        ROW_PLOT = 2
-        ROW_YEAR_TIME = 3
-        ROW_SERIES = 4
-        ROW_GENRE = 5
-        ROW_COLLECTION = 6
-        ROW_FILES = 7
-        ROW_FORMAT = 8
-        ROW_ERRORS = 9
-        ROW_PATH = 10
+        def _field_grid():
+            field_grid = QGridLayout()
+            field_grid.setColumnStretch(1, 1)
+            field_grid.setColumnMinimumWidth(0, label_width)
+            field_grid.setVerticalSpacing(10)
+            field_grid.setHorizontalSpacing(8)
+            return field_grid
+
+        left_grid = _field_grid()
+        right_grid = _field_grid()
+        right_grid.setColumnStretch(1, 0)
+        bottom_grid = _field_grid()
 
         # Title
         title_label = QLabel("Title:")
@@ -1019,8 +1089,8 @@ class ImportDetailWindow(AccessibleDialog):
         self.title_edit.setAccessibleDescription("")
         self.title_edit.setReadOnly(False)
         title_label.setBuddy(self.title_edit)
-        grid.addWidget(title_label, ROW_TITLE, 0, label_align)
-        grid.addWidget(self.title_edit, ROW_TITLE, 1)
+        left_grid.addWidget(title_label, 0, 0, label_align)
+        left_grid.addWidget(self.title_edit, 0, 1)
 
         # Author
         author_label = QLabel("Author:")
@@ -1029,8 +1099,28 @@ class ImportDetailWindow(AccessibleDialog):
         self.author_combo.setAccessibleName("Author")
         self._configure_field_combo(self.author_combo)
         author_label.setBuddy(self.author_combo)
-        grid.addWidget(author_label, ROW_AUTHOR, 0, label_align)
-        grid.addWidget(self.author_combo, ROW_AUTHOR, 1)
+        left_grid.addWidget(author_label, 1, 0, label_align)
+        left_grid.addWidget(self.author_combo, 1, 1)
+
+        # Series
+        series_label = QLabel("Series:")
+        self.series_combo = QComboBox()
+        self.series_combo.setEditable(True)
+        self.series_combo.setAccessibleName("Book series")
+        self._configure_field_combo(self.series_combo)
+        series_label.setBuddy(self.series_combo)
+        left_grid.addWidget(series_label, 2, 0, label_align)
+        left_grid.addWidget(self.series_combo, 2, 1)
+
+        # Genre
+        genre_label = QLabel("Genre:")
+        self.genre_combo = QComboBox()
+        self.genre_combo.setEditable(True)
+        self.genre_combo.setAccessibleName("Genre")
+        self._configure_field_combo(self.genre_combo)
+        genre_label.setBuddy(self.genre_combo)
+        left_grid.addWidget(genre_label, 3, 0, label_align)
+        left_grid.addWidget(self.genre_combo, 3, 1)
 
         # Plot — fixed height, scrolls internally
         self.comments_label = QLabel("Plot:")
@@ -1042,141 +1132,120 @@ class ImportDetailWindow(AccessibleDialog):
         self.comments_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.comments_edit.setReadOnly(False)
         self.comments_label.setBuddy(self.comments_edit)
-        grid.addWidget(self.comments_label, ROW_PLOT, 0, label_align)
-        grid.addWidget(self.comments_edit, ROW_PLOT, 1)
+        left_grid.addWidget(self.comments_label, 4, 0, Qt.AlignRight | Qt.AlignTop)
+        left_grid.addWidget(self.comments_edit, 4, 1)
 
-        # Year + Time + Reader
-        self.year_spin = QSpinBox()
-        self.year_spin.setRange(0, self.MAX_VALID_YEAR)
-        self.year_spin.setValue(0)
+        # Right column: short fields, top-aligned with Title. No cover.
+        year_masked = make_year_field(self)
+        if year_masked is not None:
+            self.year_spin = year_masked
+            self._year_is_masked = True
+        else:
+            self.year_spin = QSpinBox()
+            apply_preferred_year_spin_range(self.year_spin)
+            self.year_spin.setValue(0)
+            self.year_spin.setReadOnly(False)
+            # Sighted path: keep spin arrows (screen-reader path uses typed year).
+            self.year_spin.setButtonSymbols(QAbstractSpinBox.UpDownArrows)
+            self._year_is_masked = False
         self.year_spin.setAccessibleName("Publication year")
-        self.year_spin.setSpecialValueText("")
         self.year_spin.setMaximumWidth(110)
-        self.year_spin.setReadOnly(False)
-        self.year_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        year_label = QLabel("Year:")
+        year_label.setBuddy(self.year_spin)
+        right_grid.addWidget(year_label, 0, 0, label_align)
+        right_grid.addWidget(self.year_spin, 0, 1)
 
         time_label = QLabel("Time:")
-        time_label.setAlignment(label_align)
         self.time_edit = QLineEdit()
         self.time_edit.setPlaceholderText("HH:MM")
         self.time_edit.setInputMask("99:99;_")
         self.time_edit.setAccessibleName("Time")
+        self.time_edit.setAccessibleDescription("Read only.")
         self.time_edit.setMaximumWidth(100)
-        self.time_edit.setReadOnly(False)
+        self.time_edit.setReadOnly(True)
         time_label.setBuddy(self.time_edit)
+        right_grid.addWidget(time_label, 1, 0, label_align)
+        right_grid.addWidget(self.time_edit, 1, 1)
 
-        reader_label = QLabel("Reader:")
-        reader_label.setAlignment(label_align)
-        self.reader_edit = QLineEdit()
-        self.reader_edit.setAccessibleName("Reader/Narrator")
-        reader_label.setBuddy(self.reader_edit)
-
-        year_time_layout = QHBoxLayout()
-        year_time_layout.setContentsMargins(0, 0, 0, 0)
-        year_time_layout.addWidget(self.year_spin)
-        year_time_layout.addWidget(time_label)
-        year_time_layout.addWidget(self.time_edit)
-        year_time_layout.addWidget(reader_label)
-        year_time_layout.addWidget(self.reader_edit, 1)
-        year_time_layout.addStretch()
-        year_time_widget = QWidget()
-        year_time_widget.setLayout(year_time_layout)
-
-        year_label = QLabel("Year:")
-        year_label.setBuddy(self.year_spin)
-        grid.addWidget(year_label, ROW_YEAR_TIME, 0, label_align)
-        grid.addWidget(year_time_widget, ROW_YEAR_TIME, 1)
-
-        # Series
-        series_label = QLabel("Series:")
-        self.series_combo = QComboBox()
-        self.series_combo.setEditable(True)
-        self.series_combo.setAccessibleName("Book series")
-        self._configure_field_combo(self.series_combo)
-        series_label.setBuddy(self.series_combo)
-        grid.addWidget(series_label, ROW_SERIES, 0, label_align)
-        grid.addWidget(self.series_combo, ROW_SERIES, 1)
-
-        # Genre
-        genre_label = QLabel("Genre:")
-        self.genre_combo = QComboBox()
-        self.genre_combo.setEditable(True)
-        self.genre_combo.setAccessibleName("Genre")
-        self._configure_field_combo(self.genre_combo)
-        genre_label.setBuddy(self.genre_combo)
-        grid.addWidget(genre_label, ROW_GENRE, 0, label_align)
-        grid.addWidget(self.genre_combo, ROW_GENRE, 1)
-
-        # Collection
-        collection_label = QLabel("Collection:")
-        self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Collection")
-        self.collection_combo.setEditable(False)
-        self.collection_combo.setEnabled(True)
-        self._configure_field_combo(self.collection_combo)
-        collection_label.setBuddy(self.collection_combo)
-        grid.addWidget(collection_label, ROW_COLLECTION, 0, label_align)
-        grid.addWidget(self.collection_combo, ROW_COLLECTION, 1)
-
-        # Files + Bitrate + Size
         files_label = QLabel("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(True)
         self.files_edit.setAccessibleName("Number of files")
+        self.files_edit.setMaximumWidth(80)
         files_label.setBuddy(self.files_edit)
+        right_grid.addWidget(files_label, 2, 0, label_align)
+        right_grid.addWidget(self.files_edit, 2, 1)
 
-        bitrate_label = QLabel("Bitrate:")
-        bitrate_label.setAlignment(label_align)
-        self.bitrate_edit = QLineEdit()
-        self.bitrate_edit.setReadOnly(True)
-        self.bitrate_edit.setAccessibleName("Bitrate in kbps")
-        bitrate_label.setBuddy(self.bitrate_edit)
-
-        size_label = QLabel("Size:")
-        size_label.setAlignment(label_align)
-        self.size_edit = QLineEdit()
-        self.size_edit.setReadOnly(True)
-        self.size_edit.setAccessibleName("File size in megabytes")
-        size_label.setBuddy(self.size_edit)
-
-        files_layout = QHBoxLayout()
-        files_layout.setContentsMargins(0, 0, 0, 0)
-        files_layout.addWidget(self.files_edit)
-        files_layout.addWidget(bitrate_label)
-        files_layout.addWidget(self.bitrate_edit)
-        files_layout.addWidget(size_label)
-        files_layout.addWidget(self.size_edit)
-        files_layout.addStretch()
-        files_widget = QWidget()
-        files_widget.setLayout(files_layout)
-        grid.addWidget(files_label, ROW_FILES, 0, label_align)
-        grid.addWidget(files_widget, ROW_FILES, 1)
-
-        # Format + Source
         format_label = QLabel("Format:")
         self.format_edit = QLineEdit()
         self.format_edit.setReadOnly(True)
         self.format_edit.setAccessibleName("File format")
+        self.format_edit.setMaximumWidth(110)
+        format_label.setBuddy(self.format_edit)
+        right_grid.addWidget(format_label, 3, 0, label_align)
+        right_grid.addWidget(self.format_edit, 3, 1)
+
+        bitrate_label = QLabel("Bitrate:")
+        self.bitrate_edit = QLineEdit()
+        self.bitrate_edit.setReadOnly(True)
+        self.bitrate_edit.setAccessibleName("Bitrate in kbps")
+        self.bitrate_edit.setMaximumWidth(110)
+        bitrate_label.setBuddy(self.bitrate_edit)
+        right_grid.addWidget(bitrate_label, 4, 0, label_align)
+        right_grid.addWidget(self.bitrate_edit, 4, 1)
+        right_grid.setRowStretch(5, 1)
+
+        columns = QHBoxLayout()
+        columns.setSpacing(16)
+        columns.addLayout(left_grid, 1)
+        columns.addLayout(right_grid, 0)
+        layout.addLayout(columns)
+
+        reader_label = QLabel("Reader:")
+        self.reader_edit = QLineEdit()
+        self.reader_edit.setAccessibleName("Reader/Narrator")
+        reader_label.setBuddy(self.reader_edit)
+        bottom_grid.addWidget(reader_label, 0, 0, label_align)
+        bottom_grid.addWidget(self.reader_edit, 0, 1)
+
+        collection_label = QLabel("Collection:")
+        self.collection_combo = QComboBox()
+        self.collection_combo.setAccessibleName("Collection")
+        self.collection_combo.setAccessibleDescription("Read only. Collection for this import.")
+        self.collection_combo.setEditable(False)
+        self.collection_combo.setEnabled(True)
+        self.collection_combo.setFocusPolicy(Qt.StrongFocus)
+        self._configure_field_combo(self.collection_combo)
+        collection_label.setBuddy(self.collection_combo)
+        bottom_grid.addWidget(collection_label, 1, 0, label_align)
+        bottom_grid.addWidget(self.collection_combo, 1, 1)
+
+        size_label = QLabel("Size:")
+        self.size_edit = QLineEdit()
+        self.size_edit.setReadOnly(True)
+        self.size_edit.setAccessibleName("File size in megabytes")
+        size_label.setBuddy(self.size_edit)
+        bottom_grid.addWidget(size_label, 2, 0, label_align)
+        bottom_grid.addWidget(self.size_edit, 2, 1)
 
         source_label = QLabel("Source:")
-        source_label.setAlignment(label_align)
         self.source_edit = QLineEdit()
         self.source_edit.setReadOnly(True)
         self.source_edit.setAccessibleName("Import source")
+        self.source_edit.setAccessibleDescription("Read only.")
+        source_label.setBuddy(self.source_edit)
+        bottom_grid.addWidget(source_label, 3, 0, label_align)
+        bottom_grid.addWidget(self.source_edit, 3, 1)
 
-        format_layout = QHBoxLayout()
-        format_layout.setContentsMargins(0, 0, 0, 0)
-        format_layout.addWidget(self.format_edit)
-        format_layout.addWidget(source_label)
-        format_layout.addWidget(self.source_edit, 1)
-        format_layout.addStretch()
-        format_widget = QWidget()
-        format_widget.setLayout(format_layout)
-        format_label.setBuddy(self.format_edit)
-        grid.addWidget(format_label, ROW_FORMAT, 0, label_align)
-        grid.addWidget(format_widget, ROW_FORMAT, 1)
+        path_label = QLabel("Path:")
+        self.path_edit = QLineEdit()
+        self.path_edit.setReadOnly(True)
+        self.path_edit.setAccessibleName("File path")
+        self.path_edit.setAccessibleDescription("Read only.")
+        path_label.setBuddy(self.path_edit)
+        bottom_grid.addWidget(path_label, 4, 0, label_align)
+        bottom_grid.addWidget(self.path_edit, 4, 1)
 
-        # Errors
         self.errors_label = QLabel("Errors:")
         self.errors_edit = QTextEdit()
         self.errors_edit.setReadOnly(True)
@@ -1186,20 +1255,10 @@ class ImportDetailWindow(AccessibleDialog):
             "QTextEdit { background-color: palette(base); color: red; }"
         )
         self.errors_label.setBuddy(self.errors_edit)
-        grid.addWidget(self.errors_label, ROW_ERRORS, 0, label_align)
-        grid.addWidget(self.errors_edit, ROW_ERRORS, 1)
+        bottom_grid.addWidget(self.errors_label, 5, 0, Qt.AlignRight | Qt.AlignTop)
+        bottom_grid.addWidget(self.errors_edit, 5, 1)
 
-        # Path
-        self.path_edit = QLineEdit()
-        self.path_edit.setReadOnly(True)
-        self.path_edit.setAccessibleName("File path")
-
-        path_label = QLabel("Path:")
-        path_label.setBuddy(self.path_edit)
-        grid.addWidget(path_label, ROW_PATH, 0, label_align)
-        grid.addWidget(self.path_edit, ROW_PATH, 1)
-
-        layout.addLayout(grid)
+        layout.addLayout(bottom_grid)
 
         # Footer: status bar + buttons
         self.status_bar = QStatusBar()
@@ -1237,21 +1296,21 @@ class ImportDetailWindow(AccessibleDialog):
 
         # Set explicit tab order for predictable screen reader navigation
         self.setTabOrder(self.title_edit, self.author_combo)
-        self.setTabOrder(self.author_combo, self.comments_edit)
+        self.setTabOrder(self.author_combo, self.series_combo)
+        self.setTabOrder(self.series_combo, self.genre_combo)
+        self.setTabOrder(self.genre_combo, self.comments_edit)
         self.setTabOrder(self.comments_edit, self.year_spin)
         self.setTabOrder(self.year_spin, self.time_edit)
-        self.setTabOrder(self.time_edit, self.reader_edit)
-        self.setTabOrder(self.reader_edit, self.series_combo)
-        self.setTabOrder(self.series_combo, self.genre_combo)
-        self.setTabOrder(self.genre_combo, self.collection_combo)
-        self.setTabOrder(self.collection_combo, self.files_edit)
-        self.setTabOrder(self.files_edit, self.bitrate_edit)
-        self.setTabOrder(self.bitrate_edit, self.size_edit)
-        self.setTabOrder(self.size_edit, self.format_edit)
-        self.setTabOrder(self.format_edit, self.source_edit)
-        self.setTabOrder(self.source_edit, self.errors_edit)
-        self.setTabOrder(self.errors_edit, self.path_edit)
-        self.setTabOrder(self.path_edit, self.save_return_button)
+        self.setTabOrder(self.time_edit, self.files_edit)
+        self.setTabOrder(self.files_edit, self.format_edit)
+        self.setTabOrder(self.format_edit, self.bitrate_edit)
+        self.setTabOrder(self.bitrate_edit, self.reader_edit)
+        self.setTabOrder(self.reader_edit, self.collection_combo)
+        self.setTabOrder(self.collection_combo, self.size_edit)
+        self.setTabOrder(self.size_edit, self.source_edit)
+        self.setTabOrder(self.source_edit, self.path_edit)
+        self.setTabOrder(self.path_edit, self.errors_edit)
+        self.setTabOrder(self.errors_edit, self.save_return_button)
         self.setTabOrder(self.save_return_button, self.skip_button)
 
         self.setup_shortcuts()
@@ -1266,14 +1325,14 @@ class ImportDetailWindow(AccessibleDialog):
                 self.year_spin: ("Publication year", "Publication year"),
                 self.time_edit: (
                     "Length",
-                    "Audiobook length in hours and minutes; saved when you leave this screen",
+                    "Read only. Audiobook length in hours and minutes.",
                 ),
                 self.reader_edit: ("Narrator", "Narrator or reader name"),
                 self.series_combo: ("Series", "Series for this audiobook"),
                 self.genre_combo: ("Genre", "Genre for this audiobook"),
                 self.collection_combo: (
                     "Collection",
-                    "Target collection for import",
+                    "Read only. Collection for this import.",
                 ),
                 self.files_edit: (
                     "File count",
@@ -1282,8 +1341,14 @@ class ImportDetailWindow(AccessibleDialog):
                 self.bitrate_edit: ("Bitrate", "Bitrate in kilobits per second"),
                 self.size_edit: ("File size", "Total size in megabytes"),
                 self.format_edit: ("Format", "Audio file format"),
-                self.source_edit: ("Source", "How this item was discovered"),
-                self.path_edit: ("Path", "Folder path for this audiobook"),
+                self.source_edit: (
+                    "Source",
+                    "Read only. How this item was discovered.",
+                ),
+                self.path_edit: (
+                    "Path",
+                    "Read only. Folder path for this audiobook.",
+                ),
                 self.errors_edit: (
                     "Validation issues",
                     "Import validation errors for this item",
@@ -1315,9 +1380,6 @@ class ImportDetailWindow(AccessibleDialog):
             "series_combo": lambda: self.series_combo.setFocus(),  # Alt+I
             "genre_combo": lambda: self.genre_combo.setFocus(),  # Alt+G
             "collection_combo": lambda: self.collection_combo.setFocus(),  # Alt+C
-            "files_edit": lambda: self.files_edit.setFocus(),  # Alt+F
-            "bitrate_edit": lambda: self.bitrate_edit.setFocus(),  # Alt+B
-            "size_edit": lambda: self.size_edit.setFocus(),  # Alt+Z
             "errors_edit": lambda: self.errors_edit.setFocus(),  # Alt+E
             "path_edit": lambda: self.path_edit.setFocus(),  # Alt+H
             "save_return_button": lambda: self.save_return_button.click(),  # Alt+S
@@ -1395,9 +1457,6 @@ class ImportDetailWindow(AccessibleDialog):
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+C", "Collection"),
-            ("Alt+F", "Files"),
-            ("Alt+B", "Bitrate"),
-            ("Alt+Z", "Size"),
             ("Alt+E", "Errors"),
             ("Alt+H", "Path"),
             ("Alt+S", "Save"),
@@ -1500,6 +1559,11 @@ class ImportDetailWindow(AccessibleDialog):
         finally:
             self._closing_via_handler = False
 
+    def _validate_year_before_save(self) -> bool:
+        """Return False when the year field is outside Preferences range."""
+        stored = self._normalize_year_value(self.book_data.get("year"))
+        return validate_year_spin(self.year_spin, self, restore_to=stored)
+
     def _save_to_parent(self):
         """Push current edits to parent import list and refresh local state."""
         self._collect_form_data()
@@ -1539,6 +1603,8 @@ class ImportDetailWindow(AccessibleDialog):
             self.set_status("Author is required.")
             self.author_combo.setFocus()
             return False
+        if not self._validate_year_before_save():
+            return False
 
         self._save_to_parent()
         self.set_status("Changes saved")
@@ -1549,6 +1615,8 @@ class ImportDetailWindow(AccessibleDialog):
         """Return edited data when accepting."""
         if self.time_edit.hasFocus():
             self._normalize_time_on_focus_out()
+        if not self._validate_year_before_save():
+            return
         if not self.title_edit.text().strip():
             self.set_status("Title is required.")
             self.title_edit.setFocus()
