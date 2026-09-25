@@ -130,6 +130,12 @@ class Book:
     # SQLite column: date_added (when entry was created)
     date_added: datetime = field(default_factory=datetime.now)
     source: str = ""  # SQLite column: source (Windows username who imported)
+    # SQLite column: want_to_read (1 when the user plans to listen)
+    want_to_read: bool = False
+    # SQLite column: listen_position_ms (empty until playback has started)
+    listen_position_ms: Optional[int] = None
+    # SQLite column: listen_file_name (empty unless the book is a folder of tracks)
+    listen_file_name: str = ""
 
     @property
     def time_display(self) -> str:

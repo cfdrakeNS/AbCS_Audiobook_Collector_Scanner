@@ -268,16 +268,6 @@ class AbCSApplication:
         self.db = get_db(db_path)  # Uses bundled DB for exe, default for dev
         self.db.initialize_database()
 
-        if getattr(sys, "frozen", False) and getattr(
-            self.db, "schema_repair_performed", False
-        ):
-            repair_message = getattr(
-                self.db,
-                "schema_repair_message",
-                "Database upgraded from legacy format for compatibility.",
-            )
-            _show_native_message("AbCS", repair_message, auto_close_seconds=5.0)
-
         # Initialize accessibility systems for user preferences
         # Handles font/UI scaling (50-200%+)
         self.scaler = get_scaler(self.qt_app)

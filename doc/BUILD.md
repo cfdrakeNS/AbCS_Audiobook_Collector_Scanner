@@ -43,7 +43,7 @@ Steps performed:
 1. Read version from `src/build_config.py` via `get_version.py`
 2. PyInstaller onedir build using `AbCS.spec`
 3. Copy `graphics/` into `dist/AbCS/_internal/Graphics`
-4. Inno Setup packages `releases/AbCS-Setup.exe` (zip later as `AbCS-Setup-v{version}.zip`; do not put the version in the installer filename)
+4. Inno Setup packages `releases/AbCS-Setup.exe` (zip later as `AbCS-Setup-v{version}.zip`; do not put the version in the installer filename). The finish-page launch runs as the installing user, so the database upgrade runs once, in that user's library. The app announces that upgrade in one dialog.
 
 Trial builds set `TRIAL_BUILD_DATE` in `src/build_config.py` (normally via `build_trial.bat` when present).
 

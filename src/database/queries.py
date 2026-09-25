@@ -187,8 +187,8 @@ class BookQueries:
                 title, author_id, year, series_id, genre_id, collection_id,
                 reader, time_hours, time_minutes, tracks, size_mb, bitrate,
                 file_format, path, comments, read_date, date_added, source,
-                series_number
-            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                series_number, want_to_read, listen_position_ms, listen_file_name
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
     def _book_insert_params(self, book: Book) -> tuple:
@@ -213,6 +213,9 @@ class BookQueries:
             self._serialize_date_added(book.date_added),
             book.source,
             book.series_number,
+            1 if book.want_to_read else 0,
+            book.listen_position_ms,
+            book.listen_file_name or None,
         )
 
     def insert(self, book: Book, commit: bool = True) -> int:
@@ -242,7 +245,8 @@ class BookQueries:
                 time_hours = ?, time_minutes = ?, tracks = ?,
                 size_mb = ?, bitrate = ?, file_format = ?,
                 path = ?, comments = ?, read_date = ?, source = ?,
-                series_number = ?
+                series_number = ?, want_to_read = ?,
+                listen_position_ms = ?, listen_file_name = ?
             WHERE book_id = ?
         """
         params = (
@@ -264,6 +268,9 @@ class BookQueries:
             read_date_value,
             book.source,
             book.series_number,
+            1 if book.want_to_read else 0,
+            book.listen_position_ms,
+            book.listen_file_name or None,
             book.book_id,
         )
         self.db.execute(query, params)
@@ -299,6 +306,14 @@ class BookQueries:
         if commit:
             self.db.connect().commit()
         return len(params_seq)
+
+    def update_want_to_read(self, book_id: int, want_to_read: bool) -> None:
+        """Write only the Want to read flag."""
+        self.db.execute(
+            "UPDATE books SET want_to_read = ? WHERE book_id = ?",
+            (1 if want_to_read else 0, book_id),
+        )
+        self.db.connect().commit()
 
     def delete(self, book_id: int):
         """Delete a book."""
@@ -429,6 +444,13 @@ class BookQueries:
             read_date=read_date_obj,
             date_added=date_added_obj,
             source=row_dict.get("source", ""),
+            want_to_read=int(row_dict.get("want_to_read") or 0) == 1,
+            listen_position_ms=(
+                int(row_dict["listen_position_ms"])
+                if row_dict.get("listen_position_ms") is not None
+                else None
+            ),
+            listen_file_name=row_dict.get("listen_file_name") or "",
         )
 
     @staticmethod

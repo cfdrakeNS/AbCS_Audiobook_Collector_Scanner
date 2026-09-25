@@ -272,7 +272,7 @@ def _jpeg_bytes() -> bytes:
     return bytes(buffer.data())
 
 
-def test_book_details_cover_hidden_without_art(temp_db, ui_scaler, theme_manager):
+def test_book_details_cover_placeholder_without_art(temp_db, ui_scaler, theme_manager):
     author_id = AuthorQueries(temp_db).insert("Plain Author")
     book_id = BookQueries(temp_db).insert(
         Book(title="Plain Book", author_id=author_id, path="")
@@ -285,9 +285,12 @@ def test_book_details_cover_hidden_without_art(temp_db, ui_scaler, theme_manager
         parent=None,
         theme_manager=theme_manager,
     )
-    assert window.cover_label.isHidden()
-    assert window.cover_label.focusPolicy() == Qt.NoFocus
-    assert window.cover_label.accessibleName() == "Cover"
+    assert window.cover_label.isHidden() is False
+    assert window.cover_label.pixmap() is not None
+    assert not window.cover_label.pixmap().isNull()
+    assert window.cover_label.focusPolicy() == Qt.StrongFocus
+    assert window.cover_label.accessibleName() == "No cover"
+    assert window.cover_label.width() == window.cover_label.height()
     assert "cover" not in (window.status_bar.currentMessage() or "").lower()
     window.close()
 
@@ -322,8 +325,67 @@ def test_book_details_cover_shows_embedded_art(
     window.path_edit.setText(str(art))
     assert window.cover_label.isHidden() is False
     assert window.cover_label.pixmap() is not None
-    assert window.cover_label.focusPolicy() == Qt.NoFocus
+    assert window.cover_label.accessibleName() == "Book cover"
+    assert window.cover_label.focusPolicy() == Qt.StrongFocus
     assert "cover" not in (window.status_bar.currentMessage() or "").lower()
     window.path_edit.clear()
-    assert window.cover_label.isHidden()
+    assert window.cover_label.isHidden() is False
+    assert window.cover_label.accessibleName() == "No cover"
+    assert window.cover_label.width() == ui_scaler.get_scaled_size(120)
+    window.close()
+
+
+def test_book_details_tab_order_includes_cover(temp_db, ui_scaler, theme_manager):
+    books = _ensure_sample_books(temp_db, count=1)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    expected = [
+        window.title_edit,
+        window.author_label_display,
+        window.author_combo,
+        window.series_label_display,
+        window.series_combo,
+        window.series_number_edit,
+        window.genre_label_display,
+        window.genre_combo,
+        window.plot_stack,
+        window.cover_label,
+        window.year_spin,
+        window.time_edit,
+        window.listen_progress_edit,
+        window.files_edit,
+        window.format_combo,
+        window.bitrate_edit,
+        window.reader_edit,
+        window.collection_label_display,
+        window.collection_combo,
+        window.read_date,
+        window.want_to_read_checkbox,
+        window.size_edit,
+        window.source_edit,
+        window.added_edit,
+        window.path_edit,
+        window.new_button,
+    ]
+    found = []
+    widget = window.title_edit
+    for _ in range(200):
+        widget = widget.nextInFocusChain()
+        if widget is window.title_edit:
+            break
+        if (widget.focusPolicy() & Qt.TabFocus) and (
+            widget in expected or widget is window.cover_label
+        ):
+            found.append(widget)
+    assert window.cover_label in found
+    names = [type(item).__name__ + ":" + (item.accessibleName() or item.objectName()) for item in found]
+    expected_names = [type(item).__name__ + ":" + (item.accessibleName() or "") for item in expected[1:]]
+    assert names == expected_names
+    assert window.cover_label.focusPolicy() == Qt.StrongFocus
+    assert window.cover_label.width() == window.cover_label.height()
     window.close()

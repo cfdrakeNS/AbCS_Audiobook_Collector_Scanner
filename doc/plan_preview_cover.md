@@ -1,6 +1,6 @@
 # Preview cover — Version 3 Phase 15
 
-**Status:** Implemented. Tester build 2.18 did not show a cover until this change. Phase 16 help review is next.  
+**Status:** Implemented. Tester build 2.18 did not show a cover until this change. Help review is last on the version 3 schedule.  
 **Created:** September 2026  
 **Related:** [plan_audiobook_preview.md](plan_audiobook_preview.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [Plan_covers.md](Plan_covers.md)
 

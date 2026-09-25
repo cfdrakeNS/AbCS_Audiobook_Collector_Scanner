@@ -1,6 +1,6 @@
 # Help docs review — Version 3 Phase 16
 
-**Status:** Planned — after Phase 15 Preview cover. Phase 14 (view-mode) stays optional and last.  
+**Status:** Planned — last version 3 item, after Book Details, Import Detail, Want to read, the full player, and optional view-mode.  
 **Created:** September 2026  
 **Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [help_docs_authoring.md](help_docs_authoring.md), [help_docs/01_overview.md](../help_docs/01_overview.md)
 

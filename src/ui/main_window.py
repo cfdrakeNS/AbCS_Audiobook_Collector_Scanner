@@ -454,11 +454,19 @@ class MainWindow(QMainWindow):
                     )
                     if reply == QMessageBox.Yes:
                         book.read_date = new_date
+                        cleared_want = bool(book.want_to_read)
+                        book.want_to_read = False
                         self.book_queries.update(book)
                         self.refresh_books()
-                        self.set_status(
-                            f"Read date set for {book.title}", announce=True
-                        )
+                        if cleared_want:
+                            self.set_status(
+                                f"Read date set for {book.title}. Want to read cleared.",
+                                announce=True,
+                            )
+                        else:
+                            self.set_status(
+                                f"Read date set for {book.title}", announce=True
+                            )
                     else:
                         # User cancelled - don't update
                         self.set_status(

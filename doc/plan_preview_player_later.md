@@ -1,6 +1,6 @@
 # Preview player — later (after version 3)
 
-**Status:** Deferred after version 3. Do not build with Phase 15.  
+**Status:** Version 3 Phase 21, after the book columns exist. Resume uses the Phase 19 listening-position and file-name columns. Do not add a second progress store. Help review is last.  
 **Created:** September 2026  
 **Related:** [plan_preview_cover.md](plan_preview_cover.md), [plan_audiobook_preview.md](plan_audiobook_preview.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
@@ -10,7 +10,7 @@ Phase 15 shows embedded cover art only. This plan is the rest of the tester’s 
 
 ## Next and previous
 
-Move to the next or previous audio file in the same folder. Keep the file-name sort. Help keeps the note that chapter 10 can sort before chapter 2.
+Move to the next or previous audio file in the same folder. Order by the track number stored in the file, not by file name. A value such as `4/24` uses 4. When a disc number is present, sort by disc, then track. Files with no track number come last, ordered by file name. The file Preview starts on uses this same order. No new database column. Help drops the note that chapter 10 can sort before chapter 2.
 
 ## Fast-forward and rewind
 
@@ -22,7 +22,7 @@ One speed for every book, stored in `QSettings` (same store as zoom). Default 1.
 
 ## Resume
 
-New nullable columns on `books`: position in milliseconds, and the file name when the book is a folder. Same in-place upgrade pattern as `series_number` in `src/database/connection.py`.
+Phase 19 columns on `books`: `listen_position_ms`, and `listen_file_name` when the book is a folder. Do not add another pair.
 
 - Escape closes Preview and keeps the position.
 - Reaching the end of the last file clears it.
@@ -41,4 +41,4 @@ A book is in progress when a resume position is saved.
 
 ## Gate (when built)
 
-Next and previous change files. Fast-forward and rewind move 30 seconds and are spoken. Speed survives from one book to the next without a database column. Escape keeps a per-book position. The in-progress filter lists only books that have a saved position.
+Next and previous follow track number, then disc number when it is present. Fast-forward and rewind move 30 seconds and are spoken. Speed survives from one book to the next without a database column. Escape keeps a per-book position. The in-progress filter lists only books that have a saved position.

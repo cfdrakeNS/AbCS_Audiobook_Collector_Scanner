@@ -65,7 +65,7 @@ When `path` is a directory (typical multi-track import):
 2. Keep files whose extension is in `SUPPORTED_EXTENSIONS`.
 3. Sort by file name (case-insensitive) and play the **first** file.
 
-Filename sort may not match listening order; chapter 10 can sort before chapter 2. Documented in help.
+Filename sort may not match listening order; chapter 10 can sort before chapter 2. Documented in help. Phase 21 changes the starting file and next/previous to track number, with disc number first when it is present.
 
 Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
 
@@ -143,4 +143,4 @@ Tests use a FakePlayer. They do not start real Qt Multimedia decode in CI.
 
 ## Next
 
-Phase 16 help review per [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Phase 15 Preview cover is implemented.
+Phase 15 Preview cover is implemented. The full player is Phase 21. Help review is last. See [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md).

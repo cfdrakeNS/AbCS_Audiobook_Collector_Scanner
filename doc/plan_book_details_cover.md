@@ -1,6 +1,6 @@
 # Book Details cover — Version 3 Phase 17
 
-**Status:** Implemented. Phase 16 help review is still next on the schedule. Phase 14 stays optional and last.  
+**Status:** Implemented. Next is the database columns, then the Book Details layout with this picture on the right. Help review is last.  
 **Created:** September 2026  
 **Related:** [plan_preview_cover.md](plan_preview_cover.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [Plan_covers.md](Plan_covers.md)
 
@@ -15,7 +15,7 @@ When Book Details opens a book, show the embedded cover from the same file Previ
 - Use [`resolve_preview_file`](../src/core/audio_launcher.py) on the book path (including the collection library root), then [`read_embedded_cover`](../src/core/audio_launcher.py).
 - Show the picture at the top of [`src/ui/book_details.py`](../src/ui/book_details.py), beside the form. Do not put it inside the header card. That card is hidden while a screen reader is running, and the picture must stay available.
 - Not a tab stop. Accessible name: **Cover**. Focus stays on the first field.
-- If there is no embedded art, or no playable file, show no image and do not announce that it is missing.
+- If there is no embedded art, or no playable file, show `graphics/abcs_icon_256x256.png` in the same size box. Do not name it and do not announce it. A custom `cover_placeholder.png` will replace that icon later.
 - Refresh when the open book changes (including Next and Previous) and when the path field changes. A new book with an empty path shows no image.
 - A folder of tracks uses the first audio file, the same rule as Preview.
 

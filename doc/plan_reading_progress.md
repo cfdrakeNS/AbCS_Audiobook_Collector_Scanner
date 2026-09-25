@@ -1,6 +1,6 @@
 # Reading Progress / Bookmark — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Version 3 Phase 19 columns are implemented: `listen_position_ms` and `listen_file_name`, stored once and shared with the full player (Phase 21). A percent is not a column. Ratings and tags are out of scope.  
 **Created:** June 2026  
 **Related:** [Reading History](help_docs/13_reading_history.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
 

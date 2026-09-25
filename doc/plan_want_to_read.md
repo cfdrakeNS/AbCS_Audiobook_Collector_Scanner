@@ -1,6 +1,6 @@
 # Want to Read — Future Improvement Plan
 
-**Status:** Deferred after version 3 — **out of scope for v3**. Phase 9 does not add `want_to_read`.  
+**Status:** Version 3 Phase 20, in progress. The column, Book Details checkbox, silent save, and clear-on-read-date are tester accepted. Next is the main-list filter. Bulk selection and Import Detail stay deferred.  
 **Created:** June 2026  
 **Related:** [Collections](help_docs/06_collections.md), [Book Details](help_docs/04_book_details.md), [Reading History](help_docs/13_reading_history.md)
 

@@ -163,10 +163,13 @@ Name: "{commondesktop}\{#MyAppName}"; \
 ; [Run] - Actions run at the end of setup
 ; ──────────────────────────────────────────────────────────────────
 [Run]
-; Offer to launch AbCS after install completes
+; Offer to launch AbCS after install completes.
+; runasoriginaluser: Setup is elevated, so without this the first
+; launch upgrades the administrator library, then the user's own
+; start upgrades their library again.
 Filename: "{app}\{#MyAppExeName}"; \
     Description: "{cm:LaunchProgram,{#MyAppName}}"; \
-    Flags: nowait postinstall skipifsilent
+    Flags: nowait postinstall skipifsilent runasoriginaluser
 
 ; ──────────────────────────────────────────────────────────────────
 ; [UninstallDelete] - Extra cleanup the uninstaller must force-remove

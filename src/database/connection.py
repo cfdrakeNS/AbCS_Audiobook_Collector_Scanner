@@ -302,6 +302,9 @@ class DatabaseManager:
                     date_added DATETIME DEFAULT CURRENT_TIMESTAMP,
                     source TEXT,
                     series_number REAL,
+                    want_to_read INTEGER DEFAULT 0,
+                    listen_position_ms INTEGER,
+                    listen_file_name TEXT,
                     FOREIGN KEY (author_id) REFERENCES authors(author_id),
                     FOREIGN KEY (series_id) REFERENCES series(series_id),
                     FOREIGN KEY (genre_id) REFERENCES genres(genre_id),
@@ -350,6 +353,9 @@ class DatabaseManager:
                 "date_added": "DATETIME",
                 "source": "TEXT",
                 "series_number": "REAL",
+                "want_to_read": "INTEGER DEFAULT 0",
+                "listen_position_ms": "INTEGER",
+                "listen_file_name": "TEXT",
             },
         }
 
@@ -433,29 +439,50 @@ class DatabaseManager:
             if backup_path is not None:
                 backup_note = f" Backup: {backup_path.name}."
             added = set(added_columns)
-            if added == {"books.series_number"}:
-                self.schema_repair_message = (
-                    "Database upgraded. Series number storage was added. "
-                    "Your books were not changed."
-                    f"{backup_note}"
-                )
-            elif added == {"collections.root_path"}:
-                self.schema_repair_message = (
-                    "Database upgraded. Collection library root storage was added. "
-                    "Your books were not changed."
-                    f"{backup_note}"
-                )
-            elif added == {"books.series_number", "collections.root_path"}:
-                self.schema_repair_message = (
-                    "Database upgraded. Series number and collection library "
-                    "root storage were added. Your books were not changed."
-                    f"{backup_note}"
-                )
-            else:
-                self.schema_repair_message = (
-                    "Database upgraded from legacy format for compatibility."
-                    f"{backup_note}"
-                )
+            self.schema_repair_message = self._schema_repair_message(added, backup_note)
+
+    @staticmethod
+    def _schema_repair_message(added: set[str], backup_note: str) -> str:
+        """One sentence for every column this start added. Books stay as they were."""
+        progress_columns = {
+            "books.want_to_read",
+            "books.listen_position_ms",
+            "books.listen_file_name",
+        }
+        known = progress_columns | {"books.series_number", "collections.root_path"}
+        labels: list[str] = []
+        if "books.series_number" in added:
+            labels.append("series number")
+        if "collections.root_path" in added:
+            labels.append("collection library root")
+        if "books.want_to_read" in added:
+            labels.append("Want to read")
+        if "books.listen_position_ms" in added or "books.listen_file_name" in added:
+            labels.append("listening progress")
+        if not labels or not added <= known:
+            return (
+                "Database upgraded from legacy format for compatibility."
+                f"{backup_note}"
+            )
+        if len(labels) == 1:
+            phrase = labels[0]
+            verb = "was" if phrase in {"series number", "collection library root"} else "were"
+            named = phrase[0].upper() + phrase[1:]
+            return (
+                f"Database upgraded. {named} storage {verb} added. "
+                "Your books were not changed."
+                f"{backup_note}"
+            )
+        if len(labels) == 2:
+            joined = f"{labels[0]} and {labels[1]}"
+        else:
+            joined = ", ".join(labels[:-1]) + ", and " + labels[-1]
+        named = joined[0].upper() + joined[1:]
+        return (
+            f"Database upgraded. {named} storage were added. "
+            "Your books were not changed."
+            f"{backup_note}"
+        )
 
     def _get_existing_columns(self, table_name: str) -> set[str]:
         """Return existing column names for a table."""

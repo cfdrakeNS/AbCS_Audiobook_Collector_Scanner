@@ -53,10 +53,8 @@ Last updated: June 2026.
 | Alt+I | Series |
 | Alt+G | Genre |
 | Alt+C | Collection |
-| Alt+F | Files |
-| Alt+B | Bitrate |
-| Alt+Z | Size |
-| Alt+O | Format |
+| Alt+E | Read date |
+| Alt+K | Want to read |
 | Alt+H | Path |
 | Alt+W | Get web info |
 | Alt+Shift+P | Preview audiobook inside AbCS |

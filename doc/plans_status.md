@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (tester build 2.18. v3 Phases 1–4 and 6–13 complete; 1–4 and 6–12 tester accepted. Phase 13 name-list merge implemented. Phase 15 Preview cover implemented. Next: Phase 16 help review. Non-modal fetch, Want to Read, ratings, and web cover files are out of scope for v3. Library-wide fuzzy name scan deferred.)
+**Last updated:** September 2026 (tester build 2.18. v3 Phases 1–4 and 6–13 complete; 1–4 and 6–12 tester accepted. Phase 13 name-list merge implemented. Phases 15 and 17 covers implemented. Phases 19 and 18 tester accepted. Next is Phase 20 Want to read main-list filter. Then Phase 22 Import Detail layout, Phase 21 full player, optional Phase 14, Phase 16 help last. Ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -34,9 +34,14 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 12 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | Complete — tester accepted |
 | 13 | Name-list merge on duplicate | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | Complete — implemented in 2.18; library scan deferred |
 | 15 | Preview cover (embedded art) | [plan_preview_cover.md](plan_preview_cover.md) | Implemented |
-| 16 | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | Planned — next |
 | 17 | Book Details cover (embedded art) | [plan_book_details_cover.md](plan_book_details_cover.md) | Implemented |
-| 14 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — Phase 14 (optional, last) |
+| 19 | Want to read and listening progress columns | [plan_want_to_read.md](plan_want_to_read.md), [plan_reading_progress.md](plan_reading_progress.md) | Tester accepted |
+| 18 | Book Details layout, cover on the right | [plan_book_details_layout.md](plan_book_details_layout.md) | Tester accepted |
+| 20 | Want to read | [plan_want_to_read.md](plan_want_to_read.md) | In progress — main-list filter |
+| 22 | Import Detail layout, no cover | [plan_import_detail_layout.md](plan_import_detail_layout.md) | Planned — after Phase 18 |
+| 21 | Full Preview player | [plan_preview_player_later.md](plan_preview_player_later.md) | Planned — after Phase 19 |
+| 14 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — optional, before help |
+| 16 | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | Planned — last |
 
 ---
 
@@ -46,9 +51,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 |------|----------|
 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) — out of scope for v3 (too risky) |
 | Book ratings | [plan_ratings.md](plan_ratings.md) — out of scope for v3 UI |
-| Want to Read | [plan_want_to_read.md](plan_want_to_read.md) — out of scope for v3; no column in Phase 9 |
 | Covers + zip backup | [Plan_covers.md](Plan_covers.md) — web cover files; out of scope for v3 UI |
-| Preview player (transport, speed, resume, in progress) | [plan_preview_player_later.md](plan_preview_player_later.md) — after v3 |
 | Library-wide fuzzy name scan | Deferred after v3 — see [Plan_name_consistency_check.md](Plan_name_consistency_check.md) |
 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) |
 | Path health report | [plan_path_health_report.md](plan_path_health_report.md) |
@@ -65,8 +68,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | Preferences mini-toolbar | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) |
 | Third-party import | [plan_third_party_import.md](plan_third_party_import.md) |
 | Smart collections | [plan_smart_collections.md](plan_smart_collections.md) |
-| Reading progress | [plan_reading_progress.md](plan_reading_progress.md) |
-| Book tags | [plan_book_tags.md](plan_book_tags.md) |
+| Book tags | [plan_book_tags.md](plan_book_tags.md) — out of scope for v3 |
 
 ---
 

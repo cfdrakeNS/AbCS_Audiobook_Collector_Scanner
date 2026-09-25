@@ -71,7 +71,9 @@ def test_first_start_adds_series_number_only(tmp_path):
     columns = db._get_existing_columns("books")
     collection_columns = db._get_existing_columns("collections")
     assert "series_number" in columns
-    assert "want_to_read" not in columns
+    assert "want_to_read" in columns
+    assert "listen_position_ms" in columns
+    assert "listen_file_name" in columns
     assert "rating" not in columns
     assert "ratings_count" not in columns
     assert "cover_path" not in columns
@@ -92,7 +94,7 @@ def test_first_start_adds_series_number_only(tmp_path):
     backups = list(tmp_path.glob("abcs.backup_schema_repair_*.db"))
     assert len(backups) == 1
     assert db.schema_repair_performed is True
-    assert "Series number and collection library root storage were added" in (
+    assert "Series number, collection library root, Want to read, and listening progress storage were added" in (
         db.schema_repair_message
     )
     assert backups[0].name in db.schema_repair_message
@@ -167,7 +169,9 @@ def test_first_start_adds_root_path_only(tmp_path):
 
     collection_columns = db._get_existing_columns("collections")
     assert "root_path" in collection_columns
-    assert "want_to_read" not in db._get_existing_columns("books")
+    assert "want_to_read" in db._get_existing_columns("books")
+    assert "listen_position_ms" in db._get_existing_columns("books")
+    assert "listen_file_name" in db._get_existing_columns("books")
 
     row = db.fetch_one("SELECT path, series_number FROM books WHERE book_id = 1")
     assert row["path"] == "/old/book"
@@ -176,7 +180,9 @@ def test_first_start_adds_root_path_only(tmp_path):
     backups = list(tmp_path.glob("abcs.backup_schema_repair_*.db"))
     assert len(backups) == 1
     assert db.schema_repair_performed is True
-    assert "Collection library root storage was added" in db.schema_repair_message
+    assert "Collection library root, Want to read, and listening progress storage were added" in (
+        db.schema_repair_message
+    )
     assert backups[0].name in db.schema_repair_message
 
     db.initialize_database()
@@ -190,5 +196,9 @@ def test_new_database_does_not_announce_schema_repair(tmp_path):
     assert db.schema_repair_performed is False
     assert db.schema_repair_message == ""
     assert "root_path" in db._get_existing_columns("collections")
-    assert "series_number" in db._get_existing_columns("books")
+    books_columns = db._get_existing_columns("books")
+    assert "series_number" in books_columns
+    assert "want_to_read" in books_columns
+    assert "listen_position_ms" in books_columns
+    assert "listen_file_name" in books_columns
     db.close()

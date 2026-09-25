@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QPushButton,
     QLabel,
+    QCheckBox,
     QDateEdit,
     QSpinBox,
     QMessageBox,
@@ -66,18 +67,31 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression, QSize
 from PySide6.QtGui import (
     QAccessible,
     QTextCursor,
     QShortcut,
     QKeySequence,
+    QFontMetrics,
     QPixmap,
     QRegularExpressionValidator,
 )
 from datetime import datetime
 from typing import List, Dict, Any
 from src.ui.accessible_dialog import AccessibleDialog
+
+class SingleLineDateEdit(QDateEdit):
+    """Date field whose size stays one line. The popup calendar does not stretch the row."""
+
+    def minimumSizeHint(self):
+        line = self.fontMetrics().height() + 10
+        hint = super().minimumSizeHint()
+        return QSize(max(hint.width(), 120), line)
+
+    def sizeHint(self):
+        return self.minimumSizeHint()
+
 
 class BookDetailsWindow(AccessibleDialog):
     def __init__(self, *args, **kwargs):
@@ -103,10 +117,7 @@ class BookDetailsWindow(AccessibleDialog):
         "I",
         "G",
         "C",
-        "F",
-        "B",
-        "Z",
-        "O",  # Alt+O for Format
+        "K",
         "H",
         "/",
         "F1",
@@ -383,6 +394,7 @@ class BookDetailsWindow(AccessibleDialog):
         # Filter QComboBox and QSpinBox - they select text AFTER their internal lineEdit gets focus
         for widget in self.findChildren(QComboBox):
             widget.installEventFilter(self)
+
         for widget in self.findChildren(QSpinBox):
             widget.installEventFilter(self)
 
@@ -397,6 +409,30 @@ class BookDetailsWindow(AccessibleDialog):
         bd#2: When a field gains focus, we deselect text so the user doesn't
         accidentally overwrite existing content by pressing a key.
         """
+        if (
+            hasattr(self, "read_date")
+            and source is self.read_date.calendarWidget()
+            and event.type() == QEvent.Hide
+        ):
+            self._commit_read_date()
+            return False
+        if source is getattr(self, "format_combo", None) and not getattr(
+            self, "_in_edit_mode", False
+        ):
+            if event.type() in (
+                QEvent.Wheel,
+                QEvent.MouseButtonPress,
+                QEvent.MouseButtonDblClick,
+            ):
+                return True
+            if event.type() == QEvent.KeyPress and event.key() in (
+                Qt.Key_Up,
+                Qt.Key_Down,
+                Qt.Key_Space,
+                Qt.Key_F4,
+            ):
+                return True
+
         if event.type() == QEvent.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
@@ -703,10 +739,12 @@ class BookDetailsWindow(AccessibleDialog):
         layout.addWidget(self.header_card)
 
         self.cover_label = QLabel()
-        self.cover_label.setFocusPolicy(Qt.NoFocus)
-        self.cover_label.setAccessibleName("Cover")
-        self.cover_label.hide()
-        layout.addWidget(self.cover_label, 0, Qt.AlignLeft)
+        self.cover_label.setFocusPolicy(Qt.StrongFocus)
+        self.cover_label.setAccessibleName("No cover")
+        self.cover_label.setAccessibleDescription("")
+        self.cover_label.setAlignment(Qt.AlignCenter)
+        side = self.scaler.get_scaled_size(120)
+        self.cover_label.setFixedSize(side, side)
 
         # bd#8: Header section showing sort order
         header_layout = QHBoxLayout()
@@ -720,26 +758,22 @@ class BookDetailsWindow(AccessibleDialog):
         header_layout.addStretch()
         layout.addLayout(header_layout)
 
-        # Two-column grid layout — stable label column, expanding field column
-        grid = QGridLayout()
-        grid.setColumnStretch(1, 1)
-        grid.setColumnMinimumWidth(0, self.scaler.get_scaled_size(90))
-        grid.setVerticalSpacing(10)
-        grid.setHorizontalSpacing(8)
-
         label_align = Qt.AlignRight | Qt.AlignVCenter
+        label_width = self.scaler.get_scaled_size(110)
 
-        ROW_TITLE = 0
-        ROW_AUTHOR = 1
-        ROW_PLOT = 2
-        ROW_YEAR_TIME = 3
-        ROW_READER_READ = 4
-        ROW_SERIES = 5
-        ROW_GENRE = 6
-        ROW_COLLECTION = 7
-        ROW_FILES = 8
-        ROW_FORMAT = 9
-        ROW_PATH = 10
+        def _field_grid():
+            field_grid = QGridLayout()
+            field_grid.setColumnStretch(1, 1)
+            field_grid.setColumnMinimumWidth(0, label_width)
+            field_grid.setVerticalSpacing(10)
+            field_grid.setHorizontalSpacing(8)
+            return field_grid
+
+        left_grid = _field_grid()
+        right_grid = _field_grid()
+        right_grid.setColumnStretch(1, 0)
+        bottom_grid = _field_grid()
+        grid = left_grid
 
         # Title
         title_label = QLabel("Title:")
@@ -747,8 +781,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.title_edit.setAccessibleName("")
         self.title_edit.setAccessibleDescription("")
         title_label.setBuddy(self.title_edit)
-        grid.addWidget(title_label, ROW_TITLE, 0, label_align)
-        grid.addWidget(self.title_edit, ROW_TITLE, 1)
+        left_grid.addWidget(title_label, 0, 0, label_align)
+        left_grid.addWidget(self.title_edit, 0, 1)
 
         # Author — view label and combo share the same grid cell
         author_label = QLabel("Author:")
@@ -767,8 +801,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.author_label_display, self.author_combo
         )
         author_label.setBuddy(self.author_label_display)
-        grid.addWidget(author_label, ROW_AUTHOR, 0, label_align)
-        grid.addWidget(self.author_field_stack, ROW_AUTHOR, 1)
+        left_grid.addWidget(author_label, 1, 0, label_align)
+        left_grid.addWidget(self.author_field_stack, 1, 1)
 
         # Plot — line list for review, text edit for editing
         self.comments_label = QLabel("Plot:")
@@ -792,8 +826,9 @@ class BookDetailsWindow(AccessibleDialog):
         self.comments_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.plot_review.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.comments_label.setBuddy(self.plot_stack)
-        grid.addWidget(self.comments_label, ROW_PLOT, 0, label_align)
-        grid.addWidget(self.plot_stack, ROW_PLOT, 1)
+        self.comments_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        left_grid.addWidget(self.comments_label, 4, 0, 1, 2, Qt.AlignLeft)
+        left_grid.addWidget(self.plot_stack, 5, 0, 1, 2)
 
         # Year + Time
         self.year_spin = QSpinBox()
@@ -812,19 +847,12 @@ class BookDetailsWindow(AccessibleDialog):
         self.time_edit.setMaximumWidth(100)
         time_label.setBuddy(self.time_edit)
 
-        year_time_layout = QHBoxLayout()
-        year_time_layout.setContentsMargins(0, 0, 0, 0)
-        year_time_layout.addWidget(self.year_spin)
-        year_time_layout.addWidget(time_label)
-        year_time_layout.addWidget(self.time_edit)
-        year_time_layout.addStretch()
-        year_time_widget = QWidget()
-        year_time_widget.setLayout(year_time_layout)
-
         year_label = QLabel("Year:")
         year_label.setBuddy(self.year_spin)
-        grid.addWidget(year_label, ROW_YEAR_TIME, 0, label_align)
-        grid.addWidget(year_time_widget, ROW_YEAR_TIME, 1)
+        right_grid.addWidget(year_label, 1, 0, label_align)
+        right_grid.addWidget(self.year_spin, 1, 1)
+        right_grid.addWidget(time_label, 2, 0, label_align)
+        right_grid.addWidget(self.time_edit, 2, 1)
 
         # Reader + Read date
         reader_label = QLabel("Reader:")
@@ -835,7 +863,7 @@ class BookDetailsWindow(AccessibleDialog):
 
         read_label = QLabel("Read:")
         read_label.setAlignment(label_align)
-        self.read_date = QDateEdit()
+        self.read_date = SingleLineDateEdit()
         self._null_read_date = QDate(2000, 1, 1)
         self.read_date.setCalendarPopup(True)
         self.read_date.setDisplayFormat("yyyy-MM-dd")
@@ -886,17 +914,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.read_date.setCalendarWidget(calendar)
         read_label.setBuddy(self.read_date)
 
-        reader_read_layout = QHBoxLayout()
-        reader_read_layout.setContentsMargins(0, 0, 0, 0)
-        reader_read_layout.addWidget(self.reader_edit, 1)
-        reader_read_layout.addWidget(read_label)
-        reader_read_layout.addWidget(self.read_date)
-        reader_read_layout.addStretch()
-        reader_read_widget = QWidget()
-        reader_read_widget.setLayout(reader_read_layout)
-
-        grid.addWidget(reader_label, ROW_READER_READ, 0, label_align)
-        grid.addWidget(reader_read_widget, ROW_READER_READ, 1)
+        bottom_grid.addWidget(reader_label, 0, 0, label_align)
+        bottom_grid.addWidget(self.reader_edit, 0, 1)
 
         # Series — view label and combo share the same grid cell
         series_label = QLabel("Series:")
@@ -915,7 +934,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.series_label_display, self.series_combo
         )
         series_label.setBuddy(self.series_label_display)
-        series_number_label = QLabel("Series #:")
+        series_number_label = QLabel("#")
+        series_number_label.setAccessibleName("Series number")
         self.series_number_edit = QLineEdit()
         self.series_number_edit.setMaxLength(9)
         self.series_number_edit.setValidator(
@@ -934,8 +954,8 @@ class BookDetailsWindow(AccessibleDialog):
         series_row.addWidget(self.series_number_edit)
         series_row_widget = QWidget()
         series_row_widget.setLayout(series_row)
-        grid.addWidget(series_label, ROW_SERIES, 0, label_align)
-        grid.addWidget(series_row_widget, ROW_SERIES, 1)
+        left_grid.addWidget(series_label, 2, 0, label_align)
+        left_grid.addWidget(series_row_widget, 2, 1)
 
         # Genre — view label and combo share the same grid cell
         genre_label = QLabel("Genre:")
@@ -954,8 +974,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.genre_label_display, self.genre_combo
         )
         genre_label.setBuddy(self.genre_label_display)
-        grid.addWidget(genre_label, ROW_GENRE, 0, label_align)
-        grid.addWidget(self.genre_field_stack, ROW_GENRE, 1)
+        left_grid.addWidget(genre_label, 3, 0, label_align)
+        left_grid.addWidget(self.genre_field_stack, 3, 1)
 
         # Collection — view label and combo share the same grid cell
         collection_label = QLabel("Collection:")
@@ -973,8 +993,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.collection_label_display, self.collection_combo
         )
         collection_label.setBuddy(self.collection_label_display)
-        grid.addWidget(collection_label, ROW_COLLECTION, 0, label_align)
-        grid.addWidget(self.collection_field_stack, ROW_COLLECTION, 1)
+        bottom_grid.addWidget(collection_label, 1, 0, label_align)
+        bottom_grid.addWidget(self.collection_field_stack, 1, 1)
 
         # Files + Bitrate + Size
         files_label = QLabel("Files:")
@@ -997,18 +1017,10 @@ class BookDetailsWindow(AccessibleDialog):
         self.size_edit.setAccessibleName("File size in megabytes")
         size_label.setBuddy(self.size_edit)
 
-        files_layout = QHBoxLayout()
-        files_layout.setContentsMargins(0, 0, 0, 0)
-        files_layout.addWidget(self.files_edit)
-        files_layout.addWidget(bitrate_label)
-        files_layout.addWidget(self.bitrate_edit)
-        files_layout.addWidget(size_label)
-        files_layout.addWidget(self.size_edit)
-        files_layout.addStretch()
-        files_widget = QWidget()
-        files_widget.setLayout(files_layout)
-        grid.addWidget(files_label, ROW_FILES, 0, label_align)
-        grid.addWidget(files_widget, ROW_FILES, 1)
+        right_grid.addWidget(files_label, 4, 0, label_align)
+        right_grid.addWidget(self.files_edit, 4, 1)
+        right_grid.addWidget(bitrate_label, 6, 0, label_align)
+        right_grid.addWidget(self.bitrate_edit, 6, 1)
 
         # Format + Source
         format_label = QLabel("Format:")
@@ -1034,17 +1046,24 @@ class BookDetailsWindow(AccessibleDialog):
         self.source_edit = QLineEdit()
         self.source_edit.setReadOnly(False)
         self.source_edit.setAccessibleName("Import source")
+        size_fields = QHBoxLayout()
+        size_fields.setContentsMargins(0, 0, 0, 0)
+        size_fields.setSpacing(8)
+        size_fields.addWidget(self.size_edit, 1)
+        size_fields.addWidget(source_label)
+        source_slot = QWidget()
+        source_slot.setFixedWidth(self.scaler.get_scaled_size(120))
+        source_layout = QHBoxLayout(source_slot)
+        source_layout.setContentsMargins(0, 0, 0, 0)
+        source_layout.addWidget(self.source_edit)
+        size_fields.addWidget(source_slot)
+        size_fields_host = QWidget()
+        size_fields_host.setLayout(size_fields)
+        bottom_grid.addWidget(size_label, 3, 0, label_align)
+        bottom_grid.addWidget(size_fields_host, 3, 1)
 
-        format_layout = QHBoxLayout()
-        format_layout.setContentsMargins(0, 0, 0, 0)
-        format_layout.addWidget(self.format_combo)
-        format_layout.addWidget(source_label)
-        format_layout.addWidget(self.source_edit, 1)
-        format_layout.addStretch()
-        format_widget = QWidget()
-        format_widget.setLayout(format_layout)
-        grid.addWidget(format_label, ROW_FORMAT, 0, label_align)
-        grid.addWidget(format_widget, ROW_FORMAT, 1)
+        right_grid.addWidget(format_label, 5, 0, label_align)
+        right_grid.addWidget(self.format_combo, 5, 1)
 
         # Path + Added date
         self.path_edit = QLineEdit()
@@ -1058,20 +1077,74 @@ class BookDetailsWindow(AccessibleDialog):
         self.added_edit.setAccessibleName("Date added to collection")
         self.added_edit.setMaximumWidth(150)
 
-        path_layout = QHBoxLayout()
-        path_layout.setContentsMargins(0, 0, 0, 0)
-        path_layout.addWidget(self.path_edit, 1)
-        path_layout.addWidget(added_label)
-        path_layout.addWidget(self.added_edit)
-        path_widget = QWidget()
-        path_widget.setLayout(path_layout)
-
         path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
-        grid.addWidget(path_label, ROW_PATH, 0, label_align)
-        grid.addWidget(path_widget, ROW_PATH, 1)
+        bottom_grid.addWidget(added_label, 4, 0, label_align)
+        bottom_grid.addWidget(self.added_edit, 4, 1)
+        bottom_grid.addWidget(path_label, 5, 0, label_align)
+        bottom_grid.addWidget(self.path_edit, 5, 1)
 
-        layout.addLayout(grid)
+        self.listen_progress_edit = QLineEdit()
+        self.listen_progress_edit.setReadOnly(True)
+        self.listen_progress_edit.setFocusPolicy(Qt.StrongFocus)
+        self.listen_progress_edit.setAccessibleName("Listen progress")
+        self.listen_progress_edit.setAccessibleDescription(
+            "Where playback stopped. Empty until the book has been started."
+        )
+        listen_label = QLabel("Listen progress:")
+        listen_label.setBuddy(self.listen_progress_edit)
+        right_grid.addWidget(listen_label, 3, 0, label_align)
+        right_grid.addWidget(self.listen_progress_edit, 3, 1)
+
+        self.want_to_read_checkbox = QCheckBox()
+        self.want_to_read_checkbox.setAccessibleName("Want to read")
+        self.want_to_read_checkbox.setAccessibleDescription(
+            "Mark this book as one you want to read. Alt+K. Cleared when a read date is set."
+        )
+        want_label = QLabel("Want to read:")
+        want_label.setBuddy(self.want_to_read_checkbox)
+        want_label.setAccessibleName("")
+        right_grid.setColumnMinimumWidth(
+            0, QFontMetrics(self.font()).horizontalAdvance("Listen progress:")
+        )
+        read_fields = QHBoxLayout()
+        read_fields.setContentsMargins(0, 0, 0, 0)
+        read_fields.setSpacing(8)
+        read_fields.addWidget(self.read_date)
+        read_fields.addStretch(1)
+        read_fields.addWidget(want_label)
+        want_label.setWordWrap(False)
+        line_h = self.fontMetrics().height() + 8
+        self.want_to_read_checkbox.setStyleSheet(
+            f"QCheckBox {{ min-height: {line_h}px; max-height: {line_h}px; padding: 0px; }}"
+        )
+        self.want_to_read_checkbox.setFixedHeight(line_h)
+        bitrate_slot = QWidget()
+        bitrate_slot.setFixedWidth(self.scaler.get_scaled_size(120))
+        bitrate_layout = QHBoxLayout(bitrate_slot)
+        bitrate_layout.setContentsMargins(0, 0, 0, 0)
+        bitrate_layout.addWidget(self.want_to_read_checkbox, 0, Qt.AlignLeft | Qt.AlignVCenter)
+        bitrate_layout.addStretch(1)
+        read_fields.addWidget(bitrate_slot, 0, Qt.AlignVCenter)
+        read_fields_host = QWidget()
+        read_fields_host.setLayout(read_fields)
+        bottom_grid.addWidget(read_label, 2, 0, Qt.AlignRight | Qt.AlignVCenter)
+        bottom_grid.addWidget(read_fields_host, 2, 1)
+
+        cover_hold = QWidget()
+        cover_row = QHBoxLayout(cover_hold)
+        cover_indent = QFontMetrics(self.font()).horizontalAdvance("n" * 10)
+        cover_row.setContentsMargins(cover_indent, 0, 0, 0)
+        cover_row.addWidget(self.cover_label, 0, Qt.AlignLeft | Qt.AlignTop)
+        cover_row.addStretch()
+        right_grid.addWidget(cover_hold, 0, 0, 1, 2, Qt.AlignLeft | Qt.AlignTop)
+
+        columns = QHBoxLayout()
+        columns.setSpacing(16)
+        columns.addLayout(left_grid, 1)
+        columns.addLayout(right_grid, 0)
+        layout.addLayout(columns)
+        layout.addLayout(bottom_grid)
 
         # bd#4: Action buttons - New, Save, Delete (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
@@ -1161,26 +1234,29 @@ class BookDetailsWindow(AccessibleDialog):
         # bd#7: Include view labels in tab order for accessibility
         self.setTabOrder(self.title_edit, self.author_label_display)
         self.setTabOrder(self.author_label_display, self.author_combo)
-        self.setTabOrder(self.author_combo, self.plot_stack)
-        self.setTabOrder(self.plot_stack, self.year_spin)
-        self.setTabOrder(self.year_spin, self.time_edit)
-        self.setTabOrder(self.time_edit, self.reader_edit)
-        self.setTabOrder(self.reader_edit, self.read_date)
-        self.setTabOrder(self.read_date, self.series_label_display)
+        self.setTabOrder(self.author_combo, self.series_label_display)
         self.setTabOrder(self.series_label_display, self.series_combo)
         self.setTabOrder(self.series_combo, self.series_number_edit)
         self.setTabOrder(self.series_number_edit, self.genre_label_display)
         self.setTabOrder(self.genre_label_display, self.genre_combo)
-        self.setTabOrder(self.genre_combo, self.collection_label_display)
+        self.setTabOrder(self.genre_combo, self.plot_stack)
+        self.setTabOrder(self.plot_stack, self.cover_label)
+        self.setTabOrder(self.cover_label, self.year_spin)
+        self.setTabOrder(self.year_spin, self.time_edit)
+        self.setTabOrder(self.time_edit, self.listen_progress_edit)
+        self.setTabOrder(self.listen_progress_edit, self.files_edit)
+        self.setTabOrder(self.files_edit, self.format_combo)
+        self.setTabOrder(self.format_combo, self.bitrate_edit)
+        self.setTabOrder(self.bitrate_edit, self.reader_edit)
+        self.setTabOrder(self.reader_edit, self.collection_label_display)
         self.setTabOrder(self.collection_label_display, self.collection_combo)
-        self.setTabOrder(self.collection_combo, self.files_edit)
-        self.setTabOrder(self.files_edit, self.bitrate_edit)
-        self.setTabOrder(self.bitrate_edit, self.size_edit)
-        self.setTabOrder(self.size_edit, self.format_combo)
-        self.setTabOrder(self.format_combo, self.source_edit)
-        self.setTabOrder(self.source_edit, self.path_edit)
-        self.setTabOrder(self.path_edit, self.added_edit)
-        self.setTabOrder(self.added_edit, self.new_button)
+        self.setTabOrder(self.collection_combo, self.read_date)
+        self.setTabOrder(self.read_date, self.want_to_read_checkbox)
+        self.setTabOrder(self.want_to_read_checkbox, self.size_edit)
+        self.setTabOrder(self.size_edit, self.source_edit)
+        self.setTabOrder(self.source_edit, self.added_edit)
+        self.setTabOrder(self.added_edit, self.path_edit)
+        self.setTabOrder(self.path_edit, self.new_button)
         self.setTabOrder(self.new_button, self.edit_button)
         self.setTabOrder(self.edit_button, self.save_button)
         self.setTabOrder(self.save_button, self.delete_button)
@@ -1281,6 +1357,14 @@ class BookDetailsWindow(AccessibleDialog):
                 self.added_edit: (
                     "Date added",
                     "Date this book was added to the collection",
+                ),
+                self.listen_progress_edit: (
+                    "Listen progress",
+                    "Where playback stopped. Empty until the book has been started.",
+                ),
+                self.want_to_read_checkbox: (
+                    "Want to read",
+                    "Mark this book as one you want to read. Alt+K. Cleared when a read date is set.",
                 ),
                 self.new_button: (
                     "Start a new book entry",
@@ -1517,6 +1601,7 @@ class BookDetailsWindow(AccessibleDialog):
             lambda: self._mark_dirty(self.format_combo)
         )
         self.path_edit.textChanged.connect(self._on_path_edit_changed)
+        self.want_to_read_checkbox.toggled.connect(self._commit_want_to_read)
 
         # Combos
         self.author_combo.currentIndexChanged.connect(
@@ -1547,7 +1632,117 @@ class BookDetailsWindow(AccessibleDialog):
         self.series_number_edit.textChanged.connect(
             lambda: self._mark_dirty(self.series_number_edit)
         )
-        self.read_date.dateChanged.connect(lambda: self._mark_dirty(self.read_date))
+        self.read_date.editingFinished.connect(self._commit_read_date)
+        self.read_date.calendarWidget().installEventFilter(self)
+
+    def _read_date_from_field(self):
+        if self.read_date.date() == self._null_read_date:
+            return None
+        qdate = self.read_date.date()
+        return datetime(qdate.year(), qdate.month(), qdate.day()).date()
+
+    def _stored_read_date(self):
+        value = getattr(self.book, "read_date", None)
+        if isinstance(value, str):
+            if not value or value == "2000-01-01":
+                return None
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return None
+        return value or None
+
+    def _revert_read_date(self, stored):
+        self._reverting_read_date = True
+        self.read_date.blockSignals(True)
+        try:
+            if stored:
+                self.read_date.setDate(QDate(stored.year, stored.month, stored.day))
+            else:
+                self.read_date.setDate(self._null_read_date)
+        finally:
+            self.read_date.blockSignals(False)
+            self._reverting_read_date = False
+
+    def _commit_read_date(self):
+        """Save only the read date. Confirm a new date. Do not open Update."""
+        if getattr(self, "_loading_fields", False) or getattr(self, "_reverting_read_date", False):
+            return
+        if getattr(self, "_committing_read_date", False):
+            return
+        calendar = self.read_date.calendarWidget()
+        if calendar is not None and calendar.isVisible():
+            return
+        if self.is_new or not getattr(self.book, "book_id", None):
+            return
+        new_date = self._read_date_from_field()
+        old_date = self._stored_read_date()
+        if new_date == old_date:
+            return
+        self._committing_read_date = True
+        try:
+            if new_date is not None:
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Confirm Read Date",
+                    text=f"Mark '{self.book.title}' as read on {new_date.isoformat()}?",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                )
+                if reply != QMessageBox.Yes:
+                    self._revert_read_date(old_date)
+                    self.set_status(
+                        f"Read date update cancelled for {self.book.title}",
+                        announce=True,
+                    )
+                    return
+            self.book.read_date = new_date
+            self.book_queries.update_many([(self.book.book_id, new_date)])
+            self._data_was_changed = True
+            cleared_want = False
+            if new_date is not None and self.book.want_to_read:
+                self.book.want_to_read = False
+                self.want_to_read_checkbox.blockSignals(True)
+                self.want_to_read_checkbox.setChecked(False)
+                self.want_to_read_checkbox.blockSignals(False)
+                self.book_queries.update_want_to_read(self.book.book_id, False)
+                cleared_want = True
+            if new_date is None:
+                self.set_status(
+                    f"Read date cleared for {self.book.title}", announce=True
+                )
+            elif cleared_want:
+                self.set_status(
+                    f"Read date set for {self.book.title}. Want to read cleared.",
+                    announce=True,
+                )
+            else:
+                self.set_status(
+                    f"Read date set for {self.book.title}", announce=True
+                )
+        finally:
+            self._committing_read_date = False
+
+    def _commit_want_to_read(self):
+        """Save only Want to read. Do not open Update."""
+        if getattr(self, "_loading_fields", False):
+            return
+        if self.is_new or not getattr(self.book, "book_id", None):
+            return
+        checked = self.want_to_read_checkbox.isChecked()
+        if bool(self.book.want_to_read) == checked:
+            return
+        self.book.want_to_read = checked
+        self.book_queries.update_want_to_read(self.book.book_id, checked)
+        self._data_was_changed = True
+        if checked:
+            self.set_status(f"Want to read set for {self.book.title}", announce=True)
+        else:
+            self.set_status(
+                f"Want to read cleared for {self.book.title}", announce=True
+            )
 
     def _mark_dirty(self, widget=None):
         """bd#6: Mark form as having unsaved changes."""
@@ -1622,7 +1817,6 @@ class BookDetailsWindow(AccessibleDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
-        from src.accessibility.shortcuts import BOOK_DETAILS_SHORTCUTS
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
             build_accessible_f1_popup_style,
@@ -1649,22 +1843,33 @@ class BookDetailsWindow(AccessibleDialog):
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
         table.setStyleSheet(build_accessible_f1_popup_style())
-        # Build shortcut list from centralized mapping
+        # Same order as Tab through the form, then the footer buttons.
         shortcut_keys = [
-            ("Alt+" + k, desc)
-            for k, (desc, _) in BOOK_DETAILS_SHORTCUTS.items()
-            if k != "F1"
+            ("Alt+T", "Title"),
+            ("Alt+A", "Author"),
+            ("Alt+I", "Series"),
+            ("Alt+I, then Tab", "Series number"),
+            ("Alt+G", "Genre"),
+            ("Alt+P", "Plot"),
+            ("Alt+Y", "Year"),
+            ("Alt+M", "Time"),
+            ("Alt+R", "Reader"),
+            ("Alt+C", "Collection"),
+            ("Alt+E", "Read date"),
+            ("Alt+K", "Want to read"),
+            ("Alt+H", "Path"),
+            ("Alt+N", "New book"),
+            ("Alt+U", "Update book"),
+            ("Alt+S", "Save book"),
+            ("Alt+D", "Delete book"),
+            ("Alt+W", "Get web info"),
+            ("Alt+Shift+P", "Preview audiobook"),
+            ("Page Up", "Previous book"),
+            ("Page Down", "Next book"),
+            ("Escape", "Close"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show keyboard shortcuts"),
         ]
-        # Add local button shortcuts and status read (not in centralized mapping)
-        shortcut_keys.extend(
-            [
-                ("Alt+N", "New book"),
-                ("Alt+D", "Delete book"),
-                ("Alt+Shift+P", "Preview audiobook"),
-                ("Alt+/", "Read status bar"),
-            ]
-        )
-        shortcut_keys.append(("F1", "Show keyboard shortcuts"))
         shortcut_keys = prepend_help_doc_shortcut(
             get_accessible_shortcuts_list(shortcut_keys)
         )
@@ -1796,6 +2001,8 @@ class BookDetailsWindow(AccessibleDialog):
                     self.added_edit.setText(self.book.date_added.strftime("%Y-%m-%d"))
             else:
                 self.added_edit.setText("")
+            self.listen_progress_edit.setText(self._format_listen_progress())
+            self.want_to_read_checkbox.setChecked(bool(self.book.want_to_read))
             plot_text = canonicalize_plot_comments(self.book.comments or "")
             set_navigable_plain_text(self.comments_edit, plot_text)
             self.plot_review.set_plot_text(plot_text)
@@ -2045,6 +2252,11 @@ class BookDetailsWindow(AccessibleDialog):
         self.book.path = path_text
         self.book.comments = canonicalize_plot_comments(self.comments_edit.toPlainText())
         self.book.read_date = read_date
+        if read_date is not None:
+            self.want_to_read_checkbox.blockSignals(True)
+            self.want_to_read_checkbox.setChecked(False)
+            self.want_to_read_checkbox.blockSignals(False)
+        self.book.want_to_read = self.want_to_read_checkbox.isChecked()
 
         # Save to database
         try:
@@ -2323,15 +2535,13 @@ class BookDetailsWindow(AccessibleDialog):
         # Reader
         self.reader_edit.setReadOnly(read_only)
         # Read date
-        self.read_date.setReadOnly(read_only)
+        self.read_date.setReadOnly(False)
         # Files
         self.files_edit.setReadOnly(read_only)
         # Bitrate
         self.bitrate_edit.setReadOnly(read_only)
         # Size
         self.size_edit.setReadOnly(read_only)
-        # Format
-        self.format_combo.setEnabled(True)
         # Path
         self.path_edit.setReadOnly(read_only)
         # Source
@@ -2409,6 +2619,11 @@ class BookDetailsWindow(AccessibleDialog):
             self.path_edit.clear()
             self.source_edit.clear()
             self.added_edit.setText("")
+            self.listen_progress_edit.clear()
+            self.want_to_read_checkbox.setChecked(False)
+            self.book.want_to_read = False
+            self.book.listen_position_ms = None
+            self.book.listen_file_name = ""
             self.comments_edit.clear()
             self.plot_review.clear()
             self.read_date.setDate(self._null_read_date)
@@ -2452,30 +2667,67 @@ class BookDetailsWindow(AccessibleDialog):
             )
         self._show_book_cover()
 
+    def _cover_side(self) -> int:
+        return self.scaler.get_scaled_size(120)
+
+    def _format_listen_progress(self) -> str:
+        """Show the stored stop point. Empty until playback has started."""
+        ms = getattr(self.book, "listen_position_ms", None)
+        name = (getattr(self.book, "listen_file_name", "") or "").strip()
+        if ms is None and not name:
+            return ""
+        text = ""
+        if ms is not None:
+            total_seconds = max(int(ms), 0) // 1000
+            hours, rem = divmod(total_seconds, 3600)
+            minutes, seconds = divmod(rem, 60)
+            text = f"{hours}:{minutes:02d}:{seconds:02d}"
+        if name:
+            text = f"{text}, {name}" if text else name
+        return text
+
+    def _placeholder_cover(self) -> QPixmap:
+        """Missing-cover picture. graphics/no_book_cover_512x512.png."""
+        from src.accessibility.graphics_paths import resolve_graphics_path
+
+        pixmap = QPixmap(resolve_graphics_path("no_book_cover_512x512.png"))
+        if pixmap.isNull():
+            return QPixmap()
+        side = self._cover_side()
+        return pixmap.scaled(
+            side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+
     def _show_book_cover(self) -> None:
-        """Show embedded art for the current path. Say nothing when it is missing."""
+        """Show embedded art, or the app icon in the same box. Do not announce the icon."""
         from src.core.audio_launcher import read_embedded_cover, resolve_preview_file
 
         if not hasattr(self, "cover_label"):
             return
-        self.cover_label.clear()
-        self.cover_label.hide()
+        side = self._cover_side()
+        self.cover_label.setFixedSize(side, side)
         path_text = self.path_edit.text() if hasattr(self, "path_edit") else ""
         target = resolve_preview_file(
             path_text,
             collection_root=self._preview_collection_root(),
         )
-        if target.path is None:
-            return
-        data = read_embedded_cover(target.path)
         pixmap = QPixmap()
-        if not data or not pixmap.loadFromData(data):
-            return
-        side = self.scaler.get_scaled_size(120)
-        self.cover_label.setPixmap(
-            pixmap.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        )
-        self.cover_label.setAccessibleName("Cover")
+        has_art = False
+        if target.path is not None:
+            data = read_embedded_cover(target.path)
+            if data and pixmap.loadFromData(data):
+                has_art = True
+                pixmap = pixmap.scaled(
+                    side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+        if not has_art:
+            pixmap = self._placeholder_cover()
+            self.cover_label.setAccessibleName("No cover")
+            self.cover_label.setAccessibleDescription("")
+        else:
+            self.cover_label.setAccessibleName("Book cover")
+            self.cover_label.setAccessibleDescription("")
+        self.cover_label.setPixmap(pixmap)
         self.cover_label.show()
 
     def _preview_collection_root(self) -> str:

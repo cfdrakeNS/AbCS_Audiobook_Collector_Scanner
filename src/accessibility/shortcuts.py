@@ -87,10 +87,7 @@ BOOK_DETAILS_SHORTCUTS = {
     "I": ("Series", "series_label_display"),  # View label (QLineEdit) - always accessible
     "G": ("Genre", "genre_label_display"),  # View label (QLineEdit) - always accessible
     "C": ("Collection", "collection_label_display"),  # View label (QLineEdit) - always accessible
-    "F": ("Files", "files_edit"),
-    "B": ("Bitrate", "bitrate_edit"),
-    "Z": ("Size", "size_edit"),
-    "O": ("Format", "format_combo"),  # Alt+O for Format (ensured)
+    "K": ("Want to read", "want_to_read_checkbox"),
     "H": ("Path", "path_edit"),  # From Pat&h label
     "W": ("Get web info", "get_web_details_button"),
     # "U" shortcut handled locally in book_details.py to trigger action
