@@ -95,7 +95,7 @@ Add a new numbered markdown file to that folder and it appears in **All Help Top
 These patterns apply across the application:
 
 - **Menus** — click items on the menu bar (File, Edit, View, Manage, Help). Underlined letters show Alt-key shortcuts if you prefer the keyboard.
-- **Toolbar** — many main-window actions (Import, Find, Preview, Search Web, Statistics, filters) are on the toolbar as well as in menus.
+- **Toolbar** — many main-window actions (Import, Find, Play, Search Web, Statistics, filters) are on the toolbar as well as in menus.
 - **Book table** — click a row to select it; **Ctrl+click** to add or remove rows from a selection; **Shift+click** to select a range. Double-click the **Title** column to open Book Details.
 - **Column headers** — click a header to sort by that column; click again to reverse ascending/descending order.
 - **Buttons** — **Save**, **Cancel**, **Browse**, **Import**, and similar controls work with a normal click.
@@ -117,7 +117,7 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 |-------|----------------|
 | [Import (Folder Scan)](02_import.md) | Scan audiobook folders and import from audio file tags |
 | [Find and Filters](03_find_filters.md) | Search, filter, and sort the main book list |
-| [Book Details](04_book_details.md) | View or edit one book; preview inside AbCS; add a new book by hand |
+| [Book Details](04_book_details.md) | View or edit one book; play inside AbCS; add a new book by hand |
 | [Update](05_update.md) | Change fields on several selected books at once |
 | [Collections](06_collections.md) | Create and manage collections; filter by collection |
 | [Web Metadata Fetch](07_web_metadata.md) | Look up plot, series, and other details online |

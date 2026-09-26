@@ -1254,12 +1254,27 @@ class BookDetailsWindow(AccessibleDialog):
         self.listen_progress_edit.setFocusPolicy(Qt.StrongFocus)
         self.listen_progress_edit.setAccessibleName("Listen progress")
         self.listen_progress_edit.setAccessibleDescription(
-            "Where playback stopped. Empty until the book has been started."
+            "Listening time so far, with percent of book length when length is known."
         )
         listen_label = QLabel("Listen progress:")
         listen_label.setBuddy(self.listen_progress_edit)
+        self.clear_listen_progress_button = QPushButton("Clear")
+        self.clear_listen_progress_button.setAccessibleName("Clear listen progress")
+        self.clear_listen_progress_button.setAccessibleDescription(
+            "Clear the saved listening position for this book"
+        )
+        self.clear_listen_progress_button.setAutoDefault(False)
+        self.clear_listen_progress_button.setDefault(False)
+        self.clear_listen_progress_button.clicked.connect(
+            self._on_clear_listen_progress_clicked
+        )
+        listen_fields = QHBoxLayout()
+        listen_fields.setContentsMargins(0, 0, 0, 0)
+        listen_fields.setSpacing(8)
+        listen_fields.addWidget(self.listen_progress_edit, 1)
+        listen_fields.addWidget(self.clear_listen_progress_button)
         right_grid.addWidget(listen_label, 3, 0, label_align)
-        right_grid.addWidget(self.listen_progress_edit, 3, 1)
+        right_grid.addLayout(listen_fields, 3, 1)
 
         self.want_to_read_checkbox = QCheckBox()
         self.want_to_read_checkbox.setAccessibleName("Want to read")
@@ -1379,8 +1394,8 @@ class BookDetailsWindow(AccessibleDialog):
         )  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.get_web_details_button)
 
-        self.preview_button = QPushButton("Preview")
-        self.preview_button.setAccessibleName("Preview audiobook")
+        self.preview_button = QPushButton("Play")
+        self.preview_button.setAccessibleName("Play audiobook")
         self.preview_button.setAccessibleDescription(
             "Play this book inside AbCS - Alt+Shift+P"
         )
@@ -1411,7 +1426,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.setTabOrder(self.cover_label, self.year_spin)
         self.setTabOrder(self.year_spin, self.time_edit)
         self.setTabOrder(self.time_edit, self.listen_progress_edit)
-        self.setTabOrder(self.listen_progress_edit, self.files_edit)
+        self.setTabOrder(self.listen_progress_edit, self.clear_listen_progress_button)
+        self.setTabOrder(self.clear_listen_progress_button, self.files_edit)
         self.setTabOrder(self.files_edit, self.format_combo)
         self.setTabOrder(self.format_combo, self.bitrate_edit)
         self.setTabOrder(self.bitrate_edit, self.reader_edit)
@@ -1541,7 +1557,11 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.listen_progress_edit: (
                     "Listen progress",
-                    "Where playback stopped. Empty until the book has been started.",
+                    "Listening time so far, with percent of book length when length is known.",
+                ),
+                self.clear_listen_progress_button: (
+                    "Clear listen progress",
+                    "Clear the saved listening position for this book",
                 ),
                 self.want_to_read_checkbox: (
                     "Want to read",
@@ -1892,6 +1912,25 @@ class BookDetailsWindow(AccessibleDialog):
         self._commit_read_date()
         self.read_date.setFocus(Qt.TabFocusReason)
 
+    def _on_clear_listen_progress_clicked(self):
+        """Clear saved listening position (works in view and edit)."""
+        if self.is_new or self.book is None or self.book.book_id is None:
+            self.set_status("No listening position to clear.", announce=True)
+            return
+        has_progress = (
+            getattr(self.book, "listen_position_ms", None) is not None
+            or bool((getattr(self.book, "listen_file_name", "") or "").strip())
+        )
+        if not has_progress:
+            self.set_status("No listening position to clear.", announce=True)
+            return
+        self.book.listen_position_ms = None
+        self.book.listen_file_name = ""
+        self.book_queries.update_listen_progress(self.book.book_id, None, "")
+        self.listen_progress_edit.clear()
+        self.set_status("Listening position cleared.", announce=True)
+        self.clear_listen_progress_button.setFocus(Qt.TabFocusReason)
+
     def _validate_year_on_focus_out(self):
         """Warn on year outside Preferences range (masked or classic)."""
         if getattr(self, "_loading_fields", False):
@@ -2049,6 +2088,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.book_queries.update_many([(self.book.book_id, new_date)])
             self._data_was_changed = True
             cleared_want = False
+            cleared_listen = False
             if new_date is not None and self.book.want_to_read:
                 self.book.want_to_read = False
                 self.want_to_read_checkbox.blockSignals(True)
@@ -2056,19 +2096,37 @@ class BookDetailsWindow(AccessibleDialog):
                 self.want_to_read_checkbox.blockSignals(False)
                 self.book_queries.update_want_to_read(self.book.book_id, False)
                 cleared_want = True
+            if new_date is not None and (
+                getattr(self.book, "listen_position_ms", None) is not None
+                or bool((getattr(self.book, "listen_file_name", "") or "").strip())
+            ):
+                self.book.listen_position_ms = None
+                self.book.listen_file_name = ""
+                self.book_queries.update_listen_progress(self.book.book_id, None, "")
+                if hasattr(self, "listen_progress_edit"):
+                    self.listen_progress_edit.clear()
+                cleared_listen = True
             if new_date is None:
                 self.set_status(
                     f"Read date cleared for {self.book.title}", announce=True
                 )
-            elif cleared_want:
-                self.set_status(
-                    f"Read date set for {self.book.title}. Want to read cleared.",
-                    announce=True,
-                )
             else:
-                self.set_status(
-                    f"Read date set for {self.book.title}", announce=True
-                )
+                extras = []
+                if cleared_want:
+                    extras.append("Want to read cleared")
+                if cleared_listen:
+                    extras.append("Listening position cleared")
+                if extras:
+                    self.set_status(
+                        f"Read date set for {self.book.title}. "
+                        + ". ".join(extras)
+                        + ".",
+                        announce=True,
+                    )
+                else:
+                    self.set_status(
+                        f"Read date set for {self.book.title}", announce=True
+                    )
         finally:
             self._committing_read_date = False
 
@@ -2229,7 +2287,7 @@ class BookDetailsWindow(AccessibleDialog):
             ("Alt+S", "Save book"),
             ("Alt+D", "Delete book"),
             ("Alt+W", "Get web info"),
-            ("Alt+Shift+P", "Preview audiobook"),
+            ("Alt+Shift+P", "Play audiobook"),
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
             ("Escape", "Close"),
@@ -2979,6 +3037,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.read_date.setReadOnly(False)
         if getattr(self, "clear_read_date_button", None) is not None:
             self.clear_read_date_button.setEnabled(True)
+        if getattr(self, "clear_listen_progress_button", None) is not None:
+            self.clear_listen_progress_button.setEnabled(not self.is_new)
         # Files
         self.files_edit.setReadOnly(read_only)
         # Bitrate
@@ -3109,7 +3169,7 @@ class BookDetailsWindow(AccessibleDialog):
             )
         else:
             self.preview_button.setAccessibleDescription(
-                "Preview is unavailable because the path is missing or has no playable file."
+                "Play is unavailable because the path is missing or has no playable file."
             )
         self._show_book_cover()
 
@@ -3117,19 +3177,27 @@ class BookDetailsWindow(AccessibleDialog):
         return self.scaler.get_scaled_size(120)
 
     def _format_listen_progress(self) -> str:
-        """Show the stored stop point. Empty until playback has started."""
+        """Show stored stop time and percent of book length when known."""
         ms = getattr(self.book, "listen_position_ms", None)
-        name = (getattr(self.book, "listen_file_name", "") or "").strip()
-        if ms is None and not name:
+        if ms is None:
             return ""
-        text = ""
-        if ms is not None:
-            total_seconds = max(int(ms), 0) // 1000
-            hours, rem = divmod(total_seconds, 3600)
-            minutes, seconds = divmod(rem, 60)
+        total_seconds = max(int(ms), 0) // 1000
+        hours, rem = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        if hours:
             text = f"{hours}:{minutes:02d}:{seconds:02d}"
-        if name:
-            text = f"{text}, {name}" if text else name
+        else:
+            text = f"{minutes}:{seconds:02d}"
+        try:
+            book_hours = int(getattr(self.book, "time_hours", 0) or 0)
+            book_minutes = int(getattr(self.book, "time_minutes", 0) or 0)
+        except (TypeError, ValueError):
+            book_hours = 0
+            book_minutes = 0
+        total_ms = (book_hours * 3600 + book_minutes * 60) * 1000
+        if total_ms > 0:
+            percent = min(100, int(round(100.0 * max(int(ms), 0) / total_ms)))
+            text = f"{text} ({percent}%)"
         return text
 
     def _placeholder_cover(self) -> QPixmap:
@@ -3222,7 +3290,7 @@ class BookDetailsWindow(AccessibleDialog):
         from src.ui.preview_window import show_preview
 
         if self.is_new:
-            self.set_status("Save the book before preview.", announce=True)
+            self.set_status("Save the book before playing.", announce=True)
             return
         ok, message = show_preview(
             self,
@@ -3235,15 +3303,19 @@ class BookDetailsWindow(AccessibleDialog):
             series_number=self._preview_series_number(),
             length_text=self.time_edit.text() if hasattr(self, "time_edit") else "",
             collection_root=self._preview_collection_root(),
+            book=self.book if not self.is_new else None,
+            db=self.db,
         )
         if ok:
+            if hasattr(self, "listen_progress_edit"):
+                self.listen_progress_edit.setText(self._format_listen_progress())
             self.preview_button.setFocus(Qt.TabFocusReason)
             return
         exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
-            title="Preview",
+            title="Play",
             text=message,
         )
         self.set_status(message, announce=True)

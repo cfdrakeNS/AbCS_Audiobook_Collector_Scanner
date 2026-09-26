@@ -29,6 +29,7 @@ Search Web / Alt+W is especially wrong: `on_get_web_info_clicked` runs if `curre
 - **Escape** (clear selection)
 - Selection keys (Shift+arrows, etc.)
 - **Alt+L**, **Alt+/**, **F1** / **Shift+F1**
+- F1 while selecting lists only selection actions (Update, Delete, web fetch, extend selection, Escape, copy, status) — **not** column jump keys
 
 ## Disable and intercept
 
@@ -51,7 +52,7 @@ Disabled toolbar items stay visible. Blocked shortcuts announce via `set_status(
 - Shortcut handlers in `MAIN_WINDOW_SHORTCUTS` for N/I/F/P/R/splash/preferences: early return + announce.
 - `on_get_web_info_clicked`: if `len(selected_book_ids) >= 2` and not duplicate mode, run batch fetch. Never open single-book web fetch for the focused row while 2+ are selected. No main-window Alt+B.
 - `announce_selection()` uses `set_status(..., announce=True)` so JAWS/NVDA speak the selection line. Tests must assert that flag. Checking only `currentMessage()` does not prove speech.
-- F1 while selecting lists live shortcuts only (Alt+W, Update, Delete, Shift+arrows, Escape, column jumps, Alt+L, Alt+/).
+- F1 while selecting lists live shortcuts only (Alt+W, Update, Delete, Shift+arrows, Escape, Ctrl+C, Alt+/). No Alt+1–7 or Alt+L column/list jumps.
 
 Tests: `test/test_main_window_menus_shortcuts.py` — navigation actions disabled while selected; Search Web and footer Web fetch stay on; Alt+W with 2+ selected starts batch; one selected book does not batch; selection requests status speech. Help: Alt+W is one book or the selection.
 
@@ -61,6 +62,7 @@ Tests: `test/test_main_window_menus_shortcuts.py` — navigation actions disable
 
 1. Select two books. Toolbar Add/Import/Find/Statistics/Preferences/filters disabled. Search Web stays enabled. Status is **spoken** and explains Escape.
 2. Alt+W, Search Web, and footer Web fetch start **batch** fetch. Ctrl+F / Ctrl+I / Ctrl+N do not open windows; status announces Escape.
-3. Alt+U, Alt+D, F1, Alt+/ still work. F1 during selection omits blocked shortcuts.
+3. Alt+U, Alt+D, F1, Alt+/ still work. F1 during selection omits column jumps and blocked shortcuts.
 4. Escape restores the toolbar. With no multi-select, Alt+W is one book again.
 5. Duplicate mode unchanged.
+6. Menus: arrow through disabled items (same list every time); JAWS/NVDA say the item is unavailable/disabled.

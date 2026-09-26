@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QStatusBar,
@@ -41,6 +42,7 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 from src.accessibility.theme_manager import ThemeManager
+from src.ui.table_clipboard import copy_plain_text
 from src.database import (
     DatabaseManager,
     AuthorQueries,
@@ -141,8 +143,9 @@ class NameListWindow(AccessibleDialog):
 
     @staticmethod
     def _table_focus_policy_for_find_filter(has_search: bool) -> Qt.FocusPolicy:
-        # ClickFocus: mouse and Alt+L / setFocus still work; Tab skips the list.
-        return Qt.NoFocus if has_search else Qt.ClickFocus
+        # StrongFocus: Tab reaches the list and Ctrl+C works after a find.
+        # (has_search kept for call-site compatibility; policy no longer changes.)
+        return Qt.StrongFocus
 
     def _sync_table_focus_for_find_filter(self, has_search: bool) -> None:
         if self.is_collection_mode:
@@ -150,8 +153,7 @@ class NameListWindow(AccessibleDialog):
         self.table.setFocusPolicy(
             self._table_focus_policy_for_find_filter(has_search)
         )
-        if has_search and self.table.hasFocus():
-            self.find_edit.setFocus(Qt.OtherFocusReason)
+        # Do not steal focus back to Find when the list is focused during a filter.
 
     COL_NAME = 0
     COL_ACTIVE = 1
@@ -315,10 +317,7 @@ class NameListWindow(AccessibleDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setTabKeyNavigation(False)
-        if self.is_collection_mode:
-            self.table.setFocusPolicy(Qt.StrongFocus)
-        else:
-            self.table.setFocusPolicy(Qt.ClickFocus)
+        self.table.setFocusPolicy(Qt.StrongFocus)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
         vh = self.table.verticalHeader()
@@ -352,6 +351,8 @@ class NameListWindow(AccessibleDialog):
         # since QTableWidget doesn't work directly with QSortFilterProxyModel
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._on_table_context_menu)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -439,8 +440,8 @@ class NameListWindow(AccessibleDialog):
     def _apply_tab_order(self):
         """Apply tab order safely for current mode and visible controls.
 
-        Author/series/genre: Tab skips the list table (use Alt+L). Find, Name, buttons only.
-        Collection: Tab includes the list, then editor controls and buttons.
+        Author/series/genre: Find, list, Name, then buttons.
+        Collection: list, editor controls, then buttons.
         """
         chain = []
 
@@ -453,6 +454,7 @@ class NameListWindow(AccessibleDialog):
         else:
             if self.find_edit.isVisible() and self.find_edit.isEnabled():
                 chain.append(self.find_edit)
+            chain.append(self.table)
             if self.name_edit.isVisible() and self.name_edit.isEnabled():
                 chain.append(self.name_edit)
 
@@ -546,19 +548,31 @@ class NameListWindow(AccessibleDialog):
 
         if source == self.table and event.type() == QEvent.KeyPress:
             key = event.key()
+            if event.matches(QKeySequence.Copy):
+                if self._copy_current_name():
+                    event.accept()
+                    return True
             if key in (Qt.Key_Return, Qt.Key_Enter):
                 event.accept()
                 return True
             if key == Qt.Key_Tab and not (event.modifiers() & Qt.ShiftModifier):
-                next_footer_button = self.edit_button
-                for button in (
-                    self.edit_button,
-                    self.save_button,
-                ):
-                    if button is not None and button.isVisible() and button.isEnabled():
-                        next_footer_button = button
-                        break
-                next_footer_button.setFocus(Qt.TabFocusReason)
+                # Leave the list for the name field (or first footer button).
+                if self.name_edit.isVisible() and self.name_edit.isEnabled():
+                    self.name_edit.setFocus(Qt.TabFocusReason)
+                else:
+                    next_footer_button = self.edit_button
+                    for button in (
+                        self.edit_button,
+                        self.save_button,
+                    ):
+                        if (
+                            button is not None
+                            and button.isVisible()
+                            and button.isEnabled()
+                        ):
+                            next_footer_button = button
+                            break
+                    next_footer_button.setFocus(Qt.TabFocusReason)
                 return True
             if key in (Qt.Key_Backtab, Qt.Key_Tab) and (
                 event.modifiers() & Qt.ShiftModifier
@@ -1118,6 +1132,7 @@ class NameListWindow(AccessibleDialog):
             ("Alt+M", "Name edit"),
             ("Alt+E", "Edit selected row"),
             ("Alt+L", "Jump to list"),
+            ("Ctrl+C", "Copy selected name"),
             ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
             (
                 ("Alt+F", "Clear find and start a new search")
@@ -1381,9 +1396,51 @@ class NameListWindow(AccessibleDialog):
             return True
         return search in cls._normalize_find_value(name)
 
+    def _copy_current_name(self) -> bool:
+        """Copy the selected name to the clipboard."""
+        row = self.table.currentRow()
+        if row < 0:
+            return False
+        name_item = self.table.item(row, self.COL_NAME)
+        if name_item is None:
+            return False
+        if not copy_plain_text(name_item.text()):
+            return False
+        self.set_status("Copied.", announce=False)
+        return True
+
+    def _on_table_context_menu(self, pos) -> None:
+        """Right-click / Menu key: Copy the name under the pointer."""
+        item = self.table.itemAt(pos)
+        if item is None:
+            return
+        self.table.setCurrentCell(item.row(), self.COL_NAME)
+        menu = QMenu(self.table)
+        menu.setAccessibleName(f"{self.entity_singular} list menu")
+        copy_action = menu.addAction("Copy")
+        copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.setEnabled(item.text() != "")
+        chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
+        if chosen == copy_action:
+            self._copy_current_name()
+
     def _route_table_typing_to_find(self, event) -> bool:
+        """Send plain typing from the list into Find; leave shortcuts alone.
+
+        Ctrl/Alt/Meta chords (for example Ctrl+C) must stay on the list.
+        Modifier-only key presses must not steal focus back to Find.
+        """
+        if event.modifiers() & (
+            Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier
+        ):
+            return False
         key = event.key()
         if key in (
+            Qt.Key_Control,
+            Qt.Key_Shift,
+            Qt.Key_Alt,
+            Qt.Key_Meta,
+            Qt.Key_AltGr,
             Qt.Key_Return,
             Qt.Key_Enter,
             Qt.Key_Escape,
@@ -1400,14 +1457,20 @@ class NameListWindow(AccessibleDialog):
         ):
             return False
 
+        typed = event.text()
+        if key not in (Qt.Key_Backspace, Qt.Key_Delete) and (
+            not typed or not typed.isprintable()
+        ):
+            return False
+
         self.find_edit.setFocus(Qt.OtherFocusReason)
         current = self.find_edit.text()
         if key == Qt.Key_Backspace:
             self.find_edit.setText(current[:-1])
         elif key == Qt.Key_Delete:
             self.find_edit.setText("")
-        elif event.text():
-            self.find_edit.setText(current + event.text())
+        else:
+            self.find_edit.setText(current + typed)
         event.accept()
         return True
 

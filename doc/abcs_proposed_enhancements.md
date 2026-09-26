@@ -10,13 +10,14 @@ AbCS will stay focused on **managing your audiobook collection** with **full scr
 
 ## Planned for version 3 (next major update)
 
-Already in tester build **2.18:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted. Name-list merge on duplicate (Phase 13) is in 2.18: when you rename an author, series, or genre onto an existing name, AbCS asks whether to move that name’s books. Preview and Book Details show a picture when that picture is stored inside the audio file. Book Details layout is tester accepted: cover on the right, Want to read and read date save without Update, and a read date clears Want to read. The main list can show only books marked want to read (View → Want to read, or Alt+T). Edit → Add to want to read marks the focused book or the selection. The mark stays when the filter is turned off. Import Detail uses the same two-column layout as Book Details (no cover), with **Keep** (Alt+K) to add one reviewed book and move on, and **Discard** (Alt+D).
+Already in tester build **2.19:** web fetch background thread, batch web fetch, import tag mapping, check for updates, keep current book on sort/filter, the first-start series-number upgrade, and series number on Book Details. Selection-mode toolbar and leading-article title compare are also in. Date Read and Added since calendars show days 10 through 31. Collection library root (Phase 11) and in-app audiobook preview (Phase 12) are tester accepted. Name-list merge on duplicate (Phase 13) is in 2.18: when you rename an author, series, or genre onto an existing name, AbCS asks whether to move that name’s books. Play and Book Details show a picture when that picture is stored inside the audio file. Book Details layout is tester accepted: cover on the right, Want to read and read date save without Update, and a read date clears Want to read. The main list can show only books marked want to read (View → Want to read, or Alt+T). Edit → Add to want to read marks the focused book or the selection. The mark stays when the filter is turned off. Import Detail uses the same two-column layout as Book Details (no cover), with **Keep** (Alt+K) to add one reviewed book and move on, and **Discard** (Alt+D). The Play window supports next/previous file, seek, rewind/fast-forward, one speed for every book, resume from the saved position, and an In progress filter. Statistics includes Want to Read and In Progress counts.
 
 Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **Full player** | Next and previous file, fast-forward and rewind, one speed for every book, resume from the saved position, and a main-list filter for books in progress. |
+| **Path health report** *(F01, next)* | Manage list of books whose stored file path is missing or no longer on disk. |
+| **Want to read and playing filter** | One View filter that shows only books marked Want to read, or in progress (playing), or both. |
 | **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. |
 | **Help review** | Last. Help topics match the finished windows. Unused topics are removed. Section names do not start with “Steps”. |
 | **First-start screen reader message** | The first time AbCS starts with a screen reader running, Zoom is set to Normal. It speaks once that text size is Normal, and that a different size is chosen in Preferences, Theme and Zoom. |
@@ -43,14 +44,12 @@ Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **Path health report** | Books whose file path no longer exists on disk. |
 | **Export library to spreadsheet** | Export book list to CSV — reverse of Import Book List. |
 | **Missing info filters** | Show only books with no plot, cover, rating, or path. |
 | **Mark several books Want to Read** | Bulk Want to Read on the main list. |
 | **Want to Read during import** | Set Want to Read in Import Detail. |
 | **More bulk update options** | Update Want to Read, reader, or year for many books. |
 | **Backup reminder** | Gentle reminder if you have not backed up recently. |
-| **Richer statistics** | Counts for Want to Read, average rating, covers, etc. |
 | **Filter by narrator** | Show only books read by a chosen narrator. |
 | **Export / import settings** | Save preferences to a file for another computer. |
 | **Import / Preferences toolbars** | Labeled action toolbars for common actions. |
@@ -70,7 +69,6 @@ Still planned for v3:
 
 ## What we are not planning
 
-- **Full in-app library player** — Preview plays one book inside AbCS (Play/Pause). There is no playlist or listen-from-here player.
 - **Automatic move of all files on import** — organizing on disk stays optional and deferred.
 - **Cloud sync or online library** — AbCS remains local.
 - **Mac installer** — macOS from source (see INSTALL.md).
@@ -86,4 +84,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.18**. Phases 1–4 and 6–13 are in 2.18 (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Preview cover, the Book Details picture, the new columns, the Book Details layout, Want to read, and Import Detail layout are done. Next, in order: full player, optional view-mode, then help last. Non-modal fetch, ratings, tags, and web cover files are out of scope for v3. Library-wide fuzzy name scan deferred.
+**Status:** Version 3 in progress — tester build **2.19**. Phases 1–4 and 6–13 are in (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Play cover, the Book Details picture, the new columns, the Book Details layout, Want to read, Import Detail layout, the full Play player, and Statistics Want to Read / In Progress are done. Next, in order: Path health report (F01), Want to read and playing filter, optional view-mode, then help last. Non-modal fetch, ratings, tags, and web cover files are out of scope for v3. Library-wide fuzzy name scan deferred. Changes since 2.14: [release_notes_2.19.md](release_notes_2.19.md).

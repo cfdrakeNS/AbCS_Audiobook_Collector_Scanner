@@ -70,6 +70,32 @@ def test_resolve_preview_single_file_and_unsupported(tmp_path):
     assert "recognized audiobook" in bad.error
 
 
+def test_parse_tag_number_and_sort_key(tmp_path):
+    from src.core.audio_launcher import parse_tag_number, list_audio_in_folder
+
+    assert parse_tag_number("4/24") == 4
+    assert parse_tag_number(3) == 3
+    assert parse_tag_number(None) is None
+
+    folder = tmp_path / "tracks"
+    folder.mkdir()
+    late_name = folder / "10 Chapter.mp3"
+    early_name = folder / "02 Chapter.mp3"
+    late_name.write_bytes(b"x")
+    early_name.write_bytes(b"x")
+    from mutagen.id3 import ID3, TRCK
+
+    tags = ID3()
+    tags.add(TRCK(encoding=3, text=["10"]))
+    tags.save(late_name)
+    tags = ID3()
+    tags.add(TRCK(encoding=3, text=["2"]))
+    tags.save(early_name)
+
+    ordered = list_audio_in_folder(folder)
+    assert ordered == [early_name, late_name]
+
+
 def test_resolve_preview_folder_first_file_then_nested(tmp_path):
     folder = tmp_path / "album"
     folder.mkdir()
@@ -94,6 +120,21 @@ def test_resolve_preview_folder_first_file_then_nested(tmp_path):
     empty_found = resolve_preview_file(str(empty))
     assert empty_found.path is None
     assert "no recognized audiobook" in empty_found.error
+
+
+def test_resolve_preview_playlist_resumes_named_file(tmp_path):
+    from src.core.audio_launcher import resolve_preview_playlist
+
+    folder = tmp_path / "book"
+    folder.mkdir()
+    first = folder / "a.mp3"
+    second = folder / "b.mp3"
+    first.write_bytes(b"x")
+    second.write_bytes(b"x")
+    playlist = resolve_preview_playlist(str(folder), listen_file_name="b.mp3")
+    assert playlist.folder_mode is True
+    assert playlist.path == second
+    assert playlist.start_index == 1
 
 
 def test_resolve_preview_uses_collection_root_not_import_path(tmp_path):
@@ -162,13 +203,30 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
         def __init__(self):
             self.playbackStateChanged = DummySignal()
             self.errorOccurred = DummySignal()
+            self.mediaStatusChanged = DummySignal()
+            self.positionChanged = DummySignal()
             self._state = 0
+            self._position = 0
+            self._duration = 0
+            self._rate = 1.0
 
         def setAudioOutput(self, *_args):
             return None
 
         def setSource(self, *_args):
             return None
+
+        def setPlaybackRate(self, rate):
+            self._rate = rate
+
+        def setPosition(self, position):
+            self._position = position
+
+        def position(self):
+            return self._position
+
+        def duration(self):
+            return self._duration
 
         def play(self):
             self._state = 1
@@ -207,17 +265,176 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
 
     preview = preview_mod._open_preview
     assert preview is not None
+    from PySide6.QtCore import Qt
+
     assert preview.title_label.text() == "Title: A Maiden's Grave"
     assert preview.author_label.text() == "Author: Jeffrey Deaver"
     assert preview.series_label.text() == "Series: Lincoln Rhyme - 01"
+    assert preview.series_label.isVisible()
     assert preview.length_label.text() == "Length: 10:35"
-    from PySide6.QtCore import Qt
-
+    assert preview.play_pause_button.text() == ""
+    assert preview.position_label.alignment() & int(Qt.AlignHCenter)
+    assert hasattr(preview, "position_slider")
+    assert preview.position_slider.accessibleName() == "Seek in current file"
     assert preview.cover_label.isHidden()
     assert preview.cover_label.focusPolicy() == Qt.NoFocus
+    assert preview.part_label.isHidden()
     assert "cover" not in preview.status_bar.currentMessage().lower()
     if preview_mod._open_preview is not None:
         preview_mod._open_preview.close()
     ok, message = show_preview(None, "", ui_scaler, theme_manager)
     assert ok is False
     assert "No file path" in message
+
+
+def test_preview_next_returns_focus_to_play_pause(
+    tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import Qt
+
+    from src.ui.preview_window import PreviewWindow
+
+    folder = tmp_path / "tracks"
+    folder.mkdir()
+    first = folder / "01.mp3"
+    second = folder / "02.mp3"
+    first.write_bytes(b"a")
+    second.write_bytes(b"b")
+
+    class DummySignal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+    class FakeAudio:
+        pass
+
+    class FakePlayer:
+        class PlaybackState:
+            StoppedState = 0
+            PlayingState = 1
+            PausedState = 2
+
+        def __init__(self):
+            self.playbackStateChanged = DummySignal()
+            self.errorOccurred = DummySignal()
+            self.mediaStatusChanged = DummySignal()
+            self.positionChanged = DummySignal()
+            self.durationChanged = DummySignal()
+            self._state = 0
+            self._position = 0
+            self._duration = 60_000
+            self._rate = 1.0
+
+        def setAudioOutput(self, *_args):
+            return None
+
+        def setSource(self, *_args):
+            return None
+
+        def setPlaybackRate(self, rate):
+            self._rate = rate
+
+        def setPosition(self, position):
+            self._position = position
+
+        def position(self):
+            return self._position
+
+        def duration(self):
+            return self._duration
+
+        def play(self):
+            self._state = 1
+
+        def pause(self):
+            self._state = 2
+
+        def stop(self):
+            self._state = 0
+
+        def playbackState(self):
+            return self._state
+
+    monkeypatch.setattr(
+        "src.ui.preview_window.exec_styled_message_box",
+        lambda *_args, **_kwargs: 0,
+    )
+    window = PreviewWindow(
+        None,
+        ui_scaler,
+        theme_manager,
+        player_types=(FakePlayer, FakeAudio),
+    )
+    qtbot.addWidget(window)
+    window.show()
+    ok, _message = window.play_playlist(
+        SimpleNamespace(
+            files=(first, second),
+            start_index=0,
+            folder_mode=True,
+            error="",
+        ),
+        book_title="Focus Book",
+    )
+    assert ok is True
+    window.next_button.setFocus(Qt.OtherFocusReason)
+    assert window.focusWidget() is window.next_button
+    window.on_next()
+    # Status announce briefly focuses the status bar, then restores Play.
+    qtbot.waitUntil(
+        lambda: window.focusWidget() is window.play_pause_button,
+        timeout=1500,
+    )
+    assert window._playlist_index == 1
+    assert not window.next_button.isEnabled()
+    assert window.previous_button.isEnabled()
+    assert window.part_label.isVisible()
+    assert window.part_label.text() == "Part 2 / 2"
+    # Tab order: Previous -> Rewind -> Play -> Forward -> Next.
+    assert window.previous_button.nextInFocusChain() is window.rewind_button
+    assert window.rewind_button.nextInFocusChain() is window.play_pause_button
+    assert window.play_pause_button.nextInFocusChain() is window.forward_button
+    assert window.forward_button.nextInFocusChain() is window.next_button
+    window.position_slider.setFocus(Qt.TabFocusReason)
+    qtbot.wait(20)
+    path = []
+    for _ in range(8):
+        fw = window.focusWidget()
+        path.append(fw)
+        window.focusNextChild()
+    assert window.rewind_button in path
+    assert window.forward_button in path
+    assert window.previous_button in path
+    # Next is disabled on the last file, so Tab skips it (expected).
+    assert window.next_button not in path
+    # Custom Tab path: Previous -> Rewind -> Play -> Forward.
+    window.previous_button.setFocus(Qt.TabFocusReason)
+    assert window._move_preview_focus(True) is True
+    assert window.focusWidget() is window.rewind_button
+    assert window._move_preview_focus(True) is True
+    assert window.focusWidget() is window.play_pause_button
+    assert window._move_preview_focus(True) is True
+    assert window.focusWidget() is window.forward_button
+    # Arrow keys also visit Rewind and Forward in the transport row.
+    window.previous_button.setFocus(Qt.TabFocusReason)
+    assert window._move_transport_focus(True) is True
+    assert window.focusWidget() is window.rewind_button
+    assert window._move_transport_focus(True) is True
+    assert window.focusWidget() is window.play_pause_button
+    assert window._move_transport_focus(True) is True
+    assert window.focusWidget() is window.forward_button
+    # Activating Rewind must restore focus to Rewind (not stay on status / Play).
+    window.rewind_button.setFocus(Qt.TabFocusReason)
+    window.on_rewind()
+    qtbot.waitUntil(
+        lambda: window.focusWidget() is window.rewind_button,
+        timeout=1500,
+    )
+    window.position_slider.setEnabled(True)
+    window.position_slider.setRange(0, 60_000)
+    window.position_slider.setValue(15_000)
+    window._on_slider_released()
+    assert window._player.position() == 15_000
+    window.close()

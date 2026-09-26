@@ -98,6 +98,9 @@ class BookQueries:
         if filter_criteria.want_to_read_filter == "Want to Read":
             query += " AND b.want_to_read = 1"
 
+        if filter_criteria.in_progress_filter == "In Progress":
+            query += " AND b.listen_position_ms IS NOT NULL"
+
         # Plot synopsis filter
         if filter_criteria.plot_filter == "With Plot":
             query += " AND LENGTH(TRIM(COALESCE(b.comments, ''))) >= ?"
@@ -279,6 +282,48 @@ class BookQueries:
         self.db.execute(query, params)
         if commit:
             self.db.connect().commit()
+
+    def update_listen_progress(
+        self,
+        book_id: int,
+        listen_position_ms: int | None,
+        listen_file_name: str = "",
+        commit: bool = True,
+    ) -> None:
+        """Save or clear Preview resume position for one book."""
+        query = """
+            UPDATE books SET
+                listen_position_ms = ?,
+                listen_file_name = ?
+            WHERE book_id = ?
+        """
+        self.db.execute(
+            query,
+            (
+                listen_position_ms,
+                (listen_file_name or None),
+                book_id,
+            ),
+        )
+        if commit:
+            self.db.connect().commit()
+
+    def bulk_clear_listen_progress(self, book_ids: List[int]) -> int:
+        """Clear resume position for many books in one write."""
+        if not book_ids:
+            return 0
+        for chunk in self._book_id_chunks(book_ids):
+            placeholders = ",".join("?" * len(chunk))
+            self.db.execute(
+                f"""
+                UPDATE books
+                SET listen_position_ms = NULL, listen_file_name = NULL
+                WHERE book_id IN ({placeholders})
+                """,
+                tuple(chunk),
+            )
+        self.db.connect().commit()
+        return len(book_ids)
 
     def update_many(
         self,
@@ -921,6 +966,13 @@ class StatisticsQueries:
             "SELECT COUNT(*) FROM books WHERE read_date IS NOT NULL"
         )[0]
         stats.books_unread = stats.total_books - stats.books_read
+
+        stats.books_want_to_read = self.db.fetch_one(
+            "SELECT COUNT(*) FROM books WHERE want_to_read = 1"
+        )[0]
+        stats.books_in_progress = self.db.fetch_one(
+            "SELECT COUNT(*) FROM books WHERE listen_position_ms IS NOT NULL"
+        )[0]
 
         # Total listening time (all books)
         time_row = self.db.fetch_one(

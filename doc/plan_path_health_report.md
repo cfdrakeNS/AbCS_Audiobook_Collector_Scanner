@@ -1,8 +1,8 @@
-# Path Health Report — Future Improvement Plan
+# Path Health Report — Version 3 Phase 24 / F01
 
-**Status:** Planned (not yet implemented)  
+**Status:** Planned (next after Phase 23 Statistics)  
 **Created:** June 2026  
-**Related:** [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
+**Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
 
 ---
 

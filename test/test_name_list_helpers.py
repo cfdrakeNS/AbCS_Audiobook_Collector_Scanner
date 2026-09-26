@@ -87,11 +87,11 @@ def test_row_visible_for_live_find_does_not_use_enter_token_matching():
         "Stephen King",
     )
 
-def test_table_focus_policy_no_focus_while_searching():
+def test_table_focus_policy_strong_focus_during_find():
     from PySide6.QtCore import Qt
 
-    assert NameListWindow._table_focus_policy_for_find_filter(True) == Qt.NoFocus
-    assert NameListWindow._table_focus_policy_for_find_filter(False) == Qt.ClickFocus
+    assert NameListWindow._table_focus_policy_for_find_filter(True) == Qt.StrongFocus
+    assert NameListWindow._table_focus_policy_for_find_filter(False) == Qt.StrongFocus
 
 def test_best_match_row_from_entries_prefers_exact_over_collaborative():
     entries = [

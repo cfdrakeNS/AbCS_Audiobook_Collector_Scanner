@@ -65,7 +65,7 @@ When `path` is a directory (typical multi-track import):
 2. Keep files whose extension is in `SUPPORTED_EXTENSIONS`.
 3. Sort by file name (case-insensitive) and play the **first** file.
 
-Filename sort may not match listening order; chapter 10 can sort before chapter 2. Documented in help. Phase 21 changes the starting file and next/previous to track number, with disc number first when it is present.
+Phase 21 orders folder tracks by disc number, then track number, then file name. Files without a track number come last.
 
 Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
 

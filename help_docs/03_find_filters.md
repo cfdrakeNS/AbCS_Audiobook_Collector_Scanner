@@ -47,13 +47,19 @@ The Title column shows a mark before the title. A circle means the book has a pl
 2. Choose **All**, **Read**, or **Unread**.
 3. The list shows only books matching that read status.
 
+## Steps — In progress filter
+
+1. Open **View → In progress** (**Alt+V**, then **G**), or activate the **In Progress Filter** toolbar button.
+2. Choose **All** or **In Progress**.
+3. The list shows only books that have a saved listening place. Turning the filter off does not clear those places.
+
 ## Steps — Want to read filter
 
 1. Open **View → Want to read** (**Alt+V**, then **W**), or press **Alt+T** to toggle the filter.
 2. Choose **All** or **Want to Read**.
 3. The list shows only books marked want to read. Turning the filter off does not remove the marks.
 
-To mark a book, focus it and choose **Edit → Add to want to read**. A selection marks every selected book. The mark is saved immediately. With books selected, the footer also shows **Add to want to read** and **Clear want to read**. **Edit → Clear want to read** removes the mark from the selection only.
+To mark a book, focus it and choose **Edit → Add to want to read**. A selection marks every selected book. The mark is saved immediately. With books selected, the footer also shows **Add to want to read**, **Clear want to read**, and **Clear listening position**. **Edit → Clear want to read** removes the mark from the selection only. **Edit → Clear listening position** clears saved listening places for the selection without changing read status.
 
 ## Steps — Recently added filter
 
@@ -82,17 +88,19 @@ Each press clears the first active step below and stops until you press Escape a
 2. **Find search** — if active. Focus returns to the book you were on before searching.
 3. **Plot filter** — if not All.
 4. **Read filter** — if set to Read or Unread (not All).
-5. **Want to read filter** — if it is on.
-6. **Recently added filter** — if active.
+5. **In progress filter** — if it is on.
+6. **Want to read filter** — if it is on.
+7. **Recently added filter** — if active.
 
-After step 6, further Escape presses on the main window do **not** clear any more filters.
+After step 7, further Escape presses on the main window do **not** clear any more filters.
 
 **Not cleared by Escape**
 
 - **Collection filter** — choose **All Collections** in **View → Collections** to remove it.
 - **Sort order** — choose a different sort from the **Sort** menu; sort is not a filter Escape clears.
+- **Saved listening positions** — clearing the In progress filter only changes which books you see; it does not delete resume places. Use **Edit → Clear listening position** or the footer button to clear them for the selection. Marking a book as read also clears its listening position.
 
-**Toolbar toggles:** You can also clear Find, Plot, or Read by clicking their toolbar buttons again while highlighted. Recently added clears when you press Escape at step 5, or set a new date from the toolbar or **View → Recently Added...**.
+**Toolbar toggles:** You can also clear Find, Plot, Read, or In progress by clicking their toolbar buttons again while highlighted. Recently added clears when you press Escape at step 7, or set a new date from the toolbar or **View → Recently Added...**.
 
 ## What happens next
 
@@ -106,17 +114,20 @@ After step 6, further Escape presses on the main window do **not** clear any mor
 
 ## Mouse, shortcuts, and accessibility
 
-- Use **View** menu items or the main toolbar buttons for **Plot**, **Read**, and **Recently Added** filters — click a highlighted toolbar button again to turn that filter off.
+- Use **View** menu items or the main toolbar buttons for **Plot**, **Read**, **In progress**, and **Recently Added** filters — click a highlighted toolbar button again to turn that filter off.
 - In the Find dialog, click the field dropdown, type in the search box, and click **OK** or press **Enter**.
 - On the Recently Added filter, click the date field to open the calendar popup and pick a date.
+- On the book list, right-click a cell (or press the Menu key) and choose **Copy**, or press **Ctrl+C**, to copy that cell’s text.
 
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+F | Open Find dialog |
+| Ctrl+C | Copy focused cell on the book list |
 | Alt+V, C | View → Collections filter |
 | Alt+V, P | View → Plot filter |
 | Alt+P | Toggle plot filter |
 | Alt+V, R | View → Read filter |
+| Alt+V, G | View → In progress filter |
 | Alt+V, W | View → Want to read filter |
 | Alt+T | Toggle want to read filter |
 | Alt+V, A | View → Recently Added filter (toolbar button after Read Filter) |
@@ -124,7 +135,7 @@ After step 6, further Escape presses on the main window do **not** clear any mor
 | Alt+S | Sort menu |
 | Alt+1–Alt+7 | Jump to table columns |
 | Alt+/ | Re-read filter summary and status |
-| Escape | Clear selection, then Find, Plot, Read, Want to read, Recently added (fixed order, one step per press) |
+| Escape | Clear selection, then Find, Plot, Read, In progress, Want to read, Recently added (fixed order, one step per press) |
 | F1 | Help for main window |
 
 Find dialog shortcuts (while open):

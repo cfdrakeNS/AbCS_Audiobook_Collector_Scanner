@@ -355,6 +355,7 @@ def test_book_details_tab_order_includes_cover(temp_db, ui_scaler, theme_manager
         window.year_spin,
         window.time_edit,
         window.listen_progress_edit,
+        window.clear_listen_progress_button,
         window.files_edit,
         window.format_combo,
         window.bitrate_edit,

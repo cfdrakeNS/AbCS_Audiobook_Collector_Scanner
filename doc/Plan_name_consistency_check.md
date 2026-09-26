@@ -1,6 +1,6 @@
 # Name Consistency — Version 3 Phase 13
 
-**Status:** Phase 13 — **Complete** (name-list merge on duplicate in tester build 2.18; library-wide fuzzy scan deferred after v3)  
+**Status:** Phase 13 — **Complete** (name-list merge on duplicate in tester build 2.18; Tab/Ctrl find-focus bugs fixed; Copy documented; library-wide fuzzy scan deferred after v3)  
 **Created:** June 2026  
 **Updated:** September 2026  
 **Related:** [Name List Process](../help_docs/15_name_list.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
@@ -19,7 +19,17 @@ Example: editing **87 Precinct** to **87th Precinct**.
 4. A case-only change on the **same** row still uses the two-step rename. No merge question.
 5. **Collections** keep the warning only. A collection also has an active flag and a library root, so moving its books is a different decision.
 6. After Save, focus moves to the updated or kept list row.
-7. Tab skips the list (use Alt+L or click). Escape in Find clears the filter if needed and returns focus to the list without closing the window.
+7. Tab stops on the list (Find → list → Name → buttons). Alt+L also focuses the list. Escape in Find clears the filter if needed and returns focus to the list without closing the window. Ctrl+C and other chords stay on the list while a find filter is active.
+8. **Copy:** Right-click a row (or Menu key) → **Copy**, or **Ctrl+C**, copies the selected name. Status shows `Copied.` without moving focus. Same pattern on the main book list for the focused cell — see [Find and Filters](../help_docs/03_find_filters.md) and [Name List](../help_docs/15_name_list.md).
+
+### Follow-up bug fixes (tester)
+
+**Status:** Fixed.
+
+| Issue | Fix |
+|-------|-----|
+| After Find, pressing Ctrl moved focus back to Find (Ctrl+C failed) | List keeps StrongFocus during a filter; typing-to-Find ignores Ctrl/Alt/Meta and modifier-only keys |
+| Tab skipped the list | Tab order is Find → list → Name → buttons; Alt+L still works |
 
 ### Implementation
 
@@ -27,8 +37,9 @@ Example: editing **87 Precinct** to **87th Precinct**.
 |------|----------|
 | Save prompt and result | [`src/ui/name_list_window.py`](../src/ui/name_list_window.py) |
 | Reassign + delete source | `AuthorQueries.merge` / `SeriesQueries.merge` / `GenreQueries.merge` in [`src/database/queries.py`](../src/database/queries.py) |
-| Help | [`help_docs/15_name_list.md`](../help_docs/15_name_list.md) |
-| Tests | [`test/test_name_list_merge.py`](../test/test_name_list_merge.py) |
+| Copy (Ctrl+C / right-click) | [`src/ui/table_clipboard.py`](../src/ui/table_clipboard.py); wired in name list and main book list |
+| Help | [`help_docs/15_name_list.md`](../help_docs/15_name_list.md), [`help_docs/03_find_filters.md`](../help_docs/03_find_filters.md), [`help_docs/16_shortcuts.md`](../help_docs/16_shortcuts.md) |
+| Tests | [`test/test_name_list_merge.py`](../test/test_name_list_merge.py), [`test/test_table_clipboard.py`](../test/test_table_clipboard.py) |
 
 ### Gate
 
@@ -37,7 +48,8 @@ Example: editing **87 Precinct** to **87th Precinct**.
 - Author, series, and genre share the path; collection stays warning-only
 - JAWS hears the question and the result sentence
 - After Save, focus is on the kept or updated row
-- Tab skips the list; Escape in Find returns to the list
+- Tab stops on the list; Escape in Find returns to the list; Ctrl chords stay on the list during find
+- Ctrl+C and right-click Copy put the selected name on the clipboard
 
 ---
 

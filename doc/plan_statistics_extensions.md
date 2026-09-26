@@ -1,46 +1,31 @@
-# Statistics Extensions — Future Improvement Plan
+# Statistics Extensions — Version 3 Phase 23 / F08
 
-**Status:** Planned (not yet implemented)  
+**Status:** Complete  
 **Created:** June 2026  
-**Related:** [Statistics](help_docs/14_statistics.md), [plan_want_to_read.md](plan_want_to_read.md), [plan_ratings.md](plan_ratings.md)
+**Estimate:** 0.5–1 day  
+**Tester ID:** F08 (v3 scope: Want to Read and listening progress only)  
+**Related:** [Statistics](../help_docs/14_statistics.md), [plan_want_to_read.md](plan_want_to_read.md), [plan_reading_progress.md](plan_reading_progress.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
 ---
 
 ## What this is
 
-Add rows to **Statistics** dialog for new metadata: want-to-read count, average rating, books with cover, etc.
+Two rows on the **Statistics** dialog:
+
+1. Books Want to Read (`want_to_read`)
+2. Books In Progress (`listen_position_ms IS NOT NULL`)
 
 ---
 
-## Problem
+## Shipped
 
-Statistics dialog does not reflect TBR, ratings, or covers after those features ship.
-
----
-
-## Design
-
-Extend [`statistics_dialog.py`](../src/ui/statistics_dialog.py) and query layer:
-
-| Stat | After feature |
-|------|----------------|
-| Books want to read | want_to_read |
-| Average rating (library) | rating column |
-| Books with cover | cover_path |
-| Books missing path | optional link to path health |
-
-Accessible table — same pattern as existing stats rows.
-
-**Estimate:** 1–2 days (after Wave 2)
+- `Statistics.books_want_to_read` / `books_in_progress` and queries in `StatisticsQueries.get_statistics`
+- Rows in `StatisticsDialog`
+- Tests in `test_named_queries.py` and `test_small_dialogs.py`
+- Help topic `14_statistics.md` updated
 
 ---
 
-## Tests
+## Out of scope (unchanged)
 
-Stat queries with fixture DB.
-
----
-
-## Out of scope v1
-
-Charts/graphs; export stats.
+Average rating; books with covers; missing path; charts; export.

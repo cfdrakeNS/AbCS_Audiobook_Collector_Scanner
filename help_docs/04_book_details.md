@@ -26,7 +26,7 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 2. Double-click the **Title** column, open **View → Open Focused Item**, or press **Enter** when the title column is focused.
 3. The **Book Details** window shows all fields for that book. When no screen reader is running, a panel at the top also shows the book title, author, and series in larger text; with JAWS or NVDA running this panel is hidden and never spoken. The picture is on the right. Title, author, series, genre, and plot are on the left. Year, time, listen progress, files, format, and bitrate sit under the picture. The other fields are one row each below that. Tab follows that order and stops on the picture. The picture says Book cover when the audio file has one, and No cover when it shows the stand-in picture.
 4. Edit any field and **Save** (**Alt+S**).
-5. Click **Preview** or press **Alt+Shift+P** to play the book inside AbCS. The Preview window has **Play/Pause** on the left and Title, Author, Series, and Length on the right. If that file has a picture inside it, the picture shows beside those lines and is skipped when you press Tab. Enter plays or pauses. Escape closes Preview and stops playback. F1 lists Preview shortcuts. Preview is not available while books are selected on the main list. Duplicate mode still allows Preview of the focused book. When the collection has a library root, Preview uses that folder plus the author and title folders from the stored path, so a portable drive can move. For a folder of tracks, AbCS starts the first audio file by file name. Filename order may not match listening order (for example chapter 10 before chapter 2). If the file is gone, status says **Book not found in -** and that path. The same action is on the main window **Edit → Preview** and the **Preview** toolbar button after Find.
+5. Click **Play** or press **Alt+Shift+P** to play the book inside AbCS. The Play window shows Title, Author, Length from the book when set, Series only when the book has a series, and the current file name, with cover art when the file has it. Transport buttons are icons with accessible names. The play position is shown above a seek slider and the buttons. **Space** plays or pauses. After Next, Previous, Rewind, Forward, or Play/Pause, focus returns to Play/Pause. **Alt+Left** / **Alt+Right** seek 30 seconds. The seek slider moves through the current file (arrow keys five seconds, Page Up/Down thirty seconds). **Alt+P** / **Alt+N** move to the previous or next file. Escape closes Play; if you are under 5 minutes it asks whether to save the place. Reaching the end of the last file clears the saved place. Opening Play again resumes from that place. Speed is one setting for every book. For a folder of tracks, files play in disc and track number order. If the file is gone, status says **Book not found in -** and that path. The same action is on the main window **Edit → Play** and the **Play** toolbar button after Find. **Listen progress** on Book Details shows stop time (and percent of book length when Time is set), not the file name. To clear a saved place without finishing the book, use **Clear** beside **Listen progress**, or on the main window **Edit → Clear listening position** for the selection. Setting a read date also clears listening position (and want to read).
 6. Click **Next** and **Previous** at the bottom of the window, or use Page Down / Page Up.
 7. Press **Escape** to close. The main list refreshes.
 
@@ -62,11 +62,18 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | Alt+N | Next book |
 | Alt+P | Previous book |
 | Alt+W | Fetch Web Info |
-| Alt+Shift+P | Preview inside AbCS |
-| Enter | Play or pause (Preview window) |
-| Escape | Close Preview and stop playback |
-| F1 | Preview keyboard shortcuts |
-| Shift+F1 | From Preview: help for the window that opened it |
+| Alt+Shift+P | Play inside AbCS |
+| Space | Play or pause (Play window) |
+| Alt+Left | Rewind 30 seconds (Play) |
+| Alt+Right | Forward 30 seconds (Play) |
+| Alt+P | Previous file (Play) |
+| Alt+N | Next file (Play) |
+| Alt+S | Playback speed (Play) |
+| Left/Right | Seek five seconds on Play seek slider |
+| Page Up/Down | Seek thirty seconds on Play seek slider |
+| Escape | Close Play |
+| F1 | Play keyboard shortcuts |
+| Shift+F1 | From Play: help for the window that opened it |
 | Insert | New book (from Book Details) |
 | Delete | Delete current book |
 | Shift+F1 | Help for this window |

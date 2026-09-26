@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate,
     QStyle,
     QStyleOptionViewItem,
+    QMenu,
 )
 from src.ui.license_dialogue import LicenseDialog
 from PySide6.QtCore import (
@@ -107,6 +108,7 @@ from src.ui.import_window import ImportWindow
 from src.ui.collection_window import CollectionWindow
 from src.ui.name_list_window import NameListWindow
 from src.ui.backup_restore_window import BackupRestoreWindow
+from src.ui.table_clipboard import copy_plain_text
 
 from src.ui.web_metadata import WebMetadataWindow
 
@@ -657,11 +659,24 @@ class MainWindow(QMainWindow):
                     book.read_date = new_date
                     cleared_want = bool(book.want_to_read)
                     book.want_to_read = False
+                    cleared_listen = (
+                        getattr(book, "listen_position_ms", None) is not None
+                        or bool((getattr(book, "listen_file_name", "") or "").strip())
+                    )
+                    book.listen_position_ms = None
+                    book.listen_file_name = ""
                     self.book_queries.update(book)
                     self.refresh_books()
+                    extras = []
                     if cleared_want:
+                        extras.append("Want to read cleared")
+                    if cleared_listen:
+                        extras.append("Listening position cleared")
+                    if extras:
                         self.set_status(
-                            f"Read date set for {book.title}. Want to read cleared.",
+                            f"Read date set for {book.title}. "
+                            + ". ".join(extras)
+                            + ".",
                             announce=True,
                         )
                     else:
@@ -768,6 +783,9 @@ class MainWindow(QMainWindow):
         if (self.current_filter.want_to_read_filter or "All") != "All":
             parts.append("Want to read")
 
+        if (self.current_filter.in_progress_filter or "All") != "All":
+            parts.append("In progress")
+
         plot_filter = self.current_filter.plot_filter or "All"
         if plot_filter != "All":
             parts.append(f"Plot: {plot_filter}")
@@ -854,6 +872,7 @@ class MainWindow(QMainWindow):
             self.web_fetch_button,
             self.add_want_to_read_button,
             self.clear_want_to_read_button,
+            self.clear_listen_progress_button,
             self.delete_button,
             self.export_button,
         ):
@@ -1030,6 +1049,7 @@ class MainWindow(QMainWindow):
                 self.web_fetch_button,
                 self.add_want_to_read_button,
                 self.clear_want_to_read_button,
+                self.clear_listen_progress_button,
                 self.delete_button,
                 self.export_button,
             ):
@@ -1236,6 +1256,8 @@ class MainWindow(QMainWindow):
         self.table.mousePressEvent = self.table_mouse_press
         self.table.mouseDoubleClickEvent = self.table_mouse_double_click  # mw#18
         self.table.keyPressEvent = self.accessible_table_key_press
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._on_table_context_menu)
 
     def accessible_table_key_press(self, event):
         """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
@@ -1334,6 +1356,22 @@ class MainWindow(QMainWindow):
         self.clear_want_to_read_button.setVisible(False)
         layout.addWidget(self.clear_want_to_read_button)
 
+        self.clear_listen_progress_button = QPushButton("Clear listening position")
+        self.clear_listen_progress_button.setAccessibleName(
+            "Clear listening position for selected books"
+        )
+        self.clear_listen_progress_button.setAccessibleDescription(
+            "Clear saved listening positions for the selected books"
+        )
+        self.clear_listen_progress_button.setFocusPolicy(Qt.StrongFocus)
+        self.clear_listen_progress_button.setAutoDefault(False)
+        self.clear_listen_progress_button.setDefault(False)
+        self.clear_listen_progress_button.clicked.connect(
+            self.on_clear_listen_progress
+        )
+        self.clear_listen_progress_button.setVisible(False)
+        layout.addWidget(self.clear_listen_progress_button)
+
         # Delete button (hidden initially)
 
         self.delete_button = QPushButton("Delete")
@@ -1368,6 +1406,9 @@ class MainWindow(QMainWindow):
         apply_decorative_action_icon(self.web_fetch_button, "search_web", self.scaler)
         apply_decorative_action_icon(self.add_want_to_read_button, "want_to_read_filter", self.scaler)
         apply_decorative_action_icon(self.clear_want_to_read_button, "delete", self.scaler)
+        apply_decorative_action_icon(
+            self.clear_listen_progress_button, "delete", self.scaler
+        )
         apply_decorative_action_icon(self.delete_button, "delete", self.scaler)
         apply_decorative_action_icon(self.export_button, "export", self.scaler)
 
@@ -1378,6 +1419,9 @@ class MainWindow(QMainWindow):
             self.web_fetch_button: "Fetch web metadata for selected books",
             self.add_want_to_read_button: "Add selected books to want to read",
             self.clear_want_to_read_button: "Clear want to read for selected books",
+            self.clear_listen_progress_button: (
+                "Clear listening position for selected books"
+            ),
             self.delete_button: "Delete selected books",
             self.export_button: "Export duplicate books to CSV",
         }
@@ -1401,8 +1445,8 @@ class MainWindow(QMainWindow):
             ),
             (
                 getattr(self, "preview_action", None),
-                "Preview the focused book inside AbCS - Alt+Shift+P",
-                "Play the focused book in the Preview window - Alt+Shift+P",
+                "Play the focused book inside AbCS - Alt+Shift+P",
+                "Play the focused book in the Play window - Alt+Shift+P",
             ),
             (
                 getattr(self, "find_action", None),
@@ -1515,12 +1559,12 @@ class MainWindow(QMainWindow):
             self._toolbar_actions.append((action, role))
 
             if role == "find":
-                self.preview_toolbar_action = QAction("Preview", self)
+                self.preview_toolbar_action = QAction("Play", self)
                 self.preview_toolbar_action.setEnabled(False)
                 apply_tooltip_accessibility(
                     self.preview_toolbar_action,
-                    "Preview the focused book inside AbCS - Alt+Shift+P",
-                    "Play the focused book in the Preview window - Alt+Shift+P",
+                    "Play the focused book inside AbCS - Alt+Shift+P",
+                    "Play the focused book in the Play window - Alt+Shift+P",
                 )
                 self.preview_toolbar_action.triggered.connect(self.on_preview_clicked)
                 apply_decorative_action_icon(
@@ -1558,6 +1602,25 @@ class MainWindow(QMainWindow):
                 )
                 self.action_toolbar.addAction(self.read_filter_action)
                 self._toolbar_actions.append((self.read_filter_action, "read_filter"))
+
+                self.in_progress_filter_action = QAction("In Progress Filter", self)
+                self.in_progress_filter_action.setCheckable(True)
+                self.in_progress_filter_action.setChecked(False)
+                self.in_progress_filter_action.triggered.connect(
+                    self.on_in_progress_filter_toggled
+                )
+                apply_tooltip_accessibility(
+                    self.in_progress_filter_action,
+                    "Toggle in progress filter",
+                    "Show only books with a saved listening position. Toggle off to show all books",
+                )
+                apply_decorative_action_icon(
+                    self.in_progress_filter_action, "in_progress_filter", self.scaler
+                )
+                self.action_toolbar.addAction(self.in_progress_filter_action)
+                self._toolbar_actions.append(
+                    (self.in_progress_filter_action, "in_progress_filter")
+                )
 
                 self.want_to_read_filter_action = QAction("Want to Read Filter", self)
                 self.want_to_read_filter_action.setCheckable(True)
@@ -1660,7 +1723,7 @@ class MainWindow(QMainWindow):
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
         self.edit_menu.addAction(self.get_web_info_action)
 
-        self.preview_action = QAction("&Preview", self)
+        self.preview_action = QAction("&Play", self)
         self.preview_action.setShortcut(QKeySequence("Alt+Shift+P"))
         self.preview_action.triggered.connect(self.on_preview_clicked)
         self.preview_action.setEnabled(False)
@@ -1674,6 +1737,15 @@ class MainWindow(QMainWindow):
         self.clear_want_to_read_action.triggered.connect(self.on_clear_want_to_read)
         self.clear_want_to_read_action.setEnabled(False)
         self.edit_menu.addAction(self.clear_want_to_read_action)
+
+        self.clear_listen_progress_action = QAction(
+            "Clear &listening position", self
+        )
+        self.clear_listen_progress_action.triggered.connect(
+            self.on_clear_listen_progress
+        )
+        self.clear_listen_progress_action.setEnabled(False)
+        self.edit_menu.addAction(self.clear_listen_progress_action)
 
         # View menu
         self.view_menu = menubar.addMenu("&View")
@@ -1705,6 +1777,11 @@ class MainWindow(QMainWindow):
         self.read_filter_group = QActionGroup(self)
         self.read_filter_group.setExclusive(True)
         self._rebuild_read_filter_menu()
+
+        self.view_in_progress_menu = self.view_menu.addMenu("In pro&gress")
+        self.in_progress_filter_group = QActionGroup(self)
+        self.in_progress_filter_group.setExclusive(True)
+        self._rebuild_in_progress_filter_menu()
 
         self.view_want_to_read_menu = self.view_menu.addMenu("&Want to read")
         self.want_to_read_filter_group = QActionGroup(self)
@@ -1969,6 +2046,8 @@ class MainWindow(QMainWindow):
 
         if self.current_filter.want_to_read_filter not in ("All", "Want to Read"):
             self.current_filter.want_to_read_filter = "All"
+        if self.current_filter.in_progress_filter not in ("All", "In Progress"):
+            self.current_filter.in_progress_filter = "All"
 
         if self.current_filter.order_by not in self._primary_sort_options:
             self.current_filter.order_by = "Title"
@@ -1984,6 +2063,8 @@ class MainWindow(QMainWindow):
         self._sync_read_toolbar_toggle()
         self._sync_want_to_read_toolbar_toggle()
         self._sync_want_to_read_menu_selection()
+        self._sync_in_progress_toolbar_toggle()
+        self._sync_in_progress_menu_selection()
         self._sync_find_toolbar_toggle()
         self._sync_recently_added_toolbar_toggle()
         self._sync_sort_menu_selection(self.current_filter.order_by)
@@ -2095,6 +2176,9 @@ class MainWindow(QMainWindow):
                 read_filter=saved_filter.read_filter,
                 plot_filter=saved_filter.plot_filter,
                 want_to_read_filter=saved_filter.want_to_read_filter,
+                in_progress_filter=getattr(
+                    saved_filter, "in_progress_filter", "All"
+                ),
                 order_by=saved_filter.order_by,
                 search_text=saved_filter.search_text,
                 is_keyword_search=saved_filter.is_keyword_search,
@@ -2210,6 +2294,7 @@ class MainWindow(QMainWindow):
                 read_filter=self.current_filter.read_filter,
                 plot_filter=self.current_filter.plot_filter,
                 want_to_read_filter=self.current_filter.want_to_read_filter,
+                in_progress_filter=self.current_filter.in_progress_filter,
                 order_by=self.current_filter.order_by,
                 search_text=self.current_filter.search_text,
                 is_keyword_search=self.current_filter.is_keyword_search,
@@ -2224,6 +2309,7 @@ class MainWindow(QMainWindow):
         self.current_filter.read_filter = "All"
         self.current_filter.plot_filter = "All"
         self.current_filter.want_to_read_filter = "All"
+        self.current_filter.in_progress_filter = "All"
         self.current_filter.search_text = ""
         self.current_filter.is_keyword_search = False
         self.current_filter.date_added_since = None
@@ -2356,6 +2442,7 @@ class MainWindow(QMainWindow):
         self.current_filter.plot_filter = "All"
         self.current_filter.read_filter = "All"
         self.current_filter.want_to_read_filter = "All"
+        self.current_filter.in_progress_filter = "All"
         self.current_filter.date_added_since = None
         self._apply_current_filter_to_controls()
 
@@ -2366,6 +2453,8 @@ class MainWindow(QMainWindow):
         self._sync_read_toolbar_toggle()
         self._sync_want_to_read_toolbar_toggle()
         self._sync_want_to_read_menu_selection()
+        self._sync_in_progress_toolbar_toggle()
+        self._sync_in_progress_menu_selection()
         self._sync_find_toolbar_toggle()
         self._sync_recently_added_toolbar_toggle()
 
@@ -2509,6 +2598,68 @@ class MainWindow(QMainWindow):
             return
         self.want_to_read_filter_action.trigger()
 
+    def _rebuild_in_progress_filter_menu(self):
+        """Populate View > In progress from All and In Progress."""
+        if not hasattr(self, "view_in_progress_menu"):
+            return
+        self.view_in_progress_menu.clear()
+        self.in_progress_filter_group = QActionGroup(self)
+        self.in_progress_filter_group.setExclusive(True)
+        choices = (
+            ("All", "Show all books", "Show books whether or not a listening place is saved"),
+            (
+                "In Progress",
+                "Show only in progress books",
+                "Filter to books with a saved listening position",
+            ),
+        )
+        for label, tooltip, description in choices:
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(label)
+            action.triggered.connect(
+                lambda _checked=False, value=label: self.on_in_progress_menu_selected(
+                    value
+                )
+            )
+            apply_tooltip_accessibility(action, tooltip, description)
+            self.in_progress_filter_group.addAction(action)
+            self.view_in_progress_menu.addAction(action)
+        self._sync_in_progress_menu_selection()
+
+    def _sync_in_progress_menu_selection(self):
+        if not hasattr(self, "in_progress_filter_group"):
+            return
+        current_value = self.current_filter.in_progress_filter or "All"
+        for action in self.in_progress_filter_group.actions():
+            action.blockSignals(True)
+            action.setChecked(action.data() == current_value)
+            action.blockSignals(False)
+
+    def on_in_progress_menu_selected(self, value: str):
+        if self._block_if_selecting():
+            return
+        self.on_in_progress_filter_toggled(value == "In Progress")
+
+    def _sync_in_progress_toolbar_toggle(self):
+        if not hasattr(self, "in_progress_filter_action"):
+            return
+        checked = self.current_filter.in_progress_filter == "In Progress"
+        self.in_progress_filter_action.blockSignals(True)
+        self.in_progress_filter_action.setChecked(checked)
+        self.in_progress_filter_action.blockSignals(False)
+
+    def on_in_progress_filter_toggled(self, checked: bool):
+        if self._block_if_selecting():
+            self._sync_in_progress_toolbar_toggle()
+            return
+        self.current_filter.in_progress_filter = "In Progress" if checked else "All"
+        self._sync_in_progress_toolbar_toggle()
+        self._sync_in_progress_menu_selection()
+        self.refresh_books()
+        if self.current_filter.in_progress_filter != "All":
+            self.set_default_status(announce=True)
+
     def on_mark_want_to_read(self):
         """Mark the focused book, or the selection, as want to read."""
         if self.duplicate_mode_active:
@@ -2577,6 +2728,51 @@ class MainWindow(QMainWindow):
         else:
             self.set_status(
                 f"Want to read cleared for {len(changed)} books", announce=True
+            )
+
+    def on_clear_listen_progress(self):
+        """Clear saved listening positions for every selected book."""
+        if self.duplicate_mode_active:
+            self.set_status(
+                "Listening position clear is unavailable in duplicate mode.",
+                announce=True,
+            )
+            return
+        if not self.selected_book_ids:
+            self.set_status("No books selected", announce=True)
+            return
+        targets = [
+            book for book in self.books if book.book_id in self.selected_book_ids
+        ]
+        changed = [
+            book
+            for book in targets
+            if getattr(book, "listen_position_ms", None) is not None
+            or bool((getattr(book, "listen_file_name", "") or "").strip())
+        ]
+        if not changed:
+            self.set_status("No listening positions to clear", announce=True)
+            return
+        self.book_queries.bulk_clear_listen_progress(
+            [book.book_id for book in changed]
+        )
+        for book in changed:
+            book.listen_position_ms = None
+            book.listen_file_name = ""
+        if getattr(self.current_filter, "in_progress_filter", "All") == "In Progress":
+            self.refresh_books()
+        else:
+            self.table.viewport().update()
+            self._update_filter_summary_label()
+        if len(changed) == 1:
+            self.set_status(
+                f"Listening position cleared for {changed[0].title}",
+                announce=True,
+            )
+        else:
+            self.set_status(
+                f"Listening position cleared for {len(changed)} books",
+                announce=True,
             )
 
     def _sync_recently_added_toolbar_toggle(self):
@@ -2911,6 +3107,8 @@ class MainWindow(QMainWindow):
             or self.current_filter.collection_id is not None
             or self.current_filter.read_filter != "All"
             or self.current_filter.plot_filter != "All"
+            or self.current_filter.want_to_read_filter != "All"
+            or self.current_filter.in_progress_filter != "All"
             or self.current_filter.date_added_since is not None
         )
 
@@ -3705,6 +3903,35 @@ class MainWindow(QMainWindow):
 
         QTableView.mousePressEvent(self.table, event)
 
+    def _copy_current_table_cell(self) -> bool:
+        """Copy the focused cell text to the clipboard."""
+        index = self.table.currentIndex()
+        if not index.isValid():
+            return False
+        text = index.data(Qt.DisplayRole)
+        if text is None:
+            return False
+        if not copy_plain_text(str(text)):
+            return False
+        self.set_status("Copied.", timeout_ms=2000, announce=False)
+        return True
+
+    def _on_table_context_menu(self, pos) -> None:
+        """Right-click / Menu key: Copy the cell under the pointer."""
+        index = self.table.indexAt(pos)
+        if not index.isValid():
+            return
+        self.table.setCurrentIndex(index)
+        text = index.data(Qt.DisplayRole)
+        menu = QMenu(self.table)
+        menu.setAccessibleName("Book list menu")
+        copy_action = menu.addAction("Copy")
+        copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.setEnabled(text is not None and str(text) != "")
+        chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
+        if chosen == copy_action:
+            self._copy_current_table_cell()
+
     def table_mouse_double_click(self, event):
         """Handle mouse double-click from table viewport."""
         if event.button() == Qt.LeftButton:
@@ -3786,6 +4013,10 @@ class MainWindow(QMainWindow):
         if event.matches(QKeySequence.SelectAll):
             QTableView.keyPressEvent(self.table, event)
             return
+        if event.matches(QKeySequence.Copy):
+            if self._copy_current_table_cell():
+                event.accept()
+                return
 
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             row = self.table.currentRow()
@@ -4088,6 +4319,7 @@ class MainWindow(QMainWindow):
             "preferences",
             "plot_filter",
             "read_filter",
+            "in_progress_filter",
             "want_to_read_filter",
             "recently_added_filter",
         }
@@ -4112,6 +4344,8 @@ class MainWindow(QMainWindow):
             self.view_read_menu.setEnabled(enabled)
         if hasattr(self, "view_want_to_read_menu"):
             self.view_want_to_read_menu.setEnabled(enabled)
+        if hasattr(self, "view_in_progress_menu"):
+            self.view_in_progress_menu.setEnabled(enabled)
 
     def update_selection_ui(self):
         """Update UI based on selection."""
@@ -4132,6 +4366,7 @@ class MainWindow(QMainWindow):
         show_want = has_selection and not in_duplicate_mode
         self.add_want_to_read_button.setVisible(show_want)
         self.clear_want_to_read_button.setVisible(show_want)
+        self.clear_listen_progress_button.setVisible(show_want)
         self.delete_button.setVisible(show_action_buttons)
         # Export button only visible in duplicate mode
         self.export_button.setVisible(in_duplicate_mode)
@@ -4154,6 +4389,10 @@ class MainWindow(QMainWindow):
             self.want_to_read_action.setEnabled(not in_duplicate_mode)
         if hasattr(self, "clear_want_to_read_action"):
             self.clear_want_to_read_action.setEnabled(
+                has_selection and not in_duplicate_mode
+            )
+        if hasattr(self, "clear_listen_progress_action"):
+            self.clear_listen_progress_action.setEnabled(
                 has_selection and not in_duplicate_mode
             )
         self._update_preview_action_enabled()
@@ -4401,12 +4640,12 @@ class MainWindow(QMainWindow):
             self.preview_toolbar_action.setEnabled(enabled)
 
     def on_preview_clicked(self):
-        """Play the focused book in the in-app Preview window."""
+        """Play the focused book in the in-app Play window."""
         if self._block_if_selecting():
             return
         book = self._current_book_for_preview()
         if book is None:
-            self.set_status("No book available for preview.", announce=True)
+            self.set_status("No book available to play.", announce=True)
             return
         from src.ui.preview_window import show_preview
 
@@ -4421,15 +4660,22 @@ class MainWindow(QMainWindow):
             series_number=book.series_number,
             length_text=book.time_display,
             collection_root=self._preview_collection_root(book),
+            book=book,
+            db=self.db,
         )
         if ok:
+            if getattr(self.current_filter, "in_progress_filter", "All") == "In Progress":
+                self.refresh_books()
+            else:
+                self.table.viewport().update()
+                self._update_filter_summary_label()
             self.restore_main_focus_after_modal()
             return
         exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
-            title="Preview",
+            title="Play",
             text=message,
         )
         self.set_status(message, announce=True)
@@ -4688,6 +4934,13 @@ class MainWindow(QMainWindow):
             self._sync_read_toolbar_toggle()
             self.refresh_books()
             self.set_status("Read/Unread filter cleared", timeout_ms=2000)
+            return
+        if self.current_filter.in_progress_filter == "In Progress":
+            self.current_filter.in_progress_filter = "All"
+            self._sync_in_progress_toolbar_toggle()
+            self._sync_in_progress_menu_selection()
+            self.refresh_books()
+            self.set_status("In progress filter cleared", timeout_ms=2000)
             return
         if self.current_filter.want_to_read_filter == "Want to Read":
             self.current_filter.want_to_read_filter = "All"
@@ -5167,6 +5420,19 @@ class MainWindow(QMainWindow):
         self.set_status(message, announce=True)
         self.restore_main_focus_after_modal()
 
+    def _selection_mode_f1_shortcuts(self):
+        """Shortcuts that still work while books are selected (no column jumps)."""
+        return [
+            ("Alt+W", "Fetch web info for the selection (batch when two or more)"),
+            ("Alt+U", "Update selected"),
+            ("Alt+D", "Delete selected"),
+            ("Shift+Down/Up", "Extend selection"),
+            ("Escape", "Cancel selection"),
+            ("Ctrl+C", "Copy focused cell"),
+            ("Alt+/", "Read status bar"),
+            ("F1", "Show keyboard shortcuts"),
+        ]
+
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help in a table for screen reader accessibility."""
         dlg = AccessibleDialog(self)
@@ -5180,23 +5446,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
 
         if self._selection_blocks_navigation():
-            shortcuts = [
-                ("Alt+W", "Fetch web info for the selected books"),
-                ("Alt+U", "Update selected"),
-                ("Alt+D", "Delete selected"),
-                ("Shift+Down/Up", "Extend selection"),
-                ("Escape", "Cancel selection"),
-                ("Alt+L", "Jump to list"),
-                ("Alt+1", "Jump to Author"),
-                ("Alt+2", "Jump to Title"),
-                ("Alt+3", "Jump to Year"),
-                ("Alt+4", "Jump to Series"),
-                ("Alt+5", "Jump to Genre"),
-                ("Alt+6", "Jump to Time"),
-                ("Alt+7", "Jump to Read Date"),
-                ("Alt+/", "Read status bar"),
-                ("F1", "Show keyboard shortcuts"),
-            ]
+            shortcuts = self._selection_mode_f1_shortcuts()
         else:
             shortcuts = [
                 ("Alt+1", "Jump to Author"),
@@ -5211,19 +5461,20 @@ class MainWindow(QMainWindow):
                     "Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date)",
                 ),
                 ("Ctrl+F", "Find"),
+                ("Ctrl+C", "Copy focused cell"),
                 ("Alt+V, A", "View, Recently Added filter"),
                 ("Alt+P", "Toggle plot filter"),
                 ("Alt+R", "Toggle read filter"),
                 ("Alt+T", "Toggle want to read filter"),
                 ("Alt+W", "Fetch web info (batch when two or more selected)"),
-                ("Alt+Shift+P", "Preview focused book inside AbCS"),
+                ("Alt+Shift+P", "Play focused book inside AbCS"),
                 ("Ctrl+I", "Import"),
                 ("Ctrl+N", "New book"),
                 ("Shift+Down/Up", "Start selection or extend selection"),
                 ("Alt+U", "Update selected"),
                 ("Alt+D", "Delete selected"),
                 ("Alt+X", "Export duplicates (in duplicate mode)"),
-                ("Escape", "Clear selection / Find / read filter / plot filter / want to read / recently added"),
+                ("Escape", "Clear selection / Find / plot / read / in progress / want to read / recently added"),
                 ("Ctrl+Plus", "Zoom in"),
                 ("Ctrl+Minus", "Zoom out"),
                 ("Ctrl+0", "Reset zoom"),

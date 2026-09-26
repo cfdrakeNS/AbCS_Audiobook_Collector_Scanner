@@ -17,7 +17,7 @@ The Name List window lets you view and manage author, series and genres, or othe
 ## Steps
 
 1. Open the name list from the main book table (double-click a name cell, or focus a cell and press **Enter**), or from a collection workflow.
-2. Click a row in the list, or press **Alt+L** to move focus to the list with the keyboard. Tab does not stop on the list.
+2. Click a row in the list, press **Tab** from Find onto the list, or press **Alt+L** to move focus to the list.
 3. Click **Edit**, double-click a row, or press **Alt+E** to edit the selected entry.
 4. Type in the name field; in collection mode, click the **Active** checkbox as needed (or press **Alt+A**).
 5. Click **Save** when your edits are complete.
@@ -28,6 +28,7 @@ The Name List window lets you view and manage author, series and genres, or othe
 
 - Double-click an Author, Series, or Genre cell on the main book table to open the list for that category.
 - Click a row, then **Edit**; change the text and click **Save**.
+- Right-click a row (or press the Menu key) and choose **Copy**, or press **Ctrl+C**, to copy the selected name.
 - Use the **Active** checkbox in collection mode to show or hide a name in import dropdowns.
 
 | Shortcut | Action |
@@ -35,6 +36,7 @@ The Name List window lets you view and manage author, series and genres, or othe
 | Shift+F1 | Open this help document |
 | F1 | Show keyboard shortcuts for this window |
 | Alt+L | Focus name list |
+| Ctrl+C | Copy selected name |
 | Alt+M | Edit name field |
 | Alt+E | Edit selected row |
 | Alt+A | Active checkbox (collection mode) |

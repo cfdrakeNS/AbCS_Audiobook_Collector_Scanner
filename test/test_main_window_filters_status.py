@@ -231,6 +231,19 @@ def test_want_to_read_filter_toolbar_toggle(main_window):
     assert not window.want_to_read_filter_action.isChecked()
 
 
+def test_in_progress_filter_toolbar_toggle(main_window):
+    window = main_window
+
+    window.in_progress_filter_action.trigger()
+    assert window.current_filter.in_progress_filter == "In Progress"
+    assert window.in_progress_filter_action.isChecked()
+    assert "In progress" in window._filter_summary_text()
+
+    window.in_progress_filter_action.trigger()
+    assert window.current_filter.in_progress_filter == "All"
+    assert not window.in_progress_filter_action.isChecked()
+
+
 def test_unread_menu_unchecks_read_toolbar_toggle(main_window):
     window = main_window
 

@@ -96,3 +96,36 @@ class TestStatisticsQueries:
         assert after.books_read == before.books_read + 1
         assert after.books_unread == before.books_unread + 1
         assert after.total_hours_read >= before.total_hours_read + 3
+        assert after.books_want_to_read == before.books_want_to_read
+        assert after.books_in_progress == before.books_in_progress
+
+    def test_get_statistics_want_to_read_and_in_progress(self, temp_db):
+        before = StatisticsQueries(temp_db).get_statistics()
+        author_id = AuthorQueries(temp_db).insert("NQ Progress Author")
+        BookQueries(temp_db).insert(
+            Book(
+                title="NQ Want Book",
+                author_id=author_id,
+                want_to_read=True,
+            )
+        )
+        BookQueries(temp_db).insert(
+            Book(
+                title="NQ Playing Book",
+                author_id=author_id,
+                listen_position_ms=12_000,
+                listen_file_name="01.mp3",
+            )
+        )
+        BookQueries(temp_db).insert(
+            Book(
+                title="NQ Both Book",
+                author_id=author_id,
+                want_to_read=True,
+                listen_position_ms=500,
+                listen_file_name="a.m4b",
+            )
+        )
+        after = StatisticsQueries(temp_db).get_statistics()
+        assert after.books_want_to_read == before.books_want_to_read + 2
+        assert after.books_in_progress == before.books_in_progress + 2

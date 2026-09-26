@@ -233,16 +233,23 @@ class AbCSApplication:
         from src.accessibility.icon_helper import install_app_icon
 
         self.qt_app = QApplication(sys.argv)
+        from PySide6.QtWidgets import QStyleFactory
+
+        from src.accessibility.accessible_app_style import AccessibleAppStyle
+
+        # Arrow keys land on disabled menu items so JAWS/NVDA speak them as
+        # unavailable; list length stays the same whether items are enabled.
         if sys.platform.startswith("linux"):
-            from PySide6.QtWidgets import QStyleFactory
-
-            from src.accessibility.linux_fusion_style import LinuxFusionStyle
-
-            fusion = QStyleFactory.create("Fusion")
-            if fusion is not None:
-                self.qt_app.setStyle(LinuxFusionStyle(fusion))
-            else:
-                self.qt_app.setStyle("Fusion")
+            base = QStyleFactory.create("Fusion")
+        else:
+            current = self.qt_app.style()
+            base = QStyleFactory.create(current.name()) if current is not None else None
+            if base is None:
+                base = QStyleFactory.create("Fusion")
+        if base is not None:
+            self.qt_app.setStyle(AccessibleAppStyle(base))
+        elif sys.platform.startswith("linux"):
+            self.qt_app.setStyle("Fusion")
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")

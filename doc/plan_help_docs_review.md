@@ -37,9 +37,13 @@ Numbered lists stay. Only the heading text changes.
 
 Add only actions a user can do now.
 
-- **Preview on the main window** in `help_docs/03_find_filters.md`: **Edit → Preview**, toolbar **Preview**, **Alt+Shift+P**, plays inside AbCS, unavailable while books are selected. Point to Book Details for Preview window keys. Duplicate mode already documents Preview.
-- Confirm these are still accurate, and add a sentence only where they are absent: series number ` - nn` on the main title, name-list merge, Tab skipping the name list, Escape in Find, double-click to edit, collection library root, check for updates.
+- **Play on the main window** in `help_docs/03_find_filters.md`: **Edit → Play**, toolbar **Play**, **Alt+Shift+P**, plays inside AbCS, unavailable while books are selected. Point to Book Details for Play window keys. Duplicate mode already documents Play.
+- Confirm these are still accurate, and add a sentence only where they are absent: series number ` - nn` on the main title, name-list merge, Tab on the name list, Escape in Find, Ctrl chords on the list during find, **Copy** (Ctrl+C / right-click) on the main book list and name list, double-click to edit, collection library root, check for updates.
+
+### Rename Preview → Play
+
+User-facing name for the in-app audiobook player is **Play** (not Preview). When reviewing help, use **Edit → Play**, toolbar **Play**, **Play** window, and **Play** in shortcut tables. Keep internal module names (`preview_window.py`) as they are. Do not confuse with Preferences theme/zoom “preview immediately.”
 
 ## Gate
 
-Topics 22 and 23 are gone and nothing in user help links to them. Section names in the help list do not start with “Steps”. Shift+F1 on the main window mentions Preview.
+Topics 22 and 23 are gone and nothing in user help links to them. Section names in the help list do not start with “Steps”. Shift+F1 on the main window mentions Play. Help uses **Play** (not Preview) for the audiobook player.

@@ -1,12 +1,6 @@
-"""Linux Fusion style tweaks for QComboBox popup and painting."""
+"""Linux Fusion style tweaks (compat wrapper)."""
 
-from PySide6.QtWidgets import QProxyStyle, QStyle
+from src.accessibility.accessible_app_style import AccessibleAppStyle
 
-
-class LinuxFusionStyle(QProxyStyle):
-    """Use scrollable combo popups; avoids Fusion menu-mode painter glitches."""
-
-    def styleHint(self, hint, option=None, widget=None, returnType=None):
-        if hint == QStyle.StyleHint.SH_ComboBox_Popup:
-            return 0
-        return super().styleHint(hint, option, widget, returnType)
+# Historical name used by main.py Linux startup path.
+LinuxFusionStyle = AccessibleAppStyle

@@ -173,3 +173,38 @@ def test_want_to_read_filter_keeps_marks(tmp_path):
     assert books.get_by_id(marked_id).want_to_read is False
     assert books.get_by_id(other_id).want_to_read is True
     db.close()
+
+
+def test_in_progress_filter_and_update_listen_progress(tmp_path):
+    db = DatabaseManager(str(tmp_path / "abcs.db"))
+    db.initialize_database()
+    books = BookQueries(db)
+    from src.database.queries import AuthorQueries
+
+    author_id = AuthorQueries(db).insert("Ada Author")
+    collection_id = db.fetch_one("SELECT collection_id FROM collections")[0]
+    progress_id = books.insert(
+        Book(title="Started", author_id=author_id, collection_id=collection_id)
+    )
+    other_id = books.insert(
+        Book(title="Fresh", author_id=author_id, collection_id=collection_id)
+    )
+    books.update_listen_progress(progress_id, 45_000, "02 Chapter.mp3")
+    shown = books.get_all(SearchFilter(in_progress_filter="In Progress"))
+    assert [book.book_id for book in shown] == [progress_id]
+    loaded = books.get_by_id(progress_id)
+    assert loaded.listen_position_ms == 45_000
+    assert loaded.listen_file_name == "02 Chapter.mp3"
+    books.update_listen_progress(progress_id, None, "")
+    assert books.get_all(SearchFilter(in_progress_filter="In Progress")) == []
+    assert books.get_by_id(other_id).listen_position_ms is None
+
+    books.update_listen_progress(progress_id, 12_000, "a.mp3")
+    books.update_listen_progress(other_id, 9_000, "b.mp3")
+    cleared = books.bulk_clear_listen_progress([progress_id, other_id])
+    assert cleared == 2
+    assert books.get_by_id(progress_id).listen_position_ms is None
+    assert books.get_by_id(progress_id).listen_file_name in (None, "")
+    assert books.get_by_id(other_id).listen_position_ms is None
+    assert books.get_all(SearchFilter(in_progress_filter="In Progress")) == []
+    db.close()

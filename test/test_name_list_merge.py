@@ -296,7 +296,7 @@ def test_double_click_row_starts_edit(
     window.close()
 
 
-def test_tab_order_skips_table_for_series(
+def test_tab_order_includes_table_for_series(
     temp_db, ui_scaler, theme_manager, qtbot
 ):
     SeriesQueries(temp_db).insert("Tab Order Series")
@@ -317,14 +317,14 @@ def test_tab_order_skips_table_for_series(
             continue
         if not widget.isVisible() or not widget.isEnabled():
             continue
-        # Tab stops only on TabFocus/StrongFocus; ClickFocus (the list) is skipped.
+        # Tab stops on TabFocus/StrongFocus (list included).
         if not (int(widget.focusPolicy()) & int(Qt.TabFocus)):
             continue
         focusable.append(widget)
         if widget is window.find_edit:
             break
 
-    assert window.table not in focusable
+    assert window.table in focusable
     assert window.edit_button in focusable
     window.close()
 
@@ -341,13 +341,13 @@ def test_escape_in_find_moves_focus_to_list(
     qtbot.waitUntil(lambda: window.find_edit.hasFocus(), timeout=1000)
     window.find_edit.setText("Escape")
     window._apply_find_filter()
-    assert window.table.focusPolicy() == Qt.NoFocus
+    assert window.table.focusPolicy() == Qt.StrongFocus
 
     window.on_cancel_edit()
     qapp.processEvents()
 
     assert window.isVisible()
     assert window.find_edit.text() == ""
-    assert window.table.focusPolicy() == Qt.ClickFocus
+    assert window.table.focusPolicy() == Qt.StrongFocus
     assert window.table.hasFocus()
     window.close()

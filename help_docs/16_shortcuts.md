@@ -25,8 +25,9 @@ Last updated: June 2026.
 | Alt+R | Toggle read filter |
 | Alt+T | Toggle want to read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
-| Alt+Shift+P | Preview focused book inside AbCS |
+| Alt+Shift+P | Play focused book inside AbCS |
 | Ctrl+F | Find |
+| Ctrl+C | Copy focused cell |
 | Ctrl+I | Import |
 | Ctrl+N | New book |
 | Ctrl+Plus | Zoom in |
@@ -58,7 +59,7 @@ Last updated: June 2026.
 | Alt+K | Want to read |
 | Alt+H | Path |
 | Alt+W | Get web info |
-| Alt+Shift+P | Preview audiobook inside AbCS |
+| Alt+Shift+P | Play audiobook inside AbCS |
 | Alt+U | Update/Edit mode |
 | Alt+N | New book |
 | Alt+D | Delete book |
@@ -67,15 +68,22 @@ Last updated: June 2026.
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
 
-## Preview window
+## Play window
 
 | Shortcut | Action |
 |----------|--------|
-| Enter | Play or pause |
-| Escape | Close and stop playback |
+| Space | Play or pause |
+| Alt+Left | Rewind 30 seconds |
+| Alt+Right | Forward 30 seconds |
+| Alt+P | Previous file |
+| Alt+N | Next file |
+| Alt+S | Playback speed |
+| Left/Right (on seek slider) | Seek five seconds in the current file |
+| Page Up/Down (on seek slider) | Seek thirty seconds in the current file |
+| Escape | Close |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
-| Shift+F1 | Help for the window that opened Preview |
+| Shift+F1 | Help for the window that opened Play |
 
 ## Import window
 
@@ -217,6 +225,7 @@ Last updated: June 2026.
 | Alt+M | Name edit |
 | Alt+E | Edit selected row |
 | Alt+L | Jump to list |
+| Ctrl+C | Copy selected name |
 | Alt+A | Active checkbox (collection mode only) |
 | Alt+F | Clear find / new search (non-collection mode only) |
 | Alt+S | Save (when Save button is visible) |

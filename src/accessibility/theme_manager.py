@@ -455,6 +455,13 @@ class ThemeManager(QObject):
                 background-color: palette(highlight);
                 color: palette(highlighted-text);
             }
+            QMenu::item:disabled {
+                color: palette(mid);
+            }
+            QMenu::item:selected:disabled {
+                background-color: palette(highlight);
+                color: palette(mid);
+            }
             QMenu::separator {
                 height: 1px;
                 background-color: palette(mid);

@@ -2,12 +2,13 @@
 
 ## What this is
 
-Statistics shows a snapshot of your **entire library**: how many books, authors, series, genres, and collections you have, plus read/unread counts and total listening time. It is a read-only summary dialog.
+Statistics shows a snapshot of your **entire library**: how many books, authors, series, genres, and collections you have, plus read/unread counts, Want to Read and in-progress counts, and total listening time. It is a read-only summary dialog.
 
 ## When to use it
 
 - Quick overview of collection size.
 - Check how many books are read vs unread.
+- See how many books are Want to Read or in progress (listening progress saved).
 - See book counts per collection.
 
 ## Before you start
@@ -21,6 +22,7 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
 2. A table lists each statistic and its value, for example:
    - Total books, authors, series, genres
    - Books read and unread
+   - Books Want to Read and Books In Progress
    - Total hours read and total listening time (all books)
    - Collection count and per-collection book counts
 3. Click a row to read it, or use **Tab** to move through table cells. Each row is announced as `statistic: value` to screen readers.

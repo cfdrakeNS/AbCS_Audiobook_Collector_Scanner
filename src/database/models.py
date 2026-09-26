@@ -168,6 +168,7 @@ class SearchFilter:
     read_filter: str = "All"  # All, Read, Unread
     plot_filter: str = "All"  # All, With Plot, Without Plot
     want_to_read_filter: str = "All"  # All, Want to Read
+    in_progress_filter: str = "All"  # All, In Progress
     order_by: str = "Title"  # Title, Author, Genre, Series
     search_text: str = ""
     is_keyword_search: bool = False  # True if search starts with "?"
@@ -191,6 +192,8 @@ class Statistics:
     total_collections: int = 0
     books_read: int = 0
     books_unread: int = 0
+    books_want_to_read: int = 0
+    books_in_progress: int = 0
     total_time_hours: int = 0
     total_hours_read: int = 0
     collection_breakdown: list[tuple[str, int]] | None = None

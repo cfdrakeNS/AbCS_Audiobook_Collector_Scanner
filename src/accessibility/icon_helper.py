@@ -138,8 +138,8 @@ def _icon_ink_color() -> QColor:
 
 
 def _themed_media_icon(kind: str, scaler=None) -> QIcon:
-    """Draw a play triangle or pause bars in the current theme ink color."""
-    side = max(action_icon_size(scaler, base_pixels=20).width(), 16)
+    """Draw transport glyphs in the current theme ink color."""
+    side = max(action_icon_size(scaler, base_pixels=22).width(), 18)
     pixmap = QPixmap(side, side)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
@@ -147,8 +147,13 @@ def _themed_media_icon(kind: str, scaler=None) -> QIcon:
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(_icon_ink_color())
     inset = max(2, side // 6)
+    mid = side // 2
+    bar_w = max(2, side // 8)
+
+    def triangle(points):
+        painter.drawPolygon(QPolygon(points))
+
     if kind == "pause":
-        bar_w = max(2, (side - inset * 2) // 4)
         gap = max(2, bar_w)
         left = inset + (side - inset * 2 - bar_w * 2 - gap) // 2
         painter.drawRoundedRect(
@@ -157,15 +162,71 @@ def _themed_media_icon(kind: str, scaler=None) -> QIcon:
         painter.drawRoundedRect(
             QRect(left + bar_w + gap, inset, bar_w, side - inset * 2), 1, 1
         )
+    elif kind == "play":
+        triangle(
+            [
+                QPoint(inset, inset),
+                QPoint(inset, side - inset),
+                QPoint(side - inset, mid),
+            ]
+        )
+    elif kind == "previous":
+        painter.drawRoundedRect(QRect(inset, inset, bar_w, side - inset * 2), 1, 1)
+        triangle(
+            [
+                QPoint(side - inset, inset),
+                QPoint(side - inset, side - inset),
+                QPoint(inset + bar_w + 1, mid),
+            ]
+        )
+    elif kind == "next":
+        triangle(
+            [
+                QPoint(inset, inset),
+                QPoint(inset, side - inset),
+                QPoint(side - inset - bar_w - 1, mid),
+            ]
+        )
+        painter.drawRoundedRect(
+            QRect(side - inset - bar_w, inset, bar_w, side - inset * 2), 1, 1
+        )
+    elif kind == "rewind":
+        triangle(
+            [
+                QPoint(mid, inset),
+                QPoint(mid, side - inset),
+                QPoint(inset, mid),
+            ]
+        )
+        triangle(
+            [
+                QPoint(side - inset, inset),
+                QPoint(side - inset, side - inset),
+                QPoint(mid, mid),
+            ]
+        )
+    elif kind == "forward":
+        triangle(
+            [
+                QPoint(inset, inset),
+                QPoint(inset, side - inset),
+                QPoint(mid, mid),
+            ]
+        )
+        triangle(
+            [
+                QPoint(mid, inset),
+                QPoint(mid, side - inset),
+                QPoint(side - inset, mid),
+            ]
+        )
     else:
-        painter.drawPolygon(
-            QPolygon(
-                [
-                    QPoint(inset, inset),
-                    QPoint(inset, side - inset),
-                    QPoint(side - inset, side // 2),
-                ]
-            )
+        triangle(
+            [
+                QPoint(inset, inset),
+                QPoint(inset, side - inset),
+                QPoint(side - inset, mid),
+            ]
         )
     painter.end()
     return QIcon(pixmap)
@@ -173,10 +234,17 @@ def _themed_media_icon(kind: str, scaler=None) -> QIcon:
 
 def get_action_icon(role: str, scaler=None) -> QIcon:
     """Return a theme-aware icon for a known action role, or an empty icon."""
-    if role == "preview":
-        return _themed_media_icon("play", scaler)
-    if role == "pause":
-        return _themed_media_icon("pause", scaler)
+    media_roles = {
+        "preview": "play",
+        "in_progress_filter": "play",
+        "pause": "pause",
+        "media_previous": "previous",
+        "media_next": "next",
+        "media_rewind": "rewind",
+        "media_forward": "forward",
+    }
+    if role in media_roles:
+        return _themed_media_icon(media_roles[role], scaler)
     pixmap = _action_pixmap_map().get(role)
     if pixmap is None:
         return QIcon()
