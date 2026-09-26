@@ -21,6 +21,7 @@ class ShortcutContext(Enum):
     READING_HISTORY_WINDOW = "reading_history_window"
     BOOK_LIST_IMPORT_WINDOW = "book_list_import_window"
     IMPORT_DETAIL_WINDOW = "import_detail_window"
+    PATH_HEALTH_WINDOW = "path_health_window"
 
 
 COLLECTION_WINDOW_SHORTCUTS = {
@@ -62,6 +63,14 @@ DUPLICATE_DIALOG_SHORTCUTS = {
     "R": ("Start duplicate check", "start_button"),
     "L": ("Cancel duplicate check", "cancel_button"),
     "M": ("Focus match type combo", "mode_combo"),
+}
+
+PATH_HEALTH_WINDOW_SHORTCUTS = {
+    "C": ("Collection", "collection_combo"),
+    "F": ("Filter", "filter_combo"),
+    "S": ("Scan", "scan_button"),
+    "L": ("Focus check books path list", "path_list_table"),
+    "X": ("Export list to CSV", "export_button"),
 }
 
 MAIN_WINDOW_SHORTCUTS = {
@@ -189,6 +198,7 @@ class ShortcutManager(QObject):
     READING_HISTORY_WINDOW_SHORTCUTS = READING_HISTORY_WINDOW_SHORTCUTS
     READING_HISTORY_SHORTCUTS = READING_HISTORY_WINDOW_SHORTCUTS
     DUPLICATE_DIALOG_SHORTCUTS = DUPLICATE_DIALOG_SHORTCUTS
+    PATH_HEALTH_WINDOW_SHORTCUTS = PATH_HEALTH_WINDOW_SHORTCUTS
     MAIN_WINDOW_SHORTCUTS = MAIN_WINDOW_SHORTCUTS
     BOOK_DETAILS_SHORTCUTS = BOOK_DETAILS_SHORTCUTS
     IMPORT_DETAIL_WINDOW_SHORTCUTS = IMPORT_DETAIL_WINDOW_SHORTCUTS
@@ -235,6 +245,8 @@ class ShortcutManager(QObject):
             shortcuts = PREFERENCES_WINDOW_SHORTCUTS
         elif context == ShortcutContext.DUPLICATE_DIALOG:
             shortcuts = DUPLICATE_DIALOG_SHORTCUTS
+        elif context == ShortcutContext.PATH_HEALTH_WINDOW:
+            shortcuts = PATH_HEALTH_WINDOW_SHORTCUTS
         elif context == ShortcutContext.BACKUP_RESTORE_WINDOW:
             shortcuts = BACKUP_RESTORE_WINDOW_SHORTCUTS
         elif context == ShortcutContext.NAMELIST_WINDOW:

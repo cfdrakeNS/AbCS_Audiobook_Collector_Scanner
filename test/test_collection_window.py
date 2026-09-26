@@ -157,3 +157,25 @@ def test_collection_window_tab_order_matches_form(
         window.save_button,
     ]
     window.close()
+
+
+def test_collection_window_double_click_starts_edit(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    queries = CollectionQueries(temp_db)
+    name = "CW Double Click Edit Unique"
+    cid = queries.insert(Collection(name=name, active=True))
+
+    window = CollectionWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.focus_and_select_row(cid)
+    row = window.table.currentRow()
+    assert row >= 0
+    assert window._editor_locked is True
+
+    window._on_table_double_clicked(row, window.COL_NAME)
+
+    assert window._editor_locked is False
+    assert window.current_collection_id == cid
+    assert window.name_edit.text() == name
+    window.close()

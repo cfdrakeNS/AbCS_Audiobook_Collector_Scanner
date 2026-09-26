@@ -129,6 +129,7 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 | [Reading History](13_reading_history.md) | Books finished and listening totals by period |
 | [Statistics](14_statistics.md) | Library-wide counts and collection breakdown |
 | [Name List](15_name_list.md) | View and edit author, series, and genre name lists |
+| [Check Books Path](24_path_health.md) | List books whose stored path is blank, missing, or not under the library root |
 
 ## Explained guides
 

@@ -21,6 +21,7 @@ Brief tester notes. Grouped by type.
 - Play on the main toolbar; name-list Copy; menus can arrow over disabled items
 - Book Details **Browse** beside Path in update/new mode (Alt+B); absolute path only; collection library root unchanged
 - Play hidden in Book Details update/new so Path can be fixed first
+- **Manage → Check Books Path** lists blank, missing, or off-root book paths (All Collections or one collection); Import-style Scan progress with Missing / Incorrect / Valid counts; Export CSV; Open Book Details to fix with Browse
 
 ## Bugs
 

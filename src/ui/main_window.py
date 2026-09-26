@@ -1848,6 +1848,10 @@ class MainWindow(QMainWindow):
         self.duplicate_check_action.triggered.connect(self.on_duplicate_check)
         view_menu.addAction(self.duplicate_check_action)
 
+        self.path_health_action = QAction("Check Books Pat&h...", self)
+        self.path_health_action.triggered.connect(self.on_path_health)
+        view_menu.addAction(self.path_health_action)
+
         prefs_action = QAction("&Preferences...", self)
         prefs_action.triggered.connect(self.on_preferences)
         view_menu.addAction(prefs_action)
@@ -2340,6 +2344,42 @@ class MainWindow(QMainWindow):
         if self.table.model() and self.table.model().rowCount() > 0:
             self.table.setCurrentCell(0, 1)  # Column 1 is Title
             self.table.setFocus()
+
+    def on_path_health(self):
+        """Open Manage → Check Books Path report."""
+        if self._block_if_selecting():
+            return
+        if self.duplicate_mode_active:
+            self.set_status(
+                "Check Books Path is unavailable in duplicate mode.",
+                announce=True,
+            )
+            return
+        from src.ui.path_health_window import PathHealthWindow
+
+        focus_ctx = self._capture_table_focus_context()
+        collection_id = self.current_filter.collection_id
+        dialog = PathHealthWindow(
+            self.db,
+            self.scaler,
+            self.theme_manager,
+            parent=self,
+        )
+        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
+            if collection_id is not None:
+                idx = dialog.collection_combo.findData(collection_id)
+                if idx >= 0:
+                    dialog.collection_combo.setCurrentIndex(idx)
+                else:
+                    # Unknown id → All Collections (first item)
+                    dialog.collection_combo.setCurrentIndex(0)
+            else:
+                # Main window All Collections → Check Books Path All Collections
+                dialog.collection_combo.setCurrentIndex(0)
+        dialog.exec()
+        self.refresh_books()
+        self._restore_table_focus_context(focus_ctx)
+        self.restore_main_focus_after_modal()
 
     def set_status(self, message: str, timeout_ms: int = 0, announce: bool = False):
         """
@@ -4334,6 +4374,8 @@ class MainWindow(QMainWindow):
             "recently_added_action",
             "preferences_action",
             "statistics_action",
+            "path_health_action",
+            "duplicate_check_action",
         ):
             action = getattr(self, attr, None)
             if action is not None:

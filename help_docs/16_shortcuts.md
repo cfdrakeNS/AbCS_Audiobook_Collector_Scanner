@@ -242,6 +242,21 @@ Last updated: June 2026.
 | F1 | Show this help |
 | Escape | Close dialog |
 
+## Check Books Path window
+
+| Shortcut | Action |
+|----------|--------|
+| Alt+C | Collection |
+| Alt+F | Filter |
+| Alt+S | Scan |
+| Alt+L | Jump to list |
+| Enter | Open Book Details |
+| Alt+X | Export list to CSV |
+| Escape | Cancel scan or close |
+| Alt+/ | Read status bar |
+| F1 | Show this help |
+| Shift+F1 | Check Books Path help topic |
+
 ## Reading History window
 
 | Shortcut | Action |

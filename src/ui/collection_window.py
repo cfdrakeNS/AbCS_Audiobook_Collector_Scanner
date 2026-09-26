@@ -209,7 +209,8 @@ class CollectionWindow(AccessibleDialog):
         self.table.setAccessibleName("Collections list")
         self.table.setAccessibleDescription(
             "List of collections with path and status. "
-            "Use Up and Down arrows to move between entries."
+            "Use Up and Down arrows to move between entries. "
+            "Double-click or press Enter to edit."
         )
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Collection", "Path", "Status"])
@@ -236,6 +237,7 @@ class CollectionWindow(AccessibleDialog):
         header.setSectionResizeMode(self.COL_PATH, QHeaderView.Stretch)
         header.setSectionResizeMode(self.COL_STATUS, QHeaderView.ResizeToContents)
         self.table.currentCellChanged.connect(self.on_selection_changed)
+        self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -587,6 +589,13 @@ class CollectionWindow(AccessibleDialog):
         self.name_edit.setFocus(Qt.TabFocusReason)
         # Removed status bar Alt+key shortcut message for accessibility
 
+    def _on_table_double_clicked(self, row: int, _column: int) -> None:
+        """Double-click a row to start Edit, same as Alt+E / Edit button."""
+        if row < 0:
+            return
+        self.table.setCurrentCell(row, self.COL_NAME)
+        self.on_edit()
+
     def on_edit(self):
         collection_id = self._selected_collection_id()
         if collection_id is None:
@@ -920,6 +929,7 @@ class CollectionWindow(AccessibleDialog):
             ("Alt+L", "Jump to list"),
             ("Alt+N", "New"),
             ("Alt+E", "Edit selected row"),
+            ("Enter", "Edit selected row"),
             ("Alt+B", "Browse library root folder"),
             ("Alt+S", "Save"),
             ("Alt+D", "Delete"),
@@ -1004,6 +1014,7 @@ class CollectionWindow(AccessibleDialog):
     def accessible_table_key_press(self, event):
         """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.on_edit()
             event.accept()
             return
         if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:

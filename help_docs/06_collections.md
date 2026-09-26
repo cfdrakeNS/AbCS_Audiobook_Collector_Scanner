@@ -34,7 +34,7 @@ Every book belongs to one collection. A default collection named **Audio Books**
    - Click **Save** (Alt+S).
 4. To **edit** a collection:
    - Select a row by clicking it in the list (or press **Alt+L** to focus the list with the keyboard).
-   - Click **Edit** (Alt+E) or press Enter on a row.
+   - Click **Edit** (Alt+E), double-click a row, or press Enter on a row.
    - Change the name, library root folder, or active status.
    - Click **Save** (Alt+S).
 5. To **delete** a collection:
@@ -77,6 +77,7 @@ None specific to collections beyond having at least one active collection at all
 | Tab | Name, Active, Library root, Browse, list, then buttons |
 | Alt+N | New collection |
 | Alt+E | Edit / name field |
+| Enter / double-click | Edit selected row |
 | Alt+B | Browse library root folder |
 | Alt+S | Save |
 | Alt+D | Delete |
