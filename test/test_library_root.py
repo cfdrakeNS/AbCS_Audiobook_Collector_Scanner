@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from src.core.library_root import (
     IMPORT_DEFAULT_DIRECTORY_KEY,
     apply_collection_root,
+    browse_start_directory,
     folder_exists,
     folder_has_supported_audio,
+    path_is_under_root,
+    resolve_book_location,
     root_path_issue,
     sync_single_collection_import_path,
 )
@@ -67,6 +72,89 @@ def test_collection_root_path_crud(tmp_path):
     assert cleared.root_path == ""
 
     db.close()
+
+
+def test_browse_start_directory_order(tmp_path):
+    book_dir = tmp_path / "Author" / "Title"
+    book_dir.mkdir(parents=True)
+    file_path = book_dir / "chapter.mp3"
+    file_path.write_bytes(b"x")
+    root = tmp_path / "library_root"
+    root.mkdir()
+    prefs = tmp_path / "prefs_import"
+    prefs.mkdir()
+
+    assert browse_start_directory(str(book_dir), str(root), str(prefs)) == str(
+        book_dir
+    )
+    assert browse_start_directory(str(file_path), str(root), str(prefs)) == str(
+        book_dir
+    )
+
+    missing = tmp_path / "gone" / "book"
+    assert browse_start_directory(str(missing), str(root), str(prefs)) == str(root)
+    assert browse_start_directory(str(missing), "", str(prefs)) == str(prefs)
+    assert browse_start_directory(str(missing), "", "") == ""
+
+
+def test_browse_start_directory_uses_play_remap(tmp_path):
+    stored = tmp_path / "old_drive" / "lib" / "Author" / "Title"
+    collection = tmp_path / "collection" / "lib"
+    remapped = collection / "Author" / "Title"
+    remapped.mkdir(parents=True)
+    (remapped / "01.mp3").write_bytes(b"x")
+    assert browse_start_directory(str(stored), str(collection), "") == str(remapped)
+
+    import_root = tmp_path / "import" / "lib"
+    imp_book = import_root / "Author" / "Title"
+    imp_book.mkdir(parents=True)
+    (imp_book / "01.mp3").write_bytes(b"x")
+    # Collection folder empty of this book name path — use import remap
+    empty_collection = tmp_path / "empty_collection" / "lib"
+    empty_collection.mkdir(parents=True)
+    assert browse_start_directory(
+        str(stored), str(empty_collection), str(import_root)
+    ) == str(imp_book)
+
+def test_path_is_under_root(tmp_path):
+    root = tmp_path / "root"
+    child = root / "Author" / "Title"
+    child.mkdir(parents=True)
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    assert path_is_under_root(str(child), str(root)) is True
+    assert path_is_under_root(str(other), str(root)) is False
+    assert path_is_under_root("", str(root)) is False
+    assert path_is_under_root(str(child), "") is False
+
+
+def test_resolve_book_location_fallback_order(tmp_path):
+    stored = tmp_path / "old_drive" / "lib" / "Author" / "Title"
+    collection = tmp_path / "collection" / "lib"
+    import_root = tmp_path / "import" / "lib"
+    missing = resolve_book_location(str(stored), str(collection), str(import_root))
+    assert missing == str(collection / "Author" / "Title")
+    assert Path(missing).exists() is False
+
+    imp_book = import_root / "Author" / "Title"
+    imp_book.mkdir(parents=True)
+    (imp_book / "a.mp3").write_bytes(b"x")
+    assert resolve_book_location(str(stored), str(collection), str(import_root)) == str(
+        imp_book
+    )
+
+    coll_book = collection / "Author" / "Title"
+    coll_book.mkdir(parents=True)
+    (coll_book / "c.mp3").write_bytes(b"x")
+    assert resolve_book_location(str(stored), str(collection), str(import_root)) == str(
+        coll_book
+    )
+
+    stored.mkdir(parents=True)
+    (stored / "s.mp3").write_bytes(b"x")
+    assert resolve_book_location(str(stored), str(collection), str(import_root)) == str(
+        stored
+    )
 
 
 def test_apply_collection_root_keeps_author_title_under_new_root(tmp_path):

@@ -90,6 +90,7 @@ BOOK_DETAILS_SHORTCUTS = {
     "C": ("Collection", "collection_label_display"),  # View label (QLineEdit) - always accessible
     "K": ("Want to read", "want_to_read_checkbox"),
     "H": ("Path", "path_edit"),  # From Pat&h label
+    "B": ("Browse path", "browse_path_button"),
     "W": ("Get web info", "get_web_details_button"),
     # "U" shortcut handled locally in book_details.py to trigger action
     "F1": ("Show help", "show_help"),

@@ -335,6 +335,27 @@ def test_book_details_cover_shows_embedded_art(
     window.close()
 
 
+def test_book_details_browse_path_edit_mode_only(temp_db, ui_scaler, theme_manager):
+    books = _ensure_sample_books(temp_db, count=1)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    assert window.browse_path_button.isHidden() is True
+    assert window.browse_path_button.isEnabled() is False
+    assert window.preview_button.isHidden() is False
+    window.on_edit_mode()
+    assert window.browse_path_button.isHidden() is False
+    assert window.browse_path_button.isEnabled() is True
+    assert window.browse_path_button.accessibleName() == "Browse book path"
+    assert window.preview_button.isHidden() is True
+    assert window.preview_button.isEnabled() is False
+    window.close()
+
+
 def test_book_details_tab_order_includes_cover(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=1)
     window = BookDetailsWindow(

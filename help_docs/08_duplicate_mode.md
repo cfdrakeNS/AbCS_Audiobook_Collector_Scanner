@@ -33,7 +33,7 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
    - The status area reports how many duplicates were found and which match type was used.
    - Focus moves to the first book in the list.
 6. While duplicate mode is active:
-   - **Delete** — click rows to select duplicates, then click **Delete** on the toolbar or press **Alt+D**.
+   - **Delete** — deletes the highlighted (focused) book and any multi-selected books. Click rows to select extras, then click **Delete** on the toolbar or press **Alt+D**.
    - **Export Duplicates** — click **Export Duplicates** (or press **Alt+X**) to save a CSV with Author, Title, Year, Time, Collection, and Date Added.
    - **Play** — play the focused duplicate (**Edit → Play**, toolbar **Play**, or **Alt+Shift+P**) to hear which copy to keep.
    - **Update** and **Fetch Web Info** are disabled.
@@ -55,7 +55,7 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
 
 - Open **Manage → Duplicate Check** from the menu bar.
 - In the check dialog, choose a match type from the dropdown and click **Start**.
-- While duplicate mode is active, click rows to select them, then click **Delete** or **Export Duplicates** on the toolbar.
+- While duplicate mode is active, **Delete** removes the focused book plus any selected rows. Use **Export Duplicates** on the toolbar for a CSV.
 
 | Alt+M, D | Open Duplicate Check (Manage menu) |
 
@@ -71,7 +71,7 @@ Main window (while duplicate mode is active):
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+D | Delete selected |
+| Alt+D | Delete focused and selected |
 | Alt+X | Export duplicates to CSV |
 | Alt+Shift+P | Play the focused duplicate |
 | Escape | Clear selection, then confirm exit from duplicate mode |

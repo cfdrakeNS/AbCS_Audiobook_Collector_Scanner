@@ -81,6 +81,7 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QSizePolicy,
     QStackedWidget,
+    QFileDialog,
 )
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression, QSize, Signal
 from PySide6.QtGui import (
@@ -1244,10 +1245,24 @@ class BookDetailsWindow(AccessibleDialog):
 
         path_label = QLabel("Path:")
         path_label.setBuddy(self.path_edit)
+        self.browse_path_button = QPushButton("Browse")
+        self.browse_path_button.setAccessibleName("Browse book path")
+        self.browse_path_button.setAccessibleDescription(
+            "Choose the folder or audio file for this book - Alt+B. "
+            "Does not change the collection library root."
+        )
+        self.browse_path_button.setAutoDefault(False)
+        self.browse_path_button.setDefault(False)
+        self.browse_path_button.clicked.connect(self.on_browse_path)
+        path_fields = QHBoxLayout()
+        path_fields.setContentsMargins(0, 0, 0, 0)
+        path_fields.setSpacing(8)
+        path_fields.addWidget(self.path_edit, 1)
+        path_fields.addWidget(self.browse_path_button)
         bottom_grid.addWidget(added_label, 4, 0, label_align)
         bottom_grid.addWidget(self.added_edit, 4, 1)
         bottom_grid.addWidget(path_label, 5, 0, label_align)
-        bottom_grid.addWidget(self.path_edit, 5, 1)
+        bottom_grid.addLayout(path_fields, 5, 1)
 
         self.listen_progress_edit = QLineEdit()
         self.listen_progress_edit.setReadOnly(True)
@@ -1443,7 +1458,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.setTabOrder(self.size_edit, self.source_edit)
         self.setTabOrder(self.source_edit, self.added_edit)
         self.setTabOrder(self.added_edit, self.path_edit)
-        self.setTabOrder(self.path_edit, self.new_button)
+        self.setTabOrder(self.path_edit, self.browse_path_button)
+        self.setTabOrder(self.browse_path_button, self.new_button)
         self.setTabOrder(self.new_button, self.edit_button)
         self.setTabOrder(self.edit_button, self.save_button)
         self.setTabOrder(self.save_button, self.delete_button)
@@ -1550,6 +1566,10 @@ class BookDetailsWindow(AccessibleDialog):
                 self.path_edit: (
                     "Folder or file path",
                     "Location of audiobook files on disk",
+                ),
+                self.browse_path_button: (
+                    "Browse book path",
+                    "Choose the folder or audio file for this book - Alt+B",
                 ),
                 self.added_edit: (
                     "Date added",
@@ -1715,6 +1735,13 @@ class BookDetailsWindow(AccessibleDialog):
         callback_map["get_web_details_button"] = (
             lambda: self.on_get_web_details()
             if self.get_web_details_button.isVisible()
+            else None
+        )
+        callback_map["browse_path_button"] = (
+            lambda: self.on_browse_path()
+            if getattr(self, "browse_path_button", None) is not None
+            and self.browse_path_button.isEnabled()
+            and self.browse_path_button.isVisible()
             else None
         )
         callback_map["edit_button"] = self.on_edit_mode
@@ -2282,6 +2309,7 @@ class BookDetailsWindow(AccessibleDialog):
             ("Alt+E", "Read date"),
             ("Alt+K", "Want to read"),
             ("Alt+H", "Path"),
+            ("Alt+B", "Browse path"),
             ("Alt+N", "New book"),
             ("Alt+U", "Update book"),
             ("Alt+S", "Save book"),
@@ -3047,6 +3075,9 @@ class BookDetailsWindow(AccessibleDialog):
         self.size_edit.setReadOnly(read_only)
         # Path
         self.path_edit.setReadOnly(read_only)
+        if getattr(self, "browse_path_button", None) is not None:
+            self.browse_path_button.setEnabled(not read_only)
+            self.browse_path_button.setVisible(not read_only)
         # Source
         self.source_edit.setReadOnly(read_only)
         # Added date
@@ -3154,16 +3185,85 @@ class BookDetailsWindow(AccessibleDialog):
         self._mark_dirty(self.path_edit)
         self._update_preview_button_state()
 
+    def on_browse_path(self):
+        """Pick a folder or audio file for books.path (edit/new mode only)."""
+        from pathlib import Path
+
+        from src.core.library_root import (
+            IMPORT_DEFAULT_DIRECTORY_KEY,
+            browse_start_directory,
+            path_is_under_root,
+        )
+        from src.core.tag_reader import TagReader
+
+        if getattr(self, "browse_path_button", None) is None:
+            return
+        if not self.browse_path_button.isEnabled() or not self.browse_path_button.isVisible():
+            return
+
+        current = self.path_edit.text().strip()
+        try:
+            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
+        except TypeError:
+            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
+        prefs = (prefs or "").strip()
+        start_dir = browse_start_directory(
+            current,
+            self._preview_collection_root(),
+            prefs,
+        )
+
+        current_p = Path(current) if current else None
+        if current_p is not None and current_p.is_file():
+            audio_exts = " ".join(
+                f"*{ext}" for ext in sorted(TagReader.SUPPORTED_EXTENSIONS)
+            )
+            audio_filters = f"Audio Files ({audio_exts});;All Files (*.*)"
+            selected, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select Audio File",
+                start_dir or current,
+                audio_filters,
+            )
+        else:
+            selected = QFileDialog.getExistingDirectory(
+                self,
+                "Select Book Folder",
+                start_dir,
+            )
+        if not selected:
+            self.browse_path_button.setFocus(Qt.TabFocusReason)
+            return
+
+        self.path_edit.setText(selected)
+        self._mark_dirty(self.path_edit)
+        self._update_preview_button_state()
+        root = self._preview_collection_root().strip()
+        if root and not path_is_under_root(selected, root):
+            self.set_status(
+                "Path updated. Not under the collection library root.",
+                announce=True,
+            )
+        else:
+            self.set_status("Path updated.", announce=True)
+        self.browse_path_button.setFocus(Qt.TabFocusReason)
+
     def _update_preview_button_state(self):
         from src.core.audio_launcher import preview_can_launch
 
-        available = (not self.is_new) and preview_can_launch(
+        in_edit = bool(getattr(self, "_in_edit_mode", False)) or bool(self.is_new)
+        available = (not in_edit) and preview_can_launch(
             self.path_edit.text() if hasattr(self, "path_edit") else "",
             collection_root=self._preview_collection_root(),
+            import_dir=self._preview_import_dir(),
         )
-        self.preview_button.setVisible(not self.is_new)
+        self.preview_button.setVisible(not in_edit)
         self.preview_button.setEnabled(available)
-        if available:
+        if in_edit:
+            self.preview_button.setAccessibleDescription(
+                "Play is unavailable while editing. Save or cancel first."
+            )
+        elif available:
             self.preview_button.setAccessibleDescription(
                 "Play this book inside AbCS - Alt+Shift+P"
             )
@@ -3244,6 +3344,15 @@ class BookDetailsWindow(AccessibleDialog):
         self.cover_label.setPixmap(pixmap)
         self.cover_label.show()
 
+    def _preview_import_dir(self) -> str:
+        from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
+
+        try:
+            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
+        except TypeError:
+            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
+        return (prefs or "").strip()
+
     def _preview_collection_root(self) -> str:
         collection_id = None
         if hasattr(self, "collection_combo"):
@@ -3291,6 +3400,9 @@ class BookDetailsWindow(AccessibleDialog):
 
         if self.is_new:
             self.set_status("Save the book before playing.", announce=True)
+            return
+        if getattr(self, "_in_edit_mode", False):
+            self.set_status("Save or cancel edit before playing.", announce=True)
             return
         ok, message = show_preview(
             self,

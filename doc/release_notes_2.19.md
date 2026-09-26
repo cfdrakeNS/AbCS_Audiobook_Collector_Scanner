@@ -19,6 +19,8 @@ Brief tester notes. Grouped by type.
 - Book Details layout with cover on the right; Import Detail matching layout with Keep and Discard
 - In progress filter; Clear listening; Statistics counts for Want to Read and In Progress
 - Play on the main toolbar; name-list Copy; menus can arrow over disabled items
+- Book Details **Browse** beside Path in update/new mode (Alt+B); absolute path only; collection library root unchanged
+- Play hidden in Book Details update/new so Path can be fixed first
 
 ## Bugs
 
@@ -29,3 +31,4 @@ Brief tester notes. Grouped by type.
 - Main list clears correctly after a batch web fetch
 - Name-list Tab and Ctrl find focus stay on the list during Find
 - Preview / Play remapped to the collection library root and import folder path
+- Duplicate mode Delete includes the highlighted book as well as multi-selected books

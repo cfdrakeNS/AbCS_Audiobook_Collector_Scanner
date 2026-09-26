@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** **2.19** — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phases 19, 18, and 20 are tester accepted. Phase 22 Import Detail layout is complete. Phase 21 full Play player is implemented. Phase 23 Statistics Want to Read / In Progress is complete. **Next:** Phase 24 F01 (Path health report), then Phase 25 (Want to read and playing filter); optional Phase 14 view-mode before Phase 16 help last. Non-modal fetch, ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred after v3. See [release_notes_2.19.md](release_notes_2.19.md).
+**Tester build:** **2.19** — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phases 19, 18, and 20 are tester accepted. Phase 22 Import Detail layout is complete. Phase 21 full Play player is implemented. Phase 23 Statistics Want to Read / In Progress is complete. Phase 24 Book Details path browse is complete. **Next:** Phase 25 F01 (Path health report); optional Phase 14 view-mode before Phase 16 help last. Non-modal fetch, ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred after v3. See [release_notes_2.19.md](release_notes_2.19.md).
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -16,7 +16,7 @@
 
 ## Version 3 scope (from tester review)
 
-Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), audiobook preview (in-app player), Preview embedded cover (Phase 15), a help-doc review (Phase 16), Want to read, listening progress, the full player, F08 Statistics (Want to Read and listening progress only), F01 Path health report, and Want to read and playing filter. **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings, tags, and web cover files and zip backup. Everything else stays planned but **deferred after v3**.
+Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), audiobook preview (in-app player), Preview embedded cover (Phase 15), a help-doc review (Phase 16), Want to read, listening progress, the full player, F08 Statistics (Want to Read and listening progress only), Book Details path browse, and F01 Path health report. **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings, tags, web cover files and zip backup, and the combined Want to read and playing filter (separate filters already ship). Everything else stays planned but **deferred after v3**.
 
 | Phase | ID | Enhancement | Detail doc | Est. | Depends on |
 |-------|----|-------------|------------|------|------------|
@@ -40,14 +40,14 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 22 | — | Import Detail layout, no cover | [plan_import_detail_layout.md](plan_import_detail_layout.md) | 1 d | Phase 18 |
 | 21 | — | Full Play player | [plan_preview_player_later.md](plan_preview_player_later.md) | 3–5 d | Phase 19 |
 | 23 | F08 | Statistics: Want to Read and listening progress | [plan_statistics_extensions.md](plan_statistics_extensions.md) | 0.5–1 d | Phase 20, Phase 21 |
-| 24 | F01 | Path health report | [plan_path_health_report.md](plan_path_health_report.md) | 1–2 d | — |
-| 25 | — | Want to read and playing filter | [plan_want_to_read_and_playing_filter.md](plan_want_to_read_and_playing_filter.md) | 0.5–1 d | Phase 20, Phase 21 |
+| 24 | — | Book Details path browse | [plan_book_details_path_browse.md](plan_book_details_path_browse.md) | 0.5 d | — |
+| 25 | F01 | Path health report | [plan_path_health_report.md](plan_path_health_report.md) | 1–2 d | Phase 24 |
 | 14 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
 | 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | Phases 18–25 |
 
 **To do in version 3 (not the next build item):** On the first start, if a screen reader is running, set Zoom to Normal, then speak once: "Screen reader detected. Text size is set to Normal. To choose a different size, open Preferences, then Theme and Zoom." Do not repeat it on later starts. Do not reset Zoom if they have already changed it.
 
-**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), Phase 22 (Import Detail layout), and Phase 21 (full Play player) are done** (18–20 tester accepted). **Next: Phase 24 F01, then Phase 25 (Want to read and playing); optional 14 view-mode; 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11. **Phase 23 F08 (Statistics Want to Read and In Progress) is done.**
+**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), Phase 22 (Import Detail layout), and Phase 21 (full Play player) are done** (18–20 tester accepted). **Next: Phase 25 F01; optional 14 view-mode; 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11. **Phase 23 F08 (Statistics Want to Read and In Progress) is done. Phase 24 (Book Details path browse) is done.** Combined Want to read and playing filter dropped — separate filters already ship.
 
 **Not in v3:** Non-modal web fetch (keep using the app during a fetch), book ratings, tags, web cover files and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred. Want to read on Import Detail and Update-window extensions stay deferred.
 
@@ -225,21 +225,21 @@ Statistics rows for **Books Want to Read** and **Books In Progress** only. No ra
 
 **Gate:** Passed. Both rows appear in Statistics; queries covered by tests.
 
-### Phase 24 — F01 Path health report (1–2 days)
+### Phase 24 — Book Details path browse (0.5 day)
 
-See [plan_path_health_report.md](plan_path_health_report.md). **Next after Phase 23.**
+See [plan_book_details_path_browse.md](plan_book_details_path_browse.md). **Complete.**
 
-Manage → Path health (or similar) lists books whose stored path is missing or not on disk. Open Book Details from a row; no silent path rewrites.
+Browse beside Path in Book Details update/new mode. Writes absolute `books.path` only; does not change collection `root_path`. Start dialog from current path, else collection root, else Preferences import folder. Play uses the same start-dir fallbacks when the stored path is missing; Play is hidden in update/new so Path can be fixed first.
+
+**Gate:** Passed. Browse fills path in edit mode; Save persists; view mode has no Browse; root unchanged; Alt+B and status work with JAWS.
+
+### Phase 25 — F01 Path health report (1–2 days)
+
+See [plan_path_health_report.md](plan_path_health_report.md). **Next after Phase 24.**
+
+Manage → Path health (or similar) lists books whose stored path is missing or not on disk. Open Book Details from a row; fix with Path browse or typing; no silent path rewrites.
 
 **Gate:** Report dialog is keyboard- and JAWS-usable; empty and mixed-path libraries behave as in the detail plan.
-
-### Phase 25 — Want to read and playing filter (0.5–1 day)
-
-See [plan_want_to_read_and_playing_filter.md](plan_want_to_read_and_playing_filter.md). After Phase 24.
-
-One View filter that lists only books marked Want to read, or in progress (playing), or both (union; no duplicates). Separate Want to read–only and In progress–only filters remain.
-
-**Gate:** Combined filter works; keyboard and screen reader can toggle it; status announces; exclusive with the other View listening filters.
 
 ### Phase 14 — View-mode announcements (2–4 days, optional)
 
@@ -251,7 +251,7 @@ See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
 
 ### Phase 16 — Help docs review (1 day)
 
-See [plan_help_docs_review.md](plan_help_docs_review.md). **Last.** Write it after the other version 3 windows are in place, so the topics match Book Details, Import Detail, Play, Statistics, Path health, and Want to read and playing. Remove topics 22 and 23, drop “Steps” from section headings, and add missing shipped actions.
+See [plan_help_docs_review.md](plan_help_docs_review.md). **Last.** Write it after the other version 3 windows are in place, so the topics match Book Details (including path browse), Import Detail, Play, Statistics, and Path health. Remove topics 22 and 23, drop “Steps” from section headings, and add missing shipped actions.
 
 **Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Play.
 
@@ -346,6 +346,7 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 | Rescan / update from folder (Part B) | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part B | Part A (root path) is v3 Phase 11 |
 | Rescan Part C organize | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part C | High risk |
 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) | After English freeze |
+| Combined Want to read and playing filter | [plan_want_to_read_and_playing_filter.md](plan_want_to_read_and_playing_filter.md) | **Dropped.** Separate Want to read and In progress filters already ship |
 | Export library metadata | [plan_export_library_metadata.md](plan_export_library_metadata.md) | |
 | Missing metadata filters | [plan_missing_metadata_filters.md](plan_missing_metadata_filters.md) | |
 | Bulk want-to-read / Import Detail TBR / Update extensions | linked plans | After Want to Read |
@@ -395,7 +396,7 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and cov
 
 ## How to use this doc
 
-1. Phases 19, 18, 20, 22, 21, and 23 are done (18–20 tester accepted; 22 Import Detail layout complete; 21 full Play player implemented; 23 Statistics Want to Read / In Progress). **Next: Phase 24 F01 (Path health), Phase 25 (Want to read and playing); optional Phase 14 view-mode; Phase 16 help last.** Also to do in v3: first-start screen reader Zoom message. Date/year validation bug fix is done ([fix_read_date.md](fix_read_date.md)); keep out of AGENTS/standards until a broader review. Phase 15 and Phase 17 are already implemented. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
+1. Phases 19, 18, 20, 22, 21, 23, and 24 are done (18–20 tester accepted; 22 Import Detail layout complete; 21 full Play player implemented; 23 Statistics Want to Read / In Progress; 24 Book Details path browse). **Next: Phase 25 F01 (Path health); optional Phase 14 view-mode; Phase 16 help last.** Combined Want to read and playing filter dropped. Also to do in v3: first-start screen reader Zoom message. Date/year validation bug fix is done ([fix_read_date.md](fix_read_date.md)); keep out of AGENTS/standards until a broader review. Phase 15 and Phase 17 are already implemented. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
 2. Meet each phase **gate** before the next.
 3. Update [plans_status.md](plans_status.md) when a plan ships.
 4. Read linked `plan_*.md` for file paths and a11y checklists.

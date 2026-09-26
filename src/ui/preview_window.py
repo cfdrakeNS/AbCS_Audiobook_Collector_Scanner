@@ -136,6 +136,7 @@ def show_preview(
     series_number: str = "",
     length_text: str = "",
     collection_root: str = "",
+    import_dir: str = "",
     book=None,
     db=None,
 ) -> tuple[bool, str]:
@@ -145,9 +146,19 @@ def show_preview(
     if book is not None:
         listen_file = getattr(book, "listen_file_name", "") or ""
         listen_ms = getattr(book, "listen_position_ms", None)
+    if not (import_dir or "").strip():
+        from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
+
+        settings = QSettings("AbCS", "AudioBookCollector")
+        try:
+            import_dir = settings.value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
+        except TypeError:
+            import_dir = settings.value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
+        import_dir = (import_dir or "").strip()
     playlist = resolve_preview_playlist(
         stored_path,
         collection_root=collection_root,
+        import_dir=import_dir,
         listen_file_name=listen_file,
     )
     if playlist.error or not playlist.files:

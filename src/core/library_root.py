@@ -62,6 +62,35 @@ def apply_collection_root(stored_path: str, collection_root: str) -> str:
     return str(root.joinpath(*rel_parts))
 
 
+def resolve_book_location(
+    stored_path: str,
+    collection_root: str = "",
+    import_dir: str = "",
+) -> str:
+    """Return an existing book path for Play, or the last tried path if none exist.
+
+    Order when the stored path is missing: remap under the collection library
+    root (strip drive / root), then under the Preferences import folder.
+    """
+    text = (stored_path or "").strip()
+    if not text:
+        return ""
+    if Path(text).exists():
+        return text
+    last = text
+    for base in ((collection_root or "").strip(), (import_dir or "").strip()):
+        if not base:
+            continue
+        candidate = apply_collection_root(text, base)
+        if not candidate:
+            continue
+        if Path(candidate).exists():
+            return candidate
+        if last == text:
+            last = candidate
+    return last
+
+
 def _parts_after_drive(path: Path) -> tuple[str, ...]:
     parts = path.parts
     if path.drive and parts:
@@ -105,6 +134,58 @@ def sync_single_collection_import_path(collection_queries, settings) -> str:
         collection.root_path = prefs
         collection_queries.update(collection)
         return "collection"
+    return ""
+
+
+def path_is_under_root(path: str, root: str) -> bool:
+    """True when ``path`` resolves under ``root`` (both non-empty)."""
+    path_text = (path or "").strip()
+    root_text = (root or "").strip()
+    if not path_text or not root_text:
+        return False
+    return _is_under(Path(path_text), Path(root_text))
+
+
+def browse_start_directory(
+    current_path: str,
+    collection_root: str = "",
+    prefs_import_dir: str = "",
+) -> str:
+    """Directory for a path Browse dialog (first existing candidate).
+
+    Order: current path if it is a directory; else its parent if it is a file;
+    when the stored path is missing, the same remap as Play (collection root,
+    then Preferences import); then the collection or import folder itself.
+    """
+    current = (current_path or "").strip()
+    if current:
+        current_p = Path(current)
+        if current_p.is_dir():
+            return str(current_p)
+        if current_p.is_file():
+            parent = current_p.parent
+            if parent.is_dir():
+                return str(parent)
+        resolved = resolve_book_location(
+            current, collection_root, prefs_import_dir
+        )
+        if resolved:
+            resolved_p = Path(resolved)
+            if resolved_p.is_dir():
+                return str(resolved_p)
+            if resolved_p.is_file():
+                parent = resolved_p.parent
+                if parent.is_dir():
+                    return str(parent)
+            parent = resolved_p.parent
+            if parent.is_dir():
+                return str(parent)
+    root = (collection_root or "").strip()
+    if root and Path(root).is_dir():
+        return root
+    prefs = (prefs_import_dir or "").strip()
+    if prefs and Path(prefs).is_dir():
+        return prefs
     return ""
 
 

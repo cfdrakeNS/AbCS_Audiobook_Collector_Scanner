@@ -4377,7 +4377,12 @@ class MainWindow(QMainWindow):
 
         # Enable/disable Edit menu items based on selection
         if hasattr(self, "delete_action"):
-            self.delete_action.setEnabled(has_selection)
+            can_delete = has_selection or (
+                in_duplicate_mode
+                and self.table.currentRow() >= 0
+                and self.table.currentRow() < len(self.books)
+            )
+            self.delete_action.setEnabled(can_delete)
         if hasattr(self, "update_action"):
             self.update_action.setEnabled(has_selection and not in_duplicate_mode)
         if hasattr(self, "get_web_info_action"):
@@ -4454,82 +4459,93 @@ class MainWindow(QMainWindow):
             self._return_focus_to_book(first_book_id)
             QTimer.singleShot(0, lambda: self._return_focus_to_book(first_book_id))
 
+    def _book_ids_for_delete(self) -> set:
+        """IDs for Delete: multi-selection, plus the focused row in duplicate mode."""
+        ids_to_delete = set(self.selected_book_ids)
+        if self.duplicate_mode_active:
+            row = self.table.currentRow()
+            if 0 <= row < len(self.books):
+                book_id = self.books[row].book_id
+                if book_id is not None:
+                    ids_to_delete.add(book_id)
+        return ids_to_delete
+
     def on_delete_clicked(self):
         """Handle Delete button click."""
-        if not self.selected_book_ids:
+        ids_to_delete = self._book_ids_for_delete()
+        if not ids_to_delete:
             if self.duplicate_mode_active:
                 self.set_status(
-                    "Duplicate mode active. Select books to delete, or Cancel Dup Mode.",
+                    "Duplicate mode active. Focus or select books to delete, or Cancel Dup Mode.",
                     timeout_ms=3000,
                 )
             return
 
-        if self.selected_book_ids:
-            count = len(self.selected_book_ids)
+        count = len(ids_to_delete)
 
-            # mw#25: Track the first selected row to return focus after delete
-            first_selected_row = None
-            for row in range(self.table.rowCount()):
-                if (
-                    row < len(self.books)
-                    and self.books[row].book_id in self.selected_book_ids
-                ):
-                    first_selected_row = row
-                    break
+        # mw#25: Track the first selected row to return focus after delete
+        first_selected_row = None
+        for row in range(self.table.rowCount()):
+            if (
+                row < len(self.books)
+                and self.books[row].book_id in ids_to_delete
+            ):
+                first_selected_row = row
+                break
 
-            from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.icon_helper import get_app_icon
 
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Confirm Delete",
-                text=f"Are you sure you want to delete {count} selected book(s)?",
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No,
-                window_icon=get_app_icon(),
-                button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
-            )
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Confirm Delete",
+            text=f"Are you sure you want to delete {count} selected book(s)?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+            window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_DELETE_CONFIRM_ICONS,
+        )
 
-            if reply == QMessageBox.Yes:
-                self.book_queries.delete_many(list(self.selected_book_ids))
+        if reply == QMessageBox.Yes:
+            self.book_queries.delete_many(list(ids_to_delete))
 
-                try:
-                    self.author_queries.cleanup_unused()
-                    self.series_queries.cleanup_unused()
-                    self.genre_queries.cleanup_unused()
-                    self.db.vacuum()
-                except Exception:
-                    pass
+            try:
+                self.author_queries.cleanup_unused()
+                self.series_queries.cleanup_unused()
+                self.genre_queries.cleanup_unused()
+                self.db.vacuum()
+            except Exception:
+                pass
 
-                deleted_count = len(self.selected_book_ids)
-                self.selected_book_ids.clear()
-                self.update_selection_ui()
+            deleted_count = len(ids_to_delete)
+            self.selected_book_ids.clear()
+            self.update_selection_ui()
+            self.refresh_books()
+
+            if self.duplicate_mode_active:
+                self._refresh_duplicate_mode_after_data_change()
+                return
+
+            # Check if filters resulted in 0 books - clear filters to prevent freeze
+            if self.table.rowCount() == 0 and self.has_active_filters():
+                self.clear_all_filters()
                 self.refresh_books()
+                self.set_status(
+                    f"{deleted_count} book(s) deleted - filters cleared (no matching records)",
+                    announce=True,
+                )
+                return  # Skip focus logic since table was refreshed
 
-                if self.duplicate_mode_active:
-                    self._refresh_duplicate_mode_after_data_change()
-                    return
+            # mw#25: Focus the row before the deleted selection
+            if first_selected_row is not None:
+                target_row = max(0, first_selected_row - 1)
+                if target_row < self.table.rowCount():
+                    self.table.setCurrentCell(target_row, 1)  # Title column
+                    self.table.setFocus()
 
-                # Check if filters resulted in 0 books - clear filters to prevent freeze
-                if self.table.rowCount() == 0 and self.has_active_filters():
-                    self.clear_all_filters()
-                    self.refresh_books()
-                    self.set_status(
-                        f"{deleted_count} book(s) deleted - filters cleared (no matching records)",
-                        announce=True,
-                    )
-                    return  # Skip focus logic since table was refreshed
-
-                # mw#25: Focus the row before the deleted selection
-                if first_selected_row is not None:
-                    target_row = max(0, first_selected_row - 1)
-                    if target_row < self.table.rowCount():
-                        self.table.setCurrentCell(target_row, 1)  # Title column
-                        self.table.setFocus()
-
-                # Show deletion message
-                self.set_status(f"{deleted_count} book(s) deleted", timeout_ms=2000)
+            # Show deletion message
+            self.set_status(f"{deleted_count} book(s) deleted", timeout_ms=2000)
 
     def on_export_duplicates(self):
         """Export duplicate books to CSV file with author, title, year, collection, and date added."""
@@ -5425,7 +5441,7 @@ class MainWindow(QMainWindow):
         return [
             ("Alt+W", "Fetch web info for the selection (batch when two or more)"),
             ("Alt+U", "Update selected"),
-            ("Alt+D", "Delete selected"),
+            ("Alt+D", "Delete selected (focused book in duplicate mode)"),
             ("Shift+Down/Up", "Extend selection"),
             ("Escape", "Cancel selection"),
             ("Ctrl+C", "Copy focused cell"),
@@ -5472,7 +5488,7 @@ class MainWindow(QMainWindow):
                 ("Ctrl+N", "New book"),
                 ("Shift+Down/Up", "Start selection or extend selection"),
                 ("Alt+U", "Update selected"),
-                ("Alt+D", "Delete selected"),
+                ("Alt+D", "Delete selected (focused book in duplicate mode)"),
                 ("Alt+X", "Export duplicates (in duplicate mode)"),
                 ("Escape", "Clear selection / Find / plot / read / in progress / want to read / recently added"),
                 ("Ctrl+Plus", "Zoom in"),

@@ -89,3 +89,28 @@ def test_import_entry_exits_duplicate_mode_before_opening(
 
     assert window.duplicate_mode_active is False
     assert window.duplicate_mode_book_ids == set()
+
+
+def test_book_ids_for_delete_includes_focused_in_duplicate_mode(main_window, monkeypatch):
+    """Duplicate mode Delete includes the highlighted row plus multi-selection."""
+    window = main_window
+    window.books = [
+        Book(book_id=10, title="A", author_id=1, collection_id=1),
+        Book(book_id=20, title="B", author_id=1, collection_id=1),
+        Book(book_id=30, title="C", author_id=1, collection_id=1),
+    ]
+    window.duplicate_mode_active = True
+    window.selected_book_ids = {20}
+    monkeypatch.setattr(window.table, "currentRow", lambda: 0)
+
+    assert window._book_ids_for_delete() == {10, 20}
+
+    window.selected_book_ids.clear()
+    assert window._book_ids_for_delete() == {10}
+
+    window.duplicate_mode_active = False
+    window.selected_book_ids = {30}
+    assert window._book_ids_for_delete() == {30}
+
+    window.selected_book_ids.clear()
+    assert window._book_ids_for_delete() == set()

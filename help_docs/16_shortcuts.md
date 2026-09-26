@@ -58,6 +58,7 @@ Last updated: June 2026.
 | Alt+E | Read date |
 | Alt+K | Want to read |
 | Alt+H | Path |
+| Alt+B | Browse path (update / new mode) |
 | Alt+W | Get web info |
 | Alt+Shift+P | Play audiobook inside AbCS |
 | Alt+U | Update/Edit mode |

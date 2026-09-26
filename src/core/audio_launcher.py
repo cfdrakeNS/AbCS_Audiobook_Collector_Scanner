@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.core.library_root import apply_collection_root
+from src.core.library_root import resolve_book_location
 from src.core.tag_reader import TagReader
 
 
@@ -146,18 +146,22 @@ def list_audio_in_folder(folder: Path) -> list[Path]:
     return files
 
 
-def resolve_preview_file(path: str, collection_root: str = "") -> PreviewTarget:
+def resolve_preview_file(
+    path: str, collection_root: str = "", import_dir: str = ""
+) -> PreviewTarget:
     """Return the file to play, or an error when Preview must stay off.
 
-    When a collection library root is set, the stored import path is
-    remapped onto that folder so a portable drive can move. If the
-    remapped location is missing, the stored path is tried next.
+    When the stored path is missing, the path is remapped onto the collection
+    library root (drive and root stripped), then onto the Preferences import
+    folder if that is set.
 
     Folder scan: immediate children first. If none, one level of
     subfolders. Files are ordered by disc number, then track number,
     then file name. Files without a track number come last.
     """
-    playlist = resolve_preview_playlist(path, collection_root=collection_root)
+    playlist = resolve_preview_playlist(
+        path, collection_root=collection_root, import_dir=import_dir
+    )
     if playlist.error:
         return PreviewTarget(error=playlist.error)
     return PreviewTarget(path=playlist.path)
@@ -166,21 +170,19 @@ def resolve_preview_file(path: str, collection_root: str = "") -> PreviewTarget:
 def resolve_preview_playlist(
     path: str,
     collection_root: str = "",
+    import_dir: str = "",
     listen_file_name: str = "",
 ) -> PreviewPlaylist:
     """Return the ordered playlist and start index for Preview."""
     text = (path or "").strip()
     if not text:
         return PreviewPlaylist(error="No file path is set.")
-    remapped = apply_collection_root(text, collection_root)
-    remapped_path = Path(remapped)
-    if remapped_path.exists():
-        return _playlist_for_existing_path(remapped, listen_file_name=listen_file_name)
-    if remapped != text:
-        stored = _playlist_for_existing_path(text, listen_file_name=listen_file_name)
-        if stored.files:
-            return stored
-    return PreviewPlaylist(error=f"Book not found in - {remapped}")
+    resolved = resolve_book_location(
+        text, collection_root=collection_root, import_dir=import_dir
+    )
+    if Path(resolved).exists():
+        return _playlist_for_existing_path(resolved, listen_file_name=listen_file_name)
+    return PreviewPlaylist(error=f"Book not found in - {resolved}")
 
 
 def _playlist_for_existing_path(
@@ -269,6 +271,13 @@ def read_embedded_cover(path: Path) -> bytes | None:
         return None
 
 
-def preview_can_launch(path: str, collection_root: str = "") -> bool:
+def preview_can_launch(
+    path: str, collection_root: str = "", import_dir: str = ""
+) -> bool:
     """True when Preview should be enabled for this stored path."""
-    return resolve_preview_file(path, collection_root=collection_root).path is not None
+    return (
+        resolve_preview_file(
+            path, collection_root=collection_root, import_dir=import_dir
+        ).path
+        is not None
+    )

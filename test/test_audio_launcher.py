@@ -148,7 +148,7 @@ def test_resolve_preview_uses_collection_root_not_import_path(tmp_path):
     assert found.error == ""
 
 
-def test_resolve_preview_prefers_collection_root_when_both_exist(tmp_path):
+def test_resolve_preview_uses_stored_when_both_exist(tmp_path):
     rel = Path("Author") / "Title"
     old_book = tmp_path / "old" / "lib" / rel
     new_book = tmp_path / "new" / "lib" / rel
@@ -157,7 +157,7 @@ def test_resolve_preview_prefers_collection_root_when_both_exist(tmp_path):
     (old_book / "old.mp3").write_bytes(b"o")
     (new_book / "new.mp3").write_bytes(b"n")
     found = resolve_preview_file(str(old_book), collection_root=str(new_book.parent.parent))
-    assert found.path == new_book / "new.mp3"
+    assert found.path == old_book / "old.mp3"
 
 
 def test_resolve_preview_falls_back_to_stored_if_collection_copy_missing(tmp_path):
@@ -171,6 +171,39 @@ def test_resolve_preview_falls_back_to_stored_if_collection_copy_missing(tmp_pat
     assert found.path == audio
 
 
+def test_resolve_preview_falls_back_to_import_dir(tmp_path):
+    stored = tmp_path / "gone_drive" / "lib" / "Author" / "Title"
+    import_root = tmp_path / "prefs_import"
+    book = import_root / "Author" / "Title"
+    book.mkdir(parents=True)
+    audio = book / "01.mp3"
+    audio.write_bytes(b"x")
+    found = resolve_preview_file(
+        str(stored),
+        collection_root=str(tmp_path / "empty_collection"),
+        import_dir=str(import_root),
+    )
+    assert found.path == audio
+
+
+def test_resolve_preview_prefers_collection_over_import_when_missing_stored(tmp_path):
+    stored = tmp_path / "gone" / "lib" / "Author" / "Title"
+    collection_root = tmp_path / "collection"
+    import_root = tmp_path / "import"
+    coll_book = collection_root / "Author" / "Title"
+    imp_book = import_root / "Author" / "Title"
+    coll_book.mkdir(parents=True)
+    imp_book.mkdir(parents=True)
+    (coll_book / "c.mp3").write_bytes(b"c")
+    (imp_book / "i.mp3").write_bytes(b"i")
+    found = resolve_preview_file(
+        str(stored),
+        collection_root=str(collection_root),
+        import_dir=str(import_root),
+    )
+    assert found.path == coll_book / "c.mp3"
+
+
 def test_resolve_preview_missing_on_collection_root_reports_remapped_path(tmp_path):
     stored = tmp_path / "old" / "lib" / "Author" / "Title"
     new_root = tmp_path / "portable" / "lib"
@@ -178,7 +211,6 @@ def test_resolve_preview_missing_on_collection_root_reports_remapped_path(tmp_pa
     found = resolve_preview_file(str(stored), collection_root=str(new_root))
     assert found.path is None
     assert found.error == f"Book not found in - {remapped}"
-
 
 def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch):
     from src.ui.preview_window import show_preview

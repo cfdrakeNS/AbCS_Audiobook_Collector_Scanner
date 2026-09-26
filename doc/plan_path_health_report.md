@@ -1,8 +1,8 @@
-# Path Health Report — Version 3 Phase 24 / F01
+# Path Health Report — Version 3 Phase 25 / F01
 
-**Status:** Planned (next after Phase 23 Statistics)  
+**Status:** Planned (next after Phase 24 Book Details path browse)  
 **Created:** June 2026  
-**Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
+**Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_book_details_path_browse.md](plan_book_details_path_browse.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
 
 ---
 
@@ -23,8 +23,8 @@ After moves, renames, or drive changes, `books.path` becomes stale. Users discov
 - Scope: current collection filter or all collections (user choice).
 - For each book: check `os.path.exists(book.path)` (file or folder).
 - Results table: Author, Title, Path, Status (`Missing`, `Empty`, `OK`).
-- Actions: **Export CSV**; optional **Open Book Details** for selected row.
-- No automatic path fix in v1 — pairs with rescan (user fixes via rescan or hand edit).
+- Actions: **Export CSV**; optional **Open Book Details** for selected row (fix path with Phase 24 Browse or by typing).
+- No automatic path fix in v1 — pairs with path browse / rescan (user fixes via Browse, hand edit, or later rescan).
 
 ---
 
