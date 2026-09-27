@@ -1,9 +1,17 @@
 # View-mode static text (silence JAWS edit / read-only noise)
 
-**Status:** Planned — **Version 3 Phase 14 (optional)**  
+**Status:** Deferred — **out of scope for v3** (was Phase 14)  
 **Created:** September 2026  
-**Updated:** September 2026 (findings from failed first attempt)  
+**Updated:** September 2026 (findings from failed first attempt; user feedback — removed from v3)  
 **Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), Book Details view mode in [`src/ui/book_details.py`](../src/ui/book_details.py)
+
+---
+
+## Why this was removed from v3 (user feedback)
+
+Screen reader users were asked about this change. Their answer: **why would you mask out JAWS information like "read only" and "edit"?** Those words tell the user what kind of control they are on and whether they can type in it. Hiding them removes useful information, even if it sounds noisy to a developer.
+
+Result: the current behavior (view fields are read-only edits, and JAWS says "read only") is kept as correct. Do not restart this plan unless users ask for quieter view-mode fields. The findings below stay as a record of what was tried.
 
 ---
 

@@ -103,7 +103,7 @@ class PreferencesWindow(AccessibleDialog):
             return
         super().keyPressEvent(event)
 
-    ALLOWED_ALT_LETTERS = {"A", "B", "C", "D", "F", "O", "R", "S", "V"}
+    ALLOWED_ALT_LETTERS = {"A", "B", "C", "D", "F", "O", "R", "V"}
 
     IMPORT_SCENARIOS = [
         ("mass_standard", "Mass Standard Import"),
@@ -228,7 +228,7 @@ class PreferencesWindow(AccessibleDialog):
 
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save")
-        self.save_button.setAccessibleDescription("Save preferences and close - Alt+S")
+        self.save_button.setAccessibleDescription("Save preferences and close - Ctrl+S")
         self.save_button.setDefault(False)
         self.save_button.setAutoDefault(False)
         footer_layout.addWidget(self.save_button)
@@ -1814,11 +1814,13 @@ class PreferencesWindow(AccessibleDialog):
             "author_fallback_checkbox": self.focus_fallback_section,
             "rules_section_text": self.focus_validation_section,  # Alt+V
             "restore_defaults_button": self.on_restore_defaults,
-            "save_button": self.on_save,
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.PREFERENCES_WINDOW, callback_map
         )
+        self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.save_shortcut.activated.connect(self.on_save)
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
@@ -1929,7 +1931,7 @@ class PreferencesWindow(AccessibleDialog):
             ("Alt+F", "Fallback & Auto Correct tab"),
             ("Alt+V", "Validation Rules tab"),
             ("Alt+R", "Restore Defaults"),
-            ("Alt+S", "Save"),
+            ("Ctrl+S", "Save"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
             ("Ctrl+Tab / Ctrl+Shift+Tab", "Move between tabs"),

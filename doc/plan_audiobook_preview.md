@@ -19,7 +19,7 @@ Preview plays **inside AbCS** so screen reader focus stays in the app. An OS-def
 | Escape | Closes Preview and stops playback. From the main window, focus returns to the Title cell. |
 | F1 | Preview shortcut list (Shift+F1 once). Shift+F1 opens help for the window that opened Preview (main window or Book Details). |
 
-**Preview** is on Book Details, the main window **Edit** menu, and the main toolbar after Find. Shortcut is **Alt+Shift+P**. Preview is off in selection mode. Duplicate mode keeps Preview on so you can hear which copy to keep.
+**Preview** is on Book Details, the main window **Edit** menu, and the main toolbar after Find. Shortcut was **Alt+Shift+P**; v3 Phase 29 renamed it **Listen** with **Ctrl+L** and removed Alt+Shift+P. Preview is off in selection mode. Duplicate mode keeps Preview on so you can hear which copy to keep.
 
 Resolve path in [`src/core/audio_launcher.py`](../src/core/audio_launcher.py). When the book’s collection has a library root, Preview remaps the stored import path onto that folder (author and title folders stay) so a portable drive can move. `books.path` is not rewritten. If the remapped folder is missing, the stored path is tried next. Play in [`src/ui/preview_window.py`](../src/ui/preview_window.py) with Qt Multimedia. FFmpeg console chatter is quieted while Preview is open.
 
@@ -75,7 +75,7 @@ Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
 
 ### Book Details — [`src/ui/book_details.py`](../src/ui/book_details.py)
 
-**Preview** button near the footer action buttons (same styled `QPushButton` pattern as Fetch Web Info). Shortcut **Alt+Shift+P**. Alt+P stays Plot.
+**Preview** button near the footer action buttons (same styled `QPushButton` pattern as Fetch Web Info). Shortcut **Alt+Shift+P** (now **Listen**, **Ctrl+L** — Phase 29). Alt+P stays Plot.
 
 ### Main window — Edit menu — [`src/ui/main_window.py`](../src/ui/main_window.py)
 

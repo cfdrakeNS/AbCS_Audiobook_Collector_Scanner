@@ -26,7 +26,6 @@ class ShortcutContext(Enum):
 
 COLLECTION_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
-    "S": ("Save", "save_button"),
     "E": ("Edit selected row", "edit_button"),
     "N": ("New", "new_button"),
     "D": ("Delete", "delete_button"),
@@ -35,10 +34,8 @@ COLLECTION_WINDOW_SHORTCUTS = {
 
 NAMELIST_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
-    "S": ("Save", "save_button"),
     "E": ("Edit selected row", "edit_button"),
     "M": ("Name edit", "name_edit"),
-    "F": ("Clear find / new search", "find_edit"),
     "A": ("Active checkbox", "active_check"),
 }
 
@@ -54,7 +51,6 @@ BACKUP_RESTORE_WINDOW_SHORTCUTS = {
 
 READING_HISTORY_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
-    "R": ("Refresh data", "refresh_button"),
     "S": ("Search", "refresh_button"),
     "F": ("From date", "start_date_edit"),
 }
@@ -92,16 +88,16 @@ BOOK_DETAILS_SHORTCUTS = {
     "P": ("Plot", "comments_edit"),  # From Pl&ot label
     "Y": ("Year", "year_spin"),
     "M": ("Time", "time_edit"),  # From &Time label
-    "R": ("Reader", "reader_edit"),
-    "E": ("Read date", "read_date"),  # Alt+E for Read date
-    "I": ("Series", "series_label_display"),  # View label (QLineEdit) - always accessible
+    "N": ("Narrator", "reader_edit"),
+    "R": ("Read date", "read_date"),
+    "S": ("Series", "series_label_display"),  # View label (QLineEdit) - always accessible
     "G": ("Genre", "genre_label_display"),  # View label (QLineEdit) - always accessible
     "C": ("Collection", "collection_label_display"),  # View label (QLineEdit) - always accessible
     "K": ("Want to read", "want_to_read_checkbox"),
     "H": ("Path", "path_edit"),  # From Pat&h label
     "B": ("Browse path", "browse_path_button"),
     "W": ("Get web info", "get_web_details_button"),
-    # "U" shortcut handled locally in book_details.py to trigger action
+    # "E" (Edit) handled locally in book_details.py to trigger action
     "F1": ("Show help", "show_help"),
 }
 
@@ -111,13 +107,12 @@ IMPORT_DETAIL_WINDOW_SHORTCUTS = {
     "P": ("Plot", "comments_edit"),
     "Y": ("Year", "year_spin"),
     "M": ("Time", "time_edit"),
-    "R": ("Reader", "reader_edit"),
+    "N": ("Narrator", "reader_edit"),
     "I": ("Series", "series_combo"),
     "G": ("Genre", "genre_combo"),
     "C": ("Collection", "collection_combo"),
     "E": ("Errors", "errors_edit"),
     "H": ("Path", "path_edit"),
-    "S": ("Save", "save_return_button"),
     "K": ("Keep", "keep_button"),
     "D": ("Discard", "skip_button"),
 }
@@ -130,7 +125,6 @@ WEB_METADATA_SHORTCUTS = {
     "G": ("Genre", "genre_edit"),
     "R": ("Rating", "rating_edit"),
     "F": ("Re-fetch web data", "refetch_button"),
-    "S": ("Save", "save_button"),
     "K": ("Skip this book", "skip_button"),
 }
 
@@ -181,7 +175,6 @@ PREFERENCES_WINDOW_SHORTCUTS = {
     "F": ("Fallback & Auto Correct tab", "author_fallback_checkbox"),
     "V": ("Validation Rules tab", "rules_section_text"),
     "R": ("Restore Defaults", "restore_defaults_button"),
-    "S": ("Save", "save_button"),
     "/": ("Status bar", "status_bar"),
 }
 

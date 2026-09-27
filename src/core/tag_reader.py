@@ -15,6 +15,8 @@ from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
 from mutagen.oggvorbis import OggVorbis
 
+from src.core.comment_cleanup import clean_comment_text, is_technical_comment_frame
+
 
 class AudioFileInfo:
     """Information extracted from an audio file."""
@@ -185,6 +187,8 @@ class TagReader:
                 # Try generic tag reading
                 self._read_generic_tags(audio, info)
 
+            info.comment = clean_comment_text(info.comment)
+
             if isinstance(audio, MP3):
                 self._maybe_correct_embedded_zip_duration(info)
 
@@ -335,6 +339,7 @@ class TagReader:
                 frame
                 for key, frame in audio.tags.items()
                 if str(key).upper().startswith("COMM")
+                and not is_technical_comment_frame(getattr(frame, "desc", ""))
             ]
             if comment_frames:
                 unique_comments = []

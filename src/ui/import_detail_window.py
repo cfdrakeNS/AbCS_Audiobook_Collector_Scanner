@@ -144,9 +144,8 @@ class ImportDetailWindow(AccessibleDialog):
         "I",  # Series
         "K",  # Keep (accept warnings / add like Add Selected, stay open)
         "M",  # Length
+        "N",  # Narrator
         "P",  # Plot
-        "R",  # Reader
-        "S",  # Save
         "T",  # Title
         "Y",  # Year
     }
@@ -450,7 +449,7 @@ class ImportDetailWindow(AccessibleDialog):
                 return True
 
             # Prevent mapped Alt+letter shortcuts from typing characters into
-            # focused text controls (e.g., Alt+S should save only, not insert "s").
+            # focused text controls (e.g., Alt+K should keep only, not insert "k").
             if modifiers & Qt.AltModifier:
                 alt_char = (event.text() or "").upper()
                 if alt_char and alt_char in self.ALLOWED_ALT_LETTERS:
@@ -636,7 +635,7 @@ class ImportDetailWindow(AccessibleDialog):
             self.comments_edit: "Plot",
             self.year_spin: "Year",
             self.time_edit: "Time",
-            self.reader_edit: "Reader",
+            self.reader_edit: "Narrator",
             self.series_combo: "Series",
             self.genre_combo: "Genre",
             self.collection_combo: "Collection",
@@ -1208,9 +1207,9 @@ class ImportDetailWindow(AccessibleDialog):
         columns.addLayout(right_grid, 0)
         layout.addLayout(columns)
 
-        reader_label = QLabel("Reader:")
+        reader_label = QLabel("Narrator:")
         self.reader_edit = QLineEdit()
-        self.reader_edit.setAccessibleName("Reader/Narrator")
+        self.reader_edit.setAccessibleName("Narrator")
         reader_label.setBuddy(self.reader_edit)
         bottom_grid.addWidget(reader_label, 0, 0, label_align)
         bottom_grid.addWidget(self.reader_edit, 0, 1)
@@ -1280,9 +1279,8 @@ class ImportDetailWindow(AccessibleDialog):
         self.save_return_button = QPushButton("Save")
         self.save_return_button.setAccessibleName("Save")
         self.save_return_button.setAccessibleDescription(
-            "Save edits and continue editing - Alt+S"
+            "Save edits and continue editing - Ctrl+S"
         )
-        # self.save_return_button.setShortcut(QKeySequence("Alt+S"))  # Managed by ShortcutManager
         self.save_return_button.setFocusPolicy(Qt.StrongFocus)
         self.save_return_button.clicked.connect(self.on_save)
         self.save_return_button.setEnabled(False)
@@ -1373,7 +1371,7 @@ class ImportDetailWindow(AccessibleDialog):
                 ),
                 self.save_return_button: (
                     "Save edits",
-                    "Save edits and continue editing - Alt+S",
+                    "Save edits and continue editing - Ctrl+S",
                 ),
                 self.keep_button: (
                     "Keep and add",
@@ -1398,13 +1396,12 @@ class ImportDetailWindow(AccessibleDialog):
             "comments_edit": lambda: self.comments_edit.setFocus(),  # Alt+P
             "year_spin": lambda: self.year_spin.setFocus(),  # Alt+Y
             "time_edit": lambda: self.time_edit.setFocus(),  # Alt+M
-            "reader_edit": lambda: self.reader_edit.setFocus(),  # Alt+R
+            "reader_edit": lambda: self.reader_edit.setFocus(),  # Alt+N
             "series_combo": lambda: self.series_combo.setFocus(),  # Alt+I
             "genre_combo": lambda: self.genre_combo.setFocus(),  # Alt+G
             "collection_combo": lambda: self.collection_combo.setFocus(),  # Alt+C
             "errors_edit": lambda: self.errors_edit.setFocus(),  # Alt+E
             "path_edit": lambda: self.path_edit.setFocus(),  # Alt+H
-            "save_return_button": lambda: self.save_return_button.click(),  # Alt+S
             "keep_button": lambda: self.keep_button.click(),  # Alt+K
             "skip_button": lambda: self.skip_button.click(),  # Alt+D
         }
@@ -1434,6 +1431,14 @@ class ImportDetailWindow(AccessibleDialog):
         self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
         self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.next_shortcut.activated.connect(self.on_next)
+
+        self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.save_shortcut.activated.connect(
+            lambda: self.save_return_button.click()
+            if self.save_return_button.isEnabled()
+            else None
+        )
 
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -1476,13 +1481,13 @@ class ImportDetailWindow(AccessibleDialog):
             ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Time"),
-            ("Alt+R", "Reader"),
+            ("Alt+N", "Narrator"),
             ("Alt+I", "Series"),
             ("Alt+G", "Genre"),
             ("Alt+C", "Collection"),
             ("Alt+E", "Errors"),
             ("Alt+H", "Path"),
-            ("Alt+S", "Save"),
+            ("Ctrl+S", "Save"),
             ("Alt+K", "Keep"),
             ("Alt+D", "Discard"),
             ("Page Up", "Previous item"),

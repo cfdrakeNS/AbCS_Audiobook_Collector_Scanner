@@ -35,7 +35,7 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
 6. While duplicate mode is active:
    - **Delete** — deletes the highlighted (focused) book and any multi-selected books. Click rows to select extras, then click **Delete** on the toolbar or press **Alt+D**.
    - **Export Duplicates** — click **Export Duplicates** (or press **Alt+X**) to save a CSV with Author, Title, Year, Time, Collection, and Date Added.
-   - **Play** — play the focused duplicate (**Edit → Play**, toolbar **Play**, or **Alt+Shift+P**) to hear which copy to keep.
+   - **Listen** — play the focused duplicate (**Edit → Listen**, toolbar **Listen**, or **Ctrl+L**) to hear which copy to keep.
    - **Update** and **Fetch Web Info** are disabled.
 7. After deleting, the duplicate list refreshes. If no duplicates remain, duplicate mode exits automatically with a completion message.
 8. To exit manually, press **Escape**. If rows are selected, Escape clears the selection first; press Escape again to confirm exit.
@@ -73,7 +73,7 @@ Main window (while duplicate mode is active):
 |----------|--------|
 | Alt+D | Delete focused and selected |
 | Alt+X | Export duplicates to CSV |
-| Alt+Shift+P | Play the focused duplicate |
+| Ctrl+L | Listen to the focused duplicate |
 | Escape | Clear selection, then confirm exit from duplicate mode |
 | F1 | Help for main window |
 | Alt+/ | Re-read status |

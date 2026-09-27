@@ -16,7 +16,7 @@ Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **View-mode field announcements** *(optional)* | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. |
+| **Export library** *(next)* | Save the whole library, or just the books the current filters show, as a CSV spreadsheet file or JSON. |
 | **Help review** | Last. Help topics match the finished windows. Unused topics are removed. Section names do not start with “Steps”. |
 | **First-start screen reader message** | The first time AbCS starts with a screen reader running, Zoom is set to Normal. It speaks once that text size is Normal, and that a different size is chosen in Preferences, Theme and Zoom. |
 
@@ -27,6 +27,7 @@ Still planned for v3:
 | Enhancement | What it would add |
 | ----------- | ----------------- |
 | **Non-modal web fetch** | Keep using the main window while a fetch runs. Out of scope for v3 (too risky). Fetch progress stays a blocking dialog. |
+| **View-mode field announcements** | In Book Details view mode, tabbing a field speaks the name and value without JAWS saying edit or read only. Out of scope for v3. |
 | **Book ratings** | Store a numeric rating on each book; fill from web metadata. Out of scope for v3. |
 | **Book tags** | Several labels on one book. Out of scope for v3. |
 | **Cover images** | Save cover images from web fetch; show in Book Details and Import Detail. Out of scope for v3. The Preview window picture is separate and is in version 3. |
@@ -42,7 +43,6 @@ Still planned for v3:
 
 | Enhancement | What it would add |
 | ----------- | ----------------- |
-| **Export library to spreadsheet** | Export book list to CSV — reverse of Import Book List. |
 | **Missing info filters** | Show only books with no plot, cover, rating, or path. |
 | **Mark several books Want to Read** | Bulk Want to Read on the main list. |
 | **Want to Read during import** | Set Want to Read in Import Detail. |
@@ -82,4 +82,4 @@ Still planned for v3:
 
 Internal schedule: [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Tester workbook: [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx).
 
-**Status:** Version 3 in progress — tester build **2.19**. Phases 1–4 and 6–13 are in (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Play cover, the Book Details picture, the new columns, the Book Details layout, Want to read, Import Detail layout, the full Play player, Statistics Want to Read / In Progress, Check Books Path, and Check Books Path progress are done. Next, in order: optional view-mode, then help last. Non-modal fetch, ratings, tags, and web cover files are out of scope for v3. Library-wide fuzzy name scan deferred. Changes since 2.14: [release_notes_2.19.md](release_notes_2.19.md).
+**Status:** Version 3 in progress — tester build **2.19**. Phases 1–4 and 6–13 are in (1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented). Play cover, the Book Details picture, the new columns, the Book Details layout, Want to read, Import Detail layout, the full Play player, Statistics Want to Read / In Progress, Check Books Path, and Check Books Path progress are done. Next, in order: Export library, then help last. Non-modal fetch, ratings, tags, web cover files, and view-mode announcements are out of scope for v3. Library-wide fuzzy name scan deferred. Changes since 2.14: [release_notes_2.19.md](release_notes_2.19.md).

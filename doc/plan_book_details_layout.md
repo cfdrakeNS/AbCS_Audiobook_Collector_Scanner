@@ -62,7 +62,7 @@ Keep every existing shortcut. Letters do not move because the fields moved.
 
 From [`BOOK_DETAILS_SHORTCUTS`](../src/accessibility/shortcuts.py): Alt+T Title, Alt+A Author, Alt+I Series, Alt+G Genre, Alt+P Plot, Alt+Y Year, Alt+M Time, Alt+F Files, Alt+O Format, Alt+B Bitrate, Alt+R Reader, Alt+C Collection, Alt+E Read date, Alt+Z Size, Alt+H Path, Alt+W Web. Series number stays Alt+I, then Tab.
 
-Also keep Alt+N New, Alt+U Edit, Alt+S Save, Alt+D Delete, Alt+Shift+P Preview, Alt+/ status, F1, Shift+F1, Page Up, Page Down, and Escape.
+Also keep Alt+N New, Alt+U Edit, Alt+S Save, Alt+D Delete, Ctrl+L Listen (was Alt+Shift+P Preview; Phase 29), Alt+/ status, F1, Shift+F1, Page Up, Page Down, and Escape.
 
 ## Help and tests
 

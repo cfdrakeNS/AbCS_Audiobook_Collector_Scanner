@@ -4,7 +4,7 @@
 **Created:** June 2026  
 **Updated:** September 2026  
 
-**Tester build:** **2.19** — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phases 19, 18, and 20 are tester accepted. Phase 22 Import Detail layout is complete. Phase 21 full Play player is implemented. Phase 23 Statistics Want to Read / In Progress is complete. Phase 24 Book Details path browse is complete. Phase 25 Path health (Check Books Path) is complete. Phase 26 Check Books Path progress is complete. **Next:** optional Phase 14 view-mode before Phase 16 help last. Non-modal fetch, ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred after v3. See [release_notes_2.19.md](release_notes_2.19.md).
+**Tester build:** **2.19** — Phases 1–4 and 6–13 complete (Phases 1–4 and 6–12 tester accepted; Phase 13 name-list merge implemented in 2.18). Preview plays inside AbCS. Series number is display-only ` - nn` on the main table. Book Details save, Book List Import, and Series From File Name confirmed. Startup update check confirmed. Date Read and Added since calendars show days 10–31. Phase 15 Preview cover and Phase 17 Book Details cover are implemented. Phases 19, 18, and 20 are tester accepted. Phase 22 Import Detail layout is complete. Phase 21 full Play player is implemented. Phase 23 Statistics Want to Read / In Progress is complete. Phase 24 Book Details path browse is complete. Phase 25 Path health (Check Books Path) is complete. Phase 26 Check Books Path progress is complete. Phase 27 Export library metadata is implemented (File → Export Library; awaiting JAWS smoke). Phase 28 iTunes technical tags in Comments is implemented (import fix and one-time script; awaiting tester check). **Next:** Phase 16 help last. Non-modal fetch, ratings, tags, web cover files, and view-mode announcements (former Phase 14) stay out of v3. Library-wide fuzzy name scan deferred after v3. See [release_notes_2.19.md](release_notes_2.19.md).
 
 **Purpose:** Single schedule for version 3 work — order, combinations, test gates, and deferrals. Individual plans hold **what** to build; this document holds **when**.
 
@@ -16,7 +16,7 @@
 
 ## Version 3 scope (from tester review)
 
-Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), audiobook preview (in-app player), Preview embedded cover (Phase 15), a help-doc review (Phase 16), Want to read, listening progress, the full player, F08 Statistics (Want to Read and listening progress only), Book Details path browse, and F01 Path health report. **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings, tags, web cover files and zip backup, and the combined Want to read and playing filter (separate filters already ship). Everything else stays planned but **deferred after v3**.
+Tester-selected items plus Phase 2 follow-ons (leading-article compare; selection-mode toolbar), keep-current-book, C01 schema, F10 series number, C07 collection root (Part A), audiobook preview (in-app player), Preview embedded cover (Phase 15), a help-doc review (Phase 16), Want to read, listening progress, the full player, F08 Statistics (Want to Read and listening progress only), Book Details path browse, F01 Path health report, and Export library metadata (Phase 27). **Out of scope for v3 (deferred):** non-modal web fetch jobs (too risky), book ratings, tags, web cover files and zip backup, and the combined Want to read and playing filter (separate filters already ship). Everything else stays planned but **deferred after v3**.
 
 | Phase | ID | Enhancement | Detail doc | Est. | Depends on |
 |-------|----|-------------|------------|------|------------|
@@ -43,12 +43,14 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 24 | — | Book Details path browse | [plan_book_details_path_browse.md](plan_book_details_path_browse.md) | 0.5 d | — |
 | 25 | F01 | Path health report (Check Books Path) | [plan_path_health_report.md](plan_path_health_report.md) | 1–2 d | Phase 24 |
 | 26 | — | Check Books Path progress | [plan_check_books_path_progress.md](plan_check_books_path_progress.md) | 0.5–1 d | Phase 25 |
-| 14 | F14 | View-mode field announcements | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | 2–4 d | — |
-| 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | Phases 18–26 |
+| 27 | — | Export library metadata (CSV / JSON) | [plan_export_library_metadata.md](plan_export_library_metadata.md) | ~2 d | Phase 19 columns |
+| 28 | — | iTunes technical tags in Comments (import fix + one-time script) | [plan_itunes_comment_cleanup.md](plan_itunes_comment_cleanup.md) | 1 d | Found in Phase 27 |
+| 29 | — | Standard shortcuts (tester feedback: Edit, Ctrl+S, Ctrl+F, Narrator, Listen Ctrl+L) | [plan_standard_shortcuts.md](plan_standard_shortcuts.md) | 1–2 d | — |
+| 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | Phases 18–29 |
 
 **To do in version 3 (not the next build item):** On the first start, if a screen reader is running, set Zoom to Normal, then speak once: "Screen reader detected. Text size is set to Normal. To choose a different size, open Preferences, then Theme and Zoom." Do not repeat it on later starts. Do not reset Zoom if they have already changed it.
 
-**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), Phase 22 (Import Detail layout), and Phase 21 (full Play player) are done** (18–20 tester accepted). **Next: optional Phase 14 view-mode; Phase 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11. **Phase 23 F08 (Statistics Want to Read and In Progress) is done. Phase 24 (Book Details path browse) is done. Phase 25 F01 (Check Books Path) is done. Phase 26 (Check Books Path progress) is done.** Combined Want to read and playing filter dropped — separate filters already ship.
+**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. There is no Phase 14 in v3 — view-mode announcements are out of scope; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), Phase 22 (Import Detail layout), and Phase 21 (full Play player) are done** (18–20 tester accepted). **Phase 27 (Export library metadata) and Phase 28 (iTunes technical tags in Comments) are implemented. Next: Phase 29 standard shortcuts (Listen Ctrl+L part done), then Phase 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11. **Phase 23 F08 (Statistics Want to Read and In Progress) is done. Phase 24 (Book Details path browse) is done. Phase 25 F01 (Check Books Path) is done. Phase 26 (Check Books Path progress) is done.** Combined Want to read and playing filter dropped — separate filters already ship.
 
 **Not in v3:** Non-modal web fetch (keep using the app during a fetch), book ratings, tags, web cover files and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred. Want to read on Import Detail and Update-window extensions stay deferred.
 
@@ -154,7 +156,7 @@ Allow setting and changing the optional root folder for a collection (example: `
 
 See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Complete — tester accepted** in tester build 2.18.
 
-**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Plays the book **inside AbCS** (Play/Pause, title, author, length). Book Details has no menu bar today; menu entry is on the main window. Shortcut is **Alt+Shift+P**. Enter plays or pauses. Escape closes and stops. Preview is blocked in selection mode. Closing Preview from the main window returns focus to the book table. When the collection has a library root, Preview remaps the stored path onto that folder. Shift+F1 follows the window that opened Preview.
+**Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Plays the book **inside AbCS** (Play/Pause, title, author, length). Book Details has no menu bar today; menu entry is on the main window. Shortcut was **Alt+Shift+P**; Phase 29 renamed the opener to **Listen** with **Ctrl+L** and removed Alt+Shift+P. Enter plays or pauses. Escape closes and stops. Preview is blocked in selection mode. Closing Preview from the main window returns focus to the book table. When the collection has a library root, Preview remaps the stored path onto that folder. Shift+F1 follows the window that opened Preview.
 
 **Gate:** Preview plays inside AbCS; missing path announced; JAWS can activate Preview from button and Edit menu; focus stays in AbCS.
 
@@ -250,19 +252,37 @@ Import-style progress on Scan for large collections and NAS paths. Live **Missin
 
 **Gate:** Passed. Progress shows the three counts; Escape cancels; Check Books Path remains usable on large/NAS libraries; Phase 25 path rules unchanged.
 
-### Phase 14 — View-mode announcements (2–4 days, optional)
+### Phase 27 — Export library metadata (~2 days)
 
-See [plan_view_mode_static_text.md](plan_view_mode_static_text.md).
+See [plan_export_library_metadata.md](plan_export_library_metadata.md). **Implemented — awaiting JAWS smoke.**
 
-**Optional for v3** — after Phase 26, before help. Spike must pass JAWS before any Book Details change. Skip it and help is still last.
+**File → Export Library** (Alt+F, X) writes the main list as shown (all filters, search, and sort) to CSV (UTF-8 with BOM for Excel) or JSON. With books selected, only the selection is exported. Blocked in duplicate mode (Export Duplicates stays there). Columns include the v3 fields: Series Number, Want to Read, Listen Position, and Listen File. CSV headers match Book List Import field names, so an export re-imports. Status speaks the count; focus returns to the book list. Help topic `25_export_library.md`. Logic in `src/core/library_export.py`; 14 tests in `test/test_library_export.py`; full suite green (634 passed, 1 skipped). CSV cells over 32,767 characters are cut with ` [truncated]` so LibreOffice Calc and Excel load the file; JSON keeps full text.
 
-**Gate:** JAWS spike accepted; Book Details view mode speaks name **and** value without edit or read only; edit mode still says edit.
+**Gate:** Export matches visible filter; headers correct; empty library handled; status announces row count; keyboard and JAWS usable. Automated parts pass; JAWS smoke pending.
+
+### Phase 28 — iTunes technical tags in Comments (1 day)
+
+See [plan_itunes_comment_cleanup.md](plan_itunes_comment_cleanup.md). **Implemented — awaiting tester check.**
+
+Import skips iTunes comment frames (`iTunNORM`, `iTunSMPB`, `iTunes_CDDB_*`) and MusicBrainz / AcoustID / encoder frames, and cleans hex blocks, CD database IDs, MusicBrainz IDs, and encoder or converter stamps from every format's comment; real text is kept. One-time script `scripts/clean_technical_comments.py` (preview by default, `--apply` backs up first) cleans existing books: 81 books in the tester library, 76 left empty. The Phase 27 CSV cut at 32,767 characters stays. No schema or UI change. Logic in `src/core/comment_cleanup.py`; 16 tests in `test/test_comment_cleanup.py`; full suite green (650 passed, 1 skipped).
+
+**Gate:** The test books in the plan match after the script; LibreOffice Calc opens the export; importing the three listed folders gives clean Comments.
+
+### Phase 29 — Standard shortcuts (1–2 days)
+
+See [plan_standard_shortcuts.md](plan_standard_shortcuts.md). **Planned — four outstanding questions. Listen part implemented.**
+
+Tester feedback. Book Details: Update becomes **Edit** (Alt+E); Read date Alt+R; Reader becomes **Narrator** (Alt+N); Series Alt+S; Save **Ctrl+S**; New book Ctrl+N. Name list: **Ctrl+F** Find and **Ctrl+S** Save. Preferences, Collection, Import Detail, Web Metadata: **Ctrl+S** Save. Main toolbar: remove Import. Reading History: drop the duplicate Refresh/Search key.
+
+**Done (Sept 27, 2026):** the player opener is **Listen** with **Ctrl+L** (main window Edit menu and toolbar, Book Details button, Listen window title). Alt+Shift+P removed. Ctrl+L does nothing inside Listen. Help topics updated. Tests mute all audio and never wait on a Listen window (full suite 653 passed, 1 skipped).
+
+**Gate:** Each window's F1 list matches the real keys; Save is Ctrl+S everywhere; no Alt letter does two things in one window; JAWS/NVDA smoke.
 
 ### Phase 16 — Help docs review (1 day)
 
-See [plan_help_docs_review.md](plan_help_docs_review.md). **Last.** Write it after the other version 3 windows are in place, so the topics match Book Details (including path browse), Import Detail, Play, Statistics, and Check Books Path (including progress). Remove topics 22 and 23, drop “Steps” from section headings, and add missing shipped actions.
+See [plan_help_docs_review.md](plan_help_docs_review.md). **Next (last).** Write it after the other version 3 windows and Phase 29 keys are in place, so the topics match Book Details (including path browse), Import Detail, Listen, Statistics, Check Books Path (including progress), and Export Library (topic 25, added with Phase 27). Remove topics 22 and 23, drop “Steps” from section headings, and add missing shipped actions.
 
-**Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Play.
+**Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Listen (Ctrl+L).
 
 ---
 
@@ -349,6 +369,7 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 | Enhancement | Detail doc | Notes |
 |-------------|------------|-------|
 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) | **Out of scope for v3** (too risky). Was former Phase 5. Progress stays modal. |
+| View-mode field announcements (F14) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | **Out of scope for v3.** Was former Phase 14. Needs a JAWS spike before any Book Details change. |
 | Book ratings | [plan_ratings.md](plan_ratings.md) | **Out of scope for v3.** No rating columns in Phase 9. |
 | Covers + zip backup | [Plan_covers.md](Plan_covers.md) | **Out of scope for v3.** No `cover_path` in Phase 9 or Phase 19. |
 | Book tags | [plan_book_tags.md](plan_book_tags.md) | **Out of scope for v3.** |
@@ -356,7 +377,6 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 | Rescan Part C organize | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part C | High risk |
 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) | After English freeze |
 | Combined Want to read and playing filter | [plan_want_to_read_and_playing_filter.md](plan_want_to_read_and_playing_filter.md) | **Dropped.** Separate Want to read and In progress filters already ship |
-| Export library metadata | [plan_export_library_metadata.md](plan_export_library_metadata.md) | |
 | Missing metadata filters | [plan_missing_metadata_filters.md](plan_missing_metadata_filters.md) | |
 | Bulk want-to-read / Import Detail TBR / Update extensions | linked plans | After Want to Read |
 | Scheduled backup reminder | [plan_scheduled_backup_reminder.md](plan_scheduled_backup_reminder.md) | After zip backup |
@@ -367,7 +387,7 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 | Smart collections | [plan_smart_collections.md](plan_smart_collections.md) | |
 | Reading progress | [plan_reading_progress.md](plan_reading_progress.md) | |
 | Book tags | [plan_book_tags.md](plan_book_tags.md) | |
-
+| Export Library options window | [plan_export_library_options_window.md](plan_export_library_options_window.md) | Proposed after Phase 27; for review |
 ### Schema batch (Phase 9 / C01)
 
 | Table | New columns |
@@ -405,7 +425,7 @@ See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and cov
 
 ## How to use this doc
 
-1. Phases 19, 18, 20, 22, 21, 23, 24, 25, and 26 are done (18–20 tester accepted; 22 Import Detail layout complete; 21 full Play player implemented; 23 Statistics Want to Read / In Progress; 24 Book Details path browse; 25 Check Books Path; 26 Check Books Path progress). **Next: optional Phase 14 view-mode; Phase 16 help last.** Combined Want to read and playing filter dropped. Also to do in v3: first-start screen reader Zoom message. Date/year validation bug fix is done ([fix_read_date.md](fix_read_date.md)); keep out of AGENTS/standards until a broader review. Phase 15 and Phase 17 are already implemented. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
+1. Phases 19, 18, 20, 22, 21, 23, 24, 25, 26, and 27 are done (18–20 tester accepted; 22 Import Detail layout complete; 21 full Play player implemented; 23 Statistics Want to Read / In Progress; 24 Book Details path browse; 25 Check Books Path; 26 Check Books Path progress; 27 Export library metadata implemented, JAWS smoke pending; 28 iTunes technical tags in Comments implemented, tester check pending). **Next: Phase 16 help last.** Combined Want to read and playing filter dropped. Also to do in v3: first-start screen reader Zoom message. Date/year validation bug fix is done ([fix_read_date.md](fix_read_date.md)); keep out of AGENTS/standards until a broader review. Phase 15 and Phase 17 are already implemented. Non-modal fetch is not a v3 phase. Phase 9 schema must precede Phase 10. Phase 11 adds `root_path` itself. Phase 13 name-list merge is complete in 2.18.
 2. Meet each phase **gate** before the next.
 3. Update [plans_status.md](plans_status.md) when a plan ships.
 4. Read linked `plan_*.md` for file paths and a11y checklists.

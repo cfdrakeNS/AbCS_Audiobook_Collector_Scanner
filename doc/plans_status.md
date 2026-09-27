@@ -1,6 +1,6 @@
 # AbCS Development Plans — Status
 
-**Last updated:** September 2026 (tester build **2.19**. v3 Phases 1–4 and 6–13 complete; 1–4 and 6–12 tester accepted. Phase 13 name-list merge implemented. Phases 15 and 17 covers implemented. Phases 19, 18, 20, 22, 21, 23, 24, 25, and 26 complete (18–20 tester accepted; 22 Import Detail layout done; 21 full Play player implemented; 23 Statistics Want to Read / In Progress; 24 Book Details path browse; 25 Check Books Path; 26 Check Books Path progress). Next: optional Phase 14 view-mode; Phase 16 help last. Combined Want to read and playing filter dropped. Ratings, tags, and web cover files stay out of v3. Library-wide fuzzy name scan deferred.)
+**Last updated:** September 2026 (tester build **2.19**. v3 Phases 1–4 and 6–13 complete; 1–4 and 6–12 tester accepted. Phase 13 name-list merge implemented. Phases 15 and 17 covers implemented. Phases 19, 18, 20, 22, 21, 23, 24, 25, and 26 complete (18–20 tester accepted; 22 Import Detail layout done; 21 full Play player implemented; 23 Statistics Want to Read / In Progress; 24 Book Details path browse; 25 Check Books Path; 26 Check Books Path progress). Phase 27 Export library metadata and Phase 28 iTunes technical tags in Comments implemented. Phase 29 standard shortcuts planned (Listen Ctrl+L part implemented; four outstanding questions). Next: Phase 29, then Phase 16 help last. Combined Want to read and playing filter dropped. Ratings, tags, web cover files, and view-mode announcements (former Phase 14) stay out of v3. Library-wide fuzzy name scan deferred.)
 
 **Version 3 release schedule master:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md). Cross-cutting **Accessibility and UI formatting standards** (buttons, dialogs, focus, styles) apply to every phase.
 
@@ -44,9 +44,10 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | 24 | Book Details path browse | [plan_book_details_path_browse.md](plan_book_details_path_browse.md) | Complete — Browse beside Path; Play path remap; Play hidden in edit |
 | 25 | F01 Path health report | [plan_path_health_report.md](plan_path_health_report.md) | Complete — Manage → Check Books Path; Export CSV; Open Book Details |
 | 26 | Check Books Path progress | [plan_check_books_path_progress.md](plan_check_books_path_progress.md) | Complete — Import-style progress; All Collections; default All filter; `N books scanned` status |
-
-| 14 | View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) | Planned — optional, before help |
-| 16 | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | Planned — last |
+| 27 | Export library metadata (CSV / JSON) | [plan_export_library_metadata.md](plan_export_library_metadata.md) | Implemented — File → Export Library; shown list or selection; CSV (UTF-8 BOM) or JSON; help topic 25. Awaiting JAWS smoke. |
+| 28 | iTunes technical tags in Comments | [plan_itunes_comment_cleanup.md](plan_itunes_comment_cleanup.md) | Implemented — import skips iTunes, MusicBrainz, and encoder comment data; one-time `scripts/clean_technical_comments.py` (81 books in tester library). Awaiting tester check. |
+| 29 | Standard shortcuts (tester feedback) | [plan_standard_shortcuts.md](plan_standard_shortcuts.md) | Planned — Book Details Edit Alt+E, Narrator, Ctrl+S Save; name list Ctrl+F / Ctrl+S; Ctrl+S in Preferences and other Save windows; Import off the toolbar. Four outstanding questions. Listen with Ctrl+L implemented (Alt+Shift+P removed). |
+| 16 | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | Planned — next (last v3 phase) |
 | — | First-start screen reader Zoom message | [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md) | To do. First start with a screen reader sets Zoom to Normal, then speaks that once and how to change it in Preferences. |
 
 ---
@@ -56,11 +57,11 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | Plan | Location |
 |------|----------|
 | Non-modal web fetch jobs | [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md) — out of scope for v3 (too risky) |
+| View-mode static text (JAWS) | [plan_view_mode_static_text.md](plan_view_mode_static_text.md) — out of scope for v3 (former Phase 14) |
 | Book ratings | [plan_ratings.md](plan_ratings.md) — out of scope for v3 UI |
 | Covers + zip backup | [Plan_covers.md](Plan_covers.md) — web cover files; out of scope for v3 UI |
 | Library-wide fuzzy name scan | Deferred after v3 — see [Plan_name_consistency_check.md](Plan_name_consistency_check.md) |
 | Internationalization | [plan_Internationalization_overview.md](plan_Internationalization_overview.md) |
-| Export library metadata | [plan_export_library_metadata.md](plan_export_library_metadata.md) |
 | Missing metadata filters | [plan_missing_metadata_filters.md](plan_missing_metadata_filters.md) |
 | Bulk want-to-read on selection | [plan_bulk_want_to_read_selection.md](plan_bulk_want_to_read_selection.md) |
 | Want-to-read on Import Detail | [plan_want_to_read_import_detail.md](plan_want_to_read_import_detail.md) |
@@ -73,7 +74,7 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | Third-party import | [plan_third_party_import.md](plan_third_party_import.md) |
 | Smart collections | [plan_smart_collections.md](plan_smart_collections.md) |
 | Book tags | [plan_book_tags.md](plan_book_tags.md) — out of scope for v3 |
-
+| Export Library options window | [plan_export_library_options_window.md](plan_export_library_options_window.md) — proposed; choose collection, author, series, read dates, or date added, plus filters; 5 outstanding questions |
 ---
 
 ## Active — maintenance

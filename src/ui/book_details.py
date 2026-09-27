@@ -171,7 +171,6 @@ class BookDetailsWindow(AccessibleDialog):
         "N",
         "D",
         "S",
-        "U",
         "W",
         "T",
         "A",
@@ -180,11 +179,11 @@ class BookDetailsWindow(AccessibleDialog):
         "M",
         "R",
         "E",
-        "I",
         "G",
         "C",
         "K",
         "H",
+        "B",
         "/",
         "F1",
     }
@@ -922,7 +921,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.author_label_display.setReadOnly(True)
         self.author_label_display.setAccessibleName("Author")
         self.author_label_display.setAccessibleDescription(
-            "Author name - press Alt+A to focus, Alt+U to edit"
+            "Author name - press Alt+A to focus, Alt+E to edit"
         )
         self.author_label_display.setFocusPolicy(Qt.StrongFocus)
         self.author_combo = QComboBox()
@@ -992,13 +991,13 @@ class BookDetailsWindow(AccessibleDialog):
         right_grid.addWidget(self.time_edit, 2, 1)
 
         # Reader + Read date
-        reader_label = QLabel("Reader:")
+        reader_label = QLabel("Narrator:")
         reader_label.setAlignment(label_align)
         self.reader_edit = QLineEdit()
-        self.reader_edit.setAccessibleName("Reader/Narrator")
+        self.reader_edit.setAccessibleName("Narrator")
         reader_label.setBuddy(self.reader_edit)
 
-        read_label = QLabel("Read:")
+        read_label = QLabel("Read date:")
         read_label.setAlignment(label_align)
         self._null_read_date = NULL_READ_QDATE
         date_masked = make_date_field(self, allow_blank=True, disallow_future=True)
@@ -1089,7 +1088,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.series_label_display.setReadOnly(True)
         self.series_label_display.setAccessibleName("Book series")
         self.series_label_display.setAccessibleDescription(
-            "Series name - press Alt+I to focus, Alt+U to edit"
+            "Series name - press Alt+S to focus, Alt+E to edit"
         )
         self.series_label_display.setFocusPolicy(Qt.StrongFocus)
         self.series_combo = QComboBox()
@@ -1109,7 +1108,7 @@ class BookDetailsWindow(AccessibleDialog):
         )
         self.series_number_edit.setAccessibleName("Series number")
         self.series_number_edit.setAccessibleDescription(
-            "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+I then Tab"
+            "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+S then Tab"
         )
         self.series_number_edit.setMaximumWidth(110)
         series_number_label.setBuddy(self.series_number_edit)
@@ -1129,7 +1128,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.genre_label_display.setReadOnly(True)
         self.genre_label_display.setAccessibleName("Genre")
         self.genre_label_display.setAccessibleDescription(
-            "Genre - press Alt+G to focus, Alt+U to edit"
+            "Genre - press Alt+G to focus, Alt+E to edit"
         )
         self.genre_label_display.setFocusPolicy(Qt.StrongFocus)
         self.genre_combo = QComboBox()
@@ -1149,7 +1148,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.collection_label_display.setReadOnly(True)
         self.collection_label_display.setAccessibleName("Collection")
         self.collection_label_display.setAccessibleDescription(
-            "Collection - press Alt+C to focus, Alt+U to edit"
+            "Collection - press Alt+C to focus, Alt+E to edit"
         )
         self.collection_label_display.setFocusPolicy(Qt.StrongFocus)
         self.collection_combo = QComboBox()
@@ -1349,10 +1348,9 @@ class BookDetailsWindow(AccessibleDialog):
         # Stretch first to push buttons to the right
         button_layout.addStretch()
 
-        # New button (Alt+N) - clears form for new entry
         self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
-        self.new_button.setAccessibleDescription("Clear form for new book entry")
+        self.new_button.setAccessibleDescription("Clear form for new book entry - Ctrl+N")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
         self.new_button.clicked.connect(self.on_new)
         self.new_button.setDefault(False)
@@ -1361,20 +1359,18 @@ class BookDetailsWindow(AccessibleDialog):
         )  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.new_button)
 
-        # Update button (Alt+U via shortcut) - toggles view/edit mode for combos
-        self.edit_button = QPushButton("Update")
-        self.edit_button.setAccessibleName("Update book")
-        self.edit_button.setAccessibleDescription("Enable editing of book details")
+        self.edit_button = QPushButton("Edit")
+        self.edit_button.setAccessibleName("Edit book")
+        self.edit_button.setAccessibleDescription("Enable editing of book details - Alt+E")
         self.edit_button.setFocusPolicy(Qt.StrongFocus)
         self.edit_button.clicked.connect(self.on_edit_mode)
         self.edit_button.setDefault(False)
         self.edit_button.setAutoDefault(False)
         button_layout.addWidget(self.edit_button)
 
-        # Save button (Alt+S)
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save book")
-        self.save_button.setAccessibleDescription("Save changes")
+        self.save_button.setAccessibleDescription("Save changes - Ctrl+S")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setDefault(False)
@@ -1409,10 +1405,10 @@ class BookDetailsWindow(AccessibleDialog):
         )  # Restored to prevent global Enter trigger
         button_layout.addWidget(self.get_web_details_button)
 
-        self.preview_button = QPushButton("Play")
-        self.preview_button.setAccessibleName("Play audiobook")
+        self.preview_button = QPushButton("Listen")
+        self.preview_button.setAccessibleName("Listen to audiobook")
         self.preview_button.setAccessibleDescription(
-            "Play this book inside AbCS - Alt+Shift+P"
+            "Listen to this book inside AbCS - Ctrl+L"
         )
         self.preview_button.setFocusPolicy(Qt.StrongFocus)
         self.preview_button.clicked.connect(self.on_preview)
@@ -1483,7 +1479,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.author_label_display: (
                     "Author name",
-                    "Author name - press Alt+A to focus, Alt+U to edit",
+                    "Author name - press Alt+A to focus, Alt+E to edit",
                 ),
                 self.comments_edit: (
                     "Plot or comments",
@@ -1521,11 +1517,11 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.series_label_display: (
                     "Series name",
-                    "Series name - press Alt+I to focus, Alt+U to edit",
+                    "Series name - press Alt+S to focus, Alt+E to edit",
                 ),
                 self.series_number_edit: (
                     "Series number",
-                    "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+I then Tab",
+                    "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+S then Tab",
                 ),
                 self.genre_combo: (
                     "Genre",
@@ -1533,7 +1529,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.genre_label_display: (
                     "Genre",
-                    "Genre - press Alt+G to focus, Alt+U to edit",
+                    "Genre - press Alt+G to focus, Alt+E to edit",
                 ),
                 self.collection_combo: (
                     "Collection",
@@ -1541,7 +1537,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.collection_label_display: (
                     "Collection",
-                    "Collection - press Alt+C to focus, Alt+U to edit",
+                    "Collection - press Alt+C to focus, Alt+E to edit",
                 ),
                 self.files_edit: (
                     "Number of audio files",
@@ -1608,8 +1604,8 @@ class BookDetailsWindow(AccessibleDialog):
                     "Fetch book info from web",
                 ),
                 self.preview_button: (
-                    "Play this book inside AbCS",
-                    "Play this book inside AbCS - Alt+Shift+P",
+                    "Listen to this book inside AbCS",
+                    "Listen to this book inside AbCS - Ctrl+L",
                 ),
             }
         )
@@ -1754,7 +1750,7 @@ class BookDetailsWindow(AccessibleDialog):
         mgr.register_alt_shortcuts(self, ShortcutContext.BOOK_DETAILS, callback_map)
 
         # Button shortcuts (local like import_detail)
-        self.new_shortcut = QShortcut(QKeySequence("Alt+N"), self)
+        self.new_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
         self.new_shortcut.activated.connect(
             lambda: self.on_new() if self.new_button.isVisible() else None
         )
@@ -1762,18 +1758,17 @@ class BookDetailsWindow(AccessibleDialog):
         self.delete_shortcut.activated.connect(
             lambda: self.on_delete() if self.delete_button.isVisible() else None
         )
-        self.save_shortcut = QShortcut(QKeySequence("Alt+S"), self)
+        self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         self.save_shortcut.activated.connect(
             lambda: self.on_save() if self.save_button.isVisible() else None
         )
 
-        # Update/Edit button shortcut (Alt+U) - triggers action like delete button
-        self.edit_shortcut = QShortcut(QKeySequence("Alt+U"), self)
+        self.edit_shortcut = QShortcut(QKeySequence("Alt+E"), self)
         self.edit_shortcut.activated.connect(
             lambda: self.on_edit_mode() if self.edit_button.isVisible() else None
         )
 
-        self.preview_shortcut = QShortcut(QKeySequence("Alt+Shift+P"), self)
+        self.preview_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
         self.preview_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.preview_shortcut.activated.connect(self.on_preview)
 
@@ -1843,7 +1838,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.series_number_edit: "Series number",
             self.genre_combo: "Genre",
             self.collection_combo: "Collection",
-            self.reader_edit: "Reader",
+            self.reader_edit: "Narrator",
             self.time_edit: "Time",
             self.files_edit: "Files",
             self.bitrate_edit: "Bitrate",
@@ -2298,24 +2293,24 @@ class BookDetailsWindow(AccessibleDialog):
         shortcut_keys = [
             ("Alt+T", "Title"),
             ("Alt+A", "Author"),
-            ("Alt+I", "Series"),
-            ("Alt+I, then Tab", "Series number"),
+            ("Alt+S", "Series"),
+            ("Alt+S, then Tab", "Series number"),
             ("Alt+G", "Genre"),
             ("Alt+P", "Plot"),
             ("Alt+Y", "Year"),
             ("Alt+M", "Time"),
-            ("Alt+R", "Reader"),
+            ("Alt+N", "Narrator"),
             ("Alt+C", "Collection"),
-            ("Alt+E", "Read date"),
+            ("Alt+R", "Read date"),
             ("Alt+K", "Want to read"),
             ("Alt+H", "Path"),
             ("Alt+B", "Browse path"),
-            ("Alt+N", "New book"),
-            ("Alt+U", "Update book"),
-            ("Alt+S", "Save book"),
+            ("Ctrl+N", "New book"),
+            ("Alt+E", "Edit book"),
+            ("Ctrl+S", "Save book"),
             ("Alt+D", "Delete book"),
             ("Alt+W", "Get web info"),
-            ("Alt+Shift+P", "Play audiobook"),
+            ("Ctrl+L", "Listen to audiobook"),
             ("Page Up", "Previous book"),
             ("Page Down", "Next book"),
             ("Escape", "Close"),
@@ -3261,15 +3256,15 @@ class BookDetailsWindow(AccessibleDialog):
         self.preview_button.setEnabled(available)
         if in_edit:
             self.preview_button.setAccessibleDescription(
-                "Play is unavailable while editing. Save or cancel first."
+                "Listen is unavailable while editing. Save or cancel first."
             )
         elif available:
             self.preview_button.setAccessibleDescription(
-                "Play this book inside AbCS - Alt+Shift+P"
+                "Listen to this book inside AbCS - Ctrl+L"
             )
         else:
             self.preview_button.setAccessibleDescription(
-                "Play is unavailable because the path is missing or has no playable file."
+                "Listen is unavailable because the path is missing or has no playable file."
             )
         self._show_book_cover()
 
@@ -3399,10 +3394,10 @@ class BookDetailsWindow(AccessibleDialog):
         from src.ui.preview_window import show_preview
 
         if self.is_new:
-            self.set_status("Save the book before playing.", announce=True)
+            self.set_status("Save the book before listening.", announce=True)
             return
         if getattr(self, "_in_edit_mode", False):
-            self.set_status("Save or cancel edit before playing.", announce=True)
+            self.set_status("Save or cancel edit before listening.", announce=True)
             return
         ok, message = show_preview(
             self,
@@ -3427,7 +3422,7 @@ class BookDetailsWindow(AccessibleDialog):
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
-            title="Play",
+            title="Listen",
             text=message,
         )
         self.set_status(message, announce=True)

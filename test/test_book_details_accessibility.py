@@ -248,6 +248,10 @@ def test_preview_enabled_and_launches_for_audio_file(
         theme_manager=theme_manager,
     )
     assert window.preview_button.isEnabled() is True
+    assert window.preview_button.text() == "Listen"
+    assert window.preview_button.accessibleName() == "Listen to audiobook"
+    assert "Ctrl+L" in window.preview_button.accessibleDescription()
+    assert window.preview_shortcut.key().toString() == "Ctrl+L"
     called = []
 
     def fake_show(parent, stored_path, scaler, theme_manager=None, **kwargs):

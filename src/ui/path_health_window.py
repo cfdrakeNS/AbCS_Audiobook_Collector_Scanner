@@ -146,7 +146,7 @@ class PathHealthWindow(AccessibleDialog):
         self.filter_combo = QComboBox()
         self.filter_combo.setAccessibleName("Check books path filter")
         self.filter_combo.setAccessibleDescription(
-            "Missing: blank or not playable after Play remap. "
+            "Missing: blank or not playable after Listen remap. "
             "Incorrect: playable via remap, or on disk but not under the library root. "
             "All: both missing and incorrect. Alt+F"
         )

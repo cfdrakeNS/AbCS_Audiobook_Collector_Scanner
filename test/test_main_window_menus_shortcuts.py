@@ -353,7 +353,89 @@ def test_preview_toolbar_follows_find(main_window):
     roles = [role for _action, role in window._toolbar_actions]
     assert roles.index("preview") == roles.index("find") + 1
     assert hasattr(window, "preview_toolbar_action")
-    assert window.preview_toolbar_action.text() == "Play"
+    assert window.preview_toolbar_action.text() == "Listen"
+
+
+def test_listen_action_uses_ctrl_l_only(main_window):
+    window = main_window
+    action = window.preview_action
+    assert action.text().replace("&", "").startswith("Listen")
+    assert action in window.edit_menu.actions()
+    shortcuts = {seq.toString() for seq in action.shortcuts()}
+    assert shortcuts == {"Ctrl+L"}
+
+
+def _insert_listen_book(window, tmp_path):
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries
+
+    audio = tmp_path / "listen.mp3"
+    audio.write_bytes(b"x")
+    author_id = AuthorQueries(window.db).insert("Listen Author")
+    book_id = BookQueries(window.db).insert(
+        Book(title="Listen Book", author_id=author_id, path=str(audio))
+    )
+    window.refresh_books()
+    for row, book in enumerate(window.books):
+        if book.book_id == book_id:
+            window.table.setCurrentCell(row, 1)
+    window._update_preview_action_enabled()
+
+
+def test_listen_action_opens_listen_for_focused_book(main_window, tmp_path, monkeypatch):
+    from PySide6.QtCore import Qt
+
+    window = main_window
+    _insert_listen_book(window, tmp_path)
+    opened = []
+    monkeypatch.setattr(
+        "src.ui.preview_window.show_preview",
+        lambda *args, **kwargs: opened.append(True) or (True, "Playing"),
+    )
+    assert window.preview_action.shortcutContext() == Qt.WindowShortcut
+    assert window.preview_action.isEnabled() is True
+    window.preview_action.trigger()
+    assert opened == [True]
+
+
+def test_ctrl_l_does_nothing_inside_listen_window(
+    main_window, monkeypatch, ui_scaler, theme_manager
+):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QAction, QKeyEvent, QShortcut
+
+    from src.ui.preview_window import PreviewWindow
+
+    opened = []
+    monkeypatch.setattr(
+        "src.ui.preview_window.show_preview",
+        lambda *args, **kwargs: opened.append(True) or (True, "Playing"),
+    )
+    listen = PreviewWindow(main_window, ui_scaler, theme_manager)
+    try:
+        assert listen.windowTitle() == "Listen"
+        assert listen.accessibleName() == "Listen"
+        bound = {
+            seq.toString()
+            for shortcut in listen.findChildren(QShortcut)
+            for seq in [shortcut.key()]
+        } | {
+            seq.toString()
+            for action in listen.findChildren(QAction)
+            for seq in action.shortcuts()
+        }
+        assert "Ctrl+L" not in bound
+        toggled = []
+        monkeypatch.setattr(listen, "on_play_pause", lambda: toggled.append(True))
+        # Call the handlers directly: QApplication.sendEvent would run the
+        # shortcut map and could fire the main window's Ctrl+L.
+        event = QKeyEvent(QEvent.KeyPress, Qt.Key_L, Qt.ControlModifier, "l")
+        assert listen.eventFilter(listen.play_pause_button, event) is False
+        listen.keyPressEvent(event)
+        assert toggled == []
+        assert opened == []
+    finally:
+        listen.deleteLater()
 
 
 def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatch):

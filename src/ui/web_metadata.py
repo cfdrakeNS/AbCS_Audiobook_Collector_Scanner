@@ -159,7 +159,7 @@ class WebMetadataWindow(AccessibleDialog):
     """
 
     # List of allowed Alt+key shortcuts for Web Metadata (letters only for event filter)
-    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "G", "S", "R", "F", "K", "/", "F1"}
+    ALLOWED_ALT_KEYS = {"T", "A", "P", "Y", "G", "R", "F", "K", "/", "F1"}
 
     # Signal emitted when data is saved
     data_saved = Signal()
@@ -496,7 +496,7 @@ class WebMetadataWindow(AccessibleDialog):
 
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save web metadata")
-        self.save_button.setAccessibleDescription("Save changes - Alt+S")
+        self.save_button.setAccessibleDescription("Save changes - Ctrl+S")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
         self.save_button.setDefault(True)  # Make it the default button for Enter key
         self.save_button.setAutoDefault(False)
@@ -901,14 +901,16 @@ class WebMetadataWindow(AccessibleDialog):
             "year_edit": lambda: self.year_edit.setFocus(),
             "genre_edit": lambda: self.genre_edit.setFocus(),
             "rating_edit": lambda: self.rating_edit.setFocus(),
-            "save_button": lambda: (
-                self.on_save_clicked() if self.save_button.isVisible() else None
-            ),
             "refetch_button": lambda: self.on_refetch_clicked(),
             "skip_button": lambda: self.on_skip_clicked() if self.skip_button.isVisible() else None,
         }
         shortcut_mgr.register_alt_shortcuts(
             self, ShortcutContext.WEB_METADATA, callback_map
+        )
+        self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.save_shortcut.activated.connect(
+            lambda: self.on_save_clicked() if self.save_button.isVisible() else None
         )
 
         # Local-only shortcuts for consistency across windows
@@ -969,7 +971,7 @@ class WebMetadataWindow(AccessibleDialog):
             ("Alt+G", "Genre"),
             ("Alt+R", "Rating"),
             ("Alt+F", "Re-fetch web data"),
-            ("Alt+S", "Save"),
+            ("Ctrl+S", "Save"),
             ("Alt+K", "Skip this book (review queue)"),
             ("Escape", "Close window"),
             ("Alt+/", "Read status bar"),

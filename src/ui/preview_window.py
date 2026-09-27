@@ -207,7 +207,7 @@ def show_preview(
 
 
 class PreviewWindow(AccessibleDialog):
-    """Play an audiobook inside AbCS with transport and resume."""
+    """Listen window: play an audiobook inside AbCS with transport and resume."""
 
     ALLOWED_ALT_LETTERS = {"/", "N", "P", "S"}
 
@@ -264,10 +264,10 @@ class PreviewWindow(AccessibleDialog):
             if hasattr(self._player, "durationChanged"):
                 self._player.durationChanged.connect(self._on_duration_changed)
 
-        self.setWindowTitle("Play")
-        self.setAccessibleName("Play")
+        self.setWindowTitle("Listen")
+        self.setAccessibleName("Listen")
         self.setAccessibleDescription(
-            "Play this audiobook inside AbCS. Space plays or pauses. "
+            "Listen to this audiobook inside AbCS. Space plays or pauses. "
             "Alt+Left rewinds. Alt+Right fast-forwards. Escape closes."
         )
         self.resize(720, 300)
@@ -326,7 +326,7 @@ class PreviewWindow(AccessibleDialog):
         self.position_label = QLabel("0:00")
         self.position_label.setFocusPolicy(Qt.NoFocus)
         self.position_label.setAlignment(Qt.AlignCenter)
-        self.position_label.setAccessibleName("Play position")
+        self.position_label.setAccessibleName("Listen position")
         font = self.position_label.font()
         font.setBold(True)
         time_pt = max(self.scaler.get_scaled_size(20), 16)
@@ -519,7 +519,7 @@ class PreviewWindow(AccessibleDialog):
                 self.position_slider: "Seek in current file",
             }
         )
-        apply_status_bar_tooltip(self.status_bar, "Play status")
+        apply_status_bar_tooltip(self.status_bar, "Listen status")
         self._apply_saved_speed(announce=False)
         self._update_position_label(0)
         self._reset_position_slider()
@@ -797,7 +797,7 @@ class PreviewWindow(AccessibleDialog):
 
         exec_f1_shortcuts_dialog(
             self,
-            "Keyboard Shortcuts - Play",
+            "Keyboard Shortcuts - Listen",
             [
                 ("Space", "Play or pause"),
                 ("Alt+Left", "Rewind 30 seconds"),
@@ -938,7 +938,7 @@ class PreviewWindow(AccessibleDialog):
         else:
             text = current
         self.position_label.setText(text)
-        self.position_label.setAccessibleName(f"Play position {text}")
+        self.position_label.setAccessibleName(f"Listen position {text}")
 
     def _load_current_file(self, autoplay: bool = True) -> None:
         if self._player is None or not self._playlist:
@@ -1072,7 +1072,7 @@ class PreviewWindow(AccessibleDialog):
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
-            title="Play",
+            title="Listen",
             text=text,
         )
 

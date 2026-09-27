@@ -25,7 +25,7 @@ Last updated: June 2026.
 | Alt+R | Toggle read filter |
 | Alt+T | Toggle want to read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
-| Alt+Shift+P | Play focused book inside AbCS |
+| Ctrl+L | Listen to focused book inside AbCS |
 | Ctrl+F | Find |
 | Ctrl+C | Copy focused cell |
 | Ctrl+I | Import |
@@ -60,7 +60,7 @@ Last updated: June 2026.
 | Alt+H | Path |
 | Alt+B | Browse path (update / new mode) |
 | Alt+W | Get web info |
-| Alt+Shift+P | Play audiobook inside AbCS |
+| Ctrl+L | Listen to audiobook inside AbCS |
 | Alt+U | Update/Edit mode |
 | Alt+N | New book |
 | Alt+D | Delete book |
@@ -69,7 +69,7 @@ Last updated: June 2026.
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
 
-## Play window
+## Listen window
 
 | Shortcut | Action |
 |----------|--------|
@@ -84,7 +84,7 @@ Last updated: June 2026.
 | Escape | Close |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
-| Shift+F1 | Help for the window that opened Play |
+| Shift+F1 | Help for the window that opened Listen |
 
 ## Import window
 

@@ -1445,8 +1445,8 @@ class MainWindow(QMainWindow):
             ),
             (
                 getattr(self, "preview_action", None),
-                "Play the focused book inside AbCS - Alt+Shift+P",
-                "Play the focused book in the Play window - Alt+Shift+P",
+                "Listen to the focused book inside AbCS - Ctrl+L",
+                "Listen to the focused book in the Listen window - Ctrl+L",
             ),
             (
                 getattr(self, "find_action", None),
@@ -1498,13 +1498,6 @@ class MainWindow(QMainWindow):
                 "Create a new audiobook entry - Ctrl+N",
                 "Create a new audiobook entry - Ctrl+N",
                 self.on_new_book,
-            ),
-            (
-                "Import",
-                "import",
-                "Import audiobooks from files or folders - Ctrl+I",
-                "Import audiobooks from files or folders - Ctrl+I",
-                self.on_import,
             ),
             (
                 "Find",
@@ -1559,12 +1552,12 @@ class MainWindow(QMainWindow):
             self._toolbar_actions.append((action, role))
 
             if role == "find":
-                self.preview_toolbar_action = QAction("Play", self)
+                self.preview_toolbar_action = QAction("Listen", self)
                 self.preview_toolbar_action.setEnabled(False)
                 apply_tooltip_accessibility(
                     self.preview_toolbar_action,
-                    "Play the focused book inside AbCS - Alt+Shift+P",
-                    "Play the focused book in the Play window - Alt+Shift+P",
+                    "Listen to the focused book inside AbCS - Ctrl+L",
+                    "Listen to the focused book in the Listen window - Ctrl+L",
                 )
                 self.preview_toolbar_action.triggered.connect(self.on_preview_clicked)
                 apply_decorative_action_icon(
@@ -1696,6 +1689,10 @@ class MainWindow(QMainWindow):
         self.book_list_import_action.triggered.connect(self.on_book_list_import)
         file_menu.addAction(self.book_list_import_action)
 
+        self.export_library_action = QAction("E&xport Library...", self)
+        self.export_library_action.triggered.connect(self.on_export_library)
+        file_menu.addAction(self.export_library_action)
+
         file_menu.addSeparator()
 
         quit_action = QAction("&Quit", self)
@@ -1723,8 +1720,8 @@ class MainWindow(QMainWindow):
         self.get_web_info_action.triggered.connect(self.on_get_web_info_clicked)
         self.edit_menu.addAction(self.get_web_info_action)
 
-        self.preview_action = QAction("&Play", self)
-        self.preview_action.setShortcut(QKeySequence("Alt+Shift+P"))
+        self.preview_action = QAction("&Listen\tCtrl+L", self)
+        self.preview_action.setShortcut(QKeySequence("Ctrl+L"))
         self.preview_action.triggered.connect(self.on_preview_clicked)
         self.preview_action.setEnabled(False)
         self.edit_menu.addAction(self.preview_action)
@@ -4353,7 +4350,6 @@ class MainWindow(QMainWindow):
         """Enable or disable toolbar/menu actions that leave selection mode."""
         blocked_roles = {
             "add_book",
-            "import",
             "find",
             "statistics",
             "preferences",
@@ -4667,6 +4663,72 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.set_status(f"Export failed: {str(e)}", announce=True)
 
+    def on_export_library(self):
+        """File → Export Library: write the shown books (or the selection) to CSV or JSON."""
+        if self.duplicate_mode_active:
+            self.set_status(
+                "Export Library is unavailable in duplicate mode.",
+                announce=True,
+            )
+            return
+
+        from pathlib import Path
+
+        from src.core.library_export import (
+            ensure_extension,
+            export_books,
+            format_for_path,
+        )
+
+        if self.selected_book_ids:
+            export_list = [
+                book for book in self.books if book.book_id in self.selected_book_ids
+            ]
+            scope = "selected"
+        else:
+            export_list = list(self.books)
+            scope = "shown"
+
+        if not export_list:
+            self.set_status("No books to export.", announce=True)
+            return
+
+        default_path = Path.home() / "Documents"
+        if not default_path.is_dir():
+            default_path = Path.home()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M")
+        suggested = str(default_path / f"abcs_library_{stamp}.csv")
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            f"Export {len(export_list)} {scope} book(s)",
+            suggested,
+            "CSV Files (*.csv);;JSON Files (*.json)",
+        )
+        if not file_path:
+            self.set_status("Export canceled", announce=False)
+            self.table.setFocus()
+            return
+
+        export_format = format_for_path(file_path, selected_filter)
+        file_path = ensure_extension(file_path, export_format)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            result = export_books(export_list, file_path, export_format)
+        except OSError as exc:
+            QApplication.restoreOverrideCursor()
+            self.set_status(f"Export failed: {exc}", announce=True)
+            self.table.setFocus()
+            return
+        QApplication.restoreOverrideCursor()
+        self.table.setFocus()
+        message = f"Exported {result.count} {scope} book(s) to {Path(file_path).name}."
+        if result.truncated_books:
+            message += (
+                f" {result.truncated_books} book(s) had text too long for a"
+                " spreadsheet cell and were shortened. Use JSON for full text."
+            )
+        self.set_status(message, announce=True)
+
     def _sync_single_collection_paths(self) -> None:
         from src.core.library_root import sync_single_collection_import_path
 
@@ -4698,12 +4760,12 @@ class MainWindow(QMainWindow):
             self.preview_toolbar_action.setEnabled(enabled)
 
     def on_preview_clicked(self):
-        """Play the focused book in the in-app Play window."""
+        """Open the focused book in the in-app Listen window."""
         if self._block_if_selecting():
             return
         book = self._current_book_for_preview()
         if book is None:
-            self.set_status("No book available to play.", announce=True)
+            self.set_status("No book available to listen to.", announce=True)
             return
         from src.ui.preview_window import show_preview
 
@@ -4733,7 +4795,7 @@ class MainWindow(QMainWindow):
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
-            title="Play",
+            title="Listen",
             text=message,
         )
         self.set_status(message, announce=True)
@@ -5525,7 +5587,7 @@ class MainWindow(QMainWindow):
                 ("Alt+R", "Toggle read filter"),
                 ("Alt+T", "Toggle want to read filter"),
                 ("Alt+W", "Fetch web info (batch when two or more selected)"),
-                ("Alt+Shift+P", "Play focused book inside AbCS"),
+                ("Ctrl+L", "Listen to focused book inside AbCS"),
                 ("Ctrl+I", "Import"),
                 ("Ctrl+N", "New book"),
                 ("Shift+Down/Up", "Start selection or extend selection"),

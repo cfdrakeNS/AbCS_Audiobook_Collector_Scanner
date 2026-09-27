@@ -59,7 +59,7 @@ class CollectionWindow(AccessibleDialog):
     """
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "S", "D", "/"}
+    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "D", "/"}
 
     def __init__(
         self,
@@ -102,7 +102,7 @@ class CollectionWindow(AccessibleDialog):
         )
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "S", "D", "/"}
+    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "D", "/"}
 
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
@@ -259,7 +259,7 @@ class CollectionWindow(AccessibleDialog):
 
         self.save_button = QPushButton("Save")
         self.save_button.clicked.connect(self.on_save)
-        self.save_button.setAccessibleDescription("Save current collection")
+        self.save_button.setAccessibleDescription("Save current collection - Ctrl+S")
         footer_layout.addWidget(self.save_button)
 
         self.delete_button = QPushButton("Delete")
@@ -383,7 +383,6 @@ class CollectionWindow(AccessibleDialog):
         callback_map = {
             "new_button": self.new_button.click,
             "edit_button": self.edit_button.click,
-            "save_button": self.on_save,
             "delete_button": self.delete_button.click,
             "browse_button": self.on_browse_root,
             "table": self.focus_list,
@@ -391,6 +390,8 @@ class CollectionWindow(AccessibleDialog):
         mgr.register_alt_shortcuts(
             self, ShortcutContext.COLLECTION_WINDOW, callback_map
         )
+        self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.save_shortcut.activated.connect(self.on_save)
 
         # Local QShortcuts for F1, Escape, and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -487,7 +488,7 @@ class CollectionWindow(AccessibleDialog):
         if locked:
             self.name_edit.setPlaceholderText("Press Alt+N for New or Alt+E for Edit")
         else:
-            self.name_edit.setPlaceholderText("Alt+S to Save, Escape to Cancel")
+            self.name_edit.setPlaceholderText("Ctrl+S to Save, Escape to Cancel")
 
         editing_mode = not locked
         self.new_button.setVisible(not editing_mode)
@@ -931,7 +932,7 @@ class CollectionWindow(AccessibleDialog):
             ("Alt+E", "Edit selected row"),
             ("Enter", "Edit selected row"),
             ("Alt+B", "Browse library root folder"),
-            ("Alt+S", "Save"),
+            ("Ctrl+S", "Save"),
             ("Alt+D", "Delete"),
             ("Escape", "Cancel edit/new or close window"),
             ("Alt+/", "Read status bar"),

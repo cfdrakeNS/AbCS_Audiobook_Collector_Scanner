@@ -76,7 +76,7 @@ class NameListWindow(AccessibleDialog):
             self.find_edit.setFocus(Qt.ShortcutFocusReason)
 
     def on_clear_find(self):
-        """Clear the current find text and reset the list (Alt+F)."""
+        """Clear the current find text and reset the list (Ctrl+F)."""
         self.find_edit.clear()
         self._apply_find_filter()
         self.find_edit.setFocus(Qt.ShortcutFocusReason)
@@ -102,9 +102,6 @@ class NameListWindow(AccessibleDialog):
                 announce=False,
             )
         self.focus_list()
-
-    def on_alt_f_pressed(self):
-        self.on_clear_find()
 
     def on_find_text_changed(self, _text: str = ""):
         self._apply_find_filter()
@@ -266,11 +263,11 @@ class NameListWindow(AccessibleDialog):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
 
-        find_label = QLabel("&Find:")
+        find_label = QLabel("Find:")
         self.find_edit = QLineEdit()
         self.find_edit.setAccessibleName(f"Find {self.entity_plural.lower()}")
         self.find_edit.setAccessibleDescription(
-            f"Type to jump to matching {self.entity_singular.lower()}"
+            f"Type to jump to matching {self.entity_singular.lower()} - Ctrl+F"
         )
         find_label.setBuddy(self.find_edit)
         header_layout.addWidget(find_label)
@@ -372,7 +369,7 @@ class NameListWindow(AccessibleDialog):
         self.save_button = QPushButton("Save")
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setAccessibleDescription(
-            f"Save current {self.entity_singular.lower()}"
+            f"Save current {self.entity_singular.lower()} - Ctrl+S"
         )
         footer_layout.addWidget(self.save_button)
 
@@ -595,10 +592,7 @@ class NameListWindow(AccessibleDialog):
             Qt.Key_E,
             Qt.Key_L,
             Qt.Key_M,
-            Qt.Key_S,
         }
-        if not self.is_collection_mode:
-            keys.add(Qt.Key_F)
         if self.is_collection_mode:
             keys.add(Qt.Key_A)
         return keys
@@ -609,14 +603,8 @@ class NameListWindow(AccessibleDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             "table": self.focus_list,
-            "save_button": self.on_save,
             "edit_button": self.on_edit,
             "name_edit": self.focus_name_edit,
-            "find_edit": (
-                self.on_clear_find
-                if not self.is_collection_mode
-                else self.focus_find_edit
-            ),
             "active_check": (
                 self.focus_active_check
                 if hasattr(self, "active_check")
@@ -624,6 +612,18 @@ class NameListWindow(AccessibleDialog):
             ),
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.NAMELIST_WINDOW, callback_map)
+
+        self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.save_shortcut.activated.connect(self.on_save)
+
+        self.find_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        self.find_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self.find_shortcut.activated.connect(
+            self.on_clear_find
+            if not self.is_collection_mode
+            else self.focus_find_edit
+        )
 
         # Local QShortcuts for Alt+/, F1, and Escape
         se_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -1135,12 +1135,12 @@ class NameListWindow(AccessibleDialog):
             ("Ctrl+C", "Copy selected name"),
             ("Alt+A", "Active checkbox") if self.is_collection_mode else None,
             (
-                ("Alt+F", "Clear find and start a new search")
+                ("Ctrl+F", "Clear find and start a new search")
                 if not self.is_collection_mode
                 else None
             ),
             (
-                ("Alt+S", "Save")
+                ("Ctrl+S", "Save")
                 if self.save_button.isVisible() and self.save_button.isEnabled()
                 else None
             ),

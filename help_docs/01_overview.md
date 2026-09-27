@@ -95,7 +95,7 @@ Add a new numbered markdown file to that folder and it appears in **All Help Top
 These patterns apply across the application:
 
 - **Menus** — click items on the menu bar (File, Edit, View, Manage, Help). Underlined letters show Alt-key shortcuts if you prefer the keyboard.
-- **Toolbar** — many main-window actions (Import, Find, Play, Search Web, Statistics, filters) are on the toolbar as well as in menus.
+- **Toolbar** — many main-window actions (Import, Find, Listen, Search Web, Statistics, filters) are on the toolbar as well as in menus.
 - **Book table** — click a row to select it; **Ctrl+click** to add or remove rows from a selection; **Shift+click** to select a range. Double-click the **Title** column to open Book Details.
 - **Column headers** — click a header to sort by that column; click again to reverse ascending/descending order.
 - **Buttons** — **Save**, **Cancel**, **Browse**, **Import**, and similar controls work with a normal click.
@@ -130,6 +130,7 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 | [Statistics](14_statistics.md) | Library-wide counts and collection breakdown |
 | [Name List](15_name_list.md) | View and edit author, series, and genre name lists |
 | [Check Books Path](24_path_health.md) | List books whose stored path is blank, missing, or not under the library root |
+| [Export Library](25_export_library.md) | Save the books shown in the main list to a CSV or JSON file |
 
 ## Explained guides
 

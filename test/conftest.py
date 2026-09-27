@@ -81,6 +81,44 @@ def _block_network(request):
         yield
 
 
+@pytest.fixture(autouse=True)
+def _silent_audio_output(monkeypatch):
+    """Keep every test silent.
+
+    UI tests copy data/abcs.db, which can hold real books with real paths, so
+    opening Listen on one would play the actual audiobook over the screen
+    reader. Tests that supply their own fake player still override this.
+    """
+    try:
+        from PySide6 import QtMultimedia
+    except ImportError:
+        yield
+        return
+
+    class SilentAudioOutput(QtMultimedia.QAudioOutput):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            super().setMuted(True)
+            super().setVolume(0.0)
+
+        def setMuted(self, _muted):
+            super().setMuted(True)
+
+        def setVolume(self, _volume):
+            super().setVolume(0.0)
+
+    monkeypatch.setattr(QtMultimedia, "QAudioOutput", SilentAudioOutput)
+
+    from src.ui.preview_window import PreviewWindow
+
+    def _no_modal_wait(self):
+        self.close()
+        return 0
+
+    monkeypatch.setattr(PreviewWindow, "exec", _no_modal_wait)
+    yield
+
+
 def _find_source_database() -> Path | None:
     """Return a local dev database copy when present."""
     data_dir = PROJECT_ROOT / "data"
