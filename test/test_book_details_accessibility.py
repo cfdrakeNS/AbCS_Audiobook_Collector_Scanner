@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication
 
 from src.database.connection import DatabaseManager
 from src.database.models import Book, Collection
@@ -20,6 +21,34 @@ def _ensure_sample_books(db: DatabaseManager, count: int = 2) -> list[Book]:
         )
         books = BookQueries(db).get_all()
     return books
+
+def test_book_details_initial_size_within_screen(temp_db, qapp, ui_scaler, theme_manager):
+    """High zoom must not size the dialog beyond the available screen (Linux VM)."""
+    books = _ensure_sample_books(temp_db, count=1)
+    ui_scaler.set_scale(200)
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    screen = QGuiApplication.primaryScreen()
+    assert screen is not None
+    avail = screen.availableGeometry()
+    pad = 24
+    assert window.width() <= avail.width() - pad
+    assert window.height() <= avail.height() - pad
+    assert window.maximumWidth() <= avail.width() - pad
+    assert window.maximumHeight() <= avail.height() - pad
+    assert window.form_scroll.maximumHeight() <= avail.height()
+    clamp_w, clamp_h = window._clamp_dialog_size(5000, 5000)
+    assert clamp_w == window.maximumWidth()
+    assert clamp_h == window.maximumHeight()
+    window.show()
+    qapp.processEvents()
+    window.close()
+
 
 def test_idle_status_shows_filter_summary_not_title(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=1)

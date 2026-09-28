@@ -85,7 +85,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QFrame,
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression, QSize, Signal
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression, QSize, Signal, QRect
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleEvent,
@@ -162,12 +162,6 @@ class SingleLineDateEdit(QDateEdit):
 
 
 class BookDetailsWindow(AccessibleDialog):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        from src.accessibility.icon_helper import get_app_icon
-
-        self.setWindowIcon(get_app_icon())
-
     # List of allowed Alt+key shortcuts for Book Details
     ALLOWED_ALT_KEYS = {
         "N",
@@ -353,9 +347,11 @@ class BookDetailsWindow(AccessibleDialog):
         """
         # Initialize book details window
         super().__init__(parent)
-        self.setAttribute(Qt.WA_NativeWindow, True)
+        from src.accessibility.icon_helper import get_app_icon
+
+        self.setWindowIcon(get_app_icon())
         self.setWindowModality(Qt.ApplicationModal)
-        self.winId()
+        self._geometry_positioned = False
 
         self.db = db
         self.scaler = scaler
@@ -433,6 +429,12 @@ class BookDetailsWindow(AccessibleDialog):
         """Ensure this dialog remains the active foreground window."""
         super().showEvent(event)
         self._sync_form_scroll_to_content()
+        self._clamp_window_to_screen()
+        if not self._geometry_positioned:
+            frame = self.frameGeometry()
+            frame.moveCenter(self._available_screen_rect().center())
+            self.move(frame.topLeft())
+            self._geometry_positioned = True
         QTimer.singleShot(0, self._ensure_foreground_window)
 
     def _ensure_foreground_window(self):
@@ -1632,21 +1634,78 @@ class BookDetailsWindow(AccessibleDialog):
             return f"Sort: {self.sort_order}"
         return "Sort: Title"
 
+    def _available_screen_rect(self) -> QRect:
+        window_handle = self.windowHandle()
+        if window_handle is not None:
+            screen = window_handle.screen()
+            if screen is not None:
+                return screen.availableGeometry()
+        from PySide6.QtGui import QGuiApplication
+
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            return screen.availableGeometry()
+        return QRect(0, 0, 1600, 900)
+
+    def _clamp_dialog_size(self, width: int, height: int) -> tuple[int, int]:
+        """Keep Book Details on-screen (Linux VMs often use smaller displays)."""
+        avail = self._available_screen_rect()
+        pad = 24
+        max_w = max(480, avail.width() - pad)
+        max_h = max(360, avail.height() - pad)
+        return min(max(1, width), max_w), min(max(1, height), max_h)
+
+    def _apply_screen_geometry_caps(self) -> None:
+        """Prevent layout polish from growing the dialog past the visible desktop."""
+        avail = self._available_screen_rect()
+        pad = 24
+        self.setMaximumSize(
+            max(480, avail.width() - pad),
+            max(360, avail.height() - pad),
+        )
+
+    def _form_content_height(self, form: QWidget) -> int:
+        """Reasonable form height before the window is shown (guards bad sizeHint)."""
+        form.ensurePolished()
+        content_h = max(form.sizeHint().height(), form.minimumSizeHint().height())
+        if content_h <= 0 or content_h >= 10000:
+            content_h = 650
+        return content_h
+
+    def _max_form_scroll_height(self) -> int:
+        """Vertical space for the field scroll area inside the dialog chrome."""
+        avail = self._available_screen_rect()
+        chrome = self.scaler.get_scaled_size(220)
+        return max(400, avail.height() - chrome)
+
     def _sync_form_scroll_to_content(self) -> None:
-        """Size the scroll area to the form so default zoom shows all fields."""
+        """Size the scroll area to the form; scroll when content exceeds the screen."""
         if not hasattr(self, "form_scroll"):
             return
         form = self.form_scroll.widget()
         if form is None:
             return
-        content_h = form.sizeHint().height()
-        self.form_scroll.setMinimumHeight(content_h)
+        content_h = self._form_content_height(form)
+        max_scroll = self._max_form_scroll_height()
+        self.form_scroll.setMinimumHeight(min(content_h, max_scroll))
+        self.form_scroll.setMaximumHeight(max_scroll)
 
     def _apply_initial_window_size(self) -> None:
-        """Open at full form height (850×650 minimum), same as before scroll was added."""
+        """Open at full form height when it fits; otherwise clamp and use scroll."""
+        self._apply_screen_geometry_caps()
         self._sync_form_scroll_to_content()
         hint = self.sizeHint()
-        self.resize(max(850, hint.width()), max(650, hint.height()))
+        width, height = self._clamp_dialog_size(
+            max(850, hint.width()),
+            max(650, hint.height()),
+        )
+        self.resize(width, height)
+
+    def _clamp_window_to_screen(self) -> None:
+        """Re-clamp after layout polish so high zoom cannot push the window off-screen."""
+        self._apply_screen_geometry_caps()
+        width, height = self._clamp_dialog_size(self.width(), self.height())
+        self.resize(width, height)
 
     def _idle_status_message(self) -> str:
         """Default status when idle: filters/sort in view mode, not title/author."""
