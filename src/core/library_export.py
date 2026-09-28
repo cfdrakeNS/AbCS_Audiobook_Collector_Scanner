@@ -15,6 +15,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from src.core.audio_launcher import read_embedded_cover, resolve_preview_file
 from src.utils.text_utils import series_number_key
 
 FORMAT_CSV = "csv"
@@ -84,6 +85,18 @@ def _float_or_zero(value) -> float:
         return 0.0
 
 
+def _book_has_embedded_cover(book) -> bool:
+    """True when embedded art exists on the book's primary audio file."""
+    target = resolve_preview_file(book.path or "")
+    if target.error or target.path is None:
+        return False
+    return read_embedded_cover(target.path) is not None
+
+
+def _cover_yes_no(book) -> str:
+    return "Y" if _book_has_embedded_cover(book) else "N"
+
+
 # (json key, CSV header, JSON value getter, CSV text getter)
 _Field = tuple[str, str, Callable[[Any], Any], Callable[[Any], str]]
 
@@ -114,19 +127,31 @@ EXPORT_FIELDS: tuple[_Field, ...] = (
         lambda b: series_number_key(b.series_number),
     ),
     ("genre", "Genre", lambda b: b.genre_name or "", lambda b: b.genre_name or ""),
+    ("reader", "Narrator", lambda b: b.reader or "", lambda b: b.reader or ""),
     (
-        "collection",
-        "Collection",
-        lambda b: b.collection_name or "",
-        lambda b: b.collection_name or "",
+        "read_date",
+        "Read Date",
+        lambda b: _date_text(b.read_date) or None,
+        lambda b: _date_text(b.read_date),
     ),
-    ("reader", "Reader", lambda b: b.reader or "", lambda b: b.reader or ""),
     ("time", "Time", lambda b: b.time_display, lambda b: b.time_display),
     (
         "tracks",
         "Tracks",
         lambda b: _int_or_none(b.tracks) or 0,
         lambda b: str(_int_or_none(b.tracks) or 0),
+    ),
+    (
+        "collection",
+        "Collection",
+        lambda b: b.collection_name or "",
+        lambda b: b.collection_name or "",
+    ),
+    (
+        "cover",
+        "Cover",
+        lambda b: _book_has_embedded_cover(b),
+        _cover_yes_no,
     ),
     (
         "size_mb",
@@ -147,12 +172,6 @@ EXPORT_FIELDS: tuple[_Field, ...] = (
         lambda b: b.file_format or "",
     ),
     ("path", "Path", lambda b: b.path or "", lambda b: b.path or ""),
-    (
-        "read_date",
-        "Read Date",
-        lambda b: _date_text(b.read_date) or None,
-        lambda b: _date_text(b.read_date),
-    ),
     (
         "date_added",
         "Date Added",

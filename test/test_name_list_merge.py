@@ -329,6 +329,33 @@ def test_tab_order_includes_table_for_series(
     window.close()
 
 
+def test_escape_edit_without_changes_stays_in_window(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    series_id = SeriesQueries(temp_db).insert("Cancel Edit Series")
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
+    qtbot.addWidget(window)
+    window.show()
+    _select_row(window, series_id)
+    window.on_edit()
+    assert not window._collection_editor_locked
+    window.on_cancel_edit()
+    assert window._collection_editor_locked
+    assert window.isVisible()
+    window.close()
+
+
+def test_name_list_sort_by_name(temp_db, ui_scaler, theme_manager):
+    SeriesQueries(temp_db).insert("Zulu")
+    SeriesQueries(temp_db).insert("Alpha")
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
+    window._sort_by = "name"
+    window._sort_ascending = True
+    items = window._sort_items_for_display(window.query.get_all())
+    assert [item.name for item in items] == ["Alpha", "Zulu"]
+    window.close()
+
+
 def test_escape_in_find_moves_focus_to_list(
     temp_db, ui_scaler, theme_manager, qtbot, qapp
 ):

@@ -381,6 +381,117 @@ class MainWindow(QMainWindow):
         dlg_geom.moveCenter(screen.availableGeometry().center())
         dlg.move(dlg_geom.topLeft())
 
+    def _apply_read_date_from_dialog(
+        self,
+        book,
+        row: int,
+        date_field,
+        *,
+        use_masked: bool,
+    ) -> None:
+        """Persist read date from the dialog.
+
+        Calendar (sighted): OK saves without a second prompt.
+        Screen reader (typed field): always confirm before saving a change.
+        """
+        from src.accessibility.masked_date_fields import (
+            classic_date_is_blank,
+            warn_masked_field_error,
+        )
+
+        if use_masked:
+            try:
+                parsed = date_field.validated_date()
+            except ValueError:
+                warn_masked_field_error(self, date_field.invalid_message())
+                return
+            if parsed is None:
+                new_date = ""
+            else:
+                new_date = parsed.isoformat()
+        elif classic_date_is_blank(date_field):
+            new_date = ""
+        else:
+            new_date = date_field.date().toString("yyyy-MM-dd")
+
+        if book.read_date == new_date:
+            self.set_status(
+                f"Read date unchanged for {book.title}", announce=True
+            )
+            self.focus_book_by_id(book.book_id, 6, fallback=False)
+            return
+
+        if use_masked:
+            if not new_date:
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Confirm Clear Read Date",
+                    text=f"Clear the read date for '{book.title}'?",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                )
+            else:
+                reply = exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Confirm Read Date",
+                    text=f"Mark '{book.title}' as read on {new_date}?",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                )
+            if reply != QMessageBox.Yes:
+                self.set_status(
+                    f"Read date update cancelled for {book.title}",
+                    announce=True,
+                )
+                self.focus_book_by_id(book.book_id, 6, fallback=False)
+                return
+
+        if not new_date:
+            had_date = bool(book.read_date)
+            book.read_date = ""
+            self.book_queries.update(book)
+            self.refresh_books()
+            self.set_status(
+                f"Read date cleared for {book.title}"
+                if had_date
+                else f"Read date unchanged for {book.title}",
+                announce=True,
+            )
+        else:
+            book.read_date = new_date
+            cleared_want = bool(book.want_to_read)
+            book.want_to_read = False
+            cleared_listen = (
+                getattr(book, "listen_position_ms", None) is not None
+                or bool((getattr(book, "listen_file_name", "") or "").strip())
+            )
+            book.listen_position_ms = None
+            book.listen_file_name = ""
+            self.book_queries.update(book)
+            self.refresh_books()
+            extras = []
+            if cleared_want:
+                extras.append("Want to read cleared")
+            if cleared_listen:
+                extras.append("Listening position cleared")
+            if extras:
+                self.set_status(
+                    f"Read date set for {book.title}. "
+                    + ". ".join(extras)
+                    + ".",
+                    announce=True,
+                )
+            else:
+                self.set_status(
+                    f"Read date set for {book.title}", announce=True
+                )
+
+        self.focus_book_by_id(book.book_id, 6, fallback=False)
+
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
         from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QDateEdit, QPushButton
@@ -527,9 +638,29 @@ class MainWindow(QMainWindow):
                 self.table.setCurrentIndex(index)
                 self.table.setFocus()
 
+            ok_btn = QPushButton("OK")
+            ok_btn.setAccessibleName("Save read date")
+            ok_btn.setAccessibleDescription(
+                "Save the date and close. No extra confirmation."
+            )
+            ok_btn.setFocusPolicy(Qt.StrongFocus)
+            ok_btn.setDefault(True)
+            ok_btn.setAutoDefault(True)
+            clear_btn.setFocusPolicy(Qt.StrongFocus)
+            scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+            read_date_btn_style = build_modern_button_style(scaled_height)
+            ok_btn.setObjectName("primaryActionButton")
+            clear_btn.setObjectName("destructiveActionButton")
+            ok_btn.setStyleSheet(read_date_btn_style)
+            clear_btn.setStyleSheet(read_date_btn_style)
+            apply_decorative_action_icon(ok_btn, "save", self.scaler)
+            apply_decorative_action_icon(clear_btn, "delete", self.scaler)
+            ok_btn.clicked.connect(dlg.accept)
             clear_btn.clicked.connect(_clear_classic_date)
+            date_row.addWidget(ok_btn)
             date_row.addWidget(clear_btn)
         layout.addLayout(date_row)
+
         date_field.setFocus()
         dlg.date_field = date_field
         if use_masked:
@@ -559,140 +690,11 @@ class MainWindow(QMainWindow):
         self._position_read_date_dialog(dlg)
 
         if dlg.exec() == QDialog.Accepted:
-            if use_masked:
-                try:
-                    parsed = date_field.validated_date()
-                except ValueError:
-                    # accept() already refused invalid values; keep a safety net
-                    warn_masked_field_error(self, date_field.invalid_message())
-                    return
-                if parsed is None:
-                    had_date = bool(book.read_date)
-                    if had_date:
-                        reply = exec_styled_message_box(
-                            self,
-                            self.scaler.get_scaled_size(20),
-                            icon=QMessageBox.Question,
-                            title="Confirm Clear Read Date",
-                            text=f"Clear the read date for '{book.title}'?",
-                            buttons=QMessageBox.Yes | QMessageBox.No,
-                            default_button=QMessageBox.No,
-                        )
-                        if reply != QMessageBox.Yes:
-                            self.set_status(
-                                f"Read date update cancelled for {book.title}",
-                                announce=True,
-                            )
-                            index = self.book_model.index(row, 6)
-                            self.table.setCurrentIndex(index)
-                            self.table.setFocus()
-                            return
-                    book.read_date = ""
-                    self.book_queries.update(book)
-                    self.refresh_books()
-                    self.set_status(
-                        f"Read date cleared for {book.title}"
-                        if had_date
-                        else f"Read date unchanged for {book.title}",
-                        announce=True,
-                    )
-                    index = self.book_model.index(row, 6)
-                    self.table.setCurrentIndex(index)
-                    self.table.setFocus()
-                    return
-                new_date = parsed.isoformat()
-            else:
-                # Cleared via blank special value (Clear button or minimum date)
-                if classic_date_is_blank(date_field):
-                    had_date = bool(book.read_date)
-                    if had_date:
-                        reply = exec_styled_message_box(
-                            self,
-                            self.scaler.get_scaled_size(20),
-                            icon=QMessageBox.Question,
-                            title="Confirm Clear Read Date",
-                            text=f"Clear the read date for '{book.title}'?",
-                            buttons=QMessageBox.Yes | QMessageBox.No,
-                            default_button=QMessageBox.No,
-                        )
-                        if reply != QMessageBox.Yes:
-                            self.set_status(
-                                f"Read date update cancelled for {book.title}",
-                                announce=True,
-                            )
-                            index = self.book_model.index(row, 6)
-                            self.table.setCurrentIndex(index)
-                            self.table.setFocus()
-                            return
-                    book.read_date = ""
-                    self.book_queries.update(book)
-                    self.refresh_books()
-                    self.set_status(
-                        f"Read date cleared for {book.title}"
-                        if had_date
-                        else f"Read date unchanged for {book.title}",
-                        announce=True,
-                    )
-                    index = self.book_model.index(row, 6)
-                    self.table.setCurrentIndex(index)
-                    self.table.setFocus()
-                    return
-                new_date = date_field.date().toString("yyyy-MM-dd")
-            # Check if date is actually changing
-            if book.read_date == new_date:
-                # No change - don't ask for confirmation
-                self.set_status(
-                    f"Read date unchanged for {book.title}", announce=True
-                )
-            else:
-                # Date is changing - ask for confirmation
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Read Date",
-                    text=f"Mark '{book.title}' as read on {new_date}?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
-                if reply == QMessageBox.Yes:
-                    book.read_date = new_date
-                    cleared_want = bool(book.want_to_read)
-                    book.want_to_read = False
-                    cleared_listen = (
-                        getattr(book, "listen_position_ms", None) is not None
-                        or bool((getattr(book, "listen_file_name", "") or "").strip())
-                    )
-                    book.listen_position_ms = None
-                    book.listen_file_name = ""
-                    self.book_queries.update(book)
-                    self.refresh_books()
-                    extras = []
-                    if cleared_want:
-                        extras.append("Want to read cleared")
-                    if cleared_listen:
-                        extras.append("Listening position cleared")
-                    if extras:
-                        self.set_status(
-                            f"Read date set for {book.title}. "
-                            + ". ".join(extras)
-                            + ".",
-                            announce=True,
-                        )
-                    else:
-                        self.set_status(
-                            f"Read date set for {book.title}", announce=True
-                        )
-                else:
-                    # User cancelled - don't update
-                    self.set_status(
-                        f"Read date update cancelled for {book.title}",
-                        announce=True,
-                    )
-            # Move focus back to the same cell (QTableView)
-            index = self.book_model.index(row, 6)
-            self.table.setCurrentIndex(index)
-            self.table.setFocus()
+            self._apply_read_date_from_dialog(
+                book, row, date_field, use_masked=use_masked
+            )
+        else:
+            self.focus_book_by_id(book.book_id, 6, fallback=False)
 
     """
     Main application window - Audiobook Window.
@@ -803,6 +805,34 @@ class MainWindow(QMainWindow):
 
         parts.append(self._sort_summary_part())
         return "  |  ".join(parts)
+
+    def _export_active_filters_summary(self) -> str:
+        """Compact filter/sort line for the export-complete dialog."""
+        parts: list[str] = []
+        if self.current_filter.collection_id is not None:
+            parts.append(f"Collection: {self._current_collection_label()}")
+        read_filter = self.current_filter.read_filter or "All"
+        if read_filter != "All":
+            parts.append(f"Read: {read_filter}")
+        plot_filter = self.current_filter.plot_filter or "All"
+        if plot_filter != "All":
+            parts.append(f"Plot: {plot_filter}")
+        if (self.current_filter.want_to_read_filter or "All") != "All":
+            parts.append("Want to read")
+        if (self.current_filter.in_progress_filter or "All") != "All":
+            parts.append("In progress")
+        if self.current_filter.search_text:
+            search_text = self.current_filter.search_text
+            if search_text.startswith("?"):
+                search_text = search_text[1:]
+            parts.append(f"Find: {search_text}")
+        if self.current_filter.date_added_since is not None:
+            parts.append(
+                "Added since: "
+                f"{self.current_filter.date_added_since.strftime('%Y-%m-%d')}"
+            )
+        parts.append(self._sort_summary_part())
+        return ", ".join(parts)
 
     def _sort_shows_direction(self, key=None) -> bool:
         """Only Year/Time (and header-only Read Date) show ascending/descending."""
@@ -2697,6 +2727,20 @@ class MainWindow(QMainWindow):
         if self.current_filter.in_progress_filter != "All":
             self.set_default_status(announce=True)
 
+    def _books_for_focus_or_selection(self) -> list:
+        """Selected books in table order, or the focused row when nothing is selected."""
+        if self.selected_book_ids:
+            return self._selected_books_in_table_order()
+        row = self.table.currentRow()
+        if 0 <= row < len(self.books):
+            return [self.books[row]]
+        last_id = getattr(self, "_last_table_book_id", None)
+        if last_id is not None:
+            for book in self.books:
+                if book.book_id == last_id:
+                    return [book]
+        return []
+
     def on_mark_want_to_read(self):
         """Mark the focused book, or the selection, as want to read."""
         if self.duplicate_mode_active:
@@ -2705,13 +2749,7 @@ class MainWindow(QMainWindow):
                 announce=True,
             )
             return
-        if self.selected_book_ids:
-            targets = [
-                book for book in self.books if book.book_id in self.selected_book_ids
-            ]
-        else:
-            row = self.table.currentRow()
-            targets = [self.books[row]] if 0 <= row < len(self.books) else []
+        targets = self._books_for_focus_or_selection()
         if not targets:
             self.set_status("No book selected", announce=True)
             return
@@ -2742,12 +2780,10 @@ class MainWindow(QMainWindow):
                 announce=True,
             )
             return
-        if not self.selected_book_ids:
-            self.set_status("No books selected", announce=True)
+        targets = self._books_for_focus_or_selection()
+        if not targets:
+            self.set_status("No book selected", announce=True)
             return
-        targets = [
-            book for book in self.books if book.book_id in self.selected_book_ids
-        ]
         changed = [book for book in targets if book.want_to_read]
         if not changed:
             self.set_status("None marked want to read", announce=True)
@@ -2775,12 +2811,10 @@ class MainWindow(QMainWindow):
                 announce=True,
             )
             return
-        if not self.selected_book_ids:
-            self.set_status("No books selected", announce=True)
+        targets = self._books_for_focus_or_selection()
+        if not targets:
+            self.set_status("No book selected", announce=True)
             return
-        targets = [
-            book for book in self.books if book.book_id in self.selected_book_ids
-        ]
         changed = [
             book
             for book in targets
@@ -3375,9 +3409,49 @@ class MainWindow(QMainWindow):
         from PySide6.QtCore import QDate
         from PySide6.QtGui import QFontMetrics
         from src.accessibility.icon_helper import get_app_icon
+        from src.accessibility.masked_date_fields import (
+            configure_no_future_date_edit,
+            make_date_field,
+            validate_date_edit,
+            warn_masked_field_error,
+        )
 
-        dlg = AccessibleDialog(self)
-        dlg.setWindowIcon(get_app_icon())
+        class RecentlyAddedDialog(AccessibleDialog):
+            """Enter to apply filter; same pattern as read-date for screen readers."""
+
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.date_field = None
+                self.use_masked = False
+                self.setWindowIcon(get_app_icon())
+
+            def keyPressEvent(self, event):
+                if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    if self.date_field is not None:
+                        self.date_field.setFocus()
+                    QTimer.singleShot(0, self.accept)
+                    event.accept()
+                    return
+                super().keyPressEvent(event)
+
+            def accept(self):
+                if self.date_field is None:
+                    super().accept()
+                    return
+                null_date = None
+                if not self.use_masked:
+                    null_date = self.date_field.minimumDate()
+                if not validate_date_edit(
+                    self.date_field,
+                    self,
+                    allow_blank=False,
+                    null_date=null_date,
+                    disallow_future=True,
+                ):
+                    return
+                super().accept()
+
+        dlg = RecentlyAddedDialog(self)
         dlg.setWindowTitle("Recently Added")
         dlg.setModal(True)
         dlg.setAccessibleName("Recently Added")
@@ -3389,27 +3463,37 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        date_row = QHBoxLayout()
-        date_label = QLabel("&Added since:")
-        date_field = QDateEdit()
-        date_field.setCalendarPopup(True)
-        date_field.setDisplayFormat("yyyy-MM-dd")
-        date_field.setAccessibleName("Added since date")
-        date_field.setMaximumDate(QDate.currentDate())
-        date_label.setBuddy(date_field)
-
         if self.current_filter.date_added_since is not None:
             since = self.current_filter.date_added_since
-            date_field.setDate(QDate(since.year, since.month, since.day))
+            initial = QDate(since.year, since.month, since.day)
         else:
-            date_field.setDate(QDate.currentDate().addMonths(-2))
+            initial = QDate.currentDate().addMonths(-2)
 
+        date_row = QHBoxLayout()
+        date_label = QLabel("&Added since:")
+        date_masked = make_date_field(dlg, allow_blank=False, disallow_future=True)
+        use_masked = date_masked is not None
+        dlg.use_masked = use_masked
+
+        if use_masked:
+            date_field = date_masked
+            date_field.setAccessibleName("Added since date")
+            date_field.setDate(initial)
+        else:
+            date_field = QDateEdit()
+            date_field.setCalendarPopup(True)
+            date_field.setDisplayFormat("yyyy-MM-dd")
+            date_field.setAccessibleName("Added since date")
+            date_field.setMaximumDate(QDate.currentDate())
+            date_field.setDate(initial)
+            date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
+
+        configure_no_future_date_edit(date_field)
         font = date_field.font()
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
-
+        date_label.setBuddy(date_field)
         date_row.addWidget(date_label)
-        date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
         date_row.addWidget(date_field, 1)
         layout.addLayout(date_row)
 
@@ -3421,11 +3505,15 @@ class MainWindow(QMainWindow):
         )
         layout.addWidget(dialog_status)
 
+        dlg.date_field = date_field
         date_field.setFocus()
+        if use_masked:
+            QTimer.singleShot(0, date_field.selectAll)
 
-        alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
-        alt_down_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        alt_down_shortcut.activated.connect(date_field.calendarPopup)
+        if not use_masked:
+            alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
+            alt_down_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+            alt_down_shortcut.activated.connect(date_field.calendarPopup)
 
         recently_added_status_shortcut = QShortcut(QKeySequence("Alt+/"), dlg)
         recently_added_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -3437,10 +3525,11 @@ class MainWindow(QMainWindow):
 
         recently_added_status_shortcut.activated.connect(read_recently_added_status)
 
-        for key in (Qt.Key_Return, Qt.Key_Enter):
-            apply_shortcut = QShortcut(QKeySequence(key), dlg)
-            apply_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-            apply_shortcut.activated.connect(dlg.accept)
+        if not use_masked:
+            for key in (Qt.Key_Return, Qt.Key_Enter):
+                apply_shortcut = QShortcut(QKeySequence(key), dlg)
+                apply_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+                apply_shortcut.activated.connect(dlg.accept)
 
         font_metrics = QFontMetrics(dlg.font())
         title_width = font_metrics.horizontalAdvance(dlg.windowTitle()) + 80
@@ -3451,21 +3540,43 @@ class MainWindow(QMainWindow):
         self._position_read_date_dialog(dlg)
 
         if dlg.exec() == QDialog.Accepted:
-            selected_date = date_field.date().toPython()
-            self.current_filter.date_added_since = selected_date
-            self.refresh_books()
-            date_str = selected_date.strftime("%Y-%m-%d")
-            if not self.books:
-                self.set_status(
-                    f"No books added since {date_str}",
-                    timeout_ms=3000,
-                    announce=True,
-                )
+            if use_masked:
+                try:
+                    parsed = date_field.validated_date()
+                except ValueError:
+                    warn_masked_field_error(self, date_field.invalid_message())
+                else:
+                    selected_date = parsed
+                    self.current_filter.date_added_since = selected_date
+                    self.refresh_books()
+                    date_str = selected_date.strftime("%Y-%m-%d")
+                    if not self.books:
+                        self.set_status(
+                            f"No books added since {date_str}",
+                            timeout_ms=3000,
+                            announce=True,
+                        )
+                    else:
+                        self.set_status(
+                            f"Showing {len(self.books)} books added since {date_str}",
+                            announce=True,
+                        )
             else:
-                self.set_status(
-                    f"Showing {len(self.books)} books added since {date_str}",
-                    announce=True,
-                )
+                selected_date = date_field.date().toPython()
+                self.current_filter.date_added_since = selected_date
+                self.refresh_books()
+                date_str = selected_date.strftime("%Y-%m-%d")
+                if not self.books:
+                    self.set_status(
+                        f"No books added since {date_str}",
+                        timeout_ms=3000,
+                        announce=True,
+                    )
+                else:
+                    self.set_status(
+                        f"Showing {len(self.books)} books added since {date_str}",
+                        announce=True,
+                    )
 
         self._sync_recently_added_toolbar_toggle()
         self.restore_main_focus_after_modal()
@@ -3724,7 +3835,13 @@ class MainWindow(QMainWindow):
             self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
             self.table.setCurrentCell(target_row, column)
             self.table.setCurrentIndex(index)
+            if not self.selected_book_ids:
+                self.table.selectionModel().clearSelection()
+                self.table.selectionModel().select(
+                    index, QItemSelectionModel.Select
+                )
             self.table.setFocus(reason)
+            self.table.viewport().update()
             if 0 <= target_row < len(self.books):
                 self._last_table_book_id = self.books[target_row].book_id
                 self._last_table_column = column
@@ -4431,13 +4548,9 @@ class MainWindow(QMainWindow):
         if hasattr(self, "want_to_read_action"):
             self.want_to_read_action.setEnabled(not in_duplicate_mode)
         if hasattr(self, "clear_want_to_read_action"):
-            self.clear_want_to_read_action.setEnabled(
-                has_selection and not in_duplicate_mode
-            )
+            self.clear_want_to_read_action.setEnabled(not in_duplicate_mode)
         if hasattr(self, "clear_listen_progress_action"):
-            self.clear_listen_progress_action.setEnabled(
-                has_selection and not in_duplicate_mode
-            )
+            self.clear_listen_progress_action.setEnabled(not in_duplicate_mode)
         self._update_preview_action_enabled()
 
         self._set_selection_navigation_enabled(
@@ -4721,13 +4834,36 @@ class MainWindow(QMainWindow):
             return
         QApplication.restoreOverrideCursor()
         self.table.setFocus()
-        message = f"Exported {result.count} {scope} book(s) to {Path(file_path).name}."
+        filter_line = self._export_active_filters_summary()
+        popup_lines = [
+            f"Exported {result.count} {scope} book(s).",
+            "",
+            f"Filters: {filter_line}",
+            "",
+            f"File: {Path(file_path).name}",
+        ]
         if result.truncated_books:
-            message += (
-                f" {result.truncated_books} book(s) had text too long for a"
-                " spreadsheet cell and were shortened. Use JSON for full text."
+            popup_lines.extend(
+                [
+                    "",
+                    f"{result.truncated_books} book(s) had Comments text too long"
+                    " for a spreadsheet cell and were shortened. Use JSON for full text.",
+                ]
             )
-        self.set_status(message, announce=True)
+        popup_text = "\n".join(popup_lines)
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Export Library",
+            text=popup_text,
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok,
+        )
+        status_message = f"Exported {result.count} book(s) to {Path(file_path).name}."
+        if result.truncated_books:
+            status_message += f" {result.truncated_books} truncated for CSV."
+        self.set_status(status_message, announce=True)
 
     def _sync_single_collection_paths(self) -> None:
         from src.core.library_root import sync_single_collection_import_path
@@ -4823,6 +4959,7 @@ class MainWindow(QMainWindow):
             return
 
         book = self.books[row]
+        focus_ctx = self._capture_table_focus_context(row, self.table.currentColumn())
 
         from src.ui.web_metadata import WebMetadataWindow
         from src.web.web_fetch_service import fetch_web_metadata_for_book
@@ -4831,7 +4968,7 @@ class MainWindow(QMainWindow):
 
         if fetch.canceled:
             self.set_status(fetch.status_message, announce=True, timeout_ms=5000)
-            self.table.setFocus()
+            self._restore_table_focus_context(focus_ctx)
             return
 
         cleaned_web_data = fetch.cleaned_data
@@ -4839,7 +4976,6 @@ class MainWindow(QMainWindow):
         if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
             book, cleaned_web_data
         ):
-            focus_ctx = self._capture_table_focus_context(row, 1)
             dialog = WebMetadataWindow(
                 self.db,
                 book,
@@ -4881,7 +5017,7 @@ class MainWindow(QMainWindow):
         )
 
         self.set_status(status_msg, announce=True, timeout_ms=5000)
-        self.table.setFocus()
+        self._restore_table_focus_context(focus_ctx)
 
     def _clear_book_table_selection(self) -> None:
         """Leave selection mode after a batch action, same as Update."""
@@ -5120,6 +5256,7 @@ class MainWindow(QMainWindow):
             self.db,
             self.scaler,
             sort_order=self._active_sort_display_text(),
+            filter_summary=self._filter_summary_text(),
             parent=self,
             current_collection_id=self.current_filter.collection_id,
         )
@@ -5273,6 +5410,7 @@ class MainWindow(QMainWindow):
     def open_book_details(self, book: Book):
         """Open book details window."""
         sort_order = self._active_sort_display_text()
+        filter_summary = self._filter_summary_text()
 
         # bd#4: Find current book's index in the list for Prev/Next navigation
         current_index = 0
@@ -5286,6 +5424,7 @@ class MainWindow(QMainWindow):
             self.scaler,
             book=book,
             sort_order=sort_order,
+            filter_summary=filter_summary,
             books_list=self.books,
             current_index=current_index,
             parent=self,

@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QScrollArea,
+    QFrame,
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
@@ -247,10 +249,6 @@ class WebMetadataWindow(AccessibleDialog):
         for widget in self.findChildren(QPushButton):
             widget.installEventFilter(self)
 
-        # CRITICAL: Set focus to first field with web differences when window opens
-        # Screen readers require focus to be set for Alt+keys to work properly
-        QTimer.singleShot(0, self.set_focus_to_first_differing_field)
-
     def eventFilter(self, source, event):
         """Event filter to enforce Alt-letter hygiene and block unmapped Alt keys."""
         if event.type() == QEvent.KeyPress:
@@ -274,6 +272,7 @@ class WebMetadataWindow(AccessibleDialog):
         """Rebuild tab order once the dialog is visible (required for Qt tab chain)."""
         super().showEvent(event)
         self.set_tab_order()
+        QTimer.singleShot(0, self.set_initial_focus)
         if self.queue_index and self.queue_total:
             self.raise_()
             self.activateWindow()
@@ -520,10 +519,24 @@ class WebMetadataWindow(AccessibleDialog):
         self.skip_button.setVisible(in_queue)
         button_layout.addWidget(self.skip_button)
 
-        self.main_layout.addLayout(button_layout)
+        self.form_widget = QWidget()
+        self.form_widget.setLayout(self.main_layout)
+        self.form_widget.setAutoFillBackground(True)
 
-        # CRITICAL: Add the main_layout to the window layout
-        layout.addLayout(self.main_layout)
+        self.form_scroll = QScrollArea()
+        self.form_scroll.setWidget(self.form_widget)
+        self.form_scroll.setWidgetResizable(True)
+        self.form_scroll.setFrameShape(QFrame.NoFrame)
+        self.form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.form_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.form_scroll.setFocusPolicy(Qt.NoFocus)
+        self.form_scroll.setAccessibleName("Web metadata fields")
+        self.form_scroll.setAccessibleDescription(
+            "Scroll when zoom is high to reach all fields"
+        )
+
+        layout.addWidget(self.form_scroll, 1)
+        layout.addLayout(button_layout)
 
         # Set explicit tab order for logical keyboard navigation
         self.set_tab_order()
@@ -695,25 +708,17 @@ class WebMetadataWindow(AccessibleDialog):
             # Window open already implies a fetch result; announce plot + diffs only.
             msg = self._build_web_status_message(cleaned_web_data)
             self.set_status(msg, announce=True)
-            plot_text = cleaned_web_data.get("plot")
-            if plot_text and str(plot_text).strip():
-                QTimer.singleShot(100, self.plot_edit.setFocus)
-            else:
-                QTimer.singleShot(100, self.title_edit.setFocus)
+
+    def set_initial_focus(self):
+        """Open on Plot so reviewers hear plot and diffs first (tester feedback)."""
+        if self.plot_edit.isVisible():
+            self.plot_edit.setFocus()
         else:
-            # No web payload provided to this window.
-            QTimer.singleShot(100, self.title_edit.setFocus)
+            self.title_edit.setFocus()
 
     def set_focus_to_first_differing_field(self):
-        """Set focus to the title field when the window opens.
-
-        This is intentional for screen reader users: title is always the first
-        meaningful field and gives a consistent, predictable starting point
-        regardless of which fields differ.  The screen reader can then tab or
-        use Alt+key shortcuts to navigate to any differing field.
-        """
-        self.title_edit.setFocus()
-        return
+        """After re-fetch, return focus to Plot."""
+        self.set_initial_focus()
 
     def on_refetch_clicked(self):
         """Re-fetch web data using alternative sources (skip Open Library, refresh=1).

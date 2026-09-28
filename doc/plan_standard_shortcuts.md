@@ -1,6 +1,6 @@
 # Standard Shortcuts (Tester Feedback) — Version 3 Phase 29
 
-**Status:** Planned — before Phase 16 help. Item 7 (Listen, Ctrl+L) is implemented. Four outstanding questions (see [Outstanding questions](#outstanding-questions)).  
+**Status:** Complete — Sept 27, 2026. Phase 16 help review is next.  
 **Created:** September 27, 2026 (from tester feedback; first drafted in chat, saved here)  
 **Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_help_docs_review.md](plan_help_docs_review.md), [shortcuts.py](../src/accessibility/shortcuts.py), [help_docs/16_shortcuts.md](../help_docs/16_shortcuts.md)
 
@@ -56,10 +56,10 @@ Remove the `"import"` entry in the main toolbar setup ([main_window.py](../src/u
 ### 6. Other shortcuts to align
 
 - **Ctrl+S Save in every window with a Save button**: Collection (Alt+S today), Import Detail (Alt+S), Web Metadata (Alt+S). One rule: Save is always Ctrl+S.
-- **Narrator** wherever Reader appears as a book field: Import Detail (`IMPORT_DETAIL_WINDOW_SHORTCUTS`). Book List Import is a column-mapping form where Alt+N is Series number, so its Reader mapping keeps Alt+R there.
+- **Narrator** wherever Reader appears as a book field: Import Detail (`IMPORT_DETAIL_WINDOW_SHORTCUTS`). Book List Import is a column-mapping form where Alt+N is Series number, so the **Narrator** field mapping keeps **Alt+R** (not Alt+N).
 - **Reading History**: Alt+R Refresh and Alt+S Search point at the same button — drop one.
 - Leave main window Alt+U (Update window), Alt+D, Alt+W, Ctrl+F, Ctrl+N as they are.
-- UI label "Reader" becomes "Narrator" in Book Details and Import Detail. The database column `reader` and CSV import headers do not change.
+- UI label "Reader" becomes **Narrator** in Book Details, Import Detail, and the Book List Import mapping form. Main book list has no Reader column. Database column `reader` and CSV export/import headers stay **Reader** for compatibility.
 
 ### 7. Listen (Ctrl+L) — implemented September 27, 2026
 
@@ -79,6 +79,7 @@ Remove the `"import"` entry in the main toolbar setup ([main_window.py](../src/u
 | [shortcuts.py](../src/accessibility/shortcuts.py) | Update the maps above. `register_alt_shortcuts` only builds `Alt+` sequences, so add Ctrl keys as local `QShortcut(QKeySequence.Save)` / `QKeySequence.Find` in each window, like the existing local Alt+/ and F1 shortcuts. |
 | [book_details.py](../src/ui/book_details.py) | Button text Edit; local shortcuts; accessible descriptions ("Alt+U to edit" to "Alt+E to edit"); F1 list; labels Narrator / Read date with correct buddies. |
 | [name_list_window.py](../src/ui/name_list_window.py), [preferences_window.py](../src/ui/preferences_window.py), [collection_window.py](../src/ui/collection_window.py), [import_detail_window.py](../src/ui/import_detail_window.py), [web_metadata.py](../src/ui/web_metadata.py) | Ctrl+S (and Ctrl+F for name list); F1 lists; descriptions. |
+| [book_list_import_window.py](../src/ui/book_list_import_window.py) | **Narrator** label on the reader field mapping row; F1 / accessible names; Alt+R unchanged. |
 | [main_window.py](../src/ui/main_window.py) | Remove the Import toolbar action. |
 | [reading_history_window.py](../src/ui/reading_history_window.py) | Drop the duplicate Refresh/Search key. |
 | Docs | `help_docs/16_shortcuts.md`, Book Details / Name list / Preferences / Import Detail help, README shortcut list, `AbCS_Shortcut_June07.csv`, AGENTS.md shortcut line (Alt+U/D note), release notes. |
@@ -102,14 +103,14 @@ Tester JAWS/NVDA check: each window's F1 list matches the real keys; Save is Ctr
 
 ---
 
-## Outstanding questions
+## Decisions (tester)
 
-**Status: outstanding — answer before building items 1–6.**
+**Status: all answered Sept 27, 2026 — proceed with items 1–6.**
 
-| # | Question | Draft assumption | Answer |
-|---|----------|------------------|--------|
-| 1 | Item 4: is Preferences Save **Ctrl+S**? | Yes | Outstanding |
-| 2 | Book Details New book moves from Alt+N to **Ctrl+N** — OK? | Yes | Outstanding |
-| 3 | Extend Ctrl+S to Collection, Import Detail, and Web Metadata too, or only the windows testers named? | Extend to all Save windows | Outstanding |
-| 4 | Rename "Reader" to "Narrator" everywhere in the UI (main list column too), or only in Book Details and Import Detail? | Book Details and Import Detail only | Outstanding |
-| 5 | Listen label and shortcut | **Decided Sept 27, 2026:** Listen with Ctrl+L; Alt+Shift+P removed; Ctrl+L does nothing inside Listen | Done |
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Item 4: is Preferences Save **Ctrl+S**? | **Yes** |
+| 2 | Book Details New book moves from Alt+N to **Ctrl+N** — OK? | **Yes** |
+| 3 | Extend Ctrl+S to Collection, Import Detail, and Web Metadata too, or only the windows testers named? | **Yes** — all windows with Save |
+| 4 | Rename "Reader" to "Narrator" in the UI — Book Details and Import Detail only, or more? | **Yes** — Book Details, Import Detail, **and Book List Import** (mapping labels). Main book list column stays "Reader"; DB column and CSV headers unchanged. |
+| 5 | Listen label and shortcut | **Listen** with **Ctrl+L**; Alt+Shift+P removed; Ctrl+L does nothing inside Listen (implemented Sept 27, 2026). |

@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
-    QSpinBox,
+    QSlider,
     QSplitter,
     QStatusBar,
     QTableWidget,
@@ -55,7 +55,10 @@ from src.accessibility.help_scaling import (
     help_preset_name,
     save_help_scale,
 )
-from src.accessibility.style_helpers import build_modern_button_style
+from src.accessibility.style_helpers import (
+    apply_highlight_horizontal_slider_style,
+    build_modern_button_style,
+)
 from src.ui.accessible_dialog import AccessibleDialog
 
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
@@ -456,14 +459,22 @@ class HelpWindow(AccessibleDialog):
         self.zoom_out_button.setAccessibleDescription(
             "Decrease Help window zoom without changing main app zoom"
         )
-        self.zoom_spin = QSpinBox()
-        self.zoom_spin.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
-        self.zoom_spin.setSingleStep(UIScaler.SCALE_STEP)
-        self.zoom_spin.setSuffix("%")
-        self.zoom_spin.setAccessibleName("Help zoom level")
-        self.zoom_spin.setAccessibleDescription(
-            "Help window zoom percentage. Saved automatically when changed."
+        self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
+        self.zoom_slider.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
+        self.zoom_slider.setSingleStep(UIScaler.SCALE_STEP)
+        self.zoom_slider.setPageStep(UIScaler.SCALE_STEP)
+        self.zoom_slider.setTickInterval(UIScaler.SCALE_STEP)
+        self.zoom_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.zoom_slider.setAccessibleName("Help zoom level")
+        self.zoom_slider.setAccessibleDescription(
+            "Drag to set Help window zoom percentage. Saved automatically when changed."
         )
+        self.zoom_value_label = QLabel()
+        self.zoom_value_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.zoom_value_label.setMinimumWidth(self.scaler.get_scaled_size(52))
+        self.zoom_value_label.setAccessibleName("Help zoom percentage")
         self.zoom_label.setBuddy(self.preset_combo)
         self.zoom_in_button = QPushButton("+")
         self.zoom_in_button.setAccessibleName("Zoom in")
@@ -473,7 +484,8 @@ class HelpWindow(AccessibleDialog):
         zoom_row.addWidget(self.zoom_label)
         zoom_row.addWidget(self.preset_combo)
         zoom_row.addWidget(self.zoom_out_button)
-        zoom_row.addWidget(self.zoom_spin)
+        zoom_row.addWidget(self.zoom_slider, 1)
+        zoom_row.addWidget(self.zoom_value_label)
         zoom_row.addWidget(self.zoom_in_button)
         zoom_row.addStretch()
         layout.addLayout(zoom_row)
@@ -558,23 +570,21 @@ class HelpWindow(AccessibleDialog):
         self.zoom_out_button.clicked.connect(self._zoom_out)
         self.zoom_in_button.clicked.connect(self._zoom_in)
         self.preset_combo.activated.connect(self._on_help_preset_activated)
-        self.zoom_spin.valueChanged.connect(self._on_help_zoom_spin_changed)
+        self.zoom_slider.valueChanged.connect(self._on_help_zoom_slider_changed)
         self.preset_combo.installEventFilter(self)
-        self.zoom_spin.installEventFilter(self)
+        self.zoom_slider.installEventFilter(self)
         for name in UIScaler.SCALE_PRESETS.keys():
             self.preset_combo.addItem(name)
         self.preset_combo.addItem("Custom")
         self._help_zoom_loading = True
         self.preset_combo.setCurrentText(help_preset_name(self.scaler.current_scale))
         self._help_zoom_loading = False
-        self.zoom_spin.blockSignals(True)
-        self.zoom_spin.setValue(self.scaler.current_scale)
-        self.zoom_spin.blockSignals(False)
+        self._set_help_zoom_slider_value(self.scaler.current_scale)
         self._style_action_buttons()
 
         self.setTabOrder(self.zoom_out_button, self.preset_combo)
-        self.setTabOrder(self.preset_combo, self.zoom_spin)
-        self.setTabOrder(self.zoom_spin, self.zoom_in_button)
+        self.setTabOrder(self.preset_combo, self.zoom_slider)
+        self.setTabOrder(self.zoom_slider, self.zoom_in_button)
         self.setTabOrder(self.zoom_in_button, self.nav_list)
         self.setTabOrder(self.nav_list, self.help_text)
         self.setTabOrder(self.help_text, self.close_button)
@@ -650,14 +660,13 @@ class HelpWindow(AccessibleDialog):
             btn.setMinimumHeight(zoom_btn_h)
             btn.setMaximumHeight(zoom_btn_h)
             btn.setStyleSheet(zoom_style)
+        apply_highlight_horizontal_slider_style(self.zoom_slider, self.scaler)
 
     def _set_help_zoom(self, percentage: int, *, announce: bool = False) -> None:
-        percentage = max(UIScaler.MIN_SCALE, min(UIScaler.MAX_SCALE, int(percentage)))
+        percentage = self._snap_help_zoom_value(percentage)
         self.scaler.set_scale(percentage)
         save_help_scale(percentage)
-        self.zoom_spin.blockSignals(True)
-        self.zoom_spin.setValue(percentage)
-        self.zoom_spin.blockSignals(False)
+        self._set_help_zoom_slider_value(percentage)
         self._sync_help_preset_combo(percentage)
         self._style_action_buttons()
         self._apply_help_font_scaling()
@@ -667,11 +676,38 @@ class HelpWindow(AccessibleDialog):
             self.status_bar.showMessage(f"Help zoom set to {percentage}%")
 
     def done(self, result: int) -> None:
-        save_help_scale(self.zoom_spin.value())
+        save_help_scale(self.zoom_slider.value())
         super().done(result)
 
-    def _on_help_zoom_spin_changed(self, value: int) -> None:
-        self._set_help_zoom(value, announce=True)
+    def _snap_help_zoom_value(self, value: int) -> int:
+        step = UIScaler.SCALE_STEP
+        snapped = round(value / step) * step
+        return max(UIScaler.MIN_SCALE, min(UIScaler.MAX_SCALE, int(snapped)))
+
+    def _update_help_zoom_value_label(self, value: int) -> None:
+        self.zoom_value_label.setText(f"{value}%")
+        self.zoom_value_label.setAccessibleDescription(
+            f"Help zoom {value} percent"
+        )
+        self.zoom_slider.setAccessibleDescription(
+            "Drag to set Help window zoom percentage. "
+            f"Current value {value} percent. Saved automatically when changed."
+        )
+
+    def _set_help_zoom_slider_value(self, value: int) -> None:
+        snapped = self._snap_help_zoom_value(value)
+        if self.zoom_slider.value() != snapped:
+            self.zoom_slider.blockSignals(True)
+            self.zoom_slider.setValue(snapped)
+            self.zoom_slider.blockSignals(False)
+        self._update_help_zoom_value_label(snapped)
+
+    def _on_help_zoom_slider_changed(self, value: int) -> None:
+        snapped = self._snap_help_zoom_value(value)
+        if snapped != self.scaler.current_scale:
+            self._set_help_zoom(snapped, announce=True)
+        else:
+            self._update_help_zoom_value_label(snapped)
 
     def _on_help_preset_activated(self, index: int) -> None:
         if self._help_zoom_loading:
@@ -710,9 +746,10 @@ class HelpWindow(AccessibleDialog):
         close_font = self.close_button.font()
         close_font.setPointSize(body_pt)
         self.close_button.setFont(close_font)
-        zoom_font = self.zoom_spin.font()
+        zoom_font = self.zoom_slider.font()
         zoom_font.setPointSize(body_pt)
-        self.zoom_spin.setFont(zoom_font)
+        self.zoom_slider.setFont(zoom_font)
+        self.zoom_value_label.setFont(zoom_font)
         self.zoom_label.setFont(zoom_font)
         self.preset_combo.setFont(zoom_font)
         for btn in (self.zoom_out_button, self.zoom_in_button):
@@ -734,7 +771,7 @@ class HelpWindow(AccessibleDialog):
 
         if event.type() == QEvent.Type.Wheel and obj in (
             self.preset_combo,
-            self.zoom_spin,
+            self.zoom_slider,
         ):
             event.accept()
             return True
@@ -942,10 +979,7 @@ class HelpWindow(AccessibleDialog):
 
     def on_show_shortcuts(self) -> None:
         """Show keyboard shortcuts for the help window."""
-        from src.accessibility.shortcut_helpers import (
-            build_accessible_f1_popup_style,
-            get_accessible_shortcuts_list,
-        )
+        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list
 
         shortcuts = get_accessible_shortcuts_list(
             [
@@ -954,7 +988,7 @@ class HelpWindow(AccessibleDialog):
                 ("Tab", "Switch between list and content"),
                 ("Click or Enter", "Open topic or jump to section"),
                 ("Arrow keys", "Read line by line"),
-                ("+/−, preset, or spin box", "Help window zoom (saved automatically; press Enter to apply a preset)"),
+                ("+/−, preset, or zoom slider", "Help window zoom (saved automatically)"),
                 ("Ctrl+Plus / Ctrl+Minus", "Zoom Help in or out"),
                 ("Ctrl+0", "Reset Help zoom to 150% (Extra Large)"),
                 ("Alt+/", "Re-read status"),
@@ -963,14 +997,23 @@ class HelpWindow(AccessibleDialog):
             ]
         )
 
+        from src.accessibility.shortcut_helpers import apply_f1_shortcuts_table_scaling
+
+        help_scale = self.scaler.current_scale
         dlg = AccessibleDialog(self)
         dlg.setWindowTitle("Keyboard Shortcuts - Help")
         dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(480, 320)
+        dlg.resize(
+            self.scaler.get_scaled_size(480),
+            self.scaler.get_scaled_size(320),
+        )
+        body_pt = self.scaler.get_scaled_size(12)
+        dlg.setStyleSheet(f"QDialog {{ font-size: {body_pt}pt; }}")
 
+        margin = self.scaler.get_scaled_size(20)
         layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
+        layout.setContentsMargins(margin, margin, margin, margin)
+        layout.setSpacing(self.scaler.get_scaled_size(10))
 
         table = QTableWidget()
         table.setAccessibleName("Shortcuts list")
@@ -990,16 +1033,12 @@ class HelpWindow(AccessibleDialog):
         table.viewport().setMouseTracking(False)
         table.setAttribute(Qt.WidgetAttribute.WA_Hover, False)
         table.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, False)
-        table.setStyleSheet(build_accessible_f1_popup_style())
-
         for row, (key, desc) in enumerate(shortcuts):
             item = QTableWidgetItem(f"{desc} - {key}")
             item.setData(Qt.ItemDataRole.AccessibleTextRole, f"{desc}: {key}")
             table.setItem(row, 0, item)
 
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
+        apply_f1_shortcuts_table_scaling(table, help_scale, base_pt=12)
         layout.addWidget(table)
         dlg.exec()

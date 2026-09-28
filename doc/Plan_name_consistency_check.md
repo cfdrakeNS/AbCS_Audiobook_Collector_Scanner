@@ -61,6 +61,5 @@ Partial engine and review UI already exist and are **not** on a menu:
 
 - [`src/core/name_consistency.py`](../src/core/name_consistency.py)
 - [`src/ui/name_consistency_window.py`](../src/ui/name_consistency_window.py)
-- [`help_docs/23_name_consistency.md`](../help_docs/23_name_consistency.md)
 
 If revived later: wire Manage menu, finish series support, confirm-each-group (no silent merges), and meet shared a11y standards. Do **not** run during import.

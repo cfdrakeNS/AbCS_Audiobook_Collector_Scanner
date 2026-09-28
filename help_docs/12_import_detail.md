@@ -15,12 +15,12 @@ The **Import Detail** window lets you review and fix one held import item at a t
 - Run a folder import and open Import when books are held for review.
 - In the Import review table, select a row and press **Enter**, or double-click the row, to open detail.
 
-## Steps
+## Review one import item
 
 1. In the Import window review table, click a held book row (or select it with the keyboard).
 2. Press **Enter**, or double-click the row, to open **Import Detail**.
 3. Review validation errors and edit fields as needed.
-4. Click **Save** (**Alt+S**) to keep your changes and stay in detail.
+4. Click **Save** (**Ctrl+S**) to keep your changes and stay in detail.
 5. Click **Keep** (**Alt+K**) to accept fallback or correction warnings, add this book to the library (same rules as **Add Selected**), and move to the next review item without closing detail.
 6. Click **Discard** (**Alt+D**) to drop this item without adding it.
 7. Click **Previous** and **Next** if shown, or use **Page Up** and **Page Down**, to move between held items.
@@ -52,13 +52,13 @@ The **Import Detail** window lets you review and fix one held import item at a t
 | Alt+P | Plot |
 | Alt+Y | Year |
 | Alt+M | Time |
-| Alt+R | Reader |
+| Alt+N | Narrator |
 | Alt+I | Series |
 | Alt+G | Genre |
 | Alt+C | Collection |
 | Alt+E | Errors |
 | Alt+H | Path |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Alt+K | Keep |
 | Alt+D | Discard |
 | Page Up | Previous item |
@@ -77,7 +77,7 @@ The **Import Detail** window lets you review and fix one held import item at a t
 **Discard** in detail removes the current held item. You can also leave items in the review list and close Import; you will be asked to confirm if unscanned items remain.
 
 **Author Blank after I typed a name**
-**Save** (Alt+S) after editing author. Validation is refreshed on save, so **Author Blank** clears when the author field has text. A name you type that is not yet in the name list is kept when you save.
+**Save** (**Ctrl+S**) after editing author. Validation is refreshed on save, so **Author Blank** clears when the author field has text. A name you type that is not yet in the name list is kept when you save.
 
 **Why won’t Keep work on a Duplicate row?**
 Duplicates already match a book in the library. You can still open detail, edit, and **Save**. **Keep** and **Add Selected** skip duplicates. **Discard** removes the row from the review list.

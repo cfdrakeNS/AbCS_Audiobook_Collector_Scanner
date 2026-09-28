@@ -82,6 +82,35 @@ def exec_f1_shortcuts_dialog(parent, window_title: str, shortcuts) -> None:
     dlg.exec()
 
 
+def scaled_f1_popup_font_point_size(base_pt: int, scale_percentage: int) -> int:
+    """Point size for F1 shortcut tables at a given zoom percentage."""
+    return max(1, int(base_pt * (scale_percentage / 100.0)))
+
+
+def apply_f1_shortcuts_table_scaling(
+    table,
+    scale_percentage: int,
+    *,
+    base_pt: int = 11,
+) -> None:
+    """Scale F1 shortcut table font and row height (overrides global app zoom CSS)."""
+    pt = scaled_f1_popup_font_point_size(base_pt, scale_percentage)
+    font = table.font()
+    font.setPointSize(pt)
+    table.setFont(font)
+    pad = max(4, int(8 * scale_percentage / 100))
+    table.setStyleSheet(
+        build_accessible_f1_popup_style()
+        + f" QTableWidget, QTableWidget::item {{ font-size: {pt}pt; }}"
+        + f" QTableWidget::item {{ padding-right: {pad}px; }}"
+    )
+    row_h = max(int(22 * scale_percentage / 100), pt + 10)
+    vh = table.verticalHeader()
+    vh.setDefaultSectionSize(row_h)
+    for row in range(table.rowCount()):
+        table.setRowHeight(row, row_h)
+
+
 def build_accessible_f1_popup_style() -> str:
     """
     Return a shared stylesheet for F1 help popups (QTableWidget).

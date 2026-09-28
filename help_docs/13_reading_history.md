@@ -15,7 +15,7 @@ Reading History shows how many books you have finished listening to, total hours
 - Books must have a **read date** to appear in history. Mark books as read from the main window (**View → Read** menu or read filter).
 - Reading History is a **view** only — it does not change your data.
 
-## Steps
+## Search reading history
 
 1. Open **View → Reading History** (**Alt+V**, then **H**).
 2. The window opens on the **General** tab with overall totals:

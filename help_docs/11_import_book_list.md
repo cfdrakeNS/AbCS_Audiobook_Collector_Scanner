@@ -21,7 +21,7 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 - For new books, **Title** and **Author** columns are required.
 - For read-date updates, books must already exist in the selected collection.
 
-## Steps
+## Import from a spreadsheet
 
 1. Open **File → Import Book List**, or press **Ctrl+Shift+I**.
 2. Choose a **Collection** (Alt+C). Focus starts on this field when the window opens.
@@ -85,3 +85,7 @@ Common reasons: missing title or author, duplicate already in the collection, or
 
 **Does the dialog close after import?**
 No. It stays open so you can import more files. Close it with Escape when done; the main list updates then.
+
+## Related documentation
+
+- Export a CSV from the main list and re-import it here: [Export Library](25_export_library.md)

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QLabel,
     QComboBox,
+    QSlider,
     QSpinBox,
     QLineEdit,
     QTextEdit,
@@ -40,6 +41,7 @@ from src.accessibility.style_helpers import (
     apply_visual_tooltip_map,
     build_accessible_spinbox_style,
     build_card_group_box_style,
+    apply_highlight_horizontal_slider_style,
     build_modern_button_style,
     build_preferences_tab_style,
     exec_styled_message_box,
@@ -207,7 +209,21 @@ class PreferencesWindow(AccessibleDialog):
         self.tab_widget.currentChanged.connect(self._on_preferences_tab_changed)
         self._wire_tab_focus_order()
 
-        layout.addWidget(self.tab_widget, 1)
+        self._preferences_body = QWidget()
+        body_layout = QVBoxLayout(self._preferences_body)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+        body_layout.addWidget(self.tab_widget, 1)
+
+        self.body_scroll = QScrollArea()
+        self.body_scroll.setWidgetResizable(True)
+        self.body_scroll.setFrameShape(QFrame.NoFrame)
+        self.body_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.body_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.body_scroll.setFocusPolicy(Qt.NoFocus)
+        self.body_scroll.setWidget(self._preferences_body)
+
+        layout.addWidget(self.body_scroll, 1)
 
         # Footer section: Status bar and action buttons
         footer_layout = QHBoxLayout()
@@ -391,17 +407,27 @@ class PreferencesWindow(AccessibleDialog):
 
         preset_row.addSpacing(9)
 
-        zoom_label = QLabel("Zoom (%):")
+        zoom_label = QLabel("Zoom:")
         zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         zoom_label.setMinimumWidth(display_label_width + 10)
-        self.zoom_spin = QSpinBox()
-        self.zoom_spin.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
-        self.zoom_spin.setSingleStep(UIScaler.SCALE_STEP)
-        self.zoom_spin.setAccessibleName("Zoom level")
-        self.zoom_spin.setAccessibleDescription("Set zoom level percentage")
-        zoom_label.setBuddy(self.zoom_spin)
+        self.zoom_slider = QSlider(Qt.Horizontal)
+        self.zoom_slider.setRange(UIScaler.MIN_SCALE, UIScaler.MAX_SCALE)
+        self.zoom_slider.setSingleStep(UIScaler.SCALE_STEP)
+        self.zoom_slider.setPageStep(UIScaler.SCALE_STEP)
+        self.zoom_slider.setTickInterval(UIScaler.SCALE_STEP)
+        self.zoom_slider.setTickPosition(QSlider.TicksBelow)
+        self.zoom_slider.setAccessibleName("Zoom level")
+        self.zoom_slider.setAccessibleDescription(
+            "Drag to set interface zoom percentage"
+        )
+        self.zoom_value_label = QLabel()
+        self.zoom_value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.zoom_value_label.setMinimumWidth(self.scaler.get_scaled_size(52))
+        self.zoom_value_label.setAccessibleName("Zoom percentage")
+        zoom_label.setBuddy(self.zoom_slider)
         preset_row.addWidget(zoom_label)
-        preset_row.addWidget(self.zoom_spin)
+        preset_row.addWidget(self.zoom_slider, 1)
+        preset_row.addWidget(self.zoom_value_label)
         preset_row.addStretch(1)
         display_layout.addLayout(preset_row)
 
@@ -992,19 +1018,32 @@ class PreferencesWindow(AccessibleDialog):
         rules_layout.addWidget(duplicate_match_label, 4, 0)
         rules_layout.addWidget(self.duplicate_match_combo, 4, 1)
 
-        duplicate_fuzzy_label = QLabel("Fuzzy Duplicate (%):")
+        duplicate_fuzzy_label = QLabel("Fuzzy Duplicate:")
         duplicate_fuzzy_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.duplicate_fuzzy_spin = QSpinBox()
-        self.duplicate_fuzzy_spin.setRange(0, 100)
-        self.duplicate_fuzzy_spin.setSuffix("%")
-        self.duplicate_fuzzy_spin.setSingleStep(5)
-        self.duplicate_fuzzy_spin.setAccessibleName("Duplicate fuzzy threshold")
-        self.duplicate_fuzzy_spin.setAccessibleDescription(
-            "Optional fuzzy duplicate threshold percentage. 0 disables fuzzy duplicate matching"
+        fuzzy_row = QHBoxLayout()
+        fuzzy_row.setContentsMargins(0, 0, 0, 0)
+        fuzzy_row.setSpacing(8)
+        self.duplicate_fuzzy_slider = QSlider(Qt.Horizontal)
+        self.duplicate_fuzzy_slider.setRange(0, 100)
+        self.duplicate_fuzzy_slider.setSingleStep(5)
+        self.duplicate_fuzzy_slider.setPageStep(10)
+        self.duplicate_fuzzy_slider.setTickInterval(10)
+        self.duplicate_fuzzy_slider.setTickPosition(QSlider.TicksBelow)
+        self.duplicate_fuzzy_slider.setAccessibleName("Duplicate fuzzy threshold")
+        self.duplicate_fuzzy_slider.setAccessibleDescription(
+            "Drag to set fuzzy duplicate threshold percentage. 0 disables fuzzy matching"
         )
-        duplicate_fuzzy_label.setBuddy(self.duplicate_fuzzy_spin)
+        self.duplicate_fuzzy_value_label = QLabel()
+        self.duplicate_fuzzy_value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.duplicate_fuzzy_value_label.setMinimumWidth(self.scaler.get_scaled_size(44))
+        self.duplicate_fuzzy_value_label.setAccessibleName("Fuzzy duplicate percentage")
+        fuzzy_row.addWidget(self.duplicate_fuzzy_slider, 1)
+        fuzzy_row.addWidget(self.duplicate_fuzzy_value_label)
+        fuzzy_widget = QWidget()
+        fuzzy_widget.setLayout(fuzzy_row)
+        duplicate_fuzzy_label.setBuddy(self.duplicate_fuzzy_slider)
         rules_layout.addWidget(duplicate_fuzzy_label, 4, 2)
-        rules_layout.addWidget(self.duplicate_fuzzy_spin, 4, 3)
+        rules_layout.addWidget(fuzzy_widget, 4, 3)
 
         file_structure_label = QLabel("File Structure:")
         file_structure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -1066,7 +1105,8 @@ class PreferencesWindow(AccessibleDialog):
         tooltip_map = {
             self.theme_picker: "Choose the application color theme",
             self.preset_combo: "Choose a preset font scaling level",
-            self.zoom_spin: "Set the interface zoom percentage",
+            self.zoom_slider: "Set the interface zoom percentage",
+            self.zoom_value_label: "Current zoom percentage",
             self.auto_check_updates_checkbox: (
                 "Check for a newer AbCS version after startup"
             ),
@@ -1093,7 +1133,8 @@ class PreferencesWindow(AccessibleDialog):
             self.rule_max_book_length_value: "Flag books longer than this many hours",
             self.rule_max_book_length_severity: "Set how long book findings are reported",
             self.duplicate_match_combo: "Choose how duplicate checks compare collections",
-            self.duplicate_fuzzy_spin: "Set fuzzy duplicate matching threshold",
+            self.duplicate_fuzzy_slider: "Set fuzzy duplicate matching threshold",
+            self.duplicate_fuzzy_value_label: "Current fuzzy duplicate threshold",
             self.rule_file_structure_pattern: "Choose the expected import folder structure",
             self.rule_file_structure_severity: "Set how file structure findings are reported",
             self.rule_year_quality_severity: "Set how year consistency findings are reported",
@@ -1163,6 +1204,11 @@ class PreferencesWindow(AccessibleDialog):
         for scroll in getattr(self, "_tab_scroll_areas", {}).values():
             scroll.setStyleSheet(scroll_style)
             scroll.viewport().setStyleSheet("background-color: palette(window);")
+        if hasattr(self, "body_scroll"):
+            self.body_scroll.setStyleSheet(scroll_style)
+            self.body_scroll.viewport().setStyleSheet(
+                "background-color: palette(window);"
+            )
 
         desc_style = self._tab_description_stylesheet()
         for desc in self._tab_description_labels.values():
@@ -1175,6 +1221,13 @@ class PreferencesWindow(AccessibleDialog):
 
         self.save_button.setObjectName("primaryActionButton")
         self.status_bar.setStyleSheet(status_style)
+
+        if hasattr(self, "zoom_slider"):
+            apply_highlight_horizontal_slider_style(self.zoom_slider, self.scaler)
+        if hasattr(self, "duplicate_fuzzy_slider"):
+            apply_highlight_horizontal_slider_style(
+                self.duplicate_fuzzy_slider, self.scaler
+            )
 
         for widget in self.findChildren(QComboBox):
             widget.setStyleSheet("")
@@ -1353,7 +1406,7 @@ class PreferencesWindow(AccessibleDialog):
         """Capture current UI state for unsaved-change detection."""
         return {
             "theme": self.theme_picker.current_theme_id(),
-            "scale": self.zoom_spin.value(),
+            "scale": self.zoom_slider.value(),
             "google_books_api_key": self.google_books_api_key_edit.text().strip(),
             "auto_check_updates": self.auto_check_updates_checkbox.isChecked(),
             "import_directory": self.import_dir_edit.text().strip(),
@@ -1398,7 +1451,7 @@ class PreferencesWindow(AccessibleDialog):
             ),
             "rule_year_quality": self.rule_year_quality_severity.currentData(),
             "duplicate_match_mode": self.duplicate_match_combo.currentData(),
-            "duplicate_fuzzy_threshold": self.duplicate_fuzzy_spin.value(),
+            "duplicate_fuzzy_threshold": self.duplicate_fuzzy_slider.value(),
         }
 
     def _has_unsaved_changes(self) -> bool:
@@ -1464,7 +1517,7 @@ class PreferencesWindow(AccessibleDialog):
         self.preset_combo.setCurrentText(preset_name)
 
         # Zoom level
-        self.zoom_spin.setValue(self.scaler.current_scale)
+        self._set_zoom_slider_value(self.scaler.current_scale, announce=False)
 
         from src.web.web_book_api import GOOGLE_BOOKS_API_KEY_SETTING
 
@@ -1611,12 +1664,12 @@ class PreferencesWindow(AccessibleDialog):
             0 if duplicate_index < 0 else duplicate_index
         )
 
-        self.duplicate_fuzzy_spin.setValue(
+        self._set_fuzzy_slider_value(
             self.settings.value(
                 "import/rules/duplicate/fuzzy_threshold",
                 0,
                 type=int,
-            )
+            ),
         )
 
         author_in_title_enabled = self.settings.value(
@@ -1791,7 +1844,8 @@ class PreferencesWindow(AccessibleDialog):
         """Connect signals to handlers."""
         self.theme_picker.theme_changed.connect(self.on_theme_changed)
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
-        self.zoom_spin.valueChanged.connect(self.on_zoom_changed)
+        self.zoom_slider.valueChanged.connect(self.on_zoom_changed)
+        self.duplicate_fuzzy_slider.valueChanged.connect(self._on_fuzzy_slider_changed)
         self.import_scenario_combo.currentIndexChanged.connect(
             self.on_import_scenario_changed
         )
@@ -1939,7 +1993,6 @@ class PreferencesWindow(AccessibleDialog):
         ]
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
-            build_accessible_f1_popup_style,
             prepend_help_doc_shortcut,
         )
 
@@ -1966,7 +2019,7 @@ class PreferencesWindow(AccessibleDialog):
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
 
-        table.setStyleSheet(build_accessible_f1_popup_style())
+        from src.accessibility.shortcut_helpers import apply_f1_shortcuts_table_scaling
 
         for row, (key, desc) in enumerate(shortcuts):
             item = QTableWidgetItem(f"{desc} - {key}")
@@ -1975,9 +2028,7 @@ class PreferencesWindow(AccessibleDialog):
 
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
+        apply_f1_shortcuts_table_scaling(table, self.scaler.current_scale)
         layout.addWidget(table)
         dlg.exec()
 
@@ -2120,13 +2171,76 @@ class PreferencesWindow(AccessibleDialog):
             return
         if preset_name in UIScaler.SCALE_PRESETS:
             value = UIScaler.SCALE_PRESETS[preset_name]
-            if self.zoom_spin.value() != value:
-                self.zoom_spin.setValue(value)
+            if self.zoom_slider.value() != value:
+                self._set_zoom_slider_value(value, announce=False)
+                self.on_zoom_changed(value)
+
+    def _snap_fuzzy_value(self, value: int) -> int:
+        snapped = round(value / 5) * 5
+        return max(0, min(100, int(snapped)))
+
+    def _update_fuzzy_value_label(self, value: int) -> None:
+        self.duplicate_fuzzy_value_label.setText(f"{value}%")
+        self.duplicate_fuzzy_value_label.setAccessibleDescription(
+            f"Fuzzy duplicate threshold {value} percent"
+        )
+        self.duplicate_fuzzy_slider.setAccessibleDescription(
+            "Drag to set fuzzy duplicate threshold percentage. "
+            f"Current value {value} percent. 0 disables fuzzy matching"
+        )
+
+    def _set_fuzzy_slider_value(self, value: int) -> None:
+        snapped = self._snap_fuzzy_value(value)
+        if self.duplicate_fuzzy_slider.value() != snapped:
+            self.duplicate_fuzzy_slider.blockSignals(True)
+            self.duplicate_fuzzy_slider.setValue(snapped)
+            self.duplicate_fuzzy_slider.blockSignals(False)
+        self._update_fuzzy_value_label(snapped)
+
+    def _on_fuzzy_slider_changed(self, value: int) -> None:
+        if self._loading:
+            return
+        snapped = self._snap_fuzzy_value(value)
+        if self.duplicate_fuzzy_slider.value() != snapped:
+            self.duplicate_fuzzy_slider.blockSignals(True)
+            self.duplicate_fuzzy_slider.setValue(snapped)
+            self.duplicate_fuzzy_slider.blockSignals(False)
+        self._update_fuzzy_value_label(snapped)
+
+    def _snap_zoom_value(self, value: int) -> int:
+        step = UIScaler.SCALE_STEP
+        snapped = round(value / step) * step
+        return max(UIScaler.MIN_SCALE, min(UIScaler.MAX_SCALE, int(snapped)))
+
+    def _update_zoom_value_label(self, value: int) -> None:
+        self.zoom_value_label.setText(f"{value}%")
+        self.zoom_value_label.setAccessibleDescription(
+            f"Current zoom {value} percent"
+        )
+        self.zoom_slider.setAccessibleDescription(
+            f"Drag to set interface zoom percentage. Current value {value} percent."
+        )
+
+    def _set_zoom_slider_value(self, value: int, *, announce: bool = True) -> None:
+        snapped = self._snap_zoom_value(value)
+        if self.zoom_slider.value() != snapped:
+            self.zoom_slider.blockSignals(True)
+            self.zoom_slider.setValue(snapped)
+            self.zoom_slider.blockSignals(False)
+        self._update_zoom_value_label(snapped)
+        if announce and not self._loading:
+            self.on_zoom_changed(snapped)
 
     def on_zoom_changed(self, value: int):
         """Apply zoom change immediately and update preset selection."""
         if self._loading:
             return
+        value = self._snap_zoom_value(value)
+        if self.zoom_slider.value() != value:
+            self.zoom_slider.blockSignals(True)
+            self.zoom_slider.setValue(value)
+            self.zoom_slider.blockSignals(False)
+        self._update_zoom_value_label(value)
         if value != self.scaler.current_scale:
             self.scaler.set_scale(value)
             self.set_status(f"Zoom set to {value}%")
@@ -2213,7 +2327,8 @@ class PreferencesWindow(AccessibleDialog):
 
         self.scaler.set_scale(150)
         self.preset_combo.setCurrentText("Custom")
-        self.zoom_spin.setValue(150)
+        self._set_zoom_slider_value(150, announce=False)
+        self.on_zoom_changed(150)
 
         from src.web.web_book_api import GOOGLE_BOOKS_API_KEY_SETTING
 
@@ -2355,7 +2470,7 @@ class PreferencesWindow(AccessibleDialog):
         )
         self.settings.setValue("import/rules/duplicate/match_mode", "title_author_year")
 
-        self.duplicate_fuzzy_spin.setValue(90)
+        self._set_fuzzy_slider_value(90)
         self.settings.setValue("import/rules/duplicate/fuzzy_threshold", 90)
 
         # Update descriptions
@@ -2560,7 +2675,7 @@ class PreferencesWindow(AccessibleDialog):
         )
         self.settings.setValue(
             "import/rules/duplicate/fuzzy_threshold",
-            self.duplicate_fuzzy_spin.value(),
+            self.duplicate_fuzzy_slider.value(),
         )
 
         self._initial_state = self._capture_state()

@@ -821,14 +821,14 @@ class BookListImportWindow(AccessibleDialog):
             ("title", "* Title"),
             ("author", "* Author"),
             ("year", "Year"),
-            ("plot", "Plot"),
             ("series", "Series"),
             ("series_no", "Series #"),
             ("genre", "Genre"),
-            ("reader", "Reader"),
+            ("reader", "Narrator"),
             ("read_date", "  Read Date"),
             ("time_hours", "Time"),
             ("tracks", "Files"),
+            ("plot", "Plot"),
         ]
 
         self.mapping_table.setRowCount(len(fields))
@@ -975,7 +975,7 @@ class BookListImportWindow(AccessibleDialog):
             ("Alt+S", "Series"),
             ("Alt+N", "Series number"),
             ("Alt+G", "Genre"),
-            ("Alt+R", "Reader"),
+            ("Alt+R", "Narrator"),
             ("Alt+E", "Read Date"),
             ("Alt+M", "Time"),
             ("Alt+F", "Files"),
@@ -1447,11 +1447,69 @@ class BookListImportWindow(AccessibleDialog):
             combo.setMinimumWidth(min_width)
             combo.setMaximumWidth(max_width)
 
-        # Set default mappings: Title=A, Author=B (common spreadsheet format)
-        self.set_default_mappings()
+        self.apply_header_auto_mappings()
+
+    @staticmethod
+    def _normalize_import_header(text) -> str:
+        raw = str(text).strip().lower()
+        if raw.startswith("*"):
+            raw = raw[1:].strip()
+        return re.sub(r"[\s_]+", " ", raw)
+
+    _HEADER_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+        "title": ("title",),
+        "author": ("author",),
+        "year": ("year",),
+        "plot": ("plot", "comments", "description"),
+        "series": ("series",),
+        "series_no": ("series number", "series #", "series no", "series_number"),
+        "genre": ("genre",),
+        "reader": ("reader", "narrator"),
+        "read_date": ("read date", "read_date", "date read"),
+        "time_hours": ("time", "duration", "length"),
+        "tracks": ("tracks", "files", "file count"),
+    }
+
+    def apply_header_auto_mappings(self):
+        """Map columns from header row names when 'My file Has Header' is on."""
+        for combo in self.field_mappings.values():
+            combo.blockSignals(True)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+
+        if (
+            not getattr(self, "file_has_header_check", None)
+            or not self.file_has_header_check.isChecked()
+            or self.file_data is None
+            or self.column_count <= 0
+        ):
+            self.set_default_mappings()
+            return
+
+        header_to_index: dict[str, int] = {}
+        for index, column in enumerate(self.file_data.columns):
+            key = self._normalize_import_header(column)
+            if key and key not in header_to_index:
+                header_to_index[key] = index
+
+        used_indices: set[int] = set()
+        for field, aliases in self._HEADER_FIELD_ALIASES.items():
+            combo = self.field_mappings.get(field)
+            if combo is None:
+                continue
+            for alias in aliases:
+                col_index = header_to_index.get(alias)
+                if col_index is None or col_index in used_indices:
+                    continue
+                combo.setCurrentIndex(col_index + 1)
+                used_indices.add(col_index)
+                break
+
+        if self.field_mappings["title"].currentIndex() <= 0:
+            self.set_default_mappings()
 
     def set_default_mappings(self):
-        """Set default column mappings - Title=A, Author=B."""
+        """Set default column mappings - Title=A, Author=B when headers did not match."""
         default_mappings = {
             "title": 0,  # Column A
             "author": 1,  # Column B
@@ -1459,8 +1517,9 @@ class BookListImportWindow(AccessibleDialog):
 
         for field, column_index in default_mappings.items():
             if field in self.field_mappings and self.column_count > column_index:
-                # Set to column letter (add 1 for "None" option)
-                self.field_mappings[field].setCurrentIndex(column_index + 1)
+                combo = self.field_mappings[field]
+                if combo.currentIndex() <= 0:
+                    combo.setCurrentIndex(column_index + 1)
 
     def reload_file_with_headers(self, has_headers: bool):
         """Reload the current file with updated header setting."""
@@ -1559,7 +1618,7 @@ class BookListImportWindow(AccessibleDialog):
             "series": "Series",
             "series_no": "Series #",
             "genre": "Genre",
-            "reader": "Reader",
+            "reader": "Narrator",
             "read_date": "Read Date",
             "time_hours": "Time",
             "tracks": "Files",

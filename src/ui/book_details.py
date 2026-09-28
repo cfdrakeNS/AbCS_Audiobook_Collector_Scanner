@@ -82,6 +82,8 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
     QFileDialog,
+    QScrollArea,
+    QFrame,
 )
 from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression, QSize, Signal
 from PySide6.QtGui import (
@@ -327,6 +329,7 @@ class BookDetailsWindow(AccessibleDialog):
         scaler: UIScaler,
         book: Book = None,
         sort_order: str = "Title",
+        filter_summary: str = "",
         books_list: list = None,
         current_index: int = 0,
         theme_manager: ThemeManager = None,
@@ -340,7 +343,8 @@ class BookDetailsWindow(AccessibleDialog):
             db: Database manager
             scaler: UI scaler
             book: Book to edit (None for new book)
-            sort_order: Current sort order from main window (for header display)
+            sort_order: Current sort order from main window (legacy fallback)
+            filter_summary: Active filters and sort (same text as main window summary)
             books_list: List of Book objects for Prev/Next navigation
             current_index: Index of current book in books_list
             theme_manager: Theme manager for styling
@@ -360,7 +364,8 @@ class BookDetailsWindow(AccessibleDialog):
         )  # Store theme manager
         self.book = book or Book()
         self.is_new = book is None
-        self.sort_order = sort_order  # bd#8: Store for header display
+        self.sort_order = sort_order
+        self.filter_summary = (filter_summary or "").strip()
         self._dirty = False  # bd#6: Track if form has unsaved changes
         self._data_was_changed = False  # True after save/delete/web apply; gates list refresh
         self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
@@ -420,13 +425,14 @@ class BookDetailsWindow(AccessibleDialog):
         self.setWindowTitle(title)
         self.setAccessibleName("")
         self.setAccessibleDescription("")
-        self.resize(850, 650)
+        self._apply_initial_window_size()
         self._show_idle_status(announce=False)
         QTimer.singleShot(0, self.title_edit.setFocus)
 
     def showEvent(self, event):
         """Ensure this dialog remains the active foreground window."""
         super().showEvent(event)
+        self._sync_form_scroll_to_content()
         QTimer.singleShot(0, self._ensure_foreground_window)
 
     def _ensure_foreground_window(self):
@@ -876,18 +882,6 @@ class BookDetailsWindow(AccessibleDialog):
         self.cover_label.setAlignment(Qt.AlignCenter)
         side = self.scaler.get_scaled_size(120)
         self.cover_label.setFixedSize(side, side)
-
-        # bd#8: Header section showing sort order
-        header_layout = QHBoxLayout()
-        self.sort_order_label = QLabel(f"Sorted by: {self.sort_order}")
-        self.sort_order_label.setAccessibleName("")
-        self.sort_order_label.setAccessibleDescription("")
-        self.sort_order_label.setFocusPolicy(Qt.NoFocus)
-        if is_screen_reader_active():
-            self.sort_order_label.hide()
-        header_layout.addWidget(self.sort_order_label)
-        header_layout.addStretch()
-        layout.addLayout(header_layout)
 
         label_align = Qt.AlignRight | Qt.AlignVCenter
         label_width = self.scaler.get_scaled_size(110)
@@ -1339,8 +1333,27 @@ class BookDetailsWindow(AccessibleDialog):
         columns.setSpacing(16)
         columns.addLayout(left_grid, 1)
         columns.addLayout(right_grid, 0)
-        layout.addLayout(columns)
-        layout.addLayout(bottom_grid)
+
+        form_widget = QWidget()
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setContentsMargins(0, 0, 0, 0)
+        form_layout.setSpacing(15)
+        form_layout.addLayout(columns)
+        form_layout.addLayout(bottom_grid)
+
+        self.form_scroll = QScrollArea()
+        self.form_scroll.setWidget(form_widget)
+        self.form_scroll.setWidgetResizable(True)
+        self.form_scroll.setFrameShape(QFrame.NoFrame)
+        self.form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.form_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.form_scroll.setFocusPolicy(Qt.NoFocus)
+        self.form_scroll.setAccessibleName("Book details fields")
+        self.form_scroll.setAccessibleDescription(
+            "Scroll when the window is zoomed in to reach all book fields."
+        )
+        self.form_scroll.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        layout.addWidget(self.form_scroll)
 
         # bd#4: Action buttons - New, Save, Delete (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
@@ -1611,23 +1624,35 @@ class BookDetailsWindow(AccessibleDialog):
         )
         apply_status_bar_tooltip(self.status_bar, "")
 
+    def _context_summary_text(self) -> str:
+        """Filters and sort matching the main window summary."""
+        if self.filter_summary:
+            return self.filter_summary
+        if self.sort_order:
+            return f"Sort: {self.sort_order}"
+        return "Sort: Title"
+
+    def _sync_form_scroll_to_content(self) -> None:
+        """Size the scroll area to the form so default zoom shows all fields."""
+        if not hasattr(self, "form_scroll"):
+            return
+        form = self.form_scroll.widget()
+        if form is None:
+            return
+        content_h = form.sizeHint().height()
+        self.form_scroll.setMinimumHeight(content_h)
+
+    def _apply_initial_window_size(self) -> None:
+        """Open at full form height (850×650 minimum), same as before scroll was added."""
+        self._sync_form_scroll_to_content()
+        hint = self.sizeHint()
+        self.resize(max(850, hint.width()), max(650, hint.height()))
+
     def _idle_status_message(self) -> str:
-        """Default status text when the form is idle (view or new-book mode)."""
+        """Default status when idle: filters/sort in view mode, not title/author."""
         if self.is_new:
             return "New book entry."
-        title = (getattr(self, "title_edit", None) and self.title_edit.text() or "").strip()
-        if not title:
-            title = (getattr(self.book, "title", None) or "").strip()
-        title = title or "(Untitled)"
-        author = (
-            getattr(self, "author_label_display", None)
-            and self.author_label_display.text()
-            or ""
-        ).strip()
-        if not author:
-            author = (getattr(self.book, "author_name", None) or "").strip()
-        author = author or "(Unknown author)"
-        return f"{title} by {author}."
+        return self._context_summary_text()
 
     def _sync_series_number_tab(self):
         """In Update, skip Series number when Series is blank."""
@@ -1682,10 +1707,20 @@ class BookDetailsWindow(AccessibleDialog):
 
     def _focus_title_after_navigation(self):
         """Same as Import Detail: focus the title with Tab focus after the book loads."""
+        from shiboken6 import isValid
+
+        from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
         was_read_only = self.title_edit.isReadOnly()
         in_edit_mode = self._in_edit_mode
 
+        def _title_field_alive() -> bool:
+            title = getattr(self, "title_edit", None)
+            return title is not None and isValid(self) and isValid(title)
+
         def focus_title():
+            if not _title_field_alive():
+                return
             if was_read_only and not in_edit_mode:
                 self.title_edit.setReadOnly(False)
             self.title_edit.setAccessibleName("")
@@ -1695,12 +1730,12 @@ class BookDetailsWindow(AccessibleDialog):
             self.title_edit.setCursorPosition(0)
 
             def restore_read_only():
+                if not _title_field_alive():
+                    return
                 if was_read_only and not in_edit_mode:
                     self.title_edit.setReadOnly(True)
                 if self.focusWidget() is self.title_edit:
                     self.title_edit.setCursorPosition(0)
-
-            from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
 
             delay = max(get_screen_reader_focus_delay_ms(), 400)
             QTimer.singleShot(delay, restore_read_only)

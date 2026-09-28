@@ -16,7 +16,7 @@ Backup and Restore lets you save a copy of your entire AbCS database and restore
 - **Restore** replaces your current database with the chosen backup. Create a backup of the current state first if you might need it.
 - **Full Reset** deletes all books and collections. Use only when you intend to start over.
 
-## Steps
+## Back up and restore
 
 1. Open **Manage → Backup & Restore** (**Alt+M**, then **B**).
 2. The window opens with focus on the **backup list** (**Alt+L**), which shows backup files already saved.
@@ -91,3 +91,7 @@ No. Restore changes your live database. Backup files in the list are not deleted
 
 **Should I backup before restore?**
 Yes, if you might want to return to the current state. Restore cannot be undone except by restoring a different backup.
+
+## Related documentation
+
+- Readable export of book metadata (not a database backup): [Export Library](25_export_library.md)

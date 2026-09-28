@@ -20,22 +20,22 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 - For **New Book**, a collection should exist. The new book uses the collection filter shown on the main window when possible.
 - Sort order on the main window affects Next/Previous order in Book Details.
 
-## Steps — view or edit one book
+## View or edit one book
 
 1. In the main window, click the book row you want, or move to it with the keyboard.
 2. Double-click the **Title** column, open **View → Open Focused Item**, or press **Enter** when the title column is focused.
 3. The **Book Details** window shows all fields for that book. When no screen reader is running, a panel at the top also shows the book title, author, and series in larger text; with JAWS or NVDA running this panel is hidden and never spoken. The picture is on the right. Title, author, series, genre, and plot are on the left. Year, time, listen progress, files, format, and bitrate sit under the picture. The other fields are one row each below that. Tab follows that order and stops on the picture. The picture says Book cover when the audio file has one, and No cover when it shows the stand-in picture.
-4. Press **Update** (**Alt+U**) to edit. To fix a missing or moved location, use **Browse** (**Alt+B**) beside **Path**, or type the path. If the stored path is gone, Browse starts under the collection library root or the Preferences import folder (same idea as Listen). Browse does not change the collection library root (set that in Collections). **Listen** is hidden while you edit; Save (**Alt+S**) or Escape first. Then **Save** (**Alt+S**).
+4. Press **Edit** (**Alt+E**) to edit. To fix a missing or moved location, use **Browse** (**Alt+B**) beside **Path**, or type the path. If the stored path is gone, Browse starts under the collection library root or the Preferences import folder (same idea as Listen). Browse does not change the collection library root (set that in Collections). **Listen** is hidden while you edit; **Save** (**Ctrl+S**) or Escape first. Then **Save** (**Ctrl+S**).
 5. Click **Listen** or press **Ctrl+L** to listen to the book inside AbCS. The Listen window shows Title, Author, Length from the book when set, Series only when the book has a series, and the current file name, with cover art when the file has it. Transport buttons are icons with accessible names. The play position is shown above a seek slider and the buttons. **Space** plays or pauses. After Next, Previous, Rewind, Forward, or Play/Pause, focus returns to Play/Pause. **Alt+Left** / **Alt+Right** seek 30 seconds. The seek slider moves through the current file (arrow keys five seconds, Page Up/Down thirty seconds). **Alt+P** / **Alt+N** move to the previous or next file. Escape closes Listen; if you are under 5 minutes it asks whether to save the place. Reaching the end of the last file clears the saved place. Opening Listen again resumes from that place. Speed is one setting for every book. For a folder of tracks, files play in disc and track number order. If the file is gone, status says **Book not found in -** and that path. The same action is on the main window **Edit → Listen** and the **Listen** toolbar button after Find. **Listen progress** on Book Details shows stop time (and percent of book length when Time is set), not the file name. To clear a saved place without finishing the book, use **Clear** beside **Listen progress**, or on the main window **Edit → Clear listening position** for the selection. Setting a read date also clears listening position (and want to read).
 6. Click **Next** and **Previous** at the bottom of the window, or use Page Down / Page Up.
 7. Press **Escape** to close. The main list refreshes.
 
-## Steps — New Book
+## New Book
 
 1. Open **File → New Book**, or press **Ctrl+N**.
 2. Book Details opens with empty fields.
 3. Fill in Title, Author, Collection, and any other fields.
-4. Click **Save** (**Alt+S**).
+4. Click **Save** (**Ctrl+S**).
 5. Close with **Escape**. Focus moves to the new book if it was saved.
 
 ## What happens next
@@ -57,25 +57,16 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | Shortcut | Action |
 |----------|--------|
 | Alt+T, Alt+A, Alt+Y, etc. | Jump to field |
-| Alt+I | Series. Tab moves to Series number |
-| Alt+S | Save |
-| Alt+N | Next book |
-| Alt+P | Previous book |
-| Alt+W | Fetch Web Info |
+| Alt+S | Series. Tab moves to Series number |
+| Alt+N | Narrator |
+| Alt+R | Read date |
+| Alt+E | Edit |
+| Ctrl+S | Save |
+| Ctrl+N | New book |
+| Alt+D | Delete book |
+| Alt+W | Get web info |
 | Ctrl+L | Listen inside AbCS |
-| Space | Play or pause (Listen window) |
-| Alt+Left | Rewind 30 seconds (Listen) |
-| Alt+Right | Forward 30 seconds (Listen) |
-| Alt+P | Previous file (Listen) |
-| Alt+N | Next file (Listen) |
-| Alt+S | Playback speed (Listen) |
-| Left/Right | Seek five seconds on Listen seek slider |
-| Page Up/Down | Seek thirty seconds on Listen seek slider |
-| Escape | Close Listen |
-| F1 | Listen keyboard shortcuts |
-| Shift+F1 | From Listen: help for the window that opened it |
-| Insert | New book (from Book Details) |
-| Delete | Delete current book |
+| Page Up / Page Down | Previous / next book in list order |
 | Shift+F1 | Help for this window |
 | F1 | Keyboard shortcuts |
 | Alt+/ | Re-read status |

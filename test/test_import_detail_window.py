@@ -40,8 +40,9 @@ def test_import_detail_save_discard_shortcuts_are_explicit(qtbot, temp_db, ui_sc
 
     assert window.save_return_button.text() == "Save"
     assert window.skip_button.text() == "Discard"
-    assert shortcuts["S"] == ("Save", "save_return_button")
+    assert "S" not in shortcuts  # Save is Ctrl+S, not Alt+S (Phase 29)
     assert shortcuts["D"] == ("Discard", "skip_button")
+    assert window.save_shortcut.key().toString() == "Ctrl+S"
 
     cleanup_window(window)
 

@@ -93,6 +93,62 @@ def build_accessible_button_style(
     """
 
 
+def build_highlight_horizontal_slider_style(
+    groove_height: int,
+    handle_height: int,
+    handle_width: int,
+) -> str:
+    """Horizontal slider with filled track in palette(highlight)."""
+    groove_h = max(int(groove_height), 6)
+    handle_h = max(int(handle_height), groove_h + 2)
+    handle_w = max(int(handle_width), 8)
+    groove_radius = max(groove_h // 2, 3)
+    handle_radius = max(handle_w // 2, 4)
+    margin = (handle_h - groove_h) // 2
+    return f"""
+        QSlider::groove:horizontal {{
+            height: {groove_h}px;
+            background: palette(mid);
+            border: 1px solid palette(dark);
+            border-radius: {groove_radius}px;
+        }}
+        QSlider::sub-page:horizontal {{
+            background: palette(highlight);
+            border: 1px solid palette(dark);
+            border-radius: {groove_radius}px;
+            height: {groove_h}px;
+        }}
+        QSlider::add-page:horizontal {{
+            background: palette(mid);
+            border: 1px solid palette(dark);
+            border-radius: {groove_radius}px;
+            height: {groove_h}px;
+        }}
+        QSlider::handle:horizontal {{
+            width: {handle_w}px;
+            height: {handle_h}px;
+            margin: -{margin}px 0;
+            background: palette(highlight);
+            border: 2px solid palette(highlight);
+            border-radius: {handle_radius}px;
+        }}
+        QSlider::handle:horizontal:focus {{
+            border: 2px solid palette(highlighted-text);
+        }}
+    """
+
+
+def apply_highlight_horizontal_slider_style(slider, scaler) -> None:
+    """Apply highlight slider styling scaled to the current UI zoom."""
+    groove_h = max(scaler.get_scaled_size(9), 6)
+    handle_h = max(scaler.get_scaled_size(17), 12)
+    handle_w = max(scaler.get_scaled_size(11), 8)
+    slider.setMinimumHeight(handle_h + 4)
+    slider.setStyleSheet(
+        build_highlight_horizontal_slider_style(groove_h, handle_h, handle_w)
+    )
+
+
 def build_modern_button_style(
     scaled_height: int,
     selector: str = "QPushButton",

@@ -42,8 +42,9 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `01` | Help overview / hub |
 | `02`–`15` | Process guides (one workflow per window) |
 | `16`–`18` | Reference (shortcuts, defaults, import preferences) |
-| `19`–`22` | Explained guides (everyday-language walkthroughs) |
-| `22+` | Next free numbers for new topics |
+| `19`–`21` | Explained guides (everyday-language walkthroughs) |
+| `24`–`25` | Additional process guides (path health, export library) |
+| `26+` | Next free numbers for new topics |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
 
@@ -110,9 +111,10 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 19 | `19_import_explained.md` | Explained | — |
 | 20 | `20_import_book_list_explained.md` | Explained | — |
 | 21 | `21_web_metadata_explained.md` | Explained | — |
-| 22 | `22_web_metadata_title_compare.md` | Explained | — |
+| 24 | `24_path_health.md` | Process | — |
+| 25 | `25_export_library.md` | Process | — |
 
-Reference and explained guides (`16`–`22`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
+Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
 
 ### Cross-links between topics
 
@@ -136,7 +138,7 @@ Windows and Linux builds bundle `help_docs/` into the installer. Add or edit mar
 ### Required
 
 1. **One `#` heading** at the top — becomes the help window title when the topic is open.
-2. **`##` sections** for major parts (What this is, Steps, Common confusion, and so on).
+2. **`##` sections** for major parts (What this is, action titles such as *Find (search)*, Common confusion, and so on). Do not start section headings with the word **Steps**.
 3. **`###` subsections** when a section needs smaller jumps (optional).
 
 ### Recommended sections (process guides)
@@ -145,7 +147,7 @@ Process guides (`02`–`15`) usually include:
 
 - **What this is** / **When to use it**
 - **Before you start**
-- **Steps** (numbered list)
+- **Action section** (short `##` title plus numbered list)
 - **What happens next**
 - **Settings that affect this** (if any)
 - **Mouse, shortcuts, and accessibility** — shortcut table plus mouse tips

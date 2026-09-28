@@ -19,7 +19,7 @@ These tools help you narrow and organize the main book list without changing you
 
 The Title column shows a mark before the title. A circle means the book has a plot. A square means want to read. A triangle means listening is in progress. Screen readers speak those words after the title, for example "Dune, plot, want to read, in progress".
 
-## Steps — Find (search)
+## Find (search)
 
 1. Open **View → Find**, or press **Ctrl+F**.
 2. Choose a **field** to search (**Alt+I**): Author, Title, Series, or Genre. If your focus is on Author, Title, Series, or Genre in the book table, that field is pre-selected. From Year, Time, Read Date, or elsewhere, the last search field is used.
@@ -29,31 +29,31 @@ The Title column shows a mark before the title. A circle means the book has a pl
 6. The filter summary shows your search (for example, "Find: Christie").
 7. If nothing matches, a message reports no results.
 
-## Steps — Collection filter
+## Collection filter
 
 1. Open **View → Collections** (**Alt+V**, then **C**).
 2. Choose a collection name or **All Collections**.
 3. Only books in that collection appear in the list.
 
-## Steps — Plot filter
+## Plot filter
 
 1. Open **View → Plot** (**Alt+V**, then **P**), or press **Alt+P** to toggle the plot filter.
 2. Choose **All**, **With Plot**, or **Without Plot**.
 3. Books are filtered by whether they have plot text in comments.
 
-## Steps — Read filter
+## Read filter
 
 1. Open **View → Read** (**Alt+V**, then **R**), or press **Alt+R** to toggle the read filter.
 2. Choose **All**, **Read**, or **Unread**.
 3. The list shows only books matching that read status.
 
-## Steps — In progress filter
+## In progress filter
 
 1. Open **View → In progress** (**Alt+V**, then **G**), or activate the **In Progress Filter** toolbar button.
 2. Choose **All** or **In Progress**.
 3. The list shows only books that have a saved listening place. Turning the filter off does not clear those places.
 
-## Steps — Want to read filter
+## Want to read filter
 
 1. Open **View → Want to read** (**Alt+V**, then **W**), or press **Alt+T** to toggle the filter.
 2. Choose **All** or **Want to Read**.
@@ -61,7 +61,7 @@ The Title column shows a mark before the title. A circle means the book has a pl
 
 To mark a book, focus it and choose **Edit → Add to want to read**. A selection marks every selected book. The mark is saved immediately. With books selected, the footer also shows **Add to want to read**, **Clear want to read**, and **Clear listening position**. **Edit → Clear want to read** removes the mark from the selection only. **Edit → Clear listening position** clears saved listening places for the selection without changing read status.
 
-## Steps — Recently added filter
+## Recently added filter
 
 1. Open **View → Recently Added...** (**Alt+V**, then **A**), or activate the **Recently Added Filter** toolbar button to the right of Read Filter.
 2. The date field defaults to **2 months ago** from today. Change it if needed (calendar popup on the date field).
@@ -70,7 +70,7 @@ To mark a book, focus it and choose **Edit → Add to want to read**. A selectio
 
 This filter uses **date added** (when the book was imported or created in AbCS), not read date.
 
-## Steps — Sort
+## Sort
 
 1. Open the **Sort** menu on the menu bar (**Alt+S**).
 2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date. **Series** sorts by series name, then series number, then year, then title. The summary label is **Series, Series #, Year, Title**. Books with no series number come after numbered books in that series. A blank year comes before a filled year. The Title column shows ` - 03` or ` - 6.5` when Series number is set. That text is display only. The stored title does not include it.
@@ -102,6 +102,14 @@ After step 7, further Escape presses on the main window do **not** clear any mor
 
 **Toolbar toggles:** You can also clear Find, Plot, Read, or In progress by clicking their toolbar buttons again while highlighted. Recently added clears when you press Escape at step 7, or set a new date from the toolbar or **View → Recently Added...**.
 
+## Listen (main window)
+
+Use **Edit → Listen**, the **Listen** toolbar button, or **Ctrl+L** to open the in-app **Listen** window for the **focused** book (not a multi-selected row). Listen is unavailable while one or more books are selected for bulk actions. Transport keys and resume behavior are in [Book Details](04_book_details.md).
+
+## Export the filtered list
+
+To save the books currently shown (respecting filters, search, sort, and any selection) to CSV or JSON, use **File → Export Library** (**Alt+F**, then **X**). See [Export Library](25_export_library.md).
+
 ## What happens next
 
 - The book table shows only rows matching all active filters.
@@ -122,7 +130,9 @@ After step 7, further Escape presses on the main window do **not** clear any mor
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+F | Open Find dialog |
+| Ctrl+L | Listen to focused book (not while books are selected) |
 | Ctrl+C | Copy focused cell on the book list |
+| Alt+F, X | File → Export Library |
 | Alt+V, C | View → Collections filter |
 | Alt+V, P | View → Plot filter |
 | Alt+P | Toggle plot filter |

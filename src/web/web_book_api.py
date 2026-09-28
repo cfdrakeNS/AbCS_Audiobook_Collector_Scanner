@@ -111,6 +111,93 @@ class WebBookAPI:
             cleaned = cleaned[match.end() :].strip()
         return cleaned
 
+    @staticmethod
+    def _fold_apostrophes(text: str) -> str:
+        return re.sub(r"[\u2018\u2019\u201b`']", "'", text or "")
+
+    def _strip_leading_author_from_title(
+        self, title: str, author: str | None
+    ) -> str:
+        """Remove a leading author name (and optional possessive) from the title."""
+        title = (title or "").strip()
+        author = self._strip_author_honorifics(
+            self._apply_author_transformations(author or "")
+        ).strip()
+        if not title or not author:
+            return ""
+
+        folded_title = self._fold_apostrophes(title)
+        prefixes = [self._fold_apostrophes(author)]
+        if "," in author:
+            last_part, given_part = [p.strip() for p in author.split(",", 1)]
+            if last_part and given_part:
+                prefixes.append(self._fold_apostrophes(f"{given_part} {last_part}"))
+
+        title_lower = folded_title.lower()
+        for prefix in prefixes:
+            prefix_lower = prefix.lower()
+            if not title_lower.startswith(prefix_lower):
+                continue
+            rest = folded_title[len(prefix) :].lstrip()
+            rest = re.sub(r"^'s\b", "", rest, flags=re.IGNORECASE).lstrip(" -:–—").strip()
+            if rest and rest.lower() != title_lower:
+                return rest
+        return ""
+
+    def _db_title_match_candidates(
+        self, db_title: str, db_author: str | None
+    ) -> list[str]:
+        """Titles used when comparing library rows to web results."""
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        def _add(value: str) -> None:
+            key = (value or "").strip().lower()
+            if not key or key in seen:
+                return
+            seen.add(key)
+            candidates.append(value.strip())
+
+        _add(db_title or "")
+        stripped = self._strip_leading_author_from_title(db_title, db_author)
+        if stripped:
+            _add(stripped)
+        return candidates
+
+    def _query_titles_for_metadata(
+        self, title: str, db_author: str | None
+    ) -> list[str]:
+        """Prefer shorter query titles when the library title repeats the author."""
+        stripped = self._strip_leading_author_from_title(title, db_author)
+        if stripped and stripped.lower() != (title or "").strip().lower():
+            return [stripped, title]
+        return [title]
+
+    @staticmethod
+    def _google_fetch_error_is_transient(err: str) -> bool:
+        low = (err or "").lower()
+        if not low.startswith("google_books:"):
+            return False
+        return any(
+            token in low
+            for token in ("429", "403", "paused", "too many", "rate limit")
+        )
+
+    @staticmethod
+    def _negative_cache_is_transient_google_only(payload: dict) -> bool:
+        errors = payload.get("_fetch_errors") or []
+        if not errors:
+            return False
+        return all(
+            WebBookAPI._google_fetch_error_is_transient(err) for err in errors
+        )
+
+    def _should_bypass_negative_cache(self, payload: dict) -> bool:
+        """Retry cached misses that were caused only by Google rate limits."""
+        if not isinstance(payload, dict) or not payload.get("_no_result"):
+            return False
+        return self._negative_cache_is_transient_google_only(payload)
+
     def _extract_last_name(self, author: str) -> str:
         """Extract last name from author string."""
         author = self._strip_author_honorifics(author)
@@ -188,9 +275,23 @@ class WebBookAPI:
 
         return score
 
-    def _title_matches(self, db_title: str, web_title: str) -> bool:
+    def _title_matches(
+        self, db_title: str, web_title: str, db_author: str | None = None
+    ) -> bool:
         """Check if at least 50% of DB title words appear in web title."""
-        return self._title_word_match_score(db_title, web_title) >= 0.5
+        for candidate in self._db_title_match_candidates(db_title, db_author):
+            if self._title_word_match_score(candidate, web_title) >= 0.5:
+                return True
+        return False
+
+    def _best_title_word_match_score(
+        self, db_title: str, web_title: str, db_author: str | None = None
+    ) -> float:
+        scores = [
+            self._title_word_match_score(candidate, web_title)
+            for candidate in self._db_title_match_candidates(db_title, db_author)
+        ]
+        return max(scores) if scores else 0.0
 
     def _metadata_matches_db(
         self,
@@ -206,7 +307,7 @@ class WebBookAPI:
         web_title = (metadata.get("title") or "").strip()
         if not web_title:
             return False
-        if not self._title_matches(db_title, web_title):
+        if not self._title_matches(db_title, web_title, db_author):
             return False
         if not require_author_match:
             return True
@@ -909,7 +1010,11 @@ class WebBookAPI:
                     if isinstance(cached_result, dict) and cached_result.get(
                         "_no_result"
                     ):
-                        return dict(cached_result)
+                        if self._should_bypass_negative_cache(cached_result):
+                            del self._cache[cache_key]
+                            self._cache_dirty = True
+                        else:
+                            return dict(cached_result)
                     refreshed = dict(cached_result)
                     refreshed.pop("_series_enriched", None)
                     refreshed.pop("series", None)
@@ -1026,7 +1131,8 @@ class WebBookAPI:
                     "_fetch_errors": _dedupe_fetch_errors(_errors),
                     "_no_result": True,
                 }
-                self._store_cache_entry(cache_key, dict(miss))
+                if not self._negative_cache_is_transient_google_only(miss):
+                    self._store_cache_entry(cache_key, dict(miss))
                 return miss
             miss = {"_no_result": True, "_fetch_errors": []}
             self._store_cache_entry(cache_key, dict(miss))
@@ -1168,8 +1274,8 @@ class WebBookAPI:
                 require_author_match=require_author_match,
             ):
                 continue
-            title_score = self._title_word_match_score(
-                title, candidate.get("title", "")
+            title_score = self._best_title_word_match_score(
+                title, candidate.get("title", ""), db_author
             )
             if title_score > best_title_score:
                 best_title_score = title_score
@@ -1191,12 +1297,13 @@ class WebBookAPI:
             return None
 
         queries: list[str] = []
-        if title and author:
-            queries.append(f"intitle:{title} inauthor:{author}")
-        if title and (author or require_author_match):
-            queries.append(f"intitle:{title}")
-        elif not require_author_match and title:
-            queries.append(title)
+        for query_title in self._query_titles_for_metadata(title, db_author):
+            if query_title and author:
+                queries.append(f"intitle:{query_title} inauthor:{author}")
+            if query_title and (author or require_author_match):
+                queries.append(f"intitle:{query_title}")
+            elif not require_author_match and query_title:
+                queries.append(query_title)
 
         seen: set[str] = set()
         for q_idx, query in enumerate(queries):
@@ -1271,26 +1378,30 @@ class WebBookAPI:
     ) -> Optional[Dict]:
         """Fetch metadata from Open Library API (title and author only; no DB year filter)."""
         db_author = match_author if match_author is not None else author
+        title_variants = self._query_titles_for_metadata(title, db_author)
         queries_to_try = []
 
-        if ORWELL_1984_TITLE_TOKEN in title.lower():
-            base_query = title
-            if author:
-                base_query += f" author:{author}"
-            queries_to_try.append(base_query)
-
-            if "nineteen eighty-four" not in title.lower():
-                alt_query = "nineteen eighty-four"
+        for variant_title in title_variants:
+            if ORWELL_1984_TITLE_TOKEN in variant_title.lower():
+                base_query = variant_title
                 if author:
-                    alt_query += f" author:{author}"
-                queries_to_try.append(alt_query)
-        else:
-            if author:
-                queries_to_try.append(f"{title} author:{author}")
-                stripped_author = self._strip_author_honorifics(author)
-                if stripped_author and stripped_author.lower() != author.lower():
-                    queries_to_try.append(f"{title} author:{stripped_author}")
-            queries_to_try.append(title)
+                    base_query += f" author:{author}"
+                queries_to_try.append(base_query)
+
+                if "nineteen eighty-four" not in variant_title.lower():
+                    alt_query = "nineteen eighty-four"
+                    if author:
+                        alt_query += f" author:{author}"
+                    queries_to_try.append(alt_query)
+            else:
+                if author:
+                    queries_to_try.append(f"{variant_title} author:{author}")
+                    stripped_author = self._strip_author_honorifics(author)
+                    if stripped_author and stripped_author.lower() != author.lower():
+                        queries_to_try.append(
+                            f"{variant_title} author:{stripped_author}"
+                        )
+                queries_to_try.append(variant_title)
 
         seen_queries = set()
         for query in queries_to_try:
@@ -1342,8 +1453,8 @@ class WebBookAPI:
                             require_author_match=require_author_match,
                         ):
                             continue
-                        title_score = self._title_word_match_score(
-                            title, candidate.get("title", "")
+                        title_score = self._best_title_word_match_score(
+                            title, candidate.get("title", ""), db_author
                         )
                         if title_score > best_title_score:
                             best_title_score = title_score
@@ -1651,11 +1762,22 @@ class WebBookAPI:
             return None
         try:
             self._check_abort("wikidata")
-            search_terms = [title]
-            if author:
-                search_terms.insert(0, f"{title} {author}")
-            if ORWELL_1984_TITLE_TOKEN in title.lower():
-                search_terms.insert(0, f"{title} {ORWELL_AUTHOR_LABEL}")
+            search_terms: list[str] = []
+            seen_terms: set[str] = set()
+
+            def _add_search_term(term: str) -> None:
+                if term and term not in seen_terms:
+                    seen_terms.add(term)
+                    search_terms.append(term)
+
+            for query_title in self._query_titles_for_metadata(title, db_author):
+                if ORWELL_1984_TITLE_TOKEN in query_title.lower():
+                    _add_search_term(f"{query_title} {ORWELL_AUTHOR_LABEL}")
+                if author:
+                    _add_search_term(f"{query_title} {author}")
+                _add_search_term(query_title)
+            if not search_terms:
+                return None
 
             candidate_ids: list[str] = []
             seen_ids: set[str] = set()
@@ -1685,7 +1807,7 @@ class WebBookAPI:
                     if not qid or qid in seen_ids:
                         continue
                     label = hit.get("label") or ""
-                    if label and not self._title_matches(title, label):
+                    if label and not self._title_matches(title, label, db_author):
                         # Keep near-misses only when description mentions novel/book.
                         desc = (hit.get("description") or "").lower()
                         if not any(
@@ -1783,8 +1905,8 @@ class WebBookAPI:
                     require_author_match=require_author_match,
                 ):
                     continue
-                title_score = self._title_word_match_score(
-                    title, metadata.get("title", "")
+                title_score = self._best_title_word_match_score(
+                    title, metadata.get("title", ""), db_author
                 )
                 if title_score > best_title_score:
                     best_title_score = title_score

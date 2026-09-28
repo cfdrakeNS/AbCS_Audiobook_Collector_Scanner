@@ -303,5 +303,4 @@ Different catalogs know different books. Open Library is tried first for mainstr
 - Edit a book by hand: [Book Details](04_book_details.md)
 - Bulk add from audio folders: [Import explained](19_import_explained.md)
 - Bulk add from a spreadsheet: [Import Book List explained](20_import_book_list_explained.md)
-- Why title matching differs by step: [Web metadata title compare explained](22_web_metadata_title_compare.md)
 

@@ -46,11 +46,12 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 | 27 | — | Export library metadata (CSV / JSON) | [plan_export_library_metadata.md](plan_export_library_metadata.md) | ~2 d | Phase 19 columns |
 | 28 | — | iTunes technical tags in Comments (import fix + one-time script) | [plan_itunes_comment_cleanup.md](plan_itunes_comment_cleanup.md) | 1 d | Found in Phase 27 |
 | 29 | — | Standard shortcuts (tester feedback: Edit, Ctrl+S, Ctrl+F, Narrator, Listen Ctrl+L) | [plan_standard_shortcuts.md](plan_standard_shortcuts.md) | 1–2 d | — |
-| 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | Phases 18–29 |
+| 30 | — | Sept 27 tester feedback (import/export, dialogs, zoom) | [plan_sept27_tester_feedback.md](plan_sept27_tester_feedback.md) | 3–5 d | Phase 29 |
+| 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | Phases 18–30 |
 
 **To do in version 3 (not the next build item):** On the first start, if a screen reader is running, set Zoom to Normal, then speak once: "Screen reader detected. Text size is set to Normal. To choose a different size, open Preferences, then Theme and Zoom." Do not repeat it on later starts. Do not reset Zoom if they have already changed it.
 
-**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. There is no Phase 14 in v3 — view-mode announcements are out of scope; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), Phase 22 (Import Detail layout), and Phase 21 (full Play player) are done** (18–20 tester accepted). **Phase 27 (Export library metadata) and Phase 28 (iTunes technical tags in Comments) are implemented. Next: Phase 29 standard shortcuts (Listen Ctrl+L part done), then Phase 16 help last.** Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11. **Phase 23 F08 (Statistics Want to Read and In Progress) is done. Phase 24 (Book Details path browse) is done. Phase 25 F01 (Check Books Path) is done. Phase 26 (Check Books Path progress) is done.** Combined Want to read and playing filter dropped — separate filters already ship.
+**Phase numbers 1–4 and 6–13 are complete** (1–4 and 6–12 tester accepted; Phase 13 implemented in 2.18). There is no Phase 5 in v3 — non-modal fetch was removed as too risky; see deferred. There is no Phase 14 in v3 — view-mode announcements are out of scope; see deferred. **Phase 15 (Preview cover), Phase 17 (Book Details cover), Phase 19 (book columns), Phase 18 (Book Details layout), Phase 20 (Want to read), Phase 22 (Import Detail layout), and Phase 21 (full Play player) are done** (18–20 tester accepted). **Phase 27 (Export library metadata), Phase 28 (iTunes technical tags in Comments), Phase 29 (standard shortcuts), Phase 30 (Sept 27 tester feedback, batches A–E), and Phase 16 (help docs review) are complete (tester accepted where applicable).** Scheduled v3 development phases are done; remaining v3 items are in the “To do” list below (for example first-start screen reader zoom message). Do not start the next phase until the current gate passes. Phase 9 adds `series_number` only. Ratings, tags, and web cover files are out of v3. Collection `root_path` is added in Phase 11. **Phase 23 F08 (Statistics Want to Read and In Progress) is done. Phase 24 (Book Details path browse) is done. Phase 25 F01 (Check Books Path) is done. Phase 26 (Check Books Path progress) is done.** Combined Want to read and playing filter dropped — separate filters already ship.
 
 **Not in v3:** Non-modal web fetch (keep using the app during a fetch), book ratings, tags, web cover files and zip backup, rescan (Part B), organize-on-disk (Part C), i18n, and remaining follow-on/backlog rows. Web fetch progress stays a blocking dialog. Collection root **Part A** is in v3; Parts B and C stay deferred. Want to read on Import Detail and Update-window extensions stay deferred.
 
@@ -270,19 +271,33 @@ Import skips iTunes comment frames (`iTunNORM`, `iTunSMPB`, `iTunes_CDDB_*`) and
 
 ### Phase 29 — Standard shortcuts (1–2 days)
 
-See [plan_standard_shortcuts.md](plan_standard_shortcuts.md). **Planned — four outstanding questions. Listen part implemented.**
+See [plan_standard_shortcuts.md](plan_standard_shortcuts.md). **Complete — Sept 27, 2026.**
 
-Tester feedback. Book Details: Update becomes **Edit** (Alt+E); Read date Alt+R; Reader becomes **Narrator** (Alt+N); Series Alt+S; Save **Ctrl+S**; New book Ctrl+N. Name list: **Ctrl+F** Find and **Ctrl+S** Save. Preferences, Collection, Import Detail, Web Metadata: **Ctrl+S** Save. Main toolbar: remove Import. Reading History: drop the duplicate Refresh/Search key.
-
-**Done (Sept 27, 2026):** the player opener is **Listen** with **Ctrl+L** (main window Edit menu and toolbar, Book Details button, Listen window title). Alt+Shift+P removed. Ctrl+L does nothing inside Listen. Help topics updated. Tests mute all audio and never wait on a Listen window (full suite 653 passed, 1 skipped).
+Book Details: **Edit** (Alt+E); Read date Alt+R; **Narrator** (Alt+N); Series Alt+S; Save **Ctrl+S**; New book Ctrl+N. Name list: **Ctrl+F** and **Ctrl+S**. Preferences, Collection, Import Detail, Web Metadata: **Ctrl+S** Save. Main toolbar: Import removed. Reading History: Search **Alt+S** only (Date Range tab Alt+R). **Narrator** on Book List Import (Alt+R; Alt+N Series number). Listen **Ctrl+L** (Alt+Shift+P removed). Help topic 16 and related shortcut tables updated; Phase 16 may refine other topics.
 
 **Gate:** Each window's F1 list matches the real keys; Save is Ctrl+S everywhere; no Alt letter does two things in one window; JAWS/NVDA smoke.
 
+### Phase 30 — Sept 27 tester feedback (3–5 days, batched)
+
+See [plan_sept27_tester_feedback.md](plan_sept27_tester_feedback.md). **Complete — batches A–E tester accepted.**
+
+**Batch A:** Book List Import (**Plot** last, header auto-map). Export (column order, **Narrator**, **Collection** after **Tracks**, **Cover**, export popup with filters).
+
+**Batch B:** Web Metadata **Plot** focus and scroll; Google cooldown / brief status messages; author-prefixed titles match Open Library.
+
+**Batch C:** Read date **OK**+**Clear** (calendar); Recently Added typed date for SR; clear want/listen on focused row; web fetch cell highlight.
+
+**Batch D:** Book Details idle status and sighted summary show main-window **filters and sort** (not title/author); vertical scroll at high zoom. Feedback 3.1 (skip empty Series in view tab order) is **out of scope**.
+
+**Batch E:** Name list sort and edit exit; Preferences/Help highlight sliders and scroll; Collection editor layout; Help **F1** at Help zoom.
+
+**Gate (full phase):** Full `python -m pytest test/` green; JAWS/NVDA on each touched window.
+
 ### Phase 16 — Help docs review (1 day)
 
-See [plan_help_docs_review.md](plan_help_docs_review.md). **Next (last).** Write it after the other version 3 windows and Phase 29 keys are in place, so the topics match Book Details (including path browse), Import Detail, Listen, Statistics, Check Books Path (including progress), and Export Library (topic 25, added with Phase 27). Remove topics 22 and 23, drop “Steps” from section headings, and add missing shipped actions.
+See [plan_help_docs_review.md](plan_help_docs_review.md). **Complete.** Topics 22 and 23 removed; section headings no longer start with “Steps”; main-window help covers Listen and Export Library; shortcuts topic lists **Alt+F, X**; cross-links updated.
 
-**Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Listen (Ctrl+L).
+**Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Listen (Ctrl+L); topic 25 and Export Library links in place.
 
 ---
 

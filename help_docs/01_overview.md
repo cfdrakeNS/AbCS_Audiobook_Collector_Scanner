@@ -37,7 +37,7 @@ The **Help window size** still follows your main app zoom so the frame stays rea
 
 - **Preset** list — same names as Preferences (Tiny through Maximum). Select a preset and press **Enter** to apply it (a mouse click also applies).
 - **−** and **+** buttons — step zoom by 15%.
-- **%** spin box — type or step an exact percentage.
+- **Zoom slider** — drag to set an exact percentage (filled track uses your theme highlight colour).
 
 **Keyboard shortcuts (while Help is open):**
 
@@ -61,12 +61,12 @@ The **Help window size** still follows your main app zoom so the frame stays rea
 **Tips:**
 
 - Press **Enter** after choosing a preset in the list. If the preset dropdown is open, **Escape** closes the list first; press **Escape** again to close Help.
-- Open the full help viewer from **Help → Help...** or **Shift+F1**. **F1** alone shows keyboard shortcuts for the current window, not the full help viewer.
+- Open the full help viewer from **Help → Help...** or **Shift+F1**. **F1** alone shows keyboard shortcuts for the current window, not the full help viewer. In the Help window, that **F1** list uses **Help zoom**, not main app zoom.
 - **Help → Check for updates** compares this copy of AbCS with the latest GitHub release. If a newer version is listed, **Open website** opens the AbCS website. The check does not install anything. **Manage → Preferences** has **Automatically check for updates**, off by default. When it is on, the same check runs after startup. A dialog opens only when a newer version is available.
 
 ### Topics and sections
 
-When help first opens, the navigation list shows **sections** from the current guide (for example, *What this is*, *Steps*, *Common confusion*).
+When help first opens, the navigation list shows **sections** from the current guide (for example, *What this is*, *Find (search)*, *Common confusion*).
 
 - Click a section name, or select it and press **Enter**, to jump to that heading in the content area.
 - Click **All Help Topics** at the top of the list (or select it and press **Enter**) to see every guide in the library.
@@ -141,7 +141,6 @@ These explain *what happens behind the scenes* in everyday language. Use them be
 | [Import explained](19_import_explained.md) | How folder scan import works (Ctrl+I) |
 | [Import Book List explained](20_import_book_list_explained.md) | How spreadsheet import works (Ctrl+Shift+I) |
 | [Web metadata explained](21_web_metadata_explained.md) | How Fetch Web Info works (Alt+W) |
-| [Web metadata title compare explained](22_web_metadata_title_compare.md) | Why web search, review, and spreadsheet import compare titles differently |
 
 ## Suggested order for new users
 

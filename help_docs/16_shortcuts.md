@@ -4,7 +4,7 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 
 Source: `src/accessibility/shortcuts.py`, F1 help dialogs in `src/ui/`, and `AbCS_Shortcut_June07.csv`.
 
-Last updated: June 2026.
+Last updated: September 27, 2026 (Phase 29).
 
 ## Main window
 
@@ -25,7 +25,8 @@ Last updated: June 2026.
 | Alt+R | Toggle read filter |
 | Alt+T | Toggle want to read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
-| Ctrl+L | Listen to focused book inside AbCS |
+| Ctrl+L | Listen to focused book inside AbCS (disabled while books are selected) |
+| Alt+F, X | File → Export Library |
 | Ctrl+F | Find |
 | Ctrl+C | Copy focused cell |
 | Ctrl+I | Import |
@@ -50,21 +51,21 @@ Last updated: June 2026.
 | Alt+P | Plot |
 | Alt+Y | Year |
 | Alt+M | Time |
-| Alt+R | Reader |
-| Alt+E | Read date |
-| Alt+I | Series |
+| Alt+N | Narrator |
+| Alt+R | Read date |
+| Alt+S | Series |
+| Alt+S, then Tab | Series number |
 | Alt+G | Genre |
 | Alt+C | Collection |
-| Alt+E | Read date |
 | Alt+K | Want to read |
 | Alt+H | Path |
-| Alt+B | Browse path (update / new mode) |
+| Alt+B | Browse path (edit or new mode) |
 | Alt+W | Get web info |
+| Alt+E | Edit |
 | Ctrl+L | Listen to audiobook inside AbCS |
-| Alt+U | Update/Edit mode |
-| Alt+N | New book |
+| Ctrl+N | New book |
+| Ctrl+S | Save |
 | Alt+D | Delete book |
-| Alt+S | Save |
 | Escape | Close window |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
@@ -112,13 +113,13 @@ Last updated: June 2026.
 | Alt+P | Plot |
 | Alt+Y | Year |
 | Alt+M | Time |
-| Alt+R | Reader |
+| Alt+N | Narrator |
 | Alt+I | Series |
 | Alt+G | Genre |
 | Alt+C | Collection |
 | Alt+E | Errors |
 | Alt+H | Path |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Alt+K | Keep |
 | Alt+D | Discard |
 | Page Up | Previous item |
@@ -139,10 +140,11 @@ Last updated: June 2026.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+S | Series |
-| Alt+G | Genre |
+| Alt+S | Series (choose **None** in the list to clear on selected books) |
+| Alt+G | Genre (choose **None** in the list to clear on selected books) |
 | Alt+C | Collection |
 | Alt+L | Book list |
+| Ctrl+S | Save |
 | Alt+Down | Open combo dropdown |
 | Escape | Close window |
 | Alt+/ | Read status bar |
@@ -158,7 +160,7 @@ Last updated: June 2026.
 | Alt+F | Fallback & Auto Correct tab |
 | Alt+V | Validation Rules tab |
 | Alt+R | Restore Defaults |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Ctrl+Tab / Ctrl+Shift+Tab | Move between tabs |
 | Alt+/ | Read status bar |
 | F1 | Show this help |
@@ -174,7 +176,7 @@ Last updated: June 2026.
 | Alt+G | Genre |
 | Alt+R | Rating |
 | Alt+F | Re-fetch web data |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Alt+K | Skip this book (batch Review each) |
 | Escape | Close window |
 | Alt+/ | Read status bar |
@@ -198,7 +200,7 @@ Last updated: June 2026.
 | Alt+L | Jump to list |
 | Alt+N | New |
 | Alt+E | Edit selected row |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Alt+D | Delete |
 | Escape | Cancel edit/new or close window |
 | Alt+/ | Read status bar |
@@ -227,9 +229,8 @@ Last updated: June 2026.
 | Alt+E | Edit selected row |
 | Alt+L | Jump to list |
 | Ctrl+C | Copy selected name |
-| Alt+A | Active checkbox (collection mode only) |
-| Alt+F | Clear find / new search (non-collection mode only) |
-| Alt+S | Save (when Save button is visible) |
+| Ctrl+F | Clear find and start a new search |
+| Ctrl+S | Save (when Save button is visible) |
 | Escape | Cancel edit/Close window |
 | Alt+/ | Read status bar |
 | F1 | Show this help |
@@ -287,7 +288,7 @@ Last updated: June 2026.
 | Alt+S | Series field mapping |
 | Alt+N | Series number field mapping |
 | Alt+G | Genre field mapping |
-| Alt+R | Reader field mapping |
+| Alt+R | Narrator field mapping |
 | Alt+E | Read Date field mapping |
 | Alt+M | Time field mapping |
 | Alt+F | Files field mapping |

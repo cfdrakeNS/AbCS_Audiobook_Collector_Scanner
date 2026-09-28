@@ -17,7 +17,7 @@ For an explained walkthrough of what happens when you import, see [Import explai
 - Know which folder contains your audiobooks.
 - Optional: set up **Preferences** first (View → Preferences, or Manage → Preferences). Import behavior depends heavily on these settings.
 
-## Steps
+## Run folder import
 
 1. Open **File → Import**, or press **Ctrl+I**.
 2. Choose a **Collection** (**Alt+C**). If the main window already shows a specific collection, it may be pre-selected.

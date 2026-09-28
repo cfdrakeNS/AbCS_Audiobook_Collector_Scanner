@@ -160,6 +160,42 @@ def test_strip_author_honorifics_for_search(api):
     assert api._strip_author_honorifics("Sir Arthur Conan Doyle") == "Arthur Conan Doyle"
     assert api._extract_last_name("Sir Arthur Conan Doyle") == "Doyle"
 
+
+def test_strip_leading_author_from_possessive_title(api):
+    title = "Arthur Conan Doyle\u2019s Memories And Adventures"
+    author = "Sir Arthur Conan Doyle"
+    assert api._strip_leading_author_from_title(title, author) == "Memories And Adventures"
+    assert api._metadata_matches_db(
+        title,
+        author,
+        {"title": "Memories and Adventures", "author": "Arthur Conan Doyle"},
+    )
+
+
+def test_negative_cache_transient_google_only(api):
+    payload = {
+        "_no_result": True,
+        "_fetch_errors": ["google_books: HTTP Error 429: Too Many Requests"],
+    }
+    assert api._negative_cache_is_transient_google_only(payload)
+    assert api._should_bypass_negative_cache(payload)
+    assert not api._negative_cache_is_transient_google_only(
+        {
+            "_no_result": True,
+            "_fetch_errors": ["google_books: miss"],
+        }
+    )
+    assert not api._negative_cache_is_transient_google_only(
+        {
+            "_no_result": True,
+            "_fetch_errors": [
+                "open_library: timeout",
+                "google_books: HTTP Error 429: Too Many Requests",
+            ],
+        }
+    )
+
+
 def test_should_use_title_only_for_librivox_and_narrator(api):
     assert api._likely_librivox_source(path=r"C:\Audio\librivox\book")
     assert api._should_use_title_only_fallback(
@@ -304,13 +340,57 @@ def test_dedupe_fetch_errors_keeps_one_per_source():
         "open_library: timed out",
     ]
 
+def test_google_503_retry_does_not_apply_rate_limit_cooldown(monkeypatch):
+    import io
+    import urllib.error
+    import urllib.request
+
+    from src.web import web_http as wh
+
+    wh._clear_source_cooldown()
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.HTTPError(
+                req.full_url, 503, "Service Unavailable", {}, None
+            )
+        return io.BytesIO(b"{}")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    req = urllib.request.Request("https://www.googleapis.com/books/v1/volumes?q=test")
+    with wh._urlopen_with_retry(req, 5, source="google_books") as response:
+        assert response.read() == b"{}"
+    assert wh._seconds_until_cooldown_clears("google_books") == 0
+
+
+def test_format_web_fetch_status_message_google_paused():
+    from src.web.web_http import (
+        _clear_source_cooldown,
+        _note_rate_limited,
+        format_web_fetch_status_message,
+    )
+
+    _clear_source_cooldown()
+    _note_rate_limited("google_books", seconds=120)
+    msg = format_web_fetch_status_message(["google_books: paused"])
+    assert "google books" in msg.lower()
+    assert "limited" in msg.lower()
+    assert "web source" not in msg.lower()
+    assert "try again" not in msg.lower()
+    _clear_source_cooldown()
+
+
 def test_format_web_fetch_status_message_rate_limit():
     from src.web.web_book_api import format_web_fetch_status_message
 
     msg = format_web_fetch_status_message(
         ["google_books: HTTP Error 429: Too Many Requests"]
     )
-    assert "rate limited" in msg.lower()
+    assert "google books" in msg.lower()
+    assert "limited" in msg.lower()
+    assert "web source" not in msg.lower()
     assert "re-fetch" not in msg.lower()
     assert "alt+f" not in msg.lower()
 
@@ -325,10 +405,11 @@ def test_format_web_fetch_status_message_includes_cooldown_seconds():
     msg = format_web_fetch_status_message(
         ["google_books: HTTP Error 429: Too Many Requests"]
     )
-    assert "rate limited" in msg.lower()
+    assert "google books" in msg.lower()
+    assert "limited" in msg.lower()
     assert "re-fetch" not in msg.lower()
     assert "about" in msg.lower()
-    assert "40" in msg or "s" in msg.lower()
+    assert "40" in msg or "second" in msg.lower()
     _clear_source_cooldown()
 
 
@@ -343,7 +424,7 @@ def test_format_web_fetch_dialog_text_explains_no_window():
     text = format_web_fetch_dialog_text(
         ["google_books: HTTP Error 429: Too Many Requests"]
     )
-    assert "rate limited" in text.lower()
+    assert "google books limited" in text.lower()
     assert "re-fetch" not in text.lower()
     assert "alt+w" in text.lower()
     assert "web details window only opens" in text.lower()

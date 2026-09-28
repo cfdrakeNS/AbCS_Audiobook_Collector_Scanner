@@ -6,7 +6,7 @@ import re
 import sqlite3
 
 from PySide6.QtCore import QEvent, QSettings, Qt, QTimer
-from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
+from PySide6.QtGui import QFontMetrics, QKeySequence, QShortcut, QAccessible
 from src.ui.accessible_dialog import AccessibleDialog
 import sys
 from PySide6.QtWidgets import (
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHeaderView,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -159,29 +160,27 @@ class CollectionWindow(AccessibleDialog):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
-        header_layout = QHBoxLayout()
-        header_layout.setSpacing(10)
+        editor_grid = QGridLayout()
+        editor_grid.setContentsMargins(0, 0, 0, 0)
+        editor_grid.setHorizontalSpacing(10)
+        editor_grid.setVerticalSpacing(2)
 
         name_label = QLabel("Na&me:")
         self.name_edit = QLineEdit()
         self.name_edit.setAccessibleName("Collection name")
         self.name_edit.setAccessibleDescription("Enter collection name")
         name_label.setBuddy(self.name_edit)
-        header_layout.addWidget(name_label)
-        header_layout.addWidget(self.name_edit, 1)
+        editor_grid.addWidget(name_label, 0, 0)
+        editor_grid.addWidget(self.name_edit, 0, 1)
 
         self.active_check = QCheckBox("&Active")
         self.active_check.setAccessibleName("Collection active")
         self.active_check.setAccessibleDescription("Collection active status")
         self.active_check.setChecked(True)
-        header_layout.addWidget(self.active_check)
+        editor_grid.addWidget(self.active_check, 0, 2)
 
-        layout.addLayout(header_layout)
-
-        root_layout = QHBoxLayout()
-        root_layout.setSpacing(10)
         root_label = QLabel("Library &root folder:")
         self.root_edit = QLineEdit()
         self.root_edit.setAccessibleName("Collection library root folder")
@@ -190,8 +189,8 @@ class CollectionWindow(AccessibleDialog):
             "Used as default for import."
         )
         root_label.setBuddy(self.root_edit)
-        root_layout.addWidget(root_label)
-        root_layout.addWidget(self.root_edit, 1)
+        editor_grid.addWidget(root_label, 1, 0)
+        editor_grid.addWidget(self.root_edit, 1, 1)
 
         self.browse_button = QPushButton("Browse")
         self.browse_button.clicked.connect(self.on_browse_root)
@@ -202,8 +201,9 @@ class CollectionWindow(AccessibleDialog):
         self.browse_button.setDefault(False)
         self.browse_button.setAutoDefault(False)
         self.browse_button.installEventFilter(self)
-        root_layout.addWidget(self.browse_button)
-        layout.addLayout(root_layout)
+        editor_grid.addWidget(self.browse_button, 1, 2)
+        editor_grid.setColumnStretch(1, 1)
+        layout.addLayout(editor_grid)
 
         self.table = QTableWidget()
         self.table.setAccessibleName("Collections list")
@@ -289,6 +289,7 @@ class CollectionWindow(AccessibleDialog):
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
         scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        cell_pad = max(int(8 * self.scaler.current_scale / 100), 4)
         button_style = build_modern_button_style(scaled_height)
         table_style = (
             build_accessible_f1_popup_style()
@@ -297,6 +298,10 @@ class CollectionWindow(AccessibleDialog):
             QTableWidget {{
                 border: 1px solid palette(mid);
                 border-radius: {self.scaler.get_scaled_size(5)}px;
+            }}
+            QTableWidget::item {{
+                padding-top: {cell_pad}px;
+                padding-bottom: {cell_pad}px;
             }}
             """
         )
@@ -354,6 +359,19 @@ class CollectionWindow(AccessibleDialog):
 
     def on_scale_changed(self, _scale_percentage: int):
         self.apply_control_styles()
+        self._sync_table_row_heights()
+
+    def _sync_table_row_heights(self) -> None:
+        vh = self.table.verticalHeader()
+        fm = QFontMetrics(self.table.font())
+        cell_pad = max(int(8 * self.scaler.current_scale / 100), 4)
+        row_h = max(
+            fm.height() + cell_pad * 2 + 4,
+            self.scaler.get_scaled_size(32),
+        )
+        vh.setDefaultSectionSize(row_h)
+        for row in range(self.table.rowCount()):
+            self.table.setRowHeight(row, row_h)
 
     def on_theme_changed(self, _theme_name: str):
         self.apply_control_styles()
@@ -448,6 +466,8 @@ class CollectionWindow(AccessibleDialog):
 
             if preserve_id is not None and collection.collection_id == preserve_id:
                 selected_row = row
+
+        self._sync_table_row_heights()
 
         if selected_row >= 0:
             if not populate_editor:

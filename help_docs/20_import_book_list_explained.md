@@ -79,7 +79,7 @@ For each row, values are pulled from the spreadsheet columns you mapped:
 | Series | Optional |
 | Series # | Optional — stored as the series number. The title is left without a suffix. The main table shows ` - 03` or ` - 6.5` when a number is stored. Series name is stored separately when Series is mapped |
 | Genre | Optional |
-| Reader | Optional |
+| Narrator (CSV column may be labeled Reader) | Optional |
 | Read Date | Optional |
 | Time | Optional → hours and minutes |
 | Files | Optional → track count |
@@ -122,7 +122,7 @@ If the row passes, the app creates records **inside AbCS only**:
    - Title (no series suffix; Series # is stored on the book)
    - Author, year, series, genre, collection
    - Plot → comments field
-   - Reader, read date, duration, track count
+   - Narrator, read date, duration, track count
    - Source = `Bookh_list`
    - **No audio folder path** — unless you mapped time/tracks, these are metadata-only records
 
@@ -254,4 +254,4 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 - Scanning audio files: [Import explained](19_import_explained.md)
 - Duplicate settings detail: [Import preferences](18_import_preferences.md)
 - Fill in plot/series from the web: [Web metadata explained](21_web_metadata_explained.md)
-- How spreadsheet title matching works: [Web metadata title compare explained](22_web_metadata_title_compare.md)
+- How spreadsheet title matching works: see the **Title and author matching** section in this guide and [Import preferences](18_import_preferences.md).

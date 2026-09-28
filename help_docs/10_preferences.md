@@ -16,7 +16,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 - Other import settings apply on the **next** Import scan (close and reopen Import if it is already open).
 - Factory defaults are listed in [Default preferences](17_default_preferences.md). Import scenario detail is in [Import preferences](18_import_preferences.md).
 
-## Steps
+## Change preferences
 
 1. Open **Manage → Preferences** (**Alt+M**, then **P**).
 2. Click a tab label (**Display Settings**, **Import Settings**, and so on) or use the Alt-key shortcuts to move between the four tabs:
@@ -24,7 +24,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 ### Display Settings (Alt+D)
 
 - **Theme** — system default or high-contrast themes.
-- **Zoom** — preset or custom scale (default **150%** after Restore Defaults).
+- **Zoom** — preset or drag the **Zoom** slider (default **150%** after Restore Defaults). At high zoom, scroll the preferences area vertically if needed.
 - **Help window zoom** — separate from main app zoom; adjusted at the top of the Help window when you open **Help → Help...** or press **Shift+F1**. See [Help overview](01_overview.md).
 - **Automatically check for updates** — off by default. When checked, AbCS runs the same GitHub version check as **Help → Check for updates** after the main window opens. A dialog opens only when a newer version is available. Help → Check for updates still always shows the result.
 

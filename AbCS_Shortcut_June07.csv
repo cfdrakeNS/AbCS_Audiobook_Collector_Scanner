@@ -7,27 +7,27 @@ Alt+5,Jump to Genre,,,,,,,,,,,
 Alt+6,Jump to Time,,,,,,,,,,,
 Alt+7,Jump to Read Date,,,,,,,,,,,
 Alt+L,Jump to list,,Jump to table,,,Book list,,,Jump to list,Backup list,Jump to list,Focus current table
-Alt+U,Update selected,Update/Edit mode,,,,,,,,,,,
+Alt+U,Update selected,,,,,,,,,,,,
 Alt+D,Delete selected,Delete book,,Discard,,,Display Settings tab,,Delete,Delete selected backup,,,
 Alt+/,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar,Status bar
 Alt+X,Export duplicates (duplicate mode),,Export list to CSV,,,,,,,,,,
 Alt+P,Toggle plot filter,Plot,,,,Import Settings tab,,,,,,,
-Alt+R,Toggle read filter,Reader,,Reader,,Restore Defaults,Rating,,,Run restore from selected backup,,Date Range tab
+Alt+R,Toggle read filter,Read date,,Narrator,,Restore Defaults,Rating,,,Run restore from selected backup,,Date Range tab
 Alt+W,Fetch web info,Get web info,,,,,,,,,,,
 Alt+T,,Title,,Title,,,,Title,,Focus restore file,,,
 Alt+A,,Author,,Author,,,,Author,,,Active checkbox (collection mode),
 Alt+Y,,Year,,Year,,,,Year,,,,Year tab
 Alt+F,,Files,Folder,,,,Fallback and Parsing tab,Re-fetch web data,,Full reset,Clear find / new search (non-collection),From date field
-Alt+I,,Series,Import,Series,,,,Series,,,,,
+Alt+I,,,Import,Series,,,,Series,,,,,
 Alt+K,,,,,,,,,,Create backup,,,
 Alt+C,,Collection,Collection,Collection,,Collection,,,,,,,
 Alt+M,,Time,,Time,,,,,,Name edit,,Month tab
-Alt+E,,Read date,Error filter,Errors,,,,,,Edit selected row,,,
+Alt+E,,Edit,Error filter,Errors,,,,,,Edit selected row,,,
 Alt+Z,,Size,,Size,,,,,,,,,
 Alt+H,,Path,,Path,,,,,,,,,
 Alt+O,,Format,,,,,,,,,,,
-Alt+N,,New book,,,,,,Series #,New,,,
-Alt+S,,Save,Add selected,Save,,Series,Save,Save,Save,,Save (when visible),Search
+Alt+N,,Narrator,,,,,,Series #,New,,,
+Alt+S,,Series,Add selected,,,Series,,,,,Search
 Alt+V,,,,,,,Validation Rules tab,,,,,,
 Alt+B,,Bitrate,Browse,,Bitrate,,Browse for default import directory,,,Browse for restore file,,,
 Alt+G,,Genre,,Genre,,Genre,,Genre,,,,General tab
@@ -37,7 +37,9 @@ Ctrl+Minus,Zoom out,,,,,,,,,,,,
 Ctrl+0,Reset zoom,,,,,,,,,,,,
 Ctrl+F,Find,,,,,,,,,,,,
 Ctrl+I,Import,,,,,,,,,,,,
-Ctrl+N,New book,,,,,,,,,,,,
+Ctrl+N,New book,New book,,,,,,,,,,,
+Ctrl+S,,Save,,Save,,Save,Save,Save,,Save,Save,
+Ctrl+L,Listen,Listen,,,,,,,,,,,
 Ctrl+Tab,,,,,,,Move between tabs,,,,,,
 Ctrl+Shift+Tab,,,,,,,Move between tabs,,,,,,
 F1,Show keyboard shortcuts,Show keyboard shortcuts,Show this help,Show keyboard shortcuts,Show this help,Show keyboard shortcuts,Show this help,Show keyboard shortcuts,Show this help,Show this help,Show this help,Show this help

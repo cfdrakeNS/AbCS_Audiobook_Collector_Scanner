@@ -16,7 +16,7 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
 - Statistics reflect the **current database** and respect the main window's collection filter for some counts where applicable.
 - No data is changed from this dialog.
 
-## Steps
+## View statistics
 
 1. Open **Manage → Statistics** (**Alt+M**, then **S**), or click **Statistics** on the main window toolbar.
 2. A table lists each statistic and its value, for example:

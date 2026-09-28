@@ -152,7 +152,7 @@ BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = {
     "S": ("Series field mapping", "series_mapping"),
     "N": ("Series number field mapping", "series_number_mapping"),
     "G": ("Genre field mapping", "genre_mapping"),
-    "R": ("Reader field mapping", "reader_mapping"),
+    "R": ("Narrator field mapping", "reader_mapping"),
     "E": ("Read Date field mapping", "read_date_mapping"),
     "M": ("Time field mapping", "time_mapping"),
     "F": ("Files field mapping", "tracks_mapping"),

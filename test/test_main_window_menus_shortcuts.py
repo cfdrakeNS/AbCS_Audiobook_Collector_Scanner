@@ -206,6 +206,34 @@ def _insert_two_books(window):
     return id1, id2
 
 
+def test_clear_want_to_read_on_focused_row_without_selection(main_window):
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries
+
+    window = main_window
+    authors = AuthorQueries(window.db)
+    books = BookQueries(window.db)
+    author_id = authors.insert("Want Clear Author")
+    books.insert(
+        Book(
+            title="Want Marked",
+            author_id=author_id,
+            year=2000,
+            tracks=1,
+            path="/w",
+            want_to_read=True,
+        )
+    )
+    window.refresh_books()
+    window.table.setCurrentCell(0, 1)
+    window.selected_book_ids.clear()
+    window.update_selection_ui()
+
+    window.on_clear_want_to_read()
+
+    assert not window.books[0].want_to_read
+
+
 def test_selection_f1_shortcuts_omit_column_jumps(main_window):
     """F1 while selecting lists selection actions only, not Alt+1–7 or Alt+L."""
     window = main_window

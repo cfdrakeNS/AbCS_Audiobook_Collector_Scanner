@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QDialog,
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -40,7 +41,10 @@ from src.accessibility.style_helpers import (
     build_table_polish_style,
     exec_styled_message_box,
 )
-from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
+from src.accessibility.shortcut_helpers import (
+    apply_f1_shortcuts_table_scaling,
+    build_accessible_f1_popup_style,
+)
 from src.accessibility.theme_manager import ThemeManager
 from src.ui.table_clipboard import copy_plain_text
 from src.database import (
@@ -175,6 +179,9 @@ class NameListWindow(AccessibleDialog):
         self.initial_name = (initial_name or "").strip()
         self.current_item_id: int | None = None
         self._collection_editor_locked = False
+        self._sort_by = "name"
+        self._sort_ascending = True
+        self._last_header_sort_column = -1
 
         self._configure_type_metadata()
 
@@ -297,6 +304,22 @@ class NameListWindow(AccessibleDialog):
 
         layout.addLayout(header_layout)
 
+        sort_row = QHBoxLayout()
+        sort_row.setSpacing(10)
+        sort_label = QLabel("Sort:")
+        self.sort_combo = QComboBox()
+        self.sort_combo.setAccessibleName("Sort list by")
+        self.sort_combo.setAccessibleDescription(
+            "Sort the list by name or by book count"
+        )
+        self.sort_combo.addItem("Name", "name")
+        self.sort_combo.addItem("Book count", "books")
+        sort_label.setBuddy(self.sort_combo)
+        sort_row.addWidget(sort_label)
+        sort_row.addWidget(self.sort_combo)
+        sort_row.addStretch(1)
+        layout.addLayout(sort_row)
+
         self.table = QTableWidget()
         self.table.setAccessibleName(f"{self.entity_plural} list")
         self.table.setAccessibleDescription(
@@ -332,9 +355,12 @@ class NameListWindow(AccessibleDialog):
         self.table.viewport().setMouseTracking(False)
         self.table.setAttribute(Qt.WA_Hover, False)
         self.table.viewport().setAttribute(Qt.WA_Hover, False)
-        self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.horizontalHeader().setMinimumSectionSize(60)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(60)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self._on_table_header_clicked)
         if self.is_collection_mode:
             self.table.horizontalHeader().setSectionResizeMode(
                 1, QHeaderView.ResizeToContents
@@ -416,6 +442,14 @@ class NameListWindow(AccessibleDialog):
 
     def on_scale_changed(self, _scale_percentage: int):
         self.apply_control_styles()
+        self._sync_table_row_heights()
+
+    def _sync_table_row_heights(self) -> None:
+        vh = self.table.verticalHeader()
+        row_h = max(self.scaler.get_scaled_size(24), 20)
+        vh.setDefaultSectionSize(row_h)
+        for row in range(self.table.rowCount()):
+            self.table.setRowHeight(row, row_h)
 
     def on_theme_changed(self, _theme_name: str):
         self.apply_control_styles()
@@ -424,6 +458,7 @@ class NameListWindow(AccessibleDialog):
         """Short sighted-user tooltips paired with screen reader descriptions."""
         tooltip_map = {
             self.find_edit: f"Search {self.entity_plural.lower()}",
+            self.sort_combo: f"Sort {self.entity_plural.lower()} by name or book count",
             self.name_edit: f"{self.entity_singular} name to add or edit",
             self.table: f"List of {self.entity_plural.lower()}",
             self.edit_button: f"Edit highlighted {self.entity_singular.lower()}",
@@ -443,6 +478,8 @@ class NameListWindow(AccessibleDialog):
         chain = []
 
         if self.is_collection_mode:
+            if hasattr(self, "sort_combo") and self.sort_combo.isVisible():
+                chain.append(self.sort_combo)
             chain.append(self.table)
             if self.name_edit.isVisible() and self.name_edit.isEnabled():
                 chain.append(self.name_edit)
@@ -451,6 +488,8 @@ class NameListWindow(AccessibleDialog):
         else:
             if self.find_edit.isVisible() and self.find_edit.isEnabled():
                 chain.append(self.find_edit)
+            if hasattr(self, "sort_combo") and self.sort_combo.isVisible():
+                chain.append(self.sort_combo)
             chain.append(self.table)
             if self.name_edit.isVisible() and self.name_edit.isEnabled():
                 chain.append(self.name_edit)
@@ -647,6 +686,7 @@ class NameListWindow(AccessibleDialog):
 
         if not self.is_collection_mode:
             self.find_edit.textChanged.connect(self.on_find_text_changed)
+        self.sort_combo.currentIndexChanged.connect(self._on_sort_combo_changed)
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
     def focus_name_edit(self):
@@ -715,6 +755,59 @@ class NameListWindow(AccessibleDialog):
         row = self.db.fetch_one(query, (item_id,))
         return int(row[0]) if row else 0
 
+    def _books_sort_column_index(self) -> int:
+        return self._usage_column()
+
+    def _sort_items_for_display(self, items):
+        if self._sort_by == "books":
+
+            def sort_key(item):
+                item_id = getattr(item, self.id_column)
+                return (
+                    self._book_count_for_item(item_id),
+                    (item.name or "").lower(),
+                )
+
+        else:
+
+            def sort_key(item):
+                return (item.name or "").lower()
+
+        return sorted(items, key=sort_key, reverse=not self._sort_ascending)
+
+    def _sync_sort_combo_selection(self) -> None:
+        if not hasattr(self, "sort_combo"):
+            return
+        target_index = 0 if self._sort_by == "name" else 1
+        with QSignalBlocker(self.sort_combo):
+            self.sort_combo.setCurrentIndex(target_index)
+
+    def _on_sort_combo_changed(self, _index: int = 0) -> None:
+        sort_by = self.sort_combo.currentData()
+        if sort_by == self._sort_by:
+            return
+        self._sort_by = sort_by
+        self._sort_ascending = sort_by == "name"
+        self._last_header_sort_column = (
+            0 if sort_by == "name" else self._books_sort_column_index()
+        )
+        preserve = self._selected_item_id() or self.current_item_id
+        self.load_items(preserve_id=preserve, populate_editor=False)
+
+    def _on_table_header_clicked(self, column: int) -> None:
+        if column not in (0, self._books_sort_column_index()):
+            return
+        sort_by = "name" if column == 0 else "books"
+        if sort_by == self._sort_by and self._last_header_sort_column == column:
+            self._sort_ascending = not self._sort_ascending
+        else:
+            self._sort_by = sort_by
+            self._sort_ascending = sort_by == "name"
+        self._last_header_sort_column = column
+        self._sync_sort_combo_selection()
+        preserve = self._selected_item_id() or self.current_item_id
+        self.load_items(preserve_id=preserve, populate_editor=False)
+
     def _usage_column(self) -> int:
         return self.COL_USAGE if self.is_collection_mode else self.COL_ACTIVE
 
@@ -728,6 +821,7 @@ class NameListWindow(AccessibleDialog):
             items = self.query.get_all(active_only=False)
         else:
             items = self.query.get_all()
+        items = self._sort_items_for_display(items)
 
         selected_row = -1
         target_row = -1
@@ -793,6 +887,8 @@ class NameListWindow(AccessibleDialog):
                 del selection_blocker
             if model_blocker is not None:
                 del model_blocker
+
+        self._sync_table_row_heights()
 
         if target_row >= 0 and populate_editor:
             self.on_selection_changed()
@@ -1144,6 +1240,7 @@ class NameListWindow(AccessibleDialog):
                 if self.save_button.isVisible() and self.save_button.isEnabled()
                 else None
             ),
+            ("Sort", "Sort by name or book count (combo or column headers)"),
             (
                 ("Escape", "Return to list from Find")
                 if not self.is_collection_mode
@@ -1156,7 +1253,6 @@ class NameListWindow(AccessibleDialog):
 
         from src.accessibility.shortcut_helpers import (
             get_accessible_shortcuts_list,
-            build_accessible_f1_popup_style,
             prepend_help_doc_shortcut,
         )
 
@@ -1192,8 +1288,6 @@ class NameListWindow(AccessibleDialog):
         table.setAttribute(Qt.WA_Hover, False)
         table.viewport().setAttribute(Qt.WA_Hover, False)
 
-        table.setStyleSheet(build_accessible_f1_popup_style())
-
         for row, (key, description) in enumerate(shortcuts):
             combined_text = f"{description} - {key}"
             item = QTableWidgetItem(combined_text)
@@ -1203,14 +1297,35 @@ class NameListWindow(AccessibleDialog):
         header = table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
 
-        scale_pct = self.scaler.current_scale
-        base_font_size = int(11 * (scale_pct / 100.0))
-        font = table.font()
-        font.setPointSize(base_font_size)
-        table.setFont(font)
+        apply_f1_shortcuts_table_scaling(table, self.scaler.current_scale)
 
         layout.addWidget(table)
         dlg.exec()
+
+    def _editor_has_unsaved_changes(self) -> bool:
+        if self._collection_editor_locked:
+            return False
+        item_id = self.current_item_id or self._selected_item_id()
+        name = self.name_edit.text().strip()
+        if item_id is None:
+            return bool(name)
+        item = self.query.get_by_id(item_id)
+        if item is None:
+            return bool(name)
+        if self.is_collection_mode and self.active_check.isChecked() != bool(
+            item.active
+        ):
+            return True
+        return name != item.name
+
+    def _discard_edit_and_return_to_list(self) -> None:
+        preserve_id = self._selected_item_id()
+        if preserve_id is None:
+            preserve_id = self.current_item_id
+        self.load_items(preserve_id=preserve_id, populate_editor=False)
+        self._set_collection_editor_locked(True)
+        self.focus_list()
+        self.set_status("Edit cancelled.", announce=True)
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode, or close window."""
@@ -1223,11 +1338,14 @@ class NameListWindow(AccessibleDialog):
             return
 
         if self._collection_editor_locked:
-            # If not editing, close the window
             self.accept()
             return
 
-        # If editing, show save changes dialog like other windows
+        if not self._editor_has_unsaved_changes():
+            self._discard_edit_and_return_to_list()
+            return
+
+        # If editing with unsaved changes, confirm save/discard
         from src.accessibility.style_helpers import (
             apply_message_box_button_icons,
             build_accessible_message_box_style,
@@ -1247,7 +1365,7 @@ class NameListWindow(AccessibleDialog):
             "You have unsaved changes.\n\n"
             "Yes = Save and close\n"
             "No = Continue editing\n"
-            "Cancel = Discard changes and close"
+            "Cancel = Discard changes and return to the list"
         )
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
         msg.button(QMessageBox.Yes).setText("&Yes")
@@ -1259,8 +1377,8 @@ class NameListWindow(AccessibleDialog):
                 QMessageBox.Yes: ("Yes, save and close", "Save changes and close"),
                 QMessageBox.No: ("No, continue editing", "Return to editing"),
                 QMessageBox.Cancel: (
-                    "Cancel, discard changes and close",
-                    "Discard changes and close",
+                    "Cancel, discard changes and return to the list",
+                    "Discard changes and return to the list",
                 ),
             },
         )
@@ -1276,15 +1394,8 @@ class NameListWindow(AccessibleDialog):
         elif reply == QMessageBox.No:
             # Continue editing
             return
-        else:  # Cancel - discard changes and close
-            preserve_id = self._selected_item_id()
-            if preserve_id is None:
-                preserve_id = self.current_item_id
-            self.load_items(preserve_id=preserve_id, populate_editor=False)
-            self._set_collection_editor_locked(True)
-            self.focus_list()
-            self.set_status("Changes discarded.", announce=True)
-            self.accept()
+        else:
+            self._discard_edit_and_return_to_list()
 
     @classmethod
     def _best_match_row_from_entries(

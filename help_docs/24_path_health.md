@@ -16,7 +16,7 @@
 - The collection **library root** is used only to decide **Incorrect** (path on disk but not under the root). The root folder itself is not listed as a separate result; set or fix it in Collection Manager.
 - Choose a **Collection** the same way as the main window filter: **All Collections** or one name. If the main window has a collection filter, Check Books Path starts with that collection; if main is All Collections, this window starts on All Collections.
 
-## Steps
+## Check book paths
 
 1. Open **Manage → Check Books Path** (**Alt+M**, then **H**).
 2. Choose **Collection** (**Alt+C**): **All Collections** (every book) or one collection. If the main window filter is All Collections, this window opens on All Collections; if a specific collection is filtered, that collection is selected.

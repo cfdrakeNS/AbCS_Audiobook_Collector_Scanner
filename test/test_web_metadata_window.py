@@ -207,6 +207,33 @@ def test_plot_preserved_when_web_has_no_plot(window, sample_book):
     assert plot_text_equivalent(window.plot_edit.plot_text(), sample_book.comments)
 
 
+def test_initial_focus_is_plot(qapp, ui_scaler, theme_manager, sample_book):
+    dlg = WebMetadataWindow(
+        db=None,
+        book=sample_book,
+        scaler=ui_scaler,
+        theme_manager=theme_manager,
+        web_data={
+            "title": sample_book.title,
+            "author": sample_book.author_name,
+            "plot": "A long enough plot for the reviewer to read first.",
+        },
+    )
+    try:
+        dlg.show()
+        qapp.processEvents()
+        dlg.set_initial_focus()
+        qapp.processEvents()
+        assert qapp.focusWidget() is dlg.plot_edit
+    finally:
+        dlg.close()
+
+
+def test_has_form_scroll_area(window):
+    assert hasattr(window, "form_scroll")
+    assert window.form_scroll.widget() is window.form_widget
+
+
 def test_tab_order_web_fields_before_buttons(window):
     window.update_fields_with_web_data(
         {

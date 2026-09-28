@@ -29,6 +29,31 @@ def api(web_api):
 @patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
 @patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_memories_and_adventures_author_prefixed_title_matches_open_library(
+    ol_mock, _gb_mock, _wd_mock, _plot, api
+):
+    ol_mock.return_value = {
+        "title": "Memories and Adventures",
+        "author": "Arthur Conan Doyle",
+        "source": "open_library",
+        "plot": "Autobiographical work by Arthur Conan Doyle with enough length for plot.",
+    }
+
+    result = api.get_book_metadata(
+        "Arthur Conan Doyle\u2019s Memories And Adventures",
+        "Sir Arthur Conan Doyle",
+        refresh=0,
+        bypass_cache=True,
+    )
+    assert result is not None
+    assert "Memories" in result["title"]
+    ol_mock.assert_called()
+
+
+@patch.object(WebBookAPI, "_enrich_metadata_plot")
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
 def test_sherlock_holmes_with_sir_author_finds_open_library(
     ol_mock, _gb_mock, _wd_mock, _plot, api
 ):

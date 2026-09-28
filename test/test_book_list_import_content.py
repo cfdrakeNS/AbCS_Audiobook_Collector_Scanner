@@ -54,3 +54,37 @@ def test_excel_column_label():
     assert BookListImportWindow._excel_column_label(win, 0) == "A"
     assert BookListImportWindow._excel_column_label(win, 25) == "Z"
     assert BookListImportWindow._excel_column_label(win, 26) == "AA"
+
+
+def test_header_auto_mapping_from_column_names(tmp_path, qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings):
+    csv_path = tmp_path / "export_like.csv"
+    csv_path.write_text(
+        "Title,Author,Year,Series,Series Number,Genre,Narrator,Read Date,Time,Tracks,Collection,Comments\n"
+        "One,A,2020,S,1,G,N,2026-01-01,1:00,3,Col,Plot here\n",
+        encoding="utf-8-sig",
+    )
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.file_has_header_check.setChecked(True)
+    window.load_file(str(csv_path))
+    mapping = window.get_field_mapping()
+    assert mapping["title"] == 0
+    assert mapping["author"] == 1
+    assert mapping["plot"] == 11
+    assert mapping["reader"] == 6
+    window.close()
+
+
+def test_mapping_table_field_order_plot_last(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings
+):
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    labels = []
+    for row in range(window.mapping_table.rowCount()):
+        widget = window.mapping_table.cellWidget(row, 0)
+        if widget is not None:
+            labels.append(widget.text().strip())
+    assert labels[-1] == "Plot"
+    assert "Plot" not in labels[:-1]
+    window.close()

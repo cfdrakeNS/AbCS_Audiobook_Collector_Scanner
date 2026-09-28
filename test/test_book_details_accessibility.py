@@ -21,19 +21,21 @@ def _ensure_sample_books(db: DatabaseManager, count: int = 2) -> list[Book]:
         books = BookQueries(db).get_all()
     return books
 
-def test_idle_status_includes_title_and_author(temp_db, ui_scaler, theme_manager):
+def test_idle_status_shows_filter_summary_not_title(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=1)
+    summary = "3 books  |  Collection: All  |  Sort: Title"
 
     window = BookDetailsWindow(
         temp_db,
         ui_scaler,
         book=books[0],
+        filter_summary=summary,
         parent=None,
         theme_manager=theme_manager,
     )
     message = window._idle_status_message()
-    assert message.endswith(".")
-    assert " by " in message
+    assert message == summary
+    assert " by " not in message
     assert window.status_bar.currentMessage() == message
     window.close()
 

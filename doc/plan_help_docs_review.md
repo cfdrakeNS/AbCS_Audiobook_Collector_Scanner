@@ -1,6 +1,6 @@
 # Help docs review — Version 3 Phase 16
 
-**Status:** Planned — next and last version 3 item. Book Details, Import Detail, Want to read, the full player, Check Books Path, and Export Library are in place.  
+**Status:** Complete — September 28, 2026. Book Details, Import Detail, Want to read, the full player, Check Books Path, and Export Library are in place.  
 **Created:** September 2026  
 **Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [help_docs_authoring.md](help_docs_authoring.md), [help_docs/01_overview.md](../help_docs/01_overview.md)
 

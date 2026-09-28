@@ -26,7 +26,11 @@
 
 ## What is in the file
 
-Title, Author, Year, Series, Series Number, Genre, Collection, Reader, Time, Tracks, Size MB, Bitrate, Format, Path, Read Date, Date Added, Want to Read, Listen Position, Listen File, and Comments.
+Title, Author, Year, Series, Series Number, Genre, Narrator, Read Date, Time, Tracks, Collection, Cover, Size MB, Bitrate, Format, Path, Date Added, Want to Read, Listen Position, Listen File, and Comments (plot).
+
+After a successful export, a message box lists how many books were exported, the active filters and sort, and the file name.
+
+**Cover** is **Y** or **N** (embedded art in the audiobook file). Book List Import ignores this column on re-import.
 
 - Title is the stored title, without the ` - nn` series number shown on the main list. The number is in **Series Number**.
 - Dates are written as year-month-day, for example `2026-03-04`.

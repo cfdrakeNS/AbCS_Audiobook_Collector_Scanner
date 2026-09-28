@@ -4,7 +4,7 @@
 
 Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You can then choose which fields to update — such as plot, genre, year, title, or author. Series is not fetched from the web; edit series in Book Details or the Update window.
 
-For an explained walkthrough, see [Web metadata explained](21_web_metadata_explained.md). If a fetch matches but the review window still offers a title change, see [Web metadata title compare explained](22_web_metadata_title_compare.md).
+For an explained walkthrough (including how titles are compared during fetch and review), see [Web metadata explained](21_web_metadata_explained.md).
 
 ## When to use it
 
@@ -18,7 +18,7 @@ For an explained walkthrough, see [Web metadata explained](21_web_metadata_expla
 - For several books, select **two or more** rows and use **Web fetch**, **Alt+W**, or toolbar **Search Web**.
 - Fetch Web Info is **not available** while duplicate mode is active.
 
-## Steps
+## Fetch web info
 
 1. In the main window, move to the book you want to look up.
 2. For one book: open **Edit → Fetch Web Info**, click **Search Web** on the toolbar, or press **Alt+W**. You can also press **Alt+W** in **Book Details**.

@@ -363,7 +363,7 @@ Used on the main window status bar and Web Metadata re-fetch:
 | Condition | Status text |
 |-----------|-------------|
 | Empty error list | `Web fetch failed: unable to reach web sources.` |
-| Google rate limit (`429` / `too many requests`) | `Google Books rate limited. Try again later or use Re-fetch (Alt+F).` |
+| Google rate limit (`429` / `too many requests`) | `Google Books limited.` (may include `About N minutes.`) |
 | `open_library` in first error | `Open Library unavailable. {detail after colon}` |
 | `google_books` in first error | `Google Books unavailable. {detail after colon}` |
 | `wikidata` in first error | `WikiData unavailable. {detail after colon}` |

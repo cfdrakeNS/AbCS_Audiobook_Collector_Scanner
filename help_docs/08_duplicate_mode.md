@@ -16,7 +16,7 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
 - You do not need to select books first. The scan covers your entire library.
 - The default match type comes from **Preferences → Validation Rules → Duplicate Match**. You can change it in the duplicate check dialog.
 
-## Steps
+## Run duplicate check
 
 1. Open **Manage → Duplicate Check** (**Alt+M**, then **D**).
 2. A dialog asks which **match type** to use (**Alt+M** to focus the match type combo):
@@ -92,3 +92,6 @@ Duplicate mode clears filters so you can see all duplicate books across collecti
 
 **How do I cancel duplicate mode?**
 Press Escape (confirm when asked), or delete all duplicates so mode ends on its own. Starting Import also cancels it.
+
+**Is Export Library the same as Export Duplicates?**
+No. **Export Duplicates** (**Alt+X** in duplicate mode) saves only the duplicate rows shown in the table. **File → Export Library** exports the normal main list and is unavailable in duplicate mode. See [Export Library](25_export_library.md).

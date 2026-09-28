@@ -303,17 +303,13 @@ def _urlopen_with_retry(req, timeout: float, *, source: str = "google_books"):
             raise
         if exc.code not in _RETRYABLE_HTTP_CODES:
             raise
-        _note_rate_limited(source, headers=getattr(exc, "headers", None))
         time.sleep(SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS)
         try:
             return urllib.request.urlopen(req, timeout=timeout)
         except urllib.error.HTTPError as retry_exc:
             if isinstance(retry_exc, SourceCooldownError):
                 raise
-            if (
-                retry_exc.code in _FATAL_HTTP_CODES
-                or _is_rate_limit_http_code(source, retry_exc.code)
-            ):
+            if _is_rate_limit_http_code(source, retry_exc.code):
                 _note_rate_limited(
                     source, headers=getattr(retry_exc, "headers", None)
                 )
@@ -352,10 +348,7 @@ def _http_get_json(
     except SourceCooldownError:
         raise
     except urllib.error.HTTPError as exc:
-        if (
-            exc.code in _FATAL_HTTP_CODES
-            or _is_rate_limit_http_code(source, exc.code)
-        ):
+        if _is_rate_limit_http_code(source, exc.code):
             _note_rate_limited(source, headers=getattr(exc, "headers", None))
         raise
 
@@ -385,12 +378,53 @@ def _dedupe_fetch_errors(errors: list[str]) -> list[str]:
     return unique
 
 
+def _google_books_limit_status() -> str:
+    """Brief status when Google Books hit a quota or rate limit."""
+    remaining = _seconds_until_cooldown_clears("google_books")
+    if remaining >= 60:
+        minutes = max(1, int(round(remaining / 60.0)))
+        return (
+            f"Google Books limited. About {minutes} "
+            f"minute{'s' if minutes != 1 else ''}."
+        )
+    if remaining > 0:
+        seconds = max(1, int(round(remaining)))
+        return f"Google Books limited. About {seconds} seconds."
+    return "Google Books limited."
+
+
+def _fetch_error_source_key(err: str) -> str:
+    return str(err).split(":", 1)[0].strip().lower()
+
+
+def _google_limit_error_text(err: str) -> bool:
+    lowered = str(err).lower()
+    return any(
+        token in lowered
+        for token in ("paused", "429", "403", "too many", "rate limit", "quota")
+    )
+
+
 def format_web_fetch_status_message(fetch_errors: list) -> str:
     fetch_errors = _dedupe_fetch_errors(list(fetch_errors or []))
     if not fetch_errors:
         return "Web fetch failed: unable to reach web sources."
     first = str(fetch_errors[0])
     lowered = first.lower()
+    if fetch_errors and all(
+        _fetch_error_source_key(err) == "google_books" for err in fetch_errors
+    ):
+        if _google_limit_error_text(first):
+            return _google_books_limit_status()
+        return "Google Books unavailable."
+    if "open_library" in lowered:
+        return f"Open Library unavailable. {first.split(':', 1)[-1].strip()}"
+    if "google_books" in lowered and _google_limit_error_text(first):
+        return _google_books_limit_status()
+    if "google_books" in lowered:
+        return "Google Books unavailable."
+    if "wikidata" in lowered:
+        return f"WikiData unavailable. {first.split(':', 1)[-1].strip()}"
     if (
         "429" in first
         or "too many requests" in lowered
@@ -398,28 +432,21 @@ def format_web_fetch_status_message(fetch_errors: list) -> str:
         or "rate limit" in lowered
         or "quota" in lowered
     ):
-        remaining = _seconds_until_cooldown_clears("google_books")
+        remaining = _seconds_until_cooldown_clears("wikidata")
         if remaining <= 0:
-            for source in ("wikidata", "wikipedia", "open_library"):
-                remaining = _seconds_until_cooldown_clears(source)
-                if remaining > 0:
-                    break
+            remaining = _seconds_until_cooldown_clears("wikipedia")
+        if remaining <= 0:
+            remaining = _seconds_until_cooldown_clears("open_library")
+        if remaining >= 60:
+            minutes = max(1, int(round(remaining / 60.0)))
+            return (
+                f"Web source limited. About {minutes} "
+                f"minute{'s' if minutes != 1 else ''}."
+            )
         if remaining > 0:
-            if remaining >= 60:
-                minutes = max(1, int(round(remaining / 60.0)))
-                return (
-                    f"Web source rate limited. Try again in about {minutes} "
-                    f"minute{'s' if minutes != 1 else ''}."
-                )
             seconds = max(1, int(round(remaining)))
-            return f"Web source rate limited. Try again in about {seconds}s."
-        return "Web source rate limited. Try again later."
-    if "open_library" in lowered:
-        return f"Open Library unavailable. {first.split(':', 1)[-1].strip()}"
-    if "google_books" in lowered:
-        return f"Google Books unavailable. {first.split(':', 1)[-1].strip()}"
-    if "wikidata" in lowered:
-        return f"WikiData unavailable. {first.split(':', 1)[-1].strip()}"
+            return f"Web source limited. About {seconds} seconds."
+        return "Web source limited."
     return f"Web fetch failed: {first}"
 
 

@@ -153,7 +153,7 @@ Separate from **Duplicate Mode** on the main window (which finds duplicates alre
 | Setting               | Meaning                                                        |
 | --------------------- | -------------------------------------------------------------- |
 | **Duplicate match**   | Which fields must match (for example Title + Author + Year)    |
-| **Fuzzy duplicate %** | How similar title **and** author text must be (0% = fuzzy off) |
+| **Fuzzy duplicate** (slider) | How similar title **and** author text must be (0% = fuzzy off) |
 
 
 Both title and author must meet the fuzzy threshold. At **90%** (default after Restore Defaults), only minor typos match. At **0%**, near-exact text is required.

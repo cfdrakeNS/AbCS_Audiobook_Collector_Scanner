@@ -22,10 +22,10 @@ Every book belongs to one collection. A default collection named **Audio Books**
 - Each collection may have an optional **library root folder** on disk. Changing that folder does not move files or change stored book paths.
 - If you have only one collection, AbCS keeps that library root and the Preferences **default import directory** in step. When one is empty, the other fills it. Two or more collections are left as you set them.
 
-## Steps — Manage collections
+## Manage collections
 
 1. Open **Manage → Collections** (**Alt+M**, then **C**).
-2. The **collection list** has three columns: **Collection**, **Path**, and **Status**. Collection and Status size to their contents. Path uses the remaining width. Status is Active or Inactive.
+2. At the top, **Name** and **Library root folder** sit in a compact block above the table. The **collection list** has three columns: **Collection**, **Path**, and **Status**. Collection and Status size to their contents. Path uses the remaining width. Status is Active or Inactive. At high main-window zoom, row height grows so the first row’s text is not clipped.
 3. To **add** a collection:
    - Click **New** (Alt+N).
    - Type a name in the **Name** field (Alt+E to edit).
@@ -43,7 +43,7 @@ Every book belongs to one collection. A default collection named **Audio Books**
    - Confirm. Collections that still contain books cannot be deleted.
 6. Press **Escape** to close the Collection Manager.
 
-## Steps — Filter by collection (main window)
+## Filter by collection (main window)
 
 1. Open **View → Collections** (**Alt+V**, then **C**) on the main window menu.
 2. Choose a collection name, or **All Collections** to show everything.
