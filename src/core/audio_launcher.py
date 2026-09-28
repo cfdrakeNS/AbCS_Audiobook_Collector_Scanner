@@ -180,7 +180,9 @@ def resolve_preview_playlist(
     resolved = resolve_book_location(
         text, collection_root=collection_root, import_dir=import_dir
     )
-    if Path(resolved).exists():
+    from src.core.library_root import path_exists
+
+    if path_exists(resolved):
         return _playlist_for_existing_path(resolved, listen_file_name=listen_file_name)
     return PreviewPlaylist(error=f"Book not found in - {resolved}")
 

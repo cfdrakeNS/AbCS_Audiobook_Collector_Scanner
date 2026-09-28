@@ -10,6 +10,7 @@ from src.core.library_root import (
     browse_start_directory,
     folder_exists,
     folder_has_supported_audio,
+    path_exists,
     path_is_under_root,
     resolve_book_location,
     root_path_issue,
@@ -18,6 +19,31 @@ from src.core.library_root import (
 from src.database.connection import DatabaseManager
 from src.database.models import Collection
 from src.database.queries import CollectionQueries
+
+
+def test_path_exists_treats_permission_error_as_missing(monkeypatch):
+    from src.core import library_root
+
+    class _RaisingPath:
+        def exists(self):
+            raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(library_root, "Path", lambda _p: _RaisingPath())
+    assert path_exists("/media/sf_test/Author/Title") is False
+
+
+def test_resolve_book_location_survives_permission_error_on_stored_path(monkeypatch):
+    from src.core import library_root
+
+    stored = "/media/sf_test/Lewis Carroll/Alice in Wonderland"
+
+    class _RaisingPath:
+        def exists(self):
+            raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(library_root, "Path", lambda _p: _RaisingPath())
+    result = resolve_book_location(stored, "", "")
+    assert result == stored
 
 
 def test_root_path_issue_blank_and_missing(tmp_path):

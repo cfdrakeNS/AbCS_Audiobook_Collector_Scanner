@@ -7,10 +7,23 @@ from pathlib import Path
 from src.core.tag_reader import TagReader
 
 
+def path_exists(path: str | Path) -> bool:
+    """True when the path exists; False if missing or stat fails (e.g. shared-folder permissions)."""
+    try:
+        return Path(path).exists()
+    except OSError:
+        return False
+
+
 def folder_exists(path: str) -> bool:
     """True when path is an existing directory."""
     text = (path or "").strip()
-    return bool(text) and Path(text).is_dir()
+    if not text:
+        return False
+    try:
+        return Path(text).is_dir()
+    except OSError:
+        return False
 
 
 def folder_has_supported_audio(path: str) -> bool:
@@ -54,7 +67,7 @@ def apply_collection_root(stored_path: str, collection_root: str) -> str:
 
     for start in range(len(rel_parts)):
         candidate = root.joinpath(*rel_parts[start:])
-        if candidate.exists():
+        if path_exists(candidate):
             return str(candidate)
 
     if len(rel_parts) >= 2:
@@ -75,7 +88,7 @@ def resolve_book_location(
     text = (stored_path or "").strip()
     if not text:
         return ""
-    if Path(text).exists():
+    if path_exists(text):
         return text
     last = text
     for base in ((collection_root or "").strip(), (import_dir or "").strip()):
@@ -84,7 +97,7 @@ def resolve_book_location(
         candidate = apply_collection_root(text, base)
         if not candidate:
             continue
-        if Path(candidate).exists():
+        if path_exists(candidate):
             return candidate
         if last == text:
             last = candidate
