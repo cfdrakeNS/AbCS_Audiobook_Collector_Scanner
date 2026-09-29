@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -403,6 +404,214 @@ def test_progress_callback_order_refresh_zero(
     assert messages[gb_idx].startswith("Trying source 2:")
     assert messages[wd_idx].startswith("Trying source 3:")
 
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_google_books", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library")
+def test_plot_diagnostics_are_available_through_facade(
+    ol_mock, _gb_mock, _wd_mock, api
+):
+    ol_mock.return_value = {
+        "title": "Dune",
+        "author": "Frank Herbert",
+        "source": "open_library",
+        "open_library_work_key": "/works/OL123W",
+    }
+    ol_mock.return_value["plot_source_url"] = "https://openlibrary.org/works/OL123W"
+    plot = "A" * 100
+    with patch.object(
+        api, "_get_open_library_work_fields", return_value={"description": plot}
+        ), patch.object(api, "_fetch_wikipedia_rest_summary", return_value=""), patch.object(
+            api, "_fetch_plot_from_wikipedia", return_value=""
+        ):
+        result = api.get_book_metadata("Dune", "Frank Herbert", bypass_cache=True)
+
+    diagnostics = api.get_last_plot_diagnostics()
+
+    assert result["plot"] == plot
+    assert result["plot_match_confidence"] == "high"
+    assert result["plot_auto_apply"] is True
+    assert result["plot_provenance"]["source_url"] == (
+        "https://openlibrary.org/works/OL123W"
+    )
+    assert diagnostics["selected_source"] == "open_library"
+    assert diagnostics["request_count"] == 0
+    assert diagnostics["candidates"][0]["source_url"] == (
+        "https://openlibrary.org/works/OL123W"
+    )
+    assert diagnostics["candidates"][0]["query_type"] == "work_identifier"
+
+
+def test_plot_sources_run_concurrently_and_resolve_independent_of_completion(api):
+    started_together = threading.Barrier(2)
+    first_rest_started = threading.Event()
+    wikipedia_finished = threading.Event()
+    open_library_plot = "Open Library identity plot. " + "O" * 100
+    wikipedia_plot = "Wikipedia title and author plot. " + "W" * 160
+
+    def open_library_fetch(_title, _author):
+        started_together.wait(timeout=2)
+        assert wikipedia_finished.wait(timeout=2)
+        return open_library_plot
+
+    def wikipedia_rest(_title):
+        if not first_rest_started.is_set():
+            first_rest_started.set()
+            started_together.wait(timeout=2)
+        return ""
+
+    def wikipedia_search(*_args, **_kwargs):
+        wikipedia_finished.set()
+        return wikipedia_plot
+
+    metadata = {
+        "title": "A Book",
+        "author": "An Author",
+        "source": "wikidata",
+        "_resolved_source": "wikidata",
+    }
+    with patch.object(
+        api, "_fetch_plot_from_open_library", side_effect=open_library_fetch
+    ), patch.object(
+        api, "_fetch_wikipedia_rest_summary", side_effect=wikipedia_rest
+    ), patch.object(
+        api, "_fetch_plot_from_wikipedia", side_effect=wikipedia_search
+    ):
+        api._enrich_metadata_plot(metadata, "A Book", "An Author")
+
+    assert metadata["plot"] == open_library_plot
+    assert metadata["plot_source"] == "open_library"
+    assert [
+        candidate["source"] for candidate in metadata["plot_candidates"]
+    ] == ["open_library", "wikipedia"]
+
+
+@pytest.mark.parametrize(
+    ("book_title", "isbn", "google_title", "expected_source"),
+    [
+        ("Glass Houses", "146687368X", "Glass Houses", "google_books"),
+        ("A Better Man", "9781250066201", "A Better Man", "google_books"),
+        ("Glass Houses", "146687368X", "A Different Novel", ""),
+    ],
+)
+def test_google_isbn_plot_runs_with_open_library_work_and_checks_identity(
+    api, book_title, isbn, google_title, expected_source
+):
+    google_plot = "A valid plot retrieved by exact ISBN. " + "G" * 100
+    google_result = {
+        "title": google_title,
+        "author": "Louise Penny",
+        "plot": google_plot,
+        "google_id": "glass-houses",
+        "plot_source_url": "https://books.google.com/books?id=glass-houses",
+    }
+    metadata = {
+        "title": book_title,
+        "author": "Louise Penny",
+        "source": "open_library",
+        "_resolved_source": "open_library",
+        "isbn": isbn,
+        "open_library_work_key": "/works/OL17946342W",
+    }
+    with patch.object(
+        api, "_get_open_library_work_fields", return_value={"description": ""}
+    ), patch.object(api, "_fetch_google_by_isbn", return_value=google_result), patch.object(
+        api, "_fetch_wikipedia_rest_summary", return_value=""
+    ), patch.object(api, "_fetch_plot_from_wikipedia", return_value=""):
+        api._enrich_metadata_plot(metadata, book_title, "Louise Penny")
+
+    assert metadata.get("plot_source", "") == expected_source
+    if expected_source:
+        assert metadata["plot"] == google_plot
+        assert metadata["plot_auto_apply"] is True
+    else:
+        assert "plot" not in metadata
+
+
+def test_plot_enrichment_rejects_stale_open_library_omnibus_identifiers(api):
+    omnibus_title = (
+        "Chief Inspector Gamache: Still Life / A Fatal Grace / "
+        "The Cruellest Month / A Rule Against Murder / The Brutal Telling"
+    )
+    metadata = {
+        "title": omnibus_title,
+        "author": "Louise Penny",
+        "source": "open_library",
+        "_resolved_source": "open_library",
+        "isbn": "9780751583243",
+        "open_library_work_key": "/works/OL_COLLECTION",
+    }
+    with patch.object(api, "_get_open_library_work_fields") as work_mock, patch.object(
+        api,
+        "_fetch_by_isbn",
+        return_value={
+            "title": omnibus_title,
+            "author": "Louise Penny",
+            "open_library_work_key": "/works/OL_COLLECTION",
+        },
+    ), patch.object(
+        api,
+        "_fetch_google_by_isbn",
+        return_value={
+            "title": omnibus_title,
+            "author": "Louise Penny",
+            "plot": "A collection description. " + "C" * 100,
+        },
+    ), patch.object(
+        api, "_fetch_wikipedia_rest_summary", return_value=""
+    ), patch.object(api, "_fetch_plot_from_wikipedia", return_value=""):
+        api._enrich_metadata_plot(metadata, "A Rule Against Murder", "Louise Penny")
+
+    work_mock.assert_not_called()
+    assert "plot" not in metadata
+
+
+def test_plot_source_workers_stop_on_shared_cancel(api):
+    cancel_event = threading.Event()
+    workers_started = threading.Barrier(2)
+    first_wikipedia_rest = threading.Event()
+
+    def waiting_open_library(*_args, **_kwargs):
+        workers_started.wait(timeout=2)
+        cancel_event.wait(timeout=2)
+        return ""
+
+    def waiting_wikipedia_rest(*_args, **_kwargs):
+        if not first_wikipedia_rest.is_set():
+            first_wikipedia_rest.set()
+            workers_started.wait(timeout=2)
+        cancel_event.wait(timeout=2)
+        return ""
+
+    metadata = {
+        "title": "A Book",
+        "author": "An Author",
+        "source": "wikidata",
+        "_resolved_source": "wikidata",
+    }
+    api._active_budget = FetchBudget(seconds=5)
+    api._should_cancel = cancel_event.is_set
+    timer = threading.Timer(0.1, cancel_event.set)
+    timer.start()
+    try:
+        with patch.object(
+            api, "_fetch_plot_from_open_library", side_effect=waiting_open_library
+        ), patch.object(
+            api,
+            "_fetch_wikipedia_rest_summary",
+            side_effect=waiting_wikipedia_rest,
+        ), patch.object(
+            api, "_fetch_plot_from_wikipedia", return_value=""
+        ):
+            with pytest.raises(wba.FetchAborted, match="canceled"):
+                api._enrich_metadata_plot(metadata, "A Book", "An Author")
+    finally:
+        timer.cancel()
+        api._active_budget = None
+        api._should_cancel = None
+
+    assert cancel_event.is_set()
+
 def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
     metadata = {
         "title": "Pride and Prejudice",
@@ -421,13 +630,15 @@ def test_enrich_metadata_plot_uses_wikipedia_rest_for_open_library_win(api):
         with patch.object(
             api, "_fetch_wikipedia_rest_summary", return_value=rest_text
         ) as rest_mock:
-            with patch.object(api, "_fetch_plot_from_wikipedia") as wiki_mock:
+            with patch.object(
+                api, "_fetch_plot_from_wikipedia", return_value=""
+            ) as wiki_mock:
                 api._enrich_metadata_plot(
                     metadata, "Pride And Prejudice", "Jane Austen"
                 )
     rest_mock.assert_called()
-    assert rest_mock.call_args_list[0].args[0] == "Pride and Prejudice Jane Austen novel"
-    wiki_mock.assert_not_called()
+    assert rest_mock.call_args_list[0].args[0] == "Pride And Prejudice Jane Austen novel"
+    wiki_mock.assert_called_once()
     assert metadata["plot"] == rest_text
     assert metadata["plot_source"] == "wikipedia"
 
@@ -465,8 +676,8 @@ def test_clean_web_data_strips_stub_plot():
     assert "plot" not in cleaned
 
 
-def test_enrich_metadata_plot_skips_google_isbn_after_ol_and_wikipedia_miss(api):
-    """Hard misses should not spend another network call on Google ISBN plot lookup."""
+def test_enrich_metadata_plot_uses_google_isbn_after_ol_and_wikipedia_miss(api):
+    """An exact ISBN lookup remains available after other plot routes miss."""
     metadata = {
         "title": "Aliens",
         "author": "Murray Leinster",
@@ -480,11 +691,11 @@ def test_enrich_metadata_plot_skips_google_isbn_after_ol_and_wikipedia_miss(api)
     ):
         with patch.object(api, "_fetch_wikipedia_rest_summary", return_value=""):
             with patch.object(api, "_fetch_plot_from_wikipedia", return_value=""):
-                with patch.object(api, "_fetch_google_by_isbn") as isbn_mock:
-                    api._enrich_metadata_plot(
-                        metadata, "Aliens", "Murray Leinster"
-                    )
-                    isbn_mock.assert_not_called()
+                with patch.object(
+                    api, "_fetch_google_by_isbn", return_value=None
+                ) as isbn_mock:
+                    api._enrich_metadata_plot(metadata, "Aliens", "Murray Leinster")
+                    isbn_mock.assert_called_once_with("9781234567890")
     assert not metadata.get("plot")
 
 
@@ -510,6 +721,67 @@ def test_enrich_metadata_plot_keeps_primary_google_plot_without_isbn_lookup(api)
                         metadata, "Aliens", "Murray Leinster"
                     )
                     isbn_mock.assert_not_called()
+
+
+    def test_enrich_metadata_plot_prefers_isbn_detail_before_title_search(api):
+        metadata = {
+            "title": "Dune",
+            "author": "Frank Herbert",
+            "source": "google_books",
+            "isbn": "9780441172719",
+            "plot": "",
+        }
+        identifier_plot = "A" * 100
+        with patch.object(
+            api,
+            "_fetch_google_by_isbn",
+            return_value={
+                "plot": identifier_plot,
+                "google_id": "volume-1",
+                "plot_source_url": "https://books.google.com/books?id=volume-1",
+            },
+        ) as isbn_mock, patch.object(
+            api, "_fetch_plot_from_open_library"
+        ) as title_search_mock:
+            api._enrich_metadata_plot(metadata, "Dune", "Frank Herbert")
+
+        isbn_mock.assert_called_once_with("9780441172719")
+        title_search_mock.assert_not_called()
+        assert metadata["plot"] == identifier_plot
+        assert metadata["plot_source"] == "google_books"
+
+
+    def test_cache_classifies_transient_and_confirmed_misses(api):
+        transient = {"_no_result": True, "_fetch_errors": ["google_books: 429"]}
+        confirmed = {"_no_result": True, "_fetch_errors": []}
+
+        assert api._cache_entry_kind(transient) == "transient"
+        assert api._cache_entry_kind(confirmed) == "negative"
+        assert api._cache_ttl_for(transient) < api._cache_ttl_for(confirmed)
+
+
+    def test_transient_negative_cache_is_retried(api):
+        cache_key = "Retry Book|Retry Author|0|None|None|None|False|"
+        api._cache[cache_key] = (
+            time.time(),
+            {
+                "_no_result": True,
+                "_fetch_errors": ["google_books: 429"],
+                "_cache_kind": "transient",
+            },
+        )
+        metadata = {
+            "title": "Retry Book",
+            "author": "Retry Author",
+            "plot": "A" * 100,
+            "_resolved_source": "open_library",
+        }
+        with patch.object(api, "_search_metadata_sources", return_value=metadata) as search_mock:
+            with patch.object(api, "_enrich_metadata_plot"):
+                result = api.get_book_metadata("Retry Book", "Retry Author")
+
+        search_mock.assert_called_once()
+        assert result["title"] == "Retry Book"
     assert metadata["plot"] == long_plot
 
 
@@ -556,6 +828,104 @@ def test_open_library_search_sends_user_agent(urlopen_mock, api):
     from src.web.web_book_api import USER_AGENT
 
     assert sent_request.get_header("User-agent") == USER_AGENT
+
+
+def test_open_library_prefers_exact_title_over_multi_book_collection(api):
+    docs = [
+        {
+            "key": "/works/OL_COLLECTION",
+            "title": (
+                "Chief Inspector Gamache: Still Life / A Fatal Grace / "
+                "The Cruellest Month / A Rule Against Murder / The Brutal Telling"
+            ),
+            "author_name": ["Louise Penny"],
+            "isbn": ["9780751583243"],
+        },
+        {
+            "key": "/works/OL_EXACT",
+            "title": "A Rule Against Murder",
+            "author_name": ["Louise Penny"],
+            "isbn": ["9780312358308"],
+        },
+    ]
+    with patch.object(wba, "_http_get_json", return_value={"docs": docs}), patch.object(
+        api, "_get_open_library_work_fields", return_value={"description": ""}
+    ) as work_mock:
+        result = api._fetch_from_open_library(
+            "A Rule Against Murder", "Louise Penny"
+        )
+
+    assert result["title"] == "A Rule Against Murder"
+    assert result["open_library_work_key"] == "/works/OL_EXACT"
+    assert result["isbn"] == "9780312358308"
+    work_mock.assert_called_once_with("/works/OL_EXACT")
+
+
+def test_open_library_continues_to_alternate_title_after_omnibus_match(api):
+    collection_doc = {
+        "key": "/works/OL_COLLECTION",
+        "title": (
+            "Chief Inspector Gamache: Still Life / A Fatal Grace / "
+            "The Cruellest Month / A Rule Against Murder / The Brutal Telling"
+        ),
+        "author_name": ["Louise Penny"],
+        "isbn": ["9780751583243"],
+    }
+    exact_doc = {
+        "key": "/works/OL_MURDER_STONE",
+        "title": "The Murder Stone",
+        "author_name": ["Louise Penny"],
+        "isbn": ["9780312358308"],
+    }
+    with patch.object(
+        wba,
+        "_http_get_json",
+        side_effect=[
+            {"docs": [collection_doc]},
+            {"docs": []},
+            {"docs": [exact_doc]},
+        ],
+    ) as search_mock, patch.object(
+        api, "_get_open_library_work_fields", return_value={"description": ""}
+    ):
+        result = api._fetch_from_open_library(
+            "A Rule Against Murder", "Louise Penny"
+        )
+
+    assert result["title"] == "The Murder Stone"
+    assert result["open_library_work_key"] == "/works/OL_MURDER_STONE"
+    assert search_mock.call_count == 3
+
+
+@pytest.mark.parametrize(
+    ("library_title", "web_title", "expected"),
+    [
+        ("Glass Houses", "Glass Houses", True),
+        (
+            "Chief Inspector Armand Gamache 04 - The Murder Stone",
+            "A Rule Against Murder",
+            True,
+        ),
+        (
+            "A Rule Against Murder",
+            "Chief Inspector Gamache: Still Life / A Fatal Grace / "
+            "The Cruellest Month / A Rule Against Murder / The Brutal Telling",
+            False,
+        ),
+    ],
+)
+def test_plot_identifier_identity_handles_louise_penny_titles(
+    api, library_title, web_title, expected
+):
+    assert api._plot_identifier_matches_db(
+        library_title,
+        "Louise Penny",
+        {"title": web_title, "author": "Louise Penny"},
+    ) is expected
+    if library_title.startswith("Chief Inspector Armand Gamache"):
+        assert "The Murder Stone" in api._query_titles_for_metadata(
+            library_title, "Louise Penny"
+        )
 
 def _http_error_429():
     import urllib.error
@@ -841,6 +1211,19 @@ def test_fetch_budget_exhausts_on_deadline():
     budget = FetchBudget(seconds=0.01, max_requests=100)
     time.sleep(0.02)
     assert not budget.can_continue()
+
+
+def test_fetch_budget_reservations_are_atomic_under_concurrency():
+    from concurrent.futures import ThreadPoolExecutor
+
+    budget = FetchBudget(seconds=60, max_requests=5)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        reservations = list(
+            executor.map(lambda _index: budget.reserve_request("open_library"), range(40))
+        )
+
+    assert sum(reservations) == 5
+    assert budget.request_count == 5
 
 def test_get_book_metadata_cancel_returns_canceled_flag(api):
     result = api.get_book_metadata(

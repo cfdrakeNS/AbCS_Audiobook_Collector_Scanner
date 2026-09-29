@@ -11,18 +11,23 @@ import os
 import re
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.parse
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from src.utils.text_utils import split_series_number
+from src.utils.text_utils import split_series_number, web_titles_match
 from src.web.web_cache import (
     CACHE_DURATION,
     NEGATIVE_CACHE_TTL_SECONDS,
+    TRANSIENT_CACHE_TTL_SECONDS,
     WEB_CACHE_FILE,
     WEB_CACHE_MAX_ENTRIES,
+    WEB_CACHE_SCHEMA_VERSION,
 )
 from src.web.web_http import (
     FETCH_BUDGET_MAX_GOOGLE,
@@ -62,10 +67,20 @@ from src.web.web_matching import (
     ORWELL_AUTHOR_LABEL,
     STOPWORDS,
 )
+from src.web.plot_resolver import (
+    PLOT_MIN_LENGTH,
+    PlotCandidate,
+    PlotFetchDiagnostics,
+    PlotResolver,
+    candidate_identifiers,
+    candidate_provenance,
+)
 
-PLOT_MIN_LENGTH = 80
 PLOT_MAX_WIKIPEDIA_SENTENCES = 20
-HTML_TAG_RE = re.compile(r"<[^>]+>")
+PLOT_FETCH_MAX_WORKERS = 3
+PLOT_CANDIDATE_GRACE_SECONDS = 0.35
+
+_PLOT_RESOLVER = PlotResolver(PLOT_MIN_LENGTH)
 
 _cache_write_warned = False
 _shared_web_api: Optional["WebBookAPI"] = None
@@ -167,11 +182,33 @@ class WebBookAPI:
     def _query_titles_for_metadata(
         self, title: str, db_author: str | None
     ) -> list[str]:
-        """Prefer shorter query titles when the library title repeats the author."""
+        """Return original and known-normalized titles for metadata search."""
         stripped = self._strip_leading_author_from_title(title, db_author)
-        if stripped and stripped.lower() != (title or "").strip().lower():
-            return [stripped, title]
-        return [title]
+        candidates = [stripped, title] if stripped else [title]
+        series_prefix_match = re.match(
+            r"^.+?\s+\d+(?:\.\d+)?\s*[-:]\s*(.+)$", title or ""
+        )
+        if series_prefix_match:
+            candidates.append(series_prefix_match.group(1).strip())
+
+        title_aliases = {
+            normalize_title("The Murder Stone"): "A Rule Against Murder",
+            normalize_title("A Rule Against Murder"): "The Murder Stone",
+        }
+        for candidate in list(candidates):
+            alias = title_aliases.get(normalize_title(candidate))
+            if alias:
+                candidates.append(alias)
+
+        result: list[str] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            value = (candidate or "").strip()
+            key = normalize_title(value)
+            if value and key not in seen:
+                seen.add(key)
+                result.append(value)
+        return result
 
     @staticmethod
     def _google_fetch_error_is_transient(err: str) -> bool:
@@ -192,11 +229,49 @@ class WebBookAPI:
             WebBookAPI._google_fetch_error_is_transient(err) for err in errors
         )
 
+    @staticmethod
+    def _fetch_error_is_transient(error: str) -> bool:
+        lowered = str(error or "").lower()
+        return any(
+            token in lowered
+            for token in (
+                "timeout",
+                "timed out",
+                "temporarily",
+                "temporary",
+                "connection",
+                "network",
+                "unavailable",
+                "paused",
+                "rate limit",
+                "too many",
+                "quota",
+                "429",
+                "403",
+                "502",
+                "503",
+            )
+        )
+
+    @classmethod
+    def _cache_entry_kind(cls, payload: dict | None) -> str:
+        if not isinstance(payload, dict):
+            return "positive"
+        explicit = payload.get("_cache_kind")
+        if explicit in {"positive", "negative", "transient"}:
+            return explicit
+        if not payload.get("_no_result"):
+            return "positive"
+        errors = payload.get("_fetch_errors") or []
+        if any(cls._fetch_error_is_transient(error) for error in errors):
+            return "transient"
+        return "negative"
+
     def _should_bypass_negative_cache(self, payload: dict) -> bool:
-        """Retry cached misses that were caused only by Google rate limits."""
+        """Retry cached misses that came from transient source failures."""
         if not isinstance(payload, dict) or not payload.get("_no_result"):
             return False
-        return self._negative_cache_is_transient_google_only(payload)
+        return self._cache_entry_kind(payload) == "transient"
 
     def _extract_last_name(self, author: str) -> str:
         """Extract last name from author string."""
@@ -315,60 +390,58 @@ class WebBookAPI:
             return False
         return True
 
+    def _plot_identifier_matches_db(
+        self, db_title: str, db_author: str, metadata: Optional[Dict]
+    ) -> bool:
+        """Require same-work title identity for plot text fetched by ISBN."""
+        if not metadata:
+            return False
+        web_title = str(metadata.get("title") or "").strip()
+        if not web_title:
+            return False
+        web_author = str(metadata.get("author") or "").strip()
+        if db_author and web_author and not self._author_matches(db_author, web_author):
+            return False
+
+        title_candidates = self._db_title_match_candidates(db_title, db_author)
+        series_prefix_match = re.match(
+            r"^.+?\s+\d+(?:\.\d+)?\s*[-:]\s*(.+)$", db_title or ""
+        )
+        if series_prefix_match:
+            title_candidates.append(series_prefix_match.group(1).strip())
+
+        if any(web_titles_match(candidate, web_title) for candidate in title_candidates):
+            return True
+
+        aliases = {
+            normalize_title("The Murder Stone"),
+            normalize_title("A Rule Against Murder"),
+        }
+        return (
+            normalize_title(web_title) in aliases
+            and any(normalize_title(title) in aliases for title in title_candidates)
+        )
+
 
     @staticmethod
     def _plot_is_adequate(plot: str) -> bool:
-        return len((plot or "").strip()) >= PLOT_MIN_LENGTH
+        return _PLOT_RESOLVER.is_adequate(plot)
 
     @staticmethod
     def _strip_html(text: str) -> str:
-        if not text:
-            return ""
-        cleaned = HTML_TAG_RE.sub(" ", text)
-        cleaned = re.sub(r"\s+", " ", cleaned)
-        return cleaned.strip()
+        return _PLOT_RESOLVER.normalize_text(text)
 
     def _clean_plot_text(self, plot: str) -> str:
         return self._strip_html((plot or "").strip())
 
     def _is_non_book_plot(self, plot: str) -> bool:
         """Return True when plot text clearly describes music, film, or TV—not a book."""
-        plot_lower = plot.lower()
-        non_book_patterns = [
-            r"\bis a song\b",
-            r"\bis an album\b",
-            r"\bstudio album\b",
-            r"\breleased as a single\b",
-            r"\bbillboard\b",
-            r"\bmainstream rock\b",
-            r"\brock band\b",
-            r"\bhit single\b",
-            r"\bgrammy\b",
-            r"\btelevision series\b",
-            r"\btv series\b",
-            r"\b(episode|episodes) of\b",
-            r"\bseason \d+\b",
-            r"\bchart\b.{0,40}\b(position|successful|reached|peaked)\b",
-        ]
-        return any(re.search(pattern, plot_lower) for pattern in non_book_patterns)
+        return _PLOT_RESOLVER.is_non_book(plot)
 
     @staticmethod
     def _is_stub_plot(plot: str) -> bool:
         """Return True when plot looks like an API/error placeholder, not a synopsis."""
-        text = re.sub(r"\s+", " ", (plot or "").strip().lower())
-        if not text:
-            return True
-        stub_patterns = (
-            r"^no metadata\b",
-            r"\bno metadata\b.{0,40}\b(return|returned|available|found|provided)\b",
-            r"\bmetadata (not |never )?(return|returned|available|found)\b",
-            r"^no description\b",
-            r"\bdescription not available\b",
-            r"^no information (found|available|returned)\b",
-            r"^not available\.?$",
-            r"^n/?a\.?$",
-        )
-        return any(re.search(pattern, text) for pattern in stub_patterns)
+        return _PLOT_RESOLVER.is_stub(plot)
 
     def _plot_relates_to_book(
         self, plot: str, db_title: str, db_author: str, *, plot_source: str = ""
@@ -395,20 +468,81 @@ class WebBookAPI:
         plot_source: str,
         db_title: str,
         db_author: str,
+        *,
+        query_type: str = "",
+        elapsed_seconds: float = 0.0,
+        cache_state: str = "network",
+        source_url: str = "",
+        license_id: str = "",
+        match_confidence: str = "low",
+        candidates: list[PlotCandidate] | None = None,
+        identifiers: dict[str, str] | None = None,
     ) -> bool:
         """Set plot on metadata when text is long enough and book-related."""
-        plot = self._clean_plot_text(plot)
-        if not self._plot_is_adequate(plot):
+        provenance = (
+            candidate_provenance(metadata)
+            if plot_source
+            in {
+                metadata.get("plot_source"),
+                metadata.get("source"),
+                metadata.get("_resolved_source"),
+            }
+            else {}
+        )
+        candidate = PlotCandidate(
+            text=plot,
+            source=plot_source,
+            identifiers=candidate_identifiers(metadata),
+            match_confidence=match_confidence,
+            query_type=query_type,
+            elapsed_seconds=elapsed_seconds,
+            cache_state=cache_state,
+            source_url=source_url or provenance.get("plot_source_url", ""),
+            license_id=license_id
+            or provenance.get("plot_license_id", ""),
+        )
+        if identifiers:
+            candidate.identifiers.update(identifiers)
+        _PLOT_RESOLVER.evaluate(
+            candidate,
+            db_author=db_author,
+            author_matches=self._author_matches,
+            redundant=self._is_redundant_plot(plot),
+        )
+        self._record_plot_candidate(candidate)
+        if candidate.rejection_reason:
             return False
-        if self._is_redundant_plot(plot):
-            return False
-        if not self._plot_relates_to_book(
-            plot, db_title, db_author, plot_source=plot_source
-        ):
-            return False
-        metadata["plot"] = plot
-        metadata["plot_source"] = plot_source
+        if candidates is not None:
+            candidates.append(candidate)
+            selected = _PLOT_RESOLVER.choose(candidates)
+            if selected is not None:
+                self._select_plot_candidate(metadata, selected)
+                diagnostics = getattr(self._plot_diagnostics_local, "active", None)
+                if diagnostics is not None:
+                    diagnostics.select(selected)
+        else:
+            self._select_plot_candidate(metadata, candidate)
         return True
+
+    @staticmethod
+    def _select_plot_candidate(metadata: Dict, candidate: PlotCandidate) -> None:
+        metadata["plot"] = candidate.normalized_text
+        metadata["plot_source"] = candidate.source
+        metadata["plot_source_url"] = candidate.source_url
+        metadata["plot_license_id"] = candidate.license_id
+        metadata["plot_match_confidence"] = (
+            "high" if candidate.auto_apply else "medium"
+        )
+        metadata["plot_auto_apply"] = candidate.auto_apply
+        metadata["plot_provenance"] = {
+            "source": candidate.source,
+            "identifiers": dict(candidate.identifiers),
+            "source_url": candidate.source_url,
+            "fetched_at": candidate.fetched_at,
+            "license_id": candidate.license_id,
+            "modified": candidate.modified,
+            "match_confidence": candidate.match_confidence,
+        }
 
     def _enrich_metadata_plot(
         self,
@@ -434,35 +568,33 @@ class WebBookAPI:
             source = metadata.get("source") or metadata.get("_resolved_source", "")
             metadata["plot"] = existing
             metadata["plot_source"] = metadata.get("plot_source") or source
+            metadata.setdefault("plot_match_confidence", "high")
+            metadata.setdefault("plot_auto_apply", True)
+            provenance = candidate_provenance(metadata)
+            metadata.setdefault(
+                "plot_provenance",
+                {
+                    "source": metadata["plot_source"],
+                    "identifiers": candidate_identifiers(metadata),
+                    "source_url": provenance.get("plot_source_url", ""),
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                    "license_id": provenance.get("plot_license_id", ""),
+                    "modified": False,
+                    "match_confidence": "title_author" if db_author else "title",
+                },
+            )
+            self._record_existing_plot(
+                metadata,
+                cache_state="metadata_result",
+                query_type="primary_metadata",
+            )
             return
 
+        candidates: list[PlotCandidate] = []
         work_key = metadata.get("open_library_work_key", "")
-        if work_key:
-            self._check_abort()
-            _progress("Enriching plot: Open Library work…")
-            ol_plot = self._clean_plot_text(
-                self._get_open_library_work_fields(work_key).get("description", "")
-            )
-            if self._apply_plot_to_metadata(
-                metadata, ol_plot, "open_library", db_title, db_author
-            ):
-                return
-        elif metadata.get("_resolved_source") != "open_library":
-            self._check_abort()
-            _progress("Enriching plot: Open Library search…")
-            fallback_plot = self._clean_plot_text(
-                self._fetch_plot_from_open_library(
-                    db_title or metadata.get("title", ""), db_author
-                )
-            )
-            if self._apply_plot_to_metadata(
-                metadata, fallback_plot, "open_library", db_title, db_author
-            ):
-                return
-
-        wiki_title = metadata.get("title") or db_title
+        identifier_isbn = self._normalize_isbn(str(metadata.get("isbn") or ""))
+        wiki_title = db_title or metadata.get("title", "")
         wiki_author = db_author or metadata.get("author", "")
-
         rest_candidates: list[str] = []
         seen_rest: set[str] = set()
         for candidate in (
@@ -476,43 +608,289 @@ class WebBookAPI:
         if not rest_candidates and wiki_title:
             rest_candidates.append(wiki_title)
 
-        for candidate in rest_candidates:
-            self._check_abort()
-            _progress("Enriching plot: Wikipedia…")
-            rest_plot = self._clean_plot_text(
-                self._fetch_wikipedia_rest_summary(candidate)
-            )
-            if self._apply_plot_to_metadata(
-                metadata, rest_plot, "wikipedia", db_title, db_author
+        _progress("Searching online book sources…")
+        worker_cancel = threading.Event()
+
+        def _capture_candidate(
+            source: str,
+            query_type: str,
+            match_confidence: str,
+            fetch: Callable[[], str],
+        ) -> dict | None:
+            if worker_cancel.is_set():
+                return None
+            started = time.monotonic()
+            self._plot_diagnostics_local.source_url = ""
+            try:
+                text = fetch()
+            except FetchAborted:
+                return None
+            except Exception:
+                return None
+            text = self._clean_plot_text(text or "")
+            if not text:
+                return None
+            return {
+                "text": text,
+                "source": source,
+                "query_type": query_type,
+                "match_confidence": match_confidence,
+                "elapsed_seconds": time.monotonic() - started,
+                "source_url": getattr(
+                    self._plot_diagnostics_local, "source_url", ""
+                ),
+            }
+
+        def _open_library_job() -> list[dict]:
+            found: list[dict] = []
+            if work_key and self._plot_identifier_matches_db(
+                db_title, db_author, metadata
             ):
-                return
+                item = _capture_candidate(
+                    "open_library",
+                    "work_identifier",
+                    "identifier",
+                    lambda: self._get_open_library_work_fields(work_key).get(
+                        "description", ""
+                    ),
+                )
+                if item:
+                    item["source_url"] = f"https://openlibrary.org{work_key}"
+                    found.append(item)
+            elif identifier_isbn:
+                started = time.monotonic()
+                detail = self._fetch_by_isbn(identifier_isbn)
+                detail_work_key = (detail or {}).get("open_library_work_key", "")
+                if detail_work_key and self._plot_identifier_matches_db(
+                    db_title, db_author, detail
+                ):
+                    item = _capture_candidate(
+                        "open_library",
+                        "isbn_work_identifier",
+                        "identifier",
+                        lambda: self._get_open_library_work_fields(
+                            detail_work_key
+                        ).get("description", ""),
+                    )
+                    if item:
+                        item["elapsed_seconds"] += time.monotonic() - started
+                        item["source_url"] = (detail or {}).get(
+                            "plot_source_url", ""
+                        ) or f"https://openlibrary.org{detail_work_key}"
+                        item["identifiers"] = {
+                            "open_library_work_key": detail_work_key,
+                            "isbn": identifier_isbn,
+                        }
+                        found.append(item)
+            elif metadata.get("_resolved_source") != "open_library":
+                item = _capture_candidate(
+                    "open_library",
+                    "title_author_search",
+                    "title_author" if db_author else "title",
+                    lambda: self._fetch_plot_from_open_library(
+                        db_title or metadata.get("title", ""), db_author
+                    ),
+                )
+                if item:
+                    found.append(item)
+            return found
+
+        def _google_books_job() -> list[dict]:
+            if not identifier_isbn:
+                return []
+            found: list[dict] = []
+            started = time.monotonic()
+            google_detail = self._fetch_google_by_isbn(identifier_isbn)
+            if self._plot_identifier_matches_db(
+                db_title, db_author, google_detail
+            ):
+                item = _capture_candidate(
+                    "google_books",
+                    "isbn_detail",
+                    "identifier",
+                    lambda: google_detail.get("plot", ""),
+                )
+                if item:
+                    item["elapsed_seconds"] = time.monotonic() - started
+                    item["source_url"] = google_detail.get("plot_source_url", "")
+                    item["identifiers"] = {
+                        "isbn": identifier_isbn,
+                        "google_id": str(google_detail.get("google_id", "")),
+                    }
+                    found.append(item)
+            return found
+
+        def _wikipedia_job() -> list[dict]:
+            found: list[dict] = []
+            for rest_title in rest_candidates:
+                item = _capture_candidate(
+                    "wikipedia",
+                    "rest_summary",
+                    "title",
+                    lambda rest_title=rest_title: self._fetch_wikipedia_rest_summary(
+                        rest_title
+                    ),
+                )
+                if item:
+                    found.append(item)
+            item = _capture_candidate(
+                "wikipedia",
+                "title_author_search",
+                "title_author" if db_author else "title",
+                lambda: self._fetch_plot_from_wikipedia(
+                    wiki_title,
+                    wiki_author,
+                    db_title=db_title,
+                    db_author=db_author,
+                ),
+            )
+            if item:
+                found.append(item)
+            return found
+
+        jobs: list[Callable[[], list[dict]]] = [_open_library_job, _wikipedia_job]
+        if identifier_isbn:
+            jobs.append(_google_books_job)
+
+        def _run_job(job: Callable[[], list[dict]]) -> list[dict]:
+            self._plot_worker_local.cancel_event = worker_cancel
+            try:
+                return job()
+            finally:
+                self._plot_worker_local.cancel_event = None
+
+        executor = ThreadPoolExecutor(
+            max_workers=min(PLOT_FETCH_MAX_WORKERS, len(jobs)),
+            thread_name_prefix="AbCSPlotFetch",
+        )
+        futures: set[Future] = {
+            executor.submit(_run_job, job) for job in jobs
+        }
+        candidate_grace_deadline: float | None = None
+        stop_workers = False
+        try:
+            while futures:
+                try:
+                    self._check_abort()
+                except FetchAborted as abort:
+                    if abort.reason == "canceled":
+                        worker_cancel.set()
+                        for future in futures:
+                            future.cancel()
+                        raise
+                    stop_workers = True
+                    worker_cancel.set()
+                    for future in futures:
+                        future.cancel()
+                    break
+
+                timeout = (
+                    self._active_budget.remaining_seconds()
+                    if self._active_budget is not None
+                    else 45.0
+                )
+                timeout = min(timeout, 0.05)
+                if candidate_grace_deadline is not None:
+                    timeout = min(
+                        timeout,
+                        max(0.0, candidate_grace_deadline - time.monotonic()),
+                    )
+                    if timeout <= 0:
+                        stop_workers = True
+                        worker_cancel.set()
+                        for future in futures:
+                            future.cancel()
+                        break
+                done, futures = wait(
+                    futures,
+                    timeout=timeout,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not done:
+                    budget_expired = (
+                        self._active_budget is not None
+                        and self._active_budget.remaining_seconds() <= 0
+                    )
+                    grace_expired = (
+                        candidate_grace_deadline is not None
+                        and time.monotonic() >= candidate_grace_deadline
+                    )
+                    if budget_expired or grace_expired:
+                        stop_workers = True
+                        worker_cancel.set()
+                        for future in futures:
+                            future.cancel()
+                        break
+                    continue
+
+                for future in done:
+                    try:
+                        fetched = future.result()
+                    except FetchAborted:
+                        continue
+                    except Exception:
+                        continue
+                    for item in fetched:
+                        self._apply_plot_to_metadata(
+                            metadata,
+                            item["text"],
+                            item["source"],
+                            db_title,
+                            db_author,
+                            query_type=item["query_type"],
+                            elapsed_seconds=item["elapsed_seconds"],
+                            source_url=item["source_url"],
+                            match_confidence=item["match_confidence"],
+                            candidates=candidates,
+                            identifiers=item.get("identifiers"),
+                        )
+                    selected = _PLOT_RESOLVER.choose(candidates)
+                    if (
+                        selected is not None
+                        and selected.auto_apply
+                        and candidate_grace_deadline is None
+                        and futures
+                    ):
+                        candidate_grace_deadline = (
+                            time.monotonic() + PLOT_CANDIDATE_GRACE_SECONDS
+                        )
+        finally:
+            if stop_workers:
+                worker_cancel.set()
+            executor.shutdown(wait=True, cancel_futures=True)
 
         self._check_abort()
-        _progress("Enriching plot: Wikipedia search…")
-        wiki_plot = self._fetch_plot_from_wikipedia(
-            wiki_title,
-            wiki_author,
-            db_title=db_title,
-            db_author=db_author,
-        )
-        if self._apply_plot_to_metadata(
-            metadata, wiki_plot, "wikipedia", db_title, db_author
-        ):
-            return
 
-        # Open Library and Wikipedia both returned nothing usable. Skip further
-        # network plot lookups (Google ISBN) to shorten UI freezes on hard misses.
-        # Still accept an adequate plot already attached from the primary match
-        # (no extra request).
-        google_plot = self._clean_plot_text(metadata.get("plot", ""))
-        if self._plot_is_adequate(google_plot):
-            self._apply_plot_to_metadata(
-                metadata,
-                google_plot,
-                "google_books",
-                db_title,
-                db_author,
-            )
+        selected = _PLOT_RESOLVER.choose(candidates)
+        ranked_candidates = _PLOT_RESOLVER.rank(candidates)
+        diagnostics = getattr(self._plot_diagnostics_local, "active", None)
+        if selected is not None:
+            self._select_plot_candidate(metadata, selected)
+            metadata["plot_candidates"] = [
+                {
+                    "text": candidate.normalized_text,
+                    "source": candidate.source,
+                    "identifiers": dict(candidate.identifiers),
+                    "source_url": candidate.source_url,
+                    "fetched_at": candidate.fetched_at,
+                    "license_id": candidate.license_id,
+                    "modified": candidate.modified,
+                    "match_confidence": candidate.match_confidence,
+                    "auto_apply": candidate.auto_apply,
+                }
+                for candidate in ranked_candidates
+            ]
+            if diagnostics is not None:
+                diagnostics.select(selected)
+        else:
+            metadata.pop("plot", None)
+            metadata.pop("plot_source", None)
+            metadata.pop("plot_source_url", None)
+            metadata.pop("plot_license_id", None)
+            metadata.pop("plot_match_confidence", None)
+            metadata.pop("plot_auto_apply", None)
+            metadata.pop("plot_provenance", None)
+            metadata.pop("plot_candidates", None)
 
         # Never leave short/stub source text on metadata for the review UI or DB.
         final = self._clean_plot_text(metadata.get("plot", ""))
@@ -579,11 +957,78 @@ class WebBookAPI:
         self._cache_dirty = False
         self._active_budget: FetchBudget | None = None
         self._should_cancel: Callable[[], bool] | None = None
+        self._plot_diagnostics_local = threading.local()
+        self._plot_worker_local = threading.local()
         _load_persisted_cooldowns()
         self._load_persistent_cache()
 
+    def _start_plot_diagnostics(self, title: str, author: str) -> None:
+        self._plot_diagnostics_local.active = PlotFetchDiagnostics(
+            title=title or "", author=author or ""
+        )
+        self._plot_diagnostics_local.last = None
+
+    def _record_plot_candidate(self, candidate: PlotCandidate) -> None:
+        diagnostics = getattr(self._plot_diagnostics_local, "active", None)
+        if diagnostics is not None:
+            diagnostics.record(candidate)
+
+    def _record_existing_plot(
+        self,
+        metadata: Dict,
+        *,
+        cache_state: str,
+        query_type: str,
+    ) -> None:
+        plot = self._clean_plot_text(metadata.get("plot", ""))
+        if not self._plot_is_adequate(plot):
+            return
+        source = metadata.get("plot_source") or metadata.get("source") or metadata.get(
+            "_resolved_source", ""
+        )
+        candidate = PlotCandidate(
+            text=plot,
+            normalized_text=plot,
+            source=source,
+            identifiers=candidate_identifiers(metadata),
+            match_confidence=(
+                (metadata.get("plot_provenance") or {}).get("match_confidence")
+                or ("title_author" if metadata.get("author") else "title")
+            ),
+            query_type=query_type,
+            cache_state=cache_state,
+            source_url=candidate_provenance(metadata).get("plot_source_url", ""),
+            license_id=candidate_provenance(metadata).get("plot_license_id", ""),
+        )
+        self._record_plot_candidate(candidate)
+        diagnostics = getattr(self._plot_diagnostics_local, "active", None)
+        if diagnostics is not None:
+            diagnostics.select(candidate)
+
+    def _finish_plot_diagnostics(self) -> None:
+        diagnostics = getattr(self._plot_diagnostics_local, "active", None)
+        if diagnostics is None:
+            return
+        request_count = getattr(self._active_budget, "request_count", 0)
+        diagnostics.finish(request_count=request_count)
+        self._plot_diagnostics_local.last = diagnostics.snapshot()
+        self._plot_diagnostics_local.active = None
+
+    def get_last_plot_diagnostics(self) -> dict:
+        """Return the current thread's latest plot trace without plot text."""
+        snapshot = getattr(self._plot_diagnostics_local, "last", None)
+        if not snapshot:
+            return {}
+        return {
+            **snapshot,
+            "candidates": [dict(item) for item in snapshot.get("candidates", [])],
+        }
+
     def _check_abort(self, source: str | None = None) -> None:
         """Raise FetchAborted when canceled or budget exhausted."""
+        worker_cancel = getattr(self._plot_worker_local, "cancel_event", None)
+        if worker_cancel is not None and worker_cancel.is_set():
+            raise FetchAborted("canceled")
         if self._should_cancel is not None:
             try:
                 if self._should_cancel():
@@ -623,6 +1068,13 @@ class WebBookAPI:
                     stamp_f = float(stamp)
                 except (TypeError, ValueError):
                     continue
+                if (
+                    isinstance(payload, dict)
+                    and payload.get("_cache_schema_version") is not None
+                    and payload.get("_cache_schema_version")
+                    != WEB_CACHE_SCHEMA_VERSION
+                ):
+                    continue
                 if now - stamp_f >= self._cache_ttl_for(payload):
                     continue
                 self._cache[key] = (stamp_f, payload)
@@ -648,9 +1100,9 @@ class WebBookAPI:
                 except (TypeError, ValueError):
                     continue
                 payload = value[1]
-                ttl = self.NEGATIVE_CACHE_TTL if (
-                    isinstance(payload, dict) and payload.get("_no_result")
-                ) else self.CACHE_DURATION
+                if self._cache_entry_kind(payload) == "transient":
+                    continue
+                ttl = self._cache_ttl_for(payload)
                 if now - stamp_f >= ttl:
                     continue
                 entries.append((key, stamp_f, payload))
@@ -684,13 +1136,29 @@ class WebBookAPI:
                 _cache_write_warned = True
 
     def _store_cache_entry(self, cache_key: str, metadata: Dict) -> None:
-        """Store a successful or negative lookup and mark the disk cache dirty."""
-        self._cache[cache_key] = (time.time(), metadata)
+        """Store a classified lookup and mark the disk cache dirty."""
+        stored = dict(metadata)
+        stored["_cache_schema_version"] = WEB_CACHE_SCHEMA_VERSION
+        stored["_cache_kind"] = self._cache_entry_kind(stored)
+        sources = set()
+        for key in ("source", "plot_source", "_resolved_source"):
+            if stored.get(key):
+                sources.add(str(stored[key]))
+        for error in stored.get("_fetch_errors", []) or []:
+            source = str(error).split(":", 1)[0].strip()
+            if source:
+                sources.add(source)
+        if sources:
+            stored["_cache_sources"] = sorted(sources)
+        self._cache[cache_key] = (time.time(), stored)
         self._cache_dirty = True
         self._save_persistent_cache()
 
     def _cache_ttl_for(self, payload) -> float:
-        if isinstance(payload, dict) and payload.get("_no_result"):
+        kind = self._cache_entry_kind(payload)
+        if kind == "transient":
+            return float(TRANSIENT_CACHE_TTL_SECONDS)
+        if kind == "negative":
             return float(self.NEGATIVE_CACHE_TTL)
         return float(self.CACHE_DURATION)
 
@@ -746,6 +1214,12 @@ class WebBookAPI:
             metadata = self._google_item_to_metadata(items[0])
             if metadata:
                 metadata["isbn"] = clean_isbn
+                google_id = str(items[0].get("id") or "").strip()
+                if google_id:
+                    metadata["google_id"] = google_id
+                    metadata["plot_source_url"] = (
+                        f"https://books.google.com/books?id={google_id}"
+                    )
             return metadata
         except FetchAborted:
             raise
@@ -882,6 +1356,8 @@ class WebBookAPI:
                 "open_library_work_key": work_key,
                 "_resolved_source": "open_library",
             }
+            if work_key:
+                metadata["plot_source_url"] = f"https://openlibrary.org{work_key}"
             return metadata
         except FetchAborted:
             raise
@@ -939,6 +1415,7 @@ class WebBookAPI:
         current_time = time.time()
         self._active_budget = FetchBudget()
         self._should_cancel = should_cancel
+        self._start_plot_diagnostics(title or "", author or "")
 
         # Normalize title for search and comparison (do NOT append series number)
         search_title, series_number = self._strip_series_number(title)
@@ -961,6 +1438,12 @@ class WebBookAPI:
             """Return a UI-facing copy without internal cache-only keys."""
             out = dict(metadata)
             out.pop("open_library_work_key", None)
+            for key in (
+                "_cache_schema_version",
+                "_cache_kind",
+                "_cache_sources",
+            ):
+                out.pop(key, None)
             return out
 
         def _finish_metadata(
@@ -986,6 +1469,16 @@ class WebBookAPI:
                     return {"_canceled": True}
             except Exception:
                 pass
+            if not self._plot_is_adequate(metadata.get("plot", "")) or self._is_stub_plot(
+                metadata.get("plot", "")
+            ):
+                metadata.pop("plot", None)
+                metadata.pop("plot_source", None)
+                metadata.pop("plot_source_url", None)
+                metadata.pop("plot_license_id", None)
+                metadata.pop("plot_match_confidence", None)
+                metadata.pop("plot_auto_apply", None)
+                metadata.pop("plot_provenance", None)
             # True only when a usable plot was found — empty attempts must not
             # block later cache hits from retrying enrichment.
             metadata["_plot_enriched"] = self._plot_is_adequate(
@@ -1013,34 +1506,41 @@ class WebBookAPI:
                         if self._should_bypass_negative_cache(cached_result):
                             del self._cache[cache_key]
                             self._cache_dirty = True
+                            cached_result = None
                         else:
-                            return dict(cached_result)
-                    refreshed = dict(cached_result)
-                    refreshed.pop("_series_enriched", None)
-                    refreshed.pop("series", None)
-                    refreshed.pop("series_number", None)
-                    if self._plot_is_adequate(refreshed.get("plot", "")):
-                        refreshed["_plot_enriched"] = True
-                        return _public_copy(refreshed)
-                    # Match cached without plot: retry enrichment (e.g. WikiData
-                    # hit that previously exhausted budget / hit Wikipedia limits).
-                    try:
-                        self._enrich_metadata_plot(
-                            refreshed,
-                            search_title,
-                            search_author or "",
-                            report_progress=_report_progress,
+                            return _public_copy(cached_result)
+                    if cached_result is not None:
+                        refreshed = dict(cached_result)
+                        refreshed.pop("_series_enriched", None)
+                        refreshed.pop("series", None)
+                        refreshed.pop("series_number", None)
+                        if self._plot_is_adequate(refreshed.get("plot", "")):
+                            refreshed["_plot_enriched"] = True
+                            self._record_existing_plot(
+                                refreshed,
+                                cache_state="cache_hit",
+                                query_type="cached_result",
+                            )
+                            return _public_copy(refreshed)
+                        # Match cached without plot: retry enrichment (e.g. WikiData
+                        # hit that previously exhausted budget / hit Wikipedia limits).
+                        try:
+                            self._enrich_metadata_plot(
+                                refreshed,
+                                search_title,
+                                search_author or "",
+                                report_progress=_report_progress,
+                            )
+                        except FetchAborted as abort:
+                            if abort.reason == "canceled":
+                                return {"_canceled": True}
+                        except Exception:
+                            pass
+                        refreshed["_plot_enriched"] = self._plot_is_adequate(
+                            refreshed.get("plot", "")
                         )
-                    except FetchAborted as abort:
-                        if abort.reason == "canceled":
-                            return {"_canceled": True}
-                    except Exception:
-                        pass
-                    refreshed["_plot_enriched"] = self._plot_is_adequate(
-                        refreshed.get("plot", "")
-                    )
-                    self._store_cache_entry(cache_key, dict(refreshed))
-                    return _public_copy(refreshed)
+                        self._store_cache_entry(cache_key, dict(refreshed))
+                        return _public_copy(refreshed)
                 if cached_time and (
                     current_time - cached_time
                 ) >= self._cache_ttl_for(cached_result):
@@ -1131,8 +1631,7 @@ class WebBookAPI:
                     "_fetch_errors": _dedupe_fetch_errors(_errors),
                     "_no_result": True,
                 }
-                if not self._negative_cache_is_transient_google_only(miss):
-                    self._store_cache_entry(cache_key, dict(miss))
+                self._store_cache_entry(cache_key, dict(miss))
                 return miss
             miss = {"_no_result": True, "_fetch_errors": []}
             self._store_cache_entry(cache_key, dict(miss))
@@ -1143,6 +1642,7 @@ class WebBookAPI:
             # Budget exhausted with no match yet
             return None
         finally:
+            self._finish_plot_diagnostics()
             self._active_budget = None
             self._should_cancel = None
             self._save_persistent_cache(force=False)
@@ -1239,7 +1739,7 @@ class WebBookAPI:
         if not volume_info.get("title"):
             return None
 
-        return {
+        metadata = {
             "title": volume_info.get("title", ""),
             "author": self._format_authors(volume_info.get("authors", [])),
             "year": self._extract_year(volume_info.get("publishedDate", "")),
@@ -1252,6 +1752,13 @@ class WebBookAPI:
             "source": "Google Books",
             "confidence": 0.9,
         }
+        google_id = str(item.get("id") or "").strip()
+        if google_id:
+            metadata["google_id"] = google_id
+            metadata["plot_source_url"] = (
+                f"https://books.google.com/books?id={google_id}"
+            )
+        return metadata
 
     def _pick_best_google_match(
         self,
@@ -1403,6 +1910,8 @@ class WebBookAPI:
                         )
                 queries_to_try.append(variant_title)
 
+        fallback_metadata = None
+        fallback_title_score = -1.0
         seen_queries = set()
         for query in queries_to_try:
             if query in seen_queries:
@@ -1432,6 +1941,7 @@ class WebBookAPI:
                 if data.get("docs"):
                     best_metadata = None
                     best_title_score = -1.0
+                    best_exact_title = False
                     best_work_key = ""
                     best_isbn = ""
                     for doc in data["docs"]:
@@ -1446,7 +1956,10 @@ class WebBookAPI:
                             "ratings_count": str(doc.get("ratings_count", "")),
                             "source": "open_library",
                         }
-                        if not self._metadata_matches_db(
+                        identity_match = self._plot_identifier_matches_db(
+                            title, db_author, candidate
+                        )
+                        if not identity_match and not self._metadata_matches_db(
                             title,
                             db_author,
                             candidate,
@@ -1456,7 +1969,12 @@ class WebBookAPI:
                         title_score = self._best_title_word_match_score(
                             title, candidate.get("title", ""), db_author
                         )
-                        if title_score > best_title_score:
+                        exact_title = identity_match
+                        if (exact_title, title_score) > (
+                            best_exact_title,
+                            best_title_score,
+                        ):
+                            best_exact_title = exact_title
                             best_title_score = title_score
                             best_metadata = candidate
                             best_work_key = doc.get("key", "") or ""
@@ -1466,11 +1984,19 @@ class WebBookAPI:
                             best_metadata["isbn"] = best_isbn
                         if best_work_key:
                             best_metadata["open_library_work_key"] = best_work_key
-                            work_fields = self._get_open_library_work_fields(
-                                best_work_key
-                            )
-                            best_metadata["plot"] = work_fields.get("description", "")
-                        return best_metadata
+                        if best_exact_title:
+                            if best_work_key:
+                                work_fields = self._get_open_library_work_fields(
+                                    best_work_key
+                                )
+                                best_metadata["plot"] = work_fields.get(
+                                    "description", ""
+                                )
+                            return best_metadata
+                        if best_title_score > fallback_title_score:
+                            fallback_title_score = best_title_score
+                            fallback_metadata = dict(best_metadata)
+
             except FetchAborted:
                 raise
             except urllib.error.HTTPError as exc:
@@ -1479,6 +2005,12 @@ class WebBookAPI:
             except Exception:
                 continue
 
+        if fallback_metadata:
+            fallback_work_key = fallback_metadata.get("open_library_work_key", "")
+            if fallback_work_key:
+                work_fields = self._get_open_library_work_fields(fallback_work_key)
+                fallback_metadata["plot"] = work_fields.get("description", "")
+            return fallback_metadata
         return None
 
     def _get_open_library_work_fields(self, work_key: str) -> Dict[str, str]:
@@ -1555,6 +2087,9 @@ class WebBookAPI:
                         "description", ""
                     )
                     if plot and len(plot) > 20:
+                        self._plot_diagnostics_local.source_url = (
+                            f"https://openlibrary.org{work_key}"
+                        )
                         return plot
 
             return ""
@@ -1570,11 +2105,11 @@ class WebBookAPI:
         try:
             self._check_abort()
             encoded_title = urllib.parse.quote(title.replace(" ", "_"))
-            url = (
+            request_url = (
                 f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded_title}"
             )
             data = _http_get_json(
-                url,
+                request_url,
                 timeout=TIMEOUT_DETAIL,
                 source="wikipedia",
                 budget=self._active_budget,
@@ -1582,6 +2117,12 @@ class WebBookAPI:
             extract = data.get("extract", "")
             if data.get("type") == "disambiguation":
                 return ""
+            page_url = (
+                data.get("content_urls", {}).get("desktop", {}).get("page", "")
+            )
+            if not page_url:
+                page_url = request_url
+            self._plot_diagnostics_local.source_url = page_url
             return self._strip_html(extract)
         except FetchAborted:
             raise
@@ -1681,6 +2222,12 @@ class WebBookAPI:
                             match_author, extract
                         ):
                             continue
+                        self._plot_diagnostics_local.source_url = (
+                            "https://en.wikipedia.org/wiki/"
+                            + urllib.parse.quote(
+                                page_data.get("title", page_title).replace(" ", "_")
+                            )
+                        )
                         return extract
 
             return ""
@@ -2047,6 +2594,24 @@ class WebBookAPI:
         ):
             cleaned_data.pop("plot", None)
             cleaned_data.pop("plot_source", None)
+
+        cleaned_candidates = []
+        for candidate in cleaned_data.get("plot_candidates") or []:
+            if not isinstance(candidate, dict):
+                continue
+            candidate = dict(candidate)
+            candidate_plot = self._clean_plot_text(candidate.get("text", ""))
+            if (
+                not self._plot_is_adequate(candidate_plot)
+                or self._is_stub_plot(candidate_plot)
+            ):
+                continue
+            candidate["text"] = candidate_plot
+            cleaned_candidates.append(candidate)
+        if cleaned_candidates:
+            cleaned_data["plot_candidates"] = cleaned_candidates
+        else:
+            cleaned_data.pop("plot_candidates", None)
 
         # Drop series keys so legacy disk-cache entries cannot resurface in the UI.
         cleaned_data.pop("series", None)

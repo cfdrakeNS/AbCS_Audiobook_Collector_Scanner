@@ -214,6 +214,10 @@ def apply_web_changes_to_book(db, book, web_data: dict) -> list[str]:
     """Apply all field differences from cleaned web_data; return applied labels."""
     from src.database.queries import AuthorQueries, BookQueries, GenreQueries
 
+    web_data = dict(web_data or {})
+    if web_data.get("plot") and not web_data.get("plot_auto_apply", False):
+        web_data.pop("plot", None)
+
     differences = WebMetadataWindow.compute_field_differences(book, web_data)
     if not differences:
         return []

@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -50,6 +51,8 @@ RATE_LIMIT_RETRY_DELAY_SECONDS = SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS
 
 _source_cooldown_until: dict[str, float] = {}
 _cooldown_persist_warned = False
+_cooldown_lock = threading.RLock()
+_http_start_lock = threading.Lock()
 
 
 def _resolve_web_cache_file() -> str:
@@ -84,49 +87,51 @@ def _load_persisted_cooldowns() -> None:
         if not isinstance(raw, dict):
             return
         now = time.time()
-        for source, until in raw.items():
-            try:
-                until_f = float(until)
-            except (TypeError, ValueError):
-                continue
-            if until_f > now:
-                previous = _source_cooldown_until.get(str(source), 0.0)
-                if until_f > previous:
-                    _source_cooldown_until[str(source)] = until_f
+        with _cooldown_lock:
+            for source, until in raw.items():
+                try:
+                    until_f = float(until)
+                except (TypeError, ValueError):
+                    continue
+                if until_f > now:
+                    previous = _source_cooldown_until.get(str(source), 0.0)
+                    if until_f > previous:
+                        _source_cooldown_until[str(source)] = until_f
     except Exception:
         pass
 
 
 def _save_persisted_cooldowns() -> None:
     global _cooldown_persist_warned
-    path = _cooldown_state_path()
-    try:
-        now = time.time()
-        active = {
-            source: until
-            for source, until in _source_cooldown_until.items()
-            if until > now
-        }
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    with _cooldown_lock:
+        path = _cooldown_state_path()
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(active, handle, separators=(",", ":"))
-            os.replace(tmp_path, path)
-        except Exception:
+            now = time.time()
+            active = {
+                source: until
+                for source, until in _source_cooldown_until.items()
+                if until > now
+            }
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
             try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
-    except Exception as exc:
-        if not _cooldown_persist_warned:
-            print(
-                f"[AbCS] Warning: could not persist web source cooldowns "
-                f"({path}): {exc}",
-                file=sys.stderr,
-            )
-            _cooldown_persist_warned = True
+                with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                    json.dump(active, handle, separators=(",", ":"))
+                os.replace(tmp_path, path)
+            except Exception:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
+        except Exception as exc:
+            if not _cooldown_persist_warned:
+                print(
+                    f"[AbCS] Warning: could not persist web source cooldowns "
+                    f"({path}): {exc}",
+                    file=sys.stderr,
+                )
+                _cooldown_persist_warned = True
 
 
 def get_google_books_api_key() -> str:
@@ -161,11 +166,16 @@ class FetchBudget:
         self.google_count = 0
         self.wikidata_count = 0
         self.exhausted = False
+        self._lock = threading.Lock()
 
     def remaining_seconds(self) -> float:
         return max(0.0, self.deadline - time.time())
 
     def can_continue(self, source: str | None = None) -> bool:
+        with self._lock:
+            return self._can_continue_unlocked(source)
+
+    def _can_continue_unlocked(self, source: str | None = None) -> bool:
         if self.exhausted:
             return False
         if self.request_count >= self.max_requests:
@@ -180,14 +190,29 @@ class FetchBudget:
             return False
         return True
 
+    def reserve_request(self, source: str | None = None) -> bool:
+        """Atomically check all limits and count one request reservation."""
+        with self._lock:
+            if not self._can_continue_unlocked(source):
+                return False
+            self.request_count += 1
+            if source == "google_books":
+                self.google_count += 1
+            elif source == "wikidata":
+                self.wikidata_count += 1
+            if self.request_count >= self.max_requests or time.time() >= self.deadline:
+                self.exhausted = True
+            return True
+
     def note_request(self, source: str | None = None) -> None:
-        self.request_count += 1
-        if source == "google_books":
-            self.google_count += 1
-        elif source == "wikidata":
-            self.wikidata_count += 1
-        if self.request_count >= self.max_requests or time.time() >= self.deadline:
-            self.exhausted = True
+        with self._lock:
+            self.request_count += 1
+            if source == "google_books":
+                self.google_count += 1
+            elif source == "wikidata":
+                self.wikidata_count += 1
+            if self.request_count >= self.max_requests or time.time() >= self.deadline:
+                self.exhausted = True
 
 
 class FetchAborted(Exception):
@@ -252,21 +277,25 @@ def _note_rate_limited(
         parsed = _parse_retry_after_seconds(headers, default=default)
         seconds = max(float(default), float(parsed))
     until = time.time() + max(0.0, float(seconds))
-    previous = _source_cooldown_until.get(source, 0.0)
-    if until > previous:
-        _source_cooldown_until[source] = until
+    with _cooldown_lock:
+        previous = _source_cooldown_until.get(source, 0.0)
+        changed = until > previous
+        if changed:
+            _source_cooldown_until[source] = until
+    if changed:
         _save_persisted_cooldowns()
 
 
 def _seconds_until_cooldown_clears(source: str) -> float:
-    until = _source_cooldown_until.get(source, 0.0)
-    remaining = until - time.time()
-    if remaining <= 0:
-        if source in _source_cooldown_until:
+    with _cooldown_lock:
+        until = _source_cooldown_until.get(source, 0.0)
+        remaining = until - time.time()
+        expired = remaining <= 0 and source in _source_cooldown_until
+        if expired:
             _source_cooldown_until.pop(source, None)
-            _save_persisted_cooldowns()
-        return 0.0
-    return remaining
+    if expired:
+        _save_persisted_cooldowns()
+    return max(0.0, remaining)
 
 
 def _is_source_cooling_down(source: str) -> bool:
@@ -274,10 +303,11 @@ def _is_source_cooling_down(source: str) -> bool:
 
 
 def _clear_source_cooldown(source: str | None = None) -> None:
-    if source is None:
-        _source_cooldown_until.clear()
-    else:
-        _source_cooldown_until.pop(source, None)
+    with _cooldown_lock:
+        if source is None:
+            _source_cooldown_until.clear()
+        else:
+            _source_cooldown_until.pop(source, None)
     _save_persisted_cooldowns()
 
 
@@ -326,11 +356,6 @@ def _http_get_json(
     accept: str | None = None,
 ) -> dict:
     """GET JSON with shared User-Agent, retry/cooldown, and optional budget count."""
-    if budget is not None and not budget.can_continue(source):
-        raise FetchAborted("budget")
-    if _is_source_cooling_down(source):
-        _raise_cooldown_http_error(source)
-
     req = urllib.request.Request(url)
     req.add_header("User-Agent", USER_AGENT)
     if accept:
@@ -339,8 +364,13 @@ def _http_get_json(
         for key, value in extra_headers.items():
             req.add_header(key, value)
 
+    with _http_start_lock:
+        if _is_source_cooling_down(source):
+            _raise_cooldown_http_error(source)
+        if budget is not None and not budget.reserve_request(source):
+            raise FetchAborted("budget")
     if budget is not None:
-        budget.note_request(source)
+        timeout = max(0.001, min(float(timeout), budget.remaining_seconds()))
 
     try:
         with _urlopen_with_retry(req, timeout, source=source) as response:

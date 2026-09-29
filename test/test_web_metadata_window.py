@@ -225,6 +225,8 @@ def test_initial_focus_is_plot(qapp, ui_scaler, theme_manager, sample_book):
         dlg.set_initial_focus()
         qapp.processEvents()
         assert qapp.focusWidget() is dlg.plot_edit
+        assert not dlg.plot_alternatives.isVisible()
+        assert dlg.plot_alternatives not in dlg._iter_tab_widgets()
     finally:
         dlg.close()
 
@@ -250,6 +252,58 @@ def test_tab_order_web_fields_before_buttons(window):
     assert window.genre_web_edit in chain
     assert chain.index(window.year_web_edit) < chain.index(window.refetch_button)
     assert chain.index(window.genre_web_edit) < chain.index(window.save_button)
+
+
+def test_other_plots_selector_updates_reviewed_plot_and_provenance(window, qapp):
+    selected_text = "Best identity match. " + "A" * 100
+    alternative_text = "Alternate accepted description. " + "B" * 100
+    web_data = {
+        "title": window.book.title,
+        "author": window.book.author_name,
+        "plot": selected_text,
+        "plot_candidates": [
+            {
+                "text": selected_text,
+                "source": "open_library",
+                "source_url": "https://openlibrary.org/works/OL1W",
+                "identifiers": {"open_library_work_key": "/works/OL1W"},
+                "fetched_at": "2026-09-29T12:00:00+00:00",
+                "license_id": "terms-review-required",
+                "modified": False,
+                "match_confidence": "identifier",
+                "auto_apply": True,
+            },
+            {
+                "text": alternative_text,
+                "source": "wikipedia",
+                "source_url": "https://en.wikipedia.org/wiki/Example",
+                "identifiers": {},
+                "fetched_at": "2026-09-29T12:00:01+00:00",
+                "license_id": "CC-BY-SA-4.0",
+                "modified": False,
+                "match_confidence": "title_author",
+                "auto_apply": True,
+            },
+        ],
+    }
+
+    window.show()
+    qapp.processEvents()
+    window.update_fields_with_web_data(web_data)
+    qapp.processEvents()
+
+    assert window.plot_alternatives.isVisible()
+    assert window.plot_alternatives.accessibleName() == "Other plots"
+    assert window.plot_alternatives in window._iter_tab_widgets()
+    assert window.plot_alternatives.itemText(0) == "Best match"
+    assert window.plot_alternatives.itemText(1) == "Other plot 1"
+
+    window.plot_alternatives.setCurrentIndex(1)
+
+    assert window.plot_edit.plot_text().startswith("Alternate accepted description.")
+    assert window.web_data["plot_source"] == "wikipedia"
+    assert window.web_data["plot_provenance"]["source_url"].endswith("Example")
+    assert "plot" in window.field_differences
 
 
 def _tab_focus_names(widget, qapp, *, start_widget, steps: int) -> list[str]:

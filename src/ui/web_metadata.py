@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QLineEdit,
+    QComboBox,
     QPushButton,
     QMessageBox,
     QCheckBox,
@@ -445,7 +446,28 @@ class WebMetadataWindow(AccessibleDialog):
         plot_layout.setContentsMargins(0, 0, 0, 0)
         plot_layout.setSpacing(10)
         plot_layout.addWidget(plot_label)
-        plot_layout.addWidget(self.plot_edit, 1)
+        plot_content = QWidget()
+        plot_content_layout = QVBoxLayout(plot_content)
+        plot_content_layout.setContentsMargins(0, 0, 0, 0)
+        plot_content_layout.setSpacing(4)
+        plot_content_layout.addWidget(self.plot_edit)
+        self.plot_alternatives_label = QLabel("Other plots:")
+        self.plot_alternatives_label.setVisible(False)
+        self.plot_alternatives = QComboBox()
+        self.plot_alternatives.setAccessibleName("Other plots")
+        self.plot_alternatives.setAccessibleDescription(
+            "Choose another valid plot description to review"
+        )
+        self.plot_alternatives.setObjectName("plot_alternatives")
+        self.plot_alternatives.setVisible(False)
+        self.plot_alternatives.setFocusPolicy(Qt.NoFocus)
+        self.plot_alternatives_label.setBuddy(self.plot_alternatives)
+        plot_content_layout.addWidget(self.plot_alternatives_label)
+        self.plot_alternatives.currentIndexChanged.connect(
+            self.on_plot_alternative_changed
+        )
+        plot_content_layout.addWidget(self.plot_alternatives)
+        plot_layout.addWidget(plot_content, 1)
         self.plot_row = plot_row  # Store reference for hiding/showing
         self.main_layout.addWidget(plot_row)
 
@@ -561,6 +583,8 @@ class WebMetadataWindow(AccessibleDialog):
                 self.genre_web_edit: "Genre from web search",
                 self.genre_checkbox: "Keep the web genre",
                 self.plot_edit: "Current plot or description",
+                self.plot_alternatives_label: "Choose another valid plot description",
+                self.plot_alternatives: "Choose another valid plot description",
                 self.rating_edit: "Current rating",
                 self.status_bar: "Web metadata status",
             }
@@ -604,6 +628,7 @@ class WebMetadataWindow(AccessibleDialog):
             self.genre_web_edit,
             self.genre_checkbox,
             self.plot_edit,
+            self.plot_alternatives,
             self.rating_edit,
             self.refetch_button,
             self.save_button,
@@ -621,7 +646,10 @@ class WebMetadataWindow(AccessibleDialog):
             if not self._widget_takes_tab_focus(widget):
                 widget.setFocusPolicy(Qt.NoFocus)
                 continue
-            if isinstance(widget, (QLineEdit, PlotLineList, QCheckBox, QPushButton)):
+            if isinstance(
+                widget,
+                (QLineEdit, PlotLineList, QComboBox, QCheckBox, QPushButton),
+            ):
                 widget.setFocusPolicy(Qt.StrongFocus)
             visible.append(widget)
         return visible
@@ -886,7 +914,72 @@ class WebMetadataWindow(AccessibleDialog):
             self.plot_edit.set_plot_text(self.book.comments or "")
             self.rating_edit.clear()
 
+        self._populate_plot_alternatives(web_data)
+
         self.set_tab_order()
+
+    def _populate_plot_alternatives(self, web_data: dict) -> None:
+        candidates = [
+            candidate
+            for candidate in web_data.get("plot_candidates", [])
+            if isinstance(candidate, dict) and str(candidate.get("text") or "").strip()
+        ]
+        self.plot_alternatives.blockSignals(True)
+        self.plot_alternatives.clear()
+        if len(candidates) < 2:
+            self.plot_alternatives_label.setVisible(False)
+            self.plot_alternatives.setVisible(False)
+            self.plot_alternatives.setFocusPolicy(Qt.NoFocus)
+            self.plot_alternatives.blockSignals(False)
+            return
+
+        self.plot_alternatives.addItem("Best match", candidates[0])
+        for index, candidate in enumerate(candidates[1:], start=1):
+            self.plot_alternatives.addItem(f"Other plot {index}", candidate)
+        self.plot_alternatives_label.setVisible(True)
+        self.plot_alternatives.setVisible(True)
+        self.plot_alternatives.setFocusPolicy(Qt.StrongFocus)
+        self.plot_alternatives.setCurrentIndex(0)
+        self.plot_alternatives.blockSignals(False)
+
+    def on_plot_alternative_changed(self, index: int) -> None:
+        if index < 0 or not self.web_data:
+            return
+        candidate = self.plot_alternatives.itemData(index)
+        if not isinstance(candidate, dict):
+            return
+
+        plot = str(candidate.get("text") or "")
+        self.web_data["plot"] = plot
+        self.web_data["plot_source"] = candidate.get("source", "")
+        self.web_data["plot_source_url"] = candidate.get("source_url", "")
+        self.web_data["plot_license_id"] = candidate.get("license_id", "")
+        self.web_data["plot_match_confidence"] = (
+            "high" if candidate.get("auto_apply") else "medium"
+        )
+        self.web_data["plot_auto_apply"] = bool(candidate.get("auto_apply"))
+        self.web_data["plot_provenance"] = {
+            key: candidate.get(key, default)
+            for key, default in (
+                ("source", ""),
+                ("identifiers", {}),
+                ("source_url", ""),
+                ("fetched_at", ""),
+                ("license_id", ""),
+                ("modified", False),
+                ("match_confidence", "low"),
+            )
+        }
+        self.plot_edit.set_plot_text(plot)
+        plot_for_db = self._build_plot_text_for_db(self.web_data)
+        if plot_text_equivalent(plot_for_db, self.book.comments or ""):
+            self.field_differences.pop("plot", None)
+        else:
+            self.field_differences["plot"] = plot_for_db
+        self.set_status(
+            f"Other plot selected - {self._plot_status_phrase(self.web_data)}",
+            announce=True,
+        )
 
     def setup_shortcuts(self):
         """

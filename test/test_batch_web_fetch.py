@@ -165,6 +165,28 @@ def test_apply_web_changes_to_book_title_only():
     bq_cls.return_value.update.assert_called_once()
 
 
+def test_apply_web_changes_does_not_replace_plot_without_high_confidence():
+    existing_plot = "Existing saved plot text."
+    book = SimpleNamespace(
+        title="Title",
+        author_name="Author",
+        year=None,
+        genre_name="",
+        comments=existing_plot,
+        author_id=1,
+        genre_id=None,
+    )
+
+    applied = apply_web_changes_to_book(
+        MagicMock(),
+        book,
+        {"plot": "A newly fetched plot that has not reached the confidence threshold."},
+    )
+
+    assert "Plot" not in applied
+    assert book.comments == existing_plot
+
+
 def test_summary_dialog_focus_default_apply(qapp):
     from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
 
