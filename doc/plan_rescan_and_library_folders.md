@@ -3,7 +3,7 @@
 **Status:** Part A complete — tester accepted (Phase 11). Parts B and C deferred after v3.  
 **Created:** June 2026  
 **Updated:** September 2026 — Part A implemented (`collections.root_path`); single-collection path sync with Preferences import folder  
-**Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/06_collections.md), [Preferences](help_docs/10_preferences.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_schema_batch.md](plan_schema_batch.md), [Plan_name_consistency_check.md](Plan_name_consistency_check.md)
+**Related:** [Import process](help_docs/02_import.md), [Import explained](help_docs/19_import_explained.md), [Collections](help_docs/06_collections.md), [Preferences](help_docs/10_preferences.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md), [Plan_name_consistency_check.md](v3_enhancements/Plan_name_consistency_check.md)
 
 ---
 
@@ -16,7 +16,7 @@ This document covers:
 
 They belong together because a **collection `root_path`** is the natural anchor for “rescan this collection’s tree” without browsing every time. File **move/organize** is a separate phase with higher risk; it is not required for rescan to ship.
 
-**Preview audiobook** (OS default player) is a separate plan: [`plan_audiobook_preview.md`](plan_audiobook_preview.md).
+**Preview audiobook** (OS default player) is a separate plan: [`plan_audiobook_preview.md`](v3_enhancements/plan_audiobook_preview.md).
 
 ---
 
@@ -52,7 +52,7 @@ Wizard to **copy or move** audiobook folders/files into a layout under the colle
 
 ### Schema
 
-Column added in Phase 11 (this feature), on first start for existing DBs, using the same upgrade path as [plan_schema_batch.md](plan_schema_batch.md). Not part of the Phase 9 series-number upgrade:
+Column added in Phase 11 (this feature), on first start for existing DBs, using the same upgrade path as [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md). Not part of the Phase 9 series-number upgrade:
 
 `root_path TEXT` on `collections`.
 
@@ -293,7 +293,7 @@ User picks collection with `root_path` set. Wizard:
 - Rescan entire library across all collections in one pass (use per-collection runs)
 - Auto-rescan on startup
 - Watch folder / file system monitoring
-- Open location in file manager ([`plan_audiobook_preview.md`](plan_audiobook_preview.md))
+- Open location in file manager ([`plan_audiobook_preview.md`](v3_enhancements/plan_audiobook_preview.md))
 - Web metadata during rescan
 
 ---

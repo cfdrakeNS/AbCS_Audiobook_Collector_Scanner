@@ -2,7 +2,7 @@
 
 **Status:** Complete  
 **Created:** June 2026  
-**Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_book_details_path_browse.md](plan_book_details_path_browse.md), [plan_check_books_path_progress.md](plan_check_books_path_progress.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
+**Related:** [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), [plan_book_details_path_browse.md](plan_book_details_path_browse.md), [plan_check_books_path_progress.md](plan_check_books_path_progress.md), [plan_rescan_and_library_folders.md](../plan_rescan_and_library_folders.md), [plan_audiobook_preview.md](plan_audiobook_preview.md)
 
 ---
 

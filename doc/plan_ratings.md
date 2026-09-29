@@ -3,7 +3,7 @@
 **Status:** Deferred after version 3 — **out of scope for v3**. Phase 9 does not add rating columns.  
 **Created:** June 2026  
 **Updated:** September 2026  
-**Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Import explained](help_docs/19_import_explained.md), [Plan_covers.md](Plan_covers.md), [plan_schema_batch.md](plan_schema_batch.md)
+**Related:** [Web Metadata](help_docs/07_web_metadata.md), [Book Details](help_docs/04_book_details.md), [Import explained](help_docs/19_import_explained.md), [Plan_covers.md](Plan_covers.md), [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md)
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Status:** Complete — tester accepted Alt+W after the split (September 2026)  
 **Created:** September 2026  
-**Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [help_docs/07_web_metadata.md](../help_docs/07_web_metadata.md)
+**Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), [help_docs/07_web_metadata.md](../../help_docs/07_web_metadata.md)
 
 ---
 
@@ -28,11 +28,11 @@ Fake worker drove the real progress dialog, then a completion dialog. Progress s
 
 ### A — Background thread (tester accepted)
 
-- `WebBookAPI.get_book_metadata` runs on a `QObject` worker on a `QThread` via [`web_fetch_service.py`](../src/web/web_fetch_service.py).
+- `WebBookAPI.get_book_metadata` runs on a `QObject` worker on a `QThread` via [`web_fetch_service.py`](../../src/web/web_fetch_service.py).
 - `fetch_web_metadata_for_book` still **blocks** with `popup.exec()` and returns `WebFetchResult`.
 - Progress and completion use queued signals. GUI-thread `@Slot` bridge installs the wait-dialog event filter (not the worker).
 - Cancel uses `threading.Event` plus `_user_canceled` so shutdown does not look like Escape.
-- Initial announce is in `showEvent` on [`WebFetchProgressDialog`](../src/ui/web_fetch_progress.py).
+- Initial announce is in `showEvent` on [`WebFetchProgressDialog`](../../src/ui/web_fetch_progress.py).
 - Escape only — no Cancel button, no Alt+C on the wait dialog.
 
 ### B — Split `web_book_api.py`
@@ -41,10 +41,10 @@ Public API unchanged (`WebBookAPI`, `get_web_api`, re-exported HTTP/matching/cac
 
 | Module | Responsibility |
 |--------|----------------|
-| [`web_http.py`](../src/web/web_http.py) | `_http_get_json`, urlopen, cooldown, budget, User-Agent, `WEB_CACHE_FILE` |
-| [`web_matching.py`](../src/web/web_matching.py) | STOPWORDS, honorifics, Orwell tokens |
-| [`web_cache.py`](../src/web/web_cache.py) | TTL / cache-size constants |
-| [`web_book_api.py`](../src/web/web_book_api.py) | Facade + `WebBookAPI` (per-source fetch and plot enrich stay here) |
+| [`web_http.py`](../../src/web/web_http.py) | `_http_get_json`, urlopen, cooldown, budget, User-Agent, `WEB_CACHE_FILE` |
+| [`web_matching.py`](../../src/web/web_matching.py) | STOPWORDS, honorifics, Orwell tokens |
+| [`web_cache.py`](../../src/web/web_cache.py) | TTL / cache-size constants |
+| [`web_book_api.py`](../../src/web/web_book_api.py) | Facade + `WebBookAPI` (per-source fetch and plot enrich stay here) |
 
 Per-source Open Library / Google Books / WikiData / Wikipedia and plot enrich were **not** extracted. That keeps the split small and patch targets stable.
 
@@ -58,7 +58,7 @@ Web tests: `test_web_api_unit.py`, `test_web_api_fetch.py`, `test_web_api_series
 
 ## Accessibility
 
-Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+Follow the master checklist: [Accessibility and UI formatting standards](../plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
 
 - Progress dialog: announce on `showEvent`; Escape cancel; status updates on the GUI thread only (QObject bridge).
 - Completion dialog: `raise_()` + `activateWindow()` + focus default button; styled via `exec_styled_message_box` or `AccessibleDialog` + `build_accessible_button_style`.
@@ -70,7 +70,7 @@ Follow the master checklist: [Accessibility and UI formatting standards](plan_en
 ## Out of scope
 
 - Bulk multi-book queue ([plan_bulk_web_metadata.md](plan_bulk_web_metadata.md)) — Phase 2.
-- Non-modal keep-using-the-app jobs ([plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md)) — skipped for v3.
+- Non-modal keep-using-the-app jobs ([plan_web_fetch_nonmodal_job.md](../plan_web_fetch_nonmodal_job.md)) — skipped for v3.
 - Extracting per-source / enrich modules — later follow-on, not required to close Phase 1.
 - Parallel sources / merge-quality rework — later follow-on.
 - New metadata sources.

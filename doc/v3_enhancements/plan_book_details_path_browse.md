@@ -2,7 +2,7 @@
 
 **Status:** Complete  
 **Estimate:** 0.5 day  
-**Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_path_health_report.md](plan_path_health_report.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A
+**Related:** [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), [plan_path_health_report.md](plan_path_health_report.md), [plan_rescan_and_library_folders.md](../plan_rescan_and_library_folders.md) Part A
 
 ---
 

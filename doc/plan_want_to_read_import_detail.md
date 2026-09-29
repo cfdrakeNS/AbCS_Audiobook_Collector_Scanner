@@ -2,7 +2,7 @@
 
 **Status:** Planned (not yet implemented)  
 **Created:** June 2026  
-**Related:** [plan_want_to_read.md](plan_want_to_read.md), [Import Detail](help_docs/12_import_detail.md)
+**Related:** [plan_want_to_read.md](v3_enhancements/plan_want_to_read.md), [Import Detail](help_docs/12_import_detail.md)
 
 ---
 

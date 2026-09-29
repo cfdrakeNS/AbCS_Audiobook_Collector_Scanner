@@ -1,9 +1,9 @@
 # Book Details layout — Version 3 Phase 18
 
 **Status:** Tester accepted. Help review is last. The cover is a tab stop (Book cover or No cover). A missing cover uses `graphics/no_book_cover_512x512.png`. Read date and Want to read save without Update. Shortcuts dropped for Files, Format, Bitrate, and Size. Want to read is Alt+K.  
-**Picture:** [book_details_layout.png](book_details_layout.png)  
+**Picture:** [book_details_layout.png](../book_details_layout.png)
 **Created:** September 2026  
-**Related:** [plan_book_details_cover.md](plan_book_details_cover.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [plan_book_details_cover.md](plan_book_details_cover.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 Rearrange Book Details. Do not change what the fields do. The picture stays the embedded cover from Phase 17.
 
@@ -60,13 +60,13 @@ Cover is not a tab stop. Focus still starts on Title.
 
 Keep every existing shortcut. Letters do not move because the fields moved.
 
-From [`BOOK_DETAILS_SHORTCUTS`](../src/accessibility/shortcuts.py): Alt+T Title, Alt+A Author, Alt+I Series, Alt+G Genre, Alt+P Plot, Alt+Y Year, Alt+M Time, Alt+F Files, Alt+O Format, Alt+B Bitrate, Alt+R Reader, Alt+C Collection, Alt+E Read date, Alt+Z Size, Alt+H Path, Alt+W Web. Series number stays Alt+I, then Tab.
+From [`BOOK_DETAILS_SHORTCUTS`](../../src/accessibility/shortcuts.py): Alt+T Title, Alt+A Author, Alt+I Series, Alt+G Genre, Alt+P Plot, Alt+Y Year, Alt+M Time, Alt+F Files, Alt+O Format, Alt+B Bitrate, Alt+R Reader, Alt+C Collection, Alt+E Read date, Alt+Z Size, Alt+H Path, Alt+W Web. Series number stays Alt+I, then Tab.
 
 Also keep Alt+N New, Alt+U Edit, Alt+S Save, Alt+D Delete, Ctrl+L Listen (was Alt+Shift+P Preview; Phase 29), Alt+/ status, F1, Shift+F1, Page Up, Page Down, and Escape.
 
 ## Help and tests
 
-- One sentence in [`help_docs/04_book_details.md`](../help_docs/04_book_details.md): cover on the right, short fields under it, Tab order as above.
+- One sentence in [`help_docs/04_book_details.md`](../../help_docs/04_book_details.md): cover on the right, short fields under it, Tab order as above.
 - A test walks Tab from Title through Path in the order above, asserts Cover is skipped, and asserts a book with no art still shows the icon in a box of the same size.
 
 ## Gate

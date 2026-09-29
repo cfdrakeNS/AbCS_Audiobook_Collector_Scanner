@@ -1,7 +1,7 @@
 # Book Details Open Performance
 
 **Status:** Implemented September 29, 2026.
-**Related:** [Version 3 release roadmap](plan_enhancements_version3_release.md), [Book Details layout](plan_book_details_layout.md)
+**Related:** [Version 3 release roadmap](../plan_enhancements_version3_release.md), [Book Details layout](plan_book_details_layout.md)
 
 ## Problem
 

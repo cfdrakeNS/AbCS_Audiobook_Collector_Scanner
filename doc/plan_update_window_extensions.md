@@ -2,7 +2,7 @@
 
 **Status:** Planned (not yet implemented)  
 **Created:** June 2026  
-**Related:** [Update window](../src/ui/update_window.py), [plan_want_to_read.md](plan_want_to_read.md), [plan_ratings.md](plan_ratings.md)
+**Related:** [Update window](../src/ui/update_window.py), [plan_want_to_read.md](v3_enhancements/plan_want_to_read.md), [plan_ratings.md](plan_ratings.md)
 
 ---
 
@@ -22,7 +22,7 @@ Extend bulk **Update** (Alt+U on selection) beyond series, genre, and collection
 
 | Field | Control | Behavior |
 |-------|---------|----------|
-| Want to read | Checkbox tri-state: Set / Clear / No change | After [`plan_want_to_read.md`](plan_want_to_read.md) |
+| Want to read | Checkbox tri-state: Set / Clear / No change | After [`plan_want_to_read.md`](v3_enhancements/plan_want_to_read.md) |
 | Reader | Combo + None | Same immediate-apply pattern |
 | Year | Spin or None | Optional |
 | Rating | Defer | User-editable per book; bulk rating risky |

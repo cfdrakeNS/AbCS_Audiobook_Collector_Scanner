@@ -346,12 +346,16 @@ def test_escape_edit_without_changes_stays_in_window(
 
 
 def test_name_list_sort_by_name(temp_db, ui_scaler, theme_manager):
-    SeriesQueries(temp_db).insert("Zulu")
-    SeriesQueries(temp_db).insert("Alpha")
+    series_queries = SeriesQueries(temp_db)
+    zulu_id = series_queries.insert("Zulu")
+    alpha_id = series_queries.insert("Alpha")
     window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
     window._sort_by = "name"
     window._sort_ascending = True
-    items = window._sort_items_for_display(window.query.get_all())
+    all_items = {item.series_id: item for item in window.query.get_all()}
+    items = window._sort_items_for_display(
+        [all_items[zulu_id], all_items[alpha_id]]
+    )
     assert [item.name for item in items] == ["Alpha", "Zulu"]
     window.close()
 

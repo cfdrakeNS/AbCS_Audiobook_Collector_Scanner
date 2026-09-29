@@ -2,7 +2,7 @@
 
 **Status:** Complete — Sept 27, 2026. Phase 16 help review is next.  
 **Created:** September 27, 2026 (from tester feedback; first drafted in chat, saved here)  
-**Related:** [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_help_docs_review.md](plan_help_docs_review.md), [shortcuts.py](../src/accessibility/shortcuts.py), [help_docs/16_shortcuts.md](../help_docs/16_shortcuts.md)
+**Related:** [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), [plan_help_docs_review.md](plan_help_docs_review.md), [shortcuts.py](../../src/accessibility/shortcuts.py), [help_docs/16_shortcuts.md](../../help_docs/16_shortcuts.md)
 
 ---
 
@@ -28,7 +28,7 @@
 
 ### 1. Book Details — Edit instead of Update
 
-"Update" collides in meaning with the main window **Update** window (bulk, Alt+U). "Edit" with **Alt+E** also matches Collection and Name list, which already use Alt+E for Edit. Keys are taken today in `BOOK_DETAILS_SHORTCUTS` and [book_details.py](../src/ui/book_details.py), so a chain of moves is needed:
+"Update" collides in meaning with the main window **Update** window (bulk, Alt+U). "Edit" with **Alt+E** also matches Collection and Name list, which already use Alt+E for Edit. Keys are taken today in `BOOK_DETAILS_SHORTCUTS` and [book_details.py](../../src/ui/book_details.py), so a chain of moves is needed:
 
 | Today | New |
 |-------|-----|
@@ -51,7 +51,7 @@ Replace Alt+S in `PREFERENCES_WINDOW_SHORTCUTS` and the Save button description.
 
 ### 5. Main window — remove Import from the toolbar
 
-Remove the `"import"` entry in the main toolbar setup ([main_window.py](../src/ui/main_window.py)). Import stays on **File → Import** (Ctrl+I); Import Book List stays Ctrl+Shift+I.
+Remove the `"import"` entry in the main toolbar setup ([main_window.py](../../src/ui/main_window.py)). Import stays on **File → Import** (Ctrl+I); Import Book List stays Ctrl+Shift+I.
 
 ### 6. Other shortcuts to align
 
@@ -76,12 +76,12 @@ Remove the `"import"` entry in the main toolbar setup ([main_window.py](../src/u
 
 | Area | Change |
 |------|--------|
-| [shortcuts.py](../src/accessibility/shortcuts.py) | Update the maps above. `register_alt_shortcuts` only builds `Alt+` sequences, so add Ctrl keys as local `QShortcut(QKeySequence.Save)` / `QKeySequence.Find` in each window, like the existing local Alt+/ and F1 shortcuts. |
-| [book_details.py](../src/ui/book_details.py) | Button text Edit; local shortcuts; accessible descriptions ("Alt+U to edit" to "Alt+E to edit"); F1 list; labels Narrator / Read date with correct buddies. |
-| [name_list_window.py](../src/ui/name_list_window.py), [preferences_window.py](../src/ui/preferences_window.py), [collection_window.py](../src/ui/collection_window.py), [import_detail_window.py](../src/ui/import_detail_window.py), [web_metadata.py](../src/ui/web_metadata.py) | Ctrl+S (and Ctrl+F for name list); F1 lists; descriptions. |
-| [book_list_import_window.py](../src/ui/book_list_import_window.py) | **Narrator** label on the reader field mapping row; F1 / accessible names; Alt+R unchanged. |
-| [main_window.py](../src/ui/main_window.py) | Remove the Import toolbar action. |
-| [reading_history_window.py](../src/ui/reading_history_window.py) | Drop the duplicate Refresh/Search key. |
+| [shortcuts.py](../../src/accessibility/shortcuts.py) | Update the maps above. `register_alt_shortcuts` only builds `Alt+` sequences, so add Ctrl keys as local `QShortcut(QKeySequence.Save)` / `QKeySequence.Find` in each window, like the existing local Alt+/ and F1 shortcuts. |
+| [book_details.py](../../src/ui/book_details.py) | Button text Edit; local shortcuts; accessible descriptions ("Alt+U to edit" to "Alt+E to edit"); F1 list; labels Narrator / Read date with correct buddies. |
+| [name_list_window.py](../../src/ui/name_list_window.py), [preferences_window.py](../../src/ui/preferences_window.py), [collection_window.py](../../src/ui/collection_window.py), [import_detail_window.py](../../src/ui/import_detail_window.py), [web_metadata.py](../../src/ui/web_metadata.py) | Ctrl+S (and Ctrl+F for name list); F1 lists; descriptions. |
+| [book_list_import_window.py](../../src/ui/book_list_import_window.py) | **Narrator** label on the reader field mapping row; F1 / accessible names; Alt+R unchanged. |
+| [main_window.py](../../src/ui/main_window.py) | Remove the Import toolbar action. |
+| [reading_history_window.py](../../src/ui/reading_history_window.py) | Drop the duplicate Refresh/Search key. |
 | Docs | `help_docs/16_shortcuts.md`, Book Details / Name list / Preferences / Import Detail help, README shortcut list, `AbCS_Shortcut_June07.csv`, AGENTS.md shortcut line (Alt+U/D note), release notes. |
 
 **Estimate:** 1–2 days.

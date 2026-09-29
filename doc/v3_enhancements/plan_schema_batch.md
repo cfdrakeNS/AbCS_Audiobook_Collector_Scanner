@@ -3,7 +3,7 @@
 **Status:** Complete — tester accepted. Version 3 Phase 9.  
 **Created:** June 2026  
 **Updated:** September 2026  
-**Related:** [connection.py](../src/database/connection.py), [plan_series_number_db.md](plan_series_number_db.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A, [plan_ratings.md](plan_ratings.md), [plan_want_to_read.md](plan_want_to_read.md), [Plan_covers.md](Plan_covers.md)
+**Related:** [connection.py](../../src/database/connection.py), [plan_series_number_db.md](plan_series_number_db.md), [plan_rescan_and_library_folders.md](../plan_rescan_and_library_folders.md) Part A, [plan_ratings.md](../plan_ratings.md), [plan_want_to_read.md](plan_want_to_read.md), [Plan_covers.md](../Plan_covers.md)
 
 ---
 
@@ -29,7 +29,7 @@ Do not add `want_to_read`, `rating`, `ratings_count`, `cover_path`, or `collecti
 
 ## How
 
-[`_ensure_legacy_schema_compatibility`](../src/database/connection.py) already adds missing names from `column_specs`. Also update `table_create_sql` and [`test/fixtures/abcdDB_def.sql`](../test/fixtures/abcdDB_def.sql) for new databases. Do **not** add these names to `critical_columns` (that path rebuilds / wipes the file).
+[`_ensure_legacy_schema_compatibility`](../../src/database/connection.py) already adds missing names from `column_specs`. Also update `table_create_sql` and [`test/fixtures/abcdDB_def.sql`](../../test/fixtures/abcdDB_def.sql) for new databases. Do **not** add these names to `critical_columns` (that path rebuilds / wipes the file).
 
 Map new fields on `Book` / `Collection` with defaults so `SELECT b.*` stays safe.
 

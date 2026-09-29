@@ -2,7 +2,7 @@
 
 **Status:** Complete — tester accepted  
 **Created:** September 2026  
-**Related:** [Preferences Import Settings](../src/ui/preferences_window.py), [`src/core/tag_reader.py`](../src/core/tag_reader.py), [`src/core/import_scanner.py`](../src/core/import_scanner.py), [help_docs/19_import_explained.md](../help_docs/19_import_explained.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [Preferences Import Settings](../../src/ui/preferences_window.py), [`src/core/tag_reader.py`](../../src/core/tag_reader.py), [`src/core/import_scanner.py`](../../src/core/import_scanner.py), [help_docs/19_import_explained.md](../../help_docs/19_import_explained.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 ---
 
@@ -41,7 +41,7 @@ Combo anti-noise (plain Up/Down blocked; Alt+arrows allowed), accessible names a
 
 ### Scan / import
 
-- [`FolderScanner`](../src/core/tag_reader.py) / `scan_folder` and `scan_file` apply the saved mapping when filling `title` and `author`.
+- [`FolderScanner`](../../src/core/tag_reader.py) / `scan_folder` and `scan_file` apply the saved mapping when filling `title` and `author`.
 - **Grouping stays on album** even if title is mapped to track title. If grouping followed track title, a 20-part book would become 20 books. Optional later: a third combo “Group files by” (Album / Folder). Not in v1.
 - Store the track title on `AudioFileInfo` (today it is not kept) so the title combo can use it.
 - Placeholder handling (`unknown album`, empty album artist) still falls through to Fallback tab rules.
@@ -52,7 +52,7 @@ No extra controls on the Import window in v1. It already loads Preferences; mapp
 
 ### Help
 
-Update [help_docs/19_import_explained.md](../help_docs/19_import_explained.md) tag table and [help_docs/10_preferences.md](../help_docs/10_preferences.md) Import Settings section.
+Update [help_docs/19_import_explained.md](../../help_docs/19_import_explained.md) tag table and [help_docs/10_preferences.md](../../help_docs/10_preferences.md) Import Settings section.
 
 **Estimate:** 2–3 days
 
@@ -61,7 +61,7 @@ Update [help_docs/19_import_explained.md](../help_docs/19_import_explained.md) t
 ## Follow-on (after Phase 6 / not required for v3 gate)
 
 - **Narrator mapping:** Composer (default) / Artist / Comment keywords only / Artist when author is album artist.
-- **Rescan** ([plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)) is **deferred after v3**; when it ships, it must read the same QSettings keys for title/author overwrite.
+- **Rescan** ([plan_rescan_and_library_folders.md](../plan_rescan_and_library_folders.md)) is **deferred after v3**; when it ships, it must read the same QSettings keys for title/author overwrite.
 - Year / genre / comments stay 1:1 with tags unless a real alternate source appears.
 - Series from a **tag** (ID3 grouping / content group) is a rare tag-map row — add only if needed.
 
@@ -102,7 +102,7 @@ Passed.
 
 ## Accessibility
 
-Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+Follow the master checklist: [Accessibility and UI formatting standards](../plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
 
 Phase-specific:
 

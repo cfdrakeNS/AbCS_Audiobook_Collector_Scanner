@@ -10,6 +10,8 @@
 
 **Related:** [plans_status.md](plans_status.md), [TESTING.md](../TESTING.md), [abcs_proposed_enhancements.md](abcs_proposed_enhancements.md), [AbCS_Version3_Release_Tester_Review.xlsx](AbCS_Version3_Release_Tester_Review.xlsx) (tester source of truth — do not overwrite filled answers)
 
+Completed phase detail plans are in [v3_enhancements](v3_enhancements/); this master roadmap and unfinished/pending plans remain in `doc/`.
+
 **Branch:** work from `main` (or a short-lived phase branch per feature)
 
 ---
@@ -20,35 +22,35 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 
 | Phase | ID | Enhancement | Detail doc | Est. | Depends on |
 |-------|----|-------------|------------|------|------------|
-| 1 | F13 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md) | 3–5 d | — |
-| 2 | F12 | Batch web metadata fetch | [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md) | 1–2 wk | Phase 1 |
-| 3 | — | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) | 0.5–1 d | Phase 1 matching |
-| 4 | — | Selection mode: block toolbar and shortcuts | [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) | 1–2 d | — |
-| 6 | F17 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](plan_import_tag_mapping.md) | 2–3 d | — |
-| 7 | B05 | Check for updates | [plan_auto_update.md](plan_auto_update.md) | 2–3 d | — |
-| 8 | — | Keep current book on sort and filter | [plan_keep_book_focus.md](plan_keep_book_focus.md) | 0.5–1 d | — |
-| 9 | C01 | Schema batch (in-place upgrade) | [plan_schema_batch.md](plan_schema_batch.md) | 2–3 d | — |
-| 10 | F10 | Series book number | [plan_series_number_db.md](plan_series_number_db.md) | 2–3 d | Phase 9 |
+| 1 | F13 | Web fetch background thread + API split | [plan_web_fetch_background_thread.md](v3_enhancements/plan_web_fetch_background_thread.md) | 3–5 d | — |
+| 2 | F12 | Batch web metadata fetch | [plan_bulk_web_metadata.md](v3_enhancements/plan_bulk_web_metadata.md) | 1–2 wk | Phase 1 |
+| 3 | — | Leading article title compare (Path B) | [plan_leading_article_title_compare.md](v3_enhancements/plan_leading_article_title_compare.md) | 0.5–1 d | Phase 1 matching |
+| 4 | — | Selection mode: block toolbar and shortcuts | [plan_selection_mode_toolbar.md](v3_enhancements/plan_selection_mode_toolbar.md) | 1–2 d | — |
+| 6 | F17 | Import tag mapping (title / author) | [plan_import_tag_mapping.md](v3_enhancements/plan_import_tag_mapping.md) | 2–3 d | — |
+| 7 | B05 | Check for updates | [plan_auto_update.md](v3_enhancements/plan_auto_update.md) | 2–3 d | — |
+| 8 | — | Keep current book on sort and filter | [plan_keep_book_focus.md](v3_enhancements/plan_keep_book_focus.md) | 0.5–1 d | — |
+| 9 | C01 | Schema batch (in-place upgrade) | [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md) | 2–3 d | — |
+| 10 | F10 | Series book number | [plan_series_number_db.md](v3_enhancements/plan_series_number_db.md) | 2–3 d | Phase 9 |
 | 11 | C07 | Collection library root folder | [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md) Part A | 2–3 d | Adds `root_path` |
-| 12 | C03 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](plan_audiobook_preview.md) | 1–2 d | — |
-| 13 | C09 | Name-list merge on duplicate | [Plan_name_consistency_check.md](Plan_name_consistency_check.md) | 1–2 d | — |
-| 15 | — | Preview cover (embedded art) | [plan_preview_cover.md](plan_preview_cover.md) | 0.5–1 d | Phase 12 |
-| 17 | — | Book Details cover (embedded art) | [plan_book_details_cover.md](plan_book_details_cover.md) | 0.5 d | Phase 15 |
-| 19 | — | Want to read and listening progress columns | [plan_want_to_read.md](plan_want_to_read.md), [plan_reading_progress.md](plan_reading_progress.md) | 0.5–1 d | — |
-| 18 | — | Book Details layout, cover on the right | [plan_book_details_layout.md](plan_book_details_layout.md) | 1 d | Phase 19 |
-| 20 | — | Want to read | [plan_want_to_read.md](plan_want_to_read.md) | 2–3 d | Phase 18 |
-| 22 | — | Import Detail layout, no cover | [plan_import_detail_layout.md](plan_import_detail_layout.md) | 1 d | Phase 18 |
-| 21 | — | Full Play player | [plan_preview_player_later.md](plan_preview_player_later.md) | 3–5 d | Phase 19 |
-| 23 | F08 | Statistics: Want to Read and listening progress | [plan_statistics_extensions.md](plan_statistics_extensions.md) | 0.5–1 d | Phase 20, Phase 21 |
-| 24 | — | Book Details path browse | [plan_book_details_path_browse.md](plan_book_details_path_browse.md) | 0.5 d | — |
-| 25 | F01 | Path health report (Check Books Path) | [plan_path_health_report.md](plan_path_health_report.md) | 1–2 d | Phase 24 |
-| 26 | — | Check Books Path progress | [plan_check_books_path_progress.md](plan_check_books_path_progress.md) | 0.5–1 d | Phase 25 |
+| 12 | C03 | Preview audiobook (in-app player) | [plan_audiobook_preview.md](v3_enhancements/plan_audiobook_preview.md) | 1–2 d | — |
+| 13 | C09 | Name-list merge on duplicate | [Plan_name_consistency_check.md](v3_enhancements/Plan_name_consistency_check.md) | 1–2 d | — |
+| 15 | — | Preview cover (embedded art) | [plan_preview_cover.md](v3_enhancements/plan_preview_cover.md) | 0.5–1 d | Phase 12 |
+| 17 | — | Book Details cover (embedded art) | [plan_book_details_cover.md](v3_enhancements/plan_book_details_cover.md) | 0.5 d | Phase 15 |
+| 19 | — | Want to read and listening progress columns | [plan_want_to_read.md](v3_enhancements/plan_want_to_read.md), [plan_reading_progress.md](v3_enhancements/plan_reading_progress.md) | 0.5–1 d | — |
+| 18 | — | Book Details layout, cover on the right | [plan_book_details_layout.md](v3_enhancements/plan_book_details_layout.md) | 1 d | Phase 19 |
+| 20 | — | Want to read | [plan_want_to_read.md](v3_enhancements/plan_want_to_read.md) | 2–3 d | Phase 18 |
+| 22 | — | Import Detail layout, no cover | [plan_import_detail_layout.md](v3_enhancements/plan_import_detail_layout.md) | 1 d | Phase 18 |
+| 21 | — | Full Play player | [plan_preview_player_later.md](v3_enhancements/plan_preview_player_later.md) | 3–5 d | Phase 19 |
+| 23 | F08 | Statistics: Want to Read and listening progress | [plan_statistics_extensions.md](v3_enhancements/plan_statistics_extensions.md) | 0.5–1 d | Phase 20, Phase 21 |
+| 24 | — | Book Details path browse | [plan_book_details_path_browse.md](v3_enhancements/plan_book_details_path_browse.md) | 0.5 d | — |
+| 25 | F01 | Path health report (Check Books Path) | [plan_path_health_report.md](v3_enhancements/plan_path_health_report.md) | 1–2 d | Phase 24 |
+| 26 | — | Check Books Path progress | [plan_check_books_path_progress.md](v3_enhancements/plan_check_books_path_progress.md) | 0.5–1 d | Phase 25 |
 | 27 | — | Export library metadata (CSV / JSON) | [plan_export_library_metadata.md](plan_export_library_metadata.md) | ~2 d | Phase 19 columns |
 | 28 | — | iTunes technical tags in Comments (import fix + one-time script) | [plan_itunes_comment_cleanup.md](plan_itunes_comment_cleanup.md) | 1 d | Found in Phase 27 |
-| 29 | — | Standard shortcuts (tester feedback: Edit, Ctrl+S, Ctrl+F, Narrator, Listen Ctrl+L) | [plan_standard_shortcuts.md](plan_standard_shortcuts.md) | 1–2 d | — |
-| 30 | — | Sept 27 tester feedback (import/export, dialogs, zoom) | [plan_sept27_tester_feedback.md](plan_sept27_tester_feedback.md) | 3–5 d | Phase 29 |
+| 29 | — | Standard shortcuts (tester feedback: Edit, Ctrl+S, Ctrl+F, Narrator, Listen Ctrl+L) | [plan_standard_shortcuts.md](v3_enhancements/plan_standard_shortcuts.md) | 1–2 d | — |
+| 30 | — | Sept 27 tester feedback (import/export, dialogs, zoom) | [plan_sept27_tester_feedback.md](v3_enhancements/plan_sept27_tester_feedback.md) | 3–5 d | Phase 29 |
 | 31 | — | Plot fetch quality, performance, and source compliance | [plan_plot_fetch_improvements.md](plan_plot_fetch_improvements.md) | 5 batches | Phase 2 and Phase 30 |
-| 16 | — | Help docs review | [plan_help_docs_review.md](plan_help_docs_review.md) | 1 d | Phases 18–30 |
+| 16 | — | Help docs review | [plan_help_docs_review.md](v3_enhancements/plan_help_docs_review.md) | 1 d | Phases 18–30 |
 
 **To do in version 3 (not the next build item):** On the first start, if a screen reader is running, set Zoom to Normal, then speak once: "Screen reader detected. Text size is set to Normal. To choose a different size, open Preferences, then Theme and Zoom." Do not repeat it on later starts. Do not reset Zoom if they have already changed it.
 
@@ -62,7 +64,7 @@ Tester-selected items plus Phase 2 follow-ons (leading-article compare; selectio
 
 ### Phase 1 — Background web fetch (3–5 days)
 
-See [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md). **Complete — tester accepted Alt+W after the split.** Google Books 429 during library testing is source cooldown (`web_source_cooldowns.json`), not a Phase 1 regression.
+See [plan_web_fetch_background_thread.md](v3_enhancements/plan_web_fetch_background_thread.md). **Complete — tester accepted Alt+W after the split.** Google Books 429 during library testing is source cooldown (`web_source_cooldowns.json`), not a Phase 1 regression.
 
 1. Throwaway JAWS spike — **done** (tester accepted).
 2. Move fetch onto `QThread`; keep `fetch_web_metadata_for_book` blocking via `exec()` — **done** (tester accepted; Escape-only wait dialog).
@@ -72,7 +74,7 @@ See [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md). 
 
 ### Phase 2 — Batch web fetch (1–2 weeks)
 
-See [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md). **Complete — tester accepted**, then follow-up polish (below). Progress stays modal for v3. Non-modal jobs are out of scope and will not change that.
+See [plan_bulk_web_metadata.md](v3_enhancements/plan_bulk_web_metadata.md). **Complete — tester accepted**, then follow-up polish (below). Progress stays modal for v3. Non-modal jobs are out of scope and will not change that.
 
 Multi-select starts from **Alt+W**, toolbar **Search Web**, or footer **Web fetch**. There is no main-window Alt+B. N/M progress; summary with Apply all / Review. Escape closes the summary.
 
@@ -90,7 +92,7 @@ Follow-up after accept:
 
 ### Phase 3 — Leading article title compare (0.5–1 day)
 
-See [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md). **Complete.**
+See [plan_leading_article_title_compare.md](v3_enhancements/plan_leading_article_title_compare.md). **Complete.**
 
 Path B: same-work match for optional leading A/An/The; review still **offers** the web title when the catalog includes the article. Trailing-article and series-suffix behavior from 2.14 stays.
 
@@ -98,7 +100,7 @@ Path B: same-work match for optional leading A/An/The; review still **offers** t
 
 ### Phase 4 — Selection mode toolbar and shortcuts (1–2 days)
 
-See [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md). **Complete.**
+See [plan_selection_mode_toolbar.md](v3_enhancements/plan_selection_mode_toolbar.md). **Complete.**
 
 While selection is active, disable Add/Import/Find/Statistics/Preferences/filters. Intercept those shortcuts; announce Escape. **Alt+W**, Search Web, and footer Web fetch stay available; two or more selected run **batch** fetch. Keep Update/Delete, F1, Alt+/, Alt+L. F1 during selection lists only shortcuts that still work. Shift+Up/Down **speaks** the selection status (`announce=True`). Do not clear-and-run.
 
@@ -106,7 +108,7 @@ While selection is active, disable Add/Import/Find/Statistics/Preferences/filter
 
 ### Phase 6 — Import tag mapping (2–3 days)
 
-See [plan_import_tag_mapping.md](plan_import_tag_mapping.md). **Complete — tester accepted.**
+See [plan_import_tag_mapping.md](v3_enhancements/plan_import_tag_mapping.md). **Complete — tester accepted.**
 
 Preferences Import Settings has **Tag mapping**: Book title (Album / Track title / Album then track title) and Author (Album artist then artist / Album artist only / Artist only). Defaults match the previous scan. Grouping stays on the album tag. Empty or placeholder tags still use the Fallback tab.
 
@@ -114,7 +116,7 @@ Preferences Import Settings has **Tag mapping**: Book title (Album / Track title
 
 ### Phase 7 — Check for updates (2–3 days)
 
-See [plan_auto_update.md](plan_auto_update.md). **Complete — tester accepted.**
+See [plan_auto_update.md](v3_enhancements/plan_auto_update.md). **Complete — tester accepted.**
 
 Help → Check for updates reads the latest GitHub release tag and compares it to `APP_VERSION`. **Testing only:** Help → Website and Open website open `https://abcstest.carrd.co/`. Before merging to main, set `ABCS_UPDATE_DOWNLOAD_URL` back to the live site `https://abcs.auroraaccessibility.com/`. The check does not install anything. Enter activates the focused button.
 
@@ -122,7 +124,7 @@ Help → Check for updates reads the latest GitHub release tag and compares it t
 
 ### Phase 8 — Keep current book on sort and filter (0.5–1 day)
 
-See [plan_keep_book_focus.md](plan_keep_book_focus.md). **Complete — tester accepted.**
+See [plan_keep_book_focus.md](v3_enhancements/plan_keep_book_focus.md). **Complete — tester accepted.**
 
 Sort (menu or header) keeps the focused book as the current row. Filters do the same when that book is still in the list. If a filter drops it, focus moves to the first remaining book.
 
@@ -130,7 +132,7 @@ Sort (menu or header) keeps the focused book as the current row. Filters do the 
 
 ### Phase 9 — C01 Schema batch (2–3 days)
 
-See [plan_schema_batch.md](plan_schema_batch.md). **Complete — tester accepted.** The upgrade dialog was heard.
+See [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md). **Complete — tester accepted.** The upgrade dialog was heard.
 
 In-place `ALTER TABLE` on **first start** for existing libraries (not only new installs). Adds `series_number` on `books` only. Does not add `want_to_read`, `rating`, `ratings_count`, `cover_path`, or `collections.root_path`. No new buttons in this phase. Timestamped `schema_repair` backup before change. Announce the upgrade for dev and installed builds. Existing titles are not rewritten.
 
@@ -140,7 +142,7 @@ The column is used by series number (Phase 10). Collection root adds `root_path`
 
 ### Phase 10 — F10 Series book number (2–3 days)
 
-See [plan_series_number_db.md](plan_series_number_db.md). **Complete — tester accepted** display-only title suffix, Book Details save, Book List Import, and Series From File Name in tester build 2.17. Needs Phase 9.
+See [plan_series_number_db.md](v3_enhancements/plan_series_number_db.md). **Complete — tester accepted** display-only title suffix, Book Details save, Book List Import, and Series From File Name in tester build 2.17. Needs Phase 9.
 
 The only series-number field is on **Book Details**, a text box to the right of Series. Saving stores Series # and leaves the title as it is. The main-window Title column shows ` - 03` or ` - 6.5` from that column. Opening a book does not copy a title suffix into Series #. A one-time script fills a blank Series # from a title suffix. The main-window **Series** sort is series name, then series number, then year, then title. Book List Import and Series From File Name store Series # and leave the title clean. No series-number column on the main table. Not on Import Detail, web fetch, or the bulk Update window.
 
@@ -156,7 +158,7 @@ Allow setting and changing the optional root folder for a collection (example: `
 
 ### Phase 12 — C03 Preview audiobook (1–2 days)
 
-See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Complete — tester accepted** in tester build 2.18.
+See [plan_audiobook_preview.md](v3_enhancements/plan_audiobook_preview.md). **Complete — tester accepted** in tester build 2.18.
 
 **Preview** button on Book Details, plus a main-window **Edit** menu item (same menu as Fetch Web Info). Plays the book **inside AbCS** (Play/Pause, title, author, length). Book Details has no menu bar today; menu entry is on the main window. Shortcut was **Alt+Shift+P**; Phase 29 renamed the opener to **Listen** with **Ctrl+L** and removed Alt+Shift+P. Enter plays or pauses. Escape closes and stops. Preview is blocked in selection mode. Closing Preview from the main window returns focus to the book table. When the collection has a library root, Preview remaps the stored path onto that folder. Shift+F1 follows the window that opened Preview.
 
@@ -164,23 +166,23 @@ See [plan_audiobook_preview.md](plan_audiobook_preview.md). **Complete — teste
 
 ### Phase 13 — Name-list merge on duplicate (1–2 days)
 
-See [Plan_name_consistency_check.md](Plan_name_consistency_check.md). **Complete — implemented in tester build 2.18.**
+See [Plan_name_consistency_check.md](v3_enhancements/Plan_name_consistency_check.md). **Complete — implemented in tester build 2.18.**
 
 When Save in the Name List hits an existing author, series, or genre name, ask Yes/No (default No). Yes moves books onto the existing name and deletes the edited name. Collections keep the warning only. Library-wide fuzzy scan is deferred after v3. Tab stops on the list; Escape in Find returns to the list; Ctrl chords stay on the list during find. **Ctrl+C** / right-click **Copy** copies the selected name (same Copy on the main book list for the focused cell).
 
 **Gate:** Yes reassigns books and removes the source name; No changes nothing; same-row case change does not ask; JAWS hears the question and the result sentence.
 
-**Follow-up bug fix (tester):** After Find, Ctrl no longer steals focus to Find (Ctrl+C works on the list). Tab stops on the list. See [Plan_name_consistency_check.md](Plan_name_consistency_check.md).
+**Follow-up bug fix (tester):** After Find, Ctrl no longer steals focus to Find (Ctrl+C works on the list). Tab stops on the list. See [Plan_name_consistency_check.md](v3_enhancements/Plan_name_consistency_check.md).
 
 ### Phase 15 — Preview cover (0.5–1 day)
 
-See [plan_preview_cover.md](plan_preview_cover.md). **Implemented.** Show embedded art from the file Preview is playing. No database column. Not the deferred web-cover plan.
+See [plan_preview_cover.md](v3_enhancements/plan_preview_cover.md). **Implemented.** Show embedded art from the file Preview is playing. No database column. Not the deferred web-cover plan.
 
 **Gate:** Art shows and is not in the tab order; no art means no extra announcement; Play/Pause keeps focus.
 
 ### Phase 17 — Book Details cover (0.5 day)
 
-See [plan_book_details_cover.md](plan_book_details_cover.md). **Implemented.** Show the same embedded art as Preview at the top of Book Details. No database column. The picture stays outside the header card that is hidden for screen readers.
+See [plan_book_details_cover.md](v3_enhancements/plan_book_details_cover.md). **Implemented.** Show the same embedded art as Preview at the top of Book Details. No database column. The picture stays outside the header card that is hidden for screen readers.
 
 **Gate:** Art shows and is not in the tab order; no art means no extra announcement; the title field keeps focus.
 
@@ -198,35 +200,35 @@ These columns are the only store for listen progress. The player and Book Detail
 
 ### Phase 18 — Book Details layout (1 day)
 
-**Tester accepted.** See [plan_book_details_layout.md](plan_book_details_layout.md) and [book_details_layout.png](book_details_layout.png). Cover on the right, and it is a tab stop: Book cover or No cover. A missing cover shows `graphics/no_book_cover_512x512.png`. Read date and Want to read save without Update. A read date clears Want to read. Files, Format, Bitrate, and Size have no shortcut. Want to read is Alt+K.
+**Tester accepted.** See [plan_book_details_layout.md](v3_enhancements/plan_book_details_layout.md) and [book_details_layout.png](book_details_layout.png). Cover on the right, and it is a tab stop: Book cover or No cover. A missing cover shows `graphics/no_book_cover_512x512.png`. Read date and Want to read save without Update. A read date clears Want to read. Files, Format, Bitrate, and Size have no shortcut. Want to read is Alt+K.
 
 **Gate:** Passed.
 
 **Follow-up bug fix (testing miss):** Date and year validation across Book Details, main read-date popup, Reading History, and Import Detail Year — see [fix_read_date.md](fix_read_date.md). Alt+Up/Down on `QDateEdit` abandoned; screen readers use typed fields. Classic calendars use single-letter day names and scale with UI zoom. Not promoted to AGENTS/standards yet — wait for a broader review.
 
-**Follow-up performance fix:** Book Details now performs one lightweight audiobook-source lookup and one cached cover read during an ordinary open instead of repeated full playlist scans and metadata sorts. See [plan_book_details_open_performance.md](plan_book_details_open_performance.md).
+**Follow-up performance fix:** Book Details now performs one lightweight audiobook-source lookup and one cached cover read during an ordinary open instead of repeated full playlist scans and metadata sorts. See [plan_book_details_open_performance.md](v3_enhancements/plan_book_details_open_performance.md).
 
 ### Phase 20 — Want to read (2–3 days)
 
-**Tester accepted.** See [plan_want_to_read.md](plan_want_to_read.md). The Book Details checkbox saves without Update, and a read date clears Want to read. The main list filters to Want to read (View → Want to read, or Alt+T). Edit → Add to want to read marks the focused book or the selection and saves immediately. With books selected, the footer and Edit → Clear want to read clear the mark for that selection. Import Detail stays deferred.
+**Tester accepted.** See [plan_want_to_read.md](v3_enhancements/plan_want_to_read.md). The Book Details checkbox saves without Update, and a read date clears Want to read. The main list filters to Want to read (View → Want to read, or Alt+T). Edit → Add to want to read marks the focused book or the selection and saves immediately. With books selected, the footer and Edit → Clear want to read clear the mark for that selection. Import Detail stays deferred.
 
 **Gate:** Passed. The checkbox saves. A read date clears it. The main-list filter shows only marked books and does not delete the marks when cleared.
 
 ### Phase 22 — Import Detail layout (1 day)
 
-**Complete.** See [plan_import_detail_layout.md](plan_import_detail_layout.md). Same column arrangement as Book Details. No cover. No Want to read and no Listen progress. **Keep** (Alt+K) adds an OK/Warning book and advances; **Discard** (Alt+D) removes and advances; both announce on the status bar. Duplicates may open for edit/Save but not Keep. Unreadable-file rows do not open detail. Status bar sits above the buttons (text-field look). No Alt for Files, Format, Bitrate, or Size. Errors stays under Path.
+**Complete.** See [plan_import_detail_layout.md](v3_enhancements/plan_import_detail_layout.md). Same column arrangement as Book Details. No cover. No Want to read and no Listen progress. **Keep** (Alt+K) adds an OK/Warning book and advances; **Discard** (Alt+D) removes and advances; both announce on the status bar. Duplicates may open for edit/Save but not Keep. Unreadable-file rows do not open detail. Status bar sits above the buttons (text-field look). No Alt for Files, Format, Bitrate, or Size. Errors stays under Path.
 
 **Gate:** Passed. Columns line up with Book Details. No picture. Tab and Alt+letter still reach the same fields. Keep/Discard speak status.
 
 ### Phase 21 — Full Play player (3–5 days)
 
-See [plan_preview_player_later.md](plan_preview_player_later.md). **Implemented.** Next and previous file in track-number order (disc number first when it is present), 30-second fast-forward and rewind, one speed for every book in `QSettings`, and resume into the Phase 19 position and file. Escape keeps the position. The end of the last file clears it. The main list has an In progress filter for books with a saved position.
+See [plan_preview_player_later.md](v3_enhancements/plan_preview_player_later.md). **Implemented.** Next and previous file in track-number order (disc number first when it is present), 30-second fast-forward and rewind, one speed for every book in `QSettings`, and resume into the Phase 19 position and file. Escape keeps the position. The end of the last file clears it. The main list has an In progress filter for books with a saved position.
 
 **Gate:** Transport and speed work. Resume uses the same columns as Book Details. The in-progress filter does not delete saved positions.
 
 ### Phase 23 — F08 Statistics: Want to Read and listening progress (0.5–1 day)
 
-See [plan_statistics_extensions.md](plan_statistics_extensions.md). **Complete.**
+See [plan_statistics_extensions.md](v3_enhancements/plan_statistics_extensions.md). **Complete.**
 
 Statistics rows for **Books Want to Read** and **Books In Progress** only. No rating, cover, or other new rows.
 
@@ -234,7 +236,7 @@ Statistics rows for **Books Want to Read** and **Books In Progress** only. No ra
 
 ### Phase 24 — Book Details path browse (0.5 day)
 
-See [plan_book_details_path_browse.md](plan_book_details_path_browse.md). **Complete.**
+See [plan_book_details_path_browse.md](v3_enhancements/plan_book_details_path_browse.md). **Complete.**
 
 Browse beside Path in Book Details update/new mode. Writes absolute `books.path` only; does not change collection `root_path`. Start dialog from current path, else collection root, else Preferences import folder. Play uses the same start-dir fallbacks when the stored path is missing; Play is hidden in update/new so Path can be fixed first.
 
@@ -242,7 +244,7 @@ Browse beside Path in Book Details update/new mode. Writes absolute `books.path`
 
 ### Phase 25 — F01 Path health report (1–2 days)
 
-See [plan_path_health_report.md](plan_path_health_report.md). **Complete.**
+See [plan_path_health_report.md](v3_enhancements/plan_path_health_report.md). **Complete.**
 
 Manage → Check Books Path lists books whose stored path is blank, missing, or not under the library root. Open Book Details from a row; fix with Path browse or typing; Export CSV; no silent path rewrites. Play-aligned resolve so remapped playable paths are Incorrect, not Missing.
 
@@ -250,7 +252,7 @@ Manage → Check Books Path lists books whose stored path is blank, missing, or 
 
 ### Phase 26 — Check Books Path progress (0.5–1 day)
 
-See [plan_check_books_path_progress.md](plan_check_books_path_progress.md). **Complete.**
+See [plan_check_books_path_progress.md](v3_enhancements/plan_check_books_path_progress.md). **Complete.**
 
 Import-style progress on Scan for large collections and NAS paths. Live **Missing**, **Incorrect**, and **Valid** counts while running; Escape cancel; results table unchanged after completion.
 
@@ -274,7 +276,7 @@ Import skips iTunes comment frames (`iTunNORM`, `iTunSMPB`, `iTunes_CDDB_*`) and
 
 ### Phase 29 — Standard shortcuts (1–2 days)
 
-See [plan_standard_shortcuts.md](plan_standard_shortcuts.md). **Complete — Sept 27, 2026.**
+See [plan_standard_shortcuts.md](v3_enhancements/plan_standard_shortcuts.md). **Complete — Sept 27, 2026.**
 
 Book Details: **Edit** (Alt+E); Read date Alt+R; **Narrator** (Alt+N); Series Alt+S; Save **Ctrl+S**; New book Ctrl+N. Name list: **Ctrl+F** and **Ctrl+S**. Preferences, Collection, Import Detail, Web Metadata: **Ctrl+S** Save. Main toolbar: Import removed. Reading History: Search **Alt+S** only (Date Range tab Alt+R). **Narrator** on Book List Import (Alt+R; Alt+N Series number). Listen **Ctrl+L** (Alt+Shift+P removed). Help topic 16 and related shortcut tables updated; Phase 16 may refine other topics.
 
@@ -282,7 +284,7 @@ Book Details: **Edit** (Alt+E); Read date Alt+R; **Narrator** (Alt+N); Series Al
 
 ### Phase 30 — Sept 27 tester feedback (3–5 days, batched)
 
-See [plan_sept27_tester_feedback.md](plan_sept27_tester_feedback.md). **Complete — batches A–E tester accepted.**
+See [plan_sept27_tester_feedback.md](v3_enhancements/plan_sept27_tester_feedback.md). **Complete — batches A–E tester accepted.**
 
 **Batch A:** Book List Import (**Plot** last, header auto-map). Export (column order, **Narrator**, **Collection** after **Tracks**, **Cover**, export popup with filters).
 
@@ -306,7 +308,7 @@ Begin with a source-attribution and API-terms review covering display, modificat
 
 ### Phase 16 — Help docs review (1 day)
 
-See [plan_help_docs_review.md](plan_help_docs_review.md). **Complete.** Topics 22 and 23 removed; section headings no longer start with “Steps”; main-window help covers Listen and Export Library; shortcuts topic lists **Alt+F, X**; cross-links updated.
+See [plan_help_docs_review.md](v3_enhancements/plan_help_docs_review.md). **Complete.** Topics 22 and 23 removed; section headings no longer start with “Steps”; main-window help covers Listen and Export Library; shortcuts topic lists **Alt+F, X**; cross-links updated.
 
 **Gate:** Topics 22 and 23 are gone; section names do not start with “Steps”; main-window help mentions Listen (Ctrl+L); topic 25 and Export Library links in place.
 
@@ -411,7 +413,7 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 | Import / Preferences toolbars | [visual-appeal-full-plan-3899a9.md](../archive/visual-appeal-full-plan-3899a9.md) | |
 | Third-party import | [plan_third_party_import.md](plan_third_party_import.md) | |
 | Smart collections | [plan_smart_collections.md](plan_smart_collections.md) | |
-| Reading progress | [plan_reading_progress.md](plan_reading_progress.md) | |
+| Reading progress | [plan_reading_progress.md](v3_enhancements/plan_reading_progress.md) | |
 | Book tags | [plan_book_tags.md](plan_book_tags.md) | |
 | Export Library options window | [plan_export_library_options_window.md](plan_export_library_options_window.md) | Proposed after Phase 27; for review |
 ### Schema batch (Phase 9 / C01)
@@ -420,7 +422,7 @@ Former “core waves 0–5” and follow-ons not selected for this release.
 |-------|-------------|
 | `books` | `series_number` |
 
-See [plan_schema_batch.md](plan_schema_batch.md). Want to Read, ratings, and covers are out of v3. Series number UI is Phase 10. Collection `root_path` is added in Phase 11. Name-list merge on duplicate is Phase 13, second to last. Library-wide fuzzy name scan is deferred after v3.
+See [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md). Want to Read, ratings, and covers are out of v3. Series number UI is Phase 10. Collection `root_path` is added in Phase 11. Name-list merge on duplicate is Phase 13, second to last. Library-wide fuzzy name scan is deferred after v3.
 
 ---
 

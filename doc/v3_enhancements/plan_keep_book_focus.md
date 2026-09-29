@@ -2,7 +2,7 @@
 
 **Status:** Complete — tester accepted  
 **Created:** September 2026  
-**Related:** [main window](../src/ui/main_window.py), [Find and filters](../help_docs/03_find_filters.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [main window](../../src/ui/main_window.py), [Find and filters](../../help_docs/03_find_filters.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 ---
 
@@ -37,9 +37,9 @@ After **Sort** (menu or column header), the book that had keyboard and screen-re
 
 ## Files
 
-- [`src/ui/main_window.py`](../src/ui/main_window.py) — capture before reload, restore by `book_id` after model reset
-- [`test/test_main_window_keep_book_focus.py`](../test/test_main_window_keep_book_focus.py)
-- [`help_docs/03_find_filters.md`](../help_docs/03_find_filters.md)
+- [`src/ui/main_window.py`](../../src/ui/main_window.py) — capture before reload, restore by `book_id` after model reset
+- [`test/test_main_window_keep_book_focus.py`](../../test/test_main_window_keep_book_focus.py)
+- [`help_docs/03_find_filters.md`](../../help_docs/03_find_filters.md)
 
 ---
 

@@ -3,7 +3,7 @@
 **Status:** Complete — tester accepted (Version 3 Phase 12). Tester build 2.18.  
 **Created:** June 2026  
 **Revised:** September 2026 — in-app Preview after OS-player trial  
-**Related:** [Book Details](help_docs/04_book_details.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [plan_rescan_and_library_folders.md](plan_rescan_and_library_folders.md)
+**Related:** [Book Details](../../help_docs/04_book_details.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), [plan_rescan_and_library_folders.md](../plan_rescan_and_library_folders.md)
 
 ---
 
@@ -21,7 +21,7 @@ Preview plays **inside AbCS** so screen reader focus stays in the app. An OS-def
 
 **Preview** is on Book Details, the main window **Edit** menu, and the main toolbar after Find. Shortcut was **Alt+Shift+P**; v3 Phase 29 renamed it **Listen** with **Ctrl+L** and removed Alt+Shift+P. Preview is off in selection mode. Duplicate mode keeps Preview on so you can hear which copy to keep.
 
-Resolve path in [`src/core/audio_launcher.py`](../src/core/audio_launcher.py). When the book’s collection has a library root, Preview remaps the stored import path onto that folder (author and title folders stay) so a portable drive can move. `books.path` is not rewritten. If the remapped folder is missing, the stored path is tried next. Play in [`src/ui/preview_window.py`](../src/ui/preview_window.py) with Qt Multimedia. FFmpeg console chatter is quieted while Preview is open.
+Resolve path in [`src/core/audio_launcher.py`](../../src/core/audio_launcher.py). When the book’s collection has a library root, Preview remaps the stored import path onto that folder (author and title folders stay) so a portable drive can move. `books.path` is not rewritten. If the remapped folder is missing, the stored path is tried next. Play in [`src/ui/preview_window.py`](../../src/ui/preview_window.py) with Qt Multimedia. FFmpeg console chatter is quieted while Preview is open.
 
 ---
 
@@ -46,7 +46,7 @@ Resolve path in [`src/core/audio_launcher.py`](../src/core/audio_launcher.py). W
 
 ### Resolve behavior
 
-Helper: [`src/core/audio_launcher.py`](../src/core/audio_launcher.py).
+Helper: [`src/core/audio_launcher.py`](../../src/core/audio_launcher.py).
 
 | `books.path` | Action |
 |--------------|--------|
@@ -55,7 +55,7 @@ Helper: [`src/core/audio_launcher.py`](../src/core/audio_launcher.py).
 | Collection has `root_path` | Remap stored path onto that folder, then play |
 | Missing / empty / no playable file | Announce **No file path is set.** or **Book not found in -** and the remapped or stored path |
 
-Supported audio extensions: [`TagReader.SUPPORTED_EXTENSIONS`](../src/core/tag_reader.py) — `.mp3`, `.m4a`, `.m4b`, `.flac`, `.ogg`, `.oga`, `.wma`, `.wav`, `.aac`, `.opus`.
+Supported audio extensions: [`TagReader.SUPPORTED_EXTENSIONS`](../../src/core/tag_reader.py) — `.mp3`, `.m4a`, `.m4b`, `.flac`, `.ogg`, `.oga`, `.wma`, `.wav`, `.aac`, `.opus`.
 
 ### Multi-file rule
 
@@ -73,11 +73,11 @@ Catch errors → `exec_styled_message_box` + `set_status(..., announce=True)`.
 
 ## UI changes
 
-### Book Details — [`src/ui/book_details.py`](../src/ui/book_details.py)
+### Book Details — [`src/ui/book_details.py`](../../src/ui/book_details.py)
 
 **Preview** button near the footer action buttons (same styled `QPushButton` pattern as Fetch Web Info). Shortcut **Alt+Shift+P** (now **Listen**, **Ctrl+L** — Phase 29). Alt+P stays Plot.
 
-### Main window — Edit menu — [`src/ui/main_window.py`](../src/ui/main_window.py)
+### Main window — Edit menu — [`src/ui/main_window.py`](../../src/ui/main_window.py)
 
 **Preview** next to Fetch Web Info on Book Details, and on the main toolbar after Find. Enabled when a book is focused, except in selection mode. Duplicate mode keeps Preview on. Missing path still announces so the user hears why Preview failed.
 
@@ -104,8 +104,8 @@ Path may not be final until import completes.
 
 ## Help
 
-- [`help_docs/04_book_details.md`](../help_docs/04_book_details.md) — Preview button, in-app player, first-file rule
-- [`help_docs/16_shortcuts.md`](../help_docs/16_shortcuts.md) — Edit → Preview and Preview window keys
+- [`help_docs/04_book_details.md`](../../help_docs/04_book_details.md) — Preview button, in-app player, first-file rule
+- [`help_docs/16_shortcuts.md`](../../help_docs/16_shortcuts.md) — Edit → Preview and Preview window keys
 
 ---
 
@@ -135,7 +135,7 @@ Tests use a FakePlayer. They do not start real Qt Multimedia decode in CI.
 
 ## Relation to other plans
 
-- **Collection root / rescan** ([`plan_rescan_and_library_folders.md`](plan_rescan_and_library_folders.md)): path updates keep Preview correct; changing root alone does not rewrite `books.path`.
+- **Collection root / rescan** ([`plan_rescan_and_library_folders.md`](../plan_rescan_and_library_folders.md)): path updates keep Preview correct; changing root alone does not rewrite `books.path`.
 - **Ratings / web covers**: independent; web cover files stay out of v3. Embedded art on the Preview window is [plan_preview_cover.md](plan_preview_cover.md) (Phase 15).
 - **Later player:** next/previous, seek, global speed, resume, and an in-progress filter are [plan_preview_player_later.md](plan_preview_player_later.md).
 
@@ -143,4 +143,4 @@ Tests use a FakePlayer. They do not start real Qt Multimedia decode in CI.
 
 ## Next
 
-Phase 15 Preview cover is implemented. The full player is Phase 21. Help review is last. See [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md).
+Phase 15 Preview cover is implemented. The full player is Phase 21. Help review is last. See [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md).

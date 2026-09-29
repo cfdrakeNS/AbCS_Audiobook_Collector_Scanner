@@ -21,7 +21,7 @@ TBR flag is per-book in Book Details. Adding many books to a reading queue is te
 ## Design
 
 - Footer or Update menu: **Mark want to read** / **Clear want to read** when `selected_book_ids` non-empty.
-- [`BookQueries`](../src/database/queries.py) bulk update `want_to_read`.
+- [`BookQueries`](../../src/database/queries.py) bulk update `want_to_read`.
 - Status: `N books marked want to read` with `announce=True`.
 - Clearing read date does not auto-set want_to_read.
 

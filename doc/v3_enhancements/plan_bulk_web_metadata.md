@@ -3,7 +3,7 @@
 **Status:** Complete — **tester accepted**  
 **Created:** June 2026  
 **Updated:** September 2026  
-**Related:** [Web Metadata](../help_docs/07_web_metadata.md), [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [Web Metadata](../../help_docs/07_web_metadata.md), [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 ---
 
@@ -31,7 +31,7 @@ Each book may call Google at most twice. That cap starts over on the next book. 
 
 ### Summary
 
-Modal [`BatchWebFetchSummaryDialog`](../src/ui/batch_web_fetch_summary.py): `raise_()` / `activateWindow()`, focus on the first list row. Apply all and Review are **not** default buttons, so Enter in the list does not run them.
+Modal [`BatchWebFetchSummaryDialog`](../../src/ui/batch_web_fetch_summary.py): `raise_()` / `activateWindow()`, focus on the first list row. Apply all and Review are **not** default buttons, so Enter in the list does not run them.
 
 Issue column (spoken in full): **Plot found**, **Metadata found**, **Plot and metadata up to date.**, **No match found**, or **Match found. No plot was found.** A Google-only miss uses **No match found**, not a Google error in the cell. Title and Issue both stretch when the window is widened. The dialog starts wide enough that the Issue text is not cut off.
 
@@ -43,7 +43,7 @@ Buttons: **Apply all**, **Review** (one book with changes) or **Review each** (t
 
 ### Review each
 
-[`WebMetadataWindow`](../src/ui/web_metadata.py) with `queue_index` / `queue_total` only when **more than one** book is in the queue. A single-book review does not say “1 of 1” and does not show Skip. The summary is **hidden** during review. Save or Skip (Alt+K) returns to the summary (and advances when there are multiple books) without re-speaking the queue status. Web metadata F1 does not list Series or Series #.
+[`WebMetadataWindow`](../../src/ui/web_metadata.py) with `queue_index` / `queue_total` only when **more than one** book is in the queue. A single-book review does not say “1 of 1” and does not show Skip. The summary is **hidden** during review. Save or Skip (Alt+K) returns to the summary (and advances when there are multiple books) without re-speaking the queue status. Web metadata F1 does not list Series or Series #.
 
 ### Apply all
 
@@ -55,7 +55,7 @@ Uses `compute_field_differences` / `web_data_offers_changes`. Status announce on
 
 - Leading A/An/The compare: [plan_leading_article_title_compare.md](plan_leading_article_title_compare.md) (Phase 3).
 - Selection-mode toolbar/shortcuts: [plan_selection_mode_toolbar.md](plan_selection_mode_toolbar.md) (Phase 4).
-- Non-modal fetch jobs: [plan_web_fetch_nonmodal_job.md](plan_web_fetch_nonmodal_job.md). Skipped for v3. Progress stays modal.
+- Non-modal fetch jobs: [plan_web_fetch_nonmodal_job.md](../plan_web_fetch_nonmodal_job.md). Skipped for v3. Progress stays modal.
 
 ---
 
@@ -79,7 +79,7 @@ Passed.
 
 ## Accessibility
 
-Follow the master checklist: [Accessibility and UI formatting standards](plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
+Follow the master checklist: [Accessibility and UI formatting standards](../plan_enhancements_version3_release.md#accessibility-and-ui-formatting-standards-all-phases).
 
 - Progress: announce on `showEvent`; Escape cancel; GUI-thread bridge.
 - Summary: modal `AccessibleDialog` — never Calibre’s NoFocus overlay.

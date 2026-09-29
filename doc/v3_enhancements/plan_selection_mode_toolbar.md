@@ -2,7 +2,7 @@
 
 **Status:** Complete — Phase 4  
 **Created:** September 2026  
-**Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 ---
 

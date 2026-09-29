@@ -2,7 +2,7 @@
 
 **Status:** Complete (tester). Same column arrangement as Book Details. No cover.  
 **Created:** September 2026  
-**Related:** [plan_book_details_layout.md](plan_book_details_layout.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [plan_book_details_layout.md](plan_book_details_layout.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 Make Import Detail use the same column arrangement as Book Details. There is no cover image. Want to read and listening progress stay off this window.
 

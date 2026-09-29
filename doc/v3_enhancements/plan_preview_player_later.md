@@ -2,7 +2,7 @@
 
 **Status:** Implemented — Version 3 Phase 21. Resume uses the Phase 19 listening-position and file-name columns. Do not add a second progress store. Help review is last.  
 **Created:** September 2026  
-**Related:** [plan_preview_cover.md](plan_preview_cover.md), [plan_audiobook_preview.md](plan_audiobook_preview.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [plan_preview_cover.md](plan_preview_cover.md), [plan_audiobook_preview.md](plan_audiobook_preview.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 Phase 15 shows embedded cover art only. This plan is the rest of the tester’s player requests.
 
@@ -47,8 +47,8 @@ Next and previous follow track number, then disc number when it is present. Fast
 
 | Area | Location |
 |------|----------|
-| Track/disc playlist | [`src/core/audio_launcher.py`](../src/core/audio_launcher.py) |
-| Transport, speed, resume | [`src/ui/preview_window.py`](../src/ui/preview_window.py) |
-| Save position | `BookQueries.update_listen_progress` in [`src/database/queries.py`](../src/database/queries.py) |
-| In progress filter | [`SearchFilter.in_progress_filter`](../src/database/models.py), main window View + toolbar |
-| Help | [`help_docs/04_book_details.md`](../help_docs/04_book_details.md), [`help_docs/03_find_filters.md`](../help_docs/03_find_filters.md), [`help_docs/16_shortcuts.md`](../help_docs/16_shortcuts.md) |
+| Track/disc playlist | [`src/core/audio_launcher.py`](../../src/core/audio_launcher.py) |
+| Transport, speed, resume | [`src/ui/preview_window.py`](../../src/ui/preview_window.py) |
+| Save position | `BookQueries.update_listen_progress` in [`src/database/queries.py`](../../src/database/queries.py) |
+| In progress filter | [`SearchFilter.in_progress_filter`](../../src/database/models.py), main window View + toolbar |
+| Help | [`help_docs/04_book_details.md`](../../help_docs/04_book_details.md), [`help_docs/03_find_filters.md`](../../help_docs/03_find_filters.md), [`help_docs/16_shortcuts.md`](../../help_docs/16_shortcuts.md) |

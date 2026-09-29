@@ -2,9 +2,9 @@
 
 **Status:** Version 3 Phase 20, tester accepted. The column, Book Details checkbox, silent save, clear-on-read-date, main-list filter, View menu, Edit → Add to want to read, and selection Add and Clear are in. Import Detail stays deferred.
 
-**Date/year follow-up:** Shared validation and calendars — [fix_read_date.md](fix_read_date.md) (testing miss after Phase 18/20; Alt+Up/Down abandoned).  
+**Date/year follow-up:** Shared validation and calendars — [fix_read_date.md](../fix_read_date.md) (testing miss after Phase 18/20; Alt+Up/Down abandoned).
 **Created:** June 2026  
-**Related:** [Collections](help_docs/06_collections.md), [Book Details](help_docs/04_book_details.md), [Reading History](help_docs/13_reading_history.md)
+**Related:** [Collections](../../help_docs/06_collections.md), [Book Details](../../help_docs/04_book_details.md), [Reading History](../../help_docs/13_reading_history.md)
 
 ---
 
@@ -22,8 +22,8 @@ A **Want to read** (TBR) flag on each book, independent of **collection** and **
 
 | Today | Gap |
 |-------|-----|
-| [`SearchFilter`](../src/database/models.py) | `read_filter` (Read/Unread) and `collection_id` only — no TBR intent |
-| One `collection_id` per book ([`help_docs/06_collections.md`](../help_docs/06_collections.md)) | A "Want to Read" **collection** would **move** books out of shelving collections |
+| [`SearchFilter`](../../src/database/models.py) | `read_filter` (Read/Unread) and `collection_id` only — no TBR intent |
+| One `collection_id` per book ([`help_docs/06_collections.md`](../../help_docs/06_collections.md)) | A "Want to Read" **collection** would **move** books out of shelving collections |
 | Main toolbar | Plot and Read filters exist; no Want to read filter |
 | Book Details | No TBR control |
 
@@ -51,23 +51,23 @@ A **Want to read** (TBR) flag on each book, independent of **collection** and **
 
 ### `books` table
 
-Add in [`connection.py`](../src/database/connection.py) `column_specs["books"]`:
+Add in [`connection.py`](../../src/database/connection.py) `column_specs["books"]`:
 
 ```text
 want_to_read  INTEGER DEFAULT 0
 ```
 
-Update [`test/fixtures/abcdDB_def.sql`](../test/fixtures/abcdDB_def.sql).
+Update [`test/fixtures/abcdDB_def.sql`](../../test/fixtures/abcdDB_def.sql).
 
 ### Model and queries
 
-[`models.py`](../src/database/models.py) — `Book`:
+[`models.py`](../../src/database/models.py) — `Book`:
 
 ```python
 want_to_read: bool = False
 ```
 
-[`queries.py`](../src/database/queries.py):
+[`queries.py`](../../src/database/queries.py):
 
 - `_row_to_book` — map `want_to_read` (truthy if 1)
 - `insert` / `update` — include column
@@ -84,7 +84,7 @@ def bulk_set_want_to_read(self, book_ids: List[int], value: bool) -> None
 
 ### `SearchFilter`
 
-[`models.py`](../src/database/models.py):
+[`models.py`](../../src/database/models.py):
 
 ```python
 want_to_read_filter: str = "All"  # All | Want to Read
@@ -92,7 +92,7 @@ want_to_read_filter: str = "All"  # All | Want to Read
 
 ### SQL
 
-[`BookQueries.get_all`](../src/database/queries.py) — after read_filter block (~line 92):
+[`BookQueries.get_all`](../../src/database/queries.py) — after read_filter block (~line 92):
 
 ```python
 if filter_criteria.want_to_read_filter == "Want to Read":
@@ -101,27 +101,27 @@ if filter_criteria.want_to_read_filter == "Want to Read":
 
 ### Filter summary
 
-[`main_window._filter_summary_text`](../src/ui/main_window.py): when active, append e.g. `Want to read` (same pattern as `Read: Read` and `Plot: With Plot`).
+[`main_window._filter_summary_text`](../../src/ui/main_window.py): when active, append e.g. `Want to read` (same pattern as `Read: Read` and `Plot: With Plot`).
 
 ---
 
-## Main window UI — [`main_window.py`](../src/ui/main_window.py)
+## Main window UI — [`main_window.py`](../../src/ui/main_window.py)
 
 ### Toolbar toggle
 
-Mirror [`read_filter_action`](../src/ui/main_window.py) (~line 1215):
+Mirror [`read_filter_action`](../../src/ui/main_window.py) (~line 1215):
 
 | Piece | Detail |
 |-------|--------|
 | Action | Checkable **Want to Read** on `action_toolbar` |
 | Handler | `on_want_to_read_filter_toggled(checked)` → filter `"Want to Read"` or `"All"` |
 | Refresh | `refresh_books()`; sync toggle when filters reset |
-| Icon | `want_to_read_filter` role in [`icon_helper`](../src/accessibility/icon_helper.py) or reuse decorative icon |
+| Icon | `want_to_read_filter` role in [`icon_helper`](../../src/accessibility/icon_helper.py) or reuse decorative icon |
 
 ### Shortcut
 
 - **Alt+T** — toggle Want to Read filter (TBR / **T**o-read)
-- Register in [`MAIN_WINDOW_SHORTCUTS`](../src/accessibility/shortcuts.py): `"T": ("Toggle want to read filter", "want_to_read_filter_toggle")`
+- Register in [`MAIN_WINDOW_SHORTCUTS`](../../src/accessibility/shortcuts.py): `"T": ("Toggle want to read filter", "want_to_read_filter_toggle")`
 - Wire callback in main window shortcut map (same pattern as `read_filter_toggle` / `on_read_filter_shortcut`)
 
 **Note:** Alt+R = read filter, Alt+P = plot filter on main window.
@@ -146,7 +146,7 @@ flowchart LR
 
 ---
 
-## Book Details UI — [`book_details.py`](../src/ui/book_details.py)
+## Book Details UI — [`book_details.py`](../../src/ui/book_details.py)
 
 Add **QCheckBox** on Reader / Read date row (`ROW_READER_READ`) or adjacent row:
 
@@ -174,8 +174,8 @@ Whenever `read_date` is set to a non-empty value, set `want_to_read = 0`.
 
 | Location | Change |
 |----------|--------|
-| [`book_details.on_save`](../src/ui/book_details.py) | If read date set → clear flag; uncheck checkbox |
-| [`main_window.show_read_date_dialog`](../src/ui/main_window.py) | On OK with date → `want_to_read = 0` in DB update |
+| [`book_details.on_save`](../../src/ui/book_details.py) | If read date set → clear flag; uncheck checkbox |
+| [`main_window.show_read_date_dialog`](../../src/ui/main_window.py) | On OK with date → `want_to_read = 0` in DB update |
 | Book list import read-date mode | If read date applied → `want_to_read = 0` on update |
 
 When flag was cleared by read date:
@@ -215,9 +215,9 @@ Clearing read date does **not** auto-set want to read.
 ## Help
 
 - New `help_docs/25_want_to_read.md` (or next free `nn_` prefix)
-- Update [`help_docs/06_collections.md`](../help_docs/06_collections.md) — Want to read is a **flag**, not a collection
-- Update [`help_docs/04_book_details.md`](../help_docs/04_book_details.md) — checkbox and auto-clear
-- [`help_router.py`](../src/ui/help_router.py) — optional Shift+F1 for main window / book details
+- Update [`help_docs/06_collections.md`](../../help_docs/06_collections.md) — Want to read is a **flag**, not a collection
+- Update [`help_docs/04_book_details.md`](../../help_docs/04_book_details.md) — checkbox and auto-clear
+- [`help_router.py`](../../src/ui/help_router.py) — optional Shift+F1 for main window / book details
 
 ---
 
@@ -245,4 +245,4 @@ Clearing read date does **not** auto-set want to read.
 
 ## Next steps
 
-Review for version 3 with other plans ([`plan_ratings.md`](plan_ratings.md), [`Plan_covers.md`](Plan_covers.md), etc.). Self-contained ~4-day feature; no dependency on other version 3 work.
+Review for version 3 with other plans ([`plan_ratings.md`](../plan_ratings.md), [`Plan_covers.md`](../Plan_covers.md), etc.). Self-contained ~4-day feature; no dependency on other version 3 work.

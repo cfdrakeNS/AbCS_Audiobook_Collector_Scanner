@@ -2,7 +2,7 @@
 
 **Status:** **Out of scope for version 3** (too risky). Plan kept for a later release. Fetch progress stays a blocking dialog.  
 **Created:** September 2026  
-**Related:** [plan_web_fetch_background_thread.md](plan_web_fetch_background_thread.md), [plan_bulk_web_metadata.md](plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [plan_web_fetch_background_thread.md](v3_enhancements/plan_web_fetch_background_thread.md), [plan_bulk_web_metadata.md](v3_enhancements/plan_bulk_web_metadata.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
 
 ---
 

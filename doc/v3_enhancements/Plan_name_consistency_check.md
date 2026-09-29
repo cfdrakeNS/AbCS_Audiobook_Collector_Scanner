@@ -3,7 +3,7 @@
 **Status:** Phase 13 — **Complete** (name-list merge on duplicate in tester build 2.18; Tab/Ctrl find-focus bugs fixed; Copy documented; library-wide fuzzy scan deferred after v3)  
 **Created:** June 2026  
 **Updated:** September 2026  
-**Related:** [Name List Process](../help_docs/15_name_list.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md)
+**Related:** [Name List Process](../../help_docs/15_name_list.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md)
 
 ---
 
@@ -20,7 +20,7 @@ Example: editing **87 Precinct** to **87th Precinct**.
 5. **Collections** keep the warning only. A collection also has an active flag and a library root, so moving its books is a different decision.
 6. After Save, focus moves to the updated or kept list row.
 7. Tab stops on the list (Find → list → Name → buttons). Alt+L also focuses the list. Escape in Find clears the filter if needed and returns focus to the list without closing the window. Ctrl+C and other chords stay on the list while a find filter is active.
-8. **Copy:** Right-click a row (or Menu key) → **Copy**, or **Ctrl+C**, copies the selected name. Status shows `Copied.` without moving focus. Same pattern on the main book list for the focused cell — see [Find and Filters](../help_docs/03_find_filters.md) and [Name List](../help_docs/15_name_list.md).
+8. **Copy:** Right-click a row (or Menu key) → **Copy**, or **Ctrl+C**, copies the selected name. Status shows `Copied.` without moving focus. Same pattern on the main book list for the focused cell — see [Find and Filters](../../help_docs/03_find_filters.md) and [Name List](../../help_docs/15_name_list.md).
 
 ### Follow-up bug fixes (tester)
 
@@ -35,11 +35,11 @@ Example: editing **87 Precinct** to **87th Precinct**.
 
 | Area | Location |
 |------|----------|
-| Save prompt and result | [`src/ui/name_list_window.py`](../src/ui/name_list_window.py) |
-| Reassign + delete source | `AuthorQueries.merge` / `SeriesQueries.merge` / `GenreQueries.merge` in [`src/database/queries.py`](../src/database/queries.py) |
-| Copy (Ctrl+C / right-click) | [`src/ui/table_clipboard.py`](../src/ui/table_clipboard.py); wired in name list and main book list |
-| Help | [`help_docs/15_name_list.md`](../help_docs/15_name_list.md), [`help_docs/03_find_filters.md`](../help_docs/03_find_filters.md), [`help_docs/16_shortcuts.md`](../help_docs/16_shortcuts.md) |
-| Tests | [`test/test_name_list_merge.py`](../test/test_name_list_merge.py), [`test/test_table_clipboard.py`](../test/test_table_clipboard.py) |
+| Save prompt and result | [`src/ui/name_list_window.py`](../../src/ui/name_list_window.py) |
+| Reassign + delete source | `AuthorQueries.merge` / `SeriesQueries.merge` / `GenreQueries.merge` in [`src/database/queries.py`](../../src/database/queries.py) |
+| Copy (Ctrl+C / right-click) | [`src/ui/table_clipboard.py`](../../src/ui/table_clipboard.py); wired in name list and main book list |
+| Help | [`help_docs/15_name_list.md`](../../help_docs/15_name_list.md), [`help_docs/03_find_filters.md`](../../help_docs/03_find_filters.md), [`help_docs/16_shortcuts.md`](../../help_docs/16_shortcuts.md) |
+| Tests | [`test/test_name_list_merge.py`](../../test/test_name_list_merge.py), [`test/test_table_clipboard.py`](../../test/test_table_clipboard.py) |
 
 ### Gate
 
@@ -59,7 +59,7 @@ The original plan was a post-import cleanup tool modeled on **Duplicate Mode**: 
 
 Partial engine and review UI already exist and are **not** on a menu:
 
-- [`src/core/name_consistency.py`](../src/core/name_consistency.py)
-- [`src/ui/name_consistency_window.py`](../src/ui/name_consistency_window.py)
+- [`src/core/name_consistency.py`](../../src/core/name_consistency.py)
+- [`src/ui/name_consistency_window.py`](../../src/ui/name_consistency_window.py)
 
 If revived later: wire Manage menu, finish series support, confirm-each-group (no silent merges), and meet shared a11y standards. Do **not** run during import.

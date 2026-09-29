@@ -2,7 +2,7 @@
 
 **Status:** Complete  
 **Estimate:** 0.5–1 day  
-**Related:** [plan_path_health_report.md](plan_path_health_report.md), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), Import progress ([import_progress_window.py](../src/ui/import_progress_window.py))
+**Related:** [plan_path_health_report.md](plan_path_health_report.md), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), Import progress ([import_progress_window.py](../../src/ui/import_progress_window.py))
 
 ---
 
@@ -58,9 +58,9 @@ Also show **N of M** books processed and elapsed time. Update often enough to fe
 | Area | Change |
 |------|--------|
 | New or reuse | Progress UI (Import progress compact mode or thin wrapper) |
-| [`path_health.py`](../src/core/path_health.py) | Iterator / callback API for one book at a time + running counts |
-| [`path_health_window.py`](../src/ui/path_health_window.py) | Scan opens progress; updates Missing / Incorrect / Valid; cancel; then fill table |
-| Help | [`24_path_health.md`](../help_docs/24_path_health.md) — Scan shows progress with live counts |
+| [`path_health.py`](../../src/core/path_health.py) | Iterator / callback API for one book at a time + running counts |
+| [`path_health_window.py`](../../src/ui/path_health_window.py) | Scan opens progress; updates Missing / Incorrect / Valid; cancel; then fill table |
+| Help | [`24_path_health.md`](../../help_docs/24_path_health.md) — Scan shows progress with live counts |
 
 **Out of scope:** Non-modal scan; auto-fix paths; changing Phase 25 filter semantics.
 

@@ -1,7 +1,7 @@
 # Sept 27 tester feedback — Version 3 Phase 30
 
 **Status:** Complete — Batches A–E tester accepted.  
-**Source:** [feedback issues and bugs found sept27.txt](../feedback%20issues%20and%20bugs%20found%20sept27.txt)  
+**Source:** [feedback issues and bugs found sept27.txt](../../feedback%20issues%20and%20bugs%20found%20sept27.txt)
 **Created:** September 27, 2026
 
 Tester batches (stop for smoke test after each):

@@ -3,7 +3,7 @@
 **Status:** Complete — tester accepted. Display-only ` - nn` on the main table, Book Details save, Book List Import, and Series From File Name. Tester build 2.17. Version 3 Phase 10.  
 **Created:** June 2026  
 **Updated:** September 2026 — display-only title suffix. Phase 9 schema accepted.  
-**Related:** [plan_schema_batch.md](plan_schema_batch.md) (v3 Phase 9), [plan_enhancements_version3_release.md](plan_enhancements_version3_release.md), [scripts/strip_series_suffix_from_titles.py](../scripts/strip_series_suffix_from_titles.py), [scripts/update_series_number_from_title.py](../scripts/update_series_number_from_title.py), [scripts/update_series_from_catalog.py](../scripts/update_series_from_catalog.py)
+**Related:** [plan_schema_batch.md](plan_schema_batch.md) (v3 Phase 9), [plan_enhancements_version3_release.md](../plan_enhancements_version3_release.md), [scripts/strip_series_suffix_from_titles.py](../../scripts/strip_series_suffix_from_titles.py), [scripts/update_series_number_from_title.py](../../scripts/update_series_number_from_title.py), [scripts/update_series_from_catalog.py](../../scripts/update_series_from_catalog.py)
 
 ---
 
@@ -37,21 +37,21 @@ Column added by [plan_schema_batch.md](plan_schema_batch.md) on first start of a
 
 This runs through `_ensure_legacy_schema_compatibility` for **existing** libraries (in-place `ALTER TABLE` after a `schema_repair` backup), not only new installs. Map on `Book` with default `None`. First start adds the column only. It does not parse numbers out of existing titles.
 
-### UI — Book Details ([`src/ui/book_details.py`](../src/ui/book_details.py))
+### UI — Book Details ([`src/ui/book_details.py`](../../src/ui/book_details.py))
 
 The only series-number control. Place a text box on the Series row, **to the right of Series**. Save/load `book.series_number` as a real number, so `3` and `6.5` both store. Blank means no number. Saving does not change the title. Opening a book shows the stored Series # only. A title suffix is not copied into the field. A year such as `1999` stays in the title.
 
 ### Main table
 
-[`title_for_display`](../src/utils/text_utils.py) adds ` - 03` or ` - 6.5` to the Title cell and spoken title when `series_number` is set and the stored title has no suffix. `books.title` is not written.
+[`title_for_display`](../../src/utils/text_utils.py) adds ` - 03` or ` - 6.5` to the Title cell and spoken title when `series_number` is set and the stored title has no suffix. `books.title` is not written.
 
-### Book List Import ([`src/ui/book_list_import_window.py`](../src/ui/book_list_import_window.py))
+### Book List Import ([`src/ui/book_list_import_window.py`](../../src/ui/book_list_import_window.py))
 
 Keep the existing Series and Series # column mapping. When Series # has a value, store it on `book.series_number`. Do not append it to the title. Series name still sets `series_id` as it does today.
 
 ### Folder Import — Series From File Name
 
-[`import_scanner.py`](../src/core/import_scanner.py) scenario `series_from_filename` stores the number on `book.series_number`, including a decimal such as `6.5`. It does not append the number to the title. Import Detail does not gain a series-number field. The other folder-import scenarios are unchanged.
+[`import_scanner.py`](../../src/core/import_scanner.py) scenario `series_from_filename` stores the number on `book.series_number`, including a decimal such as `6.5`. It does not append the number to the title. Import Detail does not gain a series-number field. The other folder-import scenarios are unchanged.
 
 ### Sort — main window
 
@@ -59,11 +59,11 @@ The existing **Series** sort (Sort menu and the Series column header) is series 
 
 ### Optional offline
 
-[`scripts/update_series_number_from_title.py`](../scripts/update_series_number_from_title.py) fills a blank `series_number` from a title suffix. The title is left as it is. Dry-run is the default. `--apply` copies the database to a timestamped backup first.
+[`scripts/update_series_number_from_title.py`](../../scripts/update_series_number_from_title.py) fills a blank `series_number` from a title suffix. The title is left as it is. Dry-run is the default. `--apply` copies the database to a timestamped backup first.
 
-[`scripts/strip_series_suffix_from_titles.py`](../scripts/strip_series_suffix_from_titles.py) removes a suffix from the title after filling a blank `series_number`. A stored number that disagrees with the suffix is kept. Dry-run is the default.
+[`scripts/strip_series_suffix_from_titles.py`](../../scripts/strip_series_suffix_from_titles.py) removes a suffix from the title after filling a blank `series_number`. A stored number that disagrees with the suffix is kept. Dry-run is the default.
 
-[`scripts/update_series_from_catalog.py`](../scripts/update_series_from_catalog.py) writes `series_id` and `series_number` only. It does not rewrite the title.
+[`scripts/update_series_from_catalog.py`](../../scripts/update_series_from_catalog.py) writes `series_id` and `series_number` only. It does not rewrite the title.
 
 **Estimate:** 2–3 days (after Phase 9)
 
