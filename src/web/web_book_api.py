@@ -443,24 +443,6 @@ class WebBookAPI:
         """Return True when plot looks like an API/error placeholder, not a synopsis."""
         return _PLOT_RESOLVER.is_stub(plot)
 
-    def _plot_relates_to_book(
-        self, plot: str, db_title: str, db_author: str, *, plot_source: str = ""
-    ) -> bool:
-        """Reject plot text that clearly belongs to another medium or wrong author."""
-        if self._is_non_book_plot(plot) or self._is_stub_plot(plot):
-            return False
-        if not db_author or plot_source != "wikipedia":
-            return True
-        if self._author_matches(db_author, plot):
-            return True
-        return bool(
-            re.search(
-                r"\b(novel|book|novella|short story|collection|memoir|thriller|mystery)\b",
-                plot,
-                re.IGNORECASE,
-            )
-        )
-
     def _apply_plot_to_metadata(
         self,
         metadata: Dict,
@@ -2493,35 +2475,6 @@ class WebBookAPI:
             except Exception:
                 continue
         return ids
-
-    def _wikidata_claim_string(self, claims: dict, property_id: str) -> str:
-        """Return first string/quantity-like claim value for a property."""
-        for statement in claims.get(property_id) or []:
-            try:
-                mainsnak = statement.get("mainsnak") or {}
-                datavalue = mainsnak.get("datavalue") or {}
-                value = datavalue.get("value")
-                if isinstance(value, str):
-                    return value.strip()
-                if isinstance(value, dict):
-                    amount = value.get("amount")
-                    if amount is not None:
-                        text = str(amount).lstrip("+")
-                        return text
-                    if "text" in value:
-                        return str(value["text"]).strip()
-            except Exception:
-                continue
-        return ""
-
-    def _get_sparql_value(self, result: dict, field: str) -> str:
-        """Extract value from SPARQL result binding (legacy helper)."""
-        try:
-            if field in result and result[field]:
-                return result[field].get("value", "").strip()
-        except Exception:
-            pass
-        return ""
 
     def _strip_series_number(self, title: str) -> tuple[str, str]:
         """Strip series number from title and return (clean_title, series_number)."""

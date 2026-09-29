@@ -1,6 +1,6 @@
 # Dead Code Cleanup (Vulture) — Future Improvement Plan
 
-**Status:** Planned (not yet implemented)  
+**Status:** Current cleanup pass complete — September 29, 2026. Repeat before a future release when useful.
 **Created:** June 2026  
 **Related:** [CLEANUP_VULTURE_FINDINGS.md](CLEANUP_VULTURE_FINDINGS.md)
 
@@ -8,7 +8,7 @@
 
 ## What this is
 
-Periodic **maintenance pass** using vulture to remove unused code — between feature waves, not a product feature.
+Periodic **maintenance pass** using Vulture to identify and carefully remove unused code — between feature waves, not a product feature. Vulture findings are candidates for review, not automatic deletion instructions.
 
 ---
 

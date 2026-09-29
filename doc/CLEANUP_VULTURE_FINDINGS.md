@@ -7,7 +7,27 @@
 
 ---
 
-# Actionable Items (Current - June 23, 2026)
+# Current Pass — September 29, 2026
+
+**Tool:** Vulture 2.16
+**Command:** `python -m vulture src test --min-confidence 60`
+**Result:** 144 findings after the targeted cleanup below; most are pytest fixture/mock reports, Qt callbacks, compatibility helpers, or dynamically used UI attributes. Do not remove remaining findings without checking callers and framework behavior.
+
+**Confirmed dead code removed:**
+- `src/accessibility/read_only_text.py`: write-only `PlotLineList._plot_title` mirror; Qt already stores the accessible name.
+- `src/ui/book_details.py`: unused local `grid` assignment.
+- `src/ui/import_window.py`: unused `resolve_errors` parameter on `_apply_detail_edits`.
+- `src/web/web_book_api.py`: unused `_plot_relates_to_book`, `_wikidata_claim_string`, and legacy `_get_sparql_value` helpers.
+- `src/web/web_http.py`: unused `RATE_LIMIT_RETRY_DELAY_SECONDS` alias.
+- `src/app_urls.py`: unused `AURORA_WEBSITE_URL` and `ABCS_GITHUB_RELEASES_URL` constants. Keep `ABCS_WEBSITE_URL`; it is the documented production target for the update URL switch.
+
+**Retained after reference checks:** test-facing helpers (`_negative_cache_is_transient_google_only`, `_is_non_book_plot`, and `get_last_plot_diagnostics`), the shared view-field spike helpers, `preview_can_launch`, path-health functions, `JSON_KEYS`, pytest fixtures, and Qt/framework callbacks. The full pytest suite passed after cleanup.
+
+**`.vultureignore`:** unchanged. Remaining low-confidence reports are deferred for individual review, not treated as actionable by default.
+
+---
+
+# Previous Scan Notes — June 23, 2026
 
 Items that need verification or cleanup, organized by file:
 

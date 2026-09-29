@@ -904,7 +904,6 @@ class BookDetailsWindow(AccessibleDialog):
         right_grid = _field_grid()
         right_grid.setColumnStretch(1, 0)
         bottom_grid = _field_grid()
-        grid = left_grid
 
         # Title
         title_label = QLabel("Title:")

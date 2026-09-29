@@ -2584,7 +2584,6 @@ class ImportWindow(AccessibleDialog):
         self,
         row: int,
         detail_window: ImportDetailWindow,
-        resolve_errors: bool = False,
     ):
         """Apply edits returned from ImportDetailWindow to scanned item + table."""
         item = self.scanned_items[row]

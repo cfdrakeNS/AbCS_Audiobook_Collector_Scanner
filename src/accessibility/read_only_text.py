@@ -174,7 +174,6 @@ class PlotLineList(QListWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._plot_title = "Plot"
         self.setFocusPolicy(Qt.StrongFocus)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -200,7 +199,6 @@ class PlotLineList(QListWidget):
         )
 
     def setAccessibleName(self, name: str):
-        self._plot_title = name
         super().setAccessibleName(name)
 
     def setAccessibleDescription(self, description: str):

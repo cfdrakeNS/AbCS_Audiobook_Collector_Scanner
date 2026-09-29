@@ -37,6 +37,16 @@ python -m pytest test/ -q --tb=line --durations=15 --cov=src/core --cov=src/data
 - `--durations=15` — print the 15 slowest tests (guards against suite regressions)
 - `--cov=src/core --cov=src/database` — advisory coverage for core logic packages
 
+## Report-only dead-code scan
+
+Install development dependencies from `requirements.txt`, then run:
+
+```bash
+python -m vulture src test --min-confidence 60
+```
+
+Treat findings as review candidates. Check [CLEANUP_VULTURE_FINDINGS.md](doc/CLEANUP_VULTURE_FINDINGS.md) before removing symbols; Qt callbacks, pytest fixtures, compatibility helpers, and mock configuration can look unused to static analysis.
+
 ## Headless / off-screen Qt
 
 On machines without a display, or to match CI on Windows:

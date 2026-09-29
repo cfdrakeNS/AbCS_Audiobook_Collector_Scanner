@@ -84,8 +84,8 @@ All Cursor development plans from the 2025–2026 AbCS rollout are **complete** 
 | Plan | Location |
 |------|----------|
 | Book Details open performance | [plan_book_details_open_performance.md](v3_enhancements/plan_book_details_open_performance.md) — Implemented; one lightweight source lookup and one cached cover read per ordinary open; regression tests added. |
-| CI / test hardening | [plan_ci_test_hardening.md](plan_ci_test_hardening.md) |
-| Vulture dead-code cleanup | [plan_vulture_dead_code_cleanup.md](plan_vulture_dead_code_cleanup.md) |
+| CI / test hardening | [plan_ci_test_hardening.md](plan_ci_test_hardening.md) — Complete; existing Windows CI runs full pytest with advisory coverage. |
+| Vulture dead-code cleanup | [plan_vulture_dead_code_cleanup.md](plan_vulture_dead_code_cleanup.md) — Current cleanup pass complete; periodic review before future releases. |
 
 ---
 

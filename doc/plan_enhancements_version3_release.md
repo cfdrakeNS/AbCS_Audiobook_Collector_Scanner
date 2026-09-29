@@ -430,8 +430,8 @@ See [plan_schema_batch.md](v3_enhancements/plan_schema_batch.md). Want to Read, 
 
 | Item | Detail doc | Est. |
 |------|------------|------|
-| CI / test hardening | [plan_ci_test_hardening.md](plan_ci_test_hardening.md) | 1–2 d |
-| Vulture dead-code cleanup | [plan_vulture_dead_code_cleanup.md](plan_vulture_dead_code_cleanup.md) | 0.5–1 d |
+| CI / test hardening | [plan_ci_test_hardening.md](plan_ci_test_hardening.md) | Complete — Windows pytest CI and advisory coverage are in place. |
+| Vulture dead-code cleanup | [plan_vulture_dead_code_cleanup.md](plan_vulture_dead_code_cleanup.md) | Current pass complete — September 29, 2026; repeat before a future release. |
 
 ---
 

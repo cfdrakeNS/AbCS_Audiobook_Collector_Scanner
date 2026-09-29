@@ -47,7 +47,6 @@ RATE_LIMIT_COOLDOWN_DEFAULTS = {
     "open_library": 60,
 }
 SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS = 2.0
-RATE_LIMIT_RETRY_DELAY_SECONDS = SERVICE_UNAVAILABLE_RETRY_DELAY_SECONDS
 
 _source_cooldown_until: dict[str, float] = {}
 _cooldown_persist_warned = False
