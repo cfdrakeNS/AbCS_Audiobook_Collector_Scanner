@@ -203,6 +203,8 @@ These columns are the only store for listen progress. The player and Book Detail
 
 **Follow-up bug fix (testing miss):** Date and year validation across Book Details, main read-date popup, Reading History, and Import Detail Year — see [fix_read_date.md](fix_read_date.md). Alt+Up/Down on `QDateEdit` abandoned; screen readers use typed fields. Classic calendars use single-letter day names and scale with UI zoom. Not promoted to AGENTS/standards yet — wait for a broader review.
 
+**Follow-up performance fix:** Book Details now performs one lightweight audiobook-source lookup and one cached cover read during an ordinary open instead of repeated full playlist scans and metadata sorts. See [plan_book_details_open_performance.md](plan_book_details_open_performance.md).
+
 ### Phase 20 — Want to read (2–3 days)
 
 **Tester accepted.** See [plan_want_to_read.md](plan_want_to_read.md). The Book Details checkbox saves without Update, and a read date clears Want to read. The main list filters to Want to read (View → Want to read, or Alt+T). Edit → Add to want to read marks the focused book or the selection and saves immediately. With books selected, the footer and Edit → Clear want to read clear the mark for that selection. Import Detail stays deferred.

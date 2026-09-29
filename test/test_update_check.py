@@ -94,11 +94,13 @@ def test_startup_update_check_respects_preference(main_window, isolated_qsetting
 
     started = []
     main_window._start_update_check = lambda **kwargs: started.append(kwargs)
+    settings = QSettings("AbCS", "AudioBookCollector")
+    settings.setValue(AUTO_CHECK_UPDATES_SETTING, False)
+    settings.sync()
 
     main_window.maybe_start_startup_update_check()
     assert started == []
 
-    settings = QSettings("AbCS", "AudioBookCollector")
     settings.setValue(AUTO_CHECK_UPDATES_SETTING, True)
     settings.sync()
     main_window.maybe_start_startup_update_check()

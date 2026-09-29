@@ -146,6 +146,44 @@ def list_audio_in_folder(folder: Path) -> list[Path]:
     return files
 
 
+def resolve_preview_source(
+    path: str, collection_root: str = "", import_dir: str = ""
+) -> PreviewTarget:
+    """Return one playable file without building or metadata-sorting a playlist."""
+    text = (path or "").strip()
+    if not text:
+        return PreviewTarget(error="No file path is set.")
+    resolved = resolve_book_location(
+        text, collection_root=collection_root, import_dir=import_dir
+    )
+    from src.core.library_root import path_exists
+
+    if not path_exists(resolved):
+        return PreviewTarget(error=f"Book not found in - {resolved}")
+    target = Path(resolved)
+    if target.is_file():
+        if target.suffix.lower() in TagReader.SUPPORTED_EXTENSIONS:
+            return PreviewTarget(path=target)
+        return PreviewTarget(error="This path is not a recognized audiobook file.")
+    if not target.is_dir():
+        return PreviewTarget(error=f"Book not found in - {resolved}")
+
+    extensions = TagReader.SUPPORTED_EXTENSIONS
+    try:
+        children = sorted(target.iterdir(), key=lambda item: item.name.casefold())
+        for child in children:
+            if child.is_file() and child.suffix.lower() in extensions:
+                return PreviewTarget(path=child)
+        for child in children:
+            if not child.is_dir():
+                continue
+            for item in sorted(child.iterdir(), key=lambda entry: entry.name.casefold()):
+                if item.is_file() and item.suffix.lower() in extensions:
+                    return PreviewTarget(path=item)
+    except OSError:
+        return PreviewTarget(error=f"Book not found in - {resolved}")
+    return PreviewTarget(error="This folder has no recognized audiobook files.")
+
 def resolve_preview_file(
     path: str, collection_root: str = "", import_dir: str = ""
 ) -> PreviewTarget:

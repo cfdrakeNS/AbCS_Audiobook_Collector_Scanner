@@ -368,6 +368,10 @@ class BookDetailsWindow(AccessibleDialog):
         self._first_dirty_widget = None  # Track first field that changed
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
+        self._preview_source_cache_key = None
+        self._preview_source_cache = None
+        self._cover_cache_key = None
+        self._cover_cache_data = None
 
         # Track original combo values for focusOut change detection
         self._original_author = ""
@@ -3272,6 +3276,8 @@ class BookDetailsWindow(AccessibleDialog):
 
     def _on_path_edit_changed(self):
         self._mark_dirty(self.path_edit)
+        if getattr(self, "_loading_fields", False):
+            return
         self._update_preview_button_state()
 
     def on_browse_path(self):
@@ -3337,15 +3343,26 @@ class BookDetailsWindow(AccessibleDialog):
             self.set_status("Path updated.", announce=True)
         self.browse_path_button.setFocus(Qt.TabFocusReason)
 
-    def _update_preview_button_state(self):
-        from src.core.audio_launcher import preview_can_launch
+    def _preview_source(self):
+        """Resolve one playable file once for Listen availability and cover art."""
+        from src.core.audio_launcher import resolve_preview_source
 
-        in_edit = bool(getattr(self, "_in_edit_mode", False)) or bool(self.is_new)
-        available = (not in_edit) and preview_can_launch(
+        key = (
             self.path_edit.text() if hasattr(self, "path_edit") else "",
-            collection_root=self._preview_collection_root(),
-            import_dir=self._preview_import_dir(),
+            self._preview_collection_root(),
+            self._preview_import_dir(),
         )
+        if key != self._preview_source_cache_key:
+            self._preview_source_cache_key = key
+            self._preview_source_cache = resolve_preview_source(
+                key[0], collection_root=key[1], import_dir=key[2]
+            )
+        return self._preview_source_cache
+
+    def _update_preview_button_state(self):
+        in_edit = bool(getattr(self, "_in_edit_mode", False)) or bool(self.is_new)
+        target = None if in_edit else self._preview_source()
+        available = bool(target is not None and target.path is not None)
         self.preview_button.setVisible(not in_edit)
         self.preview_button.setEnabled(available)
         if in_edit:
@@ -3360,7 +3377,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.preview_button.setAccessibleDescription(
                 "Listen is unavailable because the path is missing or has no playable file."
             )
-        self._show_book_cover()
+        if not in_edit:
+            self._show_book_cover(target)
 
     def _cover_side(self) -> int:
         return self.scaler.get_scaled_size(120)
@@ -3401,28 +3419,29 @@ class BookDetailsWindow(AccessibleDialog):
             side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
 
-    def _show_book_cover(self) -> None:
-        """Show embedded art, or the app icon in the same box. Do not announce the icon."""
-        from src.core.audio_launcher import read_embedded_cover, resolve_preview_file
+    def _show_book_cover(self, target=None) -> None:
+        """Show cached embedded art, or the placeholder in the same box."""
+        from src.core.audio_launcher import read_embedded_cover
 
         if not hasattr(self, "cover_label"):
             return
         side = self._cover_side()
         self.cover_label.setFixedSize(side, side)
-        path_text = self.path_edit.text() if hasattr(self, "path_edit") else ""
-        target = resolve_preview_file(
-            path_text,
-            collection_root=self._preview_collection_root(),
-        )
+        target_path = target.path if target is not None else None
+        cache_key = (str(target_path) if target_path is not None else "", side)
+        if cache_key != self._cover_cache_key:
+            self._cover_cache_key = cache_key
+            self._cover_cache_data = (
+                read_embedded_cover(target_path) if target_path is not None else None
+            )
+        data = self._cover_cache_data
         pixmap = QPixmap()
         has_art = False
-        if target.path is not None:
-            data = read_embedded_cover(target.path)
-            if data and pixmap.loadFromData(data):
-                has_art = True
-                pixmap = pixmap.scaled(
-                    side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation
-                )
+        if data and pixmap.loadFromData(data):
+            has_art = True
+            pixmap = pixmap.scaled(
+                side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
         if not has_art:
             pixmap = self._placeholder_cover()
             self.cover_label.setAccessibleName("No cover")

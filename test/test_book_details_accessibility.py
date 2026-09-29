@@ -307,6 +307,39 @@ def _jpeg_bytes() -> bytes:
     return bytes(buffer.data())
 
 
+def test_book_details_open_resolves_source_and_cover_once(
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch
+):
+    from src.core.audio_launcher import PreviewTarget
+
+    audio = tmp_path / "book.mp3"
+    audio.write_bytes(b"x")
+    book = _ensure_sample_books(temp_db, count=1)[0]
+    book.path = str(audio)
+    calls = {"resolve": 0, "cover": 0}
+
+    def fake_resolve(path, collection_root="", import_dir=""):
+        calls["resolve"] += 1
+        return PreviewTarget(path=audio)
+
+    def fake_cover(path):
+        calls["cover"] += 1
+        return None
+
+    monkeypatch.setattr("src.core.audio_launcher.resolve_preview_source", fake_resolve)
+    monkeypatch.setattr("src.core.audio_launcher.read_embedded_cover", fake_cover)
+
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=book,
+        parent=None,
+        theme_manager=theme_manager,
+    )
+
+    assert calls == {"resolve": 1, "cover": 1}
+    window.close()
+
 def test_book_details_cover_placeholder_without_art(temp_db, ui_scaler, theme_manager):
     author_id = AuthorQueries(temp_db).insert("Plain Author")
     book_id = BookQueries(temp_db).insert(

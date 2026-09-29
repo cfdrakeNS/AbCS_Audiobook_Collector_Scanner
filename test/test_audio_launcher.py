@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from src.core.audio_launcher import (
     embedded_cover_bytes,
     preview_can_launch,
     read_embedded_cover,
     resolve_preview_file,
+    resolve_preview_source,
 )
 
 
@@ -95,6 +98,21 @@ def test_parse_tag_number_and_sort_key(tmp_path):
     ordered = list_audio_in_folder(folder)
     assert ordered == [early_name, late_name]
 
+
+def test_resolve_preview_source_skips_playlist_metadata_sort(tmp_path, monkeypatch):
+    folder = tmp_path / "book"
+    folder.mkdir()
+    audio = folder / "chapter.mp3"
+    audio.write_bytes(b"x")
+    monkeypatch.setattr(
+        "src.core.audio_launcher.audio_sort_key",
+        lambda _path: pytest.fail("lightweight source lookup must not sort metadata"),
+    )
+
+    found = resolve_preview_source(str(folder))
+
+    assert found.path == audio
+    assert found.error == ""
 
 def test_resolve_preview_folder_first_file_then_nested(tmp_path):
     folder = tmp_path / "album"

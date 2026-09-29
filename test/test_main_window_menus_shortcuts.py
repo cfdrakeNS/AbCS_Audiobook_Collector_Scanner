@@ -467,10 +467,14 @@ def test_ctrl_l_does_nothing_inside_listen_window(
 
 
 def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatch):
+    from PySide6.QtCore import QSettings
+
+    from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
     from src.database.models import Book
     from src.database.queries import AuthorQueries, BookQueries
 
     window = main_window
+    QSettings("AbCS", "AudioBookCollector").remove(IMPORT_DEFAULT_DIRECTORY_KEY)
     assert hasattr(window, "preview_action")
     audio = tmp_path / "menu_preview.m4b"
     audio.write_bytes(b"x")

@@ -166,6 +166,8 @@ def isolated_qsettings(tmp_path, monkeypatch):
     from PySide6.QtCore import QSettings
 
     monkeypatch.setenv("ABCS_TEST_SETTINGS_DIR", str(tmp_path))
+    previous_format = QSettings.defaultFormat()
+    QSettings.setDefaultFormat(QSettings.Format.IniFormat)
     QSettings.setPath(
         QSettings.Format.IniFormat,
         QSettings.Scope.UserScope,
@@ -177,14 +179,25 @@ def isolated_qsettings(tmp_path, monkeypatch):
         "AbCS",
         "AbCS",
     )
+    app_settings = QSettings(
+        QSettings.Format.IniFormat,
+        QSettings.Scope.UserScope,
+        "AbCS",
+        "AudioBookCollector",
+    )
     settings.clear()
-    yield settings
-    settings.clear()
+    app_settings.clear()
+    try:
+        yield settings
+    finally:
+        settings.clear()
+        app_settings.clear()
+        QSettings.setDefaultFormat(previous_format)
 
 
 @pytest.fixture
-def main_window(qapp, temp_db, ui_scaler, theme_manager, qtbot):
-    """Function-scoped MainWindow on an isolated temp database."""
+def main_window(qapp, temp_db, ui_scaler, theme_manager, qtbot, isolated_qsettings):
+    """MainWindow with an isolated temp database and application settings."""
     from src.ui.main_window import MainWindow
 
     window = MainWindow(temp_db, ui_scaler, theme_manager)
