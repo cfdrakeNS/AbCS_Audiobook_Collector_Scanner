@@ -2379,23 +2379,24 @@ class PreferencesWindow(AccessibleDialog):
         default_keywords = "reader, read by, narrator, narrated by"
         self.reader_keywords_edit.setText(default_keywords)
         self.settings.setValue("import/reader_keywords", default_keywords)
-
+        
+        # auto correct 
         self.ac_proper_case_apply.setChecked(True)
         self.ac_proper_case_skip.setChecked(True)
         self.ac_trim_whitespace_apply.setChecked(True)
-        self.ac_trim_whitespace_skip.setChecked(False)
+        self.ac_trim_whitespace_skip.setChecked(True)
         self.ac_strip_punctuation_apply.setChecked(True)
-        self.ac_strip_punctuation_skip.setChecked(False)
-        self.ac_remove_nonprintable_apply.setChecked(False)
-        self.ac_remove_nonprintable_skip.setChecked(False)
+        self.ac_strip_punctuation_skip.setChecked(True)
+        self.ac_remove_nonprintable_apply.setChecked(True)
+        self.ac_remove_nonprintable_skip.setChecked(True)
         self.settings.setValue("import/scan/proper_case", True)
         self.settings.setValue("import/scan/proper_case_skip_review", True)
         self.settings.setValue("import/scan/trim_whitespace", True)
-        self.settings.setValue("import/scan/trim_whitespace_skip_review", False)
+        self.settings.setValue("import/scan/trim_whitespace_skip_review", True)
         self.settings.setValue("import/scan/strip_punctuation", True)
-        self.settings.setValue("import/scan/strip_punctuation_skip_review", False)
-        self.settings.setValue("import/scan/remove_nonprintable", False)
-        self.settings.setValue("import/scan/remove_nonprintable_skip_review", False)
+        self.settings.setValue("import/scan/strip_punctuation_skip_review", True)
+        self.settings.setValue("import/scan/remove_nonprintable", True)
+        self.settings.setValue("import/scan/remove_nonprintable_skip_review", True)
         self._sync_autocorrect_skip_states()
 
         # Validation rules - reset to defaults
@@ -2430,6 +2431,7 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue("import/rules/minimum_title_length/value", 3)
         self.settings.setValue("import/rules/minimum_title_length/severity", "warning")
 
+        # minimum book length: disabled
         self.rule_min_book_length_value.setValue(0)
         self.rule_min_book_length_severity.setCurrentIndex(
             self.rule_min_book_length_severity.findData("none")
@@ -2438,6 +2440,7 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue("import/rules/minimum_book_length/value", 0)
         self.settings.setValue("import/rules/minimum_book_length/severity", "warning")
 
+        # maximum book length: disabled 
         self.rule_max_book_length_value.setValue(0)
         self.rule_max_book_length_severity.setCurrentIndex(
             self.rule_max_book_length_severity.findData("none")
