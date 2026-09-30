@@ -18,7 +18,7 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 
 - At least one **active collection** must exist.
 - Have your spreadsheet ready. Supported formats: `.csv`, `.xlsx`, `.xls`, `.ods`.
-- For new books, **Title** and **Author** columns are required.
+- **Title** and **Author** columns are required. in your sheet.
 - For read-date updates, books must already exist in the selected collection.
 
 ## Import from a spreadsheet
@@ -27,7 +27,7 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 2. Choose a **Collection** (Alt+C). Focus starts on this field when the window opens.
 3. Click **Browse** (Alt+B) and select your spreadsheet file.
 4. After the file loads, the status bar reports how many rows and columns were found.
-5. If your spreadsheet has a header row in the first line, click **My file Has Header** to check or uncheck it.
+5. If your spreadsheet has a header row in the first line, click **My file Has Header** to check or uncheck it. If checked the App wil try to match the fields in the sheet.
 6. Choose an import mode under **Options** (click a radio button, or press **Alt+O**):
    - **Add Book From List** (default) — insert new book records.
    - **Add Read Date from List** — update read dates on existing books only.

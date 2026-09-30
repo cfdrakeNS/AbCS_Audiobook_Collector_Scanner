@@ -19,7 +19,7 @@ Backup and Restore lets you save a copy of your entire AbCS database and restore
 ## Back up and restore
 
 1. Open **Manage → Backup & Restore** (**Alt+M**, then **B**).
-2. The window opens with focus on the **backup list** (**Alt+L**), which shows backup files already saved.
+2. The window opens with focus on the **backup list** (**Alt+L**), which shows backup files already saved. Backup files are listed with newest date first.
 
 ### Create a backup
 
@@ -29,7 +29,7 @@ Backup and Restore lets you save a copy of your entire AbCS database and restore
 
 ### Restore from a backup
 
-1. Select a backup in the list, or click **Browse** (Alt+B) to choose a backup file from another location.
+1. Select a backup in the list, or click **Browse** (Alt+B) to choose a backup file from another location on your computer.
 2. The selected file appears in the **Restore file** field (Alt+T to focus).
 3. Click **Restore** (Alt+R).
 4. Confirm the restore when asked. This replaces your current database.

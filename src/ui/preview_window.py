@@ -226,9 +226,6 @@ class PreviewWindow(AccessibleDialog):
         self.theme_manager = theme_manager
         self._book = book
         self._db = db
-        from src.ui.help_router import preview_help_doc_for_owner
-
-        self.help_doc_override = preview_help_doc_for_owner(parent)
         self._display_title = ""
         self._book_length_text = ""
         self._player = None

@@ -2,7 +2,8 @@
 
 ## What this is
 
-Statistics shows a snapshot of your **entire library**: how many books, authors, series, genres, and collections you have, plus read/unread counts, Want to Read and in-progress counts, and total listening time. It is a read-only summary dialog.
+Statistics shows a snapshot of your **entire library**: how many books, authors, series, genres, and collections you have, plus read/unread counts, 
+Want to Read and in-progress counts, and total listening time. It is a read-only summary dialog.
 
 ## When to use it
 
@@ -13,7 +14,7 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
 
 ## Before you start
 
-- Statistics reflect the **current database** and respect the main window's collection filter for some counts where applicable.
+- Statistics reflect the **current database** 
 - No data is changed from this dialog.
 
 ## View statistics
@@ -26,7 +27,7 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
    - Total hours read and total listening time (all books)
    - Collection count and per-collection book counts
 3. Click a row to read it, or use **Tab** to move through table cells. Each row is announced as `statistic: value` to screen readers.
-4. Click **Close** or press **Escape** to dismiss the dialog.
+4. Press **Escape** to dismiss the dialog.
 
 ## What happens next
 
@@ -36,14 +37,14 @@ Statistics shows a snapshot of your **entire library**: how many books, authors,
 ## Mouse, shortcuts, and accessibility
 
 - Open **Manage → Statistics** or click **Statistics** on the main toolbar.
-- Click **Close** or the dialog close control when finished.
+- Press **Escape** to close.
 
 | Shortcut | Action |
 |----------|--------|
 | Alt+M, S | Open Statistics (Manage menu) |
 | Tab | Navigate table |
 | F1 | Show shortcuts help |
-| Escape | Close dialog |
+| Escape | Close |
 
 ## Common confusion
 

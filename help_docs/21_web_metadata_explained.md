@@ -19,7 +19,6 @@ What AbCS does internally after you activate **Fetch Web Info** (Alt+W). This is
 | Condition                                   | Result                                         |
 | ------------------------------------------- | ---------------------------------------------- |
 | Duplicate Mode is active on the main window | Fetch does not run                             |
-| Multiple books selected on the main window  | Fetch does not run (no message)                |
 | No valid book focused                       | Status: *No book available for web info fetch* |
 
 
@@ -225,7 +224,7 @@ Runs the search again using the Google Books → WikiData order. Refreshes the r
 
 | Action             | Result                                                |
 | ------------------ | ----------------------------------------------------- |
-| **Save** (Alt+S)   | Applies checked fields and auto-fills to the database |
+| **Save** (Ctrl+S)   | Applies checked fields and auto-fills to the database |
 | **Escape**         | Asks *Save web data?* — Yes saves, No discards        |
 
 

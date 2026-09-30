@@ -2,7 +2,8 @@
 
 ## What this is
 
-Duplicate Mode is a library cleanup tool. It scans all books already in your database, finds groups that match on the same title, author, year, or collection (depending on the rule you choose), and shows only those books so you can review, delete, or export them.
+Duplicate Mode is a library cleanup tool. It scans all books already in your database, finds groups that match on the same title, author, year, or collection (depending on the rule you choose),  
+and shows only those books so you can review, delete, or export them.
 
 This is **not** the same as duplicate detection during Import. Import uses fuzzy matching to block new books that look similar. Duplicate Mode uses exact key matching on books already stored.
 

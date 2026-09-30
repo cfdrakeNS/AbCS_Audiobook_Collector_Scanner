@@ -2,7 +2,7 @@
 
 ## What this is
 
-Collections let you organize books into separate groups — for example, "Audible", "Library CDs", or "Wish List". AbCS has two collection-related workflows:
+Collections let you organize books into separate groups — for example, portable hard disk, "Library CDs", or "Wish List". AbCS has two collection-related workflows:
 
 1. **Manage collections** — create, rename, activate, or delete collections.
 2. **Filter by collection** — show only books from one collection in the main list (does not change your data).
@@ -25,18 +25,18 @@ Every book belongs to one collection. A default collection named **Audio Books**
 ## Manage collections
 
 1. Open **Manage → Collections** (**Alt+M**, then **C**).
-2. At the top, **Name** and **Library root folder** sit in a compact block above the table. The **collection list** has three columns: **Collection**, **Path**, and **Status**. Collection and Status size to their contents. Path uses the remaining width. Status is Active or Inactive. At high main-window zoom, row height grows so the first row’s text is not clipped.
+2. At the top, **Name** and **Library root folder** sit in block for editing above the table. The **collection list** has three columns: **Collection**, **Path**, and **Status**. 
 3. To **add** a collection:
    - Click **New** (Alt+N).
    - Type a name in the **Name** field (Alt+E to edit).
    - Optionally set a **Library root folder**. Type a path or click **Browse** (Alt+B).
    - Check or uncheck **Active** (Alt+A in some contexts — see F1 help).
-   - Click **Save** (Alt+S).
+   - Click **Save** (trl+S).
 4. To **edit** a collection:
    - Select a row by clicking it in the list (or press **Alt+L** to focus the list with the keyboard).
    - Click **Edit** (Alt+E), double-click a row, or press Enter on a row.
    - Change the name, library root folder, or active status.
-   - Click **Save** (Alt+S).
+   - Click **Save** (Ctrl+S).
 5. To **delete** a collection:
    - Select an unused collection.
    - Click **Delete** (Alt+D).
@@ -57,7 +57,8 @@ Import windows use this filter: if the main window shows a specific collection, 
 - New or edited collections appear in the Manage list and in the View → Collections menu.
 - Inactive collections do not appear in import collection dropdowns but remain in the database.
 - Filtering does not move or delete books — it only changes what you see.
-- If a library root folder is set and that folder exists, **File → Import** pre-fills the scan folder from it. You can still browse a different folder. Changing the root does not rewrite book paths.
+- If a library root folder is set and that folder exists, **File → Import** pre-fills the scan folder from it. You can still browse a different folder.
+ Changing the root does not rewrite book paths.
 
 ## Settings that affect this
 
@@ -79,11 +80,11 @@ None specific to collections beyond having at least one active collection at all
 | Alt+E | Edit / name field |
 | Enter / double-click | Edit selected row |
 | Alt+B | Browse library root folder |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Alt+D | Delete |
 | F1 | Help |
-| Alt+/ | Re-read status |
-| Escape | Cancel edit or close |
+| Ctrl+/ | Re-read status |
+| Escape | close |
 
 ### Main window filter
 

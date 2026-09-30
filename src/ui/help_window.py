@@ -66,7 +66,7 @@ _HEADER_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 _ORDERED_LIST_RE = re.compile(r"^\d+\.\s+")
 _FAQ_QUESTION_RE = re.compile(r"^\*\*(.+)\*\*$")
 _TABLE_DIVIDER_RE = re.compile(r"^[\s|:-]+$")
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'])")
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=(?:\*\*)?[A-Z\"'])")
 
 _NAV_ROLE_TYPE = Qt.ItemDataRole.UserRole
 _NAV_ROLE_FILENAME = Qt.ItemDataRole.UserRole + 1
@@ -104,6 +104,7 @@ QListWidget::item:focus {
 _HELP_DOCUMENT_STYLESHEET = """
 p.body { margin-left: 1.25em; margin-top: 0.08em; margin-bottom: 0.08em; }
 p.step { margin-left: 1.5em; margin-top: 0.08em; margin-bottom: 0.08em; }
+p.step-cont { margin-left: 2.8em; margin-top: 0.08em; margin-bottom: 0.08em; }
 p.faq-q { margin-left: 1.5em; margin-top: 0.15em; margin-bottom: 0.05em; font-weight: bold; }
 p.faq-a { margin-left: 2em; margin-top: 0.05em; margin-bottom: 0.08em; }
 p.shortcut { margin-left: 1.5em; margin-top: 0.05em; margin-bottom: 0.05em; }
@@ -183,14 +184,23 @@ def _append_table_row_paragraph(
 ) -> None:
     """Render markdown table rows as plain paragraphs for screen-reader review."""
     if table_mode == "shortcut" and len(cells) >= 2:
-        row_text = (
-            f"{_inline_markdown_to_html(cells[0])} — "
-            f"{_inline_markdown_to_html(cells[1])}"
-        )
-        body_parts.append(f'<p class="shortcut">{row_text}</p>')
+        row_prefix = f"{_inline_markdown_to_html(cells[0])} — "
+        sentences = _split_sentences(cells[1])
+        if sentences:
+            body_parts.append(
+                f'<p class="shortcut">{row_prefix}'
+                f"{_inline_markdown_to_html(sentences[0])}</p>"
+            )
+            for sentence in sentences[1:]:
+                body_parts.append(
+                    f'<p class="shortcut">{_inline_markdown_to_html(sentence)}</p>'
+                )
         return
-    row_text = " — ".join(_inline_markdown_to_html(cell) for cell in cells)
-    body_parts.append(f'<p class="table-row">{row_text}</p>')
+    row_text = " — ".join(cells)
+    for sentence in _split_sentences(row_text):
+        body_parts.append(
+            f'<p class="table-row">{_inline_markdown_to_html(sentence)}</p>'
+        )
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -304,7 +314,16 @@ def markdown_to_html(markdown: str) -> tuple[str, list[tuple[str, str]]]:
                 body_parts.append("<ul>")
                 in_ul = True
             item_text = line.lstrip()[2:].strip()
-            body_parts.append(f"<li>{_inline_markdown_to_html(item_text)}</li>")
+            sentences = _split_sentences(item_text)
+            if len(sentences) == 1:
+                body_parts.append(f"<li>{_inline_markdown_to_html(sentences[0])}</li>")
+            elif sentences:
+                body_parts.append(
+                    f"<li><p>{_inline_markdown_to_html(sentences[0])}</p>"
+                )
+                for sentence in sentences[1:]:
+                    body_parts.append(f"<p>{_inline_markdown_to_html(sentence)}</p>")
+                body_parts.append("</li>")
             continue
 
         ordered_match = _ORDERED_LIST_RE.match(line.strip())
@@ -313,10 +332,17 @@ def markdown_to_html(markdown: str) -> tuple[str, list[tuple[str, str]]]:
             close_lists()
             close_table_block()
             item_text = line.strip()[ordered_match.end() :].strip()
-            body_parts.append(
-                f'<p class="step">{next_step_number()}. '
-                f"{_inline_markdown_to_html(item_text)}</p>"
-            )
+            sentences = _split_sentences(item_text)
+            if sentences:
+                body_parts.append(
+                    f'<p class="step">{next_step_number()}. '
+                    f"{_inline_markdown_to_html(sentences[0])}</p>"
+                )
+                for sentence in sentences[1:]:
+                    body_parts.append(
+                        f'<p class="step-cont">'
+                        f"{_inline_markdown_to_html(sentence)}</p>"
+                    )
             continue
 
         close_lists()
@@ -511,6 +537,10 @@ class HelpWindow(AccessibleDialog):
             transparent_background=False,
         )
         configure_navigable_text_edit(self.help_text)
+        self.help_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
         self.help_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.help_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.help_text.document().setDefaultStyleSheet(_HELP_DOCUMENT_STYLESHEET)

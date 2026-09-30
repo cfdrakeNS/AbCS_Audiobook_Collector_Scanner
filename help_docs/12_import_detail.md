@@ -21,9 +21,9 @@ The **Import Detail** window lets you review and fix one held import item at a t
 2. Press **Enter**, or double-click the row, to open **Import Detail**.
 3. Review validation errors and edit fields as needed.
 4. Click **Save** (**Ctrl+S**) to keep your changes and stay in detail.
-5. Click **Keep** (**Alt+K**) to accept fallback or correction warnings, add this book to the library (same rules as **Add Selected**), and move to the next review item without closing detail.
+5. Click **Keep** (**Alt+K**) to accept fallback or correction warnings and add this book using the same rules as **Add Selected**. Keep then advances to the next review item without closing detail.
 6. Click **Discard** (**Alt+D**) to drop this item without adding it.
-7. Click **Previous** and **Next** if shown, or use **Page Up** and **Page Down**, to move between held items.
+7. Use **Page Up** and **Page Down**, to move between held items.
 8. Press **Escape** to close detail and return to Import.
 
 **Duplicates and unreadable files:** Import Detail opens for **duplicates** so you can edit and **Save** if you choose. **Keep** and **Add Selected** still will not add a duplicate. Unreadable-file problems that cannot be fixed by editing still block opening detail, with a message.
@@ -43,7 +43,7 @@ The **Import Detail** window lets you review and fix one held import item at a t
 ## Mouse, shortcuts, and accessibility
 
 - Click fields to edit them; click **Save** or **Discard** when finished.
-- Use **Previous** / **Next** buttons to step through held items without returning to the review table.
+- Page Up & Page Down to step through held items without returning to the review table.
 
 | Shortcut | Action |
 |----------|--------|

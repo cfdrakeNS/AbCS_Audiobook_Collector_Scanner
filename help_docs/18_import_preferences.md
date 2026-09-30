@@ -162,7 +162,7 @@ Books that match an existing entry are held in review with a **Duplicate** flag 
 
 ## When settings take effect
 
-- Preferences are saved to disk when you click **Save** (Alt+S) in Preferences.
+- Preferences are saved to disk when you click **Save** (Ctrl+S) in Preferences.
 - Default values after **Restore Defaults** (Alt+R) are listed in [Default preferences](17_default_preferences.md).
 
 

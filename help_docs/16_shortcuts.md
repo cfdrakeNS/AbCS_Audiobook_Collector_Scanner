@@ -1,10 +1,6 @@
 # AbCS Keyboard Shortcuts by Window
 
-Reference list of keyboard shortcuts for each AbCS window. Most actions are also on menus and toolbar buttons — use the mouse if you prefer. Press **F1** in any window for that window's live help. Press **Alt+/** to re-read the status bar.
-
-Source: `src/accessibility/shortcuts.py`, F1 help dialogs in `src/ui/`, and `AbCS_Shortcut_June07.csv`.
-
-Last updated: September 27, 2026 (Phase 29).
+Reference list of keyboard shortcuts for each AbCS window. Most actions are also on menus and toolbar buttons — use the mouse if you prefer. Press **F1** in any window for that window's Shortcut list. Press **Alt+/** to re-read the status bar.
 
 ## Main window
 
@@ -39,8 +35,7 @@ Last updated: September 27, 2026 (Phase 29).
 | Escape | Clear selection / close Find / clear plot, read, or want to read filter |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
-
-**Not main-window shortcuts:** Alt+letter field keys (Alt+T Title, Alt+A Author, and similar) belong to Book Details and other dialogs. Column navigation in the main window uses **Alt+1 through Alt+7**, not Alt+letters.
+| Shift+F1 | Show Context Help |
 
 ## Book Details
 
@@ -62,13 +57,14 @@ Last updated: September 27, 2026 (Phase 29).
 | Alt+B | Browse path (edit or new mode) |
 | Alt+W | Get web info |
 | Alt+E | Edit |
-| Ctrl+L | Listen to audiobook inside AbCS |
+| Ctrl+L | Listen to audiobook |
 | Ctrl+N | New book |
 | Ctrl+S | Save |
 | Alt+D | Delete book |
 | Escape | Close window |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Listen window
 
@@ -85,7 +81,7 @@ Last updated: September 27, 2026 (Phase 29).
 | Escape | Close |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
-| Shift+F1 | Help for the window that opened Listen |
+| Shift+F1 | Show Context Help |
 
 ## Import window
 
@@ -102,7 +98,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Enter / Return | Open import detail (when table focused) |
 | Escape | Cancel/Close window |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Import detail window
 
@@ -127,6 +124,7 @@ Last updated: September 27, 2026 (Phase 29).
 | Escape | Close detail |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Import progress window
 
@@ -134,7 +132,7 @@ Last updated: September 27, 2026 (Phase 29).
 |----------|--------|
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
 
 ## Update window
 
@@ -144,11 +142,11 @@ Last updated: September 27, 2026 (Phase 29).
 | Alt+G | Genre (choose **None** in the list to clear on selected books) |
 | Alt+C | Collection |
 | Alt+L | Book list |
-| Ctrl+S | Save |
 | Alt+Down | Open combo dropdown |
 | Escape | Close window |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Preferences window
 
@@ -163,7 +161,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Ctrl+S | Save |
 | Ctrl+Tab / Ctrl+Shift+Tab | Move between tabs |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Web metadata window
 
@@ -181,6 +180,7 @@ Last updated: September 27, 2026 (Phase 29).
 | Escape | Close window |
 | Alt+/ | Read status bar |
 | F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Batch web fetch summary
 
@@ -205,6 +205,7 @@ Last updated: September 27, 2026 (Phase 29).
 | Escape | Cancel edit/new or close window |
 | Alt+/ | Read status bar |
 | F1 | Show this help |
+| Shift+F1 | Show Context Help |
 
 ## Backup / Restore window
 
@@ -219,7 +220,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Alt+F | Full reset |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Name list window (Authors, Series, Genre)
 
@@ -233,7 +235,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Ctrl+S | Save (when Save button is visible) |
 | Escape | Cancel edit/Close window |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Statistics dialog
 
@@ -241,7 +244,8 @@ Last updated: September 27, 2026 (Phase 29).
 |----------|--------|
 | Tab | Navigate table cells |
 | F1 | Show this help |
-| Escape | Close dialog |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Check Books Path window
 
@@ -255,8 +259,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Alt+X | Export list to CSV |
 | Escape | Cancel scan or close |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
-| Shift+F1 | Check Books Path help topic |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Reading History window
 
@@ -271,7 +275,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Alt+S | Search |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Book List Import window
 
@@ -296,7 +301,8 @@ Last updated: September 27, 2026 (Phase 29).
 | Alt+X | Export errors to CSV |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show this help |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Show Context Help |
 
 ## Duplicate Check dialog (from main window)
 
@@ -316,10 +322,9 @@ Last updated: September 27, 2026 (Phase 29).
 | Ctrl+Plus | Zoom Help in |
 | Ctrl+Minus | Zoom Help out |
 | Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
-| Shift+F1 | Open help for current window (from other windows) |
 | Alt+/ | Re-read status |
-| F1 | Show shortcuts for this window |
-| Escape | Close help (closes an open preset list first) |
+| F1 | Show keyboard shortcuts |
+| Escape | Close help |
 
 ## Cross-window shortcuts
 
@@ -328,7 +333,4 @@ Last updated: September 27, 2026 (Phase 29).
 | F1 | Show shortcuts for the active window |
 | Alt+/ | Read status bar (most windows) |
 | Escape | Cancel or close (most dialogs) |
-
-## Spreadsheet reference
-
-The matrix CSV `AbCS_Shortcut_June07.csv` in the project root lists the same shortcuts in column form for spreadsheet use. It does not include Book List Import or Duplicate Check columns.
+| Shift+F1 | Show Context Help for the current window   .|

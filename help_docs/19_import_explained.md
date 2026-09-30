@@ -29,7 +29,6 @@ The app walks the folder tree you pointed it at. No new folders are created; it 
 
 - Starts at the **top folder** you chose in the Import window.
 - If **include subfolders** is on in preferences, every folder below that level is searched too.
-- If subfolders are off, only files directly inside the top folder are checked.
 
 ### Which files count as audiobooks
 
@@ -80,7 +79,7 @@ For every audio file, the app opens it and reads embedded metadata. Your file is
 | **Year** | Year / date tag (first four digits) |
 | **Genre** | Genre tag |
 | **Narrator** | Composer tag first; if empty, comment text after keywords like "read by" or "narrated by" |
-| **Comments** | Comment tag (reader-only lines are filtered out) |
+| **Plot** | Comment tag (reader-only lines are filtered out) |
 | **Duration** | Length of the audio |
 | **Bitrate** | Quality of the encoding |
 | **Format** | File extension (MP3, M4B, FLAC, etc.) |
@@ -95,7 +94,7 @@ When several files share the same album tag (one multi-part audiobook), they sta
 - **Total duration** — sum of all part lengths → converted to hours and minutes.
 - **Total size** — sum of all file sizes → converted to megabytes.
 - **Track count** — number of files in the group.
-- **Comments** — merged from all parts, duplicates removed.
+- **Plot** — merged Comments tags from all parts, duplicates removed.
 - **Read errors** — if a file cannot be opened, a note is added like `part03.mp3: Error reading file`.
 
 The progress bar advances once per file during this phase.
@@ -123,7 +122,6 @@ Only runs when the matching fallback is **enabled** in Preferences (**Author fal
 If a tag is blank or looks like a placeholder ("unknown", "untitled", "n/a", etc.) and the fallback is enabled:
 
 - **Title fallback from file** — uses the filename (strips leading track numbers like `01 `).
-- **Title fallback from folder** — uses the folder name (in nested scenario).
 - **Author fallback from folder** — walks up the folder path to find an author name.
 
 Each fallback is flagged so you can review it.
@@ -163,16 +161,16 @@ The app runs your enabled **validation rules**. Each rule can be set to **error*
 | Title in author name | Warning | Title text appears inside the author |
 | Unknown or Various author | Warning | Author contains "unknown" or "various" |
 | Unreadable audio length | Warning | Files exist but total duration is zero |
+| Year out of range | Year is not a number, or falls outside 1801–current year |
+| Minimum title length | Title shorter than configured minimum (default 3 characters) |
+| File structure | Folder path does not match expected Author/Title or Year/Author/Title pattern |
 
 ### Rules off by default (enable in preferences)
 
 | Rule | What it checks |
 |------|----------------|
-| Minimum title length | Title shorter than configured minimum (default 3 characters) |
-| File structure | Folder path does not match expected Author/Title or Year/Author/Title pattern |
 | Minimum book length | Total duration below configured minutes |
 | Maximum book length | Total duration above configured hours |
-| Year out of range | Year is not a number, or falls outside 1801–current year |
 
 Tag read failures from step 3 are treated as **errors** and always block auto-add.
 
@@ -200,7 +198,7 @@ If a **fuzzy threshold** is set (0–100%), near-matches count as duplicates —
 
 A duplicate is **never** auto-added. It always goes to the review table with status **Duplicate**.
 
-Books auto-added earlier in the same scan are also checked — so two identical albums in one folder cannot both slip through.
+Books auto-added earlier in the same scan are also checked — so two identical booksin one folder cannot both slip through.
 
 ---
 
@@ -245,7 +243,7 @@ For each auto-added book:
    - Narrator, duration (hours + minutes), track count
    - Size, bitrate, file format
    - **Path** — the folder on your computer where the files live (not individual file names)
-   - Comments, date added, source = "Import"
+   - Plot, date added, source = "Import"
 
 Individual audio file paths are **not** stored as separate records — only the folder and how many files were found.
 
@@ -307,7 +305,6 @@ When you close Import (Escape), the main book list refreshes. Any books you adde
 
 ## Related guides
 
-- Step-by-step with shortcuts: [Import](02_import.md)
 - Preference detail: [Import preferences](18_import_preferences.md)
 - Spreadsheet import (no audio files): [Import Book List explained](20_import_book_list_explained.md)
 - Fill in plot/series for books already in AbCS: [Web metadata explained](21_web_metadata_explained.md)

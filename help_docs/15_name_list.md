@@ -4,8 +4,6 @@
 
 The Name List window manages **authors**, **genres**, and **series** names in your library database. You can find names in the list, rename entries, and merge duplicates when you save a name that already exists.
 
-This is **not** the Collections window. Collections are managed separately. See [Collections](06_collections.md).
-
 ## When to use it
 
 - Open from the main window by double-clicking an **Author**, **Series**, or **Genre** cell, or by focusing a cell and pressing **Enter**.
@@ -23,8 +21,8 @@ This is **not** the Collections window. Collections are managed separately. See 
 3. Click a row in the list, press **Tab** from **Find** onto the list, or press **Alt+L** to move focus to the list.
 4. Click **Edit**, double-click a row, or press **Alt+E** to edit the selected entry.
 5. Type in the name field and click **Save** (**Ctrl+S** when Save is available).
-6. If the new author, series, or genre name already exists, AbCS asks whether to move this name’s books onto that existing name. **No** leaves both names unchanged. **Yes** moves the books, removes the name you were editing, and reports how many books changed.
-7. Press **Escape** while editing: if nothing changed, you return to the locked list; if you changed the name, AbCS asks whether to save, keep editing, or discard and return to the list. When the list is locked, **Escape** closes the window. If focus is in **Find**, **Escape** clears the find text if needed and returns to the list instead of closing.
+6. If the author, series, or genre name already exists, AbCS asks whether to move this name’s books to the existing name. **No** leaves both names unchanged. **Yes** moves the books, removes the edited name, and reports how many books changed.
+7. Press **Escape** while editing. If nothing changed, you return to the locked list. If you changed the name, choose whether to save, keep editing, or discard and return to the list. When the list is locked, **Escape** closes the window. In **Find**, **Escape** clears the text if needed and returns to the list instead of closing.
 
 ## Clear series or genre on books
 

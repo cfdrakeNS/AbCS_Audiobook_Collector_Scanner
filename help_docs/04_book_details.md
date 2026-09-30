@@ -24,9 +24,9 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 
 1. In the main window, click the book row you want, or move to it with the keyboard.
 2. Double-click the **Title** column, open **View → Open Focused Item**, or press **Enter** when the title column is focused.
-3. The **Book Details** window shows all fields for that book. When no screen reader is running, a panel at the top also shows the book title, author, and series in larger text; with JAWS or NVDA running this panel is hidden and never spoken. The picture is on the right. Title, author, series, genre, and plot are on the left. Year, time, listen progress, files, format, and bitrate sit under the picture. The other fields are one row each below that. Tab follows that order and stops on the picture. The picture says Book cover when the audio file has one, and No cover when it shows the stand-in picture.
-4. Press **Edit** (**Alt+E**) to edit. To fix a missing or moved location, use **Browse** (**Alt+B**) beside **Path**, or type the path. If the stored path is gone, Browse starts under the collection library root or the Preferences import folder (same idea as Listen). Browse does not change the collection library root (set that in Collections). **Listen** is hidden while you edit; **Save** (**Ctrl+S**) or Escape first. Then **Save** (**Ctrl+S**).
-5. Click **Listen** or press **Ctrl+L** to listen to the book inside AbCS. The Listen window shows Title, Author, Length from the book when set, Series only when the book has a series, and the current file name, with cover art when the file has it. Transport buttons are icons with accessible names. The play position is shown above a seek slider and the buttons. **Space** plays or pauses. After Next, Previous, Rewind, Forward, or Play/Pause, focus returns to Play/Pause. **Alt+Left** / **Alt+Right** seek 30 seconds. The seek slider moves through the current file (arrow keys five seconds, Page Up/Down thirty seconds). **Alt+P** / **Alt+N** move to the previous or next file. Escape closes Listen; if you are under 5 minutes it asks whether to save the place. Reaching the end of the last file clears the saved place. Opening Listen again resumes from that place. Speed is one setting for every book. For a folder of tracks, files play in disc and track number order. If the file is gone, status says **Book not found in -** and that path. The same action is on the main window **Edit → Listen** and the **Listen** toolbar button after Find. **Listen progress** on Book Details shows stop time (and percent of book length when Time is set), not the file name. To clear a saved place without finishing the book, use **Clear** beside **Listen progress**, or on the main window **Edit → Clear listening position** for the selection. Setting a read date also clears listening position (and want to read).
+3. The **Book Details** window shows all fields for that book. Without a screen reader, a panel at the top shows the title, author, and series in larger text. With JAWS or NVDA, that panel is hidden and never spoken. The picture is on the right. Title, author, series, genre, and plot are on the left. Year, time, listen progress, files, format, and bitrate sit under the picture. Other fields are one row each below that. Tab follows that order and stops on the picture. The picture says Book cover when the audio file has one, and No cover when it shows the stand-in picture.
+4. Press **Edit** (**Alt+E**) to edit. To fix a missing or moved location, use **Browse** (**Alt+B**) beside **Path**, or type the path. If the stored path is gone, Browse starts under the collection library root or the Preferences import folder. Browse does not change the collection library root; set that in Collections. **Listen** is hidden while editing. Save (**Ctrl+S**) or press Escape before listening.
+5. To play the book inside AbCS, open **Listen** from Book Details or use **Ctrl+L** on the main window. See [Listen](26_listen.md) for player controls and resume behavior. Book Details **Listen progress** shows stop time and, when Time is set, the percent of the book completed. It does not show the file name. To clear a saved place, use **Clear** beside **Listen progress**, or main window **Edit → Clear listening position** for the selection. Setting a read date also clears listening position and Want to read.
 6. Click **Next** and **Previous** at the bottom of the window, or use Page Down / Page Up.
 7. Press **Escape** to close. The main list refreshes.
 
@@ -72,14 +72,15 @@ Use **New Book** (File → New Book or **Ctrl+N**) to open Book Details with emp
 | Alt+/ | Re-read status |
 | Escape | Close |
 
-Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores Series number only. The title is not changed. Opening a book does not copy a number from the title into Series number. The main book table shows ` - 03` or ` - 6.5` after the title when Series number is set.
+Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores Series number only. The title is not changed. The main book table shows ` - 03` or ` - 6.5` after the title when Series number is set.
 
 With a screen reader running, **Year** and **Read** are typed text fields (four-digit year, and date as year-month-day). Leave a field blank for no year or no read date. Invalid values show a warning message. Without a screen reader, use the calendar for Read; click **Clear** beside the date to remove a read date (you will be asked to confirm).
 
 ## Common confusion
 
 **Book Details vs Update — which should I use?**
-Use **Book Details** for one book with full fields and navigation. Use **Update** when you want to change the same field on several selected books at once.
+Use **Book Details** for one book with full fields and navigation. Use **Update** when you want to change the Series, Genre or Collection on several selected books at once.
+
 
 **Can I delete a book from Book Details?**
 Yes. Press **Delete** while in Book Details to remove the current book.

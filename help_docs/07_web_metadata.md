@@ -22,7 +22,8 @@ For an explained walkthrough (including how titles are compared during fetch and
 
 1. In the main window, move to the book you want to look up.
 2. For one book: open **Edit → Fetch Web Info**, click **Search Web** on the toolbar, or press **Alt+W**. You can also press **Alt+W** in **Book Details**.
-   - For two or more selected books: **Alt+W**, toolbar **Search Web**, or footer **Web fetch** all start the same batch fetch. Search Web and Web fetch stay available while books are selected. Add Book, Import, Find, Listen, Statistics, Preferences, and plot/read/recent-added filters are disabled. Escape cancels the selection. F1 during selection lists only the shortcuts that still work. A progress dialog shows book N of M. Escape cancels the remaining queue. Then a summary opens with focus on the first book in the list. The Issue column says **Plot found** and/or **Metadata found** when a book has changes, matching the stand-alone fetch wording. It offers **Apply all** and **Review** (or **Review each** when more than one book has changes). With a screen reader, the status bar lists **Alt+A Apply all**, **Alt+R Review**, and Escape. **Up to date** means plot and metadata already match the web result. The Issue column says **Plot and metadata up to date.** **No match found** means nothing usable was saved. **Match found. No plot was found.** means a match exists but neither the library nor the web result has a usable plot (short comments such as an author name or “Unabridged” do not count). When Google Books is paused, those rows still say **No match found**. The summary at the top then says **Google Books limit hit. Try in N minutes.** Escape closes the summary. After the summary closes, the main list selection is cleared, the same as after Update. **Alt+L** jumps to the books table. After Review and Save, the summary stays open so you can continue. **F1** lists shortcuts. **Alt+/** re-reads the status bar.
+   - For two or more selected books: **Alt+W**, toolbar **Search Web**, or footer **Web fetch** all start the same batch fetch. Search Web and Web fetch stay available while books are selected. 
+   Add Book, Import, Find, Listen, Statistics, Preferences, and plot/read/recent-added filters are disabled. Escape cancels the selection. F1 during selection lists only the shortcuts that still work. A progress dialog shows book N of M. Escape cancels the remaining queue. Then a summary opens with focus on the first book in the list. The Issue column says **Plot found** and/or **Metadata found** when a book has changes, matching the stand-alone fetch wording. It offers **Apply all** and **Review** (or **Review each** when more than one book has changes). With a screen reader, the status bar lists **Alt+A Apply all**, **Alt+R Review**, and Escape. **Up to date** means plot and metadata already match the web result. The Issue column says **Plot and metadata up to date.** **No match found** means nothing usable was saved. **Match found. No plot was found.** means a match exists but neither the library nor the web result has a usable plot (short comments such as an author name or “Unabridged” do not count). When Google Books is paused, those rows still say **No match found**. The summary at the top then says **Google Books limit hit. Try in N minutes.** Escape closes the summary. After the summary closes, the main list selection is cleared, the same as after Update. **Alt+L** jumps to the books table. After Review and Save, the summary stays open so you can continue. **F1** lists shortcuts. **Alt+/** re-reads the status bar.
 3. A **progress dialog** appears. Watch the status text, or listen for announcements as AbCS searches online sources in order: Open Library, then Google Books, then WikiData.
 4. When the search finishes, one of two things happens:
    - **Differences found** — a review window opens showing your current values side by side with web values.
@@ -31,7 +32,7 @@ For an explained walkthrough (including how titles are compared during fetch and
    - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
 6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
-7. Click **Save** (or press **Alt+S**) to apply checked fields, or press **Escape** to close. Escape asks *Save web data?* — Yes saves, No discards.
+7. Click **Save** (or press **Ctrl+S**) to apply checked fields, or press **Escape** to close. Escape asks *Save web data?* — Yes saves, No discards.
 8. Plot text is saved to the book's **comments** field. If the web source includes a rating and you save plot, the rating line (for example `Rating: 4.5 (1,234 ratings)`) may appear at the **top of that plot text**. It is not stored in a separate rating field.
 
 ## What happens next
@@ -63,7 +64,7 @@ Optional: Preferences → Display → Web Metadata → Google Books API key (or 
 | Alt+G | Genre (review window) |
 | Alt+R | Rating (review window) |
 | Alt+F | Re-fetch (in review window) |
-| Alt+S | Save selected fields |
+| Ctrl+S | Save selected fields |
 | Escape | Close (asks whether to save) |
 | F1 | Help for this window |
 | Alt+/ | Re-read status |

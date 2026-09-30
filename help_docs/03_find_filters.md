@@ -8,7 +8,9 @@ These tools help you narrow and organize the main book list without changing you
 
 - Looking for a specific author, title, series, or genre.
 - Viewing only read or unread books.
-- Showing only books that have (or lack) a plot synopsis.
+- Viewing only books that have (or lack) a plot synopsis.
+- Viewing only books that are Marked Want to Read
+- Viewing only books that are listening progress 
 - Reviewing books you imported or added recently (default view: last **2 months**).
 - Sorting the list by year, length, read date, or other columns.
 
@@ -47,7 +49,7 @@ The Title column shows a mark before the title. A circle means the book has a pl
 2. Choose **All**, **Read**, or **Unread**.
 3. The list shows only books matching that read status.
 
-## In progress filter
+## Listening progress filter
 
 1. Open **View → In progress** (**Alt+V**, then **G**), or activate the **In Progress Filter** toolbar button.
 2. Choose **All** or **In Progress**.
@@ -73,10 +75,21 @@ This filter uses **date added** (when the book was imported or created in AbCS),
 ## Sort
 
 1. Open the **Sort** menu on the menu bar (**Alt+S**).
-2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date. **Series** sorts by series name, then series number, then year, then title. The summary label is **Series, Series #, Year, Title**. Books with no series number come after numbered books in that series. A blank year comes before a filled year. The Title column shows ` - 03` or ` - 6.5` when Series number is set. That text is display only. The stored title does not include it.
+2. Choose a sort field: **A** Author, **T** Title, **Y** Year, **S** Series, **G** Genre, **M** Time, or **D** Read Date. **Series** sorts by name, number, year, then title. The summary label is **Series, Series #, Year, Title**. Books without a series number come after numbered books in that series. A blank year comes before a filled year. The Title column shows ` - 03` or ` - 6.5` when Series number is set. That text is display only; the stored title does not include it.
 3. Use **Tab** to move through table cells, or click a column header to sort by that column; click the same header again to reverse ascending/descending order.
 4. The filter summary shows the current sort (for example, "Sort: Title (ascending)").
 5. The book that had focus stays the current book. Filters do the same when that book is still in the list. If a filter hides it, focus moves to the first remaining book.
+
+## Selecting multiple books 
+
+**Keyboard** 
+- With focus on any fields of the first book you want to select press **Shift+Down Arrow**  To select book moving down the list.
+- Or  **Shift+Up Arrow**- To select book moving up the list
+**Using the Mouse** 
+- **Shift and Click** in any fields of the first Book you want to select.  
+- **Shift and Click** on the last book you want to select.
+
+The Status Bar shows the number of books selected and the title of the book As you continue to select additional book.
 
 ## Clearing filters
 
@@ -104,7 +117,7 @@ After step 7, further Escape presses on the main window do **not** clear any mor
 
 ## Listen (main window)
 
-Use **Edit → Listen**, the **Listen** toolbar button, or **Ctrl+L** to open the in-app **Listen** window for the **focused** book (not a multi-selected row). Listen is unavailable while one or more books are selected for bulk actions. Transport keys and resume behavior are in [Book Details](04_book_details.md).
+Use **Edit → Listen**, the **Listen** toolbar button, or **Ctrl+L** to open the in-app **Listen** window for the **focused** book (not a multi-selected row). Listen is unavailable while one or more books are selected for bulk actions. See [Listen](26_listen.md) for player controls and resume behavior.
 
 ## Export the filtered list
 
@@ -115,10 +128,6 @@ To save the books currently shown (respecting filters, search, sort, and any sel
 - The book table shows only rows matching all active filters.
 - The status or filter summary area lists active filters and the book count.
 - Sort order affects Book Details Next/Previous navigation. See [Book Details](04_book_details.md).
-
-## Settings that affect this
-
-- **Exact match** in the Find dialog is remembered for your next search session.
 
 ## Mouse, shortcuts, and accessibility
 

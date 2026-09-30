@@ -13,31 +13,37 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 ## Before you start
 
 - Theme and zoom **preview immediately** while the dialog is open.
-- Other import settings apply on the **next** Import scan (close and reopen Import if it is already open).
+- Other import settings apply on the **next** Import scan. 
 - Factory defaults are listed in [Default preferences](17_default_preferences.md). Import scenario detail is in [Import preferences](18_import_preferences.md).
 
 ## Change preferences
 
 1. Open **Manage → Preferences** (**Alt+M**, then **P**).
-2. Click a tab label (**Display Settings**, **Import Settings**, and so on) or use the Alt-key shortcuts to move between the four tabs:
+2. Click a tab label (**Display Settings**, **Import Settings**, and so on) or use the Alt-key shortcuts to move between the four tabs: 
+  Ctrl+Tab and Shift+Ctrl+Tab will also cycle through these tabs
 
 ### Display Settings (Alt+D)
 
 - **Theme** — system default or high-contrast themes.
 - **Zoom** — preset or drag the **Zoom** slider (default **150%** after Restore Defaults). At high zoom, scroll the preferences area vertically if needed.
 - **Help window zoom** — separate from main app zoom; adjusted at the top of the Help window when you open **Help → Help...** or press **Shift+F1**. See [Help overview](01_overview.md).
-- **Automatically check for updates** — off by default. When checked, AbCS runs the same GitHub version check as **Help → Check for updates** after the main window opens. A dialog opens only when a newer version is available. Help → Check for updates still always shows the result.
+- **Automatically check for updates** — off by default. When checked, AbCS runs the same GitHub version check as **Help → Check for updates** after the main window opens. 
+- A dialog opens only when a newer version is available. 
+- Help → Check for updates still always shows the result.
 
 ### Import Settings (Alt+P)
 
-- **Default import directory** — fallback folder for Import when the selected collection has no library root, or that root is missing (Alt+B to browse). If you have only one collection and that collection has no library root, saving this folder also stores it as the collection library root. If the collection already has a root and this folder is empty, AbCS fills this folder from the collection.
+- **Default import directory** — fallback folder for Import when the selected collection has no library root, or that root is missing (Alt+B to browse). 
+- If you have only one collection and that collection has no library root, saving this folder also stores it as the collection library root. 
+- If the collection already has a root and this folder is empty, AbCS fills this folder from the collection.
 - **Audio formats** — which extensions to scan.
 - **Import scenario** — how folders map to author, title, and series (default: **Mass Standard Import**). See [Import preferences](18_import_preferences.md).
-- **Tag mapping** — which audio tags fill the book title and author. Defaults match the previous scan: **Album** for the title, and **Album artist then artist** for the author. Other choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album tag, so a multi-part book stays one book.
+- **Tag mapping** — which audio tags fill the book title and author. Defaults match the previous scan: **Album** for the title, and **Album artist then artist** for the author. 
+- Other choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album tag, so a multi-part book stays one book.
 
 ### Fallback & Auto Correct (Alt+F)
 
-- **Author fallback to folder** / **Title fallback to file** — fill missing tags from paths when checked. When unchecked, missing author or title stays missing and import reports an error.
+- **Author fallback to folder** / **Title fallback to file**  Fill missing tags from paths when checked. When unchecked, missing author or title stays missing. and import reports an error.
 - **Reader keywords** — detect narrator in comments.
 - **Auto Correct** — four text cleanup options. Each option is a main checkbox with a **Skip review** checkbox indented below it:
   - Apply proper case to title and author
@@ -45,22 +51,24 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
   - Remove leading punctuation from title and author
   - Remove non-printable control characters (accents such as é and ñ are kept)
 
-  Turn on the main checkbox to run that correction during scan. **Skip review** is only available when the main option is checked; it allows auto-add when that correction is the only issue.
+   **Skip review** is only available when the main option is checked; it allows auto-add when that correction is the only issue.
 
-### Validation Rules (Alt+V)
+##  # Validation Rules (Alt+V)
 
 - Duplicate matching and fuzzy percent.
 - Title/author consistency, length limits, folder structure, year checks.
 - Each rule: off, warning, or error.
 
-3. Click **Save** (Alt+S) to keep changes.
+## Save and restet preferences 
+
+3. Click **Save** (Ctrl+S) to keep changes.
 4. To reset everything: **Restore Defaults** (Alt+R), confirm **Yes**, then **Save**.
 5. Press **Alt+/** to re-read the status bar.
 6. Press **Escape** to close. If you have unsaved changes, AbCS asks whether to save, keep editing, or discard.
 
 ## What happens next
 
-- Saved preferences persist across restarts (Qt settings).
+- Saved preferences persist across restarts 
 - Import, web metadata duplicate options, and display settings use the new values on the next relevant action.
 
 ## Mouse, shortcuts, and accessibility
@@ -78,7 +86,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 | Alt+V | Validation Rules tab |
 | Alt+B | Browse default import directory |
 | Alt+R | Restore Defaults |
-| Alt+S | Save |
+| Ctrl+S | Save |
 | Ctrl+Tab / Ctrl+Shift+Tab | Move between tabs |
 | Alt+/ | Re-read status |
 | F1 | Help for this window |
@@ -86,7 +94,7 @@ Preferences controls how AbCS looks and how **import** behaves: theme, zoom, def
 ## Common confusion
 
 **I changed preferences but Import behaved the same.**
-Save Preferences, then run Import again. Each scan reloads the latest saved settings; you do not need to close and reopen the Import window.
+Save Preferences, then run Import again. Each scan reloads the latest saved settings; 
 
 **Restore Defaults vs Save**
 Restore Defaults resets fields in the dialog only until you click **Save**. Press **Save** to write defaults to disk.

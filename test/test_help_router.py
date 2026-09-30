@@ -1,5 +1,7 @@
 """Tests for help markdown conversion and routing."""
 
+from PySide6.QtCore import Qt
+
 from src.accessibility.help_paths import (
     discover_help_topics,
     help_doc_display_name,
@@ -10,9 +12,8 @@ from src.ui.help_router import (
     DUPLICATE_MODE_DOC,
     WINDOW_HELP_MAP,
     get_help_doc_filename,
-    preview_help_doc_for_owner,
 )
-from src.ui.help_window import markdown_to_html, markdown_to_plain_text
+from src.ui.help_window import HelpWindow, markdown_to_html, markdown_to_plain_text
 
 
 def test_help_docs_dir_exists():
@@ -30,10 +31,30 @@ def test_help_doc_display_name_strips_prefix_and_underscores():
     assert help_doc_display_name("01_overview.md") == "overview"
 
 
+def test_help_content_supports_mouse_and_keyboard_navigation(qtbot):
+    window = HelpWindow(None, doc_filename="01_overview.md")
+    qtbot.addWidget(window)
+    flags = window.help_text.textInteractionFlags()
+    assert flags & Qt.TextInteractionFlag.TextSelectableByMouse
+    assert flags & Qt.TextInteractionFlag.TextSelectableByKeyboard
+
+
+def test_overview_suggested_order_hides_topic_filename_numbers():
+    overview = resolve_help_docs_dir().joinpath("01_overview.md").read_text(
+        encoding="utf-8"
+    )
+    assert "See [02 Import]" not in overview
+    assert "See [03 Find and Filters]" not in overview
+    assert "See [11 Import Book List]" not in overview
+
+
 def test_discover_help_topics_sorted_and_dynamic():
     topics = discover_help_topics()
     filenames = [filename for _label, filename in topics]
-    assert filenames == sorted(filenames)
+    assert filenames.index("07_web_metadata.md") == filenames.index(
+        "03_find_filters.md"
+    ) + 1
+    assert filenames[-1] == "26_listen.md"
     assert "01_overview.md" in filenames
     assert ("overview", "01_overview.md") in topics
 
@@ -54,17 +75,9 @@ def test_duplicate_mode_main_window_help():
     assert get_help_doc_filename(normal_window) == WINDOW_HELP_MAP["MainWindow"]
 
 
-def test_preview_help_follows_owner_window():
-    main = type("MainWindow", (), {})()
-    details = type("BookDetailsWindow", (), {})()
-    assert preview_help_doc_for_owner(main) == WINDOW_HELP_MAP["MainWindow"]
-    assert preview_help_doc_for_owner(details) == WINDOW_HELP_MAP["BookDetailsWindow"]
-    preview = type(
-        "PreviewWindow",
-        (),
-        {"help_doc_override": preview_help_doc_for_owner(main)},
-    )()
-    assert get_help_doc_filename(preview) == WINDOW_HELP_MAP["MainWindow"]
+def test_preview_window_opens_listen_help():
+    preview = type("PreviewWindow", (), {})()
+    assert get_help_doc_filename(preview) == "26_listen.md"
 
 
 def test_help_doc_override_on_progress_window():
@@ -97,6 +110,22 @@ def test_markdown_to_html_renders_shortcut_tables_as_lines():
     assert html_doc.count('class="shortcut"') == 2
     assert "Alt+K — Create backup" in html_doc
     assert "Escape — Close window" in html_doc
+
+
+def test_markdown_to_html_splits_sentences_in_bullets_and_tables():
+    md = (
+        "- First bullet sentence. **Second** bullet sentence.\n\n"
+        "| Field | Behavior |\n"
+        "|-------|----------|\n"
+        "| Empty | First table sentence. Second table sentence. |\n"
+    )
+    html_doc, _links = markdown_to_html(md)
+    assert "<li><p>First bullet sentence.</p>" in html_doc
+    assert "<p><strong>Second</strong> bullet sentence.</p>" in html_doc
+    assert "</li>" in html_doc
+    assert html_doc.count('class="table-row"') == 2
+    assert "First table sentence." in html_doc
+    assert "Second table sentence." in html_doc
 
 
 def test_markdown_to_html_formats_faq_blocks():
@@ -133,6 +162,19 @@ def test_markdown_to_html_keeps_numbered_list_items_together():
     assert "1. Open <strong>Manage</strong> menu." in html_doc
     assert "2. Click <strong>Backup</strong>." in html_doc
     assert "<p>1.</p>" not in html_doc
+
+
+def test_markdown_to_html_splits_multi_sentence_numbered_steps():
+    md = (
+        "## Section\n\n"
+        "1. First sentence. **Second** sentence. Third sentence.\n"
+        "2. Final step.\n"
+    )
+    html_doc, _links = markdown_to_html(md)
+    assert '<p class="step">1. First sentence.</p>' in html_doc
+    assert '<p class="step-cont"><strong>Second</strong> sentence.</p>' in html_doc
+    assert '<p class="step-cont">Third sentence.</p>' in html_doc
+    assert '<p class="step">2. Final step.</p>' in html_doc
 
 
 def test_markdown_to_html_splits_sentences_into_paragraphs():

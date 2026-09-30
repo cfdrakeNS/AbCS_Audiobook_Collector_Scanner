@@ -59,3 +59,17 @@ User-facing name for the in-app audiobook player is **Listen** (not Preview or P
 ## Gate
 
 Topics 22 and 23 are gone and nothing in user help links to them. Section names in the help list do not start with “Steps”. Shift+F1 on the main window mentions Listen. Help uses **Listen** (not Preview or Play) for opening the audiobook player, and no topic mentions Alt+Shift+P. Topic 25 Export Library matches the shipped menu item. Main window help, the shortcuts topic, Backup and Restore, and Import Book List link to it.
+
+## Follow-up — screen-reader navigation of long steps
+
+**Status:** In progress — September 30, 2026.
+
+JAWS repeats a wrapped help block while moving line by line. The report came from normal Help zoom on a 1024 px display, where the content pane holds about 180 characters. Book Details steps 3–5 under **View or edit one book** are clear examples. Although the report identified `help_router`, that module only selects the topic; ordered-step formatting is controlled by `markdown_to_html()` in `src/ui/help_window.py`.
+
+- Render each sentence in a multi-sentence numbered step as its own paragraph. Show the step number only on the first paragraph and indent continuation paragraphs.
+- Keep individual sentences concise. Use approximately 175 characters as a review flag for the reported display, not as a universal hard-wrap width. Shorten or divide any remaining long sentences while preserving the instructions and shortcuts.
+- Audit numbered steps in user help, starting with Book Details, and update this authoring guide with the paragraph and line-width guidance.
+- Give Listen its own Shift+F1 topic instead of routing to the help for the window that opened it. Move player instructions out of Book Details and link to the Listen topic.
+- List Web Metadata Fetch immediately after Find and Filters in All Help Topics without renaming its file or changing existing cross-links.
+
+**Gate:** Multi-sentence numbered steps navigate sentence by sentence without repeating the entire block. Numbering, inline emphasis, wording, and heading resets remain correct. Review Book Details with JAWS at normal zoom on the 1024 px display and at a different zoom or viewport width. Run the focused help-converter test; do not require the full test suite for this follow-up.

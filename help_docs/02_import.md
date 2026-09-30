@@ -70,12 +70,12 @@ Folder used for a scan, in order:
 **Choosing between the two series scenarios:**
 
 - **Series From Directory** — files live **directly** in the series folder:
-  - `Tolkien/Lord of the Rings/Fellowship.m4b`
-  - `Michael R. Stern/Quantum Touch/01 Storm Portal.m4b` *(one m4b per book, no book subfolder)*
+  - `Sir Arthur Conan Doyle/Sherlock Holmes/The Hound of the Baskervilles.m4b`
+  - `Sir Arthur Conan Doyle/Sherlock Holmes/01 The Adventures of Sherlock Holmes.m4b` *(one m4b per book, no book subfolder)*
 
 - **Series From Directory (Nested Books)** — each book has its **own subfolder** under the series:
-  - `Michael R. Stern/Quantum Touch/1 Storm Portal/01 Storm Portal.m4b`
-  - `John Sandford/Lucas Deavenport Series/1- Rules of Prey/01 Rules of Prey.mp3`
+  - `Sir Arthur Conan Doyle/Sherlock Holmes/The Hound of the Baskervilles/01 The Hound of the Baskervilles.m4b`
+  - `Sir Arthur Conan Doyle/Sherlock Holmes/The Adventures of Sherlock Holmes/01 The Adventures of Sherlock Holmes.mp3`
 
 If you use **Series From Directory** on a nested layout (book subfolders under the series), series assignment is skipped and books are flagged with a **warning**. Switch to **Nested Books** for that layout.
 
@@ -107,14 +107,12 @@ Rules that flag possible problems during import. Each rule can be off, a warning
 - **Duplicate match** — how strictly AbCS compares a new book to books already in the database (for example, title + author + year).
 - **Fuzzy duplicate percent** — how similar title and author text must be to count as a duplicate. Both title and author must pass the threshold. Set to 0 to turn fuzzy matching off.
 
-Changing preferences while the Import window is open may not apply until you close and reopen Import, or start a new scan.
-
 ## Mouse, shortcuts, and accessibility
 
 - Open **File → Import** from the menu bar, or click **Import** on the main toolbar.
 - Click **Browse** to pick a folder; click **Import** to start the scan.
 - In the review table, click a row to select it; use **Ctrl+click** or **Shift+click** to select several rows before **Add Selected**.
-- Click **Close** or press **Escape** to leave Import (you may be asked to confirm if review items remain).
+- Press **Escape** to leave Import (you may be asked to confirm if review items remain).
 
 | Shortcut | Action |
 |----------|--------|

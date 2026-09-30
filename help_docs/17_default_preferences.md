@@ -10,39 +10,26 @@ Use this guide when testing that preferences reset correctly, or when you need t
 
 1. Open **Manage → Preferences** from the menu bar.
 2. Click through each tab to review settings, or click **Restore Defaults** (Alt+R) and confirm with **Yes**.
-3. Click **Save** (Alt+S) if you want to keep the restored values.
+3. Click **Save** (Ctrl+S) if you want to keep the restored values.
 
 Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-read the status bar.
-
-**Note for testers:** On a very first run (before any save), a few validation fields may differ until you use **Restore Defaults** — for example, duplicate match mode may show **Title + Author + Year + Collection** and fuzzy duplicate may show **0%**. **Restore Defaults** is the authoritative reset for the values below.
 
 ## Display settings (first tab)
 
 
-| Setting                         | Default                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Theme                           | Default (follows system)                                                                                                                                                                                                                                                                                                                                             |
-| Zoom                            | 150% (Extra Large preset; shown as Custom at 150%)                                                                                                                                                                                                                                                                                                                   |
-| Automatically check for updates | Unchecked                                                                                                                                                                                                                                                                                                                                                            |
-| Help window zoom                | **Screen reader, first open:** 100% until you change Help zoom. **No screen reader, first open:** matches main app zoom. **After you change Help zoom:** your saved value is used (preset, zoom slider, or Ctrl+Plus/Minus at the top of the Help window). Help zoom changes text inside Help only; main app zoom is unchanged. See [Help overview](01_overview.md). |
-
-
-
-
-## Import settings (second tab)
-
-
 | Setting                  | Default                                         |
 | ------------------------ | ----------------------------------------------- |
+| Theme | Default (follows system) | 
+| Zoom  | 150% (Extra Large preset; shown as Custom at  150%) |
+| Automatically check for updates  | Unchecked |
+
+## Import settings (second tab)
 | Default import directory | Empty                                           |
 | Audio formats            | All checked: MP3, M4A, M4B, FLAC, OGG, WAV, WMA |
 | Import scenario          | Mass Standard Import                            |
 | Book title tag           | Album                                           |
 | Author tag               | Album artist then artist                        |
-| Include subfolders       | On (always enabled when settings are saved)     |
-
-
-
+    
 
 ## Fallback & Auto Correct (third tab)
 

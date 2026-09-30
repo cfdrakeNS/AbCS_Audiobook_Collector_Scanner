@@ -26,7 +26,7 @@ WINDOW_HELP_MAP: dict[str, str] = {
     "ImportProgressWindow": "02_import.md",
     "ImportDetailWindow": "12_import_detail.md",
     "BookDetailsWindow": "04_book_details.md",
-    "PreviewWindow": "04_book_details.md",
+    "PreviewWindow": "26_listen.md",
     "UpdateWindow": "05_update.md",
     "CollectionWindow": "06_collections.md",
     "WebMetadataWindow": "07_web_metadata.md",
@@ -40,16 +40,6 @@ WINDOW_HELP_MAP: dict[str, str] = {
     "NameListWindow": "15_name_list.md",
     "PathHealthWindow": "24_path_health.md",
 }
-
-
-def preview_help_doc_for_owner(owner: QWidget | None) -> str:
-    """Shift+F1 for Preview follows the window that opened it."""
-    if owner is None:
-        return WINDOW_HELP_MAP["MainWindow"]
-    owner_doc = WINDOW_HELP_MAP.get(owner.__class__.__name__)
-    if owner_doc and help_doc_exists(owner_doc):
-        return owner_doc
-    return WINDOW_HELP_MAP["PreviewWindow"]
 
 
 def get_help_doc_filename(widget: QWidget | None) -> str:

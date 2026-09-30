@@ -44,7 +44,7 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `16`–`18` | Reference (shortcuts, defaults, import preferences) |
 | `19`–`21` | Explained guides (everyday-language walkthroughs) |
 | `24`–`25` | Additional process guides (path health, export library) |
-| `26+` | Next free numbers for new topics |
+| `26+` | Additional process guides; next free number is 27 |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
 
@@ -83,6 +83,7 @@ The two-digit prefix (`nn`) is the stable ID for each topic. **Renaming** `02_im
 | 13 | `13_reading_history.md` | `ReadingHistoryWindow` | Reading history |
 | 14 | `14_statistics.md` | `StatisticsDialog` | Library statistics |
 | 15 | `15_name_list.md` | `NameListWindow` | Author / series / genre lists |
+| 26 | `26_listen.md` | `PreviewWindow` | Listen player |
 
 When adding a window: pick the next free process-guide number (`02`–`15`), create `nn_topic.md`, add `ClassName → nn_topic.md` to `WINDOW_HELP_MAP`.
 
@@ -105,6 +106,7 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 13 | `13_reading_history.md` | Process | Reading history |
 | 14 | `14_statistics.md` | Process | Statistics |
 | 15 | `15_name_list.md` | Process | Name list |
+| 26 | `26_listen.md` | Process | Listen player |
 | 16 | `16_shortcuts.md` | Reference | — |
 | 17 | `17_default_preferences.md` | Reference | — |
 | 18 | `18_import_preferences.md` | Reference | — |
@@ -114,7 +116,7 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 24 | `24_path_health.md` | Process | — |
 | 25 | `25_export_library.md` | Process | — |
 
-Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
+Web Metadata (`07_web_metadata.md`) is intentionally listed immediately after Find and Filters, regardless of its filename prefix. Other topics follow numeric filename order. Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
 
 ### Cross-links between topics
 
@@ -224,7 +226,7 @@ Do **not** use these — they will appear as plain text or break layout:
 
 ## Accessibility writing rules
 
-The help viewer splits **body paragraphs** into **one sentence per paragraph** so screen readers can move line by line without repeated wrapped-line noise.
+The help viewer splits **body paragraphs** and multi-sentence numbered steps into **one sentence per paragraph** so screen readers can move line by line without repeated wrapped-line noise. The number appears only on the first sentence of each step.
 
 1. **Prefer short sentences.** Two ideas → two sentences.
 2. **Avoid empty lines inside FAQ answers** that could split meaning oddly; one blank line between blocks is fine.
@@ -232,6 +234,7 @@ The help viewer splits **body paragraphs** into **one sentence per paragraph** s
 4. **Do not rely on visual layout** (columns, alignment). Tables become linear `A — B` lines.
 5. **Numbered steps** under a heading always restart at 1 when the heading changes — do not depend on continuing `3.` `4.` across sections.
 6. **Link labels** should make sense alone: `[Import preferences](18_import_preferences.md)` not `[click here](18_import_preferences.md)`.
+7. Keep each sentence concise. Treat sentences around 175 characters as a review flag for possible screen-reader repetition, not a fixed line-width rule. Do not hard-wrap every line: the help pane wraps to the available width, which changes with window size and zoom.
 
 ---
 

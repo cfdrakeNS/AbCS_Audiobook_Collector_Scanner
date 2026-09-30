@@ -30,8 +30,7 @@ If checks pass, a **Confirm Import** dialog summarizes:
 
 **No** cancels the import. **Yes** starts processing.
 
-The status bar shows `Importing books...` while rows are handled. There is no progress bar — only a final count when finished.
-
+ A **progress window** appears while files are read. You can cancel if needed.
 ---
 
 ## 2. Which mode runs
@@ -119,13 +118,11 @@ If the row passes, the app creates records **inside AbCS only**:
 2. **Series** — looked up or created if series was mapped.
 3. **Genre** — looked up or created if genre was mapped.
 4. **Book record** — written with:
-   - Title (no series suffix; Series # is stored on the book)
-   - Author, year, series, genre, collection
+   - Title, Author, year, series, genre, collection
    - Plot → comments field
    - Narrator, read date, duration, track count
    - Source = `Bookh_list`
-   - **No audio folder path** — unless you mapped time/tracks, these are metadata-only records
-
+   
 The row is added to the in-memory duplicate list so a repeated row in the same spreadsheet is caught later.
 
 ### Row-level errors
@@ -189,8 +186,6 @@ This mode **never creates new books**. It only updates the read date on books th
    - **Empty cell** → `Read date is empty`
    - **Unrecognized format** → `Invalid date format...`
 
-Year column mapping is available in the UI but is **not used** for book lookup in this mode.
-
 ---
 
 ## 7. Add Read Date from List — once all rows are done
@@ -250,7 +245,6 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 
 ## Related guides
 
-- Step-by-step with shortcuts: [Import Book List](11_import_book_list.md)
 - Scanning audio files: [Import explained](19_import_explained.md)
 - Duplicate settings detail: [Import preferences](18_import_preferences.md)
 - Fill in plot/series from the web: [Web metadata explained](21_web_metadata_explained.md)

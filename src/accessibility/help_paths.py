@@ -24,6 +24,7 @@ from src.accessibility.graphics_paths import bundle_base, project_root
 OVERVIEW_DOC = "01_overview.md"
 
 HELP_DOC_FILENAME_RE = re.compile(r"^\d{2}_[\w-]+\.md$", re.IGNORECASE)
+_HELP_TOPIC_ORDER_OVERRIDES = {"07_web_metadata.md": ("03_find_filters.md", 1)}
 
 
 def help_doc_display_name(filename: str) -> str:
@@ -35,14 +36,23 @@ def help_doc_display_name(filename: str) -> str:
 
 
 def discover_help_topics() -> list[tuple[str, str]]:
-    """Return sorted (display label, filename) pairs for help_docs/*.md files."""
+    """Return help topics, with Web Metadata immediately after Find and Filters."""
     docs_dir = resolve_help_docs_dir()
     topics: list[tuple[str, str]] = []
     for path in sorted(docs_dir.glob("*.md")):
         name = path.name
         if HELP_DOC_FILENAME_RE.match(name):
             topics.append((help_doc_display_name(name), name))
-    return topics
+
+    def topic_order(topic: tuple[str, str]) -> tuple[int, int, str]:
+        _label, name = topic
+        override = _HELP_TOPIC_ORDER_OVERRIDES.get(name)
+        if override:
+            anchor, after_anchor = override
+            return int(anchor[:2]), after_anchor, name
+        return int(name[:2]), 0, name
+
+    return sorted(topics, key=topic_order)
 
 
 def _search_bases() -> list[Path]:
