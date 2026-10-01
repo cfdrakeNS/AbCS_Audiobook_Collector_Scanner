@@ -16,12 +16,18 @@ Because `pytest.ini` sets `testpaths = test`, this is equivalent:
 pytest
 ```
 
-That runs all tests under `test/` (currently ~440 tests). Only files matching
-`test_*.py` are collected (see `python_files` in `pytest.ini`), so scratch
-scripts such as `z_test.py` are ignored. Debug harnesses that do not follow
-that naming (for example `accessibility_test_window.py`) are not collected.
-A SyntaxError or import error in any collected file fails the whole suite
-before tests run. Version 3 work must keep `python -m pytest test/` green
+That runs all tests under `test/`. To inspect the current collection count without
+running tests, use:
+
+```bash
+python -m pytest test/ --collect-only -q
+```
+
+Pytest collects files matching `test_*.py` (see `python_files` in `pytest.ini`).
+Manual JAWS/NVDA harnesses have other filenames and are listed below; they are
+not automated tests. A SyntaxError or import error in any collected file fails
+the whole suite before tests run. Version 3 work must keep
+`python -m pytest test/` green
 (see [plan_enhancements_version3_release.md](doc/plan_enhancements_version3_release.md)).
 
 ## CI-style run (quiet)
@@ -176,9 +182,15 @@ tens of minutes). Live HTTP from `web_book_api` is blocked by default; mock
 
 ## Manual harnesses (not collected)
 
+These scripts are not pytest tests. They support focused manual checks; in
+particular, run the accessibility checks with JAWS or NVDA when changing the
+related UI behavior.
+
 | File | Purpose |
 |------|---------|
 | `test/accessibility_test_window.py` | Manual F1 / Alt+/ shortcut harness |
+| `test/view_mode_static_text_spike.py` | Compare view-field control announcements with JAWS/NVDA |
+| `test/web_fetch_background_spike.py` | Exercise progress-dialog speech, focus, and cancellation with a fake worker |
 | `scripts/manual_book_list_import.py` | Manual book-list import window smoke |
 
 ## Related docs

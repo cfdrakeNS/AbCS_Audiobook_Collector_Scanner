@@ -66,11 +66,13 @@ Keep view/edit stacks where they already exist (author, series, genre, collectio
 
 ---
 
-## Spike first (gate)
+## Manual comparison harness
 
-Throwaway script (e.g. `test/view_mode_static_text_spike.py`) with Tab-able rows comparing candidates side by side. **Stop for tester JAWS/NVDA confirmation before editing `book_details.py`.**
+The comparison harness is `test/view_mode_static_text_spike.py`. It is retained
+for manual JAWS/NVDA evaluation if this deferred work resumes. Follow the scope
+and findings above before treating any candidate as approved.
 
-Ship only the approach that meets the pass criteria above.
+The implementation order and checks below describe the deferred proposal.
 
 ---
 

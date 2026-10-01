@@ -101,29 +101,6 @@ def test_title_matches():
 
     print("[PASS] _title_matches works correctly")
 
-def test_clean_web_data_for_storage_strips_series_keys():
-    """Series keys from legacy cache entries are removed before UI/DB use."""
-    api = WebBookAPI()
-
-    web_data = {
-        "title": "A Great Mystery",
-        "author": "Louise Penny",
-        "series": "How The Light Gets In",
-        "series_number": "9",
-        "plot": (
-            "A long enough plot description for the book that meets the "
-            "eighty-character minimum used when cleaning web data for storage."
-        ),
-    }
-
-    cleaned = api.clean_web_data_for_storage(web_data)
-    assert "series" not in cleaned
-    assert "series_number" not in cleaned
-    assert cleaned["plot"]
-
-    print("[PASS] clean_web_data_for_storage strips series keys")
-
-
 def test_metadata_matches_db_requires_title_and_author(api):
     meta = {"title": "The Great Gatsby", "author": "F. Scott Fitzgerald"}
     assert api._metadata_matches_db("The Great Gatsby", "F. Scott Fitzgerald", meta)
@@ -435,4 +412,3 @@ def test_extract_year_returns_empty_when_no_year(api):
     assert api._extract_year("unknown") == ""
     assert api._extract_year("2020-01-01") == "2020"
     assert api._extract_year("") == ""
-

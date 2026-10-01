@@ -1,10 +1,12 @@
 """
-Throwaway JAWS spike for background web-fetch accessibility.
+Manual JAWS/NVDA harness for background web-fetch progress-dialog accessibility.
 
 Not collected by pytest. Run:
     python test/web_fetch_background_spike.py
 
-Verify with JAWS (NVDA optional) before any production QThread fetch:
+The fake worker exercises the shared progress-dialog interaction; it is a
+manual accessibility check, not an end-to-end test of the production fetch.
+Use it when changing that dialog or its announcement/focus behavior:
 
 1. Progress spoken while the fake worker runs.
 2. Tab / arrows work during the wait (work is off the GUI thread).
@@ -12,7 +14,6 @@ Verify with JAWS (NVDA optional) before any production QThread fetch:
 4. Start again, Alt+Tab away before finish, then back — completion still announced.
 5. Start again, Escape — cancel announced; focus returns here.
 
-Only after 1–5 pass should Phase 1 production thread work start.
 """
 
 from __future__ import annotations

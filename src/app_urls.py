@@ -1,9 +1,7 @@
 """Public URLs for AbCS and Aurora Accessibility."""
 
 ABCS_WEBSITE_URL = "https://abcs.auroraaccessibility.com/"
-# TEMPORARY Phase 7 testing. Help → Website and Open download page use this
-# Carrd test site. Before merging to main, point this back at ABCS_WEBSITE_URL.
-ABCS_UPDATE_DOWNLOAD_URL = "https://abcstest.carrd.co/"
+ABCS_UPDATE_DOWNLOAD_URL = "https://abcs.auroraaccessibility.com/downloads/"
 ABCS_GITHUB_LATEST_RELEASE_API_URL = (
     "https://api.github.com/repos/cfdrakeNS/"
     "AbCS_Audiobook_Collector_Scanner/releases/latest"

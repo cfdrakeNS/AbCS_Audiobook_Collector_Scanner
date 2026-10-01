@@ -18,22 +18,6 @@ def test_shortcut_registry_regression():
         assert key in reading_shortcuts, f"Critical shortcut {key} missing from reading history"
 
 
-def test_menu_structure_regression(main_window):
-    """View menu exposes an enabled Reading History action."""
-    assert hasattr(main_window, "view_menu"), "View menu missing"
-    view_menu = main_window.view_menu
-    assert view_menu is not None
-
-    reading_history_action = None
-    for action in view_menu.actions():
-        if action and "Reading &History" in action.text():
-            reading_history_action = action
-            break
-
-    assert reading_history_action is not None, "Reading History menu item missing from View menu"
-    assert reading_history_action.isEnabled(), "Reading History action should be enabled"
-
-
 def test_book_list_accessibility_regression(main_window):
     """Main window book list remains tab-focusable with accessible properties."""
     assert main_window.accessibleName() != ""

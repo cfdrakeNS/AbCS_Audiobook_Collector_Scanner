@@ -1,5 +1,5 @@
 """
-Throwaway JAWS/NVDA spike for view-mode field announcements.
+Manual JAWS/NVDA comparison harness for view-mode field announcements.
 
 Run:
     python test/view_mode_static_text_spike.py
@@ -9,7 +9,8 @@ Compare Tab through:
   2) read-only QLineEdit (old noise: "read only")
   3) editable QLineEdit (says "edit")
 
-Accept the control that speaks name + value with neither "edit" nor "read only".
+The shipped view-mode approach is the focusable QLabel. Use this harness to
+recheck its name and value announcement against the editable alternatives.
 """
 
 from __future__ import annotations
