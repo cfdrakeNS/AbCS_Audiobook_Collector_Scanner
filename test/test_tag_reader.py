@@ -1,6 +1,5 @@
 """Unit tests for TagReader comment parsing and tag helper logic."""
 
-import os
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -270,20 +269,3 @@ def test_book_scanner_adds_embedded_zip_flags(tmp_path, monkeypatch):
     assert book["time_minutes"] == 0
     assert any("Duration corrected from embedded ZIP audio" in err for err in book["errors"])
     assert not any(str(err).strip().upper().startswith("W:") for err in book["errors"])
-
-
-@pytest.mark.skipif(
-    not os.path.exists(r"E:\test standard import\Dean Koontz\Whispers"),
-    reason="Whispers sample folder not available",
-)
-def test_whispers_embedded_zip_duration_correction():
-    from src.core.tag_reader import BookScanner
-
-    folder = r"E:\test standard import\Dean Koontz\Whispers"
-    books = BookScanner().scan_folder(folder, include_subfolders=False)
-
-    assert len(books) == 1
-    book = books[0]
-    total_minutes = (book["time_hours"] * 60) + book["time_minutes"]
-    assert total_minutes >= 1000
-    assert any("Duration corrected from embedded ZIP audio" in err for err in book.get("errors", []))
