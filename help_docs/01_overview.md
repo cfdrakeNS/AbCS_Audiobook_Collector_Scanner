@@ -119,7 +119,7 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 | [Find and Filters](03_find_filters.md) | Search, filter, and sort the main book list |
 | [Web Metadata Fetch](07_web_metadata.md) | Look up plot, series, and other details online |
 | [Book Details](04_book_details.md) | View or edit one book; play inside AbCS; add a new book by hand |
-| [Listen](26_listen.md) | Play an audiobook inside AbCS and control playback |
+| [Listen to a book](26_listen_to_a_book.md) | Play an audiobook inside AbCS and control playback |
 | [Update](05_update.md) | Change fields on several selected books at once |
 | [Collections](06_collections.md) | Create and manage collections; filter by collection |
 | [Duplicate Mode](08_duplicate_mode.md) | Find and clean up duplicate books in your library |
@@ -147,13 +147,14 @@ These explain *what happens behind the scenes* in everyday language. Use them be
 
 A default collection named **Audio Books** is created when the database is first set up. You can import into it right away; use the Collections guide when you want to rename it or add more collections.
 
-1. **Import** — add books from audio folders. See [Import](02_import.md).
+1. **Import** — add books from audio folders, then review any held items in [Import Detail](12_import_detail.md). See [Import](02_import.md).
 2. **Find and Filters** — browse and narrow the book list. See [Find and Filters](03_find_filters.md).
 3. **Book Details** — fix metadata or add a manual entry. See [Book Details](04_book_details.md).
-4. **Collections** — organize your library. See [Collections](06_collections.md).
-5. **Web Metadata Fetch** — enrich a book with online details. See [Web Metadata Fetch](07_web_metadata.md).
-6. **Duplicate Mode** — find and remove duplicate entries. See [Duplicate Mode](08_duplicate_mode.md).
-7. **Backup and Restore** — confirm you can save and recover your data. See [Backup and Restore](09_backup_restore.md).
+4. **Listen to a book** — play a book and learn about resume positions. See [Listen to a book](26_listen_to_a_book.md).
+5. **Collections** — organize your library. See [Collections](06_collections.md).
+6. **Web Metadata Fetch** — enrich a book with online details. See [Web Metadata Fetch](07_web_metadata.md).
+7. **Duplicate Mode** — find and remove duplicate entries. See [Duplicate Mode](08_duplicate_mode.md).
+8. **Backup and Restore** — confirm you can save and recover your data. See [Backup and Restore](09_backup_restore.md).
 
 **Import Book List** is a separate import path; use it when you have a spreadsheet to import. See [Import Book List](11_import_book_list.md).
 

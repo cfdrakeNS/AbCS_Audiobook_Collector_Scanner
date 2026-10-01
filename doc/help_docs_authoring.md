@@ -52,7 +52,7 @@ Use the **next free** `nn` when adding a file. Do not renumber existing files un
 
 ## How topics appear in the app
 
-1. **All Help Topics** — `discover_help_topics()` scans `help_docs/*.md` matching the naming pattern. **No code change** is required for a new file to show up here.
+1. **All Help Topics** — `discover_help_topics()` scans `help_docs/*.md` matching the naming pattern. Existing topics appear in the curated order in `_HELP_TOPIC_ORDER` in `src/accessibility/help_paths.py`; new matching topics not in that order follow by filename. **No code change** is required for a new file to show up here.
 2. **Section list** — After opening a topic, the left list shows `##` and `###` headings from that file (plus **All Help Topics** to go back).
 3. **Shift+F1** — Opens a **fixed** file per window class via `WINDOW_HELP_MAP` in `src/ui/help_router.py`. Add a map entry when a **new window** needs its own default help doc.
 4. **F1** — Keyboard shortcut tables built in code per window; not loaded from these markdown files.
@@ -83,7 +83,7 @@ The two-digit prefix (`nn`) is the stable ID for each topic. **Renaming** `02_im
 | 13 | `13_reading_history.md` | `ReadingHistoryWindow` | Reading history |
 | 14 | `14_statistics.md` | `StatisticsDialog` | Library statistics |
 | 15 | `15_name_list.md` | `NameListWindow` | Author / series / genre lists |
-| 26 | `26_listen.md` | `PreviewWindow` | Listen player |
+| 26 | `26_listen_to_a_book.md` | `PreviewWindow` | Listen player |
 
 When adding a window: pick the next free process-guide number (`02`–`15`), create `nn_topic.md`, add `ClassName → nn_topic.md` to `WINDOW_HELP_MAP`.
 
@@ -106,7 +106,7 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 13 | `13_reading_history.md` | Process | Reading history |
 | 14 | `14_statistics.md` | Process | Statistics |
 | 15 | `15_name_list.md` | Process | Name list |
-| 26 | `26_listen.md` | Process | Listen player |
+| 26 | `26_listen_to_a_book.md` | Process | Listen player |
 | 16 | `16_shortcuts.md` | Reference | — |
 | 17 | `17_default_preferences.md` | Reference | — |
 | 18 | `18_import_preferences.md` | Reference | — |

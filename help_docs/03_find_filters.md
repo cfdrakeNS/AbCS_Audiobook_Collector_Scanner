@@ -117,7 +117,7 @@ After step 7, further Escape presses on the main window do **not** clear any mor
 
 ## Listen (main window)
 
-Use **Edit → Listen**, the **Listen** toolbar button, or **Ctrl+L** to open the in-app **Listen** window for the **focused** book (not a multi-selected row). Listen is unavailable while one or more books are selected for bulk actions. See [Listen](26_listen.md) for player controls and resume behavior.
+Use **Edit → Listen**, the **Listen** toolbar button, or **Ctrl+L** to open the in-app **Listen** window for the **focused** book (not a multi-selected row). Listen is unavailable while one or more books are selected for bulk actions. See [Listen to a book](26_listen_to_a_book.md) for player controls and resume behavior.
 
 ## Export the filtered list
 

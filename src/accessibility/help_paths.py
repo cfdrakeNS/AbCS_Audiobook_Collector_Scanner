@@ -24,7 +24,32 @@ from src.accessibility.graphics_paths import bundle_base, project_root
 OVERVIEW_DOC = "01_overview.md"
 
 HELP_DOC_FILENAME_RE = re.compile(r"^\d{2}_[\w-]+\.md$", re.IGNORECASE)
-_HELP_TOPIC_ORDER_OVERRIDES = {"07_web_metadata.md": ("03_find_filters.md", 1)}
+_HELP_TOPIC_ORDER = (
+    "01_overview.md",
+    "02_import.md",
+    "03_find_filters.md",
+    "04_book_details.md",
+    "26_listen_to_a_book.md",
+    "07_web_metadata.md",
+    "15_name_list.md",
+    "06_collections.md",
+    "08_duplicate_mode.md",
+    "09_backup_restore.md",
+    "05_update.md",
+    "10_preferences.md",
+    "24_path_health.md",
+    "25_export_library.md",
+    "14_statistics.md",
+    "11_import_book_list.md",
+    "12_import_detail.md",
+    "13_reading_history.md",
+    "16_shortcuts.md",
+    "17_default_preferences.md",
+    "18_import_preferences.md",
+    "19_import_explained.md",
+    "20_import_book_list_explained.md",
+    "21_web_metadata_explained.md",
+)
 
 
 def help_doc_display_name(filename: str) -> str:
@@ -36,7 +61,7 @@ def help_doc_display_name(filename: str) -> str:
 
 
 def discover_help_topics() -> list[tuple[str, str]]:
-    """Return help topics, with Web Metadata immediately after Find and Filters."""
+    """Return help topics in the app's curated navigation order."""
     docs_dir = resolve_help_docs_dir()
     topics: list[tuple[str, str]] = []
     for path in sorted(docs_dir.glob("*.md")):
@@ -44,13 +69,14 @@ def discover_help_topics() -> list[tuple[str, str]]:
         if HELP_DOC_FILENAME_RE.match(name):
             topics.append((help_doc_display_name(name), name))
 
+    topic_order_index = {name: index for index, name in enumerate(_HELP_TOPIC_ORDER)}
+
     def topic_order(topic: tuple[str, str]) -> tuple[int, int, str]:
         _label, name = topic
-        override = _HELP_TOPIC_ORDER_OVERRIDES.get(name)
-        if override:
-            anchor, after_anchor = override
-            return int(anchor[:2]), after_anchor, name
-        return int(name[:2]), 0, name
+        index = topic_order_index.get(name)
+        if index is not None:
+            return 0, index, name
+        return 1, int(name[:2]), name
 
     return sorted(topics, key=topic_order)
 

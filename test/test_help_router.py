@@ -48,14 +48,35 @@ def test_overview_suggested_order_hides_topic_filename_numbers():
     assert "See [11 Import Book List]" not in overview
 
 
-def test_discover_help_topics_sorted_and_dynamic():
+def test_discover_help_topics_uses_the_curated_app_order():
     topics = discover_help_topics()
     filenames = [filename for _label, filename in topics]
-    assert filenames.index("07_web_metadata.md") == filenames.index(
-        "03_find_filters.md"
-    ) + 1
-    assert filenames[-1] == "26_listen.md"
-    assert "01_overview.md" in filenames
+    assert filenames == [
+        "01_overview.md",
+        "02_import.md",
+        "03_find_filters.md",
+        "04_book_details.md",
+        "26_listen_to_a_book.md",
+        "07_web_metadata.md",
+        "15_name_list.md",
+        "06_collections.md",
+        "08_duplicate_mode.md",
+        "09_backup_restore.md",
+        "05_update.md",
+        "10_preferences.md",
+        "24_path_health.md",
+        "25_export_library.md",
+        "14_statistics.md",
+        "11_import_book_list.md",
+        "12_import_detail.md",
+        "13_reading_history.md",
+        "16_shortcuts.md",
+        "17_default_preferences.md",
+        "18_import_preferences.md",
+        "19_import_explained.md",
+        "20_import_book_list_explained.md",
+        "21_web_metadata_explained.md",
+    ]
     assert ("overview", "01_overview.md") in topics
 
 
@@ -77,7 +98,7 @@ def test_duplicate_mode_main_window_help():
 
 def test_preview_window_opens_listen_help():
     preview = type("PreviewWindow", (), {})()
-    assert get_help_doc_filename(preview) == "26_listen.md"
+    assert get_help_doc_filename(preview) == "26_listen_to_a_book.md"
 
 
 def test_help_doc_override_on_progress_window():

@@ -26,7 +26,7 @@ WINDOW_HELP_MAP: dict[str, str] = {
     "ImportProgressWindow": "02_import.md",
     "ImportDetailWindow": "12_import_detail.md",
     "BookDetailsWindow": "04_book_details.md",
-    "PreviewWindow": "26_listen.md",
+    "PreviewWindow": "26_listen_to_a_book.md",
     "UpdateWindow": "05_update.md",
     "CollectionWindow": "06_collections.md",
     "WebMetadataWindow": "07_web_metadata.md",
