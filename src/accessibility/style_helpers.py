@@ -891,8 +891,14 @@ def exec_styled_message_box(
     window_icon=None,
     scaler=None,
     button_icon_roles: dict | None = None,
+    escape_only_button=None,
 ) -> int:
-    """Show a styled QMessageBox and return the exec result."""
+    """Show a styled QMessageBox and return the exec result.
+
+    ``escape_only_button`` is a standard button in ``buttons`` that is hidden
+    and answered only by Escape, so the box shows fewer buttons without Escape
+    falling through to the remaining one.
+    """
     msg = QMessageBox(parent)
     if icon is not None:
         msg.setIcon(icon)
@@ -929,6 +935,12 @@ def exec_styled_message_box(
         scaler if scaler is not None else _parent_scaler(parent),
         button_icon_roles,
     )
+
+    if escape_only_button is not None:
+        hidden = msg.button(escape_only_button)
+        if hidden is not None:
+            msg.setEscapeButton(hidden)
+            hidden.hide()
 
     msg.setStyleSheet(build_accessible_message_box_style(scaled_height))
     return msg.exec()

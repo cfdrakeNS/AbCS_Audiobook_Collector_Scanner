@@ -37,8 +37,8 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 8. Click **Import** (Alt+I).
 9. A **Confirm Import** dialog shows the row count, mode, and mapping summary. Click **Yes** to proceed or **No** to cancel.
 10. An **Import Progress** window shows current title/author and counters while rows are processed. Press **Escape** on that window to cancel and keep books already added; remaining rows are skipped.
-11. When import finishes successfully, an **Import Complete** message shows success, duplicate, and error counts. If you cancel, there is no extra popup — the Import Progress status bar shows the cancel summary (same pattern as folder Import); press Escape to close the progress window.
-12. If there were errors, click **Export Errors** (Alt+X) to save a CSV listing failed rows.
+11. When the import finishes or is canceled, there is no popup. The Import Progress window shows the final counts. Press **Escape** to close it.
+12. If there were errors, the status reminds you to click **Export Errors** (Alt+X) to save a CSV listing failed rows.
 13. The window stays open so you can import another file. Press **Escape** when finished (closes the progress window first if it is still open).
 14. The main book list refreshes when you close the window.
 
@@ -47,6 +47,7 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 - New books appear in the main list for the collection you chose.
 - Read-date updates change the Read column on matched books (matched by title and author within the collection).
 - Rows missing required fields or failing duplicate checks are skipped and listed in the error export.
+- Imported books have no file path. **Listen** looks for each book in the collection's **Library root folder** and saves the path when found. If it is not found, Listen offers **Browse**. See [Import Book List explained](20_import_book_list_explained.md) for where Listen looks.
 
 ## Settings that affect this
 
@@ -89,3 +90,4 @@ No. It stays open so you can import more files. Close it with Escape when done; 
 ## Related documentation
 
 - Export a CSV from the main list and re-import it here: [Export Library](25_export_library.md)
+- Play imported books: [Listen to a book](26_listen_to_a_book.md)

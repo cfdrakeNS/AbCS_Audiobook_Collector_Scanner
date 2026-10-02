@@ -308,6 +308,15 @@ class BookQueries:
         if commit:
             self.db.connect().commit()
 
+    def update_path(self, book_id: int, path: str, commit: bool = True) -> None:
+        """Store the book's folder or file location."""
+        self.db.execute(
+            "UPDATE books SET path = ? WHERE book_id = ?",
+            ((path or None), book_id),
+        )
+        if commit:
+            self.db.connect().commit()
+
     def bulk_clear_listen_progress(self, book_ids: List[int]) -> int:
         """Clear resume position for many books in one write."""
         if not book_ids:

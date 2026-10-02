@@ -118,6 +118,35 @@ def _prepare_window(window: BookListImportWindow, frame, mapping: dict) -> int:
     return window.collection_combo.currentData()
 
 
+def test_single_collection_stays_selected_when_main_filter_is_missing(
+    empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch, isolated_qsettings
+):
+    """An empty library has one collection. Import must not clear that selection."""
+    from PySide6.QtWidgets import QDialog
+
+    from src.ui.main_window import MainWindow
+    from src.ui.setup_dialogue import SetupDialog
+
+    monkeypatch.setattr(
+        SetupDialog, "exec", lambda self: QDialog.DialogCode.Accepted
+    )
+    window = MainWindow(empty_temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.current_filter.collection_id = 99999
+    seen = {}
+
+    def fake_exec(self):
+        seen["index"] = self.collection_combo.currentIndex()
+        seen["data"] = self.collection_combo.currentData()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(BookListImportWindow, "exec", fake_exec)
+    window.on_book_list_import()
+    assert seen["index"] == 0
+    assert seen["data"] is not None
+    window.close()
+
+
 class TestBookListImportDb:
     def test_import_new_books_batches_insert_and_single_commit(
         self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch

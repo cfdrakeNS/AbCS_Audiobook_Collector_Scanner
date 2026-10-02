@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from src.core.library_root import resolve_book_location
+from src.core.library_root import (
+    folder_exists,
+    locate_book_under_collection,
+    path_exists,
+    resolve_book_location,
+    saved_import_scenario,
+)
 from src.core.tag_reader import TagReader
 
 
@@ -13,6 +19,10 @@ from src.core.tag_reader import TagReader
 class PreviewTarget:
     path: Path | None = None
     error: str = ""
+    # Set when the book was found by author/title layout, not its stored path.
+    found_path: str = ""
+    # Set on an author/title miss: where a Browse for the book should start.
+    browse_dir: str = ""
 
 
 @dataclass(frozen=True)
@@ -23,6 +33,10 @@ class PreviewPlaylist:
     start_index: int = 0
     folder_mode: bool = False
     error: str = ""
+    # Set when the book was found by author/title layout, not its stored path.
+    found_path: str = ""
+    # Set on an author/title miss: where a Browse for the book should start.
+    browse_dir: str = ""
 
     @property
     def path(self) -> Path | None:
@@ -30,6 +44,82 @@ class PreviewPlaylist:
             return None
         index = min(max(self.start_index, 0), len(self.files) - 1)
         return self.files[index]
+
+
+@dataclass(frozen=True)
+class _BookLocation:
+    path: str = ""
+    error: str = ""
+    found_path: str = ""
+    browse_dir: str = ""
+
+
+def _locate_book(
+    stored_path: str,
+    collection_root: str,
+    import_dir: str,
+    author_name: str,
+    book_title: str,
+    series_name: str,
+    import_scenario: str | None,
+    collection_name: str = "",
+) -> _BookLocation:
+    """Stored path first; when blank or missing, the collection folder layout."""
+    text = (stored_path or "").strip()
+    resolved = ""
+    if text:
+        resolved = resolve_book_location(
+            text, collection_root=collection_root, import_dir=import_dir
+        )
+        if path_exists(resolved):
+            return _BookLocation(path=resolved)
+
+    root = (collection_root or "").strip()
+    author = (author_name or "").strip()
+    scenario = import_scenario if import_scenario is not None else saved_import_scenario()
+    if root and author:
+        lookup = locate_book_under_collection(
+            root,
+            author_name,
+            book_title,
+            series_name,
+            scenario,
+            collection_name=collection_name,
+        )
+        if lookup.path:
+            return _BookLocation(path=lookup.path, found_path=lookup.path)
+        if lookup.message:
+            return _BookLocation(error=lookup.message, browse_dir=lookup.browse_dir)
+
+    if not text and not root:
+        name = (collection_name or "").strip()
+        where = f"the {name} collection folder" if name else "the collection folder"
+        return _BookLocation(
+            error=(
+                f"This book has no file path and {where} is not set. To fix, "
+                "open Manage > Collections, edit the collection, and set the "
+                "Library root folder."
+            )
+        )
+    if not text:
+        if not author:
+            reason = (
+                "This book has no file path and no author, so Listen cannot "
+                "look for it in the collection folder."
+            )
+        elif scenario == "single_item":
+            reason = (
+                "This book has no file path. The Single Author / Book Import "
+                "layout has no author folders, so Listen cannot look for it in "
+                "the collection folder."
+            )
+        else:
+            reason = "This book has no file path."
+        return _BookLocation(
+            error=reason,
+            browse_dir=root if folder_exists(root) else "",
+        )
+    return _BookLocation(error=f"Book not found in - {resolved}")
 
 
 def parse_tag_number(raw) -> int | None:
@@ -161,23 +251,34 @@ def playlist_elapsed_ms(
 
 
 def resolve_preview_source(
-    path: str, collection_root: str = "", import_dir: str = ""
+    path: str,
+    collection_root: str = "",
+    import_dir: str = "",
+    author_name: str = "",
+    book_title: str = "",
+    series_name: str = "",
+    import_scenario: str | None = None,
+    collection_name: str = "",
 ) -> PreviewTarget:
     """Return one playable file without building or metadata-sorting a playlist."""
-    text = (path or "").strip()
-    if not text:
-        return PreviewTarget(error="No file path is set.")
-    resolved = resolve_book_location(
-        text, collection_root=collection_root, import_dir=import_dir
+    location = _locate_book(
+        path,
+        collection_root,
+        import_dir,
+        author_name,
+        book_title,
+        series_name,
+        import_scenario,
+        collection_name=collection_name,
     )
-    from src.core.library_root import path_exists
-
-    if not path_exists(resolved):
-        return PreviewTarget(error=f"Book not found in - {resolved}")
+    if location.error:
+        return PreviewTarget(error=location.error, browse_dir=location.browse_dir)
+    resolved = location.path
+    found_path = location.found_path
     target = Path(resolved)
     if target.is_file():
         if target.suffix.lower() in TagReader.SUPPORTED_EXTENSIONS:
-            return PreviewTarget(path=target)
+            return PreviewTarget(path=target, found_path=found_path)
         return PreviewTarget(error="This path is not a recognized audiobook file.")
     if not target.is_dir():
         return PreviewTarget(error=f"Book not found in - {resolved}")
@@ -187,13 +288,13 @@ def resolve_preview_source(
         children = sorted(target.iterdir(), key=lambda item: item.name.casefold())
         for child in children:
             if child.is_file() and child.suffix.lower() in extensions:
-                return PreviewTarget(path=child)
+                return PreviewTarget(path=child, found_path=found_path)
         for child in children:
             if not child.is_dir():
                 continue
             for item in sorted(child.iterdir(), key=lambda entry: entry.name.casefold()):
                 if item.is_file() and item.suffix.lower() in extensions:
-                    return PreviewTarget(path=item)
+                    return PreviewTarget(path=item, found_path=found_path)
     except OSError:
         return PreviewTarget(error=f"Book not found in - {resolved}")
     return PreviewTarget(error="This folder has no recognized audiobook files.")
@@ -224,19 +325,35 @@ def resolve_preview_playlist(
     collection_root: str = "",
     import_dir: str = "",
     listen_file_name: str = "",
+    author_name: str = "",
+    book_title: str = "",
+    series_name: str = "",
+    import_scenario: str | None = None,
+    collection_name: str = "",
 ) -> PreviewPlaylist:
-    """Return the ordered playlist and start index for Preview."""
-    text = (path or "").strip()
-    if not text:
-        return PreviewPlaylist(error="No file path is set.")
-    resolved = resolve_book_location(
-        text, collection_root=collection_root, import_dir=import_dir
-    )
-    from src.core.library_root import path_exists
+    """Return the ordered playlist and start index for Preview.
 
-    if path_exists(resolved):
-        return _playlist_for_existing_path(resolved, listen_file_name=listen_file_name)
-    return PreviewPlaylist(error=f"Book not found in - {resolved}")
+    A blank or missing stored path falls back to the collection folder,
+    following the Preferences import scenario (``import_scenario`` overrides).
+    """
+    location = _locate_book(
+        path,
+        collection_root,
+        import_dir,
+        author_name,
+        book_title,
+        series_name,
+        import_scenario,
+        collection_name=collection_name,
+    )
+    if location.error:
+        return PreviewPlaylist(error=location.error, browse_dir=location.browse_dir)
+    playlist = _playlist_for_existing_path(
+        location.path, listen_file_name=listen_file_name
+    )
+    if location.found_path and not playlist.error:
+        return replace(playlist, found_path=location.found_path)
+    return playlist
 
 
 def _playlist_for_existing_path(

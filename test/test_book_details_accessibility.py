@@ -255,7 +255,10 @@ def test_preview_disabled_when_path_empty(temp_db, ui_scaler, theme_manager):
         parent=None,
         theme_manager=theme_manager,
     )
+    # No collection folder either, so Listen cannot find the book by author/title.
+    window._preview_collection_root = lambda: ""
     window.path_edit.setText("")
+    window._update_preview_button_state()
     assert window.preview_button.isEnabled() is False
     assert "unavailable" in window.preview_button.accessibleDescription()
     window.close()
@@ -318,7 +321,7 @@ def test_book_details_open_resolves_source_and_cover_once(
     book.path = str(audio)
     calls = {"resolve": 0, "cover": 0}
 
-    def fake_resolve(path, collection_root="", import_dir=""):
+    def fake_resolve(path, collection_root="", import_dir="", **_lookup):
         calls["resolve"] += 1
         return PreviewTarget(path=audio)
 

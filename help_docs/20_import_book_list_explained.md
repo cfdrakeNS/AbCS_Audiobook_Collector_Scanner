@@ -136,10 +136,10 @@ Any unexpected problem on a single row is caught, logged with the row number and
 While rows are processing, an **Import Progress** window shows the current title/author, a progress bar, and live counters (added, duplicates, errors). Press **Escape** to cancel: books already processed are kept, and remaining rows are reported as skipped.
 
 - **One commit** saves every successful insert to the database (including partial results if you canceled).
-- On success, an **Import Complete** dialog shows how many rows succeeded, how many duplicates were skipped, and how many failed.
-- On cancel, there is no extra popup (same as folder Import). The Import Progress status bar shows `Import canceled | …` with counters and elapsed time; press Escape to close the progress window.
-- The main window status bar shows something like `32 books added to Audiobooks collection, 2 duplicates skipped, 3 errors` (the duplicates clause is omitted when there were none; cancel adds `, N skipped`).
-- The progress window stays open with Esc to close; focus returns to the file path field when it closes or after the success dialog.
+- There is no completion popup, whether the import finishes or is canceled. The Import Progress window shows the final counters and elapsed time. On cancel, its status bar starts with `Import canceled`.
+- The status bar shows something like `32 books added to Audiobooks collection, 2 duplicates skipped, 3 errors`. The duplicates clause is omitted when there were none. Cancel adds `, N skipped`.
+- When there were errors, the status adds a reminder to use **Export Errors** (Alt+X).
+- The progress window stays open; press **Escape** to close it. Focus then returns to the file path field.
 - The **main book list does not refresh yet** — that happens when you close the Import Book List window.
 
 ### If errors occurred
@@ -192,8 +192,8 @@ This mode **never creates new books**. It only updates the read date on books th
 
 Same completion flow as new-book mode:
 
-- Import Complete dialog with success and error counts
-- Status bar summary
+- No completion popup; the Import Progress window shows the final counters
+- Status bar summary with read dates added, errors, and skipped rows
 - Error export available for failed rows
 
 ---
@@ -212,11 +212,45 @@ Same completion flow as new-book mode:
 | Collection | Attached to the collection you selected |
 | Source | `Bookh_list` |
 
-No audio file paths, bitrates, or folder locations are set unless you later attach them through folder Import.
+No audio file paths, bitrates, or folder locations are set by the spreadsheet. A **Path** column in the sheet is not imported. Listen can still find these books later; see **Playing book-list books with Listen** below.
 
 ### Read-date mode
 
 Only `read_date` on an existing `books` row is changed. Nothing else is touched.
+
+---
+
+## Playing book-list books with Listen
+
+Books added from a list have no file path. When you press **Listen** (Ctrl+L), AbCS looks for the book in the collection's **Library root folder**. Set that folder in **Manage → Collections**.
+
+### Where Listen looks
+
+Listen checks only the folders your **Import scenario** in Preferences expects. It does not scan the whole drive. Folder names match without regard to case or characters Windows does not allow in names.
+
+| Import scenario | Folders checked under the Library root folder |
+|-----------------|-----------------------------------------------|
+| Mass Standard Import, or Series From File Name | Author, then Title. Also a single audio file named for the title in the Author folder, or Author, then Series, then Title |
+| Series From Directory | Author, then Series, where the Series folder holds the audio. Books without a series use Author, then Title |
+| Series From Directory (Nested Books) | Author, then Series, then Title. Books without a series use Author, then Title |
+| Single Author / Book Import | None — use Browse |
+
+When the book is found, it plays and its folder is saved as the book's path. The next Listen goes straight to it.
+
+### When the book is not found
+
+Listen says what was missing and where it looked. Then it offers **Browse**. The folder you choose is saved on the book only if it has playable audio. Press **Escape** to close without changing the book.
+
+| Message starts with | Meaning |
+|---------------------|---------|
+| The collection folder is missing | The Library root folder does not exist, for example a drive that is not connected |
+| The collection folder has no audiobook files | The Library root folder is probably set to the wrong folder |
+| Author folder "…" was not found | No folder with the author's name is directly in the Library root folder |
+| Author folder found. Book title "…" was not found | The author folder exists, but no folder or file matches the title |
+| Author folder found. Series folder "…" was not found | The scenario expects a series folder that is not there |
+| This book has no file path and the collection folder is not set | The collection has no Library root folder |
+
+For the first two and the last message, fix the folder in **Manage → Collections**: edit the collection and update **Library root folder**. See [Listen to a book](26_listen_to_a_book.md) for player controls.
 
 ---
 
@@ -227,6 +261,7 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 | Reads audio file tags | No — only spreadsheet text |
 | Uses folder import scenario settings | No — scenarios and tag fallbacks do not apply |
 | Creates folders on your computer | No |
+| Stores a file path for each book | No — Listen finds and saves the path later |
 | Changes your spreadsheet file | No — read only |
 | Updates all fields on existing books (read-date mode) | No — only read date changes |
 | Shows a per-row progress bar | No — status messages only |
@@ -239,7 +274,7 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 |------------|------------|
 | Duplicate match mode | New-book mode only |
 | Fuzzy duplicate percent | New-book mode only |
-| Import scenario, fallbacks, validation rules | **Not used** — folder Import only |
+| Import scenario, fallbacks, validation rules | **Not used** during import. Listen uses the import scenario later to find book folders |
 
 ---
 
@@ -248,4 +283,6 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 - Scanning audio files: [Import explained](19_import_explained.md)
 - Duplicate settings detail: [Import preferences](18_import_preferences.md)
 - Fill in plot/series from the web: [Web metadata explained](21_web_metadata_explained.md)
+- Play imported books: [Listen to a book](26_listen_to_a_book.md)
+- Set the Library root folder: [Collections](06_collections.md)
 - How spreadsheet title matching works: see the **Title and author matching** section in this guide and [Import preferences](18_import_preferences.md).

@@ -233,6 +233,9 @@ class AbCSApplication:
         from src.accessibility.icon_helper import install_app_icon
 
         self.qt_app = QApplication(sys.argv)
+        from src.core import hang_watchdog
+
+        hang_watchdog.install()
         from PySide6.QtWidgets import QStyleFactory
 
         from src.accessibility.accessible_app_style import AccessibleAppStyle

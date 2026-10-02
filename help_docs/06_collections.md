@@ -58,6 +58,7 @@ Import windows use this filter: if the main window shows a specific collection, 
 - Inactive collections do not appear in import collection dropdowns but remain in the database.
 - Filtering does not move or delete books — it only changes what you see.
 - If a library root folder is set and that folder exists, **File → Import** pre-fills the scan folder from it. You can still browse a different folder.
+- **Listen** looks in the library root folder for books with no path, such as books from Import Book List. If the folder is wrong, missing, or not set, Listen says so and points you here.
  Changing the root does not rewrite book paths.
 
 ## Settings that affect this

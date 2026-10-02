@@ -1752,10 +1752,8 @@ class BookListImportWindow(AccessibleDialog):
                 elapsed_text=elapsed_text,
             )
 
-            # Show results dialog text (human-readable); progress uses counter form.
             selected_collection_name = self.collection_combo.currentText()
             if self.import_mode == "new":
-                result_text = f"{success_count} books added to {selected_collection_name} collection"
                 status_parts = [
                     f"{success_count} books added to {selected_collection_name} collection"
                 ]
@@ -1766,7 +1764,6 @@ class BookListImportWindow(AccessibleDialog):
                     status_parts.append(f"{skipped_count} skipped")
                 status_text = ", ".join(status_parts)
             else:
-                result_text = f"{success_count} read dates added to books in {selected_collection_name} collection"
                 status_parts = [
                     f"{success_count} read dates added to books in {selected_collection_name} collection",
                     f"{error_count} errors",
@@ -1774,17 +1771,8 @@ class BookListImportWindow(AccessibleDialog):
                 if skipped_count:
                     status_parts.append(f"{skipped_count} skipped")
                 status_text = ", ".join(status_parts)
-            if duplicate_count > 0 and self.import_mode == "new":
-                result_text += f"\n{duplicate_count} duplicates skipped"
             if error_count > 0:
-                result_text += f"\n{error_count} books had errors"
-                result_text += (
-                    "\nUse Export Errors (Alt+X) to save error details to CSV"
-                )
-            if skipped_count > 0:
-                result_text += (
-                    f"\nImport canceled: {skipped_count} remaining rows skipped"
-                )
+                status_text += ". Use Export Errors (Alt+X) to save error details to CSV"
 
             # Same progress-window sequence as folder Import:
             # confirm → "Cancel Import: … partial results kept." → final
@@ -1808,15 +1796,6 @@ class BookListImportWindow(AccessibleDialog):
                 else:
                     self.file_edit.setFocus(Qt.TabFocusReason)
             else:
-                exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Information,
-                    title="Import Complete",
-                    text=result_text,
-                    buttons=QMessageBox.Ok,
-                    default_button=QMessageBox.Ok,
-                )
                 self.set_status(status_text)
                 if (
                     self.progress_window is not None

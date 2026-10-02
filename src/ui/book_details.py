@@ -3350,20 +3350,56 @@ class BookDetailsWindow(AccessibleDialog):
             self.path_edit.text() if hasattr(self, "path_edit") else "",
             self._preview_collection_root(),
             self._preview_import_dir(),
+            self._preview_author_name(),
+            self._preview_book_title(),
+            self._preview_series_name(),
+            self._preview_collection_name(),
         )
         if key != self._preview_source_cache_key:
             self._preview_source_cache_key = key
             self._preview_source_cache = resolve_preview_source(
-                key[0], collection_root=key[1], import_dir=key[2]
+                key[0],
+                collection_root=key[1],
+                import_dir=key[2],
+                author_name=key[3],
+                book_title=key[4],
+                series_name=key[5],
+                collection_name=key[6],
             )
         return self._preview_source_cache
+
+    def _preview_collection_name(self) -> str:
+        combo = getattr(self, "collection_combo", None)
+        if combo is not None and combo.currentData() is not None:
+            return combo.currentText().strip()
+        return (getattr(self.book, "collection_name", "") or "").strip()
+
+    def _show_found_book_path(self) -> None:
+        """Show a path Listen found under the collection folder and saved."""
+        saved = (getattr(self.book, "path", "") or "").strip() if self.book else ""
+        if not saved or not hasattr(self, "path_edit"):
+            return
+        if self.path_edit.text().strip() == saved:
+            return
+        self.path_edit.setText(saved)
+        self._data_was_changed = True
+
+    def _preview_book_title(self) -> str:
+        if hasattr(self, "title_edit"):
+            return self.title_edit.text().strip()
+        return ""
 
     def _update_preview_button_state(self):
         in_edit = bool(getattr(self, "_in_edit_mode", False)) or bool(self.is_new)
         target = None if in_edit else self._preview_source()
         available = bool(target is not None and target.path is not None)
+        can_browse = bool(
+            target is not None
+            and target.browse_dir
+            and getattr(self.book, "book_id", None) is not None
+        )
         self.preview_button.setVisible(not in_edit)
-        self.preview_button.setEnabled(available)
+        self.preview_button.setEnabled(available or can_browse)
         if in_edit:
             self.preview_button.setAccessibleDescription(
                 "Listen is unavailable while editing. Save or cancel first."
@@ -3372,9 +3408,16 @@ class BookDetailsWindow(AccessibleDialog):
             self.preview_button.setAccessibleDescription(
                 "Listen to this book inside AbCS - Ctrl+L"
             )
-        else:
+        elif can_browse:
             self.preview_button.setAccessibleDescription(
-                "Listen is unavailable because the path is missing or has no playable file."
+                "Book folder not found. Listen offers to browse for it - Ctrl+L"
+            )
+        else:
+            reason = (getattr(target, "error", "") or "").strip()
+            self.preview_button.setAccessibleDescription(
+                f"Listen is unavailable. {reason}"
+                if reason
+                else "Listen is unavailable because the path is missing or has no playable file."
             )
         if not in_edit:
             self._show_book_cover(target)
@@ -3404,6 +3447,9 @@ class BookDetailsWindow(AccessibleDialog):
                 collection_root=self._preview_collection_root(),
                 import_dir=self._preview_import_dir(),
                 listen_file_name=listen_file,
+                author_name=self._preview_author_name(),
+                book_title=self._preview_book_title(),
+                series_name=self._preview_series_name(),
             )
             if playlist.error or not playlist.files:
                 playlist = None
@@ -3557,10 +3603,16 @@ class BookDetailsWindow(AccessibleDialog):
             collection_root=self._preview_collection_root(),
             book=self.book if not self.is_new else None,
             db=self.db,
+            collection_name=self._preview_collection_name(),
         )
+        self._show_found_book_path()
         if ok:
             if hasattr(self, "listen_progress_edit"):
                 self.listen_progress_edit.setText(self._format_listen_progress())
+            self.preview_button.setFocus(Qt.TabFocusReason)
+            return
+        if not message:
+            self.set_status("Listen canceled. Book path not changed.", announce=True)
             self.preview_button.setFocus(Qt.TabFocusReason)
             return
         exec_styled_message_box(

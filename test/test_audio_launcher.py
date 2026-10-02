@@ -50,7 +50,11 @@ def test_read_embedded_cover_from_id3_and_plain_file(tmp_path):
 
 def test_resolve_preview_empty_and_missing(tmp_path):
     missing = tmp_path / "gone.mp3"
-    assert resolve_preview_file("").error == "No file path is set."
+    assert resolve_preview_file("").error == (
+        "This book has no file path and the collection folder is not set. "
+        "To fix, open Manage > Collections, edit the collection, and set the "
+        "Library root folder."
+    )
     assert preview_can_launch("") is False
     target = resolve_preview_file(str(missing))
     assert target.path is None
@@ -339,7 +343,7 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
         preview_mod._open_preview.close()
     ok, message = show_preview(None, "", ui_scaler, theme_manager)
     assert ok is False
-    assert "No file path" in message
+    assert "collection folder is not set" in message
 
 
 def test_listen_progress_uses_book_time_or_track_ordinal(tmp_path, monkeypatch):
@@ -373,6 +377,9 @@ def test_listen_progress_uses_book_time_or_track_ordinal(tmp_path, monkeypatch):
         path_edit=PathEdit(),
         _preview_collection_root=lambda: "",
         _preview_import_dir=lambda: "",
+        _preview_author_name=lambda: "",
+        _preview_book_title=lambda: "",
+        _preview_series_name=lambda: "",
     )
     assert BookDetailsWindow._format_listen_progress(window) == "15%"
 
@@ -418,6 +425,66 @@ def test_legacy_linux_player_keeps_gstreamer_fakesink(
     assert window._video_sink is None
     assert window._player.video_output is None
     window.close()
+
+
+def test_closing_listen_releases_player_and_audio(ui_scaler, theme_manager, qtbot):
+    from src.ui.preview_window import PreviewWindow
+
+    calls = []
+
+    class Signal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+        def disconnect(self):
+            calls.append("disconnect")
+
+    class FakePlayer:
+        def __init__(self):
+            self.playbackStateChanged = Signal()
+            self.errorOccurred = Signal()
+            self.mediaStatusChanged = Signal()
+            self.positionChanged = Signal()
+            self.durationChanged = Signal()
+
+        def setAudioOutput(self, *_args):
+            return None
+
+        def setVideoOutput(self, *_args):
+            return None
+
+        def stop(self):
+            calls.append("stop")
+
+        def setSource(self, url):
+            calls.append(("source", url.isEmpty()))
+
+        def position(self):
+            return 0
+
+        def deleteLater(self):
+            calls.append("player deleted")
+
+    class FakeAudio:
+        def deleteLater(self):
+            calls.append("audio deleted")
+
+    window = PreviewWindow(
+        None,
+        ui_scaler,
+        theme_manager,
+        player_types=(FakePlayer, FakeAudio),
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window.close()
+
+    assert window._player is None
+    assert window._audio is None
+    assert "stop" in calls
+    assert ("source", True) in calls
+    assert "player deleted" in calls
+    assert "audio deleted" in calls
 
 
 def test_escape_on_later_track_does_not_prompt_for_short_track_position(

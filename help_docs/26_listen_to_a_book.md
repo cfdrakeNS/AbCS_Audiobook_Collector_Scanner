@@ -13,7 +13,19 @@
 
 The Listen window shows the book's Title and Author. Length appears when it is set, and Series appears when the book has a series. The current file name and embedded cover art appear when available.
 
-For a folder of tracks, files play in disc and track number order. If the audio file or folder cannot be found, the status reports **Book not found in -** and the missing path.
+For a folder of tracks, files play in disc and track number order.
+
+## When Listen cannot find a book
+
+Listen tries the book's stored path first. If the path is blank or gone, it looks in the collection's **Library root folder**, using the folders your Preferences **Import scenario** expects. When the book is found there, its folder is saved as the book's path.
+
+If the book is still not found, a message says what was missing and where Listen looked. For example, the author folder or the book title folder was not found. Most messages offer **Browse**. The folder you choose is saved on the book only if it has playable audio. Press **Escape** to close without changing the book.
+
+If the message says the collection folder is missing, has no audiobook files, or is not set, open **Manage → Collections**. Edit the collection and update **Library root folder**.
+
+A stored path that no longer exists, with nothing found in the Library root folder, reports **Book not found in -** and the missing path.
+
+For the full list of folders checked and messages, see [Import Book List explained](20_import_book_list_explained.md).
 
 ## Playback controls
 

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QAbstractButton,
     QApplication,
     QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -176,6 +177,45 @@ def save_preview_speed(rate: float) -> None:
     settings.setValue(SPEED_SETTINGS_KEY, float(rate))
 
 
+def _can_save_book_path(book, db) -> bool:
+    return db is not None and getattr(book, "book_id", None) is not None
+
+
+def browse_for_book_folder(parent, scaler: UIScaler, message: str, start_dir: str) -> str:
+    """Explain the miss, offer Browse, and return the chosen folder or ``""``."""
+    reply = exec_styled_message_box(
+        parent,
+        scaler.get_scaled_size(20),
+        icon=QMessageBox.Warning,
+        title="Listen",
+        text=(
+            f"{message}\n\n"
+            "Browse for the book folder? The folder you choose is saved on this book.\n\n"
+            "Press Escape to close."
+        ),
+        buttons=QMessageBox.Open | QMessageBox.Close,
+        default_button=QMessageBox.Open,
+        button_texts={QMessageBox.Open: "&Browse"},
+        escape_only_button=QMessageBox.Close,
+    )
+    if reply != QMessageBox.Open:
+        return ""
+    selected = QFileDialog.getExistingDirectory(parent, "Select Book Folder", start_dir)
+    return (selected or "").strip()
+
+
+def save_found_book_path(book, db, found_path: str) -> bool:
+    """Store a book location found under the collection folder or by Browse."""
+    if not _can_save_book_path(book, db) or not found_path:
+        return False
+    book_id = book.book_id
+    from src.database import BookQueries
+
+    BookQueries(db).update_path(book_id, found_path)
+    book.path = found_path
+    return True
+
+
 def show_preview(
     parent,
     stored_path: str,
@@ -190,6 +230,7 @@ def show_preview(
     import_dir: str = "",
     book=None,
     db=None,
+    collection_name: str = "",
 ) -> tuple[bool, str]:
     """Resolve a book path and play it in the in-app Preview window."""
     listen_file = ""
@@ -211,9 +252,24 @@ def show_preview(
         collection_root=collection_root,
         import_dir=import_dir,
         listen_file_name=listen_file,
+        author_name=author_name,
+        book_title=book_title,
+        series_name=series_name,
+        collection_name=collection_name,
     )
     if playlist.error or not playlist.files:
-        return False, playlist.error or "No file path is set."
+        message = playlist.error or "No playable audiobook files were found for this book."
+        if not playlist.browse_dir or not _can_save_book_path(book, db):
+            return False, message
+        chosen = browse_for_book_folder(parent, scaler, message, playlist.browse_dir)
+        if not chosen:
+            return False, ""
+        playlist = resolve_preview_playlist(chosen, listen_file_name=listen_file)
+        if playlist.error or not playlist.files:
+            return False, playlist.error or "This folder has no recognized audiobook files."
+        save_found_book_path(book, db, chosen)
+    elif playlist.found_path:
+        save_found_book_path(book, db, playlist.found_path)
     try:
         silence_preview_media_logs()
         _configure_preview_backend()
@@ -248,6 +304,7 @@ def show_preview(
     )
     if not ok:
         window.close()
+        window.deleteLater()
         return False, message
     _open_preview = window
     window.show()
@@ -255,6 +312,7 @@ def show_preview(
     window.play_pause_button.setFocus(Qt.TabFocusReason)
     if parent is not None:
         window.exec()
+        window.deleteLater()
     return True, message
 
 
@@ -728,7 +786,9 @@ class PreviewWindow(AccessibleDialog):
         if self._player is None:
             return False, "Playing books needs Qt Multimedia."
         if not playlist.files:
-            return False, playlist.error or "No file path is set."
+            return False, (
+                playlist.error or "No playable audiobook files were found for this book."
+            )
         title = (book_title or "").strip() or playlist.files[0].name
         author = (author_name or "").strip()
         series = _format_preview_series(series_name, series_number)
@@ -1256,13 +1316,43 @@ class PreviewWindow(AccessibleDialog):
         super().showEvent(event)
         self._keep_above_owner()
 
+    def _release_player(self) -> None:
+        """Free the decoder and audio device; FFmpeg players left alive pile up and hang."""
+        player, audio, sink = self._player, self._audio, self._video_sink
+        self._player = None
+        self._audio = None
+        self._video_sink = None
+        if player is not None:
+            for signal_name in (
+                "playbackStateChanged",
+                "errorOccurred",
+                "mediaStatusChanged",
+                "positionChanged",
+                "durationChanged",
+            ):
+                signal = getattr(player, signal_name, None)
+                if signal is None:
+                    continue
+                try:
+                    signal.disconnect()
+                except (AttributeError, RuntimeError, TypeError):
+                    pass
+            try:
+                player.stop()
+                player.setSource(QUrl())
+            except Exception:
+                pass
+        for obj in (player, audio, sink):
+            delete_later = getattr(obj, "deleteLater", None)
+            if delete_later is not None:
+                delete_later()
+
     def closeEvent(self, event):
         global _open_preview
         self._closing = True
         owner = self.owner_widget
         self._save_listen_progress()
-        if self._player is not None:
-            self._player.stop()
+        self._release_player()
         restore_preview_stderr()
         if _open_preview is self:
             _open_preview = None

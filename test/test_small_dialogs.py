@@ -40,6 +40,13 @@ def test_setup_dialog_accessible_name(ui_scaler, qtbot):
     _close_after_focus_timer(qtbot, dialog)
 
 
+def test_setup_dialog_delete_before_focus_timer(ui_scaler, qtbot):
+    """Closing the empty-database welcome immediately must not focus a dead widget."""
+    dialog = SetupDialog(ui_scaler)
+    dialog.deleteLater()
+    qtbot.wait(150)
+
+
 def test_statistics_dialog_accessible_name(ui_scaler, qtbot):
     stats = Statistics(
         total_books=3,

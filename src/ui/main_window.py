@@ -4918,6 +4918,7 @@ class MainWindow(QMainWindow):
             collection_root=self._preview_collection_root(book),
             book=book,
             db=self.db,
+            collection_name=book.collection_name or "",
         )
         if ok:
             if getattr(self.current_filter, "in_progress_filter", "All") == "In Progress":
@@ -4925,6 +4926,10 @@ class MainWindow(QMainWindow):
             else:
                 self.table.viewport().update()
                 self._update_filter_summary_label()
+            self.restore_main_focus_after_modal()
+            return
+        if not message:
+            self.set_status("Listen canceled. Book path not changed.", announce=True)
             self.restore_main_focus_after_modal()
             return
         exec_styled_message_box(
@@ -5271,6 +5276,25 @@ class MainWindow(QMainWindow):
         if new_book_id:
             self.focus_book_by_id(new_book_id)
 
+    def _apply_import_collection_default(self, dialog, collection_id) -> None:
+        """Select the import collection from the main window filter.
+
+        A single collection stays selected. Clearing it left Import blocked
+        on an empty database when the saved filter id was not in the list.
+        """
+        combo = getattr(dialog, "collection_combo", None)
+        if combo is None or combo.count() <= 0:
+            return
+        if collection_id is not None:
+            idx = combo.findData(collection_id)
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+                return
+        if combo.count() == 1:
+            combo.setCurrentIndex(0)
+        else:
+            combo.setCurrentIndex(-1)
+
     def on_book_list_import(self):
         """Open book list import window with collection defaulting logic matching ImportWindow."""
         if self._block_if_selecting():
@@ -5285,22 +5309,7 @@ class MainWindow(QMainWindow):
         dialog = BookListImportWindow(
             self.db, self.scaler, self.theme_manager, parent=self
         )
-        # After dialog is constructed and collections loaded, set default selection
-        # Only set if collections are loaded and combo exists
-        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
-            if collection_id is not None:
-                # Main window has a specific collection selected (not All Collections)
-                idx = dialog.collection_combo.findData(collection_id)
-                if idx >= 0:
-                    dialog.collection_combo.setCurrentIndex(idx)
-                else:
-                    dialog.collection_combo.setCurrentIndex(-1)
-            else:
-                # All Collections selected in main
-                if dialog.collection_combo.count() == 1:
-                    dialog.collection_combo.setCurrentIndex(0)
-                else:
-                    dialog.collection_combo.setCurrentIndex(-1)
+        self._apply_import_collection_default(dialog, collection_id)
         dialog.exec()
         # Refresh collections and books to show any imported items and new collections
         self.refresh_collections()
@@ -5316,22 +5325,7 @@ class MainWindow(QMainWindow):
         # Determine which collection to default in ImportWindow
         collection_id = self.current_filter.collection_id
         dialog = ImportWindow(self.db, self.scaler, self.theme_manager, parent=self)
-        # After dialog is constructed and collections loaded, set default selection
-        # Only set if collections are loaded and combo exists
-        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
-            if collection_id is not None:
-                # Main window has a specific collection selected (not All Collections)
-                idx = dialog.collection_combo.findData(collection_id)
-                if idx >= 0:
-                    dialog.collection_combo.setCurrentIndex(idx)
-                else:
-                    dialog.collection_combo.setCurrentIndex(-1)
-            else:
-                # All Collections selected in main
-                if dialog.collection_combo.count() == 1:
-                    dialog.collection_combo.setCurrentIndex(0)
-                else:
-                    dialog.collection_combo.setCurrentIndex(-1)
+        self._apply_import_collection_default(dialog, collection_id)
         dialog.exec()
         imported_count = getattr(dialog, "total_imported", 0)
         self.refresh_books()

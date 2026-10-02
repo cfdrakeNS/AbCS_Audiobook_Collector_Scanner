@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from src.core.tag_reader import TagReader
@@ -122,6 +123,211 @@ def _is_under(path: Path, root: Path) -> bool:
 
 
 IMPORT_DEFAULT_DIRECTORY_KEY = "import/default_directory"
+IMPORT_SCENARIO_KEY = "import/scenario/mode"
+DEFAULT_IMPORT_SCENARIO = "mass_standard"
+
+_NAME_STRIP_CHARS = '<>:"/\\|?*'
+
+
+def saved_import_scenario() -> str:
+    """Return the Preferences import scenario, or Mass Standard when unset."""
+    from PySide6.QtCore import QSettings
+
+    settings = QSettings("AbCS", "AudioBookCollector")
+    try:
+        value = settings.value(IMPORT_SCENARIO_KEY, DEFAULT_IMPORT_SCENARIO, type=str)
+    except TypeError:
+        value = settings.value(IMPORT_SCENARIO_KEY, DEFAULT_IMPORT_SCENARIO)
+    return (value or DEFAULT_IMPORT_SCENARIO).strip() or DEFAULT_IMPORT_SCENARIO
+
+
+def _name_key(name: str) -> str:
+    """Folder/file name compare key: case-insensitive, ignores filename-illegal characters."""
+    text = "".join(ch for ch in (name or "") if ch not in _NAME_STRIP_CHARS)
+    return " ".join(text.casefold().split())
+
+
+def _child_dir(parent: Path, name: str) -> Path | None:
+    key = _name_key(name)
+    if not key:
+        return None
+    try:
+        for child in parent.iterdir():
+            if child.is_dir() and _name_key(child.name) == key:
+                return child
+    except OSError:
+        return None
+    return None
+
+
+def _audio_extensions() -> set[str]:
+    return {ext.lower() for ext in TagReader.SUPPORTED_EXTENSIONS}
+
+
+def _title_file(parent: Path, title: str) -> Path | None:
+    key = _name_key(title)
+    if not key:
+        return None
+    extensions = _audio_extensions()
+    try:
+        for child in parent.iterdir():
+            if (
+                child.is_file()
+                and child.suffix.lower() in extensions
+                and _name_key(child.stem) == key
+            ):
+                return child
+    except OSError:
+        return None
+    return None
+
+
+def _folder_has_direct_audio(folder: Path) -> bool:
+    extensions = _audio_extensions()
+    try:
+        return any(
+            child.is_file() and child.suffix.lower() in extensions
+            for child in folder.iterdir()
+        )
+    except OSError:
+        return False
+
+
+@dataclass(frozen=True)
+class CollectionLookup:
+    """Result of an author/title search under the collection folder.
+
+    ``path`` is set on a match. On a miss, ``message`` says which folder was
+    missing and ``browse_dir`` is the closest existing folder to start a
+    Browse from. Both stay empty when no search ran.
+    """
+
+    path: str = ""
+    message: str = ""
+    browse_dir: str = ""
+
+
+def locate_book_under_collection(
+    collection_root: str,
+    author_name: str,
+    book_title: str,
+    series_name: str = "",
+    scenario: str = DEFAULT_IMPORT_SCENARIO,
+    collection_name: str = "",
+) -> CollectionLookup:
+    """Find a book's folder or file under the collection folder by import layout.
+
+    Only the folders named by the scenario are checked; the library tree is
+    not scanned. Single-item import has no library layout, so no search runs.
+    """
+    root_text = (collection_root or "").strip()
+    author = (author_name or "").strip()
+    title = (book_title or "").strip()
+    series = (series_name or "").strip()
+    mode = (scenario or DEFAULT_IMPORT_SCENARIO).strip()
+    if not root_text or not author or mode == "single_item":
+        return CollectionLookup()
+    root = Path(root_text)
+    name = (collection_name or "").strip()
+    where = f"the {name} collection folder" if name else "the collection folder"
+    if not folder_exists(root_text):
+        return CollectionLookup(
+            message=(
+                f"{where[0].upper()}{where[1:]} is missing - {root}. To fix, "
+                "open Manage > Collections, edit the collection, "
+                "and update the Library root folder."
+            )
+        )
+    author_dir = _child_dir(root, author)
+    if author_dir is None:
+        if not folder_has_supported_audio(root_text):
+            return CollectionLookup(
+                message=(
+                    f"{where[0].upper()}{where[1:]} has no audiobook files - {root}. "
+                    "It may be the wrong folder. To fix, open Manage > Collections, "
+                    "edit the collection, and update the Library root folder."
+                ),
+                browse_dir=str(root),
+            )
+        return CollectionLookup(
+            message=f'Author folder "{author}" was not found in {where} - {root}.',
+            browse_dir=str(root),
+        )
+
+    def title_folder(parent: Path | None) -> Path | None:
+        if parent is None or not title:
+            return None
+        folder = _child_dir(parent, title)
+        if folder is not None and folder_has_supported_audio(str(folder)):
+            return folder
+        return None
+
+    def title_missing(parent: Path) -> CollectionLookup:
+        return CollectionLookup(
+            message=(
+                f'Author folder found. Book title "{title}" was not found '
+                f"in {where} - {parent}."
+            ),
+            browse_dir=str(parent),
+        )
+
+    def series_missing() -> CollectionLookup:
+        return CollectionLookup(
+            message=(
+                f'Author folder found. Series folder "{series}" was not found '
+                f"in {where} - {author_dir}."
+            ),
+            browse_dir=str(author_dir),
+        )
+
+    series_dir = _child_dir(author_dir, series) if series else None
+
+    if mode == "series_from_directory":
+        if series:
+            if series_dir is None:
+                return series_missing()
+            if _folder_has_direct_audio(series_dir):
+                return CollectionLookup(path=str(series_dir))
+            return title_missing(series_dir)
+        found = title_folder(author_dir)
+        return CollectionLookup(path=str(found)) if found else title_missing(author_dir)
+
+    if mode == "series_from_directory_nested":
+        if series:
+            if series_dir is None:
+                return series_missing()
+            found = title_folder(series_dir)
+            return (
+                CollectionLookup(path=str(found)) if found else title_missing(series_dir)
+            )
+        found = title_folder(author_dir)
+        return CollectionLookup(path=str(found)) if found else title_missing(author_dir)
+
+    # Mass Standard and Series From File Name.
+    found = title_folder(author_dir)
+    if found is not None:
+        return CollectionLookup(path=str(found))
+    if title:
+        single = _title_file(author_dir, title)
+        if single is not None:
+            return CollectionLookup(path=str(single))
+    found = title_folder(series_dir)
+    if found is not None:
+        return CollectionLookup(path=str(found))
+    return title_missing(author_dir)
+
+
+def find_book_under_collection(
+    collection_root: str,
+    author_name: str,
+    book_title: str,
+    series_name: str = "",
+    scenario: str = DEFAULT_IMPORT_SCENARIO,
+) -> str:
+    """Return the matched folder or file path, or ``""`` on a miss."""
+    return locate_book_under_collection(
+        collection_root, author_name, book_title, series_name, scenario
+    ).path
 
 
 def sync_single_collection_import_path(collection_queries, settings) -> str:
