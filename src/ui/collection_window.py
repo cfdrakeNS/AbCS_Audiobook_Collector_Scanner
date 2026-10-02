@@ -60,7 +60,7 @@ class CollectionWindow(AccessibleDialog):
     """
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "D", "/"}
+    ALLOWED_ALT_LETTERS = {"B", "E", "L", "D", "/"}
 
     def __init__(
         self,
@@ -103,7 +103,7 @@ class CollectionWindow(AccessibleDialog):
         )
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"B", "E", "L", "N", "D", "/"}
+    ALLOWED_ALT_LETTERS = {"B", "E", "L", "D", "/"}
 
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
@@ -385,7 +385,7 @@ class CollectionWindow(AccessibleDialog):
                 self.browse_button: "Browse for the collection library root folder",
                 self.active_check: "Include this collection in filters when active",
                 self.table: "List of collections",
-                self.new_button: "Create a new collection",
+                self.new_button: "Create a new collection - Ctrl+N",
                 self.edit_button: "Edit the highlighted collection",
                 self.save_button: "Save the current collection",
                 self.delete_button: "Delete the selected collection if unused",
@@ -399,7 +399,6 @@ class CollectionWindow(AccessibleDialog):
         mgr = get_shortcut_manager()
         # Map widget IDs to callbacks for Alt+letter shortcuts
         callback_map = {
-            "new_button": self.new_button.click,
             "edit_button": self.edit_button.click,
             "delete_button": self.delete_button.click,
             "browse_button": self.on_browse_root,
@@ -410,6 +409,8 @@ class CollectionWindow(AccessibleDialog):
         )
         self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         self.save_shortcut.activated.connect(self.on_save)
+        self.new_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
+        self.new_shortcut.activated.connect(self.on_new_shortcut)
 
         # Local QShortcuts for F1, Escape, and Alt+/
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
@@ -506,7 +507,7 @@ class CollectionWindow(AccessibleDialog):
             self._clear_editor_fields()
 
         if locked:
-            self.name_edit.setPlaceholderText("Press Alt+N for New or Alt+E for Edit")
+            self.name_edit.setPlaceholderText("Press Ctrl+N for New or Alt+E for Edit")
         else:
             self.name_edit.setPlaceholderText("Ctrl+S to Save, Escape to Cancel")
 
@@ -600,6 +601,10 @@ class CollectionWindow(AccessibleDialog):
         self.name_edit.setText(collection.name)
         self.root_edit.setText(collection.root_path or "")
         self.active_check.setChecked(collection.active)
+
+    def on_new_shortcut(self):
+        if self.new_button.isVisible() and self.new_button.isEnabled():
+            self.new_button.click()
 
     def on_new(self):
         self.current_collection_id = None
@@ -948,7 +953,7 @@ class CollectionWindow(AccessibleDialog):
 
         shortcuts = [
             ("Alt+L", "Jump to list"),
-            ("Alt+N", "New"),
+            ("Ctrl+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Enter", "Edit selected row"),
             ("Alt+B", "Browse library root folder"),

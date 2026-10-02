@@ -14,7 +14,7 @@ from src.database import (
     CollectionQueries,
 )
 from src.accessibility.icon_helper import apply_decorative_action_icon
-from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.theme_manager import ThemeManager, get_theme_manager
 from src.accessibility.scaling import UIScaler
 from src.accessibility.style_helpers import (
     apply_status_bar_tooltip,
@@ -355,9 +355,9 @@ class BookDetailsWindow(AccessibleDialog):
 
         self.db = db
         self.scaler = scaler
-        self.theme_manager = theme_manager or ThemeManager(
+        self.theme_manager = theme_manager or get_theme_manager(
             QApplication.instance()
-        )  # Store theme manager
+        )
         self.book = book or Book()
         self.is_new = book is None
         self.sort_order = sort_order
@@ -3442,15 +3442,27 @@ class BookDetailsWindow(AccessibleDialog):
         if listen_file or total_ms <= 0:
             from src.core.audio_launcher import resolve_preview_playlist
 
-            playlist = resolve_preview_playlist(
+            key = (
                 self.path_edit.text(),
-                collection_root=self._preview_collection_root(),
-                import_dir=self._preview_import_dir(),
-                listen_file_name=listen_file,
-                author_name=self._preview_author_name(),
-                book_title=self._preview_book_title(),
-                series_name=self._preview_series_name(),
+                self._preview_collection_root(),
+                self._preview_import_dir(),
+                listen_file,
+                self._preview_author_name(),
+                self._preview_book_title(),
+                self._preview_series_name(),
             )
+            if key != getattr(self, "_listen_playlist_cache_key", None):
+                self._listen_playlist_cache_key = key
+                self._listen_playlist_cache = resolve_preview_playlist(
+                    key[0],
+                    collection_root=key[1],
+                    import_dir=key[2],
+                    listen_file_name=key[3],
+                    author_name=key[4],
+                    book_title=key[5],
+                    series_name=key[6],
+                )
+            playlist = self._listen_playlist_cache
             if playlist.error or not playlist.files:
                 playlist = None
         if total_ms > 0:

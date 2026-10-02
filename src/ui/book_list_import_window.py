@@ -2450,8 +2450,7 @@ class BookListImportWindow(AccessibleDialog):
         announce_status_message(self.status_bar, message, move_focus=announce)
 
     def apply_theme(self):
-        """Apply the current theme."""
-        self.theme_manager._apply_theme()
+        """Apply window styles; the app-wide theme is already set by the theme manager."""
         self.setStyleSheet(
             "QGroupBox {"
             "  border: 1px solid palette(mid);"

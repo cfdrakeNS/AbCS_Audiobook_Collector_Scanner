@@ -27,7 +27,6 @@ class ShortcutContext(Enum):
 COLLECTION_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
     "E": ("Edit selected row", "edit_button"),
-    "N": ("New", "new_button"),
     "D": ("Delete", "delete_button"),
     "B": ("Browse library root", "browse_button"),
 }

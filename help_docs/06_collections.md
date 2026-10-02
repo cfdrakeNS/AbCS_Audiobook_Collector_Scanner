@@ -27,7 +27,7 @@ Every book belongs to one collection. A default collection named **Audio Books**
 1. Open **Manage → Collections** (**Alt+M**, then **C**).
 2. At the top, **Name** and **Library root folder** sit in block for editing above the table. The **collection list** has three columns: **Collection**, **Path**, and **Status**. 
 3. To **add** a collection:
-   - Click **New** (Alt+N).
+   - Click **New** (Ctrl+N).
    - Type a name in the **Name** field (Alt+E to edit).
    - Optionally set a **Library root folder**. Type a path or click **Browse** (Alt+B).
    - Check or uncheck **Active** (Alt+A in some contexts — see F1 help).
@@ -77,7 +77,7 @@ None specific to collections beyond having at least one active collection at all
 | Alt+M, C | Open Collection Manager (Manage menu) |
 | Alt+L | Focus collection list |
 | Tab | Name, Active, Library root, Browse, list, then buttons |
-| Alt+N | New collection |
+| Ctrl+N | New collection |
 | Alt+E | Edit / name field |
 | Enter / double-click | Edit selected row |
 | Alt+B | Browse library root folder |

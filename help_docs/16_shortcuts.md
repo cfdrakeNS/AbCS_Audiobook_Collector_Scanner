@@ -198,7 +198,7 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Shortcut | Action |
 |----------|--------|
 | Alt+L | Jump to list |
-| Alt+N | New |
+| Ctrl+N | New |
 | Alt+E | Edit selected row |
 | Ctrl+S | Save |
 | Alt+D | Delete |

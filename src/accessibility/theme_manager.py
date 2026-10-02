@@ -121,6 +121,8 @@ class ThemeManager(QObject):
     theme_changed = Signal(str)
     SCALE_STYLE_BEGIN = "/* AbCS Scale Styles:BEGIN */"
     SCALE_STYLE_END = "/* AbCS Scale Styles:END */"
+    THEME_STYLE_BEGIN = "/* AbCS Theme Styles:BEGIN */"
+    THEME_STYLE_END = "/* AbCS Theme Styles:END */"
 
     # Built-in themes
     THEMES = {
@@ -296,7 +298,7 @@ class ThemeManager(QObject):
         self.original_palette = QPalette(app.palette())
         # Preserve any pre-existing application stylesheet so theme-specific
         # additions can be replaced cleanly instead of accumulating.
-        self.base_stylesheet = app.styleSheet() or ""
+        self.base_stylesheet = self._strip_owned_blocks(app.styleSheet() or "")
 
         # Load saved theme or use default
         saved_theme = self.settings.value("theme", ThemeName.DEFAULT.value)
@@ -654,14 +656,30 @@ class ThemeManager(QObject):
             """
 
         # Always apply table hover disabling
-        full_stylesheet = self.base_stylesheet + "\n" + table_hover_disable
+        theme_block = table_hover_disable
         if extra_style:
-            full_stylesheet += "\n" + extra_style
+            theme_block += "\n" + extra_style
+        full_stylesheet = (
+            f"{self.base_stylesheet}\n{self.THEME_STYLE_BEGIN}\n"
+            f"{theme_block}\n{self.THEME_STYLE_END}"
+        )
         if scale_block:
             full_stylesheet += "\n" + scale_block
         self.app.setStyleSheet(full_stylesheet)
 
         self._repolish_open_widgets()
+
+    def _strip_owned_blocks(self, stylesheet: str) -> str:
+        """Remove theme and scale blocks so a new manager does not stack copies."""
+        text = stylesheet or ""
+        for begin, end in (
+            (self.THEME_STYLE_BEGIN, self.THEME_STYLE_END),
+            (self.SCALE_STYLE_BEGIN, self.SCALE_STYLE_END),
+        ):
+            text = re.sub(
+                rf"{re.escape(begin)}.*?{re.escape(end)}", "", text, flags=re.DOTALL
+            )
+        return text.strip()
 
     def _extract_scale_block(self, stylesheet: str) -> str:
         """Extract scaling stylesheet block if present."""

@@ -5262,6 +5262,7 @@ class MainWindow(QMainWindow):
             self.scaler,
             sort_order=self._active_sort_display_text(),
             filter_summary=self._filter_summary_text(),
+            theme_manager=self.theme_manager,
             parent=self,
             current_collection_id=self.current_filter.collection_id,
         )
@@ -5421,6 +5422,7 @@ class MainWindow(QMainWindow):
             filter_summary=filter_summary,
             books_list=self.books,
             current_index=current_index,
+            theme_manager=self.theme_manager,
             parent=self,
         )
         details.exec()

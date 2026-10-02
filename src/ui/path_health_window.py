@@ -50,7 +50,7 @@ from src.accessibility.style_helpers import (
     build_modern_button_style,
     build_table_polish_style,
 )
-from src.accessibility.theme_manager import ThemeManager
+from src.accessibility.theme_manager import ThemeManager, get_theme_manager
 from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
 from src.core.path_health import (
     FILTER_ALL,
@@ -536,7 +536,7 @@ class PathHealthWindow(AccessibleDialog):
 
         theme = self.theme_manager
         if theme is None:
-            theme = ThemeManager(QApplication.instance())
+            theme = get_theme_manager(QApplication.instance())
 
         self._is_scanning = True
         self.scan_button.setEnabled(False)
