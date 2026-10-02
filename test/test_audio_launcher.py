@@ -381,6 +381,45 @@ def test_listen_progress_uses_book_time_or_track_ordinal(tmp_path, monkeypatch):
     assert BookDetailsWindow._format_listen_progress(window) == "20%"
 
 
+def test_legacy_linux_player_keeps_gstreamer_fakesink(
+    ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.ui import preview_window as preview_mod
+    from src.ui.preview_window import PreviewWindow
+
+    class DummySignal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+    class FakePlayer:
+        def __init__(self):
+            self.playbackStateChanged = DummySignal()
+            self.errorOccurred = DummySignal()
+            self.mediaStatusChanged = DummySignal()
+            self.positionChanged = DummySignal()
+            self.durationChanged = DummySignal()
+            self.video_output = None
+
+        def setAudioOutput(self, *_args):
+            return None
+
+        def setVideoOutput(self, sink):
+            self.video_output = sink
+
+    monkeypatch.setattr(preview_mod.sys, "platform", "linux")
+    monkeypatch.setattr(preview_mod, "_qt_version_tuple", lambda: (6, 3))
+    window = PreviewWindow(
+        None,
+        ui_scaler,
+        theme_manager,
+        player_types=(FakePlayer, object),
+    )
+    qtbot.addWidget(window)
+    assert window._video_sink is None
+    assert window._player.video_output is None
+    window.close()
+
+
 def test_escape_on_later_track_does_not_prompt_for_short_track_position(
     tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch
 ):

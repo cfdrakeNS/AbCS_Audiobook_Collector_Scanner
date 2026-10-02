@@ -53,6 +53,54 @@ SPEED_OPTIONS = (0.75, 1.0, 1.25, 1.5, 1.75, 2.0)
 SPEED_SETTINGS_KEY = "preview/playback_rate"
 
 
+def _qt_version_tuple() -> tuple[int, int]:
+    from PySide6.QtCore import qVersion
+
+    major_text, minor_text, *_rest = qVersion().split(".")
+    return int(major_text), int(minor_text)
+
+
+def _uses_gstreamer_backend() -> bool:
+    """Qt 6.3 on Linux plays through GStreamer. FFmpeg is the default from 6.5."""
+    if not sys.platform.startswith("linux"):
+        return False
+    try:
+        return _qt_version_tuple() < (6, 5)
+    except (TypeError, ValueError):
+        return True
+
+
+def _configure_preview_backend() -> None:
+    """Keep Qt 6.3 on the GStreamer fakesink. A video sink starts GL and can abort."""
+    if not _uses_gstreamer_backend():
+        return
+    import os
+
+    os.environ.setdefault(
+        "GST_PLUGIN_FEATURE_RANK",
+        "vaapidecodebin:NONE,vaapih264dec:NONE,vaapidecode:NONE,"
+        "vaapipostproc:NONE,glimagesink:NONE,glsinkbin:NONE",
+    )
+
+
+def _attach_discard_video_sink(player) -> object | None:
+    """Hide video frames on the FFmpeg backend.
+
+    Qt 6.3 already sends video to a GStreamer fakesink. Replacing that with
+    QVideoSink starts the GL sink, which crashes the HP 6000 Pro.
+    """
+    if _uses_gstreamer_backend():
+        return None
+    try:
+        from PySide6.QtMultimedia import QVideoSink
+
+        sink = QVideoSink()
+        player.setVideoOutput(sink)
+        return sink
+    except Exception:
+        return None
+
+
 def _format_preview_length(length_text: str) -> str:
     raw = (length_text or "").strip().replace("_", "")
     if not raw or raw in {":", "00:00", "0:00", "--:--"}:
@@ -168,6 +216,7 @@ def show_preview(
         return False, playlist.error or "No file path is set."
     try:
         silence_preview_media_logs()
+        _configure_preview_backend()
         from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 
         silence_preview_media_logs()
@@ -245,17 +294,12 @@ class PreviewWindow(AccessibleDialog):
         self._updating_slider_from_player = False
         self.setWindowModality(Qt.ApplicationModal)
         if player_types is not None:
+            _configure_preview_backend()
             media_player_type, audio_output_type = player_types
             self._audio = audio_output_type()
             self._player = media_player_type()
             self._player.setAudioOutput(self._audio)
-            try:
-                from PySide6.QtMultimedia import QVideoSink
-
-                self._video_sink = QVideoSink()
-                self._player.setVideoOutput(self._video_sink)
-            except Exception:
-                pass
+            self._video_sink = _attach_discard_video_sink(self._player)
             self._player.playbackStateChanged.connect(self._on_state_changed)
             self._player.errorOccurred.connect(self._on_player_error)
             self._player.mediaStatusChanged.connect(self._on_media_status)

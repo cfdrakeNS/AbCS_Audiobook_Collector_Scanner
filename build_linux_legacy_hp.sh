@@ -45,7 +45,8 @@ python -m pip install --upgrade pip
 # Keep non-Qt dependencies synchronized with requirements.txt while replacing
 # only the release PySide6 requirement with the legacy-compatible Qt wheel.
 legacy_requirements="$(mktemp)"
-trap 'rm -f "${legacy_requirements}"' EXIT
+SPEC_FILE="${SCRIPT_DIR}/AbCS.spec"
+trap 'rm -f "${legacy_requirements}" "${SPEC_FILE}"' EXIT
 python - "${legacy_requirements}" <<'PY'
 from pathlib import Path
 import sys
@@ -96,14 +97,14 @@ mapfile -t HELP_DOCS_ARGS < <(abcs_pyinstaller_help_docs_args)
 
 # Do not set --specpath under WORK_DIR: PyInstaller resolves --add-data relative to
 # the .spec location, which would look for data/ under build-legacy-hp/.
-echo "Building private HP executable (${DIST_DIR}/AbCS)..."
-python -m PyInstaller \
+# Qt 6.3 links the system GStreamer libraries. Leave them out of the bundle so
+# the HP loads its own copies instead of the newer build machine's copies.
+echo "Writing private HP spec..."
+python -m PyInstaller.utils.cliutils.makespec \
   --name="AbCS" \
   --onefile \
   --windowed \
-  --log-level=WARN \
-  --clean \
-  --noconfirm \
+  --specpath="${SCRIPT_DIR}" \
   --distpath="${DIST_DIR}" \
   --workpath="${WORK_DIR}" \
   --add-data="${SCRIPT_DIR}/data/abcdDB_def.sql:data" \
@@ -112,6 +113,7 @@ python -m PyInstaller \
   --hidden-import="PySide6.QtCore" \
   --hidden-import="PySide6.QtGui" \
   --hidden-import="PySide6.QtWidgets" \
+  --hidden-import="PySide6.QtMultimedia" \
   --hidden-import="mutagen" \
   --hidden-import="mutagen.mp3" \
   --hidden-import="mutagen.mp4" \
@@ -128,6 +130,55 @@ python -m PyInstaller \
   --exclude-module="PySide6.QtQuickShapes" \
   src/main.py
 
+python - "${SPEC_FILE}" <<'PY'
+from pathlib import Path
+import sys
+
+spec_path = Path(sys.argv[1])
+text = spec_path.read_text(encoding="utf-8")
+lines = text.splitlines(keepends=True)
+indexes = [index for index, line in enumerate(lines) if line.startswith("pyz = PYZ")]
+if len(indexes) != 1:
+    raise SystemExit("ERROR: legacy spec is missing the PyInstaller PYZ line.")
+insert = """
+# Qt 6.3 multimedia links system GStreamer. Keep the build machine's copies
+# out of the bundle so the HP loads the libraries installed on that PC.
+from PyInstaller.building.datastruct import TOC
+
+def _abcs_skip_gstreamer(name):
+    lowered = name.replace("\\\\", "/").lower()
+    base = lowered.rsplit("/", 1)[-1]
+    if base.startswith("libgst") or base.startswith("libgstreamer"):
+        return True
+    return "gstreamer-1.0/" in lowered
+
+_kept = []
+_dropped = []
+for _entry in a.binaries:
+    if _abcs_skip_gstreamer(_entry[0]):
+        _dropped.append(_entry[0])
+    else:
+        _kept.append(_entry)
+if _dropped:
+    print("Legacy build excluded GStreamer files:")
+    for _name in _dropped:
+        print(f"  {_name}")
+a.binaries = TOC(_kept)
+
+"""
+lines.insert(indexes[0], insert)
+spec_path.write_text("".join(lines), encoding="utf-8")
+PY
+
+echo "Building private HP executable (${DIST_DIR}/AbCS)..."
+python -m PyInstaller \
+  --log-level=WARN \
+  --clean \
+  --noconfirm \
+  --distpath="${DIST_DIR}" \
+  --workpath="${WORK_DIR}" \
+  "${SPEC_FILE}"
+
 chmod +x "${DIST_DIR}/AbCS"
 abcs_write_linux_dist_assets "${DIST_DIR}"
 
@@ -136,6 +187,19 @@ cat >>"${DIST_DIR}/README.txt" <<'EOF'
 PRIVATE LEGACY CPU BUILD
   This copy uses Qt 6.3.2 for the HP 6000 Pro (no SSE4.2/POPCNT).
   It is for private use only. Do not use it as the public release package.
+
+LISTEN
+  Install GStreamer on the HP itself. Libraries from the build machine are
+  not packed into this executable.
+
+    sudo apt update
+    sudo apt install -y \
+      libgstreamer1.0-0 \
+      gstreamer1.0-plugins-base \
+      gstreamer1.0-plugins-good \
+      gstreamer1.0-libav \
+      gstreamer1.0-pulseaudio \
+      libgstreamer-gl1.0-0
 EOF
 
 echo
