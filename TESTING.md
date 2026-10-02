@@ -173,4 +173,3 @@ tens of minutes). Live HTTP from `web_book_api` is blocked by default; mock
 - [README.md](README.md) — project overview and development section
 - [AGENTS.md](AGENTS.md) — agent conventions (note: test folder is `test/`, not `tests/`)
 - [doc/BUILD.md](doc/BUILD.md) — packaging and gitignored build files
-- [doc/plan_ci_test_hardening.md](doc/plan_ci_test_hardening.md) — longer-term CI / coverage plans
