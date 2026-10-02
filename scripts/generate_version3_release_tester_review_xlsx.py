@@ -1,4 +1,4 @@
-"""Generate doc/AbCS_Version3_Release_Tester_Review.xlsx for tester feedback."""
+"""Generate the version 3 tester workbook in the local archive folder."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, Side
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "doc" / "AbCS_Version3_Release_Tester_Review.xlsx"
+OUT = ROOT / "archive" / "doc" / "AbCS_Version3_Release_Tester_Review.xlsx"
 
 # Item ID, category, enhancement, description, effort, risk, risk reason, timing
 # Excel order: description, then tester columns, then effort/risk/timing (developer notes).
@@ -441,8 +441,8 @@ INSTRUCTIONS = [
     "Header row is frozen. Filters are available on Version 3 Plans.",
     "",
     "Related docs",
-    "doc/abcs_proposed_enhancements.md - plain-language summary",
-    "doc/plan_enhancements_version3_release.md - internal schedule",
+    "archive/doc/abcs_proposed_enhancements.md - plain-language summary",
+    "archive/doc/plan_enhancements_version3_release.md - internal schedule",
 ]
 
 

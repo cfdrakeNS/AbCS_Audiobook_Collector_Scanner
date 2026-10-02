@@ -4,7 +4,7 @@ Developer reference for Windows and Linux builds. End users should use released 
 
 ## Prerequisites
 
-- Python 3.9+ with dependencies: `pip install -r requirements.txt`
+- Python 3.10+ with dependencies: `pip install -r requirements.txt`
 - **PyInstaller** — installed on demand by build scripts (`pip install pyinstaller`)
 - **Windows installer:** [Inno Setup](https://jrsoftware.org/isinfo.php) for `build_installer.iss`
 

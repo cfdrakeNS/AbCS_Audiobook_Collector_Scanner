@@ -27,8 +27,7 @@ Pytest collects files matching `test_*.py` (see `python_files` in `pytest.ini`).
 Manual JAWS/NVDA harnesses have other filenames and are listed below; they are
 not automated tests. A SyntaxError or import error in any collected file fails
 the whole suite before tests run. Version 3 work must keep
-`python -m pytest test/` green
-(see [plan_enhancements_version3_release.md](doc/plan_enhancements_version3_release.md)).
+`python -m pytest test/` green.
 
 ## CI-style run (quiet)
 
@@ -51,7 +50,7 @@ Install development dependencies from `requirements.txt`, then run:
 python -m vulture src test --min-confidence 60
 ```
 
-Treat findings as review candidates. Check [CLEANUP_VULTURE_FINDINGS.md](doc/CLEANUP_VULTURE_FINDINGS.md) before removing symbols; Qt callbacks, pytest fixtures, compatibility helpers, and mock configuration can look unused to static analysis.
+Treat findings as review candidates. Qt callbacks, pytest fixtures, compatibility helpers, and mock configuration can look unused to static analysis.
 
 ## Headless / off-screen Qt
 
@@ -198,4 +197,3 @@ related UI behavior.
 - [README.md](README.md) — project overview and development section
 - [AGENTS.md](AGENTS.md) — agent conventions (note: test folder is `test/`, not `tests/`)
 - [doc/BUILD.md](doc/BUILD.md) — packaging and gitignored build files
-- [doc/plan_ci_test_hardening.md](doc/plan_ci_test_hardening.md) — longer-term CI / coverage plans

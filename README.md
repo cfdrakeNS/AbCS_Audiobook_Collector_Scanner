@@ -101,7 +101,8 @@ Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-re
 
 ### Global
 
-- **F1** — show keyboard shortcuts / help
+- **F1** — keyboard shortcuts for the current window
+- **Shift+F1** — context help for the current window
 - **Alt+/** — re-read status bar
 - **Ctrl/Cmd +** — zoom in
 - **Ctrl/Cmd -** — zoom out
@@ -110,14 +111,17 @@ Press **F1** in any window for that window's shortcuts. Press **Alt+/** to re-re
 ### Main window
 
 - **Ctrl+I** — import (folder scan)
-- **Alt+L** — collection filter
+- **Ctrl+F** — find
+- **Ctrl+N** — new book
+- **Ctrl+L** — listen to the focused book
+- **Alt+L** — jump to the book list
+- **Alt+P** — plot filter
 - **Alt+R** — read filter
-- **Alt+O** — order by
-- **Alt+S** — search
-- **Alt+M** — menu
-- **Space** — select/deselect book (bulk operations)
+- **Alt+T** — want to read filter
+- **Alt+W** — fetch web info
 - **Alt+U** — update selected
 - **Alt+D** — delete selected
+- **Space** — select or deselect a book
 
 See [help_docs/16_shortcuts.md](help_docs/16_shortcuts.md) for every window.
 
@@ -133,13 +137,10 @@ AbCS/
 │   ├── accessibility/
 │   ├── web/          # Web metadata APIs
 │   └── utils/
-├── doc/              # User and developer documentation
+├── doc/              # Build notes, help authoring, and version 3 summary
 ├── help_docs/        # In-app help topics (nn_topic_name.md; loaded dynamically)
 ├── test/             # Automated tests (pytest)
-├── data/             # Development database (created at runtime)
-├── Graphics/         # Icons and splash images
-├── backups/          # Database backups
-└── releases/         # Built installers (when present)
+└── data/             # Runtime database (created on first launch; not in git)
 ```
 
 ## Development
@@ -179,7 +180,7 @@ If you used the original MS Access prototype, export your data to CSV and use **
 - [PySide6 Screen Reader Accessibility Best Practices](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
 - Runnable sample app: [pyside6-accessible-ui-reference](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference) — clone the repo, `pip install -r requirements.txt`, then `python main.py`
 
-Legacy accessibility demos and completed bug-fix logs are in the local `archive/` folder (`archive/accessible_pySIde6_demo/`, `archive/AbCS_Bug_Final_fixes.md`). See [doc/qa_verification.md](doc/qa_verification.md).
+Legacy accessibility demos, completed bug-fix logs, and internal development plans are in the local `archive/` folder. That folder is not part of the GitHub repo.
 
 ## Tester build expiry
 

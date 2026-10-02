@@ -3,7 +3,7 @@
 Scans src/, test/, scripts/, and root utility .py files. Line counts include
 blank lines and comments. Modified dates come from the local filesystem.
 
-Output: doc/abcs_code_inventory_MonDD_YYYY.xlsx
+Output: archive/abcs_code_inventory_MonDD_YYYY.xlsx
 
 Run:
     python scripts/generate_code_inventory.py
@@ -230,7 +230,7 @@ def write_intro(ws, title: str, lines: list[str]) -> None:
 def main() -> None:
     today = dt.date.today()
     stamp = today.strftime("%b%d_%Y")
-    out = DOC / f"abcs_code_inventory_{stamp}.xlsx"
+    out = ROOT / "archive" / f"abcs_code_inventory_{stamp}.xlsx"
 
     rows = inventory_rows()
     assert rows, "No Python modules found"
