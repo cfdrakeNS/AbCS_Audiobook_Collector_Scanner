@@ -105,8 +105,6 @@ python -m PyInstaller.utils.cliutils.makespec \
   --onefile \
   --windowed \
   --specpath="${SCRIPT_DIR}" \
-  --distpath="${DIST_DIR}" \
-  --workpath="${WORK_DIR}" \
   --add-data="${SCRIPT_DIR}/data/abcdDB_def.sql:data" \
   "${GRAPHICS_ARGS[@]}" \
   "${HELP_DOCS_ARGS[@]}" \
