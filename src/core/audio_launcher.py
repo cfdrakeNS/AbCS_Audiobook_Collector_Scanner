@@ -146,6 +146,20 @@ def list_audio_in_folder(folder: Path) -> list[Path]:
     return files
 
 
+def playlist_elapsed_ms(
+    files: tuple[Path, ...] | list[Path], current_index: int, position_ms: int
+) -> int:
+    """Return elapsed playlist time using the current file's local position."""
+    index = min(max(int(current_index), 0), len(files))
+    elapsed_ms = max(0, int(position_ms))
+    reader = TagReader()
+    for path in files[:index]:
+        duration_seconds = reader.read_file(str(path)).duration_seconds
+        if duration_seconds > 0:
+            elapsed_ms += int(duration_seconds * 1000)
+    return elapsed_ms
+
+
 def resolve_preview_source(
     path: str, collection_root: str = "", import_dir: str = ""
 ) -> PreviewTarget:

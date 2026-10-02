@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QSettings, QSize, QTimer, QUrl, Qt
-from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QAbstractButton,
     QApplication,
@@ -34,7 +34,10 @@ from src.accessibility.style_helpers import (
     exec_styled_message_box,
 )
 from src.accessibility.theme_manager import ThemeManager
-from src.core.audio_launcher import read_embedded_cover, resolve_preview_playlist
+from src.core.audio_launcher import (
+    read_embedded_cover,
+    resolve_preview_playlist,
+)
 from src.core.media_log import (
     mute_preview_stderr,
     restore_preview_stderr,
@@ -294,9 +297,6 @@ class PreviewWindow(AccessibleDialog):
         self.series_label.hide()
         self.length_label = QLabel("Length:")
         self.length_label.setFocusPolicy(Qt.NoFocus)
-        self.file_label = QLabel("File:")
-        self.file_label.setFocusPolicy(Qt.NoFocus)
-        self.file_label.setWordWrap(True)
         self.part_label = QLabel("")
         self.part_label.setFocusPolicy(Qt.NoFocus)
         self.part_label.setWordWrap(True)
@@ -305,7 +305,6 @@ class PreviewWindow(AccessibleDialog):
         details.addWidget(self.author_label)
         details.addWidget(self.series_label)
         details.addWidget(self.length_label)
-        details.addWidget(self.file_label)
         details.addWidget(self.part_label)
         info_row.addLayout(details, 1)
 
@@ -324,6 +323,12 @@ class PreviewWindow(AccessibleDialog):
         self.position_label.setFocusPolicy(Qt.NoFocus)
         self.position_label.setAlignment(Qt.AlignCenter)
         self.position_label.setAccessibleName("Listen position")
+        self.position_label.setAccessibleDescription(
+            "Keyboard seek control. Left and Right arrows seek five seconds. "
+            "Page Up and Page Down seek thirty seconds. Home seeks to the "
+            "beginning and End seeks to the end of the current file."
+        )
+        self.position_label.installEventFilter(self)
         font = self.position_label.font()
         font.setBold(True)
         time_pt = max(self.scaler.get_scaled_size(20), 16)
@@ -342,6 +347,9 @@ class PreviewWindow(AccessibleDialog):
                 border-radius: {chip_radius}px;
                 background-color: palette(base);
             }}
+            QLabel:focus {{
+                border: 2px solid palette(highlight);
+            }}
             """
         )
         layout.addWidget(self.position_label, 0, Qt.AlignHCenter)
@@ -349,12 +357,12 @@ class PreviewWindow(AccessibleDialog):
         self.position_slider = QSlider(Qt.Horizontal)
         self.position_slider.setAccessibleName("Seek in current file")
         self.position_slider.setAccessibleDescription(
-            "Move through the current audio file. Left and Right arrows seek "
-            "five seconds. Page Up and Page Down seek thirty seconds."
+            "Seek through the current audio file. Use the arrow keys to seek "
+            "five seconds and Page Up or Page Down to seek thirty seconds."
         )
         self.position_slider.setRange(0, 0)
-        self.position_slider.setSingleStep(SLIDER_STEP_MS)
-        self.position_slider.setPageStep(SEEK_STEP_MS)
+        self.position_slider.setSingleStep(SLIDER_STEP_MS // 1000)
+        self.position_slider.setPageStep(SEEK_STEP_MS // 1000)
         self.position_slider.setEnabled(False)
         self.position_slider.setFocusPolicy(Qt.StrongFocus)
         groove_h = max(self.scaler.get_scaled_size(14), 12)
@@ -514,6 +522,7 @@ class PreviewWindow(AccessibleDialog):
                 self.next_button: "Next file",
                 self.speed_combo: "Playback speed",
                 self.position_slider: "Seek in current file",
+                self.position_label: "Seek position by time",
             }
         )
         apply_status_bar_tooltip(self.status_bar, "Listen status")
@@ -571,7 +580,11 @@ class PreviewWindow(AccessibleDialog):
 
     def _preview_focus_chain(self):
         """Full Tab chain including Rewind and Forward even if Qt would skip them."""
-        widgets = [self.position_slider, *self._transport_focus_widgets()]
+        widgets = [
+            self.position_label,
+            self.position_slider,
+            *self._transport_focus_widgets(),
+        ]
         return [
             widget
             for widget in widgets
@@ -622,7 +635,7 @@ class PreviewWindow(AccessibleDialog):
         return super().focusNextPrevChild(next_)
 
     def _apply_preview_tab_order(self) -> None:
-        """Seek slider, then Prev / Rewind / Play / Forward / Next / Speed."""
+        """Seek controls, then Prev / Rewind / Play / Forward / Next / Speed."""
         chain = self._preview_focus_chain()
         for left, right in zip(chain, chain[1:]):
             self.setTabOrder(left, right)
@@ -802,8 +815,8 @@ class PreviewWindow(AccessibleDialog):
                 ("Alt+P", "Previous file"),
                 ("Alt+N", "Next file"),
                 ("Alt+S", "Playback speed"),
-                ("Left/Right", "Move between transport buttons, or seek on the slider"),
-                ("Page Up/Down", "Seek thirty seconds on the position slider"),
+                ("Left/Right", "Move between transport buttons, or seek five seconds"),
+                ("Page Up/Down", "Seek thirty seconds"),
                 ("Escape", "Close"),
                 ("Alt+/", "Read status bar"),
                 ("F1", "Show this help"),
@@ -886,9 +899,12 @@ class PreviewWindow(AccessibleDialog):
 
     def _set_slider_range(self, duration_ms: int) -> None:
         duration = max(0, int(duration_ms))
+        self.position_label.setFocusPolicy(
+            Qt.StrongFocus if duration > 0 else Qt.NoFocus
+        )
         self._updating_slider_from_player = True
         try:
-            self.position_slider.setRange(0, duration)
+            self.position_slider.setRange(0, (duration + 999) // 1000)
             self.position_slider.setEnabled(duration > 0)
         finally:
             self._updating_slider_from_player = False
@@ -896,7 +912,7 @@ class PreviewWindow(AccessibleDialog):
     def _set_slider_value(self, position_ms: int) -> None:
         self._updating_slider_from_player = True
         try:
-            self.position_slider.setValue(max(0, int(position_ms)))
+            self.position_slider.setValue(max(0, int(position_ms)) // 1000)
         finally:
             self._updating_slider_from_player = False
 
@@ -912,15 +928,16 @@ class PreviewWindow(AccessibleDialog):
 
     def _on_slider_released(self) -> None:
         self._slider_dragging = False
-        self._seek_to(self.position_slider.value(), announce=True)
+        self._seek_to(self.position_slider.value() * 1000, announce=True)
 
     def _on_slider_value_changed(self, value: int) -> None:
         if self._updating_slider_from_player:
             return
-        self._update_position_label(value)
+        position_ms = value * 1000
+        self._update_position_label(position_ms)
         # Keyboard changes fire valueChanged without pressed/released.
         if not self._slider_dragging:
-            self._seek_to(value, announce=False)
+            self._seek_to(position_ms, announce=False)
 
     def _on_position_changed(self, position: int) -> None:
         if self._closing or self._slider_dragging:
@@ -935,13 +952,21 @@ class PreviewWindow(AccessibleDialog):
         else:
             text = current
         self.position_label.setText(text)
-        self.position_label.setAccessibleName(f"Listen position {text}")
+        accessible_position = f"Seek position at {current}"
+        self.position_label.setAccessibleName(accessible_position)
+        if self.position_slider.accessibleName() != accessible_position:
+            self.position_slider.setAccessibleName(accessible_position)
+            if self.position_slider.hasFocus() and QAccessible.isActive():
+                QAccessible.updateAccessibility(
+                    QAccessibleEvent(
+                        self.position_slider, QAccessible.Event.NameChanged
+                    )
+                )
 
     def _load_current_file(self, autoplay: bool = True) -> None:
         if self._player is None or not self._playlist:
             return
         file_path = self._playlist[self._playlist_index]
-        self._set_info_line(self.file_label, f"File: {file_path.name}")
         self._update_part_label()
         self._show_cover(file_path)
         self._reset_position_slider()
@@ -953,7 +978,7 @@ class PreviewWindow(AccessibleDialog):
         self._sync_transport_enabled()
 
     def _update_part_label(self) -> None:
-        """Show Part n / total under the file name when more than one file."""
+        """Show playlist position when more than one file is available."""
         total = len(self._playlist)
         if total <= 1:
             self.part_label.clear()
@@ -966,12 +991,30 @@ class PreviewWindow(AccessibleDialog):
         self.part_label.show()
 
     def _show_cover(self, file_path: Path) -> None:
-        """Show embedded art when the file has it. Say nothing when it does not."""
+        """Show embedded art or the standard missing-cover image."""
         data = read_embedded_cover(file_path)
         pixmap = QPixmap()
         if not data or not pixmap.loadFromData(data):
-            self.cover_label.clear()
-            self.cover_label.hide()
+            from src.accessibility.graphics_paths import resolve_graphics_path
+
+            side = self.scaler.get_scaled_size(120)
+            pixmap = QPixmap(resolve_graphics_path("no_book_cover_512x512.png"))
+            self.cover_label.setFixedSize(side, side)
+            self.cover_label.setAccessibleName("No cover")
+            self.cover_label.setAccessibleDescription("")
+            if not pixmap.isNull():
+                self.cover_label.setPixmap(
+                    pixmap.scaled(
+                        side,
+                        side,
+                        Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation,
+                    )
+                )
+                self.cover_label.show()
+            else:
+                self.cover_label.clear()
+                self.cover_label.hide()
             return
         side = self.scaler.get_scaled_size(120)
         radius = max(self.scaler.get_scaled_size(12), 8)
@@ -994,7 +1037,7 @@ class PreviewWindow(AccessibleDialog):
                 Qt.SmoothTransformation,
             )
         )
-        self.cover_label.setAccessibleName("Cover")
+        self.cover_label.setAccessibleName("Book cover")
         self.cover_label.show()
         self.resize(max(self.width(), 720), max(self.height(), side + 140))
 
@@ -1130,7 +1173,7 @@ class PreviewWindow(AccessibleDialog):
             pass
 
     def request_close(self) -> None:
-        """Escape/close: ask before saving when position is under 5 minutes."""
+        """Ask before saving short progress on the first playlist file."""
         if self._closing:
             return
         if self._player is not None:
@@ -1148,7 +1191,8 @@ class PreviewWindow(AccessibleDialog):
         if self._save_progress_on_close:
             position_ms, _file_name = self._current_progress()
             if (
-                position_ms is not None
+                self._playlist_index == 0
+                and position_ms is not None
                 and 0 < position_ms < SAVE_PROMPT_BELOW_MS
             ):
                 reply = exec_styled_message_box(
@@ -1198,6 +1242,24 @@ class PreviewWindow(AccessibleDialog):
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.KeyPress:
+            if source is self.position_label:
+                key = event.key()
+                if key in (Qt.Key_Left, Qt.Key_Right):
+                    self._seek_by(
+                        -SLIDER_STEP_MS if key == Qt.Key_Left else SLIDER_STEP_MS
+                    )
+                    return True
+                if key in (Qt.Key_PageUp, Qt.Key_PageDown):
+                    self._seek_by(
+                        SEEK_STEP_MS if key == Qt.Key_PageUp else -SEEK_STEP_MS
+                    )
+                    return True
+                if key in (Qt.Key_Home, Qt.Key_End) and self._player is not None:
+                    self._seek_to(
+                        0 if key == Qt.Key_Home else self._player.duration(),
+                        announce=True,
+                    )
+                    return True
             if event.key() == Qt.Key_Escape:
                 self.request_close()
                 return True
@@ -1217,7 +1279,6 @@ class PreviewWindow(AccessibleDialog):
                     return True
             if event.key() in (Qt.Key_Left, Qt.Key_Right):
                 # Arrow between transport controls (includes Rewind / Forward).
-                # Leave Left/Right on the seek slider for scrubbing.
                 if source in self._transport_focus_widgets():
                     if self._move_transport_focus(event.key() == Qt.Key_Right):
                         return True

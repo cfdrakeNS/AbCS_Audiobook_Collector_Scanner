@@ -1267,7 +1267,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.listen_progress_edit.setFocusPolicy(Qt.StrongFocus)
         self.listen_progress_edit.setAccessibleName("Listen progress")
         self.listen_progress_edit.setAccessibleDescription(
-            "Listening time so far, with percent of book length when length is known."
+            "Percent of the audiobook completed, when available."
         )
         listen_label = QLabel("Listen progress:")
         listen_label.setBuddy(self.listen_progress_edit)
@@ -1591,7 +1591,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.listen_progress_edit: (
                     "Listen progress",
-                    "Listening time so far, with percent of book length when length is known.",
+                    "Percent of the audiobook completed, when available.",
                 ),
                 self.clear_listen_progress_button: (
                     "Clear listen progress",
@@ -3383,17 +3383,10 @@ class BookDetailsWindow(AccessibleDialog):
         return self.scaler.get_scaled_size(120)
 
     def _format_listen_progress(self) -> str:
-        """Show stored stop time and percent of book length when known."""
+        """Show the saved listening progress as a percentage when available."""
         ms = getattr(self.book, "listen_position_ms", None)
         if ms is None:
             return ""
-        total_seconds = max(int(ms), 0) // 1000
-        hours, rem = divmod(total_seconds, 3600)
-        minutes, seconds = divmod(rem, 60)
-        if hours:
-            text = f"{hours}:{minutes:02d}:{seconds:02d}"
-        else:
-            text = f"{minutes}:{seconds:02d}"
         try:
             book_hours = int(getattr(self.book, "time_hours", 0) or 0)
             book_minutes = int(getattr(self.book, "time_minutes", 0) or 0)
@@ -3401,10 +3394,50 @@ class BookDetailsWindow(AccessibleDialog):
             book_hours = 0
             book_minutes = 0
         total_ms = (book_hours * 3600 + book_minutes * 60) * 1000
+        listen_file = (getattr(self.book, "listen_file_name", "") or "").strip()
+        playlist = None
+        if listen_file or total_ms <= 0:
+            from src.core.audio_launcher import resolve_preview_playlist
+
+            playlist = resolve_preview_playlist(
+                self.path_edit.text(),
+                collection_root=self._preview_collection_root(),
+                import_dir=self._preview_import_dir(),
+                listen_file_name=listen_file,
+            )
+            if playlist.error or not playlist.files:
+                playlist = None
         if total_ms > 0:
-            percent = min(100, int(round(100.0 * max(int(ms), 0) / total_ms)))
-            text = f"{text} ({percent}%)"
-        return text
+            elapsed_ms = max(int(ms), 0)
+            if playlist is not None and listen_file:
+                from src.core.audio_launcher import playlist_elapsed_ms
+
+                current_index = next(
+                    (
+                        index
+                        for index, path in enumerate(playlist.files)
+                        if path.name.casefold() == listen_file.casefold()
+                    ),
+                    None,
+                )
+                if current_index is not None:
+                    elapsed_ms = playlist_elapsed_ms(
+                        playlist.files, current_index, elapsed_ms
+                    )
+            percent = min(100, int(round(100.0 * elapsed_ms / total_ms)))
+            return f"{percent}%"
+        elif playlist is not None:
+            current_index = next(
+                (
+                    index
+                    for index, path in enumerate(playlist.files)
+                    if path.name.casefold() == listen_file.casefold()
+                ),
+                0,
+            )
+            percent = int(round(100.0 * (current_index + 1) / len(playlist.files)))
+            return f"{percent}%"
+        return ""
 
     def _placeholder_cover(self) -> QPixmap:
         """Missing-cover picture. graphics/no_book_cover_512x512.png."""

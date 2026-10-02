@@ -317,6 +317,7 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert preview is not None
     from PySide6.QtCore import Qt
 
+
     assert preview.title_label.text() == "Title: A Maiden's Grave"
     assert preview.author_label.text() == "Author: Jeffrey Deaver"
     assert preview.series_label.text() == "Series: Lincoln Rhyme - 01"
@@ -325,9 +326,13 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert preview.play_pause_button.text() == ""
     assert preview.position_label.alignment() & int(Qt.AlignHCenter)
     assert hasattr(preview, "position_slider")
-    assert preview.position_slider.accessibleName() == "Seek in current file"
-    assert preview.cover_label.isHidden()
+    assert preview.position_slider.focusPolicy() == Qt.StrongFocus
+    assert preview.position_label.accessibleName() == "Seek position at 0:00"
+    assert preview.cover_label.isVisible()
+    assert preview.cover_label.accessibleName() == "No cover"
+    assert not preview.cover_label.pixmap().isNull()
     assert preview.cover_label.focusPolicy() == Qt.NoFocus
+    assert not hasattr(preview, "file_label")
     assert preview.part_label.isHidden()
     assert "cover" not in preview.status_bar.currentMessage().lower()
     if preview_mod._open_preview is not None:
@@ -337,12 +342,138 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert "No file path" in message
 
 
+def test_listen_progress_uses_book_time_or_track_ordinal(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from src.core.tag_reader import TagReader
+    from src.ui.book_details import BookDetailsWindow
+
+    tracks = tmp_path / "tracks"
+    tracks.mkdir()
+    for number in range(1, 11):
+        (tracks / f"{number:02}.mp3").write_bytes(b"x")
+
+    monkeypatch.setattr(
+        TagReader,
+        "read_file",
+        lambda _reader, _path: SimpleNamespace(duration_seconds=6 * 60),
+    )
+
+    class PathEdit:
+        def text(self):
+            return str(tracks)
+
+    window = SimpleNamespace(
+        book=SimpleNamespace(
+            listen_position_ms=3 * 60 * 1000,
+            listen_file_name="02.mp3",
+            time_hours=1,
+            time_minutes=0,
+        ),
+        path_edit=PathEdit(),
+        _preview_collection_root=lambda: "",
+        _preview_import_dir=lambda: "",
+    )
+    assert BookDetailsWindow._format_listen_progress(window) == "15%"
+
+    window.book.time_hours = 0
+    window.book.time_minutes = 0
+    assert BookDetailsWindow._format_listen_progress(window) == "20%"
+
+
+def test_escape_on_later_track_does_not_prompt_for_short_track_position(
+    tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from types import SimpleNamespace
+
+    from src.ui.preview_window import PreviewWindow
+
+    tracks = (tmp_path / "01.mp3", tmp_path / "02.mp3")
+    for track in tracks:
+        track.write_bytes(b"x")
+
+    class DummySignal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+    class FakePlayer:
+        class PlaybackState:
+            StoppedState = 0
+            PlayingState = 1
+            PausedState = 2
+
+        def __init__(self):
+            self.playbackStateChanged = DummySignal()
+            self.errorOccurred = DummySignal()
+            self.mediaStatusChanged = DummySignal()
+            self.positionChanged = DummySignal()
+            self.durationChanged = DummySignal()
+            self._position = 60_000
+            self._state = self.PlaybackState.PlayingState
+
+        def setAudioOutput(self, *_args):
+            return None
+
+        def setSource(self, *_args):
+            return None
+
+        def setPlaybackRate(self, *_args):
+            return None
+
+        def setPosition(self, *_args):
+            return None
+
+        def position(self):
+            return self._position
+
+        def duration(self):
+            return 0
+
+        def play(self):
+            return None
+
+        def pause(self):
+            self._state = self.PlaybackState.PausedState
+
+        def stop(self):
+            self._state = self.PlaybackState.StoppedState
+
+        def playbackState(self):
+            return self._state
+
+    prompts = []
+    monkeypatch.setattr(
+        "src.ui.preview_window.exec_styled_message_box",
+        lambda *_args, **_kwargs: prompts.append(True),
+    )
+    window = PreviewWindow(
+        None,
+        ui_scaler,
+        theme_manager,
+        player_types=(FakePlayer, object),
+    )
+    qtbot.addWidget(window)
+    ok, _message = window.play_playlist(
+        SimpleNamespace(
+            files=tracks,
+            start_index=1,
+            folder_mode=True,
+            error="",
+        )
+    )
+    assert ok
+    window._player._position = 60_000
+    window.request_close()
+    assert prompts == []
+
+
 def test_preview_next_returns_focus_to_play_pause(
     tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch
 ):
     from types import SimpleNamespace
 
     from PySide6.QtCore import Qt
+    from PySide6.QtGui import QAccessible
 
     from src.ui.preview_window import PreviewWindow
 
@@ -429,6 +560,7 @@ def test_preview_next_returns_focus_to_play_pause(
         book_title="Focus Book",
     )
     assert ok is True
+    window._on_duration_changed(60_000)
     window.next_button.setFocus(Qt.OtherFocusReason)
     assert window.focusWidget() is window.next_button
     window.on_next()
@@ -438,6 +570,8 @@ def test_preview_next_returns_focus_to_play_pause(
         timeout=1500,
     )
     assert window._playlist_index == 1
+    window._on_duration_changed(60_000)
+    assert not hasattr(window, "file_label")
     assert not window.next_button.isEnabled()
     assert window.previous_button.isEnabled()
     assert window.part_label.isVisible()
@@ -447,7 +581,12 @@ def test_preview_next_returns_focus_to_play_pause(
     assert window.rewind_button.nextInFocusChain() is window.play_pause_button
     assert window.play_pause_button.nextInFocusChain() is window.forward_button
     assert window.forward_button.nextInFocusChain() is window.next_button
-    window.position_slider.setFocus(Qt.TabFocusReason)
+    assert window.position_label.focusPolicy() == Qt.StrongFocus
+    assert window.position_slider.focusPolicy() == Qt.StrongFocus
+    position_accessible = QAccessible.queryAccessibleInterface(window.position_label)
+    assert position_accessible.role() == QAccessible.Role.StaticText
+    assert position_accessible.valueInterface() is None
+    window.position_label.setFocus(Qt.TabFocusReason)
     qtbot.wait(20)
     path = []
     for _ in range(8):
@@ -457,8 +596,13 @@ def test_preview_next_returns_focus_to_play_pause(
     assert window.rewind_button in path
     assert window.forward_button in path
     assert window.previous_button in path
+    assert window.position_label in path
+    assert window.position_slider in path
     # Next is disabled on the last file, so Tab skips it (expected).
     assert window.next_button not in path
+    window.position_label.setFocus(Qt.TabFocusReason)
+    qtbot.keyClick(window.position_label, Qt.Key_Tab)
+    assert window.focusWidget() is window.position_slider
     # Custom Tab path: Previous -> Rewind -> Play -> Forward.
     window.previous_button.setFocus(Qt.TabFocusReason)
     assert window._move_preview_focus(True) is True
@@ -483,8 +627,21 @@ def test_preview_next_returns_focus_to_play_pause(
         timeout=1500,
     )
     window.position_slider.setEnabled(True)
-    window.position_slider.setRange(0, 60_000)
-    window.position_slider.setValue(15_000)
+    window.position_slider.setRange(0, 60)
+    window.position_slider.setValue(15)
     window._on_slider_released()
     assert window._player.position() == 15_000
+    assert window.position_label.accessibleName() == "Seek position at 0:15"
+    window.position_label.setFocus(Qt.TabFocusReason)
+    qtbot.keyClick(window.position_label, Qt.Key_Right)
+    assert window._player.position() == 20_000
+    assert window.position_label.accessibleName() == "Seek position at 0:20"
+    window.position_slider.setFocus(Qt.TabFocusReason)
+    qtbot.keyClick(window.position_slider, Qt.Key_Right)
+    assert window._player.position() == 25_000
+    assert window.position_label.accessibleName() == "Seek position at 0:25"
+    slider_accessible = QAccessible.queryAccessibleInterface(window.position_slider)
+    assert slider_accessible.role() == QAccessible.Role.Slider
+    assert slider_accessible.text(QAccessible.Text.Name) == "Seek position at 0:25"
+    assert slider_accessible.valueInterface().currentValue() == 25
     window.close()
