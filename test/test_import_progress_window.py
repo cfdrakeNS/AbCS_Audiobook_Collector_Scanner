@@ -213,3 +213,28 @@ def test_book_list_progress_bar_says_importing(qtbot, ui_scaler, theme_manager):
     window._scan_active = False
     cleanup_window(window)
 
+
+def test_progress_alt_slash_avoids_status_bar_focus(
+    ui_scaler, theme_manager, monkeypatch
+):
+    window = ImportProgressWindow(ui_scaler, theme_manager)
+    window.set_status("12 books scanned: Missing 1", announce=False)
+    captured = {}
+
+    def fake_readback(widget, text, **kwargs):
+        captured["widget"] = widget
+        captured["text"] = text
+        captured["restore"] = kwargs.get("restore_focus_widget")
+
+    monkeypatch.setattr(
+        "src.ui.import_progress_window.announce_plain_text_readback",
+        fake_readback,
+    )
+    window.on_read_status_bar()
+
+    assert captured["widget"] is window
+    assert "12 books scanned" in captured["text"]
+    assert captured["restore"] is window.scan_progress
+    window._scan_active = False
+    window.close()
+

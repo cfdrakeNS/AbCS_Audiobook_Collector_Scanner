@@ -92,6 +92,7 @@ def _classify_book_path(
     collection_name: str = "",
     import_scenario: str | None = None,
     root_audio_cache: dict | None = None,
+    series_number=None,
 ) -> _PathCheck:
     from src.core.audio_launcher import locate_book_path
 
@@ -112,6 +113,7 @@ def _classify_book_path(
         import_scenario,
         collection_name=collection_name,
         root_audio_cache=root_audio_cache,
+        series_number=series_number,
     )
     if location.path:
         return _PathCheck(STATUS_RESOLVED, resolved_path=location.path)
@@ -184,6 +186,7 @@ def build_path_health_row(
         collection_name=collection_name,
         import_scenario=import_scenario,
         root_audio_cache=root_audio_cache,
+        series_number=getattr(book, "series_number", None),
     )
     return PathHealthRow(
         book_id=int(book_id),

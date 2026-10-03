@@ -57,6 +57,18 @@ class BookLocation:
 _BookLocation = BookLocation
 
 
+def _collection_folder_phrase(collection_name: str = "") -> str:
+    name = (collection_name or "").strip()
+    return f"the {name} collection folder" if name else "the collection folder"
+
+
+def _collection_folder_not_set_fix() -> str:
+    return (
+        "To fix, open Manage > Collections, edit the collection, and set the "
+        "collection folder."
+    )
+
+
 def locate_book_path(
     stored_path: str,
     collection_root: str,
@@ -67,6 +79,7 @@ def locate_book_path(
     import_scenario: str | None,
     collection_name: str = "",
     root_audio_cache: dict | None = None,
+    series_number=None,
 ) -> BookLocation:
     """Stored path first; when blank or missing, the collection folder layout.
 
@@ -93,6 +106,7 @@ def locate_book_path(
             scenario,
             collection_name=collection_name,
             root_audio_cache=root_audio_cache,
+            series_number=series_number,
         )
         if lookup.path:
             return _BookLocation(path=lookup.path, found_path=lookup.path)
@@ -100,13 +114,11 @@ def locate_book_path(
             return _BookLocation(error=lookup.message, browse_dir=lookup.browse_dir)
 
     if not text and not root:
-        name = (collection_name or "").strip()
-        where = f"the {name} collection folder" if name else "the collection folder"
+        where = _collection_folder_phrase(collection_name)
         return _BookLocation(
             error=(
-                f"This book has no file path and {where} is not set. To fix, "
-                "open Manage > Collections, edit the collection, and set the "
-                "collection folder."
+                f"This book has no file path and {where} is not set. "
+                f"{_collection_folder_not_set_fix()}"
             )
         )
     if not text:
@@ -126,6 +138,16 @@ def locate_book_path(
         return _BookLocation(
             error=reason,
             browse_dir=root if folder_exists(root) else "",
+        )
+    if not root:
+        where = _collection_folder_phrase(collection_name)
+        where_cap = f"{where[0].upper()}{where[1:]}" if where else where
+        return _BookLocation(
+            error=(
+                f"Book not found in - {resolved}. {where_cap} is not set, "
+                "so Listen cannot search by author and title. "
+                f"{_collection_folder_not_set_fix()}"
+            )
         )
     return _BookLocation(error=f"Book not found in - {resolved}")
 
@@ -270,6 +292,7 @@ def resolve_preview_source(
     series_name: str = "",
     import_scenario: str | None = None,
     collection_name: str = "",
+    series_number=None,
 ) -> PreviewTarget:
     """Return one playable file without building or metadata-sorting a playlist."""
     location = _locate_book(
@@ -281,6 +304,7 @@ def resolve_preview_source(
         series_name,
         import_scenario,
         collection_name=collection_name,
+        series_number=series_number,
     )
     if location.error:
         return PreviewTarget(error=location.error, browse_dir=location.browse_dir)
@@ -341,6 +365,7 @@ def resolve_preview_playlist(
     series_name: str = "",
     import_scenario: str | None = None,
     collection_name: str = "",
+    series_number=None,
 ) -> PreviewPlaylist:
     """Return the ordered playlist and start index for Preview.
 
@@ -356,6 +381,7 @@ def resolve_preview_playlist(
         series_name,
         import_scenario,
         collection_name=collection_name,
+        series_number=series_number,
     )
     if location.error:
         return PreviewPlaylist(error=location.error, browse_dir=location.browse_dir)

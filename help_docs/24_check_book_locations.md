@@ -15,6 +15,7 @@
 
 - Each book's stored **Path** (file or folder) is checked first.
 - When the stored path is blank or stale, the scan remaps under the collection folder or Preferences import folder, then searches by folder layout (author, series, and title folders, using your import scenario).
+- Title folders may have a number before or after the title, such as `3 - All That Remains` or `4 Bad Blood`. Listen uses the same rules: see **Listen to a Book**.
 - The collection folder itself is not listed as a separate row; set or fix it in Collection Manager.
 - Choose a **Collection** the same way as the main window filter: **All Collections** or one name.
 

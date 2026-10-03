@@ -1010,6 +1010,12 @@ class StatisticsQueries:
             "SELECT COUNT(*) FROM books WHERE listen_position_ms IS NOT NULL"
         )[0]
 
+        stats.books_with_plot = self.db.fetch_one(
+            "SELECT COUNT(*) FROM books WHERE LENGTH(TRIM(COALESCE(comments, ''))) >= ?",
+            (PLOT_MIN_LENGTH,),
+        )[0]
+        stats.books_without_plot = stats.total_books - stats.books_with_plot
+
         # Total listening time (all books)
         time_row = self.db.fetch_one(
             "SELECT SUM(time_hours) + SUM(time_minutes) / 60 FROM books"

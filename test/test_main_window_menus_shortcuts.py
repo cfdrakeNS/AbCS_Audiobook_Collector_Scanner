@@ -513,6 +513,7 @@ def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatc
             window.on_preview_clicked()
             assert any(
                 f"Book not found in - {missing}" in message
+                and "collection folder is not set" in message
                 and "Preview Menu Bad" in message
                 for message in statuses
             )

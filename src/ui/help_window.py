@@ -4,7 +4,10 @@ HelpWindow shows a side-by-side layout: Help Navigation list (topics or section
 headings) and a read-only QTextEdit for content. Topic names come from
 ``discover_help_topics()`` in ``help_paths`` (dynamic scan of ``help_docs/``).
 After a topic loads, the list switches to section mode (h2/h3 headings plus
-**All Help Topics** to return to the full topic list).
+**All Help Topics** to return to the full topic list). Ctrl+F search
+(``help_search``) puts results in the same list; Escape in the search box
+returns to the open topic's sections. The All help / Current topic radios set
+the scope; Ctrl+F from the list picks All help, from the content Current topic.
 
 Opening help: ``help_router.show_help_doc()`` / ``show_context_help()`` (Shift+F1).
 Markdown is converted to accessible HTML (sentence-per-paragraph, named anchors
@@ -21,16 +24,27 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, QRect, QSize
-from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeyEvent, QKeySequence, QShortcut, QTextCursor
+from PySide6.QtGui import (
+    QAccessible,
+    QAccessibleEvent,
+    QKeyEvent,
+    QKeySequence,
+    QShortcut,
+    QTextCursor,
+    QTextDocument,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QButtonGroup,
     QComboBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QRadioButton,
     QSlider,
     QSplitter,
     QStatusBar,
@@ -41,10 +55,17 @@ from PySide6.QtWidgets import (
 )
 
 from src.accessibility.accessible_events import (
+    announce_status_message,
     configure_status_bar_accessibility,
     read_status_bar_message,
 )
 from src.accessibility.help_paths import discover_help_topics, resolve_help_doc_path
+from src.accessibility.help_search import (
+    load_help_sections,
+    search_help,
+    search_summary,
+)
+from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.read_only_text import (
     configure_navigable_text_edit,
     create_accessible_read_only_text,
@@ -71,6 +92,7 @@ _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=(?:\*\*)?[A-Z\"'])")
 _NAV_ROLE_TYPE = Qt.ItemDataRole.UserRole
 _NAV_ROLE_FILENAME = Qt.ItemDataRole.UserRole + 1
 _NAV_ROLE_ANCHOR = Qt.ItemDataRole.UserRole + 2
+_NAV_ROLE_MATCH = Qt.ItemDataRole.UserRole + 3
 
 # Default geometry (~33% wider than original 780×820) to reduce line wrap in JAWS.
 _BASE_MIN_WIDTH = 1040
@@ -517,6 +539,34 @@ class HelpWindow(AccessibleDialog):
         zoom_row.addStretch()
         layout.addLayout(zoom_row)
 
+        search_row = QHBoxLayout()
+        self.search_label = QLabel("Search help:")
+        self.search_edit = QLineEdit()
+        self.search_edit.setClearButtonEnabled(False)
+        self.search_label.setBuddy(self.search_edit)
+        self.search_all_radio = QRadioButton("All help")
+        self.search_all_radio.setAccessibleName("Search all help")
+        self.search_all_radio.setAccessibleDescription(
+            "Search scope. Arrow keys switch between all help and current topic."
+        )
+        self.search_topic_radio = QRadioButton("Current topic")
+        self.search_topic_radio.setAccessibleName("Search current topic")
+        self.search_topic_radio.setAccessibleDescription(
+            "Search scope. Arrow keys switch between all help and current topic."
+        )
+        self.search_scope_group = QButtonGroup(self)
+        self.search_scope_group.addButton(self.search_all_radio)
+        self.search_scope_group.addButton(self.search_topic_radio)
+        self.search_all_radio.setChecked(True)
+        self.search_all_radio.toggled.connect(self._update_search_edit_name)
+        search_row.addWidget(self.search_label)
+        search_row.addWidget(self.search_edit, 1)
+        search_row.addWidget(self.search_all_radio)
+        search_row.addWidget(self.search_topic_radio)
+        layout.addLayout(search_row)
+        self._search_term = ""
+        self._update_search_edit_name()
+
         self._splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
         self.nav_list = QListWidget(self._splitter)
@@ -586,6 +636,15 @@ class HelpWindow(AccessibleDialog):
         self.nav_focus_shortcut = QShortcut(QKeySequence("Alt+L"), self)
         self.nav_focus_shortcut.activated.connect(self._focus_nav_list)
 
+        self.search_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        self.search_shortcut.activated.connect(self._focus_search)
+        self.find_next_shortcut = QShortcut(QKeySequence("F3"), self)
+        self.find_next_shortcut.activated.connect(lambda: self._find_in_topic(False))
+        self.find_prev_shortcut = QShortcut(QKeySequence("Shift+F3"), self)
+        self.find_prev_shortcut.activated.connect(lambda: self._find_in_topic(True))
+        self.search_edit.returnPressed.connect(self._run_search)
+        self.search_edit.installEventFilter(self)
+
         self.zoom_in_shortcut = QShortcut(QKeySequence("Ctrl++"), self)
         self.zoom_in_shortcut.activated.connect(self._zoom_in)
         self.zoom_in_numpad_shortcut = QShortcut(QKeySequence("Ctrl+Num++"), self)
@@ -617,7 +676,10 @@ class HelpWindow(AccessibleDialog):
         self.setTabOrder(self.zoom_out_button, self.preset_combo)
         self.setTabOrder(self.preset_combo, self.zoom_slider)
         self.setTabOrder(self.zoom_slider, self.zoom_in_button)
-        self.setTabOrder(self.zoom_in_button, self.nav_list)
+        self.setTabOrder(self.zoom_in_button, self.search_edit)
+        self.setTabOrder(self.search_edit, self.search_all_radio)
+        self.setTabOrder(self.search_all_radio, self.search_topic_radio)
+        self.setTabOrder(self.search_topic_radio, self.nav_list)
         self.setTabOrder(self.nav_list, self.help_text)
         self.setTabOrder(self.help_text, self.close_button)
 
@@ -784,6 +846,10 @@ class HelpWindow(AccessibleDialog):
         self.zoom_value_label.setFont(zoom_font)
         self.zoom_label.setFont(zoom_font)
         self.preset_combo.setFont(zoom_font)
+        self.search_label.setFont(zoom_font)
+        self.search_edit.setFont(zoom_font)
+        self.search_all_radio.setFont(zoom_font)
+        self.search_topic_radio.setFont(zoom_font)
         for btn in (self.zoom_out_button, self.zoom_in_button):
             btn.setFont(zoom_font)
         self.setStyleSheet(
@@ -823,6 +889,17 @@ class HelpWindow(AccessibleDialog):
         ):
             event.accept()
             return True
+        if obj is self.search_edit:
+            if event.type() == QEvent.Type.FocusIn:
+                QTimer.singleShot(0, self.search_edit.deselect)
+            elif event.type() == QEvent.Type.KeyPress:
+                if event.key() == Qt.Key.Key_Escape and (
+                    self.search_edit.text().strip() or self._nav_mode == "results"
+                ):
+                    self._clear_search()
+                    return True
+                if is_unmapped_alt_letter(event, {"L"}):
+                    return True
         if event.type() == QEvent.Type.KeyPress and obj is self.preset_combo:
             key = event.key()
             modifiers = event.modifiers()
@@ -881,6 +958,134 @@ class HelpWindow(AccessibleDialog):
     def _focus_nav_list(self) -> None:
         self.nav_list.setFocus(Qt.FocusReason.ShortcutFocusReason)
 
+    def _search_current_topic(self) -> bool:
+        return self.search_topic_radio.isChecked()
+
+    def _update_search_edit_name(self, *_args) -> None:
+        if self._search_current_topic():
+            self.search_edit.setAccessibleName("Search current topic")
+            scope = "the open help topic"
+        else:
+            self.search_edit.setAccessibleName("Search all help")
+            scope = "all help topics"
+        self.search_edit.setAccessibleDescription(
+            f"Type words and press Enter to search {scope}. "
+            "Results appear in the help navigation list. Escape clears the search."
+        )
+
+    def _focus_search(self) -> None:
+        """Ctrl+F: from the left list search all help; from the content, this topic."""
+        focused = self.focusWidget()
+        if focused is self.nav_list:
+            self.search_all_radio.setChecked(True)
+        elif focused is self.help_text or (
+            focused is not None and self.help_text.isAncestorOf(focused)
+        ):
+            self.search_topic_radio.setChecked(True)
+        self.search_edit.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        self.search_edit.end(False)
+
+    def _announce(self, message: str) -> None:
+        announce_status_message(self.status_bar, message, move_focus=True)
+
+    def _run_search(self) -> None:
+        """Search all topics or the open topic; results replace the navigation list."""
+        query = self.search_edit.text()
+        if self._search_current_topic():
+            topic_order, sections = load_help_sections()
+            sections = [s for s in sections if s.filename == self._current_filename]
+            result = search_help(query, sections=sections, topic_order=topic_order)
+            message = search_summary(result, topic_title=self._current_title)
+        else:
+            result = search_help(query)
+            message = search_summary(result)
+        if result.hits:
+            self._search_term = result.hits[0].match_text
+            self._show_results_list(result.hits)
+            self.nav_list.setFocus(Qt.FocusReason.OtherFocusReason)
+        self._announce(message)
+
+    def _show_results_list(self, hits) -> None:
+        self._nav_mode = "results"
+        self.nav_list.clear()
+        back_item = QListWidgetItem("Back to topics")
+        back_item.setData(_NAV_ROLE_TYPE, "back")
+        self.nav_list.addItem(back_item)
+        include_guide = not self._search_current_topic()
+        for hit in hits:
+            label = hit.label_for(include_guide=include_guide)
+            item = QListWidgetItem(label)
+            item.setData(_NAV_ROLE_TYPE, "result")
+            item.setData(_NAV_ROLE_FILENAME, hit.filename)
+            item.setData(_NAV_ROLE_ANCHOR, hit.anchor_id)
+            item.setData(_NAV_ROLE_MATCH, hit.match_text)
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, label)
+            item.setToolTip(label)
+            self.nav_list.addItem(item)
+        self.nav_list.setCurrentRow(1 if len(hits) else 0)
+        self._set_nav_description()
+        self._update_nav_list_width()
+        self._apply_nav_item_heights()
+        self._balance_splitter()
+
+    def _clear_search(self) -> None:
+        """Escape in the search box: clear it and show the open topic's sections."""
+        self.search_edit.clear()
+        self._search_term = ""
+        if self._nav_mode == "results":
+            path = resolve_help_doc_path(self._current_filename)
+            try:
+                markdown = path.read_text(encoding="utf-8")
+            except OSError:
+                markdown = ""
+            self._show_headings_list(extract_headings(markdown))
+        self._announce("Search cleared.")
+
+    def _open_search_result(self, item: QListWidgetItem) -> None:
+        filename = str(item.data(_NAV_ROLE_FILENAME) or "")
+        anchor_id = str(item.data(_NAV_ROLE_ANCHOR) or "")
+        match_text = str(item.data(_NAV_ROLE_MATCH) or "")
+        if not filename:
+            return
+        self._search_term = match_text
+        if filename != self._current_filename:
+            self._load_doc(filename, show_sections=False)
+        QTimer.singleShot(
+            0, lambda: self._jump_to_search_match(anchor_id, match_text)
+        )
+
+    def _jump_to_search_match(self, anchor_id: str, match_text: str) -> None:
+        """Select the first match at or after the section heading."""
+        document = self.help_text.document()
+        start = _cursor_at_html_anchor(document, anchor_id) if anchor_id else None
+        if start is None:
+            start = QTextCursor(document)
+        found = document.find(match_text, start) if match_text else QTextCursor()
+        if found.isNull():
+            found = start
+        self.help_text.setTextCursor(found)
+        self._focus_help_text()
+
+    def _find_in_topic(self, backward: bool) -> None:
+        """F3 / Shift+F3: next or previous match of the last search in this topic."""
+        term = self._search_term or self.search_edit.text().strip()
+        if not term:
+            self._announce("No search yet. Press Ctrl+F to search help.")
+            return
+        document = self.help_text.document()
+        flags = QTextDocument.FindFlag.FindBackward if backward else QTextDocument.FindFlag(0)
+        cursor = document.find(term, self.help_text.textCursor(), flags)
+        if cursor.isNull():
+            wrap = QTextCursor(document)
+            if backward:
+                wrap.movePosition(QTextCursor.MoveOperation.End)
+            cursor = document.find(term, wrap, flags)
+        if cursor.isNull():
+            self._announce(f"No matches for {term} in this topic.")
+            return
+        self.help_text.setTextCursor(cursor)
+        self._focus_help_text()
+
     def _focus_help_text(self, *, at_start: bool = False) -> None:
         if not self.isVisible():
             return
@@ -904,6 +1109,14 @@ class HelpWindow(AccessibleDialog):
         self._focus_help_text()
 
     def _set_nav_description(self) -> None:
+        if self._nav_mode == "results":
+            self.nav_list.setAccessibleDescription(
+                "Search results. Press Enter to open a result at the matching text. "
+                "Choose Back to topics to return to the topic list. "
+                "Press Ctrl+F to search again. Press Alt+L to return to this list. "
+                "Use Tab to move to the help content."
+            )
+            return
         if self._nav_mode == "topics":
             self.nav_list.setAccessibleDescription(
                 "Help topic list. Click or press Enter to open a topic. "
@@ -964,6 +1177,9 @@ class HelpWindow(AccessibleDialog):
             self._show_topics_list()
             self._focus_nav_list()
             return
+        if nav_type == "result":
+            self._open_search_result(item)
+            return
         if nav_type == "heading":
             anchor_id = item.data(_NAV_ROLE_ANCHOR)
             title = item.data(Qt.ItemDataRole.AccessibleTextRole) or item.text().strip()
@@ -976,7 +1192,7 @@ class HelpWindow(AccessibleDialog):
                 )
             return
 
-    def _load_doc(self, filename: str) -> None:
+    def _load_doc(self, filename: str, *, show_sections: bool = True) -> None:
         path = resolve_help_doc_path(filename)
         if not path.is_file():
             self._current_filename = filename
@@ -999,10 +1215,12 @@ class HelpWindow(AccessibleDialog):
         self._current_filename = path.name
         self._current_title = _title_from_markdown(markdown)
         self._set_help_body(html_doc)
-        self._show_headings_list(extract_headings(markdown))
+        if show_sections:
+            self._show_headings_list(extract_headings(markdown))
         self._apply_window_title()
         self.status_bar.showMessage(f"Showing help: {self._current_title}")
-        QTimer.singleShot(0, lambda: self._focus_help_text(at_start=True))
+        if show_sections:
+            QTimer.singleShot(0, lambda: self._focus_help_text(at_start=True))
 
     def _set_help_body(self, html_doc: str) -> None:
         self.help_text.setHtml(html_doc)
@@ -1034,7 +1252,13 @@ class HelpWindow(AccessibleDialog):
         shortcuts = get_accessible_shortcuts_list(
             [
                 ("Shift+F1", "Open help for current window"),
-                ("Alt+L", "Help navigation list"),
+                ("Ctrl+F in left list", "Search all help (type words, press Enter)"),
+                ("Ctrl+F in help content", "Search the current topic"),
+                ("All help / Current topic", "Search scope radio buttons after the search box"),
+                ("Enter in search box", "Search; focus moves to the first result"),
+                ("Escape in search box", "Clear search results"),
+                ("F3 / Shift+F3", "Next or previous match in the open topic"),
+                ("Alt+L", "Jump to the left list (topics, sections, or results)"),
                 ("Tab", "Switch between list and content"),
                 ("Click or Enter", "Open topic or jump to section"),
                 ("Arrow keys", "Read line by line"),

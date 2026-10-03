@@ -24,6 +24,7 @@ Want to Read and in-progress counts, and total listening time. It is a read-only
    - Total books, authors, series, genres
    - Books read and unread
    - Books Want to Read and Books In Progress
+   - Books With Plot and Books Without Plot (plot synopsis in Comments, same rule as the Plot filter)
    - Total hours read and total listening time (all books)
    - Collection count and per-collection book counts
 3. Click a row to read it, or use **Tab** to move through table cells. Each row is announced as `statistic: value` to screen readers.

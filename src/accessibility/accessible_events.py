@@ -11,7 +11,7 @@ This module properly supports screen readers by:
 import time
 
 from PySide6.QtGui import QAccessible, QAccessibleEvent
-from PySide6.QtWidgets import QStatusBar, QDialog, QApplication
+from PySide6.QtWidgets import QStatusBar, QDialog, QApplication, QWidget
 from PySide6.QtCore import Qt
 from src.accessibility.screen_reader import (
     get_screen_reader_focus_delay_ms,
@@ -100,6 +100,54 @@ def read_status_bar_message(
             restore_focus=restore_focus,
             update_visible=update_visible,
         )
+    except Exception:
+        pass
+
+
+def announce_plain_text_readback(
+    widget: QWidget,
+    text: str,
+    *,
+    restore_focus_widget: QWidget | None = None,
+) -> None:
+    """
+    Speak status text on Alt+/ without focusing a QStatusBar (avoids "status bar" role noise).
+
+    Briefly sets the widget accessible name to the message and restores metadata afterward.
+    """
+    if not _accessibility_announcements_enabled():
+        return
+    text = (text or "Ready").strip() or "Ready"
+    try:
+        app = QApplication.instance()
+        previous = app.focusWidget() if app else None
+        prev_name = widget.accessibleName()
+        prev_desc = widget.accessibleDescription()
+        prev_policy = widget.focusPolicy()
+        widget.setAccessibleName(text)
+        widget.setAccessibleDescription("")
+        widget.setFocusPolicy(Qt.StrongFocus)
+        widget.setFocus(Qt.OtherFocusReason)
+        QApplication.processEvents()
+        if QAccessible.isActive() and app and app.focusWidget() != widget:
+            QAccessible.updateAccessibility(
+                QAccessibleEvent(widget, QAccessible.Event.NameChanged)
+            )
+
+        def restore() -> None:
+            try:
+                widget.setAccessibleName(prev_name)
+                widget.setAccessibleDescription(prev_desc)
+                widget.setFocusPolicy(prev_policy)
+                target = restore_focus_widget or previous
+                if target is not None:
+                    target.setFocus()
+            except RuntimeError:
+                pass
+
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(max(_status_bar_focus_delay_ms(), 50), restore)
     except Exception:
         pass
 

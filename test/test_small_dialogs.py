@@ -58,6 +58,8 @@ def test_statistics_dialog_accessible_name(ui_scaler, qtbot):
         books_unread=2,
         books_want_to_read=1,
         books_in_progress=1,
+        books_with_plot=2,
+        books_without_plot=1,
         total_time_hours=10,
         total_hours_read=4,
         collection_breakdown=[("Main", 3)],
@@ -71,10 +73,16 @@ def test_statistics_dialog_accessible_name(ui_scaler, qtbot):
     ]
     assert "Books Want to Read" in labels
     assert "Books In Progress" in labels
+    assert "Books With Plot" in labels
+    assert "Books Without Plot" in labels
     want_row = labels.index("Books Want to Read")
     progress_row = labels.index("Books In Progress")
+    plot_row = labels.index("Books With Plot")
+    no_plot_row = labels.index("Books Without Plot")
     assert dialog.table.item(want_row, 1).text() == "1"
     assert dialog.table.item(progress_row, 1).text() == "1"
+    assert dialog.table.item(plot_row, 1).text() == "2"
+    assert dialog.table.item(no_plot_row, 1).text() == "1"
     _close_after_focus_timer(qtbot, dialog)
 
 

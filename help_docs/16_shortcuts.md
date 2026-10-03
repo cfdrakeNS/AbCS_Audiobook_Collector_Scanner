@@ -320,9 +320,15 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+L | Help navigation list |
+| Ctrl+F in left list | Search all help (type words, press Enter) |
+| Ctrl+F in help content | Search the current topic |
+| All help / Current topic | Search scope radio buttons after the search box |
+| Enter in search box | Search; focus moves to the first result |
+| Escape in search box | Clear search results |
+| F3 / Shift+F3 | Next or previous search match in the open topic |
+| Alt+L | Jump to the left list (topics, sections, or search results) |
 | Tab | Switch between list and content |
-| Enter | Open topic or jump to section |
+| Enter | Open topic, jump to section, or open search result |
 | Ctrl+Plus | Zoom Help in |
 | Ctrl+Minus | Zoom Help out |
 | Ctrl+0 | Reset Help zoom to 150% (Extra Large) |

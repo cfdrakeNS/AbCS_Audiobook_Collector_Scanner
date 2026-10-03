@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Iterable
 
 from src.core.tag_reader import TagReader
+from src.utils.text_utils import series_number_key, split_series_number
 
 
 def path_exists(path: str | Path) -> bool:
@@ -164,22 +167,122 @@ def _audio_extensions() -> set[str]:
     return {ext.lower() for ext in TagReader.SUPPORTED_EXTENSIONS}
 
 
-def _title_file(parent: Path, title: str) -> Path | None:
+# "4 Bad Blood", "1-  Postmortem", "6 - Title", "6.5 - Title", "01. Title"
+_LEADING_INDEX_RE = re.compile(r"^(\d+(?:\.\d+)?)(?:\s*[-.:_]\s*|\s+)(?=\S)")
+
+
+def _split_name_index(name: str) -> tuple[str, str]:
+    """Split a folder or file name into (title part, series index).
+
+    Handles a leading index (``03 - Title``, ``4 Title``) or a trailing one
+    (``Title - 03``, ``Title #3``). The index is ``""`` when there is none.
+    """
+    text = (name or "").strip()
+    match = _LEADING_INDEX_RE.match(text)
+    if match:
+        return text[match.end():].strip(), match.group(1)
+    clean, number = split_series_number(text)
+    if number:
+        return clean, number
+    return text, ""
+
+
+def _pick_title_match(
+    entries: Iterable[Path],
+    title: str,
+    series_number=None,
+    *,
+    name_of: Callable[[Path], str],
+    usable: Callable[[Path], bool],
+) -> Path | None:
+    """Pick the entry whose name is the title, allowing a series index on either side.
+
+    An exact name always wins. Otherwise names with an index are compared on
+    the title part. When the book has a series number, only that index (or no
+    index) is accepted. Without one, a single match is accepted and several
+    numbered matches are left alone rather than guessed.
+    """
     key = _name_key(title)
     if not key:
         return None
+    title_clean, title_index = split_series_number((title or "").strip())
+    keys = {key}
+    if title_index and title_clean:
+        keys.add(_name_key(title_clean))
+    want = series_number_key(series_number) or series_number_key(title_index)
+
+    candidates: list[tuple[Path, str]] = []
+    for entry in entries:
+        name = name_of(entry)
+        if _name_key(name) == key:
+            if usable(entry):
+                return entry
+            continue
+        stem, index = _split_name_index(name)
+        if index and _name_key(stem) in keys and usable(entry):
+            candidates.append((entry, series_number_key(index)))
+
+    if want:
+        same = [entry for entry, index in candidates if index == want]
+        return same[0] if len(same) == 1 else None
+    return candidates[0][0] if len(candidates) == 1 else None
+
+
+def _child_dirs(parent: Path) -> list[Path]:
+    try:
+        return sorted(
+            (child for child in parent.iterdir() if child.is_dir()),
+            key=lambda item: item.name.casefold(),
+        )
+    except OSError:
+        return []
+
+
+def _title_child_dir(parent: Path, title: str, series_number=None) -> Path | None:
+    """Folder under ``parent`` for this title that holds audio, or None."""
+    return _pick_title_match(
+        _child_dirs(parent),
+        title,
+        series_number,
+        name_of=lambda item: item.name,
+        usable=lambda item: folder_has_supported_audio(str(item)),
+    )
+
+
+def _title_file(parent: Path, title: str, series_number=None) -> Path | None:
     extensions = _audio_extensions()
     try:
-        for child in parent.iterdir():
-            if (
-                child.is_file()
-                and child.suffix.lower() in extensions
-                and _name_key(child.stem) == key
-            ):
-                return child
+        files = sorted(
+            (
+                child
+                for child in parent.iterdir()
+                if child.is_file() and child.suffix.lower() in extensions
+            ),
+            key=lambda item: item.name.casefold(),
+        )
     except OSError:
         return None
-    return None
+    return _pick_title_match(
+        files,
+        title,
+        series_number,
+        name_of=lambda item: item.stem,
+        usable=lambda _item: True,
+    )
+
+
+def _title_in_subfolders(
+    author_dir: Path, title: str, series_number=None
+) -> Path | None:
+    """Title folder one level down (e.g. an unnamed series folder); only a single match counts."""
+    hits = []
+    for sub in _child_dirs(author_dir):
+        found = _title_child_dir(sub, title, series_number)
+        if found is not None:
+            hits.append(found)
+            if len(hits) > 1:
+                return None
+    return hits[0] if hits else None
 
 
 def _folder_has_direct_audio(folder: Path) -> bool:
@@ -215,11 +318,15 @@ def locate_book_under_collection(
     scenario: str = DEFAULT_IMPORT_SCENARIO,
     collection_name: str = "",
     root_audio_cache: dict | None = None,
+    series_number=None,
 ) -> CollectionLookup:
     """Find a book's folder or file under the collection folder by import layout.
 
     Only the folders named by the scenario are checked; the library tree is
     not scanned. Single-item import has no library layout, so no search runs.
+    Title folders may carry a series index (``03 - Title``, ``Title - 03``).
+    When the book has no series, one level of subfolders under the author is
+    also checked, and only a single match counts.
     ``root_audio_cache`` lets a many-book scan check each collection folder for
     audio once instead of once per book.
     """
@@ -266,10 +373,13 @@ def locate_book_under_collection(
     def title_folder(parent: Path | None) -> Path | None:
         if parent is None or not title:
             return None
-        folder = _child_dir(parent, title)
-        if folder is not None and folder_has_supported_audio(str(folder)):
-            return folder
-        return None
+        return _title_child_dir(parent, title, series_number)
+
+    def title_under_author() -> Path | None:
+        found = title_folder(author_dir)
+        if found is None and title and not series:
+            found = _title_in_subfolders(author_dir, title, series_number)
+        return found
 
     def title_missing(parent: Path) -> CollectionLookup:
         return CollectionLookup(
@@ -298,7 +408,7 @@ def locate_book_under_collection(
             if _folder_has_direct_audio(series_dir):
                 return CollectionLookup(path=str(series_dir))
             return title_missing(series_dir)
-        found = title_folder(author_dir)
+        found = title_under_author()
         return CollectionLookup(path=str(found)) if found else title_missing(author_dir)
 
     if mode == "series_from_directory_nested":
@@ -309,7 +419,7 @@ def locate_book_under_collection(
             return (
                 CollectionLookup(path=str(found)) if found else title_missing(series_dir)
             )
-        found = title_folder(author_dir)
+        found = title_under_author()
         return CollectionLookup(path=str(found)) if found else title_missing(author_dir)
 
     # Mass Standard and Series From File Name.
@@ -317,12 +427,16 @@ def locate_book_under_collection(
     if found is not None:
         return CollectionLookup(path=str(found))
     if title:
-        single = _title_file(author_dir, title)
+        single = _title_file(author_dir, title, series_number)
         if single is not None:
             return CollectionLookup(path=str(single))
     found = title_folder(series_dir)
     if found is not None:
         return CollectionLookup(path=str(found))
+    if title and not series:
+        found = _title_in_subfolders(author_dir, title, series_number)
+        if found is not None:
+            return CollectionLookup(path=str(found))
     return title_missing(author_dir)
 
 
@@ -332,10 +446,16 @@ def find_book_under_collection(
     book_title: str,
     series_name: str = "",
     scenario: str = DEFAULT_IMPORT_SCENARIO,
+    series_number=None,
 ) -> str:
     """Return the matched folder or file path, or ``""`` on a miss."""
     return locate_book_under_collection(
-        collection_root, author_name, book_title, series_name, scenario
+        collection_root,
+        author_name,
+        book_title,
+        series_name,
+        scenario,
+        series_number=series_number,
     ).path
 
 

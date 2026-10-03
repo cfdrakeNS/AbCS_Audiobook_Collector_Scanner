@@ -58,7 +58,8 @@ def test_resolve_preview_empty_and_missing(tmp_path):
     assert preview_can_launch("") is False
     target = resolve_preview_file(str(missing))
     assert target.path is None
-    assert target.error == f"Book not found in - {missing}"
+    assert target.error.startswith(f"Book not found in - {missing}")
+    assert "collection folder is not set" in target.error
 
 
 def test_resolve_preview_single_file_and_unsupported(tmp_path):
@@ -385,6 +386,7 @@ def test_listen_progress_uses_book_time_or_track_ordinal(tmp_path, monkeypatch):
         _preview_author_name=lambda: "",
         _preview_book_title=lambda: "",
         _preview_series_name=lambda: "",
+        _preview_series_number=lambda: "",
     )
     assert BookDetailsWindow._format_listen_progress(window) == "15%"
 

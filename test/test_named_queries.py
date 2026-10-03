@@ -129,3 +129,29 @@ class TestStatisticsQueries:
         after = StatisticsQueries(temp_db).get_statistics()
         assert after.books_want_to_read == before.books_want_to_read + 2
         assert after.books_in_progress == before.books_in_progress + 2
+
+    def test_get_statistics_plot_counts(self, temp_db):
+        from src.database.models import PLOT_MIN_LENGTH
+
+        before = StatisticsQueries(temp_db).get_statistics()
+        author_id = AuthorQueries(temp_db).insert("NQ Plot Author")
+        BookQueries(temp_db).insert(
+            Book(
+                title="NQ With Plot",
+                author_id=author_id,
+                comments="x" * PLOT_MIN_LENGTH,
+            )
+        )
+        BookQueries(temp_db).insert(
+            Book(
+                title="NQ Short Comment",
+                author_id=author_id,
+                comments="brief",
+            )
+        )
+        after = StatisticsQueries(temp_db).get_statistics()
+        assert after.books_with_plot == before.books_with_plot + 1
+        assert after.books_without_plot == before.books_without_plot + 1
+        assert (
+            after.books_with_plot + after.books_without_plot == after.total_books
+        )

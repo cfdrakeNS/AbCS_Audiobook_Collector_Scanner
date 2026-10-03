@@ -300,6 +300,42 @@ def test_blank_path_found_by_layout_is_incorrect_with_found_path(
     assert "Nobody" in rows[1].reason
 
 
+def test_numbered_folders_resolve_by_series_number(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
+    )
+    root = tmp_path / "library"
+    author = root / "Patricia Cornwell" / "Kay Scarpetta Series"
+    _audio_folder(author / "1-  Postmortem")
+    second = _audio_folder(author / "2 - Body Of Evidence")
+    _audio_folder(author / "3 - Body Of Evidence")
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="Postmortem",
+            author_name="Patricia Cornwell",
+            path=str(tmp_path / "old" / "Postmortem"),
+            series_number=None,
+            collection_id=1,
+            collection_name="Lib",
+        ),
+        SimpleNamespace(
+            book_id=2,
+            title="Body Of Evidence",
+            author_name="Patricia Cornwell",
+            path="",
+            series_number=2,
+            collection_id=1,
+            collection_name="Lib",
+        ),
+    ]
+    rows = list(iter_book_path_checks(books, collection_root=str(root)))
+    assert rows[0].status == STATUS_RESOLVED
+    assert rows[0].resolved_path == str(author / "1-  Postmortem")
+    assert rows[1].status == STATUS_RESOLVED
+    assert rows[1].resolved_path == str(second)
+
+
 def test_missing_row_says_collection_folder_missing(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
@@ -429,10 +465,16 @@ def test_open_details_pages_listed_books_in_edit_mode(
     captured: dict = {}
 
     class FakeDetails:
+        _data_was_changed = False
+        _books_touched_in_session = set()
+
         def __init__(self, *args, **kwargs):
             captured.update(kwargs)
 
         def on_edit_mode(self):
+            pass
+
+        def load_book_data(self):
             pass
 
         def exec(self):
@@ -458,6 +500,63 @@ def test_open_details_pages_listed_books_in_edit_mode(
     assert listed == [row.book_id for row in window._rows]
     assert captured["current_index"] == 1
     assert captured["keep_edit_mode"] is True
+    window.close()
+
+
+def test_details_close_refreshes_rows_without_full_rescan(
+    layout_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.ui import path_health_window as module
+
+    db, root, collection_id, ids = layout_db
+    monkeypatch.setattr(
+        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
+    )
+    rescan_calls: list[bool] = []
+
+    class FakeDetails:
+        _data_was_changed = True
+        _books_touched_in_session = {ids[0]}
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def on_edit_mode(self):
+            pass
+
+        def load_book_data(self):
+            pass
+
+        def exec(self):
+            return 0
+
+        def deleteLater(self):
+            pass
+
+    monkeypatch.setattr(module, "BookDetailsWindow", FakeDetails)
+    window = module.PathHealthWindow(db, ui_scaler, theme_manager, parent=None)
+    qtbot.addWidget(window)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    window.run_scan(warn_folder=False)
+    assert window._scan_rows_all
+
+    def _fail_rescan(*_args, **_kwargs):
+        rescan_calls.append(True)
+        raise AssertionError("full Scan should not run after Book Details")
+
+    monkeypatch.setattr(window, "run_scan", _fail_rescan)
+    refresh_calls: list[set[int]] = []
+    monkeypatch.setattr(
+        window,
+        "_refresh_books_after_details",
+        lambda book_ids: refresh_calls.append(set(book_ids)),
+    )
+    window.table.setCurrentCell(0, 0)
+    window.on_open_details()
+    assert refresh_calls == [{ids[0]}]
+    assert not rescan_calls
     window.close()
 
 

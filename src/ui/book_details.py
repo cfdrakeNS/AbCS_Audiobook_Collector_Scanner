@@ -366,6 +366,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.filter_summary = (filter_summary or "").strip()
         self._dirty = False  # bd#6: Track if form has unsaved changes
         self._data_was_changed = False  # True after save/delete/web apply; gates list refresh
+        self._books_touched_in_session: set[int] = set()
+        self._combos_loaded = False
         self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
         self._keep_edit_mode = bool(keep_edit_mode)
         self._first_dirty_widget = None  # Track first field that changed
@@ -2433,8 +2435,10 @@ class BookDetailsWindow(AccessibleDialog):
         layout.addWidget(table)
         dlg.exec()
 
-    def load_combos(self):
+    def load_combos(self, *, force: bool = False):
         """Load combo box data and build lookup indexes for fast access."""
+        if self._combos_loaded and not force:
+            return
         # PHASE 2 OPTIMIZATION: Build id->index lookup dicts to avoid slow findData()
         self._author_index_map: Dict[int, int] = {}
         self._series_index_map: Dict[int, int] = {}
@@ -2480,6 +2484,7 @@ class BookDetailsWindow(AccessibleDialog):
             self._collection_index_map[coll.collection_id] = idx
         self.collection_combo.setMaxVisibleItems(20)
         self.collection_combo.blockSignals(False)
+        self._combos_loaded = True
 
     def _set_series_number_field(self, value) -> None:
         """Show a stored series number, or leave the text box blank."""
@@ -2845,6 +2850,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.set_status("Book updated successfully")
 
             self._data_was_changed = True
+            if self.book.book_id is not None:
+                self._books_touched_in_session.add(int(self.book.book_id))
             self._series_number_at_load = series_number
 
             # Clear dirty and update original values (don't close window)
@@ -2862,12 +2869,18 @@ class BookDetailsWindow(AccessibleDialog):
             self.genre_label_display.setText(self.genre_combo.currentText())
             self.collection_label_display.setText(self.collection_combo.currentText())
             self._update_header_card()
+            saved_message = self.status_bar.currentMessage()
             if self._keep_edit_mode:
                 self.on_edit_mode()
             # Show edit button, hide save button
-            self._clear_dirty()  # Clears dirty state and updates button visibility
+            self._clear_dirty(preserve_status=True)
+            self.set_status(saved_message)
 
-            QTimer.singleShot(0, self.title_edit.setFocus)
+            def _focus_title_and_announce():
+                self.title_edit.setFocus()
+                self.set_status(saved_message, announce=True)
+
+            QTimer.singleShot(0, _focus_title_and_announce)
 
         except Exception as e:
             self.set_status("Error saving book")
@@ -3359,6 +3372,7 @@ class BookDetailsWindow(AccessibleDialog):
             self._preview_book_title(),
             self._preview_series_name(),
             self._preview_collection_name(),
+            self._preview_series_number(),
         )
         if key != self._preview_source_cache_key:
             self._preview_source_cache_key = key
@@ -3370,6 +3384,7 @@ class BookDetailsWindow(AccessibleDialog):
                 book_title=key[4],
                 series_name=key[5],
                 collection_name=key[6],
+                series_number=key[7],
             )
         return self._preview_source_cache
 
@@ -3415,6 +3430,14 @@ class BookDetailsWindow(AccessibleDialog):
         if hasattr(self, "title_edit"):
             return self.title_edit.text().strip()
         return ""
+
+    def _listen_blocked_by_edit(self) -> bool:
+        """Listen waits for a new book to be saved or for unsaved edits to be saved."""
+        if self.is_new:
+            return True
+        return bool(getattr(self, "_in_edit_mode", False)) and bool(
+            getattr(self, "_dirty", False)
+        )
 
     def _update_preview_button_state(self):
         in_edit = bool(getattr(self, "_in_edit_mode", False)) or bool(self.is_new)
@@ -3477,6 +3500,7 @@ class BookDetailsWindow(AccessibleDialog):
                 self._preview_author_name(),
                 self._preview_book_title(),
                 self._preview_series_name(),
+                self._preview_series_number(),
             )
             if key != getattr(self, "_listen_playlist_cache_key", None):
                 self._listen_playlist_cache_key = key
@@ -3488,6 +3512,7 @@ class BookDetailsWindow(AccessibleDialog):
                     author_name=key[4],
                     book_title=key[5],
                     series_name=key[6],
+                    series_number=key[7],
                 )
             playlist = self._listen_playlist_cache
             if playlist.error or not playlist.files:
@@ -3626,7 +3651,7 @@ class BookDetailsWindow(AccessibleDialog):
         if self.is_new:
             self.set_status("Save the book before listening.", announce=True)
             return
-        if getattr(self, "_in_edit_mode", False):
+        if self._listen_blocked_by_edit():
             self.set_status("Save or cancel edit before listening.", announce=True)
             return
         ok, message = show_preview(

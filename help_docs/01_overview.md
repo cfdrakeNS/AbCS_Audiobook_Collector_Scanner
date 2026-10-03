@@ -20,7 +20,7 @@ These guides describe major workflows in AbCS (Audio Book Collector Scanner) in 
 
 ### Help window layout
 
-The help window has two main areas side by side:
+The help window has a **Search help** box at the top, then two main areas side by side:
 
 1. **Help Navigation** (left) — a list you can scroll with the mouse or arrow keys
 2. **Help content** (right) — the full text of the selected guide
@@ -76,13 +76,35 @@ When help first opens, the navigation list shows **sections** from the current g
 
 | Key | Action |
 |-----|--------|
-| Alt+L | Move focus to the Help Navigation list |
+| Ctrl+F in the left list | Move to the Search help box, set to search all help |
+| Ctrl+F in the content area | Move to the Search help box, set to search the current topic |
+| F3 / Shift+F3 | Next or previous search match in the open guide |
+| Alt+L | Jump to the Help Navigation list on the left (topics, sections, or search results) |
 | Tab | Switch focus between the list and the content area |
 | Enter | Open the selected topic or jump to the selected section |
 | Arrow keys | Move through list items or read the content line by line |
 | Ctrl+Plus / Ctrl+Minus | Zoom Help in or out |
 | Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
 | Escape | Close help (closes an open preset list first) |
+
+### Searching help
+
+Press **Ctrl+F** to move to the **Search help** box. Type one or more words and press **Enter**.
+
+Two radio buttons after the search box set where Help looks:
+
+- **All help** searches every guide.
+- **Current topic** searches only the guide that is open.
+
+Press **Tab** from the search box to reach them, and use the arrow keys to switch. **Ctrl+F** also picks one for you: pressed in the left list it chooses **All help**, and pressed in the content area it chooses **Current topic**. Pressed anywhere else, it keeps the current choice. The screen reader names the box "Search all help" or "Search current topic" so you know which is set.
+
+- The status bar says how many matches were found, for example "12 matches in 4 topics for listen." or, for the current topic, "5 matches in Listen to a Book for listen." Press **Alt+/** to hear it again.
+- The results replace the Help Navigation list, and focus moves to the first result. Each result reads as the section name, the guide name, and the sentence that matched. When searching the current topic, the guide name is left out. If nothing matches, focus stays in the search box.
+- Every word you type must appear in the same section. Capital letters do not matter. Sections that have your words together as a phrase come first.
+- Press **Enter** on a result to open that guide at the matching text. The matching words are selected, and the results stay in the list so you can try the next one. Press **Alt+L** to jump back to the results list from the content area.
+- **Back to topics** at the top of the results shows every guide again.
+- **F3** goes to the next place in the open guide with your search words. **Shift+F3** goes back to the previous one.
+- Press **Escape** in the search box to clear the search and show the open guide's sections again. Press **Escape** again to close Help.
 
 ### How topics are listed
 

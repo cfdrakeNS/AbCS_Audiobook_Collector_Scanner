@@ -31,9 +31,9 @@ from src.accessibility.style_helpers import (
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.accessible_events import (
+    announce_plain_text_readback,
     announce_status_message,
     configure_status_bar_accessibility,
-    read_status_bar_message,
 )
 
 
@@ -283,9 +283,10 @@ class ImportProgressWindow(QDialog):
     def on_read_status_bar(self):
         status_text = self.status_bar.currentMessage() or self._default_status_message
         self._status_read_until = time.monotonic() + 1.2
-        read_status_bar_message(
-            self.status_bar,
-            fallback=status_text or "Ready",
+        announce_plain_text_readback(
+            self,
+            status_text or "Ready",
+            restore_focus_widget=self.scan_progress,
         )
 
     def update_scan_progress(
@@ -302,6 +303,9 @@ class ImportProgressWindow(QDialog):
         if current_author:
             self.author_edit.setText(current_author)
 
+        # Stay above the owner window (Import, Check Book Locations, etc.).
+        self.raise_()
+        self.activateWindow()
         # Keep status bar visible and focus progress bar during scan
         self.scan_progress.setFocus()
 

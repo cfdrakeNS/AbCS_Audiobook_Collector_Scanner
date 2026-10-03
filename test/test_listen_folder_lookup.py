@@ -109,6 +109,121 @@ def test_nested_series_uses_series_title_folder(tmp_path):
     ) == str(nested)
 
 
+@pytest.mark.parametrize(
+    "folder_name",
+    ["03 - Killing Floor", "3 Killing Floor", "3-  Killing Floor", "Killing Floor - 03"],
+)
+def test_numbered_title_folder_matches(tmp_path, folder_name):
+    book_dir = tmp_path / "Lee Child" / folder_name
+    _audio(book_dir)
+
+    assert find_book_under_collection(
+        str(tmp_path), "Lee Child", "Killing Floor", scenario="mass_standard"
+    ) == str(book_dir)
+    assert find_book_under_collection(
+        str(tmp_path),
+        "Lee Child",
+        "Killing Floor",
+        scenario="mass_standard",
+        series_number=3,
+    ) == str(book_dir)
+
+
+def test_numbered_title_folder_matches_decimal_and_title_suffix(tmp_path):
+    busted = tmp_path / "Author" / "6.5 - Busted"
+    _audio(busted)
+    foo = tmp_path / "Author" / "03 - Foo"
+    _audio(foo)
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Busted", scenario="mass_standard", series_number=6.5
+    ) == str(busted)
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Foo - 03", scenario="mass_standard"
+    ) == str(foo)
+
+
+def test_numbered_title_folder_wrong_series_number_is_not_used(tmp_path):
+    _audio(tmp_path / "Lee Child" / "03 - Killing Floor")
+
+    assert find_book_under_collection(
+        str(tmp_path),
+        "Lee Child",
+        "Killing Floor",
+        scenario="mass_standard",
+        series_number=4,
+    ) == ""
+
+
+def test_numbered_siblings_pick_by_series_number_only(tmp_path):
+    author = tmp_path / "Author"
+    _audio(author / "01 - Saga Book")
+    second = author / "02 - Saga Book"
+    _audio(second)
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Saga Book", scenario="mass_standard", series_number=2
+    ) == str(second)
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Saga Book", scenario="mass_standard"
+    ) == ""
+
+
+def test_title_folder_without_number_is_not_split(tmp_path):
+    book_dir = tmp_path / "George Orwell" / "1984"
+    _audio(book_dir)
+
+    assert find_book_under_collection(
+        str(tmp_path), "George Orwell", "1984", scenario="mass_standard"
+    ) == str(book_dir)
+
+
+def test_numbered_single_file_in_author_folder(tmp_path):
+    single = _audio(tmp_path / "Author", "02 - Stand Alone.m4b")
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Stand Alone", scenario="mass_standard"
+    ) == str(single)
+
+
+def test_unnamed_series_folder_found_when_book_has_no_series(tmp_path):
+    book_dir = tmp_path / "Patricia Cornwell" / "Kay Scarpetta Series" / "1-  Postmortem"
+    _audio(book_dir)
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name="Patricia Cornwell",
+        book_title="Postmortem",
+        import_scenario="mass_standard",
+    )
+
+    assert playlist.error == ""
+    assert playlist.found_path == str(book_dir)
+
+
+@pytest.mark.parametrize(
+    "scenario", ["series_from_directory", "series_from_directory_nested"]
+)
+def test_unnamed_series_folder_found_in_series_scenarios(tmp_path, scenario):
+    book_dir = tmp_path / "John Sandford" / "Virgil Flowers Series" / "4 Bad Blood"
+    _audio(book_dir)
+
+    assert find_book_under_collection(
+        str(tmp_path), "John Sandford", "Bad Blood", scenario=scenario
+    ) == str(book_dir)
+
+
+def test_same_title_in_two_subfolders_is_not_guessed(tmp_path):
+    author = tmp_path / "Author"
+    _audio(author / "Series A" / "1 Same Title")
+    _audio(author / "Series B" / "2 Same Title")
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Same Title", scenario="mass_standard"
+    ) == ""
+
+
 def test_title_missing_names_author_folder(tmp_path):
     author_dir = tmp_path / "Lee Child"
     _audio(author_dir / "Killing Floor")

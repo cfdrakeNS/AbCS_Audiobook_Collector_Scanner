@@ -54,7 +54,11 @@ from src.accessibility.style_helpers import (
     exec_styled_message_box,
 )
 from src.accessibility.theme_manager import ThemeManager, get_theme_manager
-from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY, root_path_issue
+from src.core.library_root import (
+    IMPORT_DEFAULT_DIRECTORY_KEY,
+    root_path_issue,
+    saved_import_scenario,
+)
 from src.core.path_health import (
     FILTER_ALL,
     FILTER_INCORRECT,
@@ -64,6 +68,8 @@ from src.core.path_health import (
     STATUS_RESOLVED,
     PathHealthCounts,
     PathHealthRow,
+    _root_for_book,
+    build_path_health_row,
     iter_book_path_checks,
     row_matches_filter,
 )
@@ -116,6 +122,7 @@ class PathHealthWindow(AccessibleDialog):
         self._loading = False
         self._is_scanning = False
         self.progress_window: ImportProgressWindow | None = None
+        self._book_details: BookDetailsWindow | None = None
 
         self.setWindowIcon(get_app_icon())
         self.setWindowTitle("Check Book Locations")
@@ -666,6 +673,7 @@ class PathHealthWindow(AccessibleDialog):
         progress.help_doc_override = "24_check_book_locations.md"
         progress.set_activity_label("scan")
         progress.set_compact_mode(True)
+        progress.setWindowModality(Qt.WindowModal)
         progress.finished.connect(self._on_progress_window_closed)
         self.progress_window = progress
         progress.show()
@@ -714,6 +722,9 @@ class PathHealthWindow(AccessibleDialog):
                     progress.set_status(f"{counts.summary()} | Elapsed {elapsed}")
                     next_ui = now + ui_interval
                     QApplication.processEvents()
+                    if self.progress_window is not None:
+                        self.progress_window.raise_()
+                        self.progress_window.activateWindow()
                     if self.progress_window and self.progress_window.cancel_requested:
                         canceled = True
                         break
@@ -825,6 +836,48 @@ class PathHealthWindow(AccessibleDialog):
             return self._rows[row]
         return None
 
+    def _path_check_context(self):
+        """Collection root(s) and import folder for a single-book path re-check."""
+        collection_id = self.collection_combo.currentData()
+        scan_all = collection_id is None
+        import_dir = self._prefs_import_dir()
+        if scan_all:
+            return True, "", self._collection_roots_map(), import_dir
+        return False, self._selected_collection_root(), None, import_dir
+
+    def _refresh_books_after_details(self, book_ids: set[int]) -> None:
+        """Re-check only books edited in Book Details; do not run a full Scan."""
+        if not book_ids or not self._scan_rows_all:
+            self.table.setFocus()
+            return
+        _scan_all, root, collection_roots, import_dir = self._path_check_context()
+        scenario = saved_import_scenario()
+        root_audio_cache: dict = {}
+        index_by_id = {row.book_id: idx for idx, row in enumerate(self._scan_rows_all)}
+        for book_id in book_ids:
+            book = self.book_queries.get_by_id(book_id)
+            if book is None:
+                continue
+            self._scan_books[int(book_id)] = book
+            book_root = _root_for_book(
+                book,
+                collection_root=root,
+                collection_roots=collection_roots,
+            )
+            new_row = build_path_health_row(
+                book,
+                collection_root=book_root,
+                import_dir=import_dir,
+                import_scenario=scenario,
+                root_audio_cache=root_audio_cache,
+            )
+            if new_row is None:
+                continue
+            idx = index_by_id.get(book_id)
+            if idx is not None:
+                self._scan_rows_all[idx] = new_row
+        self._apply_filter_to_cached_rows(announce=True)
+
     def on_open_details(self):
         selected = self._selected_row()
         if selected is None:
@@ -845,22 +898,33 @@ class PathHealthWindow(AccessibleDialog):
             listed = self._scan_books.get(row.book_id)
             if listed is not None:
                 books_list.append(listed)
-        details = BookDetailsWindow(
-            self.db,
-            self.scaler,
-            book=book,
-            books_list=books_list,
-            current_index=current_index,
-            theme_manager=self.theme_manager,
-            parent=self,
-            keep_edit_mode=True,
-        )
-        QTimer.singleShot(0, details.on_edit_mode)
+        details = self._book_details
+        if details is None:
+            details = BookDetailsWindow(
+                self.db,
+                self.scaler,
+                book=book,
+                books_list=books_list,
+                current_index=current_index,
+                theme_manager=self.theme_manager,
+                parent=self,
+                keep_edit_mode=True,
+            )
+            self._book_details = details
+            QTimer.singleShot(0, details.on_edit_mode)
+        else:
+            details.book = book
+            details.books_list = books_list
+            details.current_index = current_index
+            details.is_new = False
+            details._data_was_changed = False
+            details._books_touched_in_session.clear()
+            details.load_book_data()
+            QTimer.singleShot(0, details.on_edit_mode)
         details.exec()
-        data_changed = getattr(details, "_data_was_changed", False)
-        details.deleteLater()
-        if data_changed:
-            self.run_scan(warn_folder=False)
+        touched = set(getattr(details, "_books_touched_in_session", set()))
+        if getattr(details, "_data_was_changed", False) and touched:
+            self._refresh_books_after_details(touched)
         else:
             self.table.setFocus()
 
@@ -953,8 +1017,15 @@ class PathHealthWindow(AccessibleDialog):
             self, "Keyboard Shortcuts - Check Book Locations", shortcuts
         )
 
+    def _release_book_details(self) -> None:
+        if self._book_details is not None:
+            self._book_details.close()
+            self._book_details.deleteLater()
+            self._book_details = None
+
     def accept(self):
         announce_dialog_closed(self)
+        self._release_book_details()
         super().accept()
 
     def reject(self):
@@ -962,4 +1033,5 @@ class PathHealthWindow(AccessibleDialog):
             self.progress_window.on_close_requested()
             return
         announce_dialog_closed(self)
+        self._release_book_details()
         super().reject()

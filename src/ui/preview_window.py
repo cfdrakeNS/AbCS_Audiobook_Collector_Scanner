@@ -406,6 +406,7 @@ def show_preview(
         book_title=book_title,
         series_name=series_name,
         collection_name=collection_name,
+        series_number=series_number,
     )
     if playlist.error or not playlist.files:
         message = playlist.error or "No playable audiobook files were found for this book."

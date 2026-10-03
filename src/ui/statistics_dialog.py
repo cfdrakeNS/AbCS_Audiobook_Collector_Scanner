@@ -83,6 +83,8 @@ class StatisticsDialog(AccessibleDialog):
             ("Books Unread", str(stats.books_unread)),
             ("Books Want to Read", str(stats.books_want_to_read)),
             ("Books In Progress", str(stats.books_in_progress)),
+            ("Books With Plot", str(stats.books_with_plot)),
+            ("Books Without Plot", str(stats.books_without_plot)),
             ("Total Listening Time", stats.total_time_display),
         ]
         data.append(("", ""))

@@ -32,6 +32,8 @@ Book Details **Listen progress** shows the stop time and, when Time is set, the 
 
 Listen tries the book's stored path first. If the path is blank or gone, it looks in the collection's **collection folder**, using the folders your Preferences **Import scenario** expects. When the book is found there, its folder is saved as the book's path.
 
+Book folders may have a number before or after the title, such as `3 - All That Remains`, `4 Bad Blood`, or `All That Remains - 03`. When the book has a series number, only the folder with that number is used. When it has none, the folder is used only if it is the only one with that title. If the book has no series, Listen also looks one folder down inside the author folder, for example in a series folder.
+
 If the book is still not found, a message says what was missing and where Listen looked. For example, the author folder or the book title folder was not found. Most messages offer **Browse**. The folder you choose is saved on the book only if it has playable audio. Press **Escape** to close without changing the book.
 
 If the message says the collection folder is missing, has no audiobook files, or is not set, open **Manage → Collections**. Edit the collection and set the **Collection folder**.

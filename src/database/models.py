@@ -194,6 +194,8 @@ class Statistics:
     books_unread: int = 0
     books_want_to_read: int = 0
     books_in_progress: int = 0
+    books_with_plot: int = 0
+    books_without_plot: int = 0
     total_time_hours: int = 0
     total_hours_read: int = 0
     collection_breakdown: list[tuple[str, int]] | None = None

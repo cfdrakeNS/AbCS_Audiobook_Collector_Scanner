@@ -272,6 +272,64 @@ def test_keep_edit_mode_stays_in_edit_after_paging(temp_db, ui_scaler, theme_man
     window.close()
 
 
+def test_keep_edit_mode_save_announces_and_allows_listen(
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch
+):
+    author_id = AuthorQueries(temp_db).insert("Keep Edit Listen Author")
+    book_id = BookQueries(temp_db).insert(
+        Book(
+            title="Heat Lightning",
+            author_id=author_id,
+            collection_id=CollectionQueries(temp_db).get_all()[0].collection_id,
+        )
+    )
+    books = [BookQueries(temp_db).get_by_id(book_id)]
+    folder = tmp_path / "2 Heat Lighting"
+    folder.mkdir()
+    (folder / "01.mp3").write_bytes(b"x")
+
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        books_list=books,
+        current_index=0,
+        parent=None,
+        theme_manager=theme_manager,
+        keep_edit_mode=True,
+    )
+    window.on_edit_mode()
+    statuses = []
+    real_set_status = window.set_status
+
+    def record(message, announce=False):
+        statuses.append((message, announce))
+        real_set_status(message, announce=False)
+
+    monkeypatch.setattr(window, "set_status", record)
+    monkeypatch.setattr(
+        "src.ui.book_details.QTimer.singleShot", lambda _ms, fn: fn()
+    )
+    window.path_edit.setText(str(folder))
+    window._mark_dirty(window.path_edit)
+    assert window._listen_blocked_by_edit()
+
+    window.on_save()
+
+    assert BookQueries(temp_db).get_by_id(books[0].book_id).path == str(folder)
+    assert window._in_edit_mode
+    assert ("Book updated successfully", True) in statuses
+    assert not window._listen_blocked_by_edit()
+    played = []
+    monkeypatch.setattr(
+        "src.ui.preview_window.show_preview",
+        lambda *args, **kwargs: played.append(args[1]) or (True, "Playing"),
+    )
+    window.on_preview()
+    assert played == [str(folder)]
+    window.close()
+
+
 def test_paging_in_view_mode_stays_in_view_mode(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=2)
 
@@ -429,11 +487,14 @@ def test_book_details_cover_shows_embedded_art(
     )
     tags.save(art)
 
-    books = _ensure_sample_books(temp_db, count=1)
+    author_id = AuthorQueries(temp_db).insert("Cover Art Test Author")
+    book_id = BookQueries(temp_db).insert(
+        Book(title="Cover Art Test Book", author_id=author_id)
+    )
     window = BookDetailsWindow(
         temp_db,
         ui_scaler,
-        book=books[0],
+        book=BookQueries(temp_db).get_by_id(book_id),
         parent=None,
         theme_manager=theme_manager,
     )
