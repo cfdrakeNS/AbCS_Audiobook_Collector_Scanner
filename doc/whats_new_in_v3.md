@@ -1,6 +1,6 @@
-# What's New in Version 3.0
+# What's New in Version 3
 
-Version 3.0 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
+Version 3 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
 
 ## Find and import books
 

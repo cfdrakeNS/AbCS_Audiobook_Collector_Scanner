@@ -1,9 +1,10 @@
-# AbCS Version 3.0 — Release Brief
+# AbCS Version 3 — Release Brief (pre-release)
 
-**Version:** 3.0  
+**Current build:** 2.26 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
+**Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
 **Testing:** Full pytest suite — 733 passed (October 2026).  
-**Audience:** Release sign-off before promoting the build to **v3.0** for users.
+**Audience:** Checklist for what ships when you promote the build to **v3.0**.
 
 User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
 
@@ -83,7 +84,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 
 ---
 
-## After release
+## When ready for v3.0
 
-- Ship **3.0** installers and tagged builds once manual smoke on JAWS/NVDA and your target platforms is done.
-- Release brief for this version: this file. User summary: [whats_new_in_v3.md](whats_new_in_v3.md).
+- Bump `APP_VERSION` and `build_installer.iss` to **3.0**, then tag and ship installers.
+- User summary at launch: [whats_new_in_v3.md](whats_new_in_v3.md). This brief lists enhancements and fixes for the branch.
