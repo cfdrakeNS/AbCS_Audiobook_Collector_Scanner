@@ -11,7 +11,13 @@ This module properly supports screen readers by:
 import time
 
 from PySide6.QtGui import QAccessible, QAccessibleEvent
-from PySide6.QtWidgets import QStatusBar, QDialog, QApplication, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QMainWindow,
+    QStatusBar,
+    QWidget,
+)
 from PySide6.QtCore import Qt
 from src.accessibility.screen_reader import (
     get_screen_reader_focus_delay_ms,
@@ -122,6 +128,9 @@ def announce_plain_text_readback(
     if not _accessibility_announcements_enabled():
         return
     text = (text or "Ready").strip() or "Ready"
+    if isinstance(widget, QMainWindow) and widget.centralWidget() is not None:
+        # JAWS/NVDA stay silent when focus moves to a QMainWindow frame itself.
+        widget = widget.centralWidget()
     try:
         app = QApplication.instance()
         previous = app.focusWidget() if app else None

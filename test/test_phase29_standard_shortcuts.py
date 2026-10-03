@@ -22,9 +22,10 @@ def test_save_uses_ctrl_s_not_alt_s_in_shortcut_maps():
         ShortcutManager.WEB_METADATA_SHORTCUTS,
         ShortcutManager.COLLECTION_WINDOW_SHORTCUTS,
         ShortcutManager.PREFERENCES_WINDOW_SHORTCUTS,
-        ShortcutManager.NAMELIST_WINDOW_SHORTCUTS,
     ):
         assert "S" not in mapping
+    # Name list uses Alt+S for Sort; Save stays Ctrl+S.
+    assert ShortcutManager.NAMELIST_WINDOW_SHORTCUTS["S"] == ("Sort", "sort_combo")
 
 
 def test_reading_history_search_is_alt_s_only():

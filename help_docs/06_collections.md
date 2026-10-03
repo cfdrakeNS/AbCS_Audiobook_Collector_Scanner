@@ -32,7 +32,7 @@ Every book belongs to exactly one collection. A default collection named **Audio
 2. At the top, **Name** and **Collection folder** sit in a block for editing above the table. The **collection list** has three columns: **Collection**, **Path**, and **Status**.
 3. To **add** a collection:
    - Click **New** (Ctrl+N).
-   - Type a name in the **Name** field (Alt+E to edit).
+   - Type a name in the **Name** field (Alt+M).
    - Optionally set a **Collection folder**. Type a path or click **Browse** (Alt+B).
    - Check or uncheck **Active** (Alt+A in some contexts — see F1 help).
    - Click **Save** (Ctrl+S).

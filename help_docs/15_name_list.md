@@ -17,10 +17,10 @@ The Name List window manages **authors**, **genres**, and **series** names in yo
 ## Manage names
 
 1. Open the name list from the main book table (double-click a name cell, or focus a cell and press **Enter**), or from the Manage menu.
-2. Use **Sort** (dropdown above the list) or click the **Name** or **Books** column header to sort by name or book count. Click the same header again to reverse the order. On the Sort dropdown, press **Alt+Down Arrow** to open the list; plain Up and Down Arrow do nothing so the sort does not change by accident. AbCS announces the new sort order.
+2. Use **Sort** (dropdown above the list, **Alt+S**) or click the **Name** or **Books** column header to sort by name or book count. Click the same header again to reverse the order. On the Sort dropdown, press **Alt+Down Arrow** to open the list; plain Up and Down Arrow do nothing so the sort does not change by accident. After sorting, focus moves to the first row in the list and AbCS announces the new sort order.
 3. Click a row in the list, press **Tab** from **Find** onto the list, or press **Alt+L** to move focus to the list.
 4. Click **Edit**, double-click a row, or press **Alt+E** to edit the selected entry.
-5. Type in the name field and click **Save** (**Ctrl+S** when Save is available).
+5. Type in the edit field (labeled **Author**, **Series**, or **Genre**) and click **Save** (**Ctrl+S** when Save is available).
 6. If the author, series, or genre name already exists, AbCS asks whether to move this name’s books to the existing name. **No** leaves both names unchanged. **Yes** moves the books, removes the edited name, and reports how many books changed.
 7. Press **Escape** while editing. If nothing changed, you return to the locked list. If you changed the name, choose whether to save, keep editing, or discard and return to the list. When the list is locked, **Escape** closes the window. In **Find**, **Escape** clears the text if needed and returns to the list instead of closing.
 
@@ -49,11 +49,11 @@ See [Update](05_update.md) for bulk edits.
 | F1 | Show keyboard shortcuts for this window |
 | Alt+L | Focus name list |
 | Ctrl+C | Copy selected name |
-| Alt+M | Edit name field |
 | Alt+E | Edit selected row |
 | Ctrl+F | Clear find and start a new search |
 | Ctrl+S | Save (when editing) |
 | Alt+/ | Re-read the status bar |
+| Alt+S | Sort dropdown |
 | Alt+Down Arrow | Open the Sort dropdown (when Sort has focus) |
 | Escape | Return to list from Find, cancel edit, or close window |
 

@@ -40,7 +40,7 @@ COLLECTION_WINDOW_SHORTCUTS = {
 NAMELIST_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
     "E": ("Edit selected row", "edit_button"),
-    "M": ("Name edit", "name_edit"),
+    "S": ("Sort", "sort_combo"),
     "A": ("Active checkbox", "active_check"),
 }
 

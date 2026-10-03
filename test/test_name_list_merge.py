@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QMessageBox
 
 from src.database.models import Book, Collection
@@ -381,4 +382,145 @@ def test_escape_in_find_moves_focus_to_list(
     assert window.find_edit.text() == ""
     assert window.table.focusPolicy() == Qt.StrongFocus
     assert window.table.hasFocus()
+    window.close()
+
+
+def test_name_list_edit_label_uses_entity_and_has_no_alt_m(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    from PySide6.QtWidgets import QLabel
+
+    from src.accessibility.shortcuts import ShortcutManager
+
+    for list_type, expected in (
+        ("author", "Author:"),
+        ("series", "Series:"),
+        ("genre", "Genre:"),
+    ):
+        window = NameListWindow(temp_db, ui_scaler, theme_manager, list_type)
+        qtbot.addWidget(window)
+        labels = [
+            label
+            for label in window.findChildren(QLabel)
+            if label.buddy() is window.name_edit
+        ]
+        assert [label.text() for label in labels] == [expected]
+        assert Qt.Key_M not in window._allowed_alt_letter_keys()
+        window.close()
+    assert "M" not in ShortcutManager.NAMELIST_WINDOW_SHORTCUTS
+
+
+def test_name_list_alt_s_focuses_sort_and_rows_do_not_set_status(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    queries = SeriesQueries(temp_db)
+    first_id = queries.insert("Aaa Status Quiet Series")
+    second_id = queries.insert("Bbb Status Quiet Series")
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
+    qtbot.addWidget(window)
+
+    focused = []
+    monkeypatch.setattr(
+        window.sort_combo, "setFocus", lambda *_args: focused.append(True)
+    )
+    shortcut = next(
+        s
+        for s in window.findChildren(QShortcut)
+        if s.key() == QKeySequence("Alt+S")
+    )
+    shortcut.activated.emit()
+    assert focused == [True]
+    assert Qt.Key_S in window._allowed_alt_letter_keys()
+
+    messages = []
+    monkeypatch.setattr(window, "set_status", lambda msg, **_kw: messages.append(msg))
+    window.focus_and_select_row(first_id)
+    window.focus_and_select_row(second_id)
+    window.table.selectRow(0)
+    window.table.selectRow(1)
+    window.focus_list()
+    assert messages == []
+    window.close()
+
+
+def test_author_find_status_has_no_search_hint(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.database.queries import AuthorQueries
+
+    AuthorQueries(temp_db).get_or_create("Zzhint, Quietly")
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "author")
+    qtbot.addWidget(window)
+    messages = []
+    monkeypatch.setattr(window, "set_status", lambda msg, **_kw: messages.append(msg))
+
+    assert window.find_first_match("Zzhint") is True
+    window.find_first_match("No Such Author Xyz")
+
+    assert messages
+    for msg in messages:
+        assert "enter for next" not in msg.lower()
+        assert "new search" not in msg.lower()
+    window.close()
+
+
+def test_name_list_sort_moves_current_row_to_first(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    queries = SeriesQueries(temp_db)
+    queries.insert("Aaa Sort First Series")
+    last_id = queries.insert("Zzz Sort Last Series")
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
+    qtbot.addWidget(window)
+    window.focus_and_select_row(last_id)
+    assert window.table.currentRow() > 0
+
+    window.sort_combo.setCurrentIndex(1)
+    assert window.table.currentRow() == 0
+
+    window._on_table_header_clicked(0)
+    assert window.table.currentRow() == 0
+    window.close()
+
+
+def test_open_with_initial_series_focuses_table_on_match(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    series_id = SeriesQueries(temp_db).insert("Initial Focus Series")
+    window = NameListWindow(
+        temp_db,
+        ui_scaler,
+        theme_manager,
+        "series",
+        initial_name="Initial Focus Series",
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window.activateWindow()
+    qtbot.waitUntil(lambda: window.table.hasFocus(), timeout=1000)
+
+    assert window._selected_item_id() == series_id
+    assert window.find_edit.text() == ""
+    window.close()
+
+
+def test_open_with_unmatched_initial_series_focuses_full_table(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    SeriesQueries(temp_db).insert("Some Other Series")
+    window = NameListWindow(
+        temp_db,
+        ui_scaler,
+        theme_manager,
+        "series",
+        initial_name="Zzz No Such Series",
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window.activateWindow()
+    qtbot.waitUntil(lambda: window.table.hasFocus(), timeout=1000)
+
+    assert window.find_edit.text() == ""
+    assert window.table.currentRow() >= 0
+    assert not window.table.isRowHidden(window.table.currentRow())
     window.close()

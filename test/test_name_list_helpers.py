@@ -146,7 +146,6 @@ def _make_stub(*, edit_mode: bool = False):
     save_button = _WidgetState(visible=edit_mode)
     name_edit = _WidgetState(enabled=edit_mode)
     return SimpleNamespace(
-        AUTHOR_FIND_HINT=NameListWindow.AUTHOR_FIND_HINT,
         save_button=save_button,
         name_edit=name_edit,
     )
@@ -171,14 +170,14 @@ def test_format_status_skips_find_messages():
 
     found_message = NameListWindow._format_status_message(
         stub,
-        "Found author: King, Stephen. enter for next, alt+F new search ",
+        "Found author: King, Stephen. Showing only match.",
     )
     no_match_message = NameListWindow._format_status_message(
         stub,
         "No matching authors for 'king'.",
     )
 
-    assert found_message.endswith(" enter for next, alt+F new search")
+    assert found_message == "Found author: King, Stephen. Showing only match."
     assert no_match_message == "No matching authors for 'king'."
 
 def test_format_status_skips_edit_mode():

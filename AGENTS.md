@@ -20,6 +20,7 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 - **Run app:** `python src/main.py`
 - **Install deps:** `pip install -r requirements.txt`
 - **Run tests:** `python -m pytest test/`
+- **Do NOT run the full test suite unless the user asks.** The user runs it. At most, run only the specific test file(s) you added or changed.
 
 ## 3. Accessibility Protocols (MANDATORY)
 - **Screen Reader Protocol:**
@@ -41,6 +42,30 @@ This file provides essential guidance for AI coding agents working on the AbCS (
 - **Escape:** Cancel/close
 - **Alt+U/D:** Update/Delete selected
 - **See:** [README.md](README.md) for full shortcut list
+
+## 4a. App Standards (MANDATORY — read before changing any window)
+The app's standards live in `doc/standards/` (tracked in git). Read the relevant one before editing UI, shortcuts, F1, or status code:
+- [doc/standards/accessibility_ui_standards.md](doc/standards/accessibility_ui_standards.md): master checklist for windows, dialogs, buttons, combos, status, focus, and the per-change JAWS gate.
+- [doc/standards/standard_shortcuts.md](doc/standards/standard_shortcuts.md) (Phase 29): current key standard (Save is always Ctrl+S, Edit Alt+E, New Ctrl+N, Find Ctrl+F, Listen Ctrl+L, Narrator label).
+- [doc/standards/shortcut_centralization_status.md](doc/standards/shortcut_centralization_status.md): what is centralized and what is intentionally local.
+- [doc/standards/shortcut_normalization_plan.md](doc/standards/shortcut_normalization_plan.md): older normalization rules; Phase 29 overrides it where they differ.
+- Originals stay in the gitignored `archive/` folder. When a standard changes, update the `doc/standards/` copy.
+
+**Shortcut and F1 rules (do not deviate):**
+- Alt+letter keys only go in the window's map in `src/accessibility/shortcuts.py` and register through `ShortcutManager.register_alt_shortcuts`.
+- Ctrl keys (Ctrl+N, Ctrl+S, Ctrl+F, Ctrl+L) are local `QShortcut`s in each window. Do not add them to the central maps.
+- F1, Escape, and Alt+/ stay local `QShortcut`s in every window, on purpose, for screen reader reliability. Do not move them into the maps.
+- Do not change `register_alt_shortcuts`, and do not add new shortcut or F1 helpers or registries.
+- F1 popup: each window passes its own explicit list to `exec_f1_shortcuts_dialog`. Shift+F1 is prepended automatically. When keys change, edit that list, the window's help topic, and `help_docs/16_shortcuts.md`.
+- No Alt letter does two things in one window. Freed Alt letters must beep (`is_unmapped_alt_letter`).
+
+**What "centralized" means here:** use the existing shared helpers. These are the Alt-letter maps, `exec_f1_shortcuts_dialog`, `read_status_bar_message`, `announce_status_message`, `install_shift_f1_help`, and the style helpers. It does NOT mean moving every key into one map or building a new mechanism.
+
+**Change discipline:**
+- If something already works and meets the standards, do not rewrite it. Fix only the reported defect.
+- Never create a new handler, helper, or framework when an existing one does the job.
+- If a request could mean "replace the existing mechanism", ask in plain numbered text first.
+- Match existing look and behavior: copy the closest existing window (for example, name list tables for row height and padding) instead of inventing styles.
 
 ## 5. Implementation Patterns
 - **Status bar:** Use `announce_status_message` (see `src/accessibility/accessible_events.py`).

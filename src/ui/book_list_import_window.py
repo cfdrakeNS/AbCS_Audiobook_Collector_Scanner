@@ -1122,10 +1122,14 @@ class BookListImportWindow(AccessibleDialog):
         self.progress_window.set_activity_label("import")
         self.progress_window.help_doc_override = "11_import_book_list.md"
         self.progress_window.finished.connect(self._on_progress_window_closed)
-        self.progress_window.prepare_for_add_phase(total_rows)
         self.progress_window.show()
         self.progress_window.raise_()
         self.progress_window.activateWindow()
+        # No scan phase here, so focus must enter the progress window before the
+        # "Importing started" announcement or the screen reader stays on this window.
+        self.progress_window.scan_progress.setFocus(Qt.OtherFocusReason)
+        QApplication.processEvents()
+        self.progress_window.prepare_for_add_phase(total_rows)
         self._import_start_time = time.perf_counter()
         self._progress_ui_next = 0.0
         QApplication.processEvents()
@@ -1793,7 +1797,7 @@ class BookListImportWindow(AccessibleDialog):
                 if progress_showing:
                     self.progress_window.raise_()
                     self.progress_window.activateWindow()
-                    self.progress_window.setFocus(Qt.TabFocusReason)
+                    self.progress_window.scan_progress.setFocus(Qt.TabFocusReason)
                 else:
                     self.file_edit.setFocus(Qt.TabFocusReason)
             else:
@@ -1805,7 +1809,7 @@ class BookListImportWindow(AccessibleDialog):
                 if progress_showing:
                     self.progress_window.raise_()
                     self.progress_window.activateWindow()
-                    self.progress_window.setFocus(Qt.TabFocusReason)
+                    self.progress_window.scan_progress.setFocus(Qt.TabFocusReason)
                 else:
                     self.file_edit.setFocus(Qt.TabFocusReason)
 

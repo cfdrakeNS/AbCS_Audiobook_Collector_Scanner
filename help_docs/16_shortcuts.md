@@ -255,12 +255,12 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+M | Name edit |
 | Alt+E | Edit selected row |
 | Alt+L | Jump to list |
 | Ctrl+C | Copy selected name |
 | Ctrl+F | Clear find and start a new search |
 | Ctrl+S | Save (when Save button is visible) |
+| Alt+S | Sort dropdown |
 | Alt+Down | Open Sort dropdown (when Sort has focus) |
 | Escape | Return to list from Find, cancel edit, or close window |
 | Alt+/ | Read status bar |

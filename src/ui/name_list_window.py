@@ -160,8 +160,6 @@ class NameListWindow(AccessibleDialog):
     COL_NAME = 0
     COL_ACTIVE = 1
     COL_USAGE = 2
-    AUTHOR_FIND_HINT = " enter for next, clear and start a new search "
-
     def __init__(
         self,
         db: DatabaseManager,
@@ -201,7 +199,7 @@ class NameListWindow(AccessibleDialog):
             focused_initial_match = self.find_first_match(self.initial_name)
             if focused_initial_match:
                 self.focus_list()
-                self.find_edit.clear()
+            self.find_edit.clear()
 
         self.setWindowTitle(f"{self.entity_plural} Manager")
         self.setAccessibleName(f"{self.entity_plural} Manager")
@@ -222,12 +220,28 @@ class NameListWindow(AccessibleDialog):
             if initial_row is not None:
                 self.table.setCurrentCell(initial_row, self.COL_NAME)
                 self.table.selectRow(initial_row)
-        if focused_initial_match:
+        self._open_focus_table = (
+            bool(self.initial_name) or focused_initial_match or self.is_collection_mode
+        )
+        if self._open_focus_table:
             self.table.setFocus()
-        elif not self.is_collection_mode:
-            self.find_edit.setFocus()
         else:
-            self.table.setFocus()
+            self.find_edit.setFocus()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if getattr(self, "_open_focus_table", False):
+            self._open_focus_table = False
+            QTimer.singleShot(0, self._focus_table_on_open)
+
+    def _focus_table_on_open(self) -> None:
+        try:
+            if self.table.rowCount() > 0 and self.table.currentRow() < 0:
+                self.table.setCurrentCell(0, self.COL_NAME)
+                self.table.selectRow(0)
+            self.table.setFocus(Qt.OtherFocusReason)
+        except RuntimeError:
+            pass
 
     def _configure_type_metadata(self):
         self.is_collection_mode = False
@@ -287,7 +301,7 @@ class NameListWindow(AccessibleDialog):
             self.find_label.setVisible(False)
             self.find_edit.setVisible(False)
 
-        name_label = QLabel("Na&me:")
+        name_label = QLabel(f"{self.entity_singular}:")
         self.name_edit = QLineEdit()
         self.name_edit.setAccessibleName(f"{self.entity_singular} name")
         self.name_edit.setAccessibleDescription(
@@ -312,7 +326,7 @@ class NameListWindow(AccessibleDialog):
         self.sort_combo = QComboBox()
         self.sort_combo.setAccessibleName("Sort list by")
         self.sort_combo.setAccessibleDescription(
-            "Sort the list by name or by book count"
+            "Sort the list by name or by book count - Alt+S"
         )
         self.sort_combo.addItem("Name", "name")
         self.sort_combo.addItem("Book count", "books")
@@ -648,7 +662,7 @@ class NameListWindow(AccessibleDialog):
         keys = {
             Qt.Key_E,
             Qt.Key_L,
-            Qt.Key_M,
+            Qt.Key_S,
         }
         if self.is_collection_mode:
             keys.add(Qt.Key_A)
@@ -661,7 +675,7 @@ class NameListWindow(AccessibleDialog):
         callback_map = {
             "table": self.focus_list,
             "edit_button": self.on_edit,
-            "name_edit": self.focus_name_edit,
+            "sort_combo": self.focus_sort_combo,
             "active_check": (
                 self.focus_active_check
                 if hasattr(self, "active_check")
@@ -707,8 +721,8 @@ class NameListWindow(AccessibleDialog):
         self.sort_combo.currentIndexChanged.connect(self._on_sort_combo_changed)
         self.name_edit.returnPressed.connect(self.on_name_edit_enter_pressed)
 
-    def focus_name_edit(self):
-        self.name_edit.setFocus(Qt.ShortcutFocusReason)
+    def focus_sort_combo(self):
+        self.sort_combo.setFocus(Qt.ShortcutFocusReason)
 
     def focus_find_edit(self):
         self.find_edit.setFocus(Qt.ShortcutFocusReason)
@@ -738,7 +752,7 @@ class NameListWindow(AccessibleDialog):
         lower = msg.lower()
         if "no matching" in lower:
             return msg
-        if "enter for next" in lower:
+        if lower.startswith("found "):
             return msg
         if "alt+e" in lower:
             return msg
@@ -811,7 +825,27 @@ class NameListWindow(AccessibleDialog):
         )
         preserve = self._selected_item_id() or self.current_item_id
         self.load_items(preserve_id=preserve, populate_editor=False)
+        self._focus_first_row_after_sort()
         self._announce_sort()
+
+    def _focus_first_row_after_sort(self) -> None:
+        if self.save_button.isVisible() and self.name_edit.isEnabled():
+            return
+        if self.table.rowCount() == 0:
+            return
+        first_row = next(
+            (
+                row
+                for row in range(self.table.rowCount())
+                if not self.table.isRowHidden(row)
+            ),
+            None,
+        )
+        if first_row is None:
+            return
+        self.table.setCurrentCell(first_row, self.COL_NAME)
+        self.table.selectRow(first_row)
+        self.table.setFocus(Qt.OtherFocusReason)
 
     def _announce_sort(self) -> None:
         if self._sort_by == "books":
@@ -835,6 +869,7 @@ class NameListWindow(AccessibleDialog):
         self._sync_sort_combo_selection()
         preserve = self._selected_item_id() or self.current_item_id
         self.load_items(preserve_id=preserve, populate_editor=False)
+        self._focus_first_row_after_sort()
         self._announce_sort()
 
     def _usage_column(self) -> int:
@@ -987,13 +1022,11 @@ class NameListWindow(AccessibleDialog):
         if self._collection_editor_locked:
             if self.is_collection_mode:
                 self.active_check.setChecked(bool(item.active))
-            self._set_edit_hint_status(item.name)
             return
 
         self.name_edit.setText(item.name)
         if self.is_collection_mode:
             self.active_check.setChecked(bool(item.active))
-        self._set_edit_hint_status(item.name)
 
     def _on_table_double_clicked(self, row: int, _column: int) -> None:
         """Double-click a row to start Edit, same as Alt+E / Edit button."""
@@ -1046,7 +1079,6 @@ class NameListWindow(AccessibleDialog):
             self.active_check.setChecked(bool(item.active))
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.selectAll()
-        self._set_edit_hint_status(item.name)
 
     def on_save(self) -> bool:
         # Always sanitize name field before saving
@@ -1254,7 +1286,6 @@ class NameListWindow(AccessibleDialog):
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
         shortcuts = [
-            ("Alt+M", "Name edit"),
             ("Alt+E", "Edit selected row"),
             ("Alt+L", "Jump to list"),
             ("Ctrl+C", "Copy selected name"),
@@ -1269,6 +1300,7 @@ class NameListWindow(AccessibleDialog):
                 if self.save_button.isVisible() and self.save_button.isEnabled()
                 else None
             ),
+            ("Alt+S", "Sort"),
             ("Alt+Down", "Open Sort dropdown (when Sort has focus)"),
             (
                 (
@@ -1484,7 +1516,6 @@ class NameListWindow(AccessibleDialog):
         if best_match_row >= 0:
             self._focus_row(best_match_row)
             item = self.table.item(best_match_row, self.COL_NAME)
-            suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
 
             # Enhanced announcement with position
             position_text = (
@@ -1493,14 +1524,13 @@ class NameListWindow(AccessibleDialog):
                 else "Showing only match"
             )
             self.set_status(
-                f"Found {self.entity_singular.lower()}: {item.text()}. {position_text}.{suffix}",
+                f"Found {self.entity_singular.lower()}: {item.text()}. {position_text}.",
                 announce=True,
             )
             return True
 
-        suffix = self.AUTHOR_FIND_HINT if self.is_author_mode else ""
         self.set_status(
-            f"No matching {self.entity_plural.lower()} for '{text}'.{suffix}",
+            f"No matching {self.entity_plural.lower()} for '{text}'.",
             announce=False,
         )
         return False
@@ -1677,9 +1707,6 @@ class NameListWindow(AccessibleDialog):
                 row = 0  # Always focus first row if no valid current row
             self.table.setCurrentCell(row, self.COL_NAME)
             self.table.selectRow(row)  # Ensure the row is selected
-            name_item = self.table.item(row, self.COL_NAME)
-            if name_item:
-                self._set_edit_hint_status(name_item.text())
         self.table.setFocus(Qt.TabFocusReason)
 
     def focus_and_select_row(self, item_id: int | None) -> None:
@@ -1710,8 +1737,3 @@ class NameListWindow(AccessibleDialog):
             self.table.setFocus(Qt.TabFocusReason)
             return
         self.focus_list()
-
-    def _set_edit_hint_status(self, item_name: str):
-        # Only show the name, no shortcut hints
-        name_text = (item_name or "").strip() or self.entity_singular.lower()
-        self.set_status(f"{name_text}")

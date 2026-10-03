@@ -3682,16 +3682,10 @@ class MainWindow(QMainWindow):
             "Genre": 4,
         }
 
-        # Pre-select Find field from focused table column (Author/Title/Series/Genre),
-        # otherwise keep the last-used search field.
+        # Pre-select Find field from focused table column (Author/Title/Series/Genre);
+        # any other column defaults to Title.
         column_to_field = {col: name for name, col in field_to_column.items()}
-        focused_col = self.table.currentColumn()
-        if focused_col in column_to_field:
-            current_field = column_to_field[focused_col]
-        elif self.current_filter.search_field in field_to_column:
-            current_field = self.current_filter.search_field
-        else:
-            current_field = "Title"
+        current_field = column_to_field.get(self.table.currentColumn(), "Title")
         field_combo.setCurrentText(current_field)
 
         # Always start with an empty find text box; do not prefill last search.
@@ -5069,8 +5063,9 @@ class MainWindow(QMainWindow):
 
         outcome = run_batch_web_fetch_with_progress(books, parent=self)
         if not outcome.results:
+            self._clear_book_table_selection()
             self.set_status("Batch web fetch canceled.", announce=True, timeout_ms=4000)
-            self.table.setFocus()
+            self._focus_row_after_batch_fetch(first_selected_row)
             return
 
         summary = BatchWebFetchSummaryDialog(outcome, parent=self)
@@ -5097,6 +5092,9 @@ class MainWindow(QMainWindow):
 
         self._clear_book_table_selection()
         self.set_status(message, announce=True, timeout_ms=timeout_ms)
+        self._focus_row_after_batch_fetch(first_selected_row)
+
+    def _focus_row_after_batch_fetch(self, first_selected_row) -> None:
         if first_selected_row is not None and self.table.rowCount() > 0:
             target_row = min(first_selected_row, self.table.rowCount() - 1)
             self.table.setCurrentCell(target_row, 1)

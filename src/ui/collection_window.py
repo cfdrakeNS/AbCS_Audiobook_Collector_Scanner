@@ -6,7 +6,7 @@ import re
 import sqlite3
 
 from PySide6.QtCore import QEvent, QSettings, Qt, QTimer
-from PySide6.QtGui import QFontMetrics, QKeySequence, QShortcut, QAccessible
+from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from src.ui.accessible_dialog import AccessibleDialog
 import sys
 from PySide6.QtWidgets import (
@@ -231,6 +231,7 @@ class CollectionWindow(AccessibleDialog):
         vh.setFocusPolicy(Qt.NoFocus)
         vh.setEnabled(False)
         self.table.setVerticalHeaderLabels([])
+        self.table.setShowGrid(False)
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
         header.setMinimumSectionSize(60)
@@ -290,7 +291,6 @@ class CollectionWindow(AccessibleDialog):
         from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 
         scaled_height = int(20 * (self.scaler.current_scale / 100.0))
-        cell_pad = max(int(8 * self.scaler.current_scale / 100), 4)
         button_style = build_modern_button_style(scaled_height)
         table_style = (
             build_accessible_f1_popup_style()
@@ -299,10 +299,6 @@ class CollectionWindow(AccessibleDialog):
             QTableWidget {{
                 border: 1px solid palette(mid);
                 border-radius: {self.scaler.get_scaled_size(5)}px;
-            }}
-            QTableWidget::item {{
-                padding-top: {cell_pad}px;
-                padding-bottom: {cell_pad}px;
             }}
             """
         )
@@ -364,12 +360,7 @@ class CollectionWindow(AccessibleDialog):
 
     def _sync_table_row_heights(self) -> None:
         vh = self.table.verticalHeader()
-        fm = QFontMetrics(self.table.font())
-        cell_pad = max(int(8 * self.scaler.current_scale / 100), 4)
-        row_h = max(
-            fm.height() + cell_pad * 2 + 4,
-            self.scaler.get_scaled_size(32),
-        )
+        row_h = max(self.scaler.get_scaled_size(24), 20)
         vh.setDefaultSectionSize(row_h)
         for row in range(self.table.rowCount()):
             self.table.setRowHeight(row, row_h)

@@ -35,6 +35,55 @@ def test_collection_window_accessible_name_and_list(
     window.close()
 
 
+def test_collection_window_new_is_local_ctrl_n(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    from PySide6.QtGui import QKeySequence
+
+    from src.accessibility.shortcuts import ShortcutManager
+
+    window = CollectionWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    assert window.new_shortcut.key() == QKeySequence("Ctrl+N")
+    assert "N" not in ShortcutManager.COLLECTION_WINDOW_SHORTCUTS
+    assert "N" not in window.ALLOWED_ALT_LETTERS
+    window.close()
+
+
+def test_collection_f1_list_shows_ctrl_n_for_new(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    captured = {}
+    monkeypatch.setattr(
+        "src.accessibility.shortcut_helpers.exec_f1_shortcuts_dialog",
+        lambda _parent, _title, rows: captured.setdefault("rows", rows),
+    )
+    window = CollectionWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.on_show_shortcuts()
+
+    rows = captured["rows"]
+    assert ("Ctrl+N", "New") in rows
+    assert not any(key == "Alt+N" for key, _desc in rows)
+    window.close()
+
+
+def test_collection_window_row_height_matches_name_list(
+    temp_db, ui_scaler, theme_manager, qtbot
+):
+    CollectionQueries(temp_db).insert(
+        Collection(name="CW Row Height Unique", active=True)
+    )
+    window = CollectionWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    expected = max(ui_scaler.get_scaled_size(24), 20)
+    assert window.table.verticalHeader().defaultSectionSize() == expected
+    assert window.table.rowHeight(0) == expected
+    window.close()
+
+
 def test_collection_window_saves_existing_root(
     temp_db, ui_scaler, theme_manager, qtbot, tmp_path
 ):

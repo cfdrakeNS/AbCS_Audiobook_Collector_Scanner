@@ -148,3 +148,25 @@ def test_read_status_bar_message_speaks_through_window_not_status_bar(qtbot, mon
     assert captured["message"] == "visible status"
     assert captured["widget"] is window
     assert captured["widget"] is not bar
+
+
+def test_plain_readback_on_main_window_uses_central_widget(qtbot, monkeypatch):
+    from PySide6.QtWidgets import QWidget
+
+    from src.accessibility.accessible_events import announce_plain_text_readback
+
+    window, _bar = _window_with_bar(qtbot)
+    central = QWidget()
+    central.setAccessibleName("Library")
+    window.setCentralWidget(central)
+    window.setAccessibleName("AbCS")
+    monkeypatch.setattr(
+        "src.accessibility.accessible_events.QAccessible.isActive",
+        lambda: True,
+    )
+
+    announce_plain_text_readback(window, "12 books")
+
+    assert central.accessibleName() == "12 books"
+    assert window.accessibleName() == "AbCS"
+    qtbot.waitUntil(lambda: central.accessibleName() == "Library", timeout=2000)
