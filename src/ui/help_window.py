@@ -20,7 +20,7 @@ import html
 import re
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, Qt, QTimer, QRect
+from PySide6.QtCore import QEvent, QObject, Qt, QTimer, QRect, QSize
 from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeyEvent, QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -87,7 +87,8 @@ QListWidget {
     show-decoration-selected: 1;
 }
 QListWidget::item {
-    padding: 2px 6px;
+    padding: 0px 6px;
+    margin: 0px;
     color: palette(text);
     background: palette(base);
 }
@@ -525,6 +526,7 @@ class HelpWindow(AccessibleDialog):
             "Use Tab to move to the help content."
         )
         self.nav_list.setStyleSheet(_NAV_LIST_STYLE)
+        self.nav_list.setUniformItemSizes(True)
         self.nav_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.nav_list.itemClicked.connect(self._on_nav_item_activated)
         self._splitter.addWidget(self.nav_list)
@@ -795,6 +797,22 @@ class HelpWindow(AccessibleDialog):
             """
         )
         self.nav_list.setStyleSheet(_NAV_LIST_STYLE)
+        self._apply_nav_item_heights()
+
+    def _apply_nav_item_heights(self) -> None:
+        """Compact rows so more topics or sections fit in the navigation pane."""
+        count = self.nav_list.count()
+        if count <= 0:
+            return
+        fm = self.nav_list.fontMetrics()
+        pad = max(2, self.scaler.get_scaled_size(2))
+        row_h = fm.height() + pad
+        for row in range(count):
+            item = self.nav_list.item(row)
+            if item is None:
+                continue
+            w = item.sizeHint().width()
+            item.setSizeHint(QSize(w if w > 0 else 0, row_h))
 
     def eventFilter(self, obj, event) -> bool:
         from PySide6.QtWidgets import QApplication
@@ -911,6 +929,7 @@ class HelpWindow(AccessibleDialog):
         self._set_nav_description()
         self.status_bar.showMessage("Showing help topics")
         self._update_nav_list_width()
+        self._apply_nav_item_heights()
         self._balance_splitter()
 
     def _show_headings_list(self, headings: list[tuple[str, str, int]]) -> None:
@@ -931,6 +950,7 @@ class HelpWindow(AccessibleDialog):
 
         self._set_nav_description()
         self._update_nav_list_width()
+        self._apply_nav_item_heights()
         self._balance_splitter()
 
     def _on_nav_item_activated(self, item: QListWidgetItem) -> None:

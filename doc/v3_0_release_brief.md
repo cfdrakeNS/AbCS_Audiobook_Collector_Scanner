@@ -36,7 +36,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 ### Maintain and export
 
 - Book Details **Browse** beside path; path open in file manager.
-- **View → Check Book Locations** (formerly Check Books Path): scan for blank, missing, or off-root paths; filters; CSV export; open Book Details from a row; Import-style progress for large scans.
+- **View → Check Book Locations** (formerly Check Books Path): scan for blank, missing, or off-root paths using the **same path lookup as Listen** (`locate_book_path`); auto-correct paths found under the collection folder; filters; CSV export; open Book Details from a row; Import-style progress for large scans.
 - **File → Export Library** to CSV (UTF-8 BOM) or JSON for the visible list or selection.
 - Name-list merge when renaming duplicates (author, series, genre).
 - Standard shortcuts: **Ctrl+L** Listen, **Ctrl+S** save where applicable, **Edit** menu mnemonic, Narrator label on book list import, and related toolbar/menu cleanup.

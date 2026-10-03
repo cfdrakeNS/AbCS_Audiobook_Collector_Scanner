@@ -1,4 +1,7 @@
-"""Check Book Locations — books whose stored path is empty, missing, or incorrect."""
+"""Check Book Locations — books whose stored path is empty, missing, or incorrect.
+
+Uses ``locate_book_path`` from ``audio_launcher`` (same lookup as Listen).
+"""
 
 from __future__ import annotations
 
