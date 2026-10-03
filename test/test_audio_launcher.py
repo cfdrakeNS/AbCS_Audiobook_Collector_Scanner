@@ -53,7 +53,7 @@ def test_resolve_preview_empty_and_missing(tmp_path):
     assert resolve_preview_file("").error == (
         "This book has no file path and the collection folder is not set. "
         "To fix, open Manage > Collections, edit the collection, and set the "
-        "Library root folder."
+        "collection folder."
     )
     assert preview_can_launch("") is False
     target = resolve_preview_file(str(missing))
@@ -331,7 +331,7 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert preview.position_label.alignment() & int(Qt.AlignHCenter)
     assert hasattr(preview, "position_slider")
     assert preview.position_slider.focusPolicy() == Qt.StrongFocus
-    assert preview.position_label.accessibleName() == "Seek position at 0:00"
+    assert preview.position_label.accessibleName() == "Play position 0:00 / 10:35"
     assert preview.cover_label.isVisible()
     assert preview.cover_label.accessibleName() == "No cover"
     assert not preview.cover_label.pixmap().isNull()
@@ -344,6 +344,11 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     ok, message = show_preview(None, "", ui_scaler, theme_manager)
     assert ok is False
     assert "collection folder is not set" in message
+    ok, message = show_preview(
+        None, "", ui_scaler, theme_manager, book_title="Killing Floor"
+    )
+    assert ok is False
+    assert message.startswith('Could not find "Killing Floor".')
 
 
 def test_listen_progress_uses_book_time_or_track_ordinal(tmp_path, monkeypatch):
@@ -573,6 +578,92 @@ def test_escape_on_later_track_does_not_prompt_for_short_track_position(
     assert prompts == []
 
 
+@pytest.mark.parametrize(
+    ("listened_minutes", "reply", "expect_prompt", "expect_saved"),
+    [
+        (4, None, False, False),
+        (6, "yes", True, True),
+        (6, "no", True, False),
+    ],
+)
+def test_save_position_prompt_only_after_five_minutes(
+    tmp_path,
+    ui_scaler,
+    theme_manager,
+    qtbot,
+    monkeypatch,
+    listened_minutes,
+    reply,
+    expect_prompt,
+    expect_saved,
+):
+    from types import SimpleNamespace
+
+    from PySide6.QtWidgets import QMessageBox
+
+    from src.ui.preview_window import PreviewWindow
+
+    track = tmp_path / "01.mp3"
+    track.write_bytes(b"x")
+
+    class DummySignal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+    class FakePlayer:
+        class PlaybackState:
+            StoppedState = 0
+            PlayingState = 1
+            PausedState = 2
+
+        def __init__(self):
+            for name in (
+                "playbackStateChanged",
+                "errorOccurred",
+                "mediaStatusChanged",
+                "positionChanged",
+                "durationChanged",
+            ):
+                setattr(self, name, DummySignal())
+            self._position = 90_000
+
+        def __getattr__(self, _name):
+            return lambda *_args, **_kwargs: None
+
+        def position(self):
+            return self._position
+
+        def duration(self):
+            return 0
+
+        def playbackState(self):
+            return self.PlaybackState.PausedState
+
+    prompts = []
+
+    def fake_box(*_args, **kwargs):
+        prompts.append(kwargs.get("text", ""))
+        return QMessageBox.Yes if reply == "yes" else QMessageBox.No
+
+    monkeypatch.setattr("src.ui.preview_window.exec_styled_message_box", fake_box)
+    book = SimpleNamespace(book_id=None, listen_position_ms=None, listen_file_name="")
+    window = PreviewWindow(
+        None, ui_scaler, theme_manager, player_types=(FakePlayer, object), book=book
+    )
+    qtbot.addWidget(window)
+    ok, _message = window.play_playlist(
+        SimpleNamespace(files=(track,), start_index=0, folder_mode=False, error="")
+    )
+    assert ok
+    window._playing_since = None
+    window._listened_ms = listened_minutes * 60 * 1000
+
+    window.request_close()
+
+    assert bool(prompts) is expect_prompt
+    assert (book.listen_position_ms == 90_000) is expect_saved
+
+
 def test_preview_next_returns_focus_to_play_pause(
     tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch
 ):
@@ -737,17 +828,18 @@ def test_preview_next_returns_focus_to_play_pause(
     window.position_slider.setValue(15)
     window._on_slider_released()
     assert window._player.position() == 15_000
-    assert window.position_label.accessibleName() == "Seek position at 0:15"
+    assert window.position_label.accessibleName() == "Play position 0:15"
     window.position_label.setFocus(Qt.TabFocusReason)
     qtbot.keyClick(window.position_label, Qt.Key_Right)
     assert window._player.position() == 20_000
-    assert window.position_label.accessibleName() == "Seek position at 0:20"
+    assert window.position_label.accessibleName() == "Play position 0:20"
     window.position_slider.setFocus(Qt.TabFocusReason)
     qtbot.keyClick(window.position_slider, Qt.Key_Right)
     assert window._player.position() == 25_000
-    assert window.position_label.accessibleName() == "Seek position at 0:25"
+    assert window.position_label.accessibleName() == "Play position 0:25"
     slider_accessible = QAccessible.queryAccessibleInterface(window.position_slider)
     assert slider_accessible.role() == QAccessible.Role.Slider
-    assert slider_accessible.text(QAccessible.Text.Name) == "Seek position at 0:25"
+    assert slider_accessible.text(QAccessible.Text.Value) == ""
+    assert slider_accessible.text(QAccessible.Text.Name) == "Play position 0:25"
     assert slider_accessible.valueInterface().currentValue() == 25
     window.close()

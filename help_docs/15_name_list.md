@@ -59,7 +59,7 @@ See [Update](05_update.md) for bulk edits.
 ## Common confusion
 
 **Name list vs Collections — which window?**
-Use this window for author, genre, and series **names**. Use **Manage → Collections** and [Collections](06_collections.md) for library collections (Active, library root folder, and so on).
+Use this window for author, genre, and series **names**. Use **Manage → Collections** and [Collections](06_collections.md) for virtual libraries (Active, collection folder on disk, and so on).
 
 **How do I remove series or genre from a book?**
 Use [Update](05_update.md) and set **Series** or **Genre** to **None**. Renaming or deleting a name in this window does not automatically clear that field on every book unless you merge names as described above.

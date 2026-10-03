@@ -329,6 +329,7 @@ class BookDetailsWindow(AccessibleDialog):
         theme_manager: ThemeManager = None,
         parent=None,
         current_collection_id=None,
+        keep_edit_mode: bool = False,
     ):
         """
         Initialize book details window.
@@ -344,6 +345,7 @@ class BookDetailsWindow(AccessibleDialog):
             theme_manager: Theme manager for styling
             parent: Parent widget
             current_collection_id: Current collection ID (if provided and new book)
+            keep_edit_mode: Stay in edit mode (Save shown) after paging and saving
         """
         # Initialize book details window
         super().__init__(parent)
@@ -365,6 +367,7 @@ class BookDetailsWindow(AccessibleDialog):
         self._dirty = False  # bd#6: Track if form has unsaved changes
         self._data_was_changed = False  # True after save/delete/web apply; gates list refresh
         self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
+        self._keep_edit_mode = bool(keep_edit_mode)
         self._first_dirty_widget = None  # Track first field that changed
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
@@ -1247,7 +1250,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.browse_path_button.setAccessibleName("Browse book path")
         self.browse_path_button.setAccessibleDescription(
             "Choose the folder or audio file for this book - Alt+B. "
-            "Does not change the collection library root."
+            "Does not change the collection folder."
         )
         self.browse_path_button.setAutoDefault(False)
         self.browse_path_button.setDefault(False)
@@ -1575,7 +1578,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.source_edit: (
                     "Import source",
-                    "How this book was added to the library",
+                    "How this book was added to the collection",
                 ),
                 self.path_edit: (
                     "Folder or file path",
@@ -2859,6 +2862,8 @@ class BookDetailsWindow(AccessibleDialog):
             self.genre_label_display.setText(self.genre_combo.currentText())
             self.collection_label_display.setText(self.collection_combo.currentText())
             self._update_header_card()
+            if self._keep_edit_mode:
+                self.on_edit_mode()
             # Show edit button, hide save button
             self._clear_dirty()  # Clears dirty state and updates button visibility
 
@@ -3335,7 +3340,7 @@ class BookDetailsWindow(AccessibleDialog):
         root = self._preview_collection_root().strip()
         if root and not path_is_under_root(selected, root):
             self.set_status(
-                "Path updated. Not under the collection library root.",
+                "Path updated. Not under the collection folder.",
                 announce=True,
             )
         else:
@@ -3383,6 +3388,28 @@ class BookDetailsWindow(AccessibleDialog):
             return
         self.path_edit.setText(saved)
         self._data_was_changed = True
+
+    def _show_filled_file_stats(self) -> None:
+        """Show length, files, size, and bitrate Listen read from the audio files."""
+        if not self.book or not hasattr(self, "files_edit"):
+            return
+        values = (
+            (self.time_edit, self.book.time_display if (self.book.time_hours or self.book.time_minutes) else ""),
+            (self.files_edit, str(self.book.tracks) if self.book.tracks else ""),
+            (self.size_edit, self.book.size_display if self.book.size_mb else ""),
+            (self.bitrate_edit, str(self.book.bitrate) if self.book.bitrate else ""),
+        )
+        changed = False
+        self._loading_fields = True
+        try:
+            for edit, text in values:
+                if text and edit.text().strip() != text:
+                    edit.setText(text)
+                    changed = True
+        finally:
+            self._loading_fields = False
+        if changed:
+            self._data_was_changed = True
 
     def _preview_book_title(self) -> str:
         if hasattr(self, "title_edit"):
@@ -3618,6 +3645,7 @@ class BookDetailsWindow(AccessibleDialog):
             collection_name=self._preview_collection_name(),
         )
         self._show_found_book_path()
+        self._show_filled_file_stats()
         if ok:
             if hasattr(self, "listen_progress_edit"):
                 self.listen_progress_edit.setText(self._format_listen_progress())
@@ -3754,6 +3782,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.book = self.books_list[self.current_index]
                 self.is_new = False
                 self.load_book_data()
+                if self._keep_edit_mode or self._in_edit_mode:
+                    self.on_edit_mode()
                 self._clear_dirty(preserve_status=True)
                 self.update_navigation_state()
                 self._focus_title_after_navigation()
@@ -3773,6 +3803,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.book = self.books_list[self.current_index]
                 self.is_new = False
                 self.load_book_data()
+                if self._keep_edit_mode or self._in_edit_mode:
+                    self.on_edit_mode()
                 self._clear_dirty(preserve_status=True)
                 self.update_navigation_state()
                 self._focus_title_after_navigation()

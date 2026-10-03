@@ -1,5 +1,5 @@
 # .vultureignore — known false positives reviewed and confirmed live or intentional
-# Last updated: June 2, 2026
+# Last updated: October 3, 2026
 
 # src/accessibility/scaling.py
 # Public API method called from preferences_window.py at runtime
@@ -16,3 +16,9 @@ row_factory
 # src/ui/book_list_import_window.py
 # Fallback stub class defined in the `except ImportError` block when pandas is unavailable
 DataFrame
+
+# src/ui/preview_window.py — QAccessibleValueInterface; Qt calls from C++ accessibility bridge
+maximumValue
+minimumValue
+minimumStepSize
+setCurrentValue

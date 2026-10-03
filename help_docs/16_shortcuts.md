@@ -23,6 +23,7 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+W | Fetch web info (batch when two or more selected) |
 | Ctrl+L | Listen to focused book inside AbCS (disabled while books are selected) |
 | Alt+F, X | File → Export Library |
+| Alt+V, L | View → Check Book Locations |
 | Ctrl+F | Find |
 | Ctrl+C | Copy focused cell |
 | Ctrl+I | Import |
@@ -200,6 +201,7 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+L | Jump to list |
 | Ctrl+N | New |
 | Alt+E | Edit selected row |
+| Alt+B | Browse collection folder |
 | Ctrl+S | Save |
 | Alt+D | Delete |
 | Escape | Cancel edit/new or close window |
@@ -247,15 +249,17 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | F1 | Show keyboard shortcuts |
 | Shift+F1 | Show Context Help |
 
-## Check Books Path window
+## Check Book Locations window
 
 | Shortcut | Action |
 |----------|--------|
 | Alt+C | Collection |
 | Alt+F | Filter |
+| Alt+I | Info instructions |
 | Alt+S | Scan |
 | Alt+L | Jump to list |
 | Enter | Open Book Details |
+| Page Up / Page Down | Previous or next listed book (in Book Details) |
 | Alt+X | Export list to CSV |
 | Escape | Cancel scan or close |
 | Alt+/ | Read status bar |

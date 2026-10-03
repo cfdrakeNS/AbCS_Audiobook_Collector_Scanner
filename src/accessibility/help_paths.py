@@ -37,7 +37,7 @@ _HELP_TOPIC_ORDER = (
     "09_backup_restore.md",
     "05_update.md",
     "10_preferences.md",
-    "24_path_health.md",
+    "24_check_book_locations.md",
     "25_export_library.md",
     "14_statistics.md",
     "11_import_book_list.md",

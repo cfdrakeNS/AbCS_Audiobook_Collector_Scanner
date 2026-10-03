@@ -141,7 +141,7 @@ ROWS = [
     (
         "F01",
         "Follow-on",
-        "Path health report",
+        "Check Book Locations",
         "A report listing books whose file path no longer exists on disk (moved, deleted, or wrong drive).",
         "2-3 days",
         "Low",
@@ -156,7 +156,7 @@ ROWS = [
         "~2 days",
         "Low",
         "Read-only export; main risk is large-library performance.",
-        "Wave 4; pairs with path health report",
+        "Wave 4; pairs with Check Book Locations",
     ),
     (
         "F03",
@@ -165,7 +165,7 @@ ROWS = [
         "Quick filters on the main window: show only books with no plot, no cover, no rating, or no file path.",
         "2-3 days",
         "Medium",
-        "Cover and rating filters depend on Wave 2 schema; overlaps conceptually with path health.",
+        "Cover and rating filters depend on Wave 2 schema; overlaps conceptually with Check Book Locations.",
         "After Wave 2",
     ),
     (

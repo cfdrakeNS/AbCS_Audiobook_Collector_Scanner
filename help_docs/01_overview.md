@@ -130,7 +130,7 @@ Low-vision users can increase text size under **Manage → Preferences → Displ
 | [Reading History](13_reading_history.md) | Books finished and listening totals by period |
 | [Statistics](14_statistics.md) | Library-wide counts and collection breakdown |
 | [Name List](15_name_list.md) | View and edit author, series, and genre name lists |
-| [Check Books Path](24_path_health.md) | List books whose stored path is blank, missing, or not under the library root |
+| [Check Book Locations](24_check_book_locations.md) | List books whose stored path is blank, missing, or not under the collection folder |
 | [Export Library](25_export_library.md) | Save the books shown in the main list to a CSV or JSON file |
 
 ## Explained guides
@@ -151,7 +151,7 @@ A default collection named **Audio Books** is created when the database is first
 2. **Find and Filters** — browse and narrow the book list. See [Find and Filters](03_find_filters.md).
 3. **Book Details** — fix metadata or add a manual entry. See [Book Details](04_book_details.md).
 4. **Listen to a book** — play a book and learn about resume positions. See [Listen to a book](26_listen_to_a_book.md).
-5. **Collections** — organize your library. See [Collections](06_collections.md).
+5. **Collections** — virtual libraries (drives, shares, or lists). See [Collections](06_collections.md).
 6. **Web Metadata Fetch** — enrich a book with online details. See [Web Metadata Fetch](07_web_metadata.md).
 7. **Duplicate Mode** — find and remove duplicate entries. See [Duplicate Mode](08_duplicate_mode.md).
 8. **Backup and Restore** — confirm you can save and recover your data. See [Backup and Restore](09_backup_restore.md).

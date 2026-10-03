@@ -179,3 +179,73 @@ def test_collection_window_double_click_starts_edit(
     assert window.current_collection_id == cid
     assert window.name_edit.text() == name
     window.close()
+
+
+def _edit_collection_window(temp_db, ui_scaler, theme_manager, qtbot, name):
+    cid = CollectionQueries(temp_db).insert(Collection(name=name, active=True))
+    window = CollectionWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.focus_and_select_row(cid)
+    window.on_edit()
+    return window, cid
+
+
+def _record_box(monkeypatch, reply):
+    asked = []
+
+    def fake_box(*_args, **kwargs):
+        asked.append(kwargs.get("text", ""))
+        return reply
+
+    monkeypatch.setattr("src.ui.collection_window.exec_styled_message_box", fake_box)
+    return asked
+
+
+def test_escape_in_clean_edit_cancels_without_asking(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    window, _cid = _edit_collection_window(
+        temp_db, ui_scaler, theme_manager, qtbot, "CW Escape Clean Unique"
+    )
+    asked = _record_box(monkeypatch, QMessageBox.Yes)
+
+    window.on_escape_pressed()
+
+    assert asked == []
+    assert window._editor_locked is True
+    window.close()
+
+
+def test_escape_with_changes_yes_saves(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    window, cid = _edit_collection_window(
+        temp_db, ui_scaler, theme_manager, qtbot, "CW Escape Save Unique"
+    )
+    asked = _record_box(monkeypatch, QMessageBox.Yes)
+    window.name_edit.setText("Escape Saved Name")
+
+    window.on_escape_pressed()
+
+    assert asked == ["Save changes to this collection?"]
+    assert CollectionQueries(temp_db).get_by_id(cid).name == "Escape Saved Name"
+    assert window._editor_locked is True
+    qtbot.wait(250)
+    window.close()
+
+
+def test_escape_with_changes_no_discards(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    window, cid = _edit_collection_window(
+        temp_db, ui_scaler, theme_manager, qtbot, "CW Escape Discard Unique"
+    )
+    asked = _record_box(monkeypatch, QMessageBox.No)
+    window.name_edit.setText("CW Escape Discarded Name")
+
+    window.on_escape_pressed()
+
+    assert asked
+    assert CollectionQueries(temp_db).get_by_id(cid).name == "CW Escape Discard Unique"
+    assert window._editor_locked is True
+    window.close()

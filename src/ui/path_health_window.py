@@ -1,4 +1,4 @@
-"""Path Health report — list books with empty, missing, or incorrect paths."""
+"""Check Book Locations — list books with empty, missing, or incorrect paths."""
 
 from __future__ import annotations
 
@@ -17,7 +17,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMessageBox,
     QPushButton,
+    QSizePolicy,
     QStatusBar,
     QTableWidget,
     QTableWidgetItem,
@@ -49,16 +51,17 @@ from src.accessibility.style_helpers import (
     apply_visual_tooltip_map,
     build_modern_button_style,
     build_table_polish_style,
+    exec_styled_message_box,
 )
 from src.accessibility.theme_manager import ThemeManager, get_theme_manager
-from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
+from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY, root_path_issue
 from src.core.path_health import (
     FILTER_ALL,
     FILTER_INCORRECT,
     FILTER_MISSING,
     STATUS_EMPTY,
-    STATUS_INCORRECT,
     STATUS_MISSING,
+    STATUS_RESOLVED,
     PathHealthCounts,
     PathHealthRow,
     iter_book_path_checks,
@@ -74,13 +77,23 @@ from src.ui.import_progress_window import ImportProgressWindow
 
 
 class PathHealthWindow(AccessibleDialog):
-    """Report books whose stored path is empty, missing, or not under library root."""
+    """Report books whose stored path is empty, missing, or not under the collection folder."""
 
     COL_AUTHOR = 0
     COL_TITLE = 1
     COL_PATH = 2
 
-    ALLOWED_ALT_LETTERS = "CFLSX/"
+    ALLOWED_ALT_LETTERS = "CFILSX/"
+
+    GUIDE_TEXT = (
+        "Choose a collection and filter, then press Scan. Each book is checked "
+        "against its stored path, then under the collection folder using your "
+        "import scenario layout. When the stored path is blank or wrong but the "
+        "book is found in the collection folder, the path is corrected and the "
+        "book is not listed. Missing: the book cannot be found. Incorrect: the "
+        "path exists but is outside the collection folder. Press Enter on a book "
+        "to open Book Details."
+    )
 
     def __init__(
         self,
@@ -97,6 +110,7 @@ class PathHealthWindow(AccessibleDialog):
         self.collection_queries = CollectionQueries(db)
         self._rows: list[PathHealthRow] = []
         self._scan_rows_all: list[PathHealthRow] = []
+        self._scan_books: dict[int, object] = {}
         self._scanned_total = 0
         self._last_scan_status = ""
         self._loading = False
@@ -104,11 +118,11 @@ class PathHealthWindow(AccessibleDialog):
         self.progress_window: ImportProgressWindow | None = None
 
         self.setWindowIcon(get_app_icon())
-        self.setWindowTitle("Check Books Path")
-        self.setAccessibleName("Check Books Path Window")
+        self.setWindowTitle("Check Book Locations")
+        self.setAccessibleName("Check Book Locations Window")
         self.setAccessibleDescription(
             "Lists books whose stored path is blank, missing on disk, or not "
-            "under the collection library root. Press Enter on a row to open Book Details."
+            "under the collection folder. Press Enter on a row to open Book Details."
         )
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMinimumSize(720, 480)
@@ -134,7 +148,7 @@ class PathHealthWindow(AccessibleDialog):
 
         collection_label = QLabel("&Collection:")
         self.collection_combo = QComboBox()
-        self.collection_combo.setAccessibleName("Check books path collection")
+        self.collection_combo.setAccessibleName("Check book locations collection")
         self.collection_combo.setAccessibleDescription(
             "All Collections or one collection whose book paths to check - Alt+C"
         )
@@ -144,11 +158,11 @@ class PathHealthWindow(AccessibleDialog):
 
         filter_label = QLabel("&Filter:")
         self.filter_combo = QComboBox()
-        self.filter_combo.setAccessibleName("Check books path filter")
+        self.filter_combo.setAccessibleName("Check book locations filter")
         self.filter_combo.setAccessibleDescription(
-            "Missing: blank or not playable after Listen remap. "
-            "Incorrect: playable via remap, or on disk but not under the library root. "
-            "All: both missing and incorrect. Alt+F"
+            "Missing: the book cannot be found. "
+            "Incorrect: on disk but not under the collection folder. "
+            "All: missing and incorrect. Alt+F"
         )
         for label, data in (
             ("Missing", FILTER_MISSING),
@@ -169,13 +183,25 @@ class PathHealthWindow(AccessibleDialog):
         )
         self.scan_button.setDefault(False)
         self.scan_button.setAutoDefault(False)
-        self.scan_button.clicked.connect(self.run_scan)
+        self.scan_button.clicked.connect(lambda: self.run_scan())
         header_layout.addWidget(self.scan_button)
 
         layout.addLayout(header_layout)
 
+        self.guide_label = QLabel(self.GUIDE_TEXT)
+        self.guide_label.setWordWrap(True)
+        self.guide_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.guide_label.setObjectName("checkBookLocationsGuide")
+        self.guide_label.setFocusPolicy(Qt.TabFocus)
+        self.guide_label.setAccessibleName(self.GUIDE_TEXT)
+        self.guide_label.setAccessibleDescription(
+            "How this scan works - Alt+I"
+        )
+        self.guide_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        layout.addWidget(self.guide_label)
+
         self.table = QTableWidget()
-        self.table.setAccessibleName("Check books path list")
+        self.table.setAccessibleName("Check book locations list")
         self.table.setAccessibleDescription(
             "Books with invalid paths for the selected filter. "
             "Use Up and Down arrows to move between rows. "
@@ -183,7 +209,7 @@ class PathHealthWindow(AccessibleDialog):
         )
         apply_tooltip_accessibility(
             self.table,
-            "Check books path list",
+            "Check book locations list",
             "Books with invalid paths for the selected filter",
         )
         self.table.setColumnCount(3)
@@ -217,6 +243,7 @@ class PathHealthWindow(AccessibleDialog):
         }
         self.table.doubleClicked.connect(self.on_open_details)
         self.table.installEventFilter(self)
+        self.scan_button.installEventFilter(self)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -234,12 +261,14 @@ class PathHealthWindow(AccessibleDialog):
         self.export_button.setAutoDefault(False)
         self.export_button.setEnabled(False)
         self.export_button.clicked.connect(self.on_export_csv)
+
         footer_layout.addWidget(self.export_button)
         layout.addLayout(footer_layout)
 
         self.setTabOrder(self.collection_combo, self.filter_combo)
         self.setTabOrder(self.filter_combo, self.scan_button)
-        self.setTabOrder(self.scan_button, self.table)
+        self.setTabOrder(self.scan_button, self.guide_label)
+        self.setTabOrder(self.guide_label, self.table)
         self.setTabOrder(self.table, self.export_button)
 
         self.collection_combo.currentIndexChanged.connect(self.on_collection_changed)
@@ -250,9 +279,9 @@ class PathHealthWindow(AccessibleDialog):
             {
                 self.collection_combo: "Collection to scan",
                 self.filter_combo: (
-                    "Missing = blank or not on disk; "
-                    "Incorrect = off library root; "
-                    "All = missing and incorrect"
+                    "Missing = not found; "
+                    "Incorrect = outside the collection folder; "
+                    "All = every problem"
                 ),
                 self.scan_button: "Scan the selected collection",
                 self.export_button: "Export list to CSV",
@@ -281,6 +310,16 @@ class PathHealthWindow(AccessibleDialog):
         """
         self.scan_button.setObjectName("primaryActionButton")
         self.status_bar.setStyleSheet(status_style)
+        self.guide_label.setStyleSheet(
+            "QLabel#checkBookLocationsGuide {"
+            "  background-color: palette(base);"
+            "  border: 1px solid palette(mid);"
+            "  padding: 5px;"
+            "}"
+            "QLabel#checkBookLocationsGuide:focus {"
+            "  border: 2px solid palette(highlight);"
+            "}"
+        )
 
         for widget in self.findChildren(QComboBox):
             widget.setStyleSheet("")
@@ -289,7 +328,6 @@ class PathHealthWindow(AccessibleDialog):
 
         apply_decorative_action_icon(self.scan_button, "scan", self.scaler)
         apply_decorative_action_icon(self.export_button, "export", self.scaler)
-
         table_style = (
             build_accessible_f1_popup_style()
             + build_table_polish_style("QTableWidget")
@@ -311,6 +349,7 @@ class PathHealthWindow(AccessibleDialog):
         callback_map = {
             "collection_combo": self._focus_collection_combo,
             "filter_combo": self._focus_filter_combo,
+            "guide_label": self._focus_guide_label,
             "scan_button": self.scan_button.click,
             "path_list_table": self._focus_table,
             "export_button": self.export_button.click,
@@ -334,6 +373,9 @@ class PathHealthWindow(AccessibleDialog):
     def _focus_filter_combo(self):
         self.filter_combo.setFocus()
         self.filter_combo.showPopup()
+
+    def _focus_guide_label(self):
+        self.guide_label.setFocus(Qt.ShortcutFocusReason)
 
     def _focus_table(self):
         if self.table.rowCount() > 0:
@@ -378,9 +420,10 @@ class PathHealthWindow(AccessibleDialog):
             return
         self._rows = []
         self._scan_rows_all = []
+        self._scan_books = {}
         self._scanned_total = 0
         self._fill_table()
-        self.export_button.setEnabled(False)
+        self._sync_action_buttons()
         self.set_status("Press Scan to check paths.", announce=True)
 
     def on_filter_changed(self, _index: int = -1):
@@ -399,7 +442,7 @@ class PathHealthWindow(AccessibleDialog):
             if row_matches_filter(row.status, filter_key)
         ]
         self._fill_table()
-        self.export_button.setEnabled(bool(self._rows))
+        self._sync_action_buttons()
         counts = PathHealthCounts()
         for row in self._scan_rows_all:
             counts.record(row.status)
@@ -417,6 +460,16 @@ class PathHealthWindow(AccessibleDialog):
         QTimer.singleShot(0, self.update_stretch_columns)
 
     def eventFilter(self, source, event):
+        if (
+            source is self.scan_button
+            and event.type() == QEvent.KeyPress
+            and event.key() in (Qt.Key_Return, Qt.Key_Enter)
+            and not event.modifiers() & ~Qt.KeypadModifier
+        ):
+            if self.scan_button.isEnabled():
+                self.scan_button.click()
+            event.accept()
+            return True
         if source is self.table and event.type() == QEvent.KeyPress:
             if event.key() == Qt.Key_Tab and not event.modifiers():
                 self.focusNextChild()
@@ -440,6 +493,8 @@ class PathHealthWindow(AccessibleDialog):
     def set_status(self, message: str, announce: bool = False):
         announce_status_message(self.status_bar, message, move_focus=announce)
 
+    def _sync_action_buttons(self) -> None:
+        self.export_button.setEnabled(bool(self._rows))
     def _on_escape(self):
         if self.progress_window is not None and self.progress_window.isVisible():
             self.progress_window.on_close_requested()
@@ -495,7 +550,56 @@ class PathHealthWindow(AccessibleDialog):
             ).strip()
         return roots
 
-    def run_scan(self):
+    def _collection_folder_problems(self, books, scan_all: bool) -> list[str]:
+        """One line per scanned collection whose folder is unset, missing, or has no audio."""
+        if scan_all:
+            used_ids = {getattr(book, "collection_id", None) for book in books}
+            collections = [
+                c
+                for c in self.collection_queries.get_all(active_only=True)
+                if c.collection_id in used_ids
+            ]
+        else:
+            collection = self.collection_queries.get_by_id(
+                int(self.collection_combo.currentData())
+            )
+            collections = [collection] if collection is not None else []
+        problems: list[str] = []
+        for collection in sorted(collections, key=lambda c: (c.name or "").casefold()):
+            name = collection.name or "Unnamed"
+            root = (collection.root_path or "").strip()
+            if not root:
+                problems.append(f"The {name} collection has no collection folder set.")
+                continue
+            issue = root_path_issue(root)
+            if issue == "missing":
+                problems.append(f"The {name} collection folder is missing - {root}.")
+            elif issue:
+                problems.append(
+                    f"The {name} collection folder has no audiobook files - {root}."
+                )
+        return problems
+
+    def _warn_collection_folder_problems(self, problems: list[str]) -> None:
+        self.set_status(
+            "Collection folder problem. Books cannot be resolved without it.",
+            announce=False,
+        )
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Warning,
+            title="Collection folder",
+            text=(
+                "\n".join(problems)
+                + "\n\nCheck Book Locations uses the collection folder to find each "
+                "book's location, so these books cannot be resolved. To fix, open "
+                "Manage > Collections, edit the collection, and update the "
+                "collection folder.\n\nThe scan will continue."
+            ),
+        )
+
+    def run_scan(self, warn_folder: bool = True):
         if self._is_scanning:
             self.set_status("Scan already in progress.", announce=True)
             return
@@ -519,13 +623,16 @@ class PathHealthWindow(AccessibleDialog):
             root = self._selected_collection_root()
             collection_roots = None
         self._scanned_total = len(books)
+        self._scan_books = {
+            int(book.book_id): book for book in books if book.book_id is not None
+        }
         if self._scanned_total == 0:
             self._rows = []
             self._scan_rows_all = []
             self._fill_table()
-            self.export_button.setEnabled(False)
+            self._sync_action_buttons()
             msg = (
-                "No books in the library."
+                "No books found."
                 if scan_all
                 else "No books in this collection."
             )
@@ -533,6 +640,11 @@ class PathHealthWindow(AccessibleDialog):
             self.set_status(msg, announce=True)
             self.scan_button.setFocus()
             return
+
+        if warn_folder:
+            problems = self._collection_folder_problems(books, scan_all)
+            if problems:
+                self._warn_collection_folder_problems(problems)
 
         theme = self.theme_manager
         if theme is None:
@@ -545,13 +657,13 @@ class PathHealthWindow(AccessibleDialog):
         self.export_button.setEnabled(False)
 
         progress = ImportProgressWindow(self.scaler, theme, parent=self)
-        progress.setWindowTitle("Check Books Path Progress")
-        progress.setAccessibleName("Check Books Path Progress")
+        progress.setWindowTitle("Check Book Locations Progress")
+        progress.setAccessibleName("Check Book Locations Progress")
         progress.setAccessibleDescription(
-            "Shows Missing, Incorrect, and Valid counts while checking book paths. "
-            "Escape to cancel."
+            "Shows Missing, Corrected, Incorrect, and Valid counts while checking "
+            "book paths. Escape to cancel."
         )
-        progress.help_doc_override = "24_path_health.md"
+        progress.help_doc_override = "24_check_book_locations.md"
         progress.set_activity_label("scan")
         progress.set_compact_mode(True)
         progress.finished.connect(self._on_progress_window_closed)
@@ -568,10 +680,7 @@ class PathHealthWindow(AccessibleDialog):
         ui_interval = 0.15
         canceled = False
 
-        progress.set_status(
-            "0 books scanned: Missing 0 | Incorrect 0 | Valid 0",
-            announce=True,
-        )
+        progress.set_status(counts.summary(), announce=True)
 
         try:
             for row in iter_book_path_checks(
@@ -602,11 +711,7 @@ class PathHealthWindow(AccessibleDialog):
                         current_title=row.title,
                         current_author=row.author,
                     )
-                    progress.set_status(
-                        f"{counts.processed} books scanned: "
-                        f"Missing {counts.missing} | Incorrect {counts.incorrect} | "
-                        f"Valid {counts.valid} | Elapsed {elapsed}"
-                    )
+                    progress.set_status(f"{counts.summary()} | Elapsed {elapsed}")
                     next_ui = now + ui_interval
                     QApplication.processEvents()
                     if self.progress_window and self.progress_window.cancel_requested:
@@ -623,16 +728,13 @@ class PathHealthWindow(AccessibleDialog):
             if self.progress_window is not None:
                 elapsed = self._format_elapsed(time.perf_counter() - scan_start)
                 prefix = "Canceled. " if canceled else ""
-                done_status = (
-                    f"{prefix}{counts.processed} books scanned: "
-                    f"Missing {counts.missing} | Incorrect {counts.incorrect} | "
-                    f"Valid {counts.valid} | Elapsed {elapsed}"
-                )
+                done_status = f"{prefix}{counts.summary()} | Elapsed {elapsed}"
                 self.progress_window.set_status(done_status, announce=True)
                 self.progress_window._scan_active = False
                 self.progress_window.close()
                 self.progress_window = None
 
+        self._save_corrected_paths(scanned_rows)
         self._scan_rows_all = scanned_rows
         self._rows = matched_rows
         self._fill_table()
@@ -642,7 +744,7 @@ class PathHealthWindow(AccessibleDialog):
             counts=counts,
             canceled=canceled,
         )
-        self.export_button.setEnabled(bool(self._rows))
+        self._sync_action_buttons()
         if self._rows:
             self.table.setCurrentCell(0, self.COL_TITLE)
             self.table.setFocus()
@@ -660,30 +762,21 @@ class PathHealthWindow(AccessibleDialog):
         announce: bool = True,
     ) -> None:
         prefix = "Canceled. " if canceled else ""
+        if counts.resolved:
+            noun = "path" if counts.resolved == 1 else "paths"
+            prefix += f"{counts.resolved} book {noun} corrected. "
         shown = matched_count
-        counters = (
-            f"{counts.processed} books scanned: "
-            f"Missing {counts.missing} | Incorrect {counts.incorrect} | "
-            f"Valid {counts.valid}"
-        )
+        counters = counts.summary()
+        kind = {
+            FILTER_MISSING: "missing",
+            FILTER_INCORRECT: "incorrect",
+        }.get(filter_key, "problem")
         if shown == 0:
-            if filter_key == FILTER_INCORRECT:
-                msg = (
-                    f"{prefix}{counters}. No incorrect paths in the list. "
-                    "Try Missing or All."
-                )
-            elif filter_key == FILTER_MISSING:
-                msg = (
-                    f"{prefix}{counters}. No missing paths in the list."
-                )
-            else:
-                msg = f"{prefix}{counters}. No invalid paths in the list."
-        elif filter_key == FILTER_ALL:
-            msg = f"{prefix}{counters}. Showing {shown} invalid."
-        elif filter_key == FILTER_MISSING:
-            msg = f"{prefix}{counters}. Showing {shown} missing."
+            msg = f"{prefix}{counters}. No {kind} paths in the list."
+            if filter_key != FILTER_ALL:
+                msg += " Try All."
         else:
-            msg = f"{prefix}{counters}. Showing {shown} incorrect."
+            msg = f"{prefix}{counters}. Showing {shown} {kind}."
         self._last_scan_status = msg
         self.set_status(msg, announce=announce)
 
@@ -691,16 +784,14 @@ class PathHealthWindow(AccessibleDialog):
         self.table.setRowCount(len(self._rows))
         for row_index, row in enumerate(self._rows):
             path_display = row.path or "(empty)"
-            if row.status == STATUS_INCORRECT and row.resolved_path:
-                status_label = f"incorrect, plays from {row.resolved_path}"
-            elif row.status in (STATUS_EMPTY, STATUS_MISSING):
-                status_label = "missing"
+            if row.status in (STATUS_EMPTY, STATUS_MISSING):
+                status_label = f"missing. {row.reason}" if row.reason else "missing"
             else:
                 status_label = row.status.casefold()
-            values = [row.author, row.title, path_display]
             accessible = (
                 f"{row.author}, {row.title}, path {path_display}, {status_label}"
             )
+            values = [row.author, row.title, path_display]
             for col, text in enumerate(values):
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -741,26 +832,54 @@ class PathHealthWindow(AccessibleDialog):
             return
         book = self.book_queries.get_by_id(selected.book_id)
         if book is None:
-            self.set_status("Book no longer in the library.", announce=True)
-            self.run_scan()
+            self.set_status("Book no longer in the database.", announce=True)
+            self.run_scan(warn_folder=False)
             return
+        books_list = []
+        current_index = 0
+        for row in self._rows:
+            if row.book_id == selected.book_id:
+                current_index = len(books_list)
+                books_list.append(book)
+                continue
+            listed = self._scan_books.get(row.book_id)
+            if listed is not None:
+                books_list.append(listed)
         details = BookDetailsWindow(
             self.db,
             self.scaler,
             book=book,
-            books_list=[book],
-            current_index=0,
+            books_list=books_list,
+            current_index=current_index,
             theme_manager=self.theme_manager,
             parent=self,
+            keep_edit_mode=True,
         )
         QTimer.singleShot(0, details.on_edit_mode)
         details.exec()
         data_changed = getattr(details, "_data_was_changed", False)
         details.deleteLater()
         if data_changed:
-            self.run_scan()
+            self.run_scan(warn_folder=False)
         else:
             self.table.setFocus()
+
+    def _save_corrected_paths(self, rows: list[PathHealthRow]) -> int:
+        """Store the found folder for every resolved book in one commit."""
+        resolved = [
+            row
+            for row in rows
+            if row.status == STATUS_RESOLVED and row.resolved_path
+        ]
+        if not resolved:
+            return 0
+        for row in resolved:
+            self.book_queries.update_path(row.book_id, row.resolved_path, commit=False)
+            book = self._scan_books.get(row.book_id)
+            if book is not None:
+                book.path = row.resolved_path
+        self.db.connect().commit()
+        return len(resolved)
 
     def on_export_csv(self):
         if not self._rows:
@@ -770,10 +889,10 @@ class PathHealthWindow(AccessibleDialog):
         if not default_path.is_dir():
             default_path = Path.home()
         today = datetime.now().strftime("%Y%m%d")
-        suggested = str(default_path / f"abcs_path_health_{today}.csv")
+        suggested = str(default_path / f"abcs_check_book_locations_{today}.csv")
         file_path, _ = QFileDialog.getSaveFileName(
             self,
-            "Export Check Books Path to CSV",
+            "Export Check Book Locations to CSV",
             suggested,
             "CSV Files (*.csv);;All Files (*)",
         )
@@ -784,7 +903,14 @@ class PathHealthWindow(AccessibleDialog):
             with open(file_path, "w", newline="", encoding="utf-8") as handle:
                 writer = csv.writer(handle)
                 writer.writerow(
-                    ["Author", "Title", "Path", "Status", "Collection"]
+                    [
+                        "Author",
+                        "Title",
+                        "Path",
+                        "Status",
+                        "Collection",
+                        "Reason",
+                    ]
                 )
                 for row in self._rows:
                     status_label = (
@@ -799,6 +925,7 @@ class PathHealthWindow(AccessibleDialog):
                             row.path,
                             status_label,
                             row.collection_name,
+                            row.reason,
                         ]
                     )
             self.set_status(
@@ -812,16 +939,18 @@ class PathHealthWindow(AccessibleDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Filter"),
+            ("Alt+I", "Info instructions"),
             ("Alt+S", "Scan"),
             ("Alt+L", "Jump to list"),
             ("Enter", "Open Book Details"),
+            ("Page Up/Down in Book Details", "Previous or next listed book"),
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel scan or close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
         exec_f1_shortcuts_dialog(
-            self, "Keyboard Shortcuts - Check Books Path", shortcuts
+            self, "Keyboard Shortcuts - Check Book Locations", shortcuts
         )
 
     def accept(self):

@@ -222,13 +222,13 @@ Only `read_date` on an existing `books` row is changed. Nothing else is touched.
 
 ## Playing book-list books with Listen
 
-Books added from a list have no file path. When you press **Listen** (Ctrl+L), AbCS looks for the book in the collection's **Library root folder**. Set that folder in **Manage → Collections**.
+Books added from a list have no file path. When you press **Listen** (Ctrl+L), AbCS looks for the book in the collection's **collection folder**. Set that folder in **Manage → Collections**.
 
 ### Where Listen looks
 
 Listen checks only the folders your **Import scenario** in Preferences expects. It does not scan the whole drive. Folder names match without regard to case or characters Windows does not allow in names.
 
-| Import scenario | Folders checked under the Library root folder |
+| Import scenario | Folders checked under the collection folder |
 |-----------------|-----------------------------------------------|
 | Mass Standard Import, or Series From File Name | Author, then Title. Also a single audio file named for the title in the Author folder, or Author, then Series, then Title |
 | Series From Directory | Author, then Series, where the Series folder holds the audio. Books without a series use Author, then Title |
@@ -243,14 +243,14 @@ Listen says what was missing and where it looked. Then it offers **Browse**. The
 
 | Message starts with | Meaning |
 |---------------------|---------|
-| The collection folder is missing | The Library root folder does not exist, for example a drive that is not connected |
-| The collection folder has no audiobook files | The Library root folder is probably set to the wrong folder |
-| Author folder "…" was not found | No folder with the author's name is directly in the Library root folder |
+| The collection folder is missing | The collection folder does not exist, for example a drive that is not connected |
+| The collection folder has no audiobook files | The collection folder is probably set to the wrong path |
+| Author folder "…" was not found | No folder with the author's name is directly in the collection folder |
 | Author folder found. Book title "…" was not found | The author folder exists, but no folder or file matches the title |
 | Author folder found. Series folder "…" was not found | The scenario expects a series folder that is not there |
-| This book has no file path and the collection folder is not set | The collection has no Library root folder |
+| This book has no file path and the collection folder is not set | The collection has no collection folder set |
 
-For the first two and the last message, fix the folder in **Manage → Collections**: edit the collection and update **Library root folder**. See [Listen to a book](26_listen_to_a_book.md) for player controls.
+For the first two and the last message, fix the folder in **Manage → Collections**: edit the collection and set the **Collection folder**. See [Listen to a book](26_listen_to_a_book.md) for player controls.
 
 ---
 
@@ -284,5 +284,5 @@ For the first two and the last message, fix the folder in **Manage → Collectio
 - Duplicate settings detail: [Import preferences](18_import_preferences.md)
 - Fill in plot/series from the web: [Web metadata explained](21_web_metadata_explained.md)
 - Play imported books: [Listen to a book](26_listen_to_a_book.md)
-- Set the Library root folder: [Collections](06_collections.md)
+- Set the collection folder: [Collections](06_collections.md)
 - How spreadsheet title matching works: see the **Title and author matching** section in this guide and [Import preferences](18_import_preferences.md).

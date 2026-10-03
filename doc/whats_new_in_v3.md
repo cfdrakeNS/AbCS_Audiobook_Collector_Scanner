@@ -1,6 +1,6 @@
-# What's New in Version 3
+# What's New in Version 3.0
 
-Version 3 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
+Version 3.0 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
 
 ## Find and import books
 
@@ -13,7 +13,7 @@ Version 3 adds new ways to find, organize, listen to, and maintain your audioboo
 ## Organize and track listening
 
 - Store and sort books by series number.
-- Set a library root folder for a collection.
+- Set a collection folder for each virtual library (collection).
 - Mark books as Want to Read and filter the list to those books.
 - Save listening progress and resume playback at the saved position.
 - Use the Listen player to move between files, seek, rewind, fast-forward, and change playback speed.
@@ -23,7 +23,7 @@ Version 3 adds new ways to find, organize, listen to, and maintain your audioboo
 ## Maintain and share your library
 
 - Browse to a book's location from Book Details.
-- Use Manage → Check Books Path to find blank, missing, or out-of-root paths, review the results, and export them to CSV.
+- Use View → Check Book Locations to find blank, missing, or out-of-root paths, review the results, and export them to CSV.
 - Export the visible library list or selected books to CSV or JSON.
 - Import book lists from spreadsheets and review items in the updated Import Detail layout.
 

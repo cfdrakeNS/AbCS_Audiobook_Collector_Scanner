@@ -246,6 +246,50 @@ def test_page_navigation_focuses_title(temp_db, ui_scaler, theme_manager, monkey
     window.close()
 
 
+def test_keep_edit_mode_stays_in_edit_after_paging(temp_db, ui_scaler, theme_manager):
+    books = _ensure_sample_books(temp_db, count=2)
+
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        books_list=books,
+        current_index=0,
+        parent=None,
+        theme_manager=theme_manager,
+        keep_edit_mode=True,
+    )
+    window.on_edit_mode()
+    window.on_next()
+    assert window.title_edit.text() == books[1].title
+    assert window._in_edit_mode
+    assert not window.save_button.isHidden()
+    assert window.edit_button.isHidden()
+    window.on_prev()
+    assert window.title_edit.text() == books[0].title
+    assert window._in_edit_mode
+    assert not window.save_button.isHidden()
+    window.close()
+
+
+def test_paging_in_view_mode_stays_in_view_mode(temp_db, ui_scaler, theme_manager):
+    books = _ensure_sample_books(temp_db, count=2)
+
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        books_list=books,
+        current_index=0,
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    window.on_next()
+    assert window.title_edit.text() == books[1].title
+    assert not window._in_edit_mode
+    window.close()
+
+
 def test_preview_disabled_when_path_empty(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=1)
     window = BookDetailsWindow(

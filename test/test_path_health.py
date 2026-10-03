@@ -1,8 +1,10 @@
-"""Unit tests for Check Books Path scan (Phase 25 / F01)."""
+"""Unit tests for Check Book Locations scan (Phase 25 / F01)."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
+
+import pytest
 
 from src.core.path_health import (
     FILTER_ALL,
@@ -12,12 +14,27 @@ from src.core.path_health import (
     STATUS_INCORRECT,
     STATUS_MISSING,
     STATUS_OK,
+    STATUS_RESOLVED,
     PathHealthCounts,
     check_book_path,
     iter_book_path_checks,
     scan_book_paths,
     summarize_statuses,
 )
+
+
+@pytest.fixture(autouse=True)
+def folder_warnings(monkeypatch):
+    """Record the collection folder popup instead of showing it."""
+    from src.ui.path_health_window import PathHealthWindow
+
+    shown: list = []
+    monkeypatch.setattr(
+        PathHealthWindow,
+        "_warn_collection_folder_problems",
+        lambda _self, problems: shown.append(list(problems)),
+    )
+    return shown
 
 
 def test_check_book_path_empty():
@@ -62,7 +79,7 @@ def test_check_book_path_stale_stored_but_playable_via_root(tmp_path):
     (book / "track.mp3").write_bytes(b"x")
     stale = tmp_path / "Library" / "Michael R. Stern" / "Title"
     assert not stale.exists()
-    assert check_book_path(str(stale), str(root)) == STATUS_INCORRECT
+    assert check_book_path(str(stale), str(root)) == STATUS_RESOLVED
     assert check_book_path(str(stale), str(root), "") != STATUS_MISSING
 
 
@@ -128,19 +145,24 @@ def test_scan_book_paths_filters(tmp_path):
     incorrect_rows = scan_book_paths(
         books, collection_root=root, filter_key=FILTER_INCORRECT
     )
-    assert [r.book_id for r in incorrect_rows] == [3, 5]
-    assert all(r.status == STATUS_INCORRECT for r in incorrect_rows)
-    assert incorrect_rows[1].resolved_path
+    assert [r.book_id for r in incorrect_rows] == [3]
+    assert incorrect_rows[0].status == STATUS_INCORRECT
 
     all_rows = scan_book_paths(books, collection_root=root, filter_key=FILTER_ALL)
-    assert [r.book_id for r in all_rows] == [1, 2, 3, 5]
+    assert [r.book_id for r in all_rows] == [1, 2, 3]
     assert STATUS_OK not in {r.status for r in all_rows}
 
-    counts = summarize_statuses(all_rows)
+    every_row = list(iter_book_path_checks(books, collection_root=root))
+    resolved = [r for r in every_row if r.status == STATUS_RESOLVED]
+    assert [r.book_id for r in resolved] == [5]
+    assert resolved[0].resolved_path
+
+    counts = summarize_statuses(every_row)
     assert counts[STATUS_EMPTY] == 1
     assert counts[STATUS_MISSING] == 1
-    assert counts[STATUS_INCORRECT] == 2
-    assert counts[STATUS_OK] == 0
+    assert counts[STATUS_INCORRECT] == 1
+    assert counts[STATUS_RESOLVED] == 1
+    assert counts[STATUS_OK] == 1
 
 
 def test_path_health_counts_mixed():
@@ -149,14 +171,17 @@ def test_path_health_counts_mixed():
         STATUS_EMPTY,
         STATUS_MISSING,
         STATUS_INCORRECT,
+        STATUS_RESOLVED,
         STATUS_OK,
         STATUS_OK,
     ):
         counts.record(status)
     assert counts.missing == 2
     assert counts.incorrect == 1
+    assert counts.resolved == 1
     assert counts.valid == 2
-    assert counts.processed == 5
+    assert counts.processed == 6
+    assert "Corrected 1" in counts.summary()
 
 
 def test_iter_book_path_checks_cancel(tmp_path):
@@ -231,7 +256,209 @@ def test_iter_uses_per_collection_roots(tmp_path):
             collection_roots={10: str(root_a), 20: str(root_b)},
         )
     )
-    assert [r.status for r in rows] == [STATUS_INCORRECT, STATUS_INCORRECT]
+    assert [r.status for r in rows] == [STATUS_RESOLVED, STATUS_RESOLVED]
+
+
+def _audio_folder(folder):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "01.mp3").write_bytes(b"x")
+    return folder
+
+
+def test_blank_path_found_by_layout_is_incorrect_with_found_path(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
+    )
+    root = tmp_path / "library"
+    book_dir = _audio_folder(root / "Lee Child" / "Killing Floor")
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="Killing Floor",
+            author_name="Lee Child",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        ),
+        SimpleNamespace(
+            book_id=2,
+            title="Not Here",
+            author_name="Nobody",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        ),
+    ]
+    rows = list(iter_book_path_checks(books, collection_root=str(root)))
+    assert rows[0].status == STATUS_RESOLVED
+    assert rows[0].resolved_path == str(book_dir)
+    assert rows[0].reason == ""
+    assert rows[1].status == STATUS_EMPTY
+    assert rows[1].resolved_path == ""
+    assert "Nobody" in rows[1].reason
+
+
+def test_missing_row_says_collection_folder_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
+    )
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="Killing Floor",
+            author_name="Lee Child",
+            path=str(tmp_path / "old" / "Killing Floor"),
+            collection_id=1,
+            collection_name="Lib",
+        )
+    ]
+    rows = list(
+        iter_book_path_checks(books, collection_root=str(tmp_path / "gone_root"))
+    )
+    assert rows[0].status == STATUS_MISSING
+    assert "collection folder is missing" in rows[0].reason
+
+
+@pytest.fixture
+def layout_db(tmp_path):
+    from src.database.connection import DatabaseManager
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries, CollectionQueries
+
+    db = DatabaseManager(str(tmp_path / "path_health_layout.db"))
+    db.initialize_database()
+    root = tmp_path / "library"
+    collections = CollectionQueries(db)
+    collection = collections.get_all()[0]
+    collection.root_path = str(root)
+    collections.update(collection)
+    author_id = AuthorQueries(db).insert("Lee Child")
+    books = BookQueries(db)
+    ids = [
+        books.insert(
+            Book(
+                title=title,
+                author_id=author_id,
+                collection_id=collection.collection_id,
+            )
+        )
+        for title in ("Killing Floor", "Die Trying", "Tripwire")
+    ]
+    try:
+        yield db, root, collection.collection_id, ids
+    finally:
+        db.close()
+
+
+def test_scan_corrects_resolved_paths_and_leaves_them_out(
+    layout_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.database.queries import BookQueries
+    from src.ui.path_health_window import PathHealthWindow
+
+    db, root, collection_id, ids = layout_db
+    monkeypatch.setattr(
+        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
+    )
+    killing = _audio_folder(root / "Lee Child" / "Killing Floor")
+    die = _audio_folder(root / "Lee Child" / "Die Trying")
+
+    window = PathHealthWindow(db, ui_scaler, theme_manager, parent=None)
+    qtbot.addWidget(window)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    assert window.filter_combo.findText("Resolved") < 0
+    window.filter_combo.setCurrentIndex(window.filter_combo.findData(FILTER_ALL))
+    window.run_scan()
+
+    queries = BookQueries(db)
+    assert queries.get_by_id(ids[0]).path == str(killing)
+    assert queries.get_by_id(ids[1]).path == str(die)
+    assert (queries.get_by_id(ids[2]).path or "") == ""
+    assert [row.title for row in window._rows] == ["Tripwire"]
+    assert window._last_scan_status.startswith("2 book paths corrected.")
+    assert window._scan_books[ids[0]].path == str(killing)
+
+    window.run_scan(warn_folder=False)
+    assert "corrected" not in window._last_scan_status
+    window.close()
+
+
+def test_scan_warns_when_collection_folder_missing_and_enter_scans(
+    layout_db, ui_scaler, theme_manager, qtbot, folder_warnings
+):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtWidgets import QApplication
+
+    from src.ui.path_health_window import PathHealthWindow
+
+    db, root, collection_id, _ids = layout_db
+    assert not root.exists()
+    window = PathHealthWindow(db, ui_scaler, theme_manager, parent=None)
+    qtbot.addWidget(window)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    assert window.guide_label.focusPolicy() == Qt.TabFocus
+    assert "corrected" in window.guide_label.text()
+
+    QApplication.sendEvent(
+        window.scan_button,
+        QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier),
+    )
+
+    assert folder_warnings
+    assert "collection folder is missing" in folder_warnings[0][0]
+    assert len(window._scan_rows_all) == 3
+    window.close()
+
+
+def test_open_details_pages_listed_books_in_edit_mode(
+    layout_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.ui import path_health_window as module
+
+    db, root, collection_id, ids = layout_db
+    monkeypatch.setattr(
+        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
+    )
+    captured: dict = {}
+
+    class FakeDetails:
+        def __init__(self, *args, **kwargs):
+            captured.update(kwargs)
+
+        def on_edit_mode(self):
+            pass
+
+        def exec(self):
+            return 0
+
+        def deleteLater(self):
+            pass
+
+    monkeypatch.setattr(module, "BookDetailsWindow", FakeDetails)
+    window = module.PathHealthWindow(db, ui_scaler, theme_manager, parent=None)
+    qtbot.addWidget(window)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    window.filter_combo.setCurrentIndex(window.filter_combo.findData(FILTER_ALL))
+    window.run_scan()
+    assert len(window._rows) == 3
+    window.table.setCurrentCell(1, 0)
+
+    window.on_open_details()
+
+    listed = [book.book_id for book in captured["books_list"]]
+    assert listed == [row.book_id for row in window._rows]
+    assert captured["current_index"] == 1
+    assert captured["keep_edit_mode"] is True
+    window.close()
 
 
 def test_path_health_window_all_collections_and_scan_only_on_button(

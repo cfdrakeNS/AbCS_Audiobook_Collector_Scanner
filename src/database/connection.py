@@ -454,7 +454,7 @@ class DatabaseManager:
         if "books.series_number" in added:
             labels.append("series number")
         if "collections.root_path" in added:
-            labels.append("collection library root")
+            labels.append("collection folder")
         if "books.want_to_read" in added:
             labels.append("Want to read")
         if "books.listen_position_ms" in added or "books.listen_file_name" in added:
@@ -466,7 +466,7 @@ class DatabaseManager:
             )
         if len(labels) == 1:
             phrase = labels[0]
-            verb = "was" if phrase in {"series number", "collection library root"} else "were"
+            verb = "was" if phrase in {"series number", "collection folder"} else "were"
             named = phrase[0].upper() + phrase[1:]
             return (
                 f"Database upgraded. {named} storage {verb} added. "

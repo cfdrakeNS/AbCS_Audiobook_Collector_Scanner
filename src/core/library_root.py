@@ -214,11 +214,14 @@ def locate_book_under_collection(
     series_name: str = "",
     scenario: str = DEFAULT_IMPORT_SCENARIO,
     collection_name: str = "",
+    root_audio_cache: dict | None = None,
 ) -> CollectionLookup:
     """Find a book's folder or file under the collection folder by import layout.
 
     Only the folders named by the scenario are checked; the library tree is
     not scanned. Single-item import has no library layout, so no search runs.
+    ``root_audio_cache`` lets a many-book scan check each collection folder for
+    audio once instead of once per book.
     """
     root_text = (collection_root or "").strip()
     author = (author_name or "").strip()
@@ -235,17 +238,23 @@ def locate_book_under_collection(
             message=(
                 f"{where[0].upper()}{where[1:]} is missing - {root}. To fix, "
                 "open Manage > Collections, edit the collection, "
-                "and update the Library root folder."
+                "and set the collection folder."
             )
         )
     author_dir = _child_dir(root, author)
     if author_dir is None:
-        if not folder_has_supported_audio(root_text):
+        if root_audio_cache is None:
+            root_has_audio = folder_has_supported_audio(root_text)
+        else:
+            if root_text not in root_audio_cache:
+                root_audio_cache[root_text] = folder_has_supported_audio(root_text)
+            root_has_audio = root_audio_cache[root_text]
+        if not root_has_audio:
             return CollectionLookup(
                 message=(
                     f"{where[0].upper()}{where[1:]} has no audiobook files - {root}. "
                     "It may be the wrong folder. To fix, open Manage > Collections, "
-                    "edit the collection, and update the Library root folder."
+                    "edit the collection, and set the collection folder."
                 ),
                 browse_dir=str(root),
             )

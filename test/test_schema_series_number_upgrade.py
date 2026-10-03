@@ -94,7 +94,7 @@ def test_first_start_adds_series_number_only(tmp_path):
     backups = list(tmp_path.glob("abcs.backup_schema_repair_*.db"))
     assert len(backups) == 1
     assert db.schema_repair_performed is True
-    assert "Series number, collection library root, Want to read, and listening progress storage were added" in (
+    assert "Series number, collection folder, Want to read, and listening progress storage were added" in (
         db.schema_repair_message
     )
     assert backups[0].name in db.schema_repair_message
@@ -180,7 +180,7 @@ def test_first_start_adds_root_path_only(tmp_path):
     backups = list(tmp_path.glob("abcs.backup_schema_repair_*.db"))
     assert len(backups) == 1
     assert db.schema_repair_performed is True
-    assert "Collection library root, Want to read, and listening progress storage were added" in (
+    assert "Collection folder, Want to read, and listening progress storage were added" in (
         db.schema_repair_message
     )
     assert backups[0].name in db.schema_repair_message

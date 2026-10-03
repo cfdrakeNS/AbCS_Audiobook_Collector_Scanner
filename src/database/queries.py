@@ -317,6 +317,33 @@ class BookQueries:
         if commit:
             self.db.connect().commit()
 
+    def update_file_stats(
+        self,
+        book_id: int,
+        *,
+        time_hours: int,
+        time_minutes: int,
+        tracks: int,
+        size_mb: float,
+        bitrate: int,
+        commit: bool = True,
+    ) -> None:
+        """Store length, track count, size, and bitrate read from the book's files."""
+        self.db.execute(
+            """
+            UPDATE books SET
+                time_hours = ?,
+                time_minutes = ?,
+                tracks = ?,
+                size_mb = ?,
+                bitrate = ?
+            WHERE book_id = ?
+            """,
+            (time_hours, time_minutes, tracks, size_mb, bitrate, book_id),
+        )
+        if commit:
+            self.db.connect().commit()
+
     def bulk_clear_listen_progress(self, book_ids: List[int]) -> int:
         """Clear resume position for many books in one write."""
         if not book_ids:

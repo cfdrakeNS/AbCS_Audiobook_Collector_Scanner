@@ -512,7 +512,9 @@ def test_preview_menu_enabled_for_focused_book(main_window, tmp_path, monkeypatc
             assert window.preview_toolbar_action.isEnabled() is True
             window.on_preview_clicked()
             assert any(
-                message == f"Book not found in - {missing}" for message in statuses
+                f"Book not found in - {missing}" in message
+                and "Preview Menu Bad" in message
+                for message in statuses
             )
 
 

@@ -152,8 +152,8 @@ class CollectionWindow(AccessibleDialog):
         self.setWindowTitle("Collection Manager")
         self.setAccessibleName("Collection Manager")
         self.setAccessibleDescription(
-            "Manage collections: add, edit active status, optional library "
-            "root folder, and delete when unused."
+            "Manage collections: add, edit active status, optional collection "
+            "folder on disk, and delete when unused."
         )
         self.resize(880, 480)
 
@@ -181,9 +181,9 @@ class CollectionWindow(AccessibleDialog):
         self.active_check.setChecked(True)
         editor_grid.addWidget(self.active_check, 0, 2)
 
-        root_label = QLabel("Library &root folder:")
+        root_label = QLabel("Collection &folder:")
         self.root_edit = QLineEdit()
-        self.root_edit.setAccessibleName("Collection library root folder")
+        self.root_edit.setAccessibleName("Collection folder")
         self.root_edit.setAccessibleDescription(
             "Optional folder on disk where this collection's audiobooks live. "
             "Used as default for import."
@@ -194,9 +194,9 @@ class CollectionWindow(AccessibleDialog):
 
         self.browse_button = QPushButton("Browse")
         self.browse_button.clicked.connect(self.on_browse_root)
-        self.browse_button.setAccessibleName("Browse library root folder")
+        self.browse_button.setAccessibleName("Browse collection folder")
         self.browse_button.setAccessibleDescription(
-            "Choose the optional library root folder for this collection - Alt+B"
+            "Choose the optional collection folder on disk for this virtual library - Alt+B"
         )
         self.browse_button.setDefault(False)
         self.browse_button.setAutoDefault(False)
@@ -381,8 +381,8 @@ class CollectionWindow(AccessibleDialog):
         apply_visual_tooltip_map(
             {
                 self.name_edit: "Collection name to add or edit",
-                self.root_edit: "Optional library root folder for this collection",
-                self.browse_button: "Browse for the collection library root folder",
+                self.root_edit: "Optional folder on disk for this collection",
+                self.browse_button: "Browse for the collection folder",
                 self.active_check: "Include this collection in filters when active",
                 self.table: "List of collections",
                 self.new_button: "Create a new collection - Ctrl+N",
@@ -601,6 +601,22 @@ class CollectionWindow(AccessibleDialog):
         self.name_edit.setText(collection.name)
         self.root_edit.setText(collection.root_path or "")
         self.active_check.setChecked(collection.active)
+        self._mark_editor_clean()
+
+    def _editor_values(self) -> tuple[str, str, bool]:
+        return (
+            self.name_edit.text().strip(),
+            self.root_edit.text().strip(),
+            self.active_check.isChecked(),
+        )
+
+    def _mark_editor_clean(self) -> None:
+        self._editor_baseline = self._editor_values()
+
+    def _editor_is_dirty(self) -> bool:
+        if self._editor_locked:
+            return False
+        return self._editor_values() != getattr(self, "_editor_baseline", None)
 
     def on_new_shortcut(self):
         if self.new_button.isVisible() and self.new_button.isEnabled():
@@ -612,6 +628,7 @@ class CollectionWindow(AccessibleDialog):
         self.table.clearSelection()
         self._set_editor_locked(False, clear_name=True)
         self.active_check.setChecked(True)
+        self._mark_editor_clean()
         self.name_edit.setFocus(Qt.TabFocusReason)
         # Removed status bar Alt+key shortcut message for accessibility
 
@@ -640,6 +657,7 @@ class CollectionWindow(AccessibleDialog):
         self.name_edit.setText(collection.name)
         self.root_edit.setText(collection.root_path or "")
         self.active_check.setChecked(collection.active)
+        self._mark_editor_clean()
         self.name_edit.setFocus(Qt.TabFocusReason)
         self.name_edit.setCursorPosition(len(self.name_edit.text()))
         # Removed status bar Alt+key shortcut message for accessibility
@@ -769,20 +787,20 @@ class CollectionWindow(AccessibleDialog):
         return True
 
     def on_browse_root(self):
-        """Choose an optional library root folder for the current collection."""
+        """Choose an optional collection folder for the current collection."""
         if self._editor_locked:
             return
         current_dir = self.root_edit.text().strip() or ""
         selected = QFileDialog.getExistingDirectory(
-            self, "Select collection library root folder", current_dir
+            self, "Select collection folder", current_dir
         )
         if not selected:
             return
         if not self._confirm_library_root(selected):
-            self.set_status("Library root folder not changed.", announce=True)
+            self.set_status("Collection folder not changed.", announce=True)
             return
         self.root_edit.setText(selected)
-        self.set_status("Library root folder selected.", announce=True)
+        self.set_status("Collection folder selected.", announce=True)
 
     def _confirm_library_root(self, path: str) -> bool:
         """Warn when a root is missing or has no supported audio. Empty is allowed."""
@@ -793,19 +811,19 @@ class CollectionWindow(AccessibleDialog):
             return True
         if issue == "missing":
             text = "This folder does not exist.\n\nKeep this path anyway?"
-            status = "Library root folder does not exist."
+            status = "Collection folder does not exist."
         else:
             text = (
                 "This folder has no recognized audiobook files.\n\n"
                 "Keep this path anyway?"
             )
-            status = "Library root folder has no recognized audiobook files."
+            status = "Collection folder has no recognized audiobook files."
         self.set_status(status, announce=True)
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Warning,
-            title="Collection library root",
+            title="Collection folder",
             text=text,
             buttons=QMessageBox.Yes | QMessageBox.No,
             default_button=QMessageBox.No,
@@ -818,11 +836,29 @@ class CollectionWindow(AccessibleDialog):
             self.on_save()
 
     def on_escape_pressed(self):
-        """Escape key - cancel edit/new mode or close window if not editing."""
-        if not self._editor_locked:
-            self.on_cancel_edit()
-        else:
+        """Escape key - cancel edit/new mode (asking to save changes) or close."""
+        if self._editor_locked:
             self.accept()
+            return
+        if self._editor_is_dirty():
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Collection",
+                text="Save changes to this collection?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.Yes,
+                button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            )
+            if reply == QMessageBox.Yes:
+                if not self.on_save():
+                    self.name_edit.setFocus(Qt.TabFocusReason)
+                return
+            self.on_cancel_edit()
+            self.set_status("Changes discarded.", announce=True)
+            return
+        self.on_cancel_edit()
 
     def on_cancel_edit(self):
         """Cancel current New/Edit mode and return to locked list mode."""
@@ -956,7 +992,7 @@ class CollectionWindow(AccessibleDialog):
             ("Ctrl+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Enter", "Edit selected row"),
-            ("Alt+B", "Browse library root folder"),
+            ("Alt+B", "Browse collection folder"),
             ("Ctrl+S", "Save"),
             ("Alt+D", "Delete"),
             ("Escape", "Cancel edit/new or close window"),

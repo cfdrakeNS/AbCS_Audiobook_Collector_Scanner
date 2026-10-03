@@ -47,7 +47,7 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 - New books appear in the main list for the collection you chose.
 - Read-date updates change the Read column on matched books (matched by title and author within the collection).
 - Rows missing required fields or failing duplicate checks are skipped and listed in the error export.
-- Imported books have no file path. **Listen** looks for each book in the collection's **Library root folder** and saves the path when found. If it is not found, Listen offers **Browse**. See [Import Book List explained](20_import_book_list_explained.md) for where Listen looks.
+- Imported books have no file path. **Listen** looks for each book in the collection's **collection folder** and saves the path when found. If it is not found, Listen offers **Browse**. See [Import Book List explained](20_import_book_list_explained.md) for where Listen looks.
 
 ## Settings that affect this
 

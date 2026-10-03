@@ -47,14 +47,17 @@ class PreviewPlaylist:
 
 
 @dataclass(frozen=True)
-class _BookLocation:
+class BookLocation:
     path: str = ""
     error: str = ""
     found_path: str = ""
     browse_dir: str = ""
 
 
-def _locate_book(
+_BookLocation = BookLocation
+
+
+def locate_book_path(
     stored_path: str,
     collection_root: str,
     import_dir: str,
@@ -63,8 +66,12 @@ def _locate_book(
     series_name: str,
     import_scenario: str | None,
     collection_name: str = "",
-) -> _BookLocation:
-    """Stored path first; when blank or missing, the collection folder layout."""
+    root_audio_cache: dict | None = None,
+) -> BookLocation:
+    """Stored path first; when blank or missing, the collection folder layout.
+
+    Listen and Check Book Locations both use this so they agree on where a book is.
+    """
     text = (stored_path or "").strip()
     resolved = ""
     if text:
@@ -85,6 +92,7 @@ def _locate_book(
             series_name,
             scenario,
             collection_name=collection_name,
+            root_audio_cache=root_audio_cache,
         )
         if lookup.path:
             return _BookLocation(path=lookup.path, found_path=lookup.path)
@@ -98,7 +106,7 @@ def _locate_book(
             error=(
                 f"This book has no file path and {where} is not set. To fix, "
                 "open Manage > Collections, edit the collection, and set the "
-                "Library root folder."
+                "collection folder."
             )
         )
     if not text:
@@ -120,6 +128,9 @@ def _locate_book(
             browse_dir=root if folder_exists(root) else "",
         )
     return _BookLocation(error=f"Book not found in - {resolved}")
+
+
+_locate_book = locate_book_path
 
 
 def parse_tag_number(raw) -> int | None:

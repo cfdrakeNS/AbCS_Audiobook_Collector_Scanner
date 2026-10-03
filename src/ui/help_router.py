@@ -38,7 +38,7 @@ WINDOW_HELP_MAP: dict[str, str] = {
     "ReadingHistoryWindow": "13_reading_history.md",
     "StatisticsDialog": "14_statistics.md",
     "NameListWindow": "15_name_list.md",
-    "PathHealthWindow": "24_path_health.md",
+    "PathHealthWindow": "24_check_book_locations.md",
 }
 
 

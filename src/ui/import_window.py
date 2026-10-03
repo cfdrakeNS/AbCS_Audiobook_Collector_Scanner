@@ -1372,7 +1372,7 @@ class ImportWindow(AccessibleDialog):
         self.folder_edit.setText(prefs_dir)
         if announce:
             self.set_status(
-                f"Collection library root is missing for {collection.name}.",
+                f"Collection folder is missing for {collection.name}.",
                 announce=True,
             )
 

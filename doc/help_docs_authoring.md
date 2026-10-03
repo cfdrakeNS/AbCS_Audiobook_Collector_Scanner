@@ -43,7 +43,7 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `02`–`15` | Process guides (one workflow per window) |
 | `16`–`18` | Reference (shortcuts, defaults, import preferences) |
 | `19`–`21` | Explained guides (everyday-language walkthroughs) |
-| `24`–`25` | Additional process guides (path health, export library) |
+| `24`–`25` | Additional process guides (check book locations, export library) |
 | `26+` | Additional process guides; next free number is 27 |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
@@ -113,7 +113,7 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 19 | `19_import_explained.md` | Explained | — |
 | 20 | `20_import_book_list_explained.md` | Explained | — |
 | 21 | `21_web_metadata_explained.md` | Explained | — |
-| 24 | `24_path_health.md` | Process | — |
+| 24 | `24_check_book_locations.md` | Process | — |
 | 25 | `25_export_library.md` | Process | — |
 
 Web Metadata (`07_web_metadata.md`) is intentionally listed immediately after Find and Filters, regardless of its filename prefix. Other topics follow numeric filename order. Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.

@@ -164,7 +164,7 @@ def test_missing_collection_folder_says_how_to_fix(tmp_path):
     assert playlist.error == (
         f"The Audiobooks collection folder is missing - {missing_root}. "
         "To fix, open Manage > Collections, edit the collection, "
-        "and update the Library root folder."
+        "and set the collection folder."
     )
     assert playlist.browse_dir == ""
 
@@ -185,7 +185,7 @@ def test_collection_folder_without_audio_says_how_to_fix(tmp_path):
     assert playlist.error == (
         f"The Audiobooks collection folder has no audiobook files - {tmp_path}. "
         "It may be the wrong folder. To fix, open Manage > Collections, "
-        "edit the collection, and update the Library root folder."
+        "edit the collection, and set the collection folder."
     )
     assert playlist.browse_dir == str(tmp_path)
 
@@ -427,3 +427,70 @@ def test_found_path_is_saved_on_book(empty_book_db, tmp_path):
     assert save_found_book_path(book, db, found) is True
     assert book.path == found
     assert BookQueries(db).get_by_id(book_id).path == found
+
+
+def _blank_stats_book(book_id, **values):
+    fields = dict(time_hours=0, time_minutes=0, tracks=0, size_mb=0.0, bitrate=0)
+    fields.update(values)
+    return SimpleNamespace(book_id=book_id, **fields)
+
+
+def test_single_file_fills_length_size_bitrate_and_one_track(
+    empty_book_db, tmp_path, monkeypatch
+):
+    from src.core import tag_reader
+    from src.database.queries import BookQueries
+    from src.ui.preview_window import fill_missing_book_stats
+
+    db, book_id = empty_book_db
+    track = _audio(tmp_path / "Book", "book.m4b")
+
+    def fake_read(_self, _path):
+        info = tag_reader.AudioFileInfo()
+        info.duration_seconds = 2 * 3600 + 5 * 60 + 30
+        info.file_size_bytes = 50 * 1024 * 1024
+        info.bitrate = 64
+        return info
+
+    monkeypatch.setattr(tag_reader.TagReader, "read_file", fake_read)
+    book = _blank_stats_book(book_id)
+
+    assert fill_missing_book_stats(book, db, (track,)) is True
+    saved = BookQueries(db).get_by_id(book_id)
+    assert (saved.time_hours, saved.time_minutes) == (2, 5)
+    assert saved.tracks == 1
+    assert saved.size_mb == pytest.approx(50.0)
+    assert saved.bitrate == 64
+    assert (book.time_hours, book.tracks) == (2, 1)
+
+
+def test_multi_file_sets_only_track_count(empty_book_db, tmp_path, monkeypatch):
+    from src.core import tag_reader
+    from src.database.queries import BookQueries
+    from src.ui.preview_window import fill_missing_book_stats
+
+    db, book_id = empty_book_db
+    folder = tmp_path / "Book"
+    files = tuple(_audio(folder, f"{n:02d}.mp3") for n in range(1, 4))
+
+    def no_tags(*_args):
+        raise AssertionError("tags should not be read for a multi-file book")
+
+    monkeypatch.setattr(tag_reader.TagReader, "read_file", no_tags)
+    book = _blank_stats_book(book_id)
+
+    assert fill_missing_book_stats(book, db, files) is True
+    saved = BookQueries(db).get_by_id(book_id)
+    assert saved.tracks == 3
+    assert (saved.time_hours, saved.time_minutes) == (0, 0)
+
+
+def test_book_with_length_and_tracks_is_left_alone(empty_book_db, tmp_path):
+    from src.ui.preview_window import fill_missing_book_stats
+
+    db, book_id = empty_book_db
+    track = _audio(tmp_path / "Book", "book.m4b")
+    book = _blank_stats_book(book_id, time_hours=9, time_minutes=1, tracks=4)
+
+    assert fill_missing_book_stats(book, db, (track,)) is False
+    assert book.tracks == 4

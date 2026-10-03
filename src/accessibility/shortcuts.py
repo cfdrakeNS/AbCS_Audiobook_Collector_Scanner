@@ -28,7 +28,7 @@ COLLECTION_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
     "E": ("Edit selected row", "edit_button"),
     "D": ("Delete", "delete_button"),
-    "B": ("Browse library root", "browse_button"),
+    "B": ("Browse collection folder", "browse_button"),
 }
 
 NAMELIST_WINDOW_SHORTCUTS = {
@@ -63,8 +63,9 @@ DUPLICATE_DIALOG_SHORTCUTS = {
 PATH_HEALTH_WINDOW_SHORTCUTS = {
     "C": ("Collection", "collection_combo"),
     "F": ("Filter", "filter_combo"),
+    "I": ("Info instructions", "guide_label"),
     "S": ("Scan", "scan_button"),
-    "L": ("Focus check books path list", "path_list_table"),
+    "L": ("Focus check book locations list", "path_list_table"),
     "X": ("Export list to CSV", "export_button"),
 }
 

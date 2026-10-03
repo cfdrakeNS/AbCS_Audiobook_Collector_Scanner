@@ -1875,7 +1875,7 @@ class MainWindow(QMainWindow):
         self.duplicate_check_action.triggered.connect(self.on_duplicate_check)
         view_menu.addAction(self.duplicate_check_action)
 
-        self.path_health_action = QAction("Check Books Pat&h...", self)
+        self.path_health_action = QAction("Check Book &Locations...", self)
         self.path_health_action.triggered.connect(self.on_path_health)
         view_menu.addAction(self.path_health_action)
 
@@ -2373,12 +2373,12 @@ class MainWindow(QMainWindow):
             self.table.setFocus()
 
     def on_path_health(self):
-        """Open Manage → Check Books Path report."""
+        """Open View → Check Book Locations."""
         if self._block_if_selecting():
             return
         if self.duplicate_mode_active:
             self.set_status(
-                "Check Books Path is unavailable in duplicate mode.",
+                "Check Book Locations is unavailable in duplicate mode.",
                 announce=True,
             )
             return
@@ -2401,7 +2401,7 @@ class MainWindow(QMainWindow):
                     # Unknown id → All Collections (first item)
                     dialog.collection_combo.setCurrentIndex(0)
             else:
-                # Main window All Collections → Check Books Path All Collections
+                # Main window All Collections → Check Book Locations All Collections
                 dialog.collection_combo.setCurrentIndex(0)
         dialog.exec()
         self.refresh_books()

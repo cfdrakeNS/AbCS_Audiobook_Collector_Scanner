@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QSettings, QSize, QTimer, QUrl, Qt
-from PySide6.QtGui import QAccessible, QAccessibleEvent, QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import (
+    QAccessible,
+    QAccessibleEvent,
+    QAccessibleValueInterface,
+    QKeySequence,
+    QPixmap,
+    QShortcut,
+)
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QAccessibleWidget,
     QApplication,
     QComboBox,
     QFileDialog,
@@ -47,11 +56,87 @@ from src.core.media_log import (
 from src.ui.accessible_dialog import AccessibleDialog
 
 _open_preview = None
+_listen_slider_factory_installed = False
 SEEK_STEP_MS = 30_000
 SLIDER_STEP_MS = 5_000
-SAVE_PROMPT_BELOW_MS = 5 * 60 * 1000
+SAVE_PROMPT_AFTER_MS = 5 * 60 * 1000
 SPEED_OPTIONS = (0.75, 1.0, 1.25, 1.5, 1.75, 2.0)
 SPEED_SETTINGS_KEY = "preview/playback_rate"
+
+
+class ListenPositionSlider(QSlider):
+    """Seek slider; AT reads Play position as time text, not raw seconds."""
+
+    def listen_position_text(self) -> str:
+        return str(self.property("_listen_position_text") or "").strip()
+
+    def set_listen_position_text(self, text: str) -> None:
+        self.setProperty("_listen_position_text", text)
+
+
+class _ListenPositionSliderValue(QAccessibleValueInterface):
+    def __init__(self, slider: ListenPositionSlider) -> None:
+        super().__init__()
+        self._slider = slider
+
+    def currentValue(self):
+        return self._slider.value()
+
+    def maximumValue(self):
+        return self._slider.maximum()
+
+    def minimumValue(self):
+        return self._slider.minimum()
+
+    def minimumStepSize(self):
+        step = self._slider.singleStep()
+        return step if step > 0 else 1
+
+    def setCurrentValue(self, value):
+        self._slider.setValue(int(value))
+        return True
+
+
+class _ListenPositionSliderAccessible(QAccessibleWidget):
+    """Hide QSlider numeric value so screen readers do not say seconds after the time."""
+
+    def __init__(self, slider: ListenPositionSlider) -> None:
+        super().__init__(slider)
+        self._value = _ListenPositionSliderValue(slider)
+
+    def valueInterface(self):
+        return self._value
+
+    def role(self):
+        return QAccessible.Role.Slider
+
+    def text(self, t):
+        if t == QAccessible.Text.Value:
+            return ""
+        if t == QAccessible.Text.Name:
+            slider = self.object()
+            if slider is None:
+                return "Play position"
+            position_text = slider.listen_position_text()
+            if position_text:
+                return f"Play position {position_text}"
+            name = (slider.accessibleName() or "").strip()
+            return name or "Play position"
+        return QAccessibleWidget.text(self, t)
+
+
+def _listen_position_slider_factory(_class_name, obj):
+    if isinstance(obj, ListenPositionSlider):
+        return _ListenPositionSliderAccessible(obj)
+    return None
+
+
+def _ensure_listen_position_slider_factory() -> None:
+    global _listen_slider_factory_installed
+    if _listen_slider_factory_installed:
+        return
+    QAccessible.installFactory(_listen_position_slider_factory)
+    _listen_slider_factory_installed = True
 
 
 def _qt_version_tuple() -> tuple[int, int]:
@@ -216,6 +301,71 @@ def save_found_book_path(book, db, found_path: str) -> bool:
     return True
 
 
+def _book_int(book, name: str) -> int:
+    try:
+        return int(getattr(book, name, 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def fill_missing_book_stats(book, db, files) -> bool:
+    """Fill a blank length or track count from the files Listen is about to play.
+
+    Only empty fields are written. One file: length, size, and bitrate come from
+    its tags and the track count becomes 1. Several files: only the track count
+    is set to the number of audio files.
+    """
+    if not _can_save_book_path(book, db) or not files:
+        return False
+    hours = _book_int(book, "time_hours")
+    minutes = _book_int(book, "time_minutes")
+    tracks = _book_int(book, "tracks")
+    if hours or minutes:
+        if tracks:
+            return False
+    size_mb = float(getattr(book, "size_mb", 0) or 0)
+    bitrate = _book_int(book, "bitrate")
+    changed = False
+    if len(files) == 1:
+        from src.core.tag_reader import TagReader
+
+        info = TagReader().read_file(str(files[0]))
+        if not (hours or minutes) and info.duration_seconds > 0:
+            total_minutes = int(info.duration_seconds // 60)
+            hours, minutes = divmod(total_minutes, 60)
+            changed = bool(hours or minutes) or changed
+        if size_mb <= 0 and info.file_size_bytes > 0:
+            size_mb = info.file_size_bytes / (1024 * 1024)
+            changed = True
+        if bitrate <= 0 and info.bitrate > 0:
+            bitrate = int(info.bitrate)
+            changed = True
+        if tracks <= 0:
+            tracks = 1
+            changed = True
+    elif tracks <= 0:
+        tracks = len(files)
+        changed = True
+    if not changed:
+        return False
+    from src.database import BookQueries
+
+    BookQueries(db).update_file_stats(
+        book.book_id,
+        time_hours=hours,
+        time_minutes=minutes,
+        tracks=tracks,
+        size_mb=size_mb,
+        bitrate=bitrate,
+    )
+    book.time_hours = hours
+    book.time_minutes = minutes
+    book.tracks = tracks
+    book.size_mb = size_mb
+    book.bitrate = bitrate
+    return True
+
+
 def show_preview(
     parent,
     stored_path: str,
@@ -259,6 +409,9 @@ def show_preview(
     )
     if playlist.error or not playlist.files:
         message = playlist.error or "No playable audiobook files were found for this book."
+        title = (book_title or "").strip()
+        if title and title.casefold() not in message.casefold():
+            message = f'Could not find "{title}".\n\n{message}'
         if not playlist.browse_dir or not _can_save_book_path(book, db):
             return False, message
         chosen = browse_for_book_folder(parent, scaler, message, playlist.browse_dir)
@@ -270,6 +423,10 @@ def show_preview(
         save_found_book_path(book, db, chosen)
     elif playlist.found_path:
         save_found_book_path(book, db, playlist.found_path)
+    try:
+        fill_missing_book_stats(book, db, playlist.files)
+    except Exception:
+        pass
     try:
         silence_preview_media_logs()
         _configure_preview_backend()
@@ -346,7 +503,11 @@ class PreviewWindow(AccessibleDialog):
         self._folder_mode = False
         self._resume_ms: int | None = None
         self._pending_resume = False
-        self._save_progress_on_close = True
+        self._save_progress_on_close = False
+        self._listened_ms = 0
+        self._playing_since: float | None = None
+        self._progress_cleared = False
+        self._close_requested = False
         self._closing = False
         self._slider_dragging = False
         self._updating_slider_from_player = False
@@ -424,7 +585,6 @@ class PreviewWindow(AccessibleDialog):
         self.position_label = QLabel("0:00")
         self.position_label.setFocusPolicy(Qt.NoFocus)
         self.position_label.setAlignment(Qt.AlignCenter)
-        self.position_label.setAccessibleName("Listen position")
         self.position_label.setAccessibleDescription(
             "Keyboard seek control. Left and Right arrows seek five seconds. "
             "Page Up and Page Down seek thirty seconds. Home seeks to the "
@@ -456,8 +616,9 @@ class PreviewWindow(AccessibleDialog):
         )
         layout.addWidget(self.position_label, 0, Qt.AlignHCenter)
 
-        self.position_slider = QSlider(Qt.Horizontal)
-        self.position_slider.setAccessibleName("Seek in current file")
+        _ensure_listen_position_slider_factory()
+        self.position_slider = ListenPositionSlider(Qt.Horizontal)
+        self.position_slider.setAccessibleName("Play position")
         self.position_slider.setAccessibleDescription(
             "Seek through the current audio file. Use the arrow keys to seek "
             "five seconds and Page Up or Page Down to seek thirty seconds."
@@ -736,18 +897,29 @@ class PreviewWindow(AccessibleDialog):
             return True
         return super().focusNextPrevChild(next_)
 
+    def _preview_tab_order_chain(self):
+        """Tab-order links; include disabled transport so Qt chain stays stable."""
+        widgets = [
+            self.position_label,
+            self.position_slider,
+            *self._transport_focus_widgets(),
+        ]
+        return [
+            widget
+            for widget in widgets
+            if widget.isVisible() and widget.focusPolicy() != Qt.NoFocus
+        ]
+
     def _apply_preview_tab_order(self) -> None:
         """Seek controls, then Prev / Rewind / Play / Forward / Next / Speed."""
-        chain = self._preview_focus_chain()
+        chain = self._preview_tab_order_chain()
         for left, right in zip(chain, chain[1:]):
             self.setTabOrder(left, right)
 
     def _setup_shortcuts(self):
         status = QShortcut(QKeySequence("Alt+/"), self)
         status.setContext(Qt.WidgetWithChildrenShortcut)
-        status.activated.connect(
-            lambda: read_status_bar_message(self.status_bar, fallback="Ready")
-        )
+        status.activated.connect(self.on_read_status_bar)
         escape = QShortcut(QKeySequence(Qt.Key_Escape), self)
         escape.setContext(Qt.WidgetWithChildrenShortcut)
         escape.activated.connect(self.request_close)
@@ -772,6 +944,44 @@ class PreviewWindow(AccessibleDialog):
 
     def set_status(self, message: str, announce: bool = False):
         announce_status_message(self.status_bar, message, move_focus=announce)
+
+    def _position_ms_for_display(self) -> int:
+        if self._player is not None:
+            try:
+                return max(0, int(self._player.position()))
+            except (AttributeError, TypeError, ValueError):
+                pass
+        if self.position_slider.isEnabled():
+            return max(0, int(self.position_slider.value())) * 1000
+        return 0
+
+    def _play_position_display(self, position_ms: int | None = None) -> str:
+        ms = self._position_ms_for_display() if position_ms is None else max(0, int(position_ms))
+        current = _format_position_ms(ms)
+        if self._book_length_text:
+            return f"{current} / {self._book_length_text}"
+        return current
+
+    def _play_position_accessible_name(self, position_ms: int | None = None) -> str:
+        return f"Play position {self._play_position_display(position_ms)}"
+
+    def _status_readback_text(self) -> str:
+        status = (self.status_bar.currentMessage() or "").strip()
+        position = self._play_position_display()
+        if status and position:
+            return f"{status} Play position {position}."
+        if status:
+            return status
+        if position:
+            return f"Play position {position}."
+        return "Ready"
+
+    def on_read_status_bar(self) -> None:
+        read_status_bar_message(
+            self.status_bar,
+            fallback="Ready",
+            announce_text=self._status_readback_text(),
+        )
 
     def play_playlist(
         self,
@@ -820,7 +1030,10 @@ class PreviewWindow(AccessibleDialog):
         self._folder_mode = bool(playlist.folder_mode)
         self._resume_ms = int(resume_ms) if resume_ms else None
         self._pending_resume = self._resume_ms is not None and self._resume_ms > 0
-        self._save_progress_on_close = True
+        self._save_progress_on_close = False
+        self._progress_cleared = False
+        self._listened_ms = 0
+        self._playing_since = time.monotonic()
         self._load_current_file(autoplay=True)
         self.set_status(_playback_status("Playing"), announce=True)
         self._sync_play_button()
@@ -1003,6 +1216,8 @@ class PreviewWindow(AccessibleDialog):
 
     def _set_slider_range(self, duration_ms: int) -> None:
         duration = max(0, int(duration_ms))
+        slider_was_enabled = self.position_slider.isEnabled()
+        label_had_focus = self.position_label.focusPolicy() != Qt.NoFocus
         self.position_label.setFocusPolicy(
             Qt.StrongFocus if duration > 0 else Qt.NoFocus
         )
@@ -1012,6 +1227,10 @@ class PreviewWindow(AccessibleDialog):
             self.position_slider.setEnabled(duration > 0)
         finally:
             self._updating_slider_from_player = False
+        slider_enabled = self.position_slider.isEnabled()
+        label_has_focus = self.position_label.focusPolicy() != Qt.NoFocus
+        if slider_was_enabled != slider_enabled or label_had_focus != label_has_focus:
+            self._apply_preview_tab_order()
 
     def _set_slider_value(self, position_ms: int) -> None:
         self._updating_slider_from_player = True
@@ -1032,7 +1251,7 @@ class PreviewWindow(AccessibleDialog):
 
     def _on_slider_released(self) -> None:
         self._slider_dragging = False
-        self._seek_to(self.position_slider.value() * 1000, announce=True)
+        self._seek_to(self.position_slider.value() * 1000, announce=False)
 
     def _on_slider_value_changed(self, value: int) -> None:
         if self._updating_slider_from_player:
@@ -1050,22 +1269,21 @@ class PreviewWindow(AccessibleDialog):
         self._update_position_label(position)
 
     def _update_position_label(self, position_ms: int = 0) -> None:
-        current = _format_position_ms(position_ms)
-        if self._book_length_text:
-            text = f"{current} / {self._book_length_text}"
-        else:
-            text = current
+        text = self._play_position_display(position_ms)
+        accessible_position = self._play_position_accessible_name(position_ms)
         self.position_label.setText(text)
-        accessible_position = f"Seek position at {current}"
         self.position_label.setAccessibleName(accessible_position)
-        if self.position_slider.accessibleName() != accessible_position:
-            self.position_slider.setAccessibleName(accessible_position)
-            if self.position_slider.hasFocus() and QAccessible.isActive():
-                QAccessible.updateAccessibility(
-                    QAccessibleEvent(
-                        self.position_slider, QAccessible.Event.NameChanged
-                    )
-                )
+        self.position_slider.set_listen_position_text(text)
+        if not QAccessible.isActive():
+            return
+        if self.position_label.hasFocus():
+            QAccessible.updateAccessibility(
+                QAccessibleEvent(self.position_label, QAccessible.Event.NameChanged)
+            )
+        elif self.position_slider.hasFocus():
+            QAccessible.updateAccessibility(
+                QAccessibleEvent(self.position_slider, QAccessible.Event.NameChanged)
+            )
 
     def _load_current_file(self, autoplay: bool = True) -> None:
         if self._player is None or not self._playlist:
@@ -1174,8 +1392,27 @@ class PreviewWindow(AccessibleDialog):
             multi and self._playlist_index < len(self._playlist) - 1
         )
 
-    def _on_state_changed(self, _state):
+    def _on_state_changed(self, state):
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        if state == QMediaPlayer.PlaybackState.PlayingState:
+            if self._playing_since is None:
+                self._playing_since = time.monotonic()
+        else:
+            self._pause_listen_clock()
         self._sync_play_button()
+
+    def _pause_listen_clock(self) -> None:
+        if self._playing_since is not None:
+            self._listened_ms += int((time.monotonic() - self._playing_since) * 1000)
+            self._playing_since = None
+
+    def listened_ms(self) -> int:
+        """Time spent playing since Listen opened (pauses not counted)."""
+        running = 0
+        if self._playing_since is not None:
+            running = int((time.monotonic() - self._playing_since) * 1000)
+        return self._listened_ms + running
 
     def _on_media_status(self, status) -> None:
         from PySide6.QtMultimedia import QMediaPlayer
@@ -1203,6 +1440,7 @@ class PreviewWindow(AccessibleDialog):
             else:
                 self._clear_listen_progress()
                 self._save_progress_on_close = False
+                self._progress_cleared = True
                 self._focus_play_pause()
                 self.set_status(
                     "Finished. Progress cleared. Press Escape to exit.",
@@ -1277,7 +1515,7 @@ class PreviewWindow(AccessibleDialog):
             pass
 
     def request_close(self) -> None:
-        """Ask before saving short progress on the first playlist file."""
+        """Ask to save the position after five minutes of listening; never save silently."""
         if self._closing:
             return
         if self._player is not None:
@@ -1292,24 +1530,31 @@ class PreviewWindow(AccessibleDialog):
                     self._sync_play_button()
             except Exception:
                 pass
-        if self._save_progress_on_close:
-            position_ms, _file_name = self._current_progress()
-            if (
-                self._playlist_index == 0
-                and position_ms is not None
-                and 0 < position_ms < SAVE_PROMPT_BELOW_MS
-            ):
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Save position?",
-                    text="Save listening position?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
-                if reply != QMessageBox.Yes:
-                    self._save_progress_on_close = False
+        self._pause_listen_clock()
+        self._save_progress_on_close = False
+        position_ms, _file_name = self._current_progress()
+        if (
+            position_ms is not None
+            and not self._progress_cleared
+            and self.listened_ms() >= SAVE_PROMPT_AFTER_MS
+        ):
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Save position?",
+                text=(
+                    f"You listened for {self.listened_ms() // 60000} minutes.\n\n"
+                    "Save listening position?"
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.Yes,
+            )
+            if reply == QMessageBox.Yes:
+                self._save_progress_on_close = True
+                self._save_listen_progress()
+                self._save_progress_on_close = False
+        self._close_requested = True
         self.close()
 
     def showEvent(self, event):
@@ -1349,6 +1594,10 @@ class PreviewWindow(AccessibleDialog):
 
     def closeEvent(self, event):
         global _open_preview
+        if event.spontaneous() and not self._close_requested and not self._closing:
+            event.ignore()
+            QTimer.singleShot(0, self.request_close)
+            return
         self._closing = True
         owner = self.owner_widget
         self._save_listen_progress()
