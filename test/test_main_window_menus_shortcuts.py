@@ -235,24 +235,29 @@ def test_clear_want_to_read_on_focused_row_without_selection(main_window):
 
 
 def test_selection_f1_shortcuts_omit_column_jumps(main_window):
-    """F1 while selecting lists selection actions only, not Alt+1–7 or Alt+L."""
+    """F1 while selecting lists selection actions only, not Alt+1–7."""
     window = main_window
     id1, id2 = _insert_two_books(window)
     window.selected_book_ids = {id1, id2}
     window.update_selection_ui()
     keys = [key for key, _desc in window._selection_mode_f1_shortcuts()]
     assert keys == [
+        "Alt+L",
         "Alt+W",
         "Alt+U",
         "Alt+D",
+        "Delete",
         "Shift+Down/Up",
         "Escape",
         "Ctrl+C",
+        "Ctrl+Plus",
+        "Ctrl+Minus",
+        "Ctrl+0",
+        "Ctrl+Q",
         "Alt+/",
         "F1",
     ]
     assert not any(key.startswith("Alt+") and key[-1].isdigit() for key in keys)
-    assert "Alt+L" not in keys
     window.selected_book_ids.clear()
     window.update_selection_ui()
 

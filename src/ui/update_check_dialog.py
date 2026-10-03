@@ -101,7 +101,7 @@ class UpdateCheckDialog(AccessibleDialog):
         self.open_button = QPushButton("Open website")
         self.open_button.setAccessibleName("Open website")
         self.open_button.setAccessibleDescription(
-            f"{self._message} Opens the AbCS test site."
+            f"{self._message} Opens the AbCS download page."
         )
         self.open_button.setStyleSheet(button_style)
         self.open_button.clicked.connect(self._open_page)
@@ -147,16 +147,9 @@ class UpdateCheckDialog(AccessibleDialog):
         )
 
     def _read_result(self) -> None:
-        from PySide6.QtGui import QAccessible, QAccessibleEvent
+        from src.accessibility.accessible_events import announce_plain_text_readback
 
-        previous = self.focusWidget()
-        self._message_label.setFocus(Qt.OtherFocusReason)
-        if QAccessible.isActive():
-            QAccessible.updateAccessibility(
-                QAccessibleEvent(self._message_label, QAccessible.Event.Focus)
-            )
-        if previous is not None and previous is not self._message_label:
-            previous.setFocus(Qt.OtherFocusReason)
+        announce_plain_text_readback(self, self._message)
 
     def _show_shortcuts(self) -> None:
         from src.accessibility.shortcut_helpers import exec_f1_shortcuts_dialog
@@ -169,7 +162,6 @@ class UpdateCheckDialog(AccessibleDialog):
                 ("Escape", "Close"),
                 ("Alt+/", "Read the result"),
                 ("F1", "Show keyboard shortcuts"),
-                ("Shift+F1", "Open help"),
             ],
         )
 

@@ -38,6 +38,11 @@ from src.accessibility.accessible_events import (
 from src.accessibility.icon_helper import apply_decorative_action_icon, get_app_icon
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.scaling import UIScaler
+from src.accessibility.shortcuts import (
+    ShortcutContext,
+    allowed_alt_letters,
+    get_shortcut_manager,
+)
 from src.accessibility.style_helpers import (
     apply_status_bar_tooltip,
     apply_visual_tooltip_map,
@@ -477,7 +482,7 @@ def show_preview(
 class PreviewWindow(AccessibleDialog):
     """Listen window: play an audiobook inside AbCS with transport and resume."""
 
-    ALLOWED_ALT_LETTERS = {"/", "N", "P", "S"}
+    ALLOWED_ALT_LETTERS = allowed_alt_letters(ShortcutContext.PREVIEW_WINDOW, "/")
 
     def __init__(
         self,
@@ -732,7 +737,8 @@ class PreviewWindow(AccessibleDialog):
         self.speed_combo = QComboBox()
         self.speed_combo.setAccessibleName("Playback speed")
         self.speed_combo.setAccessibleDescription(
-            "Speed for every book. Saved for the next time you play. Shortcut Alt+S."
+            "Speed for every book. Saved for the next time you play. "
+            "Alt+Down or Space opens the list. Shortcut Alt+S."
         )
         for rate in SPEED_OPTIONS:
             self.speed_combo.addItem(f"{rate:g}x", rate)
@@ -770,7 +776,7 @@ class PreviewWindow(AccessibleDialog):
         self.play_pause_button.clicked.connect(self.on_play_pause)
         self.forward_button.clicked.connect(self.on_forward)
         self.next_button.clicked.connect(self.on_next)
-        self.speed_combo.currentIndexChanged.connect(self._on_speed_changed)
+        self.speed_combo.activated.connect(self._on_speed_changed)
 
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
@@ -932,16 +938,23 @@ class PreviewWindow(AccessibleDialog):
         install_shift_f1_help(self, shortcut_context=Qt.WidgetWithChildrenShortcut)
 
         for keys, slot in (
-            ("Space", self.on_play_pause),
-            ("Alt+N", self.on_next),
-            ("Alt+P", self.on_previous),
+            ("Space", self.on_space),
             ("Alt+Left", self.on_rewind),
             ("Alt+Right", self.on_forward),
-            ("Alt+S", self._focus_speed),
         ):
             shortcut = QShortcut(QKeySequence(keys), self)
             shortcut.setContext(Qt.WidgetWithChildrenShortcut)
             shortcut.activated.connect(slot)
+        get_shortcut_manager().register_alt_shortcuts(
+            self,
+            ShortcutContext.PREVIEW_WINDOW,
+            {
+                "next_button": self.on_next,
+                "previous_button": self.on_previous,
+                "speed_combo": self._focus_speed,
+            },
+            shortcut_context=Qt.WidgetWithChildrenShortcut,
+        )
 
     def set_status(self, message: str, announce: bool = False):
         announce_status_message(self.status_bar, message, move_focus=announce)
@@ -1069,6 +1082,15 @@ class PreviewWindow(AccessibleDialog):
             length_text=length_text,
         )
 
+    def on_space(self):
+        """Space toggles play, except on Speed where it opens the speed list."""
+        if self.speed_combo.view().isVisible():
+            return
+        if self.speed_combo.hasFocus():
+            self.speed_combo.showPopup()
+            return
+        self.on_play_pause()
+
     def on_play_pause(self):
         if self._player is None:
             return
@@ -1133,8 +1155,11 @@ class PreviewWindow(AccessibleDialog):
                 ("Alt+P", "Previous file"),
                 ("Alt+N", "Next file"),
                 ("Alt+S", "Playback speed"),
-                ("Left/Right", "Move between transport buttons, or seek five seconds"),
-                ("Page Up/Down", "Seek thirty seconds"),
+                ("Alt+Down or Space on Speed", "Open the speed list"),
+                ("Left/Right on transport buttons", "Move between transport buttons"),
+                ("Left/Right on time or slider", "Seek five seconds"),
+                ("Page Up/Down on time or slider", "Seek thirty seconds"),
+                ("Home/End on time or slider", "Start or end of the current file"),
                 ("Escape", "Close"),
                 ("Alt+/", "Read status bar"),
                 ("F1", "Show this help"),
@@ -1267,15 +1292,17 @@ class PreviewWindow(AccessibleDialog):
         if self._closing or self._slider_dragging:
             return
         self._set_slider_value(position)
-        self._update_position_label(position)
+        self._update_position_label(position, notify=False)
 
-    def _update_position_label(self, position_ms: int = 0) -> None:
+    def _update_position_label(self, position_ms: int = 0, notify: bool = True) -> None:
+        """Refresh the time text; ``notify`` only for user seeks, never player ticks."""
         text = self._play_position_display(position_ms)
         accessible_position = self._play_position_accessible_name(position_ms)
+        changed = accessible_position != self.position_label.accessibleName()
         self.position_label.setText(text)
         self.position_label.setAccessibleName(accessible_position)
         self.position_slider.set_listen_position_text(text)
-        if not QAccessible.isActive():
+        if not notify or not changed or not QAccessible.isActive():
             return
         if self.position_label.hasFocus():
             QAccessible.updateAccessibility(
@@ -1615,7 +1642,7 @@ class PreviewWindow(AccessibleDialog):
             self.request_close()
             return
         if event.key() == Qt.Key_Space:
-            self.on_play_pause()
+            self.on_space()
             return
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             focus = self.focusWidget()
@@ -1626,6 +1653,12 @@ class PreviewWindow(AccessibleDialog):
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.KeyPress:
+            if source is self.speed_combo and event.key() in (Qt.Key_Up, Qt.Key_Down):
+                if event.modifiers() & Qt.AltModifier:
+                    self.speed_combo.showPopup()
+                else:
+                    QApplication.beep()
+                return True
             if source is self.position_label:
                 key = event.key()
                 if key in (Qt.Key_Left, Qt.Key_Right):
@@ -1648,7 +1681,7 @@ class PreviewWindow(AccessibleDialog):
                 self.request_close()
                 return True
             if event.key() == Qt.Key_Space and not isinstance(source, QComboBox):
-                self.on_play_pause()
+                self.on_space()
                 return True
             if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                 if isinstance(source, QAbstractButton) and source.hasFocus():

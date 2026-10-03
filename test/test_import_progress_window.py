@@ -227,8 +227,12 @@ def test_progress_alt_slash_avoids_status_bar_focus(
         captured["restore"] = kwargs.get("restore_focus_widget")
 
     monkeypatch.setattr(
-        "src.ui.import_progress_window.announce_plain_text_readback",
+        "src.accessibility.accessible_events.announce_plain_text_readback",
         fake_readback,
+    )
+    monkeypatch.setattr(
+        "src.accessibility.accessible_events.QAccessible.isActive",
+        lambda: True,
     )
     window.on_read_status_bar()
 

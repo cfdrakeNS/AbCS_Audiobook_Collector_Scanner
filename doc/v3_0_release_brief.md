@@ -3,7 +3,7 @@
 **Current build:** 2.26 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
-**Testing:** Full pytest suite — 733 passed (October 2026).  
+**Testing:** Full pytest suite — 814 passed (October 3, 2026). Accessibility review defect fixes await JAWS/NVDA retest.  
 **Audience:** Checklist for what ships when you promote the build to **v3.0**.
 
 User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
@@ -36,7 +36,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 ### Maintain and export
 
 - Book Details **Browse** beside path; path open in file manager.
-- **View → Check Book Locations** (formerly Check Books Path): scan for blank, missing, or off-root paths using the **same path lookup as Listen** (`locate_book_path`); auto-correct paths found under the collection folder; filters; CSV export; open Book Details from a row; Import-style progress for large scans.
+- **Manage → Check Book Locations** (formerly Check Books Path): scan for blank, missing, or off-root paths using the **same path lookup as Listen** (`locate_book_path`); auto-correct paths found under the collection folder; filters; CSV export; open Book Details from a row; Import-style progress for large scans.
 - **File → Export Library** to CSV (UTF-8 BOM) or JSON for the visible list or selection.
 - Name-list merge when renaming duplicates (author, series, genre).
 - Standard shortcuts: **Ctrl+L** Listen, **Ctrl+S** save where applicable, **Edit** menu mnemonic, Narrator label on book list import, and related toolbar/menu cleanup.

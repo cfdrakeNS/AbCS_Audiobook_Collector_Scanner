@@ -23,7 +23,7 @@ Version 3 adds new ways to find, organize, listen to, and maintain your audioboo
 ## Maintain and share your library
 
 - Browse to a book's location from Book Details.
-- Use View → Check Book Locations to find blank, missing, or out-of-root paths, review the results, and export them to CSV.
+- Use Manage → Check Book Locations to find blank, missing, or out-of-root paths, review the results, and export them to CSV.
 - Export the visible library list or selected books to CSV or JSON.
 - Import book lists from spreadsheets and review items in the updated Import Detail layout.
 

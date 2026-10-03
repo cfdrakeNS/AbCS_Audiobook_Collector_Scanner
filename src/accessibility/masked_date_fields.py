@@ -262,7 +262,11 @@ def validate_year_spin(spin, parent, *, restore_to=None) -> bool:
         year_invalid_message(str(value), min_year=min_year, max_year=max_year),
     )
     if restore_to is not None:
-        spin.setValue(restore_to if restore_to else spin.minimum())
+        restore = int(restore_to) if restore_to else int(spin.minimum())
+        # Restoring an out-of-range stored year would re-warn on every focus-out.
+        if restore != int(spin.minimum()) and not (min_year <= restore <= max_year):
+            restore = int(spin.minimum())
+        spin.setValue(restore)
     spin.setFocus()
     return False
 

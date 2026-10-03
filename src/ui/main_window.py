@@ -1766,7 +1766,7 @@ class MainWindow(QMainWindow):
         self.edit_menu.addAction(self.clear_want_to_read_action)
 
         self.clear_listen_progress_action = QAction(
-            "Clear &listening position", self
+            "Clear listening &position", self
         )
         self.clear_listen_progress_action.triggered.connect(
             self.on_clear_listen_progress
@@ -1851,46 +1851,46 @@ class MainWindow(QMainWindow):
         self._rebuild_sort_menu()
 
         # manage menu
-        view_menu = menubar.addMenu("&Manage")
+        manage_menu = menubar.addMenu("&Manage")
 
         prefs_action = QAction("&Authors", self)
         prefs_action.triggered.connect(self.on_show_authors)
-        view_menu.addAction(prefs_action)
+        manage_menu.addAction(prefs_action)
 
         prefs_action = QAction("&Collections", self)
         prefs_action.triggered.connect(self.on_show_collection)
-        view_menu.addAction(prefs_action)
+        manage_menu.addAction(prefs_action)
 
         prefs_action = QAction("&Genre", self)
         prefs_action.triggered.connect(self.on_show_Genre)
-        view_menu.addAction(prefs_action)
+        manage_menu.addAction(prefs_action)
 
         prefs_action = QAction("&Series", self)
         prefs_action.triggered.connect(self.on_show_Series)
-        view_menu.addAction(prefs_action)
+        manage_menu.addAction(prefs_action)
 
-        view_menu.addSeparator()
+        manage_menu.addSeparator()
 
         self.duplicate_check_action = QAction("&Duplicate Check...", self)
         self.duplicate_check_action.triggered.connect(self.on_duplicate_check)
-        view_menu.addAction(self.duplicate_check_action)
+        manage_menu.addAction(self.duplicate_check_action)
 
         self.path_health_action = QAction("Check Book &Locations...", self)
         self.path_health_action.triggered.connect(self.on_path_health)
-        view_menu.addAction(self.path_health_action)
+        manage_menu.addAction(self.path_health_action)
 
         prefs_action = QAction("&Preferences...", self)
         prefs_action.triggered.connect(self.on_preferences)
-        view_menu.addAction(prefs_action)
+        manage_menu.addAction(prefs_action)
         self.preferences_action = prefs_action
 
         prefs_action = QAction("&Backup & Restore", self)
         prefs_action.triggered.connect(self.on_backup_restore)
-        view_menu.addAction(prefs_action)
+        manage_menu.addAction(prefs_action)
 
-        splash_action = QAction("&Statistics...", self)
+        splash_action = QAction("S&tatistics...", self)
         splash_action.triggered.connect(self.on_show_splash)
-        view_menu.addAction(splash_action)
+        manage_menu.addAction(splash_action)
         self.statistics_action = splash_action
 
         # Help menu — single entry opens the help window topic list
@@ -2373,7 +2373,7 @@ class MainWindow(QMainWindow):
             self.table.setFocus()
 
     def on_path_health(self):
-        """Open View → Check Book Locations."""
+        """Open Manage → Check Book Locations."""
         if self._block_if_selecting():
             return
         if self.duplicate_mode_active:
@@ -4067,7 +4067,7 @@ class MainWindow(QMainWindow):
             return False
         if not copy_plain_text(str(text)):
             return False
-        self.set_status("Copied.", timeout_ms=2000, announce=False)
+        self.set_status("Copied.", timeout_ms=2000, announce=True)
         return True
 
     def _on_table_context_menu(self, pos) -> None:
@@ -5206,6 +5206,7 @@ class MainWindow(QMainWindow):
         if self.current_filter.want_to_read_filter == "Want to Read":
             self.current_filter.want_to_read_filter = "All"
             self._sync_want_to_read_toolbar_toggle()
+            self._sync_want_to_read_menu_selection()
             self.refresh_books()
             self.set_status("Want to read filter cleared", timeout_ms=2000)
             return
@@ -5592,17 +5593,17 @@ class MainWindow(QMainWindow):
 
     def on_open_website(self):
         """Open the AbCS product page in the default browser."""
-        from src.app_urls import ABCS_UPDATE_DOWNLOAD_URL, open_public_url
+        from src.app_urls import ABCS_WEBSITE_URL, open_public_url
 
-        if open_public_url(ABCS_UPDATE_DOWNLOAD_URL):
+        if open_public_url(ABCS_WEBSITE_URL):
             self.set_status(
-                f"Opened AbCS test site in your browser: {ABCS_UPDATE_DOWNLOAD_URL}",
+                "Opened the AbCS website in your browser.",
                 timeout_ms=5000,
                 announce=True,
             )
         else:
             self.set_status(
-                f"Could not open browser. Visit {ABCS_UPDATE_DOWNLOAD_URL}",
+                f"Could not open browser. Visit {ABCS_WEBSITE_URL}",
                 timeout_ms=0,
                 announce=True,
             )
@@ -5665,7 +5666,7 @@ class MainWindow(QMainWindow):
         if choice == UpdateCheckDialog.OPEN_PAGE:
             if dialog.browser_opened:
                 message = (
-                    f"{message} Opened the AbCS test site: {ABCS_UPDATE_DOWNLOAD_URL}"
+                    f"{message} Opened the AbCS download page: {ABCS_UPDATE_DOWNLOAD_URL}"
                 )
             else:
                 message = (
@@ -5678,12 +5679,18 @@ class MainWindow(QMainWindow):
     def _selection_mode_f1_shortcuts(self):
         """Shortcuts that still work while books are selected (no column jumps)."""
         return [
+            ("Alt+L", "Jump to list"),
             ("Alt+W", "Fetch web info for the selection (batch when two or more)"),
             ("Alt+U", "Update selected"),
-            ("Alt+D", "Delete selected (focused book in duplicate mode)"),
+            ("Alt+D", "Delete selected"),
+            ("Delete", "Delete selected"),
             ("Shift+Down/Up", "Extend selection"),
             ("Escape", "Cancel selection"),
             ("Ctrl+C", "Copy focused cell"),
+            ("Ctrl+Plus", "Zoom in"),
+            ("Ctrl+Minus", "Zoom out"),
+            ("Ctrl+0", "Reset zoom"),
+            ("Ctrl+Q", "Quit"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show keyboard shortcuts"),
         ]
@@ -5704,6 +5711,7 @@ class MainWindow(QMainWindow):
             shortcuts = self._selection_mode_f1_shortcuts()
         else:
             shortcuts = [
+                ("Alt+L", "Jump to list"),
                 ("Alt+1", "Jump to Author"),
                 ("Alt+2", "Jump to Title"),
                 ("Alt+3", "Jump to Year"),
@@ -5718,21 +5726,31 @@ class MainWindow(QMainWindow):
                 ("Ctrl+F", "Find"),
                 ("Ctrl+C", "Copy focused cell"),
                 ("Alt+V, A", "View, Recently Added filter"),
+                ("Alt+F, X", "File, Export Library"),
+                ("Alt+M, L", "Manage, Check Book Locations"),
+                ("Alt+M, T", "Manage, Statistics"),
                 ("Alt+P", "Toggle plot filter"),
                 ("Alt+R", "Toggle read filter"),
                 ("Alt+T", "Toggle want to read filter"),
                 ("Alt+W", "Fetch web info (batch when two or more selected)"),
                 ("Ctrl+L", "Listen to focused book inside AbCS"),
                 ("Ctrl+I", "Import"),
+                ("Ctrl+Shift+I", "Import book list"),
                 ("Ctrl+N", "New book"),
                 ("Shift+Down/Up", "Start selection or extend selection"),
                 ("Alt+U", "Update selected"),
                 ("Alt+D", "Delete selected (focused book in duplicate mode)"),
+                ("Delete", "Delete selected (focused book in duplicate mode)"),
                 ("Alt+X", "Export duplicates (in duplicate mode)"),
-                ("Escape", "Clear selection / Find / plot / read / in progress / want to read / recently added"),
+                (
+                    "Escape",
+                    "Clear selection, then Find, plot, read, in progress, want to read, "
+                    "and recently added filters one at a time; exit duplicate mode",
+                ),
                 ("Ctrl+Plus", "Zoom in"),
                 ("Ctrl+Minus", "Zoom out"),
                 ("Ctrl+0", "Reset zoom"),
+                ("Ctrl+Q", "Quit"),
                 ("Alt+/", "Read status bar"),
                 ("F1", "Show keyboard shortcuts"),
             ]

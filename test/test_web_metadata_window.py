@@ -299,6 +299,7 @@ def test_other_plots_selector_updates_reviewed_plot_and_provenance(window, qapp)
     assert window.plot_alternatives.itemText(1) == "Other plot 1"
 
     window.plot_alternatives.setCurrentIndex(1)
+    window.plot_alternatives.activated.emit(1)
 
     assert window.plot_edit.plot_text().startswith("Alternate accepted description.")
     assert window.web_data["plot_source"] == "wikipedia"

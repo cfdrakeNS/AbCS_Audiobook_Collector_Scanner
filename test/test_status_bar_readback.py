@@ -1,7 +1,7 @@
 """Tests for centralized status bar Alt+/ readback (bug 102)."""
 
 import pytest
-from PySide6.QtWidgets import QStatusBar
+from PySide6.QtWidgets import QMainWindow, QStatusBar
 
 from src.accessibility.accessible_events import (
     _status_bar_focus_delay_ms,
@@ -11,6 +11,27 @@ from src.accessibility.accessible_events import (
 )
 
 
+def _window_with_bar(qtbot):
+    window = QMainWindow()
+    qtbot.addWidget(window)
+    bar = QStatusBar()
+    window.setStatusBar(bar)
+    return window, bar
+
+
+def _capture_readback(monkeypatch):
+    captured = {}
+
+    def fake_readback(widget, text, **kwargs):
+        captured["widget"] = widget
+        captured["message"] = text
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "src.accessibility.accessible_events.announce_plain_text_readback",
+        fake_readback,
+    )
+    return captured
 
 
 def test_configure_status_bar_accessibility_clears_metadata(qapp):
@@ -46,14 +67,9 @@ def test_prepare_status_bar_for_readback_explicit_message(qapp):
     assert bar.accessibleName() == "explicit"
 
 
-def test_read_status_bar_message_no_op_without_screen_reader(qapp, monkeypatch):
-    bar = QStatusBar()
+def test_read_status_bar_message_no_op_without_screen_reader(qtbot, monkeypatch):
+    _window, bar = _window_with_bar(qtbot)
     bar.showMessage("hello")
-    called = []
-
-    def fake_announce(*args, **kwargs):
-        called.append(True)
-
     monkeypatch.setattr(
         "src.accessibility.accessible_events.QAccessible.isActive",
         lambda: False,
@@ -62,47 +78,35 @@ def test_read_status_bar_message_no_op_without_screen_reader(qapp, monkeypatch):
         "src.accessibility.accessible_events.is_screen_reader_active",
         lambda: False,
     )
-    monkeypatch.setattr(
-        "src.accessibility.accessible_events.announce_status_message",
-        fake_announce,
-    )
+    captured = _capture_readback(monkeypatch)
 
     read_status_bar_message(bar, fallback="Ready")
 
-    assert called == []
+    assert captured == {}
 
 
-def test_read_status_bar_message_announce_text_override(qapp, monkeypatch):
-    bar = QStatusBar()
+def test_read_status_bar_message_announce_text_override(qtbot, monkeypatch):
+    _window, bar = _window_with_bar(qtbot)
     bar.showMessage("footer only")
-    captured = {}
-
     monkeypatch.setattr(
         "src.accessibility.accessible_events.QAccessible.isActive",
         lambda: True,
     )
-
-    def fake_announce(status_bar, message, **kwargs):
-        captured["message"] = message
-
-    monkeypatch.setattr(
-        "src.accessibility.accessible_events.announce_status_message",
-        fake_announce,
-    )
+    captured = _capture_readback(monkeypatch)
 
     read_status_bar_message(
         bar,
         fallback="ignored",
         announce_text="42 books  |  Sort: Title",
+        update_visible=False,
     )
 
     assert captured["message"] == "42 books  |  Sort: Title"
+    assert bar.currentMessage() == "footer only"
 
 
-def test_read_status_bar_message_when_screen_reader_process_detected(qapp, monkeypatch):
-    bar = QStatusBar()
-    captured = {}
-
+def test_read_status_bar_message_when_screen_reader_process_detected(qtbot, monkeypatch):
+    _window, bar = _window_with_bar(qtbot)
     monkeypatch.setattr(
         "src.accessibility.accessible_events.QAccessible.isActive",
         lambda: False,
@@ -111,14 +115,7 @@ def test_read_status_bar_message_when_screen_reader_process_detected(qapp, monke
         "src.accessibility.accessible_events.is_screen_reader_active",
         lambda: True,
     )
-
-    def fake_announce(status_bar, message, **kwargs):
-        captured["message"] = message
-
-    monkeypatch.setattr(
-        "src.accessibility.accessible_events.announce_status_message",
-        fake_announce,
-    )
+    captured = _capture_readback(monkeypatch)
 
     read_status_bar_message(bar, fallback="Moby Dick")
 
@@ -137,28 +134,17 @@ def test_status_bar_focus_delay_has_minimum_when_reader_active(qapp, monkeypatch
     assert _status_bar_focus_delay_ms() == 300
 
 
-def test_read_status_bar_message_prefers_current_message(qapp, monkeypatch):
-    bar = QStatusBar()
+def test_read_status_bar_message_speaks_through_window_not_status_bar(qtbot, monkeypatch):
+    window, bar = _window_with_bar(qtbot)
     bar.showMessage("visible status")
-    captured = {}
-
     monkeypatch.setattr(
         "src.accessibility.accessible_events.QAccessible.isActive",
         lambda: True,
     )
-
-    def fake_announce(status_bar, message, **kwargs):
-        captured["message"] = message
-        captured["name"] = status_bar.accessibleName()
-        captured["description"] = status_bar.accessibleDescription()
-
-    monkeypatch.setattr(
-        "src.accessibility.accessible_events.announce_status_message",
-        fake_announce,
-    )
+    captured = _capture_readback(monkeypatch)
 
     read_status_bar_message(bar, fallback="fallback only")
 
     assert captured["message"] == "visible status"
-    assert captured["name"] == "visible status"
-    assert captured["description"] == ""
+    assert captured["widget"] is window
+    assert captured["widget"] is not bar

@@ -22,6 +22,9 @@ class ShortcutContext(Enum):
     BOOK_LIST_IMPORT_WINDOW = "book_list_import_window"
     IMPORT_DETAIL_WINDOW = "import_detail_window"
     PATH_HEALTH_WINDOW = "path_health_window"
+    PREVIEW_WINDOW = "preview_window"
+    HELP_WINDOW = "help_window"
+    BATCH_WEB_FETCH_SUMMARY = "batch_web_fetch_summary"
 
 
 COLLECTION_WINDOW_SHORTCUTS = {
@@ -29,6 +32,9 @@ COLLECTION_WINDOW_SHORTCUTS = {
     "E": ("Edit selected row", "edit_button"),
     "D": ("Delete", "delete_button"),
     "B": ("Browse collection folder", "browse_button"),
+    "M": ("Name", "name_edit"),
+    "F": ("Collection folder", "root_edit"),
+    "A": ("Active", "active_check"),
 }
 
 NAMELIST_WINDOW_SHORTCUTS = {
@@ -52,6 +58,26 @@ READING_HISTORY_WINDOW_SHORTCUTS = {
     "L": ("Jump to list", "table"),
     "S": ("Search", "refresh_button"),
     "F": ("From date", "start_date_edit"),
+    "G": ("General tab", "general_tab"),
+    "Y": ("Year tab", "year_tab"),
+    "M": ("Month tab", "month_tab"),
+    "R": ("Date Range tab", "range_tab"),
+}
+
+PREVIEW_WINDOW_SHORTCUTS = {
+    "N": ("Next track", "next_button"),
+    "P": ("Previous track", "previous_button"),
+    "S": ("Speed", "speed_combo"),
+}
+
+HELP_WINDOW_SHORTCUTS = {
+    "L": ("Jump to the left list (topics, sections, or results)", "nav_list"),
+}
+
+BATCH_WEB_FETCH_SUMMARY_SHORTCUTS = {
+    "A": ("Apply all", "apply_button"),
+    "R": ("Review each", "review_button"),
+    "L": ("Book list", "book_list"),
 }
 
 DUPLICATE_DIALOG_SHORTCUTS = {
@@ -179,6 +205,38 @@ PREFERENCES_WINDOW_SHORTCUTS = {
 }
 
 
+_CONTEXT_SHORTCUTS: Dict[ShortcutContext, Dict[str, Tuple[str, str]]] = {
+    ShortcutContext.COLLECTION_WINDOW: COLLECTION_WINDOW_SHORTCUTS,
+    ShortcutContext.MAIN_WINDOW: MAIN_WINDOW_SHORTCUTS,
+    ShortcutContext.BOOK_DETAILS: BOOK_DETAILS_SHORTCUTS,
+    ShortcutContext.WEB_METADATA: WEB_METADATA_SHORTCUTS,
+    ShortcutContext.IMPORT_WINDOW: IMPORT_WINDOW_SHORTCUTS,
+    ShortcutContext.UPDATE_WINDOW: UPDATE_WINDOW_SHORTCUTS,
+    ShortcutContext.PREFERENCES_WINDOW: PREFERENCES_WINDOW_SHORTCUTS,
+    ShortcutContext.DUPLICATE_DIALOG: DUPLICATE_DIALOG_SHORTCUTS,
+    ShortcutContext.BACKUP_RESTORE_WINDOW: BACKUP_RESTORE_WINDOW_SHORTCUTS,
+    ShortcutContext.NAMELIST_WINDOW: NAMELIST_WINDOW_SHORTCUTS,
+    ShortcutContext.READING_HISTORY_WINDOW: READING_HISTORY_WINDOW_SHORTCUTS,
+    ShortcutContext.BOOK_LIST_IMPORT_WINDOW: BOOK_LIST_IMPORT_WINDOW_SHORTCUTS,
+    ShortcutContext.IMPORT_DETAIL_WINDOW: IMPORT_DETAIL_WINDOW_SHORTCUTS,
+    ShortcutContext.PATH_HEALTH_WINDOW: PATH_HEALTH_WINDOW_SHORTCUTS,
+    ShortcutContext.PREVIEW_WINDOW: PREVIEW_WINDOW_SHORTCUTS,
+    ShortcutContext.HELP_WINDOW: HELP_WINDOW_SHORTCUTS,
+    ShortcutContext.BATCH_WEB_FETCH_SUMMARY: BATCH_WEB_FETCH_SUMMARY_SHORTCUTS,
+}
+
+
+def shortcuts_for_context(context: ShortcutContext) -> Dict[str, Tuple[str, str]]:
+    """Central Alt+key map for a window (empty when the window has none)."""
+    return _CONTEXT_SHORTCUTS.get(context, {})
+
+
+def allowed_alt_letters(context: ShortcutContext, *extra: str) -> set:
+    """Alt letters a window maps, for ``is_unmapped_alt_letter`` allow-lists."""
+    letters = {key.upper() for key in shortcuts_for_context(context) if len(key) == 1}
+    return letters | {item.upper() for item in extra}
+
+
 class ShortcutManager(QObject):
     """
     Manages keyboard shortcuts across the application.
@@ -200,6 +258,9 @@ class ShortcutManager(QObject):
     BOOK_LIST_IMPORT_WINDOW_SHORTCUTS = BOOK_LIST_IMPORT_WINDOW_SHORTCUTS
     UPDATE_WINDOW_SHORTCUTS = UPDATE_WINDOW_SHORTCUTS
     PREFERENCES_WINDOW_SHORTCUTS = PREFERENCES_WINDOW_SHORTCUTS
+    PREVIEW_WINDOW_SHORTCUTS = PREVIEW_WINDOW_SHORTCUTS
+    HELP_WINDOW_SHORTCUTS = HELP_WINDOW_SHORTCUTS
+    BATCH_WEB_FETCH_SUMMARY_SHORTCUTS = BATCH_WEB_FETCH_SUMMARY_SHORTCUTS
 
     def __init__(self):
         """Initialize shortcut manager."""
@@ -211,6 +272,8 @@ class ShortcutManager(QObject):
         widget: QWidget,
         context: ShortcutContext,
         callback_map: Dict[str, Callable],
+        *,
+        shortcut_context: Qt.ShortcutContext = Qt.WindowShortcut,
     ):
         """
         Register Alt+Key shortcuts for a widget.
@@ -220,37 +283,10 @@ class ShortcutManager(QObject):
             context: Shortcut context
             callback_map: Map of widget_id to callback function
                          e.g., {'collection_combo': self.on_collection_focus}
+            shortcut_context: Qt shortcut context for the created QShortcuts
         """
-        # Get shortcuts for this context
-        if context == ShortcutContext.MAIN_WINDOW:
-            shortcuts = MAIN_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.BOOK_DETAILS:
-            shortcuts = BOOK_DETAILS_SHORTCUTS
-        elif context == ShortcutContext.IMPORT_DETAIL_WINDOW:
-            shortcuts = IMPORT_DETAIL_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.WEB_METADATA:
-            shortcuts = WEB_METADATA_SHORTCUTS
-        elif context == ShortcutContext.IMPORT_WINDOW:
-            shortcuts = IMPORT_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.UPDATE_WINDOW:
-            shortcuts = UPDATE_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.PREFERENCES_WINDOW:
-            shortcuts = PREFERENCES_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.DUPLICATE_DIALOG:
-            shortcuts = DUPLICATE_DIALOG_SHORTCUTS
-        elif context == ShortcutContext.PATH_HEALTH_WINDOW:
-            shortcuts = PATH_HEALTH_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.BACKUP_RESTORE_WINDOW:
-            shortcuts = BACKUP_RESTORE_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.NAMELIST_WINDOW:
-            shortcuts = NAMELIST_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.COLLECTION_WINDOW:
-            shortcuts = COLLECTION_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.READING_HISTORY_WINDOW:
-            shortcuts = READING_HISTORY_WINDOW_SHORTCUTS
-        elif context == ShortcutContext.BOOK_LIST_IMPORT_WINDOW:
-            shortcuts = BOOK_LIST_IMPORT_WINDOW_SHORTCUTS
-        else:
+        shortcuts = shortcuts_for_context(context)
+        if not shortcuts:
             return
 
         # Register each shortcut
@@ -270,7 +306,7 @@ class ShortcutManager(QObject):
                 else:
                     key_seq = QKeySequence(f"Alt+{key}")
                 shortcut = QShortcut(key_seq, widget)
-                shortcut.setContext(Qt.WindowShortcut)
+                shortcut.setContext(shortcut_context)
                 shortcut.activated.connect(callback_map[widget_id])
                 shortcut_id = f"{context.value}_{key}"
                 self._shortcuts[shortcut_id] = shortcut

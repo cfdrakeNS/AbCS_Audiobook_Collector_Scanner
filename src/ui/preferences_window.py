@@ -2039,12 +2039,15 @@ class PreferencesWindow(AccessibleDialog):
         widgets.extend(self.findChildren(QTextEdit))
         widgets.extend(self.findChildren(QComboBox))
         widgets.extend(self.findChildren(QSpinBox))
+        widgets.extend(self.findChildren(QSlider))
         for widget in widgets:
             widget.installEventFilter(self)
 
     def eventFilter(self, source, event):
         """Block Alt+letter input for letters that are not mapped shortcuts."""
-        if event.type() == QEvent.Wheel and isinstance(source, (QComboBox, QSpinBox)):
+        if event.type() == QEvent.Wheel and isinstance(
+            source, (QComboBox, QSpinBox, QSlider)
+        ):
             event.accept()
             return True
 

@@ -127,7 +127,20 @@ class SingleLineDateEdit(QDateEdit):
             and bool(event.modifiers() & Qt.AltModifier)
         )
 
+    def step_off_blank_to_today(self) -> bool:
+        """From the blank (minimum) value, Up or Down goes to today, not 1752."""
+        if self.isReadOnly() or self.date() != self.minimumDate():
+            return False
+        self.setDate(min(QDate.currentDate(), self.maximumDate()))
+        line = self.lineEdit()
+        if line is not None:
+            line.deselect()
+        return True
+
     def _step_from_alt(self, event):
+        if self.step_off_blank_to_today():
+            self.altStepped.emit()
+            return
         step = 1 if event.key() == Qt.Key_Up else -1
         if self.currentSection() == QDateEdit.Section.NoSection:
             self.setCurrentSection(QDateEdit.Section.YearSection)
@@ -225,8 +238,11 @@ class BookDetailsWindow(AccessibleDialog):
                 f"You have unsaved changes for '{title_val}' by {author_val}.\n\n"
                 "Yes = Save and close\n"
                 "No = Continue editing\n"
-                "Cancel = Revert and close"
+                "Cancel = Discard unsaved changes and close"
             )
+            saved_id = getattr(self, "_read_date_saved_book_id", None)
+            if saved_id is not None and saved_id == getattr(self.book, "book_id", None):
+                msg_text += "\n\nThe read date you confirmed is already saved and stays."
             reply = exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -254,7 +270,7 @@ class BookDetailsWindow(AccessibleDialog):
                 if combo_to_restore:
                     QTimer.singleShot(0, combo_to_restore.setFocus)
                 return
-            else:  # Cancel - revert and close
+            else:  # Cancel - discard unsaved changes and close
                 self._revert_changes()
                 self.set_status("Changes discarded.", announce=True)
                 announce_dialog_closed(self)
@@ -591,14 +607,20 @@ class BookDetailsWindow(AccessibleDialog):
             if not getattr(self, "_year_is_masked", False):
                 year_line = self.year_spin.lineEdit() if hasattr(self, "year_spin") else None
                 if source is getattr(self, "year_spin", None) or source is year_line:
-                    QTimer.singleShot(0, lambda: self._announce_stepped_value(self.year_spin))
+                    handled = self._step_year_past_range_edge(event.key() == Qt.Key_Up)
+                    QTimer.singleShot(0, self._finish_year_step)
+                    if handled:
+                        return True
             if not getattr(self, "_read_date_is_masked", False):
                 date_line = self.read_date.lineEdit() if hasattr(self, "read_date") else None
                 if source is getattr(self, "read_date", None) or source is date_line:
                     if event.modifiers() & Qt.AltModifier:
                         self.read_date._step_from_alt(event)
                         return True
-                    QTimer.singleShot(0, lambda: self._announce_stepped_value(self.read_date))
+                    if self.read_date.step_off_blank_to_today():
+                        QTimer.singleShot(0, self._finish_read_date_step)
+                        return True
+                    QTimer.singleShot(0, self._finish_read_date_step)
 
         # Check for FocusOut on relevant fields to sanitize input silently
         # Only sanitize if field has been modified (is dirty) - prevents unwanted prompts for save
@@ -1755,11 +1777,55 @@ class BookDetailsWindow(AccessibleDialog):
     def _finish_read_date_step(self):
         """Speak the stepped date without treating the announcement as leaving the field."""
         self._suppress_read_date_commit = True
+        self._read_date_step_token = getattr(self, "_read_date_step_token", 0) + 1
+        token = self._read_date_step_token
         self._announce_stepped_value(self.read_date)
-        QTimer.singleShot(2000, self._end_read_date_announce_guard)
+        QTimer.singleShot(2000, lambda: self._end_read_date_announce_guard(token))
 
-    def _end_read_date_announce_guard(self):
+    def _end_read_date_announce_guard(self, token=None):
+        if token is not None and token != getattr(self, "_read_date_step_token", 0):
+            return
         self._suppress_read_date_commit = False
+        # A Tab away during the guard skipped the focus-out commit; run it now.
+        if self.isVisible():
+            self._commit_read_date_if_focus_left()
+
+    def _step_year_past_range_edge(self, step_up: bool) -> bool:
+        """Classic year: Up/Down from blank lands on this year; Down from the minimum goes blank.
+
+        Returns True when the step was applied here instead of by the spin box.
+        """
+        spin = self.year_spin
+        if spin.isReadOnly():
+            return False
+        from src.accessibility.masked_date_fields import (
+            preferred_year_range,
+            year_spin_is_blank,
+        )
+
+        min_year, max_year = preferred_year_range()
+        if year_spin_is_blank(spin):
+            spin.setValue(max(min_year, min(datetime.now().year, max_year)))
+            return True
+        if not step_up and spin.value() <= min_year:
+            spin.setValue(spin.minimum())
+            return True
+        return False
+
+    def _finish_year_step(self):
+        """Speak the stepped year without the announcement counting as leaving the field."""
+        self._suppress_year_validation = True
+        self._year_step_token = getattr(self, "_year_step_token", 0) + 1
+        token = self._year_step_token
+        self._announce_stepped_value(self.year_spin)
+        QTimer.singleShot(2000, lambda: self._end_year_announce_guard(token))
+
+    def _end_year_announce_guard(self, token=None):
+        if token is not None and token != getattr(self, "_year_step_token", 0):
+            return
+        self._suppress_year_validation = False
+        if self.isVisible():
+            self._validate_year_on_focus_out()
 
     def _clear_date_section_highlight(self, widget):
         """Drop the year, month, or day selection so it is not spoken as a highlight."""
@@ -1835,13 +1901,7 @@ class BookDetailsWindow(AccessibleDialog):
             if self.get_web_details_button.isVisible()
             else None
         )
-        callback_map["browse_path_button"] = (
-            lambda: self.on_browse_path()
-            if getattr(self, "browse_path_button", None) is not None
-            and self.browse_path_button.isEnabled()
-            and self.browse_path_button.isVisible()
-            else None
-        )
+        callback_map["browse_path_button"] = self._on_browse_path_shortcut
         callback_map["edit_button"] = self.on_edit_mode
         # Add focus routing for view labels (route to combos when labels are hidden in edit mode)
         callback_map["author_label_display"] = self._focus_author
@@ -1897,6 +1957,18 @@ class BookDetailsWindow(AccessibleDialog):
         self.next_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
         self.next_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self.next_shortcut.activated.connect(self.on_next)
+
+    def _on_browse_path_shortcut(self):
+        """Alt+B: browse in Edit or New mode; in view mode say how to get there."""
+        if not (getattr(self, "_in_edit_mode", False) or self.is_new):
+            self.set_status(
+                "Browse is available in Edit mode. Press Alt+E to edit.",
+                announce=True,
+            )
+            return
+        button = getattr(self, "browse_path_button", None)
+        if button is not None and button.isEnabled() and button.isVisible():
+            self.on_browse_path()
 
     def reject(self):
         """
@@ -2059,6 +2131,10 @@ class BookDetailsWindow(AccessibleDialog):
         """Warn on year outside Preferences range (masked or classic)."""
         if getattr(self, "_loading_fields", False):
             return
+        if getattr(self, "_suppress_year_validation", False):
+            return
+        if not (getattr(self, "_in_edit_mode", False) or self.is_new):
+            return
         focus = QApplication.focusWidget()
         year_line = (
             self.year_spin.lineEdit()
@@ -2067,8 +2143,23 @@ class BookDetailsWindow(AccessibleDialog):
         )
         if focus is self.year_spin or focus is year_line:
             return
+        if self._year_matches_saved_value():
+            return
         stored = getattr(self.book, "year", None) or self.year_spin.minimum()
         validate_year_spin(self.year_spin, self, restore_to=stored)
+
+    def _year_matches_saved_value(self) -> bool:
+        """True when the year field still shows the stored year (or blank for a new book)."""
+        from src.accessibility.masked_date_fields import format_year
+
+        stored = None if self.is_new else getattr(self.book, "year", None)
+        if getattr(self, "_year_is_masked", False):
+            return self.year_spin.text().strip() == format_year(stored)
+        try:
+            stored_value = int(stored) if stored else int(self.year_spin.minimum())
+        except (TypeError, ValueError):
+            stored_value = int(self.year_spin.minimum())
+        return int(self.year_spin.value()) == stored_value
 
     def _validate_masked_read_date_on_focus_out(self):
         """Validate typed or classic read date, then confirm and save if it changed."""
@@ -2163,6 +2254,61 @@ class BookDetailsWindow(AccessibleDialog):
             self.read_date.blockSignals(False)
             self._reverting_read_date = False
 
+    def _confirm_read_date_change(self, title, new_date) -> bool:
+        """Same Yes/No prompt as the main window read date dialog. Default is No."""
+        if new_date is not None:
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Read Date",
+                text=f"Mark '{title}' as read on {new_date.isoformat()}?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
+        else:
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Clear Read Date",
+                text=f"Clear the read date for '{title}'?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
+        return reply == QMessageBox.Yes
+
+    def _commit_read_date_before_navigation(self) -> bool:
+        """Page Up/Down: confirm a typed read date before another book loads.
+
+        False when the typed date is invalid (warning shown, focus stays on it).
+        """
+        if self.is_new or not getattr(self.book, "book_id", None):
+            return True
+        if getattr(self, "_read_date_is_masked", False):
+            stored = self._stored_read_date()
+            if self.read_date.text().strip() == (stored.isoformat() if stored else ""):
+                return True
+        elif self._read_date_from_field() == self._stored_read_date():
+            return True
+        was_suppressed = getattr(self, "_suppress_read_date_commit", False)
+        self._suppress_read_date_commit = True
+        try:
+            valid = validate_date_edit(
+                self.read_date,
+                self,
+                allow_blank=True,
+                null_date=self._null_read_date,
+                disallow_future=True,
+            )
+        finally:
+            self._suppress_read_date_commit = was_suppressed
+        if not valid:
+            self.read_date.setFocus(Qt.TabFocusReason)
+            return False
+        self._commit_read_date()
+        return True
+
     def _commit_read_date(self):
         """Save only the read date. Confirm a new date. Do not open Update."""
         if getattr(self, "_loading_fields", False) or getattr(self, "_reverting_read_date", False):
@@ -2181,27 +2327,7 @@ class BookDetailsWindow(AccessibleDialog):
             return
         self._committing_read_date = True
         try:
-            if new_date is not None:
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Read Date",
-                    text=f"Mark '{self.book.title}' as read on {new_date.isoformat()}?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
-            else:
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Clear Read Date",
-                    text=f"Clear the read date for '{self.book.title}'?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
-            if reply != QMessageBox.Yes:
+            if not self._confirm_read_date_change(self.book.title, new_date):
                 self._revert_read_date(old_date)
                 self.set_status(
                     f"Read date update cancelled for {self.book.title}",
@@ -2211,6 +2337,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.book.read_date = new_date
             self.book_queries.update_many([(self.book.book_id, new_date)])
             self._data_was_changed = True
+            self._read_date_saved_book_id = self.book.book_id
             cleared_want = False
             cleared_listen = False
             if new_date is not None and self.book.want_to_read:
@@ -2363,6 +2490,47 @@ class BookDetailsWindow(AccessibleDialog):
         self.edit_button.setVisible(not self.is_new and not save_active)
         self._update_preview_button_state()
 
+    # Alt letters in Tab order through the form; letters not listed follow the footer keys.
+    _F1_FIELD_ORDER = ("T", "A", "S", "G", "P", "Y", "M", "N", "C", "R", "K", "H", "B")
+
+    def _shortcut_help_rows(self) -> list:
+        """F1 rows: Alt keys from BOOK_DETAILS_SHORTCUTS plus this window's local keys."""
+        from src.accessibility.shortcuts import ShortcutContext, shortcuts_for_context
+
+        alt_rows = {
+            key.upper(): desc
+            for key, (desc, _widget_id) in shortcuts_for_context(
+                ShortcutContext.BOOK_DETAILS
+            ).items()
+            if len(key) == 1 and key.isalpha()
+        }
+        rows = []
+        for key in self._F1_FIELD_ORDER:
+            if key in alt_rows:
+                rows.append((f"Alt+{key}", alt_rows.pop(key)))
+                if key == "S":
+                    rows.append(("Alt+S, then Tab", "Series number"))
+        rows.extend(
+            [
+                ("Ctrl+N", "New book"),
+                ("Alt+E", "Edit book"),
+                ("Ctrl+S", "Save book"),
+                ("Alt+D", "Delete book"),
+            ]
+        )
+        rows.extend((f"Alt+{key}", desc) for key, desc in alt_rows.items())
+        rows.extend(
+            [
+                ("Ctrl+L", "Listen to audiobook"),
+                ("Page Up", "Previous book"),
+                ("Page Down", "Next book"),
+                ("Escape", "Close"),
+                ("Alt+/", "Read status bar"),
+                ("F1", "Show keyboard shortcuts"),
+            ]
+        )
+        return rows
+
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
         from src.accessibility.shortcut_helpers import (
@@ -2391,36 +2559,8 @@ class BookDetailsWindow(AccessibleDialog):
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
         table.setStyleSheet(build_accessible_f1_popup_style())
-        # Same order as Tab through the form, then the footer buttons.
-        shortcut_keys = [
-            ("Alt+T", "Title"),
-            ("Alt+A", "Author"),
-            ("Alt+S", "Series"),
-            ("Alt+S, then Tab", "Series number"),
-            ("Alt+G", "Genre"),
-            ("Alt+P", "Plot"),
-            ("Alt+Y", "Year"),
-            ("Alt+M", "Time"),
-            ("Alt+N", "Narrator"),
-            ("Alt+C", "Collection"),
-            ("Alt+R", "Read date"),
-            ("Alt+K", "Want to read"),
-            ("Alt+H", "Path"),
-            ("Alt+B", "Browse path"),
-            ("Ctrl+N", "New book"),
-            ("Alt+E", "Edit book"),
-            ("Ctrl+S", "Save book"),
-            ("Alt+D", "Delete book"),
-            ("Alt+W", "Get web info"),
-            ("Ctrl+L", "Listen to audiobook"),
-            ("Page Up", "Previous book"),
-            ("Page Down", "Next book"),
-            ("Escape", "Close"),
-            ("Alt+/", "Read status bar"),
-            ("F1", "Show keyboard shortcuts"),
-        ]
         shortcut_keys = prepend_help_doc_shortcut(
-            get_accessible_shortcuts_list(shortcut_keys)
+            get_accessible_shortcuts_list(self._shortcut_help_rows())
         )
         table.setRowCount(len(shortcut_keys))
         table.setVerticalHeaderLabels([""] * len(shortcut_keys))
@@ -2767,6 +2907,23 @@ class BookDetailsWindow(AccessibleDialog):
             qdate = self.read_date.date()
             read_date = datetime(qdate.year(), qdate.month(), qdate.day()).date()
 
+        stored_read_date = None if self.is_new else self._stored_read_date()
+        read_date_note = ""
+        clear_listen_for_read_date = False
+        if read_date != stored_read_date:
+            # The prompt takes focus from the date field; its focus-out commit must not prompt again.
+            self._committing_read_date = True
+            try:
+                confirmed = self._confirm_read_date_change(book_dict["title"], read_date)
+            finally:
+                self._committing_read_date = False
+            if confirmed:
+                clear_listen_for_read_date = read_date is not None
+            else:
+                read_date = stored_read_date
+                self._revert_read_date(stored_read_date)
+                read_date_note = " Read date not changed."
+
         year_value = self.year_spin.value()
         year_value = None if year_value == self.year_spin.minimum() else year_value
         series_number = self._series_number_from_field()
@@ -2831,6 +2988,10 @@ class BookDetailsWindow(AccessibleDialog):
             self.want_to_read_checkbox.setChecked(False)
             self.want_to_read_checkbox.blockSignals(False)
         self.book.want_to_read = self.want_to_read_checkbox.isChecked()
+        if clear_listen_for_read_date:
+            self.book.listen_position_ms = None
+            self.book.listen_file_name = ""
+            self.listen_progress_edit.clear()
 
         # Save to database
         try:
@@ -2841,13 +3002,13 @@ class BookDetailsWindow(AccessibleDialog):
                 book_id = self.book_queries.insert(self.book)
                 self.book.book_id = book_id
                 self.is_new = False
-                self.set_status("Book added successfully")
+                self.set_status("Book added successfully" + read_date_note)
             else:
                 self.book_queries.update(self.book)
                 # Update the book in books_list
                 if self.books_list and 0 <= self.current_index < len(self.books_list):
                     self.books_list[self.current_index] = self.book
-                self.set_status("Book updated successfully")
+                self.set_status("Book updated successfully" + read_date_note)
 
             self._data_was_changed = True
             if self.book.book_id is not None:
@@ -3813,6 +3974,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.update_navigation_state()
                 self._focus_title_after_navigation()
 
+        if not self._commit_read_date_before_navigation():
+            return
         if self._dirty:
             self._confirm_save_or_cancel(do_nav)
         else:
@@ -3834,6 +3997,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.update_navigation_state()
                 self._focus_title_after_navigation()
 
+        if not self._commit_read_date_before_navigation():
+            return
         if self._dirty:
             self._confirm_save_or_cancel(do_nav)
         else:

@@ -19,7 +19,7 @@ Want to Read and in-progress counts, and total listening time. It is a read-only
 
 ## View statistics
 
-1. Open **Manage → Statistics** (**Alt+M**, then **S**), or click **Statistics** on the main window toolbar.
+1. Open **Manage → Statistics** (**Alt+M**, then **T**), or click **Statistics** on the main window toolbar.
 2. A table lists each statistic and its value, for example:
    - Total books, authors, series, genres
    - Books read and unread
@@ -42,7 +42,7 @@ Want to Read and in-progress counts, and total listening time. It is a read-only
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+M, S | Open Statistics (Manage menu) |
+| Alt+M, T | Open Statistics (Manage menu) |
 | Tab | Navigate table |
 | F1 | Show shortcuts help |
 | Escape | Close |

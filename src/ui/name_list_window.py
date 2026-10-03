@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, QEvent, QSignalBlocker, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from src.ui.accessible_dialog import AccessibleDialog
 from PySide6.QtWidgets import (
+    QApplication,
     QAbstractItemView,
     QCheckBox,
     QDialog,
@@ -214,6 +215,7 @@ class NameListWindow(AccessibleDialog):
         if not self.is_collection_mode:
             self.find_edit.installEventFilter(self)
         self.name_edit.installEventFilter(self)
+        self.sort_combo.installEventFilter(self)
 
         if self.table.rowCount() > 0:
             initial_row = self._initial_table_row(focused_initial_match)
@@ -518,6 +520,22 @@ class NameListWindow(AccessibleDialog):
 
     def eventFilter(self, source, event):
         """Allow Tab/Shift+Tab to move focus out of table to footer controls. Also sanitize name field on FocusOut."""
+        if event.type() == QEvent.KeyPress and source is getattr(
+            self, "sort_combo", None
+        ):
+            key = event.key()
+            alt = bool(event.modifiers() & Qt.AltModifier)
+            if key in (Qt.Key_Up, Qt.Key_Down) and not alt:
+                QApplication.beep()
+                return True
+            if (
+                alt
+                and Qt.Key_A <= key <= Qt.Key_Z
+                and key not in self._allowed_alt_letter_keys()
+            ):
+                QApplication.beep()
+                return True
+
         if event.type() == QEvent.KeyPress and source in (
             self.name_edit,
             self.find_edit,
@@ -793,6 +811,16 @@ class NameListWindow(AccessibleDialog):
         )
         preserve = self._selected_item_id() or self.current_item_id
         self.load_items(preserve_id=preserve, populate_editor=False)
+        self._announce_sort()
+
+    def _announce_sort(self) -> None:
+        if self._sort_by == "books":
+            order = "most first" if not self._sort_ascending else "fewest first"
+            message = f"Sorted by book count, {order}."
+        else:
+            order = "A to Z" if self._sort_ascending else "Z to A"
+            message = f"Sorted by name, {order}."
+        self.set_status(message, announce=True)
 
     def _on_table_header_clicked(self, column: int) -> None:
         if column not in (0, self._books_sort_column_index()):
@@ -807,6 +835,7 @@ class NameListWindow(AccessibleDialog):
         self._sync_sort_combo_selection()
         preserve = self._selected_item_id() or self.current_item_id
         self.load_items(preserve_id=preserve, populate_editor=False)
+        self._announce_sort()
 
     def _usage_column(self) -> int:
         return self.COL_USAGE if self.is_collection_mode else self.COL_ACTIVE
@@ -1240,11 +1269,14 @@ class NameListWindow(AccessibleDialog):
                 if self.save_button.isVisible() and self.save_button.isEnabled()
                 else None
             ),
-            ("Sort", "Sort by name or book count (combo or column headers)"),
+            ("Alt+Down", "Open Sort dropdown (when Sort has focus)"),
             (
-                ("Escape", "Return to list from Find")
+                (
+                    "Escape",
+                    "Return to list from Find, cancel edit, or close window",
+                )
                 if not self.is_collection_mode
-                else ("Escape", "Cancel edit/Close window")
+                else ("Escape", "Cancel edit or close window")
             ),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),

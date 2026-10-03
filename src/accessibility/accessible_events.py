@@ -71,17 +71,20 @@ def read_status_bar_message(
     announce_text: str | None = None,
     restore_focus: bool = True,
     update_visible: bool = True,
+    restore_focus_widget: QWidget | None = None,
 ) -> None:
     """
-    Alt+/ handler: read current status bar text with no generic SR prefixes.
+    Alt+/ handler for every window: speak the status text through the window itself.
 
+    Uses ``announce_plain_text_readback`` so screen readers do not prefix "status bar".
     Does nothing when no screen reader is active (no popup).
 
     Args:
         announce_text: When set, spoken text (e.g. main-window filter summary with sort).
             Otherwise uses visible status bar message, then fallback.
-        restore_focus: When False, leave focus on the status bar after readback.
+        restore_focus: When False, leave focus on the window after readback.
         update_visible: When False, speak announce_text without changing visible status text.
+        restore_focus_widget: Widget to focus after readback (default: the prior focus).
     """
     if not _accessibility_announcements_enabled():
         return
@@ -91,14 +94,13 @@ def read_status_bar_message(
             text = announce_text.strip() or visible or (fallback or "").strip() or "Ready"
         else:
             text = visible or (fallback or "").strip() or "Ready"
-        prepare_status_bar_for_readback(status_bar, text)
-        announce_status_message(
-            status_bar,
+        if update_visible and text != visible:
+            status_bar.showMessage(text)
+        announce_plain_text_readback(
+            status_bar.window(),
             text,
-            move_focus=True,
-            force_focus_announce=True,
+            restore_focus_widget=restore_focus_widget,
             restore_focus=restore_focus,
-            update_visible=update_visible,
         )
     except Exception:
         pass
@@ -109,11 +111,13 @@ def announce_plain_text_readback(
     text: str,
     *,
     restore_focus_widget: QWidget | None = None,
+    restore_focus: bool = True,
 ) -> None:
     """
     Speak status text on Alt+/ without focusing a QStatusBar (avoids "status bar" role noise).
 
     Briefly sets the widget accessible name to the message and restores metadata afterward.
+    Call ``read_status_bar_message`` from windows; this is its building block.
     """
     if not _accessibility_announcements_enabled():
         return
@@ -140,7 +144,7 @@ def announce_plain_text_readback(
                 widget.setAccessibleDescription(prev_desc)
                 widget.setFocusPolicy(prev_policy)
                 target = restore_focus_widget or previous
-                if target is not None:
+                if restore_focus and target is not None:
                     target.setFocus()
             except RuntimeError:
                 pass

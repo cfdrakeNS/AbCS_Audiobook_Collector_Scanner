@@ -21,8 +21,8 @@
 
 ## Check book locations
 
-1. Open **View → Check Book Locations** (**Alt+V**, then **L**).
-2. Choose **Collection** (**Alt+C**): **All Collections** (every book) or one collection.
+1. Open **Manage → Check Book Locations** (**Alt+M**, then **L**).
+2. Choose **Collection** (**Alt+C**): **All Collections** (every book) or one collection. In Collection and Filter, plain Up and Down arrows do nothing (a beep); press **Alt+Down** to open the list, then Enter to choose.
 3. Choose **Filter** (**Alt+F**):
    - **All** (default) — missing and incorrect
    - **Missing** — the book cannot be found on disk. The row says why, for example the collection folder is missing or the author folder was not found.
@@ -31,9 +31,9 @@
 5. If a scanned collection has no collection folder set, or the folder is missing or has no audiobook files, a warning explains that books cannot be found without it and how to fix it in Collection Manager. Press Enter to close the warning; the scan continues.
 6. While scanning, a progress window shows **Missing**, **Corrected**, **Incorrect**, and **Valid** counts plus how many books are done and elapsed time. Escape cancels (with confirm) and keeps results found so far.
 7. When the scan ends, paths found in the collection folder are saved. The status bar starts with how many were corrected, for example "12 book paths corrected." Corrected books are not listed.
-8. The table lists Author, Title, and Path. Blank paths show as `(empty)`. Missing rows include the reason.
+8. The table lists Author, Title, and Path. Blank paths show as `(empty)`. Missing rows include the reason. Screen readers hear the title, author, status, and path on the Title cell, and the status on every cell.
 9. To fix one book, focus a row (**Alt+L**) and press **Enter** (or double-click). Book Details opens in edit mode. Use **Browse** (**Alt+B**) or type the path, then Save. **Page Up** and **Page Down** move through the listed books, and Save stays available on each one.
-10. When you close Book Details after a save, Check Book Locations rescans. Export the list with **Export** (**Alt+X**) if needed; the CSV includes the reason for missing books.
+10. When you close Book Details after a save, Check Book Locations re-checks only the books you edited and refreshes the list; it does not run a full scan. Export the list with **Export** (**Alt+X**) if needed; the CSV includes the reason for missing books.
 11. Press **Escape** to close and return to the main window.
 
 ## What happens next
@@ -43,15 +43,16 @@
 
 ## Mouse, shortcuts, and accessibility
 
-- Open **View → Check Book Locations**.
+- Open **Manage → Check Book Locations**.
 - Double-click a row to open Book Details.
 - Status bar reports the corrected count and scan counts; press **Alt+/** to re-read it. During Scan, Alt+/ reads the progress window status.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+V, L | Open Check Book Locations (View menu) |
+| Alt+M, L | Open Check Book Locations (Manage menu) |
 | Alt+C | Collection |
 | Alt+F | Filter |
+| Alt+Down | Open the Collection or Filter list |
 | Alt+I | Info instructions at top of window |
 | Alt+S | Scan |
 | Alt+L | Jump to list |

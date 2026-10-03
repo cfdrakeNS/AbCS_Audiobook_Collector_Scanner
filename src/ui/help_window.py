@@ -71,6 +71,11 @@ from src.accessibility.read_only_text import (
     create_accessible_read_only_text,
 )
 from src.accessibility.scaling import UIScaler
+from src.accessibility.shortcuts import (
+    ShortcutContext,
+    allowed_alt_letters,
+    get_shortcut_manager,
+)
 from src.accessibility.help_scaling import (
     HelpUIScaler,
     help_preset_name,
@@ -633,8 +638,16 @@ class HelpWindow(AccessibleDialog):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
-        self.nav_focus_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self.nav_focus_shortcut.activated.connect(self._focus_nav_list)
+        self.overview_shortcut = QShortcut(QKeySequence("Shift+F1"), self)
+        self.overview_shortcut.activated.connect(self._open_overview)
+
+        get_shortcut_manager().register_alt_shortcuts(
+            self, ShortcutContext.HELP_WINDOW, {"nav_list": self._focus_nav_list}
+        )
+        alt_l = QKeySequence("Alt+L")
+        self.nav_focus_shortcut = next(
+            s for s in self.findChildren(QShortcut) if s.key() == alt_l
+        )
 
         self.search_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
         self.search_shortcut.activated.connect(self._focus_search)
@@ -898,7 +911,9 @@ class HelpWindow(AccessibleDialog):
                 ):
                     self._clear_search()
                     return True
-                if is_unmapped_alt_letter(event, {"L"}):
+                if is_unmapped_alt_letter(
+                    event, allowed_alt_letters(ShortcutContext.HELP_WINDOW)
+                ):
                     return True
         if event.type() == QEvent.Type.KeyPress and obj is self.preset_combo:
             key = event.key()
@@ -1234,6 +1249,10 @@ class HelpWindow(AccessibleDialog):
             "Use Tab or Alt+L to move to the help navigation list."
         )
 
+    def _open_overview(self) -> None:
+        """Shift+F1 inside Help: open the overview topic."""
+        self._load_doc("01_overview.md")
+
     def _apply_window_title(self) -> None:
         title = f"AbCS Help - {self._current_title}"
         self.setWindowTitle(title)
@@ -1247,11 +1266,13 @@ class HelpWindow(AccessibleDialog):
 
     def on_show_shortcuts(self) -> None:
         """Show keyboard shortcuts for the help window."""
-        from src.accessibility.shortcut_helpers import get_accessible_shortcuts_list
+        from src.accessibility.shortcut_helpers import (
+            get_accessible_shortcuts_list,
+            prepend_help_doc_shortcut,
+        )
 
         shortcuts = get_accessible_shortcuts_list(
             [
-                ("Shift+F1", "Open help for current window"),
                 ("Ctrl+F in left list", "Search all help (type words, press Enter)"),
                 ("Ctrl+F in help content", "Search the current topic"),
                 ("All help / Current topic", "Search scope radio buttons after the search box"),
@@ -1270,6 +1291,8 @@ class HelpWindow(AccessibleDialog):
                 ("Escape", "Close help"),
             ]
         )
+        shortcuts = prepend_help_doc_shortcut(shortcuts)
+        shortcuts[0] = ("Shift+F1", "Open the help overview")
 
         from src.accessibility.shortcut_helpers import apply_f1_shortcuts_table_scaling
 

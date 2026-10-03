@@ -249,8 +249,6 @@ class PathHealthWindow(AccessibleDialog):
             self.COL_PATH: 3.5,
         }
         self.table.doubleClicked.connect(self.on_open_details)
-        self.table.installEventFilter(self)
-        self.scan_button.installEventFilter(self)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -280,6 +278,16 @@ class PathHealthWindow(AccessibleDialog):
 
         self.collection_combo.currentIndexChanged.connect(self.on_collection_changed)
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
+
+        for widget in (
+            self.collection_combo,
+            self.filter_combo,
+            self.scan_button,
+            self.guide_label,
+            self.table,
+            self.export_button,
+        ):
+            widget.installEventFilter(self)
 
     def apply_visual_tooltips(self):
         apply_visual_tooltip_map(
@@ -467,6 +475,17 @@ class PathHealthWindow(AccessibleDialog):
         QTimer.singleShot(0, self.update_stretch_columns)
 
     def eventFilter(self, source, event):
+        if (
+            isinstance(source, QComboBox)
+            and event.type() == QEvent.KeyPress
+            and event.key() in (Qt.Key_Up, Qt.Key_Down)
+        ):
+            if event.modifiers() & Qt.AltModifier:
+                source.showPopup()
+            else:
+                QApplication.beep()
+            event.accept()
+            return True
         if (
             source is self.scan_button
             and event.type() == QEvent.KeyPress
@@ -722,9 +741,6 @@ class PathHealthWindow(AccessibleDialog):
                     progress.set_status(f"{counts.summary()} | Elapsed {elapsed}")
                     next_ui = now + ui_interval
                     QApplication.processEvents()
-                    if self.progress_window is not None:
-                        self.progress_window.raise_()
-                        self.progress_window.activateWindow()
                     if self.progress_window and self.progress_window.cancel_requested:
                         canceled = True
                         break
@@ -799,14 +815,20 @@ class PathHealthWindow(AccessibleDialog):
                 status_label = f"missing. {row.reason}" if row.reason else "missing"
             else:
                 status_label = row.status.casefold()
-            accessible = (
-                f"{row.author}, {row.title}, path {path_display}, {status_label}"
-            )
+            # Focus lands on Title, so the full summary lives there; status leads the path
+            # because paths are long. Other columns still end with the status.
+            accessible = {
+                self.COL_AUTHOR: f"{row.author}, {status_label}",
+                self.COL_TITLE: (
+                    f"{row.title}, by {row.author}, {status_label}, path {path_display}"
+                ),
+                self.COL_PATH: f"path {path_display}, {status_label}",
+            }
             values = [row.author, row.title, path_display]
             for col, text in enumerate(values):
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                item.setData(Qt.AccessibleTextRole, accessible if col == 0 else text)
+                item.setData(Qt.AccessibleTextRole, accessible[col])
                 item.setData(Qt.UserRole, row.book_id)
                 self.table.setItem(row_index, col, item)
 
@@ -1003,6 +1025,7 @@ class PathHealthWindow(AccessibleDialog):
         shortcuts = [
             ("Alt+C", "Collection"),
             ("Alt+F", "Filter"),
+            ("Alt+Down", "Open the Collection or Filter list"),
             ("Alt+I", "Info instructions"),
             ("Alt+S", "Scan"),
             ("Alt+L", "Jump to list"),

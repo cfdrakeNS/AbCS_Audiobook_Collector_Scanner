@@ -67,7 +67,13 @@ from src.utils.text_utils import (
 )
 
 
+# exec() result when the user stops the whole Review each queue from Escape.
+REVIEW_QUEUE_STOP = 2
+
+
 class WebMetadataWindow(AccessibleDialog):
+
+    STOP_QUEUE = REVIEW_QUEUE_STOP
 
     @staticmethod
     def _compare_scalar_field(
@@ -267,6 +273,16 @@ class WebMetadataWindow(AccessibleDialog):
                 QApplication.beep()
                 return True  # Consume the event
 
+            if source is self.plot_alternatives and key in (Qt.Key_Up, Qt.Key_Down):
+                if modifiers & Qt.AltModifier:
+                    self.plot_alternatives.showPopup()
+                else:
+                    QApplication.beep()
+                return True
+
+        if source is self.plot_alternatives and event.type() == QEvent.Wheel:
+            return True
+
         return super().eventFilter(source, event)
 
     def showEvent(self, event):
@@ -456,16 +472,16 @@ class WebMetadataWindow(AccessibleDialog):
         self.plot_alternatives = QComboBox()
         self.plot_alternatives.setAccessibleName("Other plots")
         self.plot_alternatives.setAccessibleDescription(
-            "Choose another valid plot description to review"
+            "Choose another valid plot description to review. "
+            "Alt+Down opens the list"
         )
         self.plot_alternatives.setObjectName("plot_alternatives")
         self.plot_alternatives.setVisible(False)
         self.plot_alternatives.setFocusPolicy(Qt.NoFocus)
         self.plot_alternatives_label.setBuddy(self.plot_alternatives)
         plot_content_layout.addWidget(self.plot_alternatives_label)
-        self.plot_alternatives.currentIndexChanged.connect(
-            self.on_plot_alternative_changed
-        )
+        self.plot_alternatives.installEventFilter(self)
+        self.plot_alternatives.activated.connect(self.on_plot_alternative_changed)
         plot_content_layout.addWidget(self.plot_alternatives)
         plot_layout.addWidget(plot_content, 1)
         self.plot_row = plot_row  # Store reference for hiding/showing
@@ -1120,11 +1136,78 @@ class WebMetadataWindow(AccessibleDialog):
                     pass  # Widget already destroyed
             QTimer.singleShot(timeout_ms, safe_clear_status)
 
+    def _in_review_queue(self) -> bool:
+        return bool(self.queue_index and self.queue_total and self.queue_total > 1)
+
+    def _on_escape_in_review_queue(self) -> None:
+        """Escape during Review each: Save, Skip this book, Stop review, or Cancel."""
+        from src.accessibility.style_helpers import exec_styled_message_box
+
+        from src.accessibility.icon_helper import get_app_icon
+
+        prior_focus = QApplication.focusWidget()
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Review each",
+            text=(
+                f"Book {self.queue_index} of {self.queue_total}. "
+                "Save web data for this book, skip this book, or stop reviewing?"
+            ),
+            buttons=(
+                QMessageBox.Yes
+                | QMessageBox.No
+                | QMessageBox.Abort
+                | QMessageBox.Cancel
+            ),
+            default_button=QMessageBox.Yes,
+            button_texts={
+                QMessageBox.Yes: "&Save",
+                QMessageBox.No: "S&kip this book",
+                QMessageBox.Abort: "S&top review",
+                QMessageBox.Cancel: "&Cancel",
+            },
+            button_accessibility={
+                QMessageBox.Yes: (
+                    "Save",
+                    "Save the checked web data and open the next book",
+                ),
+                QMessageBox.No: (
+                    "Skip this book",
+                    "Do not save this book and open the next book",
+                ),
+                QMessageBox.Abort: (
+                    "Stop review",
+                    "Do not save this book and stop reviewing the remaining books",
+                ),
+                QMessageBox.Cancel: (
+                    "Cancel",
+                    "Stay on this book",
+                ),
+            },
+            window_icon=get_app_icon(),
+        )
+        if reply == QMessageBox.Yes:
+            self.accept()
+        elif reply == QMessageBox.No:
+            announce_dialog_closed(self)
+            super().reject()
+        elif reply == QMessageBox.Abort:
+            announce_dialog_closed(self)
+            self.done(REVIEW_QUEUE_STOP)
+        elif prior_focus is not None:
+            prior_focus.setFocus(Qt.OtherFocusReason)
+
     def on_escape_pressed(self):
         """Handle escape key - show save confirmation before closing."""
         from src.accessibility.style_helpers import exec_styled_message_box
 
         from src.accessibility.icon_helper import get_app_icon
+
+        if self._in_review_queue():
+            self._on_escape_in_review_queue()
+            return
 
         reply = exec_styled_message_box(
             self,

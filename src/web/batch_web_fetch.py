@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, QThread, Qt, Signal, Slot
 from PySide6.QtWidgets import QApplication
 
 from src.ui.batch_web_fetch_progress import BatchWebFetchProgressDialog
-from src.ui.web_metadata import WebMetadataWindow
+from src.ui.web_metadata import REVIEW_QUEUE_STOP, WebMetadataWindow
 from src.web.web_book_api import PLOT_MIN_LENGTH
 from src.web.web_fetch_service import WebFetchResult, fetch_web_metadata_for_book
 
@@ -284,10 +284,16 @@ def review_batch_results(
     theme_manager,
     parent=None,
     refresh_callback=None,
-) -> None:
-    """Open Web Metadata for each book with changes; Save or Skip advances."""
+) -> int:
+    """Open Web Metadata for each book with changes; Save or Skip advances.
+
+    Stop review (Escape prompt) ends the queue. Returns how many books were
+    left unreviewed.
+    """
     items = outcome.with_changes
     total = len(items)
+    left_unreviewed = 0
+    stopped = False
     for index, item in enumerate(items, start=1):
         dialog = WebMetadataWindow(
             db,
@@ -302,6 +308,20 @@ def review_batch_results(
         )
         dialog.raise_()
         dialog.activateWindow()
-        dialog.exec()
+        if dialog.exec() == REVIEW_QUEUE_STOP:
+            stopped = True
+            left_unreviewed = total - index
+            break
     if refresh_callback:
         refresh_callback()
+    if stopped:
+        set_status = getattr(parent, "set_status", None)
+        if callable(set_status):
+            set_status(review_stopped_message(left_unreviewed), announce=True)
+    return left_unreviewed
+
+
+def review_stopped_message(left_unreviewed: int) -> str:
+    """Status after Stop review; counts books in the queue that were never opened."""
+    noun = "book" if left_unreviewed == 1 else "books"
+    return f"Review stopped. {left_unreviewed} {noun} left unreviewed."

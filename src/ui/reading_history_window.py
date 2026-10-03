@@ -36,7 +36,11 @@ from src.accessibility.accessible_events import (
     read_status_bar_message,
 )
 from src.accessibility.theme_manager import ThemeManager
-from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from src.accessibility.shortcuts import (
+    ShortcutContext,
+    allowed_alt_letters,
+    get_shortcut_manager,
+)
 from src.accessibility.shortcut_helpers import build_accessible_f1_popup_style
 from src.accessibility.icon_helper import apply_decorative_action_icon
 from src.accessibility.masked_date_fields import (
@@ -58,16 +62,13 @@ class ReadingHistoryWindow(AccessibleDialog):
     """Reading History window with statistics and history table."""
 
     # Alt+Key filtering for accessibility
-    ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
+    ALLOWED_ALT_LETTERS = allowed_alt_letters(ShortcutContext.READING_HISTORY_WINDOW, "/")
 
     def __init__(self, db, scaler: UIScaler, theme_manager: ThemeManager, parent=None):
         super().__init__(parent)
         from src.accessibility.icon_helper import get_app_icon
 
         self.setWindowIcon(get_app_icon())
-
-    # Alt+Key filtering for accessibility
-    ALLOWED_ALT_LETTERS = "G Y M R F S L T H /"
 
     def eventFilter(self, source, event):
         # Tab/Shift+Tab on any table: move focus out of table, not to next cell
@@ -522,6 +523,10 @@ class ReadingHistoryWindow(AccessibleDialog):
             "refresh_button": self.load_date_range_data,
             "table": self.focus_current_table,
             "start_date_edit": lambda: self.start_date_edit.setFocus(Qt.TabFocusReason),
+            "general_tab": lambda: self.switch_to_tab(0),
+            "year_tab": lambda: self.switch_to_tab(1),
+            "month_tab": lambda: self.switch_to_tab(2),
+            "range_tab": lambda: self.switch_to_tab(3),
         }
         mgr.register_alt_shortcuts(
             self, ShortcutContext.READING_HISTORY_WINDOW, callback_map
@@ -559,6 +564,11 @@ class ReadingHistoryWindow(AccessibleDialog):
         current = self.tab_widget.currentIndex()
         target = (current + step) % count
         self.tab_widget.setCurrentIndex(target)
+
+    def switch_to_tab(self, index: int):
+        """Alt+G/Y/M/R: show a tab and focus its table."""
+        self.tab_widget.setCurrentIndex(index)
+        self.focus_current_table()
 
     def focus_current_table(self):
         """Focus on the appropriate table based on current tab."""

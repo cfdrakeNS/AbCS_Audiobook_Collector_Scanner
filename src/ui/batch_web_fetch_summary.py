@@ -27,18 +27,22 @@ from src.accessibility.accessible_events import (
 )
 from src.accessibility.screen_reader import is_screen_reader_active
 from src.accessibility.shortcut_helpers import exec_f1_shortcuts_dialog
+from src.accessibility.shortcuts import ShortcutContext, get_shortcut_manager
 from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
     build_modern_button_style,
     build_table_polish_style,
 )
 from src.ui.accessible_dialog import AccessibleDialog
-from src.ui.web_metadata import WebMetadataWindow
+from src.ui.web_metadata import REVIEW_QUEUE_STOP, WebMetadataWindow
 from src.web.batch_web_fetch import (
     BatchBookResult,
     BatchFetchOutcome,
     _match_lacks_plot,
+    review_stopped_message,
 )
+
+NO_NEW_INFORMATION_MESSAGE = "No books with new information."
 
 
 def _error_fragments(item: BatchBookResult) -> list[str]:
@@ -359,11 +363,15 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
 
         self.resize(760, 420)
         QShortcut(QKeySequence(Qt.Key_Escape), self, activated=self._on_escape)
-        QShortcut(QKeySequence("Alt+A"), self, activated=self.apply_btn.click)
-        QShortcut(QKeySequence("Alt+R"), self, activated=self.review_btn.click)
-        self._list_shortcut = QShortcut(QKeySequence("Alt+L"), self)
-        self._list_shortcut.setContext(Qt.WindowShortcut)
-        self._list_shortcut.activated.connect(self._focus_book_list)
+        get_shortcut_manager().register_alt_shortcuts(
+            self,
+            ShortcutContext.BATCH_WEB_FETCH_SUMMARY,
+            {
+                "apply_button": self._on_apply_shortcut,
+                "review_button": self._on_review_shortcut,
+                "book_list": self._focus_book_list,
+            },
+        )
         self._f1_shortcut = QShortcut(QKeySequence("F1"), self)
         self._f1_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
         self._f1_shortcut.activated.connect(self._show_shortcuts)
@@ -517,12 +525,24 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
             [
                 ("Alt+L", "Books list"),
                 ("Alt+A", "Apply all"),
-                ("Alt+R", "Review each"),
+                ("Alt+R", self.review_btn.text().replace("&", "") or "Review"),
                 ("Escape", "Close"),
                 ("Alt+/", "Read status bar"),
                 ("F1", "Show keyboard shortcuts"),
             ],
         )
+
+    def _on_apply_shortcut(self) -> None:
+        if not self.apply_btn.isEnabled():
+            self._set_status(NO_NEW_INFORMATION_MESSAGE, announce=True)
+            return
+        self.apply_btn.click()
+
+    def _on_review_shortcut(self) -> None:
+        if not self.review_btn.isEnabled():
+            self._set_status(NO_NEW_INFORMATION_MESSAGE, announce=True)
+            return
+        self.review_btn.click()
 
     def _on_apply(self) -> None:
         if not self.apply_btn.isEnabled():
@@ -543,6 +563,8 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self._announce_focus_on_show = False
         self.status_bar.clearMessage()
         self.hide()
+        stopped_message = ""
+        focus_row = None
         try:
             for index, item in enumerate(pending, start=1):
                 row = self._row_items.index(item)
@@ -551,14 +573,27 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
                 )
                 if result == QDialog.Accepted:
                     self._mark_row_saved(row, item)
+                elif result == REVIEW_QUEUE_STOP:
+                    stopped_message = review_stopped_message(total - index)
+                    focus_row = row
+                    break
         finally:
             self.show()
             self.raise_()
             self.activateWindow()
             self._silent_reshow = False
             self._announce_focus_on_show = True
+            if focus_row is not None:
+                self.books_table.selectRow(focus_row)
+                self.books_table.setCurrentCell(focus_row, 0)
             self._focus_book_list()
-            self._set_status(self._idle_status_message(), announce=False)
+            if stopped_message:
+                self._set_status(stopped_message, announce=False)
+                QTimer.singleShot(
+                    0, lambda: self._set_status(stopped_message, announce=True)
+                )
+            else:
+                self._set_status(self._idle_status_message(), announce=False)
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):

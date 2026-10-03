@@ -61,7 +61,7 @@ Import windows use this filter: if the main window shows a specific collection, 
 - New or edited collections appear in the Manage list and in the View → Collections menu.
 - Inactive collections do not appear in import collection dropdowns but remain in the database.
 - Filtering does not move or delete books — it only changes what you see.
-- If a collection folder is set and that folder exists, **File → Import** pre-fills the scan folder from it. You can still browse a different folder.
+- **File → Import** always starts with the Preferences **default import directory**. Choosing a collection in Import does not change the scan folder.
 - **Listen** looks in the collection folder for books with no path, such as books from Import Book List. If the folder is wrong, missing, or not set, Listen says so and points you here. Changing the folder does not rewrite book paths.
 
 ## Settings that affect this
@@ -81,13 +81,17 @@ None specific to collections beyond having at least one active collection at all
 | Alt+L | Focus collection list |
 | Tab | Name, Active, Collection folder, Browse, list, then buttons |
 | Ctrl+N | New collection |
-| Alt+E | Edit / name field |
+| Alt+E | Edit selected row |
 | Enter / double-click | Edit selected row |
-| Alt+B | Browse collection folder |
+| Alt+M | Name field (while editing) |
+| Alt+A | Active checkbox (while editing) |
+| Alt+F | Collection folder field (while editing) |
+| Alt+B | Browse collection folder (while editing; otherwise says to press Alt+E or Ctrl+N first) |
 | Ctrl+S | Save |
 | Alt+D | Delete |
-| F1 | Help |
-| Ctrl+/ | Re-read status |
+| F1 | Show keyboard shortcuts |
+| Shift+F1 | Open this help document |
+| Alt+/ | Re-read status |
 | Escape | Leave New or Edit (asks to save changes), or close |
 
 ### Main window filter

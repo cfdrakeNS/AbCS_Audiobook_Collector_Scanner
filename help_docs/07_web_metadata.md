@@ -32,7 +32,8 @@ For an explained walkthrough (including how titles are compared during fetch and
    - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
    - Fields that are empty in your local record may be filled in automatically without a checkbox.
 6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
-7. Click **Save** (or press **Ctrl+S**) to apply checked fields, or press **Escape** to close. Escape asks *Save web data?* — Yes saves, No discards.
+7. Click **Save** (or press **Ctrl+S**) to apply checked fields, or press **Escape** to close. Escape asks *Save web data?* — Yes saves, No discards. During **Review each**, Escape instead offers **Save**, **Skip this book**, **Stop review**, and **Cancel**. Stop review closes the review and returns to the batch summary; the status says how many books were left unreviewed. Cancel stays on the current book.
+   - When more than one plot was found, **Other plots** lets you pick another one. Plain Up and Down beep; press **Alt+Down** to open the list, then Enter to choose.
 8. Plot text is saved to the book's **comments** field. If the web source includes a rating and you save plot, the rating line (for example `Rating: 4.5 (1,234 ratings)`) may appear at the **top of that plot text**. It is not stored in a separate rating field.
 
 ## What happens next
@@ -65,7 +66,8 @@ Optional: Preferences → Display → Web Metadata → Google Books API key (or 
 | Alt+R | Rating (review window) |
 | Alt+F | Re-fetch (in review window) |
 | Ctrl+S | Save selected fields |
-| Escape | Close (asks whether to save) |
+| Escape | Close (asks whether to save). In Review each: Save, Skip this book, Stop review, or Cancel |
+| Alt+Down | Open the Other plots list (review window) |
 | F1 | Help for this window |
 | Alt+/ | Re-read status |
 ## Common confusion
@@ -77,7 +79,7 @@ AbCS tries Open Library first, then Google Books, then WikiData, to find the bes
 Not in its own field. The review window shows **Rating** for reference (Alt+R). AbCS does not keep a separate rating column in the database today. If you save **Plot** and the web result includes a rating, that rating line is written at the **top of the plot/comments text** (for example `Rating: 4.5 (1,234 ratings)` followed by the plot). You can edit or remove that line later in Book Details like any other plot text.
 
 **Can I fetch for multiple books at once?**
-Yes. Select two or more books and use **Web fetch**, toolbar **Search Web**, or **Alt+W**. With no multi-select, Alt+W still fetches only the focused book. While you are selecting books, Find, Import, Add Book, and filters stay off until Escape. Search Web and the footer Web fetch button stay on. Batch Apply all writes only fields that differ from what you already store. Review each opens the same review window, one book at a time; Save or Skip (Alt+K) returns you to the summary (or the next book in that Review pass). Escape on the summary closes it. A larger batch can hit the Google Books limit. Later books in that batch are not sent to Google. The summary at the top says **Google Books limit hit. Try in N minutes.** Open Library and WikiData are still tried.
+Yes. Select two or more books and use **Web fetch**, toolbar **Search Web**, or **Alt+W**. With no multi-select, Alt+W still fetches only the focused book. While you are selecting books, Find, Import, Add Book, and filters stay off until Escape. Search Web and the footer Web fetch button stay on. Batch Apply all writes only fields that differ from what you already store. Review each opens the same review window, one book at a time; Save or Skip (Alt+K) returns you to the summary (or the next book in that Review pass). To end the whole pass early, press Escape and choose **Stop review**. On the summary, Alt+A and Alt+R say **No books with new information.** when nothing is left to apply or review. Escape on the summary closes it. A larger batch can hit the Google Books limit. Later books in that batch are not sent to Google. The summary at the top says **Google Books limit hit. Try in N minutes.** Open Library and WikiData are still tried.
 
 **Why does the message say "rate limited" or show a countdown?**
 Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown (often about 15 minutes for Google Books) before contacting that source again. The web details window only opens when data is found — there is no Re-fetch button on that error popup. Wait for the cooldown, then press Alt+W again. Other sources continue in their normal order when one source is limited.

@@ -263,3 +263,34 @@ class TestBookListImportDb:
         assert len(match) == 1
         assert match[0].title == "Rules Of Prey"
         assert match[0].series_name == "Lucas Davenport"
+
+    def test_import_result_announced_when_progress_window_hidden(
+        self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+    ):
+        import time
+
+        from PySide6.QtWidgets import QMessageBox
+
+        window = BookListImportWindow(empty_temp_db, ui_scaler, theme_manager)
+        qtbot.addWidget(window)
+        frame = pd.DataFrame({"Title": ["Announce Book"], "Author": ["Announce Author"]})
+        _prepare_window(window, frame, {"title": 0, "author": 1})
+
+        def no_progress(_total_rows):
+            window.progress_window = None
+            window._import_start_time = time.perf_counter()
+
+        monkeypatch.setattr(window, "_show_import_progress", no_progress)
+        monkeypatch.setattr(QMessageBox, "exec", lambda _self: QMessageBox.Yes)
+        statuses = []
+        monkeypatch.setattr(
+            window,
+            "set_status",
+            lambda message, announce=False: statuses.append((message, announce)),
+        )
+
+        window.import_books()
+
+        message, announce = statuses[-1]
+        assert message.startswith("1 books added to")
+        assert announce is True

@@ -76,6 +76,8 @@ When help first opens, the navigation list shows **sections** from the current g
 
 | Key | Action |
 |-----|--------|
+| Shift+F1 | Open this overview |
+| F1 | Show Help window keyboard shortcuts |
 | Ctrl+F in the left list | Move to the Search help box, set to search all help |
 | Ctrl+F in the content area | Move to the Search help box, set to search the current topic |
 | F3 / Shift+F3 | Next or previous search match in the open guide |
@@ -85,6 +87,7 @@ When help first opens, the navigation list shows **sections** from the current g
 | Arrow keys | Move through list items or read the content line by line |
 | Ctrl+Plus / Ctrl+Minus | Zoom Help in or out |
 | Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
+| Alt+/ | Re-read status |
 | Escape | Close help (closes an open preset list first) |
 
 ### Searching help

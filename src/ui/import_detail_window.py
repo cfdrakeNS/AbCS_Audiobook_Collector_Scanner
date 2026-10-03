@@ -1434,11 +1434,7 @@ class ImportDetailWindow(AccessibleDialog):
 
         self.save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         self.save_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        self.save_shortcut.activated.connect(
-            lambda: self.save_return_button.click()
-            if self.save_return_button.isEnabled()
-            else None
-        )
+        self.save_shortcut.activated.connect(self._on_save_shortcut)
 
         self.read_status_shortcut = QShortcut(QKeySequence("Alt+/"), self)
         self.read_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -1732,6 +1728,13 @@ class ImportDetailWindow(AccessibleDialog):
         self._original_series = self.series_combo.currentText().strip()
         self._original_genre = self.genre_combo.currentText().strip()
         self._clear_dirty()
+
+    def _on_save_shortcut(self):
+        """Ctrl+S: save when there are edits, otherwise say so."""
+        if self.save_return_button.isEnabled():
+            self.save_return_button.click()
+        else:
+            self.set_status("No changes to save.", announce=True)
 
     def on_save(self):
         """Save edits in-place and keep dialog open. Returns True if save succeeded, False if validation failed."""

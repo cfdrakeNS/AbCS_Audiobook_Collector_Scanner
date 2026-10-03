@@ -512,3 +512,170 @@ def test_issue_text_short_results_and_google_pause(qapp):
         assert "1 with no match." in dlg.summary_label.text()
     finally:
         dlg.deleteLater()
+
+
+def _changed_result(title: str) -> BatchBookResult:
+    return BatchBookResult(
+        book=SimpleNamespace(title=title, author_name="Auth"),
+        fetch=WebFetchResult(cleaned_data={"title": title}),
+        has_changes=True,
+    )
+
+
+def test_review_batch_stop_review_ends_queue_and_reports_left(monkeypatch):
+    from src.ui.web_metadata import REVIEW_QUEUE_STOP
+    from src.web.batch_web_fetch import review_batch_results
+
+    created = []
+
+    class FakeDlg:
+        def __init__(self, *args, **kwargs):
+            created.append(kwargs)
+
+        def raise_(self):
+            return None
+
+        def activateWindow(self):
+            return None
+
+        def exec(self):
+            return REVIEW_QUEUE_STOP
+
+    monkeypatch.setattr("src.web.batch_web_fetch.WebMetadataWindow", FakeDlg)
+    parent = MagicMock()
+    outcome = BatchFetchOutcome(
+        results=[_changed_result("A"), _changed_result("B"), _changed_result("C")]
+    )
+    left = review_batch_results(
+        outcome, db=None, scaler=None, theme_manager=None, parent=parent
+    )
+    assert len(created) == 1
+    assert left == 2
+    parent.set_status.assert_called_once_with(
+        "Review stopped. 2 books left unreviewed.", announce=True
+    )
+
+
+def test_summary_review_stop_keeps_remaining_rows_and_announces(qapp, monkeypatch):
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+    from src.ui.web_metadata import REVIEW_QUEUE_STOP
+
+    opened = []
+
+    class FakeMeta:
+        def __init__(self, *args, **kwargs):
+            opened.append(kwargs["queue_index"])
+
+        def raise_(self):
+            return None
+
+        def activateWindow(self):
+            return None
+
+        def exec(self):
+            return REVIEW_QUEUE_STOP
+
+    monkeypatch.setattr("src.ui.web_metadata.WebMetadataWindow", FakeMeta)
+    dlg = BatchWebFetchSummaryDialog(
+        BatchFetchOutcome(results=[_changed_result("A"), _changed_result("B")])
+    )
+    try:
+        dlg.show()
+        qapp.processEvents()
+        dlg._on_review()
+        assert opened == [1]
+        assert dlg.isVisible()
+        assert dlg.status_bar.currentMessage() == "Review stopped. 1 book left unreviewed."
+        assert dlg.books_table.currentRow() == 0
+        assert dlg.review_btn.isEnabled()
+        assert dlg.saved_any is False
+    finally:
+        dlg.close()
+
+
+def test_web_metadata_escape_stop_review_returns_stop_result(
+    qapp, ui_scaler, theme_manager, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+    from src.ui.web_metadata import REVIEW_QUEUE_STOP
+
+    seen = {}
+
+    def fake_box(*args, **kwargs):
+        seen.update(kwargs)
+        return QMessageBox.Abort
+
+    monkeypatch.setattr(
+        "src.accessibility.style_helpers.exec_styled_message_box", fake_box
+    )
+    book = SimpleNamespace(
+        title="A", author_name="Auth", year=None, genre_name="", comments=""
+    )
+    dlg = WebMetadataWindow(
+        None, book, ui_scaler, theme_manager, queue_index=1, queue_total=3
+    )
+    try:
+        dlg.on_escape_pressed()
+        assert dlg.result() == REVIEW_QUEUE_STOP
+        texts = seen["button_texts"]
+        assert texts[QMessageBox.Abort] == "S&top review"
+        assert texts[QMessageBox.No] == "S&kip this book"
+        assert seen["button_accessibility"][QMessageBox.Abort][0] == "Stop review"
+    finally:
+        dlg.close()
+
+
+def test_summary_alt_shortcuts_registered_and_announce_when_disabled(
+    qapp, monkeypatch
+):
+    from PySide6.QtGui import QKeySequence, QShortcut
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    no_changes = BatchBookResult(
+        book=SimpleNamespace(title="A", author_name="Auth", comments=""),
+        fetch=WebFetchResult(),
+        has_changes=False,
+    )
+    dlg = BatchWebFetchSummaryDialog(BatchFetchOutcome(results=[no_changes]))
+    statuses = []
+    monkeypatch.setattr(
+        dlg, "_set_status", lambda msg, announce=True: statuses.append((msg, announce))
+    )
+    try:
+        keys = {
+            s.key().toString(QKeySequence.PortableText)
+            for s in dlg.findChildren(QShortcut)
+        }
+        assert {"Alt+A", "Alt+R", "Alt+L"} <= keys
+        assert not dlg.apply_btn.isEnabled()
+        dlg._on_apply_shortcut()
+        dlg._on_review_shortcut()
+        assert statuses == [
+            ("No books with new information.", True),
+            ("No books with new information.", True),
+        ]
+        assert dlg.choice == BatchWebFetchSummaryDialog.CANCEL
+    finally:
+        dlg.close()
+
+
+def test_summary_f1_review_label_matches_button(qapp, monkeypatch):
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    captured = []
+    monkeypatch.setattr(
+        "src.ui.batch_web_fetch_summary.exec_f1_shortcuts_dialog",
+        lambda _parent, _title, rows: captured.append(rows),
+    )
+    single = BatchWebFetchSummaryDialog(BatchFetchOutcome(results=[_changed_result("A")]))
+    multi = BatchWebFetchSummaryDialog(
+        BatchFetchOutcome(results=[_changed_result("A"), _changed_result("B")])
+    )
+    try:
+        single._show_shortcuts()
+        multi._show_shortcuts()
+        assert ("Alt+R", "Review") in captured[0]
+        assert ("Alt+R", "Review each") in captured[1]
+    finally:
+        single.close()
+        multi.close()

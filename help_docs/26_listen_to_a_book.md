@@ -16,17 +16,19 @@ The Listen window shows the book's Title and Author. Length appears when it is s
 
 ## Playback controls
 
-Press **Space** to play or pause. After Next, Previous, Rewind, Forward, or Play/Pause, focus returns to Play/Pause.
+Press **Space** to play or pause. After Next, Previous, or Play/Pause, focus returns to Play/Pause. After Rewind or Forward, focus stays on that button so you can press it again.
 
-Press **Alt+Left** or **Alt+Right** to rewind or move forward 30 seconds. The seek slider moves through the current file. Its arrow keys move five seconds; Page Up and Page Down move thirty seconds.
+Press **Alt+Left** or **Alt+Right** to rewind or move forward 30 seconds.
 
-Press **Alt+P** or **Alt+N** to move to the previous or next file. Playback speed is one setting for every book.
+The time display and the seek slider both move through the current file. On either one, Left and Right arrows move five seconds, Page Up and Page Down move thirty seconds, Home goes to the start of the file, and End goes to the end. Time is read when you seek, not while the book plays.
+
+Press **Alt+P** or **Alt+N** to move to the previous or next file. Playback speed is one setting for every book. On Speed (**Alt+S**), plain Up and Down arrows do nothing (a beep); press **Alt+Down** or **Space** to open the list, then Enter to choose.
 
 ## Listening position
 
 Press **Escape** to close Listen. If you listened for five minutes or more, AbCS asks whether to save the place (**Yes** is the default). If you listened for less than five minutes, AbCS does not ask and the saved place is not changed. Time spent paused does not count. The place is never saved without asking. Reaching the end of the last file clears the saved position. Opening Listen again resumes from the saved place.
 
-Book Details **Listen progress** shows the stop time and, when Time is set, the percent of the book completed. To clear a saved place before finishing the book, use **Clear** beside **Listen progress**, or choose **Edit → Clear listening position** on the main window for the selection. Setting a read date also clears listening position and Want to read.
+Book Details **Listen progress** shows the percent of the book completed. It does not show the stop time. To clear a saved place before finishing the book, use **Clear** beside **Listen progress**, or choose **Edit → Clear listening position** on the main window for the selection. Setting a read date also clears listening position and Want to read.
 
 ## When Listen cannot find a book
 
@@ -58,8 +60,11 @@ For the full list of folders checked and messages, see [Import Book List explain
 | Alt+P | Previous file |
 | Alt+N | Next file |
 | Alt+S | Playback speed |
-| Left/Right on seek slider | Seek five seconds in the current file |
-| Page Up/Down on seek slider | Seek thirty seconds in the current file |
+| Alt+Down or Space on Speed | Open the speed list |
+| Left/Right on transport buttons | Move between transport buttons |
+| Left/Right on time or seek slider | Seek five seconds in the current file |
+| Page Up/Down on time or seek slider | Seek thirty seconds in the current file |
+| Home/End on time or seek slider | Start or end of the current file |
 | Escape | Close Listen |
 | Alt+/ | Re-read status |
 | F1 | Show keyboard shortcuts |

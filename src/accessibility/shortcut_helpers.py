@@ -78,6 +78,10 @@ def exec_f1_shortcuts_dialog(parent, window_title: str, shortcuts) -> None:
         item.setData(Qt.AccessibleTextRole, f"{desc}: {key}")
         table.setItem(row, 0, item)
     table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+    scaler = getattr(parent, "scaler", None)
+    scale = getattr(scaler, "current_scale", None)
+    if isinstance(scale, (int, float)):
+        apply_f1_shortcuts_table_scaling(table, int(scale))
     layout.addWidget(table)
     dlg.exec()
 

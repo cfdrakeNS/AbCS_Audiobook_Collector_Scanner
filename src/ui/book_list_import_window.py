@@ -1785,22 +1785,24 @@ class BookListImportWindow(AccessibleDialog):
             if canceled:
                 # No extra popup on cancel (folder Import does not show one either).
                 # Counters and Esc-to-close live on the progress status bar.
-                self.set_status(progress_summary)
-                if (
+                progress_showing = (
                     self.progress_window is not None
                     and self.progress_window.isVisible()
-                ):
+                )
+                self.set_status(progress_summary, announce=not progress_showing)
+                if progress_showing:
                     self.progress_window.raise_()
                     self.progress_window.activateWindow()
                     self.progress_window.setFocus(Qt.TabFocusReason)
                 else:
                     self.file_edit.setFocus(Qt.TabFocusReason)
             else:
-                self.set_status(status_text)
-                if (
+                progress_showing = (
                     self.progress_window is not None
                     and self.progress_window.isVisible()
-                ):
+                )
+                self.set_status(status_text, announce=not progress_showing)
+                if progress_showing:
                     self.progress_window.raise_()
                     self.progress_window.activateWindow()
                     self.progress_window.setFocus(Qt.TabFocusReason)

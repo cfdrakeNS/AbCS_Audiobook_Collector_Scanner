@@ -47,7 +47,11 @@ from src.accessibility.style_helpers import (
 )
 from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.key_filters import is_unmapped_alt_letter
-from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
+from src.accessibility.shortcuts import (
+    ShortcutContext,
+    allowed_alt_letters,
+    get_shortcut_manager,
+)
 from src.database import Collection, CollectionQueries, DatabaseManager
 
 
@@ -60,7 +64,7 @@ class CollectionWindow(AccessibleDialog):
     """
 
     # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"B", "E", "L", "D", "/"}
+    ALLOWED_ALT_LETTERS = allowed_alt_letters(ShortcutContext.COLLECTION_WINDOW, "/")
 
     def __init__(
         self,
@@ -101,9 +105,6 @@ class CollectionWindow(AccessibleDialog):
         self.setAccessibleDescription(
             "Manage collections: add, edit active status, and delete when unused."
         )
-
-    # Alt+letter keys that are allowed to pass through (no status bar hint)
-    ALLOWED_ALT_LETTERS = {"B", "E", "L", "D", "/"}
 
     def keyPressEvent(self, event):
         # If you want to handle Alt+D, add logic here. Otherwise, just call the base method.
@@ -789,6 +790,7 @@ class CollectionWindow(AccessibleDialog):
     def on_browse_root(self):
         """Choose an optional collection folder for the current collection."""
         if self._editor_locked:
+            self.set_status("Press Alt+E or Ctrl+N to edit first.", announce=True)
             return
         current_dir = self.root_edit.text().strip() or ""
         selected = QFileDialog.getExistingDirectory(
@@ -981,17 +983,16 @@ class CollectionWindow(AccessibleDialog):
 
     def on_show_shortcuts(self):
         """Show keyboard shortcuts help dialog (accessible, centralized)."""
-        from src.accessibility.shortcut_helpers import (
-            get_accessible_shortcuts_list,
-            build_accessible_f1_popup_style,
-            prepend_help_doc_shortcut,
-        )
+        from src.accessibility.shortcut_helpers import exec_f1_shortcuts_dialog
 
         shortcuts = [
             ("Alt+L", "Jump to list"),
             ("Ctrl+N", "New"),
             ("Alt+E", "Edit selected row"),
             ("Enter", "Edit selected row"),
+            ("Alt+M", "Name field (while editing)"),
+            ("Alt+A", "Active checkbox (while editing)"),
+            ("Alt+F", "Collection folder field (while editing)"),
             ("Alt+B", "Browse collection folder"),
             ("Ctrl+S", "Save"),
             ("Alt+D", "Delete"),
@@ -999,51 +1000,7 @@ class CollectionWindow(AccessibleDialog):
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
-        filtered_shortcuts = prepend_help_doc_shortcut(
-            get_accessible_shortcuts_list(shortcuts)
-        )
-
-        dlg = AccessibleDialog(self)
-        dlg.setWindowTitle("Keyboard Shortcuts - Collection")
-        dlg.setAccessibleName("Keyboard Shortcuts")
-        dlg.resize(460, 500)
-
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-
-        table = QTableWidget()
-        table.setAccessibleName("Shortcuts list")
-        table.setColumnCount(1)
-        table.setHorizontalHeaderLabels([""])
-        table.setRowCount(len(filtered_shortcuts))
-        table.setVerticalHeaderLabels([""] * len(filtered_shortcuts))
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setTabKeyNavigation(False)
-        table.setAlternatingRowColors(False)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setVisible(False)
-        table.setShowGrid(False)
-        table.setStyleSheet(build_accessible_f1_popup_style())
-
-        for row, (key, description) in enumerate(filtered_shortcuts):
-            combined_text = f"{description} - {key}"
-            item = QTableWidgetItem(combined_text)
-            item.setData(Qt.AccessibleTextRole, f"{description}: {key}")
-            table.setItem(row, 0, item)
-
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-
-        font = table.font()
-        font.setPointSize(self.scaler.get_scaled_size(11))
-        table.setFont(font)
-
-        layout.addWidget(table)
-
-        dlg.exec()
+        exec_f1_shortcuts_dialog(self, "Keyboard Shortcuts - Collection", shortcuts)
 
     def eventFilter(self, source, event):
         """Filter events for Alt+key handling and sanitize name field on FocusOut."""
