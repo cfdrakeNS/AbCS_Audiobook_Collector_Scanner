@@ -137,7 +137,7 @@ class PathHealthWindow(AccessibleDialog):
         )
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMinimumSize(720, 480)
-        self.resize(960, 560)
+        self.resize(1280, 747)
 
         self.setup_ui()
         self.apply_visual_tooltips()
