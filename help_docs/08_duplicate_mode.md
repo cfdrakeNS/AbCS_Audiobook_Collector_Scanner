@@ -25,7 +25,7 @@ This is **not** the same as duplicate detection during Import. Import uses fuzzy
    - Title + Author + Year
    - Title + Author + Collection
    - Title + Author only
-3. Click **Start** (**Alt+R**) to run the scan, or **Cancel** (**Alt+L**) to close without changes.
+3. Click **Start** (**Alt+R**) to run the scan, or press **Escape** to close without changes.
 4. **If no duplicates are found:** an information message appears and you stay in the normal book list.
 5. **If duplicates are found:**
    - Duplicate mode activates.
@@ -66,7 +66,7 @@ Duplicate Check dialog (steps 1–3):
 |----------|--------|
 | Alt+M | Focus match type combo |
 | Alt+R | Start duplicate check |
-| Alt+L | Cancel duplicate check |
+| Escape | Close without checking |
 
 Main window (while duplicate mode is active):
 

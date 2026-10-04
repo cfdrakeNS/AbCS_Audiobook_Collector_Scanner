@@ -1924,6 +1924,71 @@ class MainWindow(QMainWindow):
         shortcuts_action.triggered.connect(self.on_show_shortcuts)
         help_menu.addAction(shortcuts_action)
 
+        self._menu_return_focus = None
+        self._menu_focus_target = None
+        QApplication.instance().focusChanged.connect(self._track_menu_return_focus)
+        for menu in menubar.findChildren(QMenu):
+            menu.aboutToHide.connect(
+                lambda menu=menu: self._hold_focus_for_menu_action(menu)
+            )
+
+    def _track_menu_return_focus(self, old, new):
+        menubar = self.menuBar()
+        if new is menubar:
+            if old is not None and old is not menubar and old.window() is self:
+                self._menu_return_focus = old
+            if self._menu_focus_target is not None:
+                QTimer.singleShot(0, self._redirect_menu_focus)
+        elif new is not None and new.window() is self:
+            self._menu_focus_target = None
+
+    def _hold_focus_for_menu_action(self, menu):
+        """Keep keyboard-chosen menu items from returning focus to the table first.
+
+        Qt gives focus back to the table before the item runs, so screen readers
+        speak "book table" before the window the item opens. A disabled widget
+        cannot take that focus; it is re-enabled once the item has run.
+        """
+        if menu.activeAction() is None:
+            return
+        if QApplication.focusWidget() is not self.menuBar():
+            return
+        target = self._menu_return_focus
+        try:
+            if target is None or not target.isEnabled():
+                return
+            target.setEnabled(False)
+        except RuntimeError:
+            return
+        QTimer.singleShot(0, lambda: self._release_menu_focus_hold(target))
+
+    def _release_menu_focus_hold(self, target):
+        try:
+            target.setEnabled(True)
+        except RuntimeError:
+            return
+        self._menu_focus_target = target
+        self._redirect_menu_focus()
+
+    def _redirect_menu_focus(self):
+        """Move focus off the menu bar once no menu or window is open."""
+        target = self._menu_focus_target
+        if target is None:
+            return
+        menubar = self.menuBar()
+        if (
+            QApplication.focusWidget() is menubar
+            and menubar.activeAction() is None
+            and QApplication.activePopupWidget() is None
+            and QApplication.activeModalWidget() is None
+            and self.isActiveWindow()
+        ):
+            self._menu_focus_target = None
+            try:
+                target.setFocus(Qt.MenuBarFocusReason)
+            except RuntimeError:
+                pass
+
     def setup_shortcuts(self):
         """Setup keyboard shortcuts."""
         shortcut_mgr = get_shortcut_manager()
@@ -2236,7 +2301,8 @@ class MainWindow(QMainWindow):
         dialog.setWindowTitle("Duplicate Check")
         """Start duplicate mode by prompting for duplicate match type."""
         dialog.setAccessibleDescription(
-            "Select duplicate match mode and start duplicate checking"
+            "Select duplicate match mode and start duplicate checking. "
+            "Press Escape to close."
         )
 
         layout = QVBoxLayout(dialog)
@@ -2245,6 +2311,8 @@ class MainWindow(QMainWindow):
 
         prompt = QLabel("Select duplicate match type:")
         layout.addWidget(prompt)
+        escape_hint = QLabel("Press Escape to close.")
+        layout.addWidget(escape_hint)
 
         mode_combo = QComboBox()
         mode_combo.setAccessibleName("Duplicate match type")
@@ -2264,14 +2332,12 @@ class MainWindow(QMainWindow):
         start_button = QPushButton("Start")
         start_button.setAccessibleName("Start duplicate check")
         start_button.setAccessibleDescription("Start duplicate check")
-        cancel_button = QPushButton("Cancel")
-        cancel_button.setAccessibleName("Cancel duplicate check")
-        cancel_button.setAccessibleDescription("Cancel duplicate check")
         button_style = build_accessible_button_style(self.scaler.get_scaled_size(20))
         start_button.setStyleSheet(button_style)
-        cancel_button.setStyleSheet(button_style)
         start_button.clicked.connect(dialog.accept)
-        cancel_button.clicked.connect(dialog.reject)
+        escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), dialog)
+        escape_shortcut.setContext(Qt.WindowShortcut)
+        escape_shortcut.activated.connect(dialog.reject)
         # Centralized Alt+letter shortcuts for Duplicate Check dialog
         from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 
@@ -2283,7 +2349,6 @@ class MainWindow(QMainWindow):
 
         callback_map = {
             "start_button": start_button.click,
-            "cancel_button": cancel_button.click,
             "mode_combo": focus_mode_combo,
         }
         shortcut_mgr.register_alt_shortcuts(
@@ -2291,7 +2356,6 @@ class MainWindow(QMainWindow):
         )
         buttons_layout.addStretch()
         buttons_layout.addWidget(start_button)
-        buttons_layout.addWidget(cancel_button)
         layout.addLayout(buttons_layout)
 
         if dialog.exec() != QDialog.Accepted:
@@ -2386,23 +2450,14 @@ class MainWindow(QMainWindow):
 
         focus_ctx = self._capture_table_focus_context()
         collection_id = self.current_filter.collection_id
+        # Unknown id or All Collections opens on All Collections.
         dialog = PathHealthWindow(
             self.db,
             self.scaler,
             self.theme_manager,
             parent=self,
+            initial_collection_id=collection_id,
         )
-        if hasattr(dialog, "collection_combo") and dialog.collection_combo.count() > 0:
-            if collection_id is not None:
-                idx = dialog.collection_combo.findData(collection_id)
-                if idx >= 0:
-                    dialog.collection_combo.setCurrentIndex(idx)
-                else:
-                    # Unknown id → All Collections (first item)
-                    dialog.collection_combo.setCurrentIndex(0)
-            else:
-                # Main window All Collections → Check Book Locations All Collections
-                dialog.collection_combo.setCurrentIndex(0)
         dialog.exec()
         self.refresh_books()
         self._restore_table_focus_context(focus_ctx)

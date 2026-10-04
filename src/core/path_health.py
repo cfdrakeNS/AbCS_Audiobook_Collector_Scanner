@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, List, Optional
 
-from src.core.library_root import path_is_under_root, saved_import_scenario
+from src.core.library_root import locate_book_under_collection, path_is_under_root
 
 STATUS_EMPTY = "Empty"
 STATUS_MISSING = "Missing"
@@ -90,18 +90,31 @@ def _classify_book_path(
     book_title: str = "",
     series_name: str = "",
     collection_name: str = "",
-    import_scenario: str | None = None,
-    root_audio_cache: dict | None = None,
     series_number=None,
 ) -> _PathCheck:
     from src.core.audio_launcher import locate_book_path
 
     text = (path or "").strip()
     root = (collection_root or "").strip()
-    if text and Path(text).exists():
-        if root and not path_is_under_root(text, root):
+
+    def check_on_disk(on_disk: str) -> _PathCheck:
+        if root and not path_is_under_root(on_disk, root):
+            # Found under the collection folder: fix the path instead of listing it.
+            found = locate_book_under_collection(
+                root,
+                author_name,
+                book_title,
+                series_name,
+                collection_name=collection_name,
+                series_number=series_number,
+            ).path
+            if found:
+                return _PathCheck(STATUS_RESOLVED, resolved_path=found)
             return _PathCheck(STATUS_INCORRECT)
         return _PathCheck(STATUS_OK)
+
+    if text and Path(text).exists():
+        return check_on_disk(text)
 
     location = locate_book_path(
         text,
@@ -110,11 +123,13 @@ def _classify_book_path(
         author_name,
         book_title,
         series_name,
-        import_scenario,
         collection_name=collection_name,
-        root_audio_cache=root_audio_cache,
         series_number=series_number,
     )
+    if location.path and not location.found_path:
+        # The stored path was remapped onto the current folder (for example a
+        # USB drive with a new letter). Keep it as stored so it stays portable.
+        return check_on_disk(location.path)
     if location.path:
         return _PathCheck(STATUS_RESOLVED, resolved_path=location.path)
     return _PathCheck(
@@ -136,10 +151,13 @@ def check_book_path(
 
     - Empty: no stored path, and the book cannot be found
     - Missing: stored path gone, and the book cannot be found
-    - Resolved: the stored path is blank or gone, but the book is found under
-      the collection folder
-    - Incorrect: the stored path exists but is not under the collection folder
-    - OK: stored path exists (and under root when a root is set)
+    - Resolved: the stored path is blank, gone, or outside the collection
+      folder, but the book is found under the collection folder
+    - Incorrect: the stored path exists outside the collection folder, and the
+      book is not found under it
+    - OK: stored path exists (and under root when a root is set), or it maps
+      onto the collection folder (for example a USB drive with a new letter);
+      the stored path is kept
     """
     return _classify_book_path(path, collection_root, import_dir, **lookup).status
 
@@ -164,8 +182,6 @@ def build_path_health_row(
     *,
     collection_root: str = "",
     import_dir: str = "",
-    import_scenario: str | None = None,
-    root_audio_cache: dict | None = None,
 ) -> PathHealthRow | None:
     """Build one check row for a book, or None when book_id is missing."""
     book_id = getattr(book, "book_id", None)
@@ -184,8 +200,6 @@ def build_path_health_row(
         book_title=title,
         series_name=getattr(book, "series_name", "") or "",
         collection_name=collection_name,
-        import_scenario=import_scenario,
-        root_audio_cache=root_audio_cache,
         series_number=getattr(book, "series_number", None),
     )
     return PathHealthRow(
@@ -229,8 +243,6 @@ def iter_book_path_checks(
     ``collection_roots`` maps collection_id → root_path for All-collections scans.
     ``cancel_check`` returning True stops before the next book.
     """
-    scenario = saved_import_scenario()
-    root_audio_cache: dict = {}
     for book in books:
         if cancel_check is not None and cancel_check():
             return
@@ -243,8 +255,6 @@ def iter_book_path_checks(
             book,
             collection_root=root,
             import_dir=import_dir,
-            import_scenario=scenario,
-            root_audio_cache=root_audio_cache,
         )
         if row is not None:
             yield row

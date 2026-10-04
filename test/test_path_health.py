@@ -18,6 +18,7 @@ from src.core.path_health import (
     PathHealthCounts,
     check_book_path,
     iter_book_path_checks,
+    row_matches_filter,
     scan_book_paths,
     summarize_statuses,
 )
@@ -72,14 +73,14 @@ def test_check_book_path_incorrect_outside_root(tmp_path):
 
 
 def test_check_book_path_stale_stored_but_playable_via_root(tmp_path):
-    """Same case as Michael R. Stern: stored drive/folder renamed; Play remaps."""
+    """Stored drive/folder renamed (USB letter change): remaps, path kept as stored."""
     root = tmp_path / "zLibrary"
     book = root / "Michael R. Stern" / "Title"
     book.mkdir(parents=True)
     (book / "track.mp3").write_bytes(b"x")
     stale = tmp_path / "Library" / "Michael R. Stern" / "Title"
     assert not stale.exists()
-    assert check_book_path(str(stale), str(root)) == STATUS_RESOLVED
+    assert check_book_path(str(stale), str(root)) == STATUS_OK
     assert check_book_path(str(stale), str(root), "") != STATUS_MISSING
 
 
@@ -153,16 +154,16 @@ def test_scan_book_paths_filters(tmp_path):
     assert STATUS_OK not in {r.status for r in all_rows}
 
     every_row = list(iter_book_path_checks(books, collection_root=root))
-    resolved = [r for r in every_row if r.status == STATUS_RESOLVED]
-    assert [r.book_id for r in resolved] == [5]
-    assert resolved[0].resolved_path
+    remapped = next(r for r in every_row if r.book_id == 5)
+    assert remapped.status == STATUS_OK
+    assert remapped.resolved_path == ""
 
     counts = summarize_statuses(every_row)
     assert counts[STATUS_EMPTY] == 1
     assert counts[STATUS_MISSING] == 1
     assert counts[STATUS_INCORRECT] == 1
-    assert counts[STATUS_RESOLVED] == 1
-    assert counts[STATUS_OK] == 1
+    assert counts[STATUS_RESOLVED] == 0
+    assert counts[STATUS_OK] == 2
 
 
 def test_path_health_counts_mixed():
@@ -256,7 +257,7 @@ def test_iter_uses_per_collection_roots(tmp_path):
             collection_roots={10: str(root_a), 20: str(root_b)},
         )
     )
-    assert [r.status for r in rows] == [STATUS_RESOLVED, STATUS_RESOLVED]
+    assert [r.status for r in rows] == [STATUS_OK, STATUS_OK]
 
 
 def _audio_folder(folder):
@@ -268,9 +269,6 @@ def _audio_folder(folder):
 def test_blank_path_found_by_layout_is_incorrect_with_found_path(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setattr(
-        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
-    )
     root = tmp_path / "library"
     book_dir = _audio_folder(root / "Lee Child" / "Killing Floor")
     books = [
@@ -301,9 +299,6 @@ def test_blank_path_found_by_layout_is_incorrect_with_found_path(
 
 
 def test_numbered_folders_resolve_by_series_number(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
-    )
     root = tmp_path / "library"
     author = root / "Patricia Cornwell" / "Kay Scarpetta Series"
     _audio_folder(author / "1-  Postmortem")
@@ -336,10 +331,64 @@ def test_numbered_folders_resolve_by_series_number(tmp_path, monkeypatch):
     assert rows[1].resolved_path == str(second)
 
 
+def test_outside_path_found_in_collection_is_corrected_not_incorrect(tmp_path):
+    root = tmp_path / "library"
+    series_book = _audio_folder(root / "Lee Child" / "Jack Reacher" / "Tripwire")
+    outside = _audio_folder(tmp_path / "elsewhere" / "Tripwire")
+    stray = _audio_folder(tmp_path / "elsewhere" / "Stray")
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="Tripwire",
+            author_name="Lee Child",
+            series_name="Jack Reacher",
+            path=str(outside),
+            collection_id=1,
+            collection_name="Lib",
+        ),
+        SimpleNamespace(
+            book_id=2,
+            title="Stray",
+            author_name="Lee Child",
+            path=str(stray),
+            collection_id=1,
+            collection_name="Lib",
+        ),
+    ]
+    rows = list(iter_book_path_checks(books, collection_root=str(root)))
+    assert rows[0].status == STATUS_RESOLVED
+    assert rows[0].resolved_path == str(series_book)
+    assert rows[1].status == STATUS_INCORRECT
+    assert not row_matches_filter(rows[0].status, FILTER_ALL)
+    counts = PathHealthCounts()
+    for row in rows:
+        counts.record(row.status)
+    assert (counts.resolved, counts.incorrect) == (1, 1)
+
+
+def test_series_tag_file_is_corrected(tmp_path):
+    root = tmp_path / "Test series from directory"
+    series_dir = root / "Michael R. Stern" / "Quantum Touch"
+    series_dir.mkdir(parents=True)
+    track = series_dir / "2 Sand Storm(Quantum Touch 02).m4b"
+    track.write_bytes(b"x")
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="Sand Storm",
+            author_name="Michael R. Stern",
+            series_name="Quantum Touch",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        )
+    ]
+    rows = list(iter_book_path_checks(books, collection_root=str(root)))
+    assert rows[0].status == STATUS_RESOLVED
+    assert rows[0].resolved_path == str(track)
+
+
 def test_missing_row_says_collection_folder_missing(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
-    )
     books = [
         SimpleNamespace(
             book_id=1,
@@ -395,9 +444,6 @@ def test_scan_corrects_resolved_paths_and_leaves_them_out(
     from src.ui.path_health_window import PathHealthWindow
 
     db, root, collection_id, ids = layout_db
-    monkeypatch.setattr(
-        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
-    )
     killing = _audio_folder(root / "Lee Child" / "Killing Floor")
     die = _audio_folder(root / "Lee Child" / "Die Trying")
 
@@ -459,9 +505,6 @@ def test_open_details_pages_listed_books_in_edit_mode(
     from src.ui import path_health_window as module
 
     db, root, collection_id, ids = layout_db
-    monkeypatch.setattr(
-        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
-    )
     captured: dict = {}
 
     class FakeDetails:
@@ -509,9 +552,6 @@ def test_details_close_refreshes_rows_without_full_rescan(
     from src.ui import path_health_window as module
 
     db, root, collection_id, ids = layout_db
-    monkeypatch.setattr(
-        "src.core.path_health.saved_import_scenario", lambda: "mass_standard"
-    )
     rescan_calls: list[bool] = []
 
     class FakeDetails:
@@ -691,8 +731,11 @@ def test_path_health_window_lists_problems(temp_db, ui_scaler, theme_manager, qt
     )
     window.run_scan()
     assert all(row.status == STATUS_INCORRECT for row in window._rows)
-    assert window.table.columnCount() == 3
+    assert window.table.columnCount() == 4
     assert window.table.horizontalHeaderItem(0).text() == "Author"
+    assert window.table.horizontalHeaderItem(window.COL_ERROR).text() == "Error"
+    assert window.table.horizontalHeaderItem(window.COL_PATH).text() == "Path"
+    assert window.COL_ERROR == window.COL_PATH - 1
     window.close()
 
 

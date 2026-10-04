@@ -57,7 +57,6 @@ from src.accessibility.theme_manager import ThemeManager, get_theme_manager
 from src.core.library_root import (
     IMPORT_DEFAULT_DIRECTORY_KEY,
     root_path_issue,
-    saved_import_scenario,
 )
 from src.core.path_health import (
     FILTER_ALL,
@@ -87,18 +86,20 @@ class PathHealthWindow(AccessibleDialog):
 
     COL_AUTHOR = 0
     COL_TITLE = 1
-    COL_PATH = 2
+    COL_ERROR = 2
+    COL_PATH = 3
 
     ALLOWED_ALT_LETTERS = "CFILSX/"
 
     GUIDE_TEXT = (
         "Choose a collection and filter, then press Scan. Each book is checked "
-        "against its stored path, then under the collection folder using your "
-        "import scenario layout. When the stored path is blank or wrong but the "
-        "book is found in the collection folder, the path is corrected and the "
-        "book is not listed. Missing: the book cannot be found. Incorrect: the "
-        "path exists but is outside the collection folder. Press Enter on a book "
-        "to open Book Details."
+        "against its stored path, then under the collection folder: the author "
+        "folder, then the series folder when the book has a series. When the "
+        "book is found in the collection folder, the path is corrected, the book "
+        "is not listed, and it is counted as Corrected. Missing: the book cannot "
+        "be found. Incorrect: the path exists outside the collection folder and "
+        "the book is not in the collection folder. Press Enter on a book to open "
+        "Book Details."
     )
 
     def __init__(
@@ -107,8 +108,11 @@ class PathHealthWindow(AccessibleDialog):
         scaler: UIScaler,
         theme_manager: ThemeManager | None = None,
         parent=None,
+        initial_collection_id: int | None = None,
     ):
         super().__init__(parent)
+        self._initial_collection_id = initial_collection_id
+        self._open_focus_pending = True
         self.db = db
         self.scaler = scaler
         self.theme_manager = theme_manager
@@ -143,7 +147,6 @@ class PathHealthWindow(AccessibleDialog):
         self._load_collection_options()
         if hasattr(self.scaler, "scale_changed"):
             self.scaler.scale_changed.connect(self.on_scale_changed)
-        QTimer.singleShot(0, self._initial_focus)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -219,8 +222,8 @@ class PathHealthWindow(AccessibleDialog):
             "Check book locations list",
             "Books with invalid paths for the selected filter",
         )
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Author", "Title", "Path"])
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Author", "Title", "Error", "Path"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setTabKeyNavigation(False)
@@ -242,10 +245,12 @@ class PathHealthWindow(AccessibleDialog):
         header.setAccessibleDescription("")
         header.setSectionResizeMode(self.COL_AUTHOR, QHeaderView.Interactive)
         header.setSectionResizeMode(self.COL_TITLE, QHeaderView.Interactive)
+        header.setSectionResizeMode(self.COL_ERROR, QHeaderView.Interactive)
         header.setSectionResizeMode(self.COL_PATH, QHeaderView.Interactive)
         self._stretch_columns = {
             self.COL_AUTHOR: 2.2,
             self.COL_TITLE: 3.0,
+            self.COL_ERROR: 2.0,
             self.COL_PATH: 3.5,
         }
         self.table.doubleClicked.connect(self.on_open_details)
@@ -402,7 +407,7 @@ class PathHealthWindow(AccessibleDialog):
 
     def _initial_focus(self):
         self.collection_combo.setFocus(Qt.TabFocusReason)
-        self.set_status("Press Scan to check paths.", announce=True)
+        self.set_status("Press Scan to check paths.", announce=False)
 
     def _load_collection_options(self):
         """Load All Collections plus active collections (main-window style)."""
@@ -426,7 +431,12 @@ class PathHealthWindow(AccessibleDialog):
         for collection in collections:
             self.collection_combo.addItem(collection.name, collection.collection_id)
 
-        self.collection_combo.setCurrentIndex(0)
+        initial_index = 0
+        if self._initial_collection_id is not None:
+            found = self.collection_combo.findData(self._initial_collection_id)
+            if found >= 0:
+                initial_index = found
+        self.collection_combo.setCurrentIndex(initial_index)
         self.collection_combo.blockSignals(False)
         self._loading = False
 
@@ -439,7 +449,7 @@ class PathHealthWindow(AccessibleDialog):
         self._scanned_total = 0
         self._fill_table()
         self._sync_action_buttons()
-        self.set_status("Press Scan to check paths.", announce=True)
+        self.set_status("Press Scan to check paths.", announce=self.isVisible())
 
     def on_filter_changed(self, _index: int = -1):
         if self._loading or self._is_scanning:
@@ -677,10 +687,6 @@ class PathHealthWindow(AccessibleDialog):
             theme = get_theme_manager(QApplication.instance())
 
         self._is_scanning = True
-        self.scan_button.setEnabled(False)
-        self.collection_combo.setEnabled(False)
-        self.filter_combo.setEnabled(False)
-        self.export_button.setEnabled(False)
 
         progress = ImportProgressWindow(self.scaler, theme, parent=self)
         progress.setWindowTitle("Check Book Locations Progress")
@@ -698,6 +704,14 @@ class PathHealthWindow(AccessibleDialog):
         progress.show()
         progress.raise_()
         progress.activateWindow()
+        # Focus must enter the progress window before Scan is disabled, or Qt
+        # moves it to the instructions label and the screen reader reads them.
+        progress.scan_progress.setFocus(Qt.OtherFocusReason)
+        QApplication.processEvents()
+        self.scan_button.setEnabled(False)
+        self.collection_combo.setEnabled(False)
+        self.filter_combo.setEnabled(False)
+        self.export_button.setEnabled(False)
 
         counts = PathHealthCounts()
         scanned_rows: list[PathHealthRow] = []
@@ -815,16 +829,17 @@ class PathHealthWindow(AccessibleDialog):
                 status_label = f"missing. {row.reason}" if row.reason else "missing"
             else:
                 status_label = row.status.casefold()
-            # Focus lands on Title, so the full summary lives there; status leads the path
-            # because paths are long. Other columns still end with the status.
+            error_display = status_label[:1].upper() + status_label[1:]
+            # Focus lands on Title, so the full summary lives there.
             accessible = {
                 self.COL_AUTHOR: f"{row.author}, {status_label}",
                 self.COL_TITLE: (
                     f"{row.title}, by {row.author}, {status_label}, path {path_display}"
                 ),
-                self.COL_PATH: f"path {path_display}, {status_label}",
+                self.COL_ERROR: error_display,
+                self.COL_PATH: f"path {path_display}",
             }
-            values = [row.author, row.title, path_display]
+            values = [row.author, row.title, error_display, path_display]
             for col, text in enumerate(values):
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -851,6 +866,9 @@ class PathHealthWindow(AccessibleDialog):
     def showEvent(self, event):
         super().showEvent(event)
         QTimer.singleShot(0, self.update_stretch_columns)
+        if self._open_focus_pending:
+            self._open_focus_pending = False
+            QTimer.singleShot(0, self._initial_focus)
 
     def _selected_row(self) -> PathHealthRow | None:
         row = self.table.currentRow()
@@ -873,8 +891,6 @@ class PathHealthWindow(AccessibleDialog):
             self.table.setFocus()
             return
         _scan_all, root, collection_roots, import_dir = self._path_check_context()
-        scenario = saved_import_scenario()
-        root_audio_cache: dict = {}
         index_by_id = {row.book_id: idx for idx, row in enumerate(self._scan_rows_all)}
         for book_id in book_ids:
             book = self.book_queries.get_by_id(book_id)
@@ -890,8 +906,6 @@ class PathHealthWindow(AccessibleDialog):
                 book,
                 collection_root=book_root,
                 import_dir=import_dir,
-                import_scenario=scenario,
-                root_audio_cache=root_audio_cache,
             )
             if new_row is None:
                 continue

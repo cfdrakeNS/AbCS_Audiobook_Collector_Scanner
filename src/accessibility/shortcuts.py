@@ -82,7 +82,6 @@ BATCH_WEB_FETCH_SUMMARY_SHORTCUTS = {
 
 DUPLICATE_DIALOG_SHORTCUTS = {
     "R": ("Start duplicate check", "start_button"),
-    "L": ("Cancel duplicate check", "cancel_button"),
     "M": ("Focus match type combo", "mode_combo"),
 }
 

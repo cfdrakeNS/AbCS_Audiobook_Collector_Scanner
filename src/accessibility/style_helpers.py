@@ -899,7 +899,14 @@ def exec_styled_message_box(
     and answered only by Escape, so the box shows fewer buttons without Escape
     falling through to the remaining one.
     """
-    msg = QMessageBox(parent)
+    from src.ui.accessible_dialog import AccessibleDialog, _set_win32_owner
+
+    owner = parent.window() if parent is not None else None
+    # A modal box disables the window behind it, and JAWS then reads an
+    # AccessibleDialog as "<title> unavailable" before the box. Owning the box
+    # natively (no Qt parent, window modal) keeps the dialog enabled.
+    keep_owner_enabled = isinstance(owner, AccessibleDialog) and owner.isVisible()
+    msg = QMessageBox(None if keep_owner_enabled else parent)
     if icon is not None:
         msg.setIcon(icon)
     else:
@@ -943,4 +950,11 @@ def exec_styled_message_box(
             hidden.hide()
 
     msg.setStyleSheet(build_accessible_message_box_style(scaled_height))
+    if keep_owner_enabled:
+        msg.setWindowModality(Qt.WindowModal)
+        _set_win32_owner(int(msg.winId()), int(owner.winId()))
+        msg.adjustSize()
+        frame = msg.frameGeometry()
+        frame.moveCenter(owner.frameGeometry().center())
+        msg.move(frame.topLeft())
     return msg.exec()

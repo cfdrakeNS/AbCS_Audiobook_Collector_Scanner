@@ -27,6 +27,10 @@ Mandatory for any new or changed window, dialog, footer button, combo, or status
 - Meaningful state changes: `set_status(..., announce=True)` via [`announce_status_message`](../../src/accessibility/accessible_events.py). Do not rely on `QStatusBar.showMessage()` alone.
 - Every major window/dialog: **Alt+/** re-reads status ([`read_status_bar_message`](../../src/accessibility/accessible_events.py)).
 - After modal close: restore focus intentionally (`restore_main_focus_after_modal` / focus title or table as the parent window already does).
+- Window open (name list pattern): pass starting values (collection, filter) through the constructor; do not change combos after construction. Set first focus in `showEvent` with `QTimer.singleShot(0, ...)`. Never `set_status(..., announce=True)` while the window is hidden (`announce=self.isVisible()`), because the focus pulse lands on the parent window and the screen reader reads its title. If an open message is needed, keep it and announce it after `showEvent`.
+- Menu items that open windows: the main window holds focus on the menu bar while a keyboard-chosen menu item runs (`_hold_focus_for_menu_action` in [`main_window.py`](../../src/ui/main_window.py)), so the screen reader does not say "book table" before the new window. Menus added in `create_menu_bar` are covered automatically; a menu created elsewhere must connect its `aboutToHide` the same way. Do not add per-window workarounds for this.
+- Message boxes over dialogs: always use `exec_styled_message_box`. When its parent is an `AccessibleDialog`, it keeps the dialog enabled (no Qt parent, Win32 owner, window modal) so JAWS does not say "<title> unavailable" before the box. A raw `QMessageBox(dialog).exec()` brings that noise back.
+- Opening a progress window from a window: show, raise, activate, and focus the progress window **before** disabling the caller's buttons. Disabling the focused button first moves focus to the next control (for example an instructions label), and the screen reader reads it.
 - Modal completion after background work: `raise_()` + `activateWindow()` + focus on the **default button** before announce (learned from fetch/Calibre issues).
 - Worker threads must not touch widgets. Progress/UI updates go through a **GUI-thread `QObject` bridge** with `QueuedConnection` to `@Slot` methods — plain Python callables are not enough.
 - Block unmapped Alt+letter in text fields (`is_unmapped_alt_letter`). Editable combos: block plain Up/Down; allow with Alt (Preferences / Book Details / Update pattern).
@@ -58,4 +62,5 @@ Before marking a change done:
 2. Activate primary and Cancel/Close with keyboard only (including Alt+letter if registered).
 3. Alt+/ reads the latest status after a meaningful action.
 4. Focus returns to a sensible place after the dialog closes.
-5. New buttons look and focus like existing AbCS buttons (highlight focus ring, scaled height).
+5. Open the window both ways — its Ctrl shortcut and its menu item (Alt+menu letter) — and confirm only the new window is spoken, not the main window title or book table. Trigger any confirm box (for example Escape with changes) and confirm no "<title> unavailable" before it.
+6. New buttons look and focus like existing AbCS buttons (highlight focus ring, scaled height).

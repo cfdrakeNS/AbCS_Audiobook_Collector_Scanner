@@ -74,6 +74,7 @@ REVIEW_QUEUE_STOP = 2
 class WebMetadataWindow(AccessibleDialog):
 
     STOP_QUEUE = REVIEW_QUEUE_STOP
+    _pending_open_status = ""
 
     @staticmethod
     def _compare_scalar_field(
@@ -290,6 +291,8 @@ class WebMetadataWindow(AccessibleDialog):
         super().showEvent(event)
         self.set_tab_order()
         QTimer.singleShot(0, self.set_initial_focus)
+        if self._pending_open_status:
+            QTimer.singleShot(0, self._announce_pending_open_status)
         if self.queue_index and self.queue_total:
             self.raise_()
             self.activateWindow()
@@ -300,6 +303,12 @@ class WebMetadataWindow(AccessibleDialog):
                 )
             else:
                 announce_dialog_opened(self, "Web Metadata")
+
+    def _announce_pending_open_status(self) -> None:
+        msg = self._pending_open_status
+        self._pending_open_status = ""
+        if msg:
+            self.set_status(msg, announce=True)
 
     def on_skip_clicked(self):
         """Skip saving and close so the batch review queue can advance."""
@@ -751,7 +760,12 @@ class WebMetadataWindow(AccessibleDialog):
 
             # Window open already implies a fetch result; announce plot + diffs only.
             msg = self._build_web_status_message(cleaned_web_data)
-            self.set_status(msg, announce=True)
+            if self.isVisible():
+                self.set_status(msg, announce=True)
+            else:
+                # Announcing while hidden sends the screen reader to the main window.
+                self.set_status(msg, announce=False)
+                self._pending_open_status = msg
 
     def set_initial_focus(self):
         """Open on Plot so reviewers hear plot and diffs first (tester feedback)."""

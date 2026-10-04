@@ -9,7 +9,7 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from src.accessibility.dialog_prose import blocks_to_dialog_html
@@ -475,7 +475,38 @@ def test_exec_styled_message_box_applies_ok_icon(qapp):
     assert result == int(QMessageBox.Ok)
     assert captured.get("ok_btn") is not None
     assert not captured.get("icon_null")
+    assert captured["ok_btn"].window().parent() is parent
     parent.close()
+
+
+def test_exec_styled_message_box_keeps_accessible_dialog_enabled(qapp):
+    from src.ui.accessible_dialog import AccessibleDialog
+
+    owner = AccessibleDialog(None)
+    edit = QWidget(owner)
+    captured = {}
+
+    def fake_exec(self):
+        captured["parent"] = self.parent()
+        captured["modality"] = self.windowModality()
+        return int(QMessageBox.Yes)
+
+    with patch.object(QMessageBox, "exec", fake_exec), patch.object(
+        AccessibleDialog, "isVisible", lambda self: True
+    ):
+        result = exec_styled_message_box(
+            edit,
+            scaled_height=20,
+            icon=QMessageBox.Question,
+            title="Confirm Save",
+            text="Save web data?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+        )
+
+    assert result == int(QMessageBox.Yes)
+    assert captured["parent"] is None
+    assert captured["modality"] == Qt.WindowModal
+    owner.deleteLater()
 
 
 def test_message_box_button_accessibility_helper(qapp):

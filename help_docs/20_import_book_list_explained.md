@@ -226,14 +226,13 @@ Books added from a list have no file path. When you press **Listen** (Ctrl+L), A
 
 ### Where Listen looks
 
-Listen checks only the folders your **Import scenario** in Preferences expects. It does not scan the whole drive. Folder names match without regard to case or characters Windows does not allow in names.
+Listen checks only a few folders under the collection folder, in this order. It does not scan the whole drive, and the Preferences **Import scenario** is not used. Folder names match without regard to case or characters Windows does not allow in names.
 
-| Import scenario | Folders checked under the collection folder |
-|-----------------|-----------------------------------------------|
-| Mass Standard Import, or Series From File Name | Author, then Title. Also a single audio file named for the title in the Author folder, or Author, then Series, then Title |
-| Series From Directory | Author, then Series, where the Series folder holds the audio. Books without a series use Author, then Title |
-| Series From Directory (Nested Books) | Author, then Series, then Title. Books without a series use Author, then Title |
-| Single Author / Book Import | None — use Browse |
+| Step | Folders checked under the collection folder |
+|------|-----------------------------------------------|
+| 1 | Author, then Title (a title folder, or a single audio file named for the title) |
+| 2 | When the book has a series: Author, then Series, then Title (folder or file) |
+| 3 | When the book has no series: one folder down inside Author, then Title (used only if exactly one matches) |
 
 When the book is found, it plays and its folder is saved as the book's path. The next Listen goes straight to it.
 
@@ -244,13 +243,12 @@ Listen says what was missing and where it looked. Then it offers **Browse**. The
 | Message starts with | Meaning |
 |---------------------|---------|
 | The collection folder is missing | The collection folder does not exist, for example a drive that is not connected |
-| The collection folder has no audiobook files | The collection folder is probably set to the wrong path |
-| Author folder "…" was not found | No folder with the author's name is directly in the collection folder |
+| Author folder "…" was not found | No folder with the author's name is directly in the collection folder. If no author is found, the collection folder may be set to the wrong path |
 | Author folder found. Book title "…" was not found | The author folder exists, but no folder or file matches the title |
-| Author folder found. Series folder "…" was not found | The scenario expects a series folder that is not there |
+| Author folder found. Series folder "…" was not found | The book has a series, the title is not in the author folder, and no series folder with that name is in the author folder |
 | This book has no file path and the collection folder is not set | The collection has no collection folder set |
 
-For the first two and the last message, fix the folder in **Manage → Collections**: edit the collection and set the **Collection folder**. See [Listen to a book](26_listen_to_a_book.md) for player controls.
+For the first and the last message, fix the folder in **Manage → Collections**: edit the collection and set the **Collection folder**. See [Listen to a book](26_listen_to_a_book.md) for player controls.
 
 ---
 
@@ -274,7 +272,7 @@ For the first two and the last message, fix the folder in **Manage → Collectio
 |------------|------------|
 | Duplicate match mode | New-book mode only |
 | Fuzzy duplicate percent | New-book mode only |
-| Import scenario, fallbacks, validation rules | **Not used** during import. Listen uses the import scenario later to find book folders |
+| Import scenario, fallbacks, validation rules | **Not used** during import. Listen and Check Book Locations do not use them either |
 
 ---
 

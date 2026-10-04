@@ -10,7 +10,6 @@ from src.core.library_root import (
     locate_book_under_collection,
     path_exists,
     resolve_book_location,
-    saved_import_scenario,
 )
 from src.core.tag_reader import TagReader
 
@@ -76,9 +75,7 @@ def locate_book_path(
     author_name: str,
     book_title: str,
     series_name: str,
-    import_scenario: str | None,
     collection_name: str = "",
-    root_audio_cache: dict | None = None,
     series_number=None,
 ) -> BookLocation:
     """Stored path first; when blank or missing, the collection folder layout.
@@ -96,16 +93,13 @@ def locate_book_path(
 
     root = (collection_root or "").strip()
     author = (author_name or "").strip()
-    scenario = import_scenario if import_scenario is not None else saved_import_scenario()
     if root and author:
         lookup = locate_book_under_collection(
             root,
             author_name,
             book_title,
             series_name,
-            scenario,
             collection_name=collection_name,
-            root_audio_cache=root_audio_cache,
             series_number=series_number,
         )
         if lookup.path:
@@ -126,12 +120,6 @@ def locate_book_path(
             reason = (
                 "This book has no file path and no author, so Listen cannot "
                 "look for it in the collection folder."
-            )
-        elif scenario == "single_item":
-            reason = (
-                "This book has no file path. The Single Author / Book Import "
-                "layout has no author folders, so Listen cannot look for it in "
-                "the collection folder."
             )
         else:
             reason = "This book has no file path."
@@ -290,7 +278,6 @@ def resolve_preview_source(
     author_name: str = "",
     book_title: str = "",
     series_name: str = "",
-    import_scenario: str | None = None,
     collection_name: str = "",
     series_number=None,
 ) -> PreviewTarget:
@@ -302,7 +289,6 @@ def resolve_preview_source(
         author_name,
         book_title,
         series_name,
-        import_scenario,
         collection_name=collection_name,
         series_number=series_number,
     )
@@ -363,14 +349,13 @@ def resolve_preview_playlist(
     author_name: str = "",
     book_title: str = "",
     series_name: str = "",
-    import_scenario: str | None = None,
     collection_name: str = "",
     series_number=None,
 ) -> PreviewPlaylist:
     """Return the ordered playlist and start index for Preview.
 
-    A blank or missing stored path falls back to the collection folder,
-    following the Preferences import scenario (``import_scenario`` overrides).
+    A blank or missing stored path falls back to the collection folder:
+    the author folder, then the series folder when the book has a series.
     """
     location = _locate_book(
         path,
@@ -379,7 +364,6 @@ def resolve_preview_playlist(
         author_name,
         book_title,
         series_name,
-        import_scenario,
         collection_name=collection_name,
         series_number=series_number,
     )

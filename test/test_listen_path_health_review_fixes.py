@@ -217,6 +217,76 @@ def test_path_health_alt_filter_on_all_controls_and_title_summary(
     title_text = window.table.item(0, window.COL_TITLE).data(Qt.AccessibleTextRole)
     assert title_text.startswith("Book One, by Ann Author, missing.")
     assert "Author folder not found" in title_text
-    for col in (window.COL_AUTHOR, window.COL_PATH):
-        assert "missing" in window.table.item(0, col).data(Qt.AccessibleTextRole)
+    assert "missing" in window.table.item(0, window.COL_AUTHOR).data(
+        Qt.AccessibleTextRole
+    )
+    error_item = window.table.item(0, window.COL_ERROR)
+    assert error_item.text() == "Missing. Author folder not found"
+    assert error_item.data(Qt.AccessibleTextRole) == "Missing. Author folder not found"
+    path_text = window.table.item(0, window.COL_PATH).data(Qt.AccessibleTextRole)
+    assert path_text == "path (empty)"
+    window.close()
+
+
+def test_path_health_initial_collection_selected_without_announce(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.database.models import Collection
+    from src.database.queries import CollectionQueries
+    from src.ui.path_health_window import PathHealthWindow
+
+    second_id = CollectionQueries(temp_db).insert(
+        Collection(name="Second", active=True)
+    )
+    announced: list[str] = []
+    real_set_status = PathHealthWindow.set_status
+
+    def track(self, message, *args, **kwargs):
+        if kwargs.get("announce"):
+            announced.append(message)
+        return real_set_status(self, message, *args, **kwargs)
+
+    monkeypatch.setattr(PathHealthWindow, "set_status", track)
+    window = PathHealthWindow(
+        temp_db, ui_scaler, theme_manager, parent=None, initial_collection_id=second_id
+    )
+    qtbot.addWidget(window)
+    assert window.collection_combo.currentData() == second_id
+    assert announced == []
+    window.close()
+
+
+def test_path_health_scan_focuses_progress_before_disabling_scan(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.database.models import Book
+    from src.database.queries import BookQueries, CollectionQueries
+    from src.ui.import_progress_window import ImportProgressWindow
+
+    collection_id = CollectionQueries(temp_db).get_all(active_only=True)[0].collection_id
+    BookQueries(temp_db).insert(
+        Book(title="Empty Path Book", path="", collection_id=collection_id)
+    )
+    window = _path_window(temp_db, ui_scaler, theme_manager, qtbot)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    events: list[tuple[str, bool]] = []
+    monkeypatch.setattr(
+        ImportProgressWindow,
+        "show",
+        lambda self: events.append(("show", window.scan_button.isEnabled())),
+    )
+    monkeypatch.setattr(ImportProgressWindow, "raise_", lambda self: None)
+    monkeypatch.setattr(ImportProgressWindow, "activateWindow", lambda self: None)
+    real_set_status = ImportProgressWindow.set_status
+
+    def track_status(self, message, *args, **kwargs):
+        events.append(("status", window.scan_button.isEnabled()))
+        return real_set_status(self, message, *args, **kwargs)
+
+    monkeypatch.setattr(ImportProgressWindow, "set_status", track_status)
+    window.run_scan(warn_folder=False)
+    show_index = events.index(("show", True))
+    assert events[show_index + 1] == ("status", False)
     window.close()

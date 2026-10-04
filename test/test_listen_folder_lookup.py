@@ -45,7 +45,6 @@ def test_blank_path_finds_author_title_folder(tmp_path):
         collection_root=str(tmp_path),
         author_name="lee child",
         book_title="KILLING FLOOR",
-        import_scenario="mass_standard",
     )
 
     assert playlist.error == ""
@@ -62,51 +61,133 @@ def test_missing_stored_path_finds_author_title_folder(tmp_path):
         collection_root=str(tmp_path),
         author_name="Lee Child",
         book_title="Killing Floor",
-        import_scenario="mass_standard",
     )
     assert target.path == book_dir / "01.mp3"
     assert target.found_path == str(book_dir)
 
 
-def test_mass_standard_title_file_and_series_folder(tmp_path):
+def test_title_file_in_author_folder_and_title_folder_in_series(tmp_path):
     author = tmp_path / "Author"
     single = _audio(author, "Stand Alone.m4b")
     series_book = tmp_path / "Author" / "Saga" / "Book Two"
     _audio(series_book)
 
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Stand Alone", scenario="mass_standard"
+        str(tmp_path), "Author", "Stand Alone"
     ) == str(single)
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Book Two", "Saga", scenario="series_from_filename"
+        str(tmp_path), "Author", "Book Two", "Saga"
     ) == str(series_book)
 
 
-def test_series_from_directory_uses_series_folder(tmp_path):
-    series_dir = tmp_path / "Author" / "Saga"
-    _audio(series_dir)
+def test_title_file_in_series_folder(tmp_path):
+    series_file = _audio(tmp_path / "Author" / "Saga", "Book One.m4b")
     loose = tmp_path / "Author" / "Standalone"
     _audio(loose)
 
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Book One", "Saga", scenario="series_from_directory"
-    ) == str(series_dir)
+        str(tmp_path), "Author", "Book One", "Saga"
+    ) == str(series_file)
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Standalone", scenario="series_from_directory"
+        str(tmp_path), "Author", "Standalone"
     ) == str(loose)
 
 
-def test_nested_series_uses_series_title_folder(tmp_path):
-    nested = tmp_path / "Author" / "Saga" / "Book One"
-    _audio(nested)
+def test_author_folder_wins_over_series_folder(tmp_path):
+    in_author = tmp_path / "Author" / "Book One"
+    _audio(in_author)
+    _audio(tmp_path / "Author" / "Saga" / "Book One")
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Book One", "Saga"
+    ) == str(in_author)
+
+
+def test_series_named_like_book_searches_inside_series_folder(tmp_path):
+    series_dir = tmp_path / "Frank Herbert" / "Dune"
+    book_dir = series_dir / "1 - Dune"
+    _audio(book_dir)
+    _audio(series_dir / "2 - Dune Messiah")
+
+    assert find_book_under_collection(
+        str(tmp_path), "Frank Herbert", "Dune", "Dune", series_number=1
+    ) == str(book_dir)
+
+
+def _sand_storm_file(root):
+    return _audio(
+        root / "Michael R. Stern" / "Quantum Touch",
+        "2 Sand Storm(Quantum Touch 02).m4b",
+    )
+
+
+@pytest.mark.parametrize("series_number", [2, None])
+def test_series_tag_file_in_series_folder(tmp_path, series_number):
+    track = _sand_storm_file(tmp_path)
 
     assert find_book_under_collection(
         str(tmp_path),
-        "Author",
-        "Book One",
-        "Saga",
-        scenario="series_from_directory_nested",
-    ) == str(nested)
+        "Michael R. Stern",
+        "Sand Storm",
+        "Quantum Touch",
+        series_number=series_number,
+    ) == str(track)
+
+
+def test_series_tag_file_wrong_number_is_not_used(tmp_path):
+    _sand_storm_file(tmp_path)
+
+    assert find_book_under_collection(
+        str(tmp_path),
+        "Michael R. Stern",
+        "Sand Storm",
+        "Quantum Touch",
+        series_number=3,
+    ) == ""
+
+
+def test_series_tag_folder_and_listen_saves_found_path(tmp_path):
+    book_dir = tmp_path / "Michael R. Stern" / "Quantum Touch" / "Sand Storm (Quantum Touch 02)"
+    _audio(book_dir)
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name="Michael R. Stern",
+        book_title="Sand Storm",
+        series_name="Quantum Touch",
+        series_number=2,
+    )
+
+    assert playlist.error == ""
+    assert playlist.found_path == str(book_dir)
+
+
+@pytest.mark.parametrize("name", ["10 - Test", "01 Test", "1.Test"])
+@pytest.mark.parametrize("series", ["", "Saga"])
+def test_leading_number_folders_and_files(tmp_path, name, series):
+    parent = tmp_path / "Author" / series if series else tmp_path / "Author"
+    folder = parent / name
+    _audio(folder)
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Test", series
+    ) == str(folder)
+
+    other = tmp_path / "other"
+    file_parent = other / "Author" / series if series else other / "Author"
+    track = _audio(file_parent, f"{name}.m4b")
+    assert find_book_under_collection(
+        str(other), "Author", "Test", series
+    ) == str(track)
+
+
+def test_series_folder_with_loose_audio_is_not_the_book(tmp_path):
+    _audio(tmp_path / "Author" / "Saga")
+
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Book One", "Saga"
+    ) == ""
 
 
 @pytest.mark.parametrize(
@@ -118,13 +199,12 @@ def test_numbered_title_folder_matches(tmp_path, folder_name):
     _audio(book_dir)
 
     assert find_book_under_collection(
-        str(tmp_path), "Lee Child", "Killing Floor", scenario="mass_standard"
+        str(tmp_path), "Lee Child", "Killing Floor"
     ) == str(book_dir)
     assert find_book_under_collection(
         str(tmp_path),
         "Lee Child",
         "Killing Floor",
-        scenario="mass_standard",
         series_number=3,
     ) == str(book_dir)
 
@@ -136,10 +216,10 @@ def test_numbered_title_folder_matches_decimal_and_title_suffix(tmp_path):
     _audio(foo)
 
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Busted", scenario="mass_standard", series_number=6.5
+        str(tmp_path), "Author", "Busted", series_number=6.5
     ) == str(busted)
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Foo - 03", scenario="mass_standard"
+        str(tmp_path), "Author", "Foo - 03"
     ) == str(foo)
 
 
@@ -150,7 +230,6 @@ def test_numbered_title_folder_wrong_series_number_is_not_used(tmp_path):
         str(tmp_path),
         "Lee Child",
         "Killing Floor",
-        scenario="mass_standard",
         series_number=4,
     ) == ""
 
@@ -162,10 +241,10 @@ def test_numbered_siblings_pick_by_series_number_only(tmp_path):
     _audio(second)
 
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Saga Book", scenario="mass_standard", series_number=2
+        str(tmp_path), "Author", "Saga Book", series_number=2
     ) == str(second)
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Saga Book", scenario="mass_standard"
+        str(tmp_path), "Author", "Saga Book"
     ) == ""
 
 
@@ -174,7 +253,7 @@ def test_title_folder_without_number_is_not_split(tmp_path):
     _audio(book_dir)
 
     assert find_book_under_collection(
-        str(tmp_path), "George Orwell", "1984", scenario="mass_standard"
+        str(tmp_path), "George Orwell", "1984"
     ) == str(book_dir)
 
 
@@ -182,7 +261,7 @@ def test_numbered_single_file_in_author_folder(tmp_path):
     single = _audio(tmp_path / "Author", "02 - Stand Alone.m4b")
 
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Stand Alone", scenario="mass_standard"
+        str(tmp_path), "Author", "Stand Alone"
     ) == str(single)
 
 
@@ -195,23 +274,18 @@ def test_unnamed_series_folder_found_when_book_has_no_series(tmp_path):
         collection_root=str(tmp_path),
         author_name="Patricia Cornwell",
         book_title="Postmortem",
-        import_scenario="mass_standard",
     )
 
     assert playlist.error == ""
     assert playlist.found_path == str(book_dir)
 
 
-@pytest.mark.parametrize(
-    "scenario", ["series_from_directory", "series_from_directory_nested"]
-)
-def test_unnamed_series_folder_found_in_series_scenarios(tmp_path, scenario):
-    book_dir = tmp_path / "John Sandford" / "Virgil Flowers Series" / "4 Bad Blood"
-    _audio(book_dir)
+def test_unnamed_series_folder_not_searched_when_book_has_series(tmp_path):
+    _audio(tmp_path / "John Sandford" / "Virgil Flowers Series" / "4 Bad Blood")
 
     assert find_book_under_collection(
-        str(tmp_path), "John Sandford", "Bad Blood", scenario=scenario
-    ) == str(book_dir)
+        str(tmp_path), "John Sandford", "Bad Blood", "Virgil Flowers"
+    ) == ""
 
 
 def test_same_title_in_two_subfolders_is_not_guessed(tmp_path):
@@ -220,7 +294,7 @@ def test_same_title_in_two_subfolders_is_not_guessed(tmp_path):
     _audio(author / "Series B" / "2 Same Title")
 
     assert find_book_under_collection(
-        str(tmp_path), "Author", "Same Title", scenario="mass_standard"
+        str(tmp_path), "Author", "Same Title"
     ) == ""
 
 
@@ -233,7 +307,6 @@ def test_title_missing_names_author_folder(tmp_path):
         collection_root=str(tmp_path),
         author_name="Lee Child",
         book_title="Die Trying",
-        import_scenario="mass_standard",
     )
 
     assert playlist.files == ()
@@ -253,7 +326,6 @@ def test_author_missing_names_collection_folder(tmp_path):
         collection_root=str(tmp_path),
         author_name="Ian Rankin",
         book_title="Knots and Crosses",
-        import_scenario="mass_standard",
         collection_name="Audiobooks",
     )
 
@@ -272,7 +344,6 @@ def test_missing_collection_folder_says_how_to_fix(tmp_path):
         collection_root=str(missing_root),
         author_name="Lee Child",
         book_title="Killing Floor",
-        import_scenario="mass_standard",
         collection_name="Audiobooks",
     )
 
@@ -284,7 +355,7 @@ def test_missing_collection_folder_says_how_to_fix(tmp_path):
     assert playlist.browse_dir == ""
 
 
-def test_collection_folder_without_audio_says_how_to_fix(tmp_path):
+def test_collection_folder_without_audio_reports_author_folder(tmp_path):
     (tmp_path / "notes.txt").write_text("not audio", encoding="utf-8")
     (tmp_path / "Other Author").mkdir()
 
@@ -293,14 +364,12 @@ def test_collection_folder_without_audio_says_how_to_fix(tmp_path):
         collection_root=str(tmp_path),
         author_name="Lee Child",
         book_title="Killing Floor",
-        import_scenario="mass_standard",
         collection_name="Audiobooks",
     )
 
     assert playlist.error == (
-        f"The Audiobooks collection folder has no audiobook files - {tmp_path}. "
-        "It may be the wrong folder. To fix, open Manage > Collections, "
-        "edit the collection, and set the collection folder."
+        'Author folder "Lee Child" was not found in the Audiobooks '
+        f"collection folder - {tmp_path}."
     )
     assert playlist.browse_dir == str(tmp_path)
 
@@ -315,7 +384,6 @@ def test_series_missing_names_author_folder(tmp_path):
         author_name="Author",
         book_title="Book One",
         series_name="Saga",
-        import_scenario="series_from_directory_nested",
     )
 
     assert playlist.error == (
@@ -511,24 +579,23 @@ def test_close_leaves_path_blank(
     assert not BookQueries(db).get_by_id(book_id).path
 
 
-def test_single_item_scenario_does_not_guess(tmp_path):
-    _audio(tmp_path / "Lee Child" / "Killing Floor")
+def test_lookup_ignores_import_scenario_preference(tmp_path, monkeypatch):
+    from PySide6.QtCore import QSettings
+
+    monkeypatch.setattr(
+        QSettings, "value", lambda self, key, default=None, **_kw: "single_item"
+    )
+    book_dir = tmp_path / "Lee Child" / "Killing Floor"
+    _audio(book_dir)
 
     playlist = resolve_preview_playlist(
         "",
         collection_root=str(tmp_path),
         author_name="Lee Child",
         book_title="Killing Floor",
-        import_scenario="single_item",
     )
 
-    assert playlist.files == ()
-    assert playlist.error == (
-        "This book has no file path. The Single Author / Book Import layout "
-        "has no author folders, so Listen cannot look for it in the "
-        "collection folder."
-    )
-    assert playlist.browse_dir == str(tmp_path)
+    assert playlist.found_path == str(book_dir)
 
 
 def test_found_path_is_saved_on_book(empty_book_db, tmp_path):

@@ -340,8 +340,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Shortcut | Action |
 |----------|--------|
 | Alt+R | Start duplicate check |
-| Alt+L | Cancel duplicate check |
 | Alt+M | Focus match type combo |
+| Escape | Close without checking |
 
 ## Help window
 

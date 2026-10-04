@@ -1317,6 +1317,8 @@ class ImportWindow(AccessibleDialog):
             self.current_collection_name = ""
             self.settings.setValue("import/collection_id", 0)
             self._update_scan_enabled_state()
+            if not self.isVisible():
+                return
             exec_styled_message_box(
                 self,
                 self.scaler.get_scaled_size(20),
@@ -1331,7 +1333,8 @@ class ImportWindow(AccessibleDialog):
         self.settings.setValue("import/collection_id", self.default_collection_id)
         self._update_scan_enabled_state()
         self.set_status(
-            f"Import collection: {self.current_collection_name}", announce=True
+            f"Import collection: {self.current_collection_name}",
+            announce=self.isVisible(),
         )
 
     def _restore_focus_after_scan(self):
