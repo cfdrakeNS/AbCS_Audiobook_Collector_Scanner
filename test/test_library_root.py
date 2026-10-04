@@ -244,6 +244,31 @@ def test_sync_single_collection_skips_when_two_collections(tmp_path):
     db.close()
 
 
+def test_apply_collection_root_windows_stored_path_on_any_os(tmp_path):
+    root = tmp_path / "Lib"
+    stored = r"F:\testing books\Lib\Michael R. Stern\Sand Storm"
+    assert apply_collection_root(stored, str(root)) == str(
+        root / "Michael R. Stern" / "Sand Storm"
+    )
+
+    other = tmp_path / "Portable"
+    book = other / "Author" / "Title"
+    book.mkdir(parents=True)
+    assert apply_collection_root(r"F:\Old\Author\Title", str(other)) == str(book)
+
+
+def test_apply_collection_root_ignores_case(tmp_path):
+    book = tmp_path / "Lib" / "Michael R. Stern" / "Sand Storm"
+    book.mkdir(parents=True)
+    for stored in (
+        r"F:\lib\MICHAEL R. STERN\sand storm",
+        r"F:\Old\michael r. stern\SAND STORM",
+    ):
+        remapped = apply_collection_root(stored, str(tmp_path / "Lib"))
+        assert remapped.casefold() == str(book).casefold()
+        assert Path(remapped).is_dir()
+
+
 def test_apply_collection_root_blank_root_keeps_stored(tmp_path):
     stored = tmp_path / "old" / "Author" / "Title"
     assert apply_collection_root(str(stored), "") == str(stored)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath, PureWindowsPath
 from typing import Callable, Iterable
 
 from src.core.tag_reader import TagReader
@@ -58,7 +58,7 @@ def apply_collection_root(stored_path: str, collection_root: str) -> str:
     if _is_under(stored, root):
         return str(stored)
 
-    rel_parts = _parts_after_drive(stored)
+    rel_parts = _stored_parts(stored_text)
     if not rel_parts:
         return str(root)
 
@@ -67,12 +67,15 @@ def apply_collection_root(stored_path: str, collection_root: str) -> str:
         for index, part in enumerate(rel_parts):
             if part.casefold() == root_name.casefold():
                 suffix = rel_parts[index + 1 :]
+                found = _join_ignore_case(root, suffix)
+                if found is not None:
+                    return str(found)
                 return str(root.joinpath(*suffix)) if suffix else str(root)
 
     for start in range(len(rel_parts)):
-        candidate = root.joinpath(*rel_parts[start:])
-        if path_exists(candidate):
-            return str(candidate)
+        found = _join_ignore_case(root, rel_parts[start:])
+        if found is not None:
+            return str(found)
 
     if len(rel_parts) >= 2:
         return str(root.joinpath(*rel_parts[1:]))
@@ -108,7 +111,43 @@ def resolve_book_location(
     return last
 
 
-def _parts_after_drive(path: Path) -> tuple[str, ...]:
+def _join_ignore_case(root: Path, parts: Iterable[str]) -> Path | None:
+    """Existing path under ``root`` for these folder and file names, ignoring case."""
+    current = root
+    for part in parts:
+        exact = current / part
+        if path_exists(exact):
+            current = exact
+            continue
+        key = part.casefold()
+        try:
+            match = next(
+                (child for child in current.iterdir() if child.name.casefold() == key),
+                None,
+            )
+        except OSError:
+            return None
+        if match is None:
+            return None
+        current = match
+    return current
+
+
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:")
+
+
+def _stored_parts(text: str) -> tuple[str, ...]:
+    """Folder names after the drive or root, for a path saved on Windows or Linux.
+
+    Linux does not split ``F:\\Books\\Author`` on backslashes, so Windows-style
+    paths are parsed as Windows paths on every system.
+    """
+    if "\\" in text or _WINDOWS_DRIVE_RE.match(text):
+        return _parts_after_drive(PureWindowsPath(text))
+    return _parts_after_drive(Path(text))
+
+
+def _parts_after_drive(path: PurePath) -> tuple[str, ...]:
     parts = path.parts
     if path.drive and parts:
         return parts[1:]
