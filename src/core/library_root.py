@@ -197,6 +197,18 @@ _LEADING_INDEX_RE = re.compile(r"^(\d+(?:\.\d+)?)(?:\s*[-.:_]\s*|\s+)(?=\S)")
 _SERIES_TAG_RE = re.compile(
     r"\s*[\(\[]\s*(?:[^()\[\]]*?\s)?#?\s*(\d+(?:\.\d+)?)\s*[\)\]]\s*$"
 )
+# "(Unabridged)", "[Abridged]": a trailing tag with no number
+_PLAIN_TAG_RE = re.compile(r"\s*[\(\[][^()\[\]\d]*[\)\]]\s*$")
+
+
+def _strip_plain_tag(text: str) -> str:
+    """Remove trailing bracket tags that hold no number; keep the text if nothing is left."""
+    clean = (text or "").strip()
+    while True:
+        tag = _PLAIN_TAG_RE.search(clean)
+        if not tag or not clean[: tag.start()].strip():
+            return clean
+        clean = clean[: tag.start()].strip()
 
 
 def _split_name_index(name: str) -> tuple[str, tuple[str, ...]]:
@@ -206,7 +218,7 @@ def _split_name_index(name: str) -> tuple[str, tuple[str, ...]]:
     then a leading index (``03 - Title``, ``4 Title``) or a trailing one
     (``Title - 03``, ``Title #3``). Indexes is empty when there is none.
     """
-    text = (name or "").strip()
+    text = _strip_plain_tag(name)
     indexes: list[str] = []
     tag = _SERIES_TAG_RE.search(text)
     if tag and text[: tag.start()].strip():
@@ -234,17 +246,21 @@ def _pick_title_match(
     An exact name always wins. Otherwise names with an index are compared on
     the title part. When the book has a series number, only that index (or no
     index) is accepted. Without one, a single match is accepted and several
-    numbered matches are left alone rather than guessed.
+    numbered matches are left alone rather than guessed. A trailing tag with no
+    number, such as ``(Unabridged)``, is ignored on both sides; a single such
+    match is used before numbered ones.
     """
     key = _name_key(title)
     if not key:
         return None
-    title_clean, title_index = split_series_number((title or "").strip())
-    keys = {key}
+    base = _strip_plain_tag(title)
+    title_clean, title_index = split_series_number(base)
+    keys = {key, _name_key(base)}
     if title_index and title_clean:
         keys.add(_name_key(title_clean))
     want = series_number_key(series_number) or series_number_key(title_index)
 
+    loose: list[Path] = []
     candidates: list[tuple[Path, set[str]]] = []
     for entry in entries:
         name = name_of(entry)
@@ -252,10 +268,16 @@ def _pick_title_match(
             if usable(entry):
                 return entry
             continue
+        if _name_key(_strip_plain_tag(name)) in keys:
+            if usable(entry):
+                loose.append(entry)
+            continue
         stem, indexes = _split_name_index(name)
         if indexes and _name_key(stem) in keys and usable(entry):
             candidates.append((entry, {series_number_key(i) for i in indexes}))
 
+    if loose:
+        return loose[0] if len(loose) == 1 else None
     if want:
         same = [entry for entry, found in candidates if want in found]
         return same[0] if len(same) == 1 else None
@@ -308,10 +330,12 @@ def _title_file(parent: Path, title: str, series_number=None) -> Path | None:
 def _title_in_subfolders(
     author_dir: Path, title: str, series_number=None
 ) -> Path | None:
-    """Title folder one level down (e.g. an unnamed series folder); only a single match counts."""
+    """Title folder or file one level down (e.g. an unnamed series folder); only a single match counts."""
     hits = []
     for sub in _child_dirs(author_dir):
-        found = _title_child_dir(sub, title, series_number)
+        found = _title_child_dir(sub, title, series_number) or _title_file(
+            sub, title, series_number
+        )
         if found is not None:
             hits.append(found)
             if len(hits) > 1:

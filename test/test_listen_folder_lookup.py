@@ -182,6 +182,45 @@ def test_leading_number_folders_and_files(tmp_path, name, series):
     ) == str(track)
 
 
+def test_title_tag_without_number_is_ignored(tmp_path):
+    folder = tmp_path / "Melissa Brayden" / "Heart Block"
+    _audio(folder)
+
+    assert find_book_under_collection(
+        str(tmp_path), "Melissa Brayden", "Heart Block (unabridged)"
+    ) == str(folder)
+
+
+def test_folder_and_file_tags_without_number_are_ignored(tmp_path):
+    folder = tmp_path / "Author" / "Glass Harbor [Unabridged]"
+    _audio(folder)
+    assert find_book_under_collection(
+        str(tmp_path), "Author", "Glass Harbor"
+    ) == str(folder)
+
+    other = tmp_path / "other"
+    track = _audio(other / "Author" / "Tide Runner", "2 Copper Bridge (Unabridged).m4b")
+    assert find_book_under_collection(
+        str(other), "Author", "Copper Bridge", "Tide Runner", series_number=2
+    ) == str(track)
+
+
+def test_no_series_finds_title_file_one_folder_down(tmp_path):
+    track = _audio(tmp_path / "A L Fraine" / "Rob Loxley", "1 For An Eye.m4b")
+    _audio(tmp_path / "A L Fraine" / "Rob Loxley", "1 Hell To Pay.m4b")
+
+    assert find_book_under_collection(
+        str(tmp_path), "A L Fraine", "For An Eye"
+    ) == str(track)
+
+
+def test_two_plain_tag_folders_are_not_guessed(tmp_path):
+    _audio(tmp_path / "Author" / "Glass Harbor (Abridged)")
+    _audio(tmp_path / "Author" / "Glass Harbor (Unabridged)")
+
+    assert find_book_under_collection(str(tmp_path), "Author", "Glass Harbor") == ""
+
+
 def test_series_folder_with_loose_audio_is_not_the_book(tmp_path):
     _audio(tmp_path / "Author" / "Saga")
 

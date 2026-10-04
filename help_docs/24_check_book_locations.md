@@ -20,7 +20,7 @@
   3. When the book has no series: one folder down inside the author folder (used only if exactly one matches).
 - A stored path from an old drive letter or moved folder that still matches a folder under the collection folder (for example a USB drive that now has a different letter) counts as **Valid**. The stored path is left as it is, so the drive stays portable.
 - A stored path that exists outside the collection folder is also searched for. If the book is in the collection folder, the path is corrected; if not, it is listed as **Incorrect**.
-- Title folders and files may have a number before or after the title, such as `3 - Silver Lantern` or `4 Copper Bridge`, or a series tag at the end, such as `2 Glass Harbor(Tide Runner 02).m4b`. Listen uses the same rules: see **Listen to a Book**.
+- Title folders and files may have a number before or after the title, such as `3 - Silver Lantern` or `4 Copper Bridge`, or a series tag at the end, such as `2 Glass Harbor(Tide Runner 02).m4b`. A tag with no number, such as `(Unabridged)`, is ignored. Listen uses the same rules: see **Listen to a Book**.
 - The collection folder itself is not listed as a separate row; set or fix it in Collection Manager.
 - Choose a **Collection** the same way as the main window filter: **All Collections** or one name.
 
