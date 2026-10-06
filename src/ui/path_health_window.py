@@ -62,9 +62,15 @@ from src.core.library_root import (
 )
 from src.core.path_health import (
     FILTER_ALL,
+    FILTER_AUTHOR,
+    FILTER_BOOK,
     FILTER_INCORRECT,
-    FILTER_MISSING,
+    PROBLEM_AUTHOR,
+    PROBLEM_BOOK,
+    PROBLEM_COLLECTION,
+    PROBLEM_INCORRECT,
     STATUS_EMPTY,
+    STATUS_INCORRECT,
     STATUS_MISSING,
     STATUS_RESOLVED,
     PathHealthCounts,
@@ -100,11 +106,13 @@ class PathHealthWindow(AccessibleDialog):
         "against its stored path, then under the collection folder: the author "
         "folder, then the series folder when the book has a series. When the "
         "book is found in the collection folder, the path is corrected, the book "
-        "is not listed, and it is counted as Corrected. Missing: the book cannot "
-        "be found. Incorrect: the path is outside the collection folder, Listen "
-        "cannot play it, and the book is not in the collection folder. A path "
-        "Listen can play is valid and is not listed. Press Enter on a book to open "
-        "Book Details."
+        "is not listed, and it is counted as Corrected. Author not found: the "
+        "author folder is not in the collection folder. Book not found: the author "
+        "folder is there and the book is not, including a missing series folder. "
+        "Incorrect: the path is outside the collection folder, Listen cannot play "
+        "it, and the book is not in the collection folder. A path Listen can play "
+        "is valid and is not listed. A missing collection folder is listed under All. "
+        "Press Enter on a book to open Book Details."
     )
 
     def __init__(
@@ -175,14 +183,17 @@ class PathHealthWindow(AccessibleDialog):
         self.filter_combo = QComboBox()
         self.filter_combo.setAccessibleName("Check book locations filter")
         self.filter_combo.setAccessibleDescription(
-            "Missing: the book cannot be found. "
+            "All: every problem. "
+            "Author not found: the author folder is not in the collection folder. "
+            "Book not found: the author folder is there and the book is not. "
             "Incorrect: outside the collection folder and Listen cannot play it. "
-            "All: missing and incorrect. Alt+F"
+            "Alt+F"
         )
         for label, data in (
-            ("Missing", FILTER_MISSING),
-            ("Incorrect", FILTER_INCORRECT),
             ("All", FILTER_ALL),
+            ("Author not found", FILTER_AUTHOR),
+            ("Book not found", FILTER_BOOK),
+            ("Incorrect", FILTER_INCORRECT),
         ):
             self.filter_combo.addItem(label, data)
         all_index = self.filter_combo.findData(FILTER_ALL)
@@ -306,9 +317,10 @@ class PathHealthWindow(AccessibleDialog):
             {
                 self.collection_combo: "Collection to scan",
                 self.filter_combo: (
-                    "Missing = not found; "
-                    "Incorrect = outside the collection folder and Listen cannot play it; "
-                    "All = every problem"
+                    "All = every problem; "
+                    "Author not found = author folder missing; "
+                    "Book not found = author folder found, book missing; "
+                    "Incorrect = outside the collection folder and Listen cannot play it"
                 ),
                 self.scan_button: "Scan the selected collection",
                 self.export_button: "Export list to CSV",
@@ -481,7 +493,7 @@ class PathHealthWindow(AccessibleDialog):
             [
                 row
                 for row in self._scan_rows_all
-                if row_matches_filter(row.status, filter_key)
+                if row_matches_filter(row.status, filter_key, row.problem)
             ]
         )
         preserved_col = (
@@ -498,7 +510,7 @@ class PathHealthWindow(AccessibleDialog):
         self._sync_action_buttons()
         counts = PathHealthCounts()
         for row in self._scan_rows_all:
-            counts.record(row.status)
+            counts.record(row.status, row.problem)
         self._announce_scan_result(
             filter_key=filter_key,
             matched_count=len(self._rows),
@@ -738,7 +750,7 @@ class PathHealthWindow(AccessibleDialog):
         progress.setWindowTitle("Check Book Locations Progress")
         progress.setAccessibleName("Check Book Locations Progress")
         progress.setAccessibleDescription(
-            "Shows Missing, Corrected, Incorrect, and Valid counts while checking "
+            "Shows Author not found, Book not found, Corrected, Incorrect, and Valid counts while checking "
             "book paths. Escape to cancel."
         )
         progress.help_doc_override = "24_check_book_locations.md"
@@ -782,9 +794,9 @@ class PathHealthWindow(AccessibleDialog):
                 if self.progress_window and self.progress_window.cancel_requested:
                     canceled = True
                     break
-                counts.record(row.status)
+                counts.record(row.status, row.problem)
                 scanned_rows.append(row)
-                if row_matches_filter(row.status, filter_key):
+                if row_matches_filter(row.status, filter_key, row.problem):
                     matched_rows.append(row)
 
                 now = time.perf_counter()
@@ -852,7 +864,8 @@ class PathHealthWindow(AccessibleDialog):
         shown = matched_count
         counters = counts.summary()
         kind = {
-            FILTER_MISSING: "missing",
+            FILTER_AUTHOR: "author not found",
+            FILTER_BOOK: "book not found",
             FILTER_INCORRECT: "incorrect",
         }.get(filter_key, "problem")
         if shown == 0:
@@ -875,16 +888,19 @@ class PathHealthWindow(AccessibleDialog):
         self.table.setRowCount(len(self._rows))
         for row_index, row in enumerate(self._rows):
             path_display = row.path or "(empty)"
-            if row.status in (STATUS_EMPTY, STATUS_MISSING):
-                status_label = f"missing. {row.reason}" if row.reason else "missing"
+            if row.status == STATUS_INCORRECT:
+                error_display = "Incorrect"
+            elif row.reason:
+                error_display = row.reason
+            elif row.status in (STATUS_EMPTY, STATUS_MISSING):
+                error_display = "Book not found"
             else:
-                status_label = row.status.casefold()
-            error_display = status_label[:1].upper() + status_label[1:]
+                error_display = row.status
             # Focus lands on Title, so the full summary lives there.
             accessible = {
-                self.COL_AUTHOR: f"{row.author}, {status_label}",
+                self.COL_AUTHOR: f"{row.author}, {error_display}",
                 self.COL_TITLE: (
-                    f"{row.title}, by {row.author}, {status_label}, path {path_display}"
+                    f"{row.title}, by {row.author}, {error_display}, path {path_display}"
                 ),
                 self.COL_ERROR: error_display,
                 self.COL_PATH: f"path {path_display}",
@@ -1127,10 +1143,14 @@ class PathHealthWindow(AccessibleDialog):
                     ]
                 )
                 for row in self._rows:
-                    status_label = (
-                        STATUS_MISSING
-                        if row.status == STATUS_EMPTY
-                        else row.status
+                    status_label = {
+                        PROBLEM_AUTHOR: "Author not found",
+                        PROBLEM_BOOK: "Book not found",
+                        PROBLEM_COLLECTION: "Collection folder",
+                        PROBLEM_INCORRECT: "Incorrect",
+                    }.get(
+                        row.problem,
+                        STATUS_MISSING if row.status == STATUS_EMPTY else row.status,
                     )
                     writer.writerow(
                         [

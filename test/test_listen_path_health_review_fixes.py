@@ -215,14 +215,14 @@ def test_path_health_alt_filter_on_all_controls_and_title_summary(
     ]
     window._fill_table()
     title_text = window.table.item(0, window.COL_TITLE).data(Qt.AccessibleTextRole)
-    assert title_text.startswith("Book One, by Ann Author, missing.")
+    assert title_text.startswith("Book One, by Ann Author, Author folder not found")
     assert "Author folder not found" in title_text
-    assert "missing" in window.table.item(0, window.COL_AUTHOR).data(
+    assert "Author folder not found" in window.table.item(0, window.COL_AUTHOR).data(
         Qt.AccessibleTextRole
     )
     error_item = window.table.item(0, window.COL_ERROR)
-    assert error_item.text() == "Missing. Author folder not found"
-    assert error_item.data(Qt.AccessibleTextRole) == "Missing. Author folder not found"
+    assert error_item.text() == "Author folder not found"
+    assert error_item.data(Qt.AccessibleTextRole) == "Author folder not found"
     path_text = window.table.item(0, window.COL_PATH).data(Qt.AccessibleTextRole)
     assert path_text == "path (empty)"
     window.close()

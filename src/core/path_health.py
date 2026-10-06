@@ -17,11 +17,21 @@ STATUS_INCORRECT = "Incorrect"
 STATUS_RESOLVED = "Resolved"
 STATUS_OK = "OK"
 
-# Filter combo data values (UI labels: Missing / Incorrect / All).
+# Filter combo data values.
+# Labels: Author not found / Book not found / Incorrect / All.
 # Resolved books are corrected during the scan, so no filter lists them.
+# FILTER_MISSING stays for callers that want every not-found row.
+FILTER_AUTHOR = "author"
+FILTER_BOOK = "book"
 FILTER_MISSING = "missing"
 FILTER_INCORRECT = "incorrect"
 FILTER_ALL = "all"
+
+# Why a not-found or incorrect row is in the list.
+PROBLEM_AUTHOR = "author"
+PROBLEM_BOOK = "book"
+PROBLEM_COLLECTION = "collection"
+PROBLEM_INCORRECT = "incorrect"
 
 _MISSING_STATUSES = frozenset({STATUS_EMPTY, STATUS_MISSING})
 _PROBLEM_STATUSES = frozenset({STATUS_EMPTY, STATUS_MISSING, STATUS_INCORRECT})
@@ -42,22 +52,28 @@ class PathHealthRow:
     resolved_path: str = ""
     # Why the book could not be found (when status is missing or empty).
     reason: str = ""
+    # author, book, collection, or incorrect. Empty for OK and Resolved.
+    problem: str = ""
 
 
 @dataclass
 class PathHealthCounts:
-    """Running totals for progress (Missing / Incorrect / Resolved / Valid)."""
+    """Running totals for progress (Author / Book / Incorrect / Resolved / Valid)."""
 
-    missing: int = 0
+    author_not_found: int = 0
+    book_not_found: int = 0
     incorrect: int = 0
     resolved: int = 0
     valid: int = 0
     processed: int = 0
 
-    def record(self, status: str) -> None:
+    def record(self, status: str, problem: str = "") -> None:
         self.processed += 1
         if status in _MISSING_STATUSES:
-            self.missing += 1
+            if problem == PROBLEM_AUTHOR:
+                self.author_not_found += 1
+            else:
+                self.book_not_found += 1
         elif status == STATUS_INCORRECT:
             self.incorrect += 1
         elif status == STATUS_RESOLVED:
@@ -69,7 +85,9 @@ class PathHealthCounts:
         """Counter text shared by the progress window and the status bar."""
         return (
             f"{self.processed} books scanned: "
-            f"Missing {self.missing} | Corrected {self.resolved} | "
+            f"Author not found {self.author_not_found} | "
+            f"Book not found {self.book_not_found} | "
+            f"Corrected {self.resolved} | "
             f"Incorrect {self.incorrect} | Valid {self.valid}"
         )
 
@@ -79,6 +97,45 @@ class _PathCheck:
     status: str
     resolved_path: str = ""
     reason: str = ""
+    problem: str = ""
+
+
+def _miss_wording(
+    code: str,
+    *,
+    author: str,
+    browse_dir: str,
+    fallback: str,
+) -> tuple[str, str]:
+    """Path Health error sentence and filter problem for a miss.
+
+    Listen keeps its own sentences. These are only for Check Book Locations.
+    Series-folder misses use the Book not found filter, with their own sentence.
+    A missing or unset collection folder is its own problem and is listed under All.
+    """
+    author_name = (author or "").strip()
+    looked = (browse_dir or "").strip()
+    if code == "author_not_found":
+        if looked:
+            return PROBLEM_AUTHOR, f"Author not found in {looked}"
+        return PROBLEM_AUTHOR, "Author not found in the collection folder"
+    if code == "series_not_found":
+        if author_name and looked:
+            return PROBLEM_BOOK, f"Series not found in author {author_name} - {looked}"
+        if author_name:
+            return PROBLEM_BOOK, f"Series not found in author {author_name}"
+        return PROBLEM_BOOK, "Series not found in the author folder"
+    if code == "book_not_found":
+        if author_name and looked:
+            return PROBLEM_BOOK, f"Book not found in author {author_name} - {looked}"
+        if author_name:
+            return PROBLEM_BOOK, f"Book not found in author {author_name}"
+        return PROBLEM_BOOK, "Book not found"
+    if code in ("collection_missing", "collection_not_set"):
+        return PROBLEM_COLLECTION, fallback or "Collection folder is missing"
+    if author_name and looked:
+        return PROBLEM_BOOK, f"Book not found in author {author_name} - {looked}"
+    return PROBLEM_BOOK, fallback or "Book not found"
 
 
 def _classify_book_path(
@@ -113,7 +170,7 @@ def _classify_book_path(
             # Listen plays this path. Do not list it as Incorrect.
             if path_has_playable_audio(on_disk):
                 return _PathCheck(STATUS_OK)
-            return _PathCheck(STATUS_INCORRECT)
+            return _PathCheck(STATUS_INCORRECT, problem=PROBLEM_INCORRECT)
         return _PathCheck(STATUS_OK)
 
     if text and Path(text).exists():
@@ -135,8 +192,16 @@ def _classify_book_path(
         return check_on_disk(location.path)
     if location.path:
         return _PathCheck(STATUS_RESOLVED, resolved_path=location.path)
+    problem, reason = _miss_wording(
+        location.code,
+        author=author_name,
+        browse_dir=location.browse_dir,
+        fallback=location.error,
+    )
     return _PathCheck(
-        STATUS_EMPTY if not text else STATUS_MISSING, reason=location.error
+        STATUS_EMPTY if not text else STATUS_MISSING,
+        reason=reason,
+        problem=problem,
     )
 
 
@@ -176,19 +241,28 @@ def sort_path_health_rows(rows: Iterable[PathHealthRow]) -> List[PathHealthRow]:
     )
 
 
-def row_matches_filter(status: str, filter_key: str) -> bool:
-    """True when a row status belongs in the chosen filter.
+def row_matches_filter(status: str, filter_key: str, problem: str = "") -> bool:
+    """True when a row belongs in the chosen filter.
 
-    - missing: book cannot be found
+    - author: the author folder was not found in the collection folder
+    - book: the author folder was found and the book was not, including a
+      missing series folder, a blank path, or a stored path that is gone
     - incorrect: stored path exists off the collection folder and Listen cannot play it
-    - all: missing and incorrect (not OK, not Resolved)
+    - all: every problem (not OK, not Resolved)
+    - missing: every not-found row (author, book, and collection folder)
     """
-    key = (filter_key or FILTER_MISSING).strip().casefold()
+    key = (filter_key or FILTER_ALL).strip().casefold()
     if key == FILTER_ALL:
         return status in _PROBLEM_STATUSES
+    if key == FILTER_AUTHOR:
+        return problem == PROBLEM_AUTHOR
+    if key == FILTER_BOOK:
+        return problem == PROBLEM_BOOK
+    if key == FILTER_INCORRECT:
+        return status == STATUS_INCORRECT
     if key == FILTER_MISSING:
         return status in _MISSING_STATUSES
-    return status == STATUS_INCORRECT
+    return False
 
 
 def build_path_health_row(
@@ -226,6 +300,7 @@ def build_path_health_row(
         collection_name=collection_name,
         resolved_path=check.resolved_path if check.resolved_path != path_text else "",
         reason=check.reason,
+        problem=check.problem,
     )
 
 
@@ -290,8 +365,9 @@ def scan_book_paths(
         collection_root: Collection library root (Play remap + Incorrect).
         collection_roots: Optional map of collection_id → root for All scans.
         import_dir: Preferences import folder (Play remap fallback).
-        filter_key: missing | incorrect | all (default missing).
-            ``all`` means missing and incorrect, not OK or Resolved books.
+        filter_key: author | book | incorrect | all | missing.
+            ``all`` means every problem, not OK or Resolved books.
+            ``missing`` means every not-found row.
     """
     rows: List[PathHealthRow] = []
     for row in iter_book_path_checks(
@@ -300,7 +376,7 @@ def scan_book_paths(
         collection_roots=collection_roots,
         import_dir=import_dir,
     ):
-        if row_matches_filter(row.status, filter_key):
+        if row_matches_filter(row.status, filter_key, row.problem):
             rows.append(row)
     return sort_path_health_rows(rows)
 

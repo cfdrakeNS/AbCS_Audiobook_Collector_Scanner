@@ -51,6 +51,9 @@ class BookLocation:
     error: str = ""
     found_path: str = ""
     browse_dir: str = ""
+    # Same codes as CollectionLookup. Listen speaks ``error``; Check Book
+    # Locations uses ``code`` to split Author not found from Book not found.
+    code: str = ""
 
 
 _BookLocation = BookLocation
@@ -105,7 +108,11 @@ def locate_book_path(
         if lookup.path:
             return _BookLocation(path=lookup.path, found_path=lookup.path)
         if lookup.message:
-            return _BookLocation(error=lookup.message, browse_dir=lookup.browse_dir)
+            return _BookLocation(
+                error=lookup.message,
+                browse_dir=lookup.browse_dir,
+                code=lookup.code,
+            )
 
     if not text and not root:
         where = _collection_folder_phrase(collection_name)
@@ -113,7 +120,8 @@ def locate_book_path(
             error=(
                 f"This book has no file path and {where} is not set. "
                 f"{_collection_folder_not_set_fix()}"
-            )
+            ),
+            code="collection_not_set",
         )
     if not text:
         if not author:
@@ -121,11 +129,14 @@ def locate_book_path(
                 "This book has no file path and no author, so Listen cannot "
                 "look for it in the collection folder."
             )
+            code = "no_author"
         else:
             reason = "This book has no file path."
+            code = "no_path"
         return _BookLocation(
             error=reason,
             browse_dir=root if folder_exists(root) else "",
+            code=code,
         )
     if not root:
         where = _collection_folder_phrase(collection_name)
@@ -135,9 +146,10 @@ def locate_book_path(
                 f"Book not found in - {resolved}. {where_cap} is not set, "
                 "so Listen cannot search by author and title. "
                 f"{_collection_folder_not_set_fix()}"
-            )
+            ),
+            code="collection_not_set",
         )
-    return _BookLocation(error=f"Book not found in - {resolved}")
+    return _BookLocation(error=f"Book not found in - {resolved}", code="path_missing")
 
 
 _locate_book = locate_book_path

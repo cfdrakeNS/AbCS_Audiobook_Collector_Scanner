@@ -9,6 +9,8 @@ import pytest
 from src.core.path_health import (
     FILTER_ALL,
     FILTER_INCORRECT,
+    FILTER_AUTHOR,
+    FILTER_BOOK,
     FILTER_MISSING,
     STATUS_EMPTY,
     STATUS_INCORRECT,
@@ -189,7 +191,10 @@ def test_path_health_counts_mixed():
         STATUS_OK,
     ):
         counts.record(status)
-    assert counts.missing == 2
+    assert counts.book_not_found == 2
+    assert counts.author_not_found == 0
+    assert "Author not found 0" in counts.summary()
+    assert "Book not found 2" in counts.summary()
     assert counts.incorrect == 1
     assert counts.resolved == 1
     assert counts.valid == 2
@@ -307,7 +312,8 @@ def test_blank_path_found_by_layout_is_incorrect_with_found_path(
     assert rows[0].reason == ""
     assert rows[1].status == STATUS_EMPTY
     assert rows[1].resolved_path == ""
-    assert "Nobody" in rows[1].reason
+    assert rows[1].reason.startswith("Author not found in ")
+    assert str(root) in rows[1].reason
 
 
 def test_numbered_folders_resolve_by_series_number(tmp_path, monkeypatch):
@@ -375,7 +381,7 @@ def test_outside_path_found_in_collection_is_corrected_not_incorrect(tmp_path):
     assert not row_matches_filter(rows[0].status, FILTER_ALL)
     counts = PathHealthCounts()
     for row in rows:
-        counts.record(row.status)
+        counts.record(row.status, row.problem)
     assert (counts.resolved, counts.incorrect, counts.valid) == (1, 0, 1)
 
 
@@ -416,7 +422,53 @@ def test_missing_row_says_collection_folder_missing(tmp_path, monkeypatch):
         iter_book_path_checks(books, collection_root=str(tmp_path / "gone_root"))
     )
     assert rows[0].status == STATUS_MISSING
-    assert "collection folder is missing" in rows[0].reason
+    assert "collection folder is missing" in rows[0].reason.casefold()
+    assert not row_matches_filter(rows[0].status, FILTER_AUTHOR, rows[0].problem)
+    assert not row_matches_filter(rows[0].status, FILTER_BOOK, rows[0].problem)
+    assert row_matches_filter(rows[0].status, FILTER_ALL, rows[0].problem)
+
+
+def test_author_book_and_series_errors_use_separate_wording(tmp_path):
+    root = tmp_path / "library"
+    author = root / "Lee Child"
+    author.mkdir(parents=True)
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="Gone",
+            author_name="Nobody",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        ),
+        SimpleNamespace(
+            book_id=2,
+            title="Not Here",
+            author_name="Lee Child",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        ),
+        SimpleNamespace(
+            book_id=3,
+            title="Tripwire",
+            author_name="Lee Child",
+            series_name="Jack Reacher",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        ),
+    ]
+    rows = list(iter_book_path_checks(books, collection_root=str(root)))
+    author_row, book_row, series_row = rows
+    assert author_row.reason == f"Author not found in {root}"
+    assert book_row.reason == f"Book not found in author Lee Child - {author}"
+    assert series_row.reason == f"Series not found in author Lee Child - {author}"
+    assert row_matches_filter(author_row.status, FILTER_AUTHOR, author_row.problem)
+    assert not row_matches_filter(author_row.status, FILTER_BOOK, author_row.problem)
+    assert row_matches_filter(book_row.status, FILTER_BOOK, book_row.problem)
+    assert row_matches_filter(series_row.status, FILTER_BOOK, series_row.problem)
+    assert not row_matches_filter(series_row.status, FILTER_AUTHOR, series_row.problem)
 
 
 @pytest.fixture
@@ -736,7 +788,7 @@ def test_path_health_window_all_collections_and_scan_only_on_button(
     window.collection_combo.setCurrentIndex(0)
     assert window.collection_combo.currentData() is None
     window.filter_combo.setCurrentIndex(
-        window.filter_combo.findData(FILTER_MISSING)
+        window.filter_combo.findData(FILTER_ALL)
     )
 
     # temp_db may copy a large local library; keep All-collections scan tiny.
@@ -811,7 +863,7 @@ def test_path_health_window_lists_problems(temp_db, ui_scaler, theme_manager, qt
         if idx >= 0:
             window.collection_combo.setCurrentIndex(idx)
     window.filter_combo.setCurrentIndex(
-        window.filter_combo.findData(FILTER_MISSING)
+        window.filter_combo.findData(FILTER_ALL)
     )
     progress_shown: list[ImportProgressWindow] = []
     real_show = ImportProgressWindow.show
@@ -873,7 +925,7 @@ def test_path_health_window_cancel_keeps_partial(
         if idx >= 0:
             window.collection_combo.setCurrentIndex(idx)
     window.filter_combo.setCurrentIndex(
-        window.filter_combo.findData(FILTER_MISSING)
+        window.filter_combo.findData(FILTER_ALL)
     )
 
     real_show = ImportProgressWindow.show

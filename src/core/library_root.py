@@ -383,6 +383,9 @@ class CollectionLookup:
     path: str = ""
     message: str = ""
     browse_dir: str = ""
+    # author_not_found, book_not_found, series_not_found, collection_missing.
+    # Listen keeps ``message``. Check Book Locations uses ``code`` for its filter.
+    code: str = ""
 
 
 def locate_book_under_collection(
@@ -419,13 +422,15 @@ def locate_book_under_collection(
                 f"{where[0].upper()}{where[1:]} is missing - {root}. To fix, "
                 "open Manage > Collections, edit the collection, "
                 "and set the collection folder."
-            )
+            ),
+            code="collection_missing",
         )
     author_dir = _child_dir(root, author)
     if author_dir is None:
         return CollectionLookup(
             message=f'Author folder "{author}" was not found in {where} - {root}.',
             browse_dir=str(root),
+            code="author_not_found",
         )
 
     series_dir = _child_dir(author_dir, series) if series else None
@@ -449,6 +454,7 @@ def locate_book_under_collection(
                 f"in {where} - {parent}."
             ),
             browse_dir=str(parent),
+            code="book_not_found",
         )
 
     def series_missing() -> CollectionLookup:
@@ -458,6 +464,7 @@ def locate_book_under_collection(
                 f"in {where} - {author_dir}."
             ),
             browse_dir=str(author_dir),
+            code="series_not_found",
         )
 
     found = title_in(author_dir, skip=series_dir)

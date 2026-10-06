@@ -2,7 +2,7 @@
 
 ## What this is
 
-**Check Book Locations** scans the books in a collection and checks each stored **Path**. It tries the path on disk, then looks under the collection folder: the author folder, then the series folder when the book has a series. The Preferences **Import scenario** is not used. When the book is found in the collection folder, the scan saves that path, does not list the book, and only counts it as **Corrected**. The table shows only books that still need attention: **Missing** (cannot be found) and **Incorrect** (on disk outside the collection folder, and not found in it). A short guide at the top of the window explains this; press **Alt+I** (or Tab after Scan) to reach it.
+**Check Book Locations** scans the books in a collection and checks each stored **Path**. It tries the path on disk, then looks under the collection folder: the author folder, then the series folder when the book has a series. The Preferences **Import scenario** is not used. When the book is found in the collection folder, the scan saves that path, does not list the book, and only counts it as **Corrected**. The table shows only books that still need attention: **Author not found**, **Book not found** (including a missing series folder), a missing collection folder, and **Incorrect** (on disk outside the collection folder, and not found in it). A short guide at the top of the window explains this; press **Alt+I** (or Tab after Scan) to reach it.
 
 ## When to use it
 
@@ -29,14 +29,16 @@
 1. Open **Manage → Check Book Locations** (**Alt+M**, then **L**).
 2. Choose **Collection** (**Alt+C**): **All Collections** (every book) or one collection. In Collection and Filter, plain Up and Down arrows do nothing (a beep); press **Alt+Down** to open the list, then Enter to choose.
 3. Choose **Filter** (**Alt+F**):
-   - **All** (default) — missing and incorrect
-   - **Missing** — the book cannot be found on disk. The row says why, for example the collection folder is missing or the author folder was not found.
+   - **All** (default) — every problem
+   - **Author not found** — the author folder is not in the collection folder. The Error column says **Author not found in** and the collection folder path.
+   - **Book not found** — the author folder is there and the book is not. The Error column says **Book not found in author** and the folder that was searched. A missing series folder uses this filter and says **Series not found in author**.
    - **Incorrect** — the stored path is on disk outside the collection folder, Listen cannot play it, and the book was not found in the collection folder
+   - A missing or unset collection folder is listed under **All**. Its Error column says the collection folder is missing or not set.
 4. Click **Scan** (**Alt+S**, or Enter when Scan has focus). Scanning runs only when you press Scan. Changing **Filter** after a scan refilters the last results without rescanning; changing **Collection** clears the list until you Scan again.
 5. If a scanned collection has no collection folder set, or the folder is missing or has no audiobook files, a warning explains that books cannot be found without it and how to fix it in Collection Manager. Press Enter to close the warning; the scan continues.
-6. While scanning, a progress window shows **Missing**, **Corrected**, **Incorrect**, and **Valid** counts plus how many books are done and elapsed time. Escape cancels (with confirm) and keeps results found so far.
+6. While scanning, a progress window shows **Author not found**, **Book not found**, **Corrected**, **Incorrect**, and **Valid** counts plus how many books are done and elapsed time. Escape cancels (with confirm) and keeps results found so far.
 7. When the scan ends, paths found in the collection folder are saved. The status bar starts with how many were corrected, for example "12 book paths corrected." Corrected books are not listed.
-8. The table lists Author, Title, Error, and Path. The **Error** column shows the status (Missing or Incorrect), and Missing rows include the reason. Blank paths show as `(empty)`. Screen readers hear the title, author, status, and path on the Title cell. The Path cell reads only the path.
+8. The table lists Author, Title, Error, and Path. The **Error** column says **Author not found in** the collection folder, **Book not found in author**, **Series not found in author**, that the collection folder is missing, or **Incorrect**. Blank paths show as `(empty)`. Screen readers hear the title, author, error, and path on the Title cell. The Path cell reads only the path.
 9. To fix one book, focus a row (**Alt+L**) and press **Enter** (or double-click). Book Details opens in edit mode. Use **Browse** (**Alt+B**) or type the path, then Save. **Page Up** and **Page Down** move through the listed books, and Save stays available on each one.
 10. When you close Book Details after a save, Check Book Locations re-checks only the books you edited and refreshes the list; it does not run a full scan. A book that is no longer a problem leaves the list, and focus moves to the next book (or the last book, if you fixed the last row). Export the list with **Export** (**Alt+X**) if needed; the CSV includes the reason for missing books.
 11. Press **Escape** to close and return to the main window.
@@ -74,11 +76,11 @@
 **Where did some books go after a scan?**
 Books found in the collection folder had their path corrected and are not listed, whether their path was blank, gone, or outside the collection folder. They count only as **Corrected**; the status bar says how many.
 
-**What is the difference between Missing and Incorrect?**
-**Missing** means AbCS cannot find the book at the stored path or under the collection folder. **Incorrect** means the stored path still exists outside the collection folder, Listen cannot play it, and the book was not found in the collection folder. A path Listen can play is valid.
+**What is the difference between Author not found, Book not found, and Incorrect?**
+**Author not found** means the author folder is not in the collection folder. **Book not found** means the author folder is there and the book is not. A missing series folder is listed as Book not found and the Error column says **Series not found in author**. **Incorrect** means the stored path still exists outside the collection folder, Listen cannot play it, and the book was not found in the collection folder. A path Listen can play is valid. A missing collection folder is a separate problem and shows under **All**.
 
 **Is the collection folder checked?**
-Yes. Before scanning, a warning appears if a collection folder is not set, missing, or has no audiobook files, because books cannot be found without it. Missing rows also say so. Fix the folder in Collection Manager, not in this list.
+Yes. Before scanning, a warning appears if a collection folder is not set, missing, or has no audiobook files, because books cannot be found without it. Those rows say so and show under **All**. Fix the folder in Collection Manager, not in this list.
 
 **Does Check Book Locations delete books?**
 No. It corrects paths it can find and lists the rest. Delete stays on the main window.
