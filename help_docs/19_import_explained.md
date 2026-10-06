@@ -253,12 +253,14 @@ All auto-adds in one scan are saved together in a single database transaction at
 
 ## 9. Once the scan is complete
 
-- The progress bar reaches **100%**.
-- The status bar shows a summary, for example:  
-  `Scanned: 48 | Added: 32 | Corrected: 8 | Errors: 2 | Warnings: 4 | Duplicates: 2 | Elapsed: 01:12`
+- The progress window closes.
+- A message says **Import completed** with an **OK** button.
+- The status bar still has the summary, for example:  
+  `Scanned: 48 | Added: 32 | Corrected: 8 | Errors: 2 | Warnings: 4 | Duplicates: 2 | Elapsed: 01:12`  
+  Press **Alt+/** to hear it.
 - The **Import** button is re-enabled.
 - The collection dropdown stays locked until the review list is empty or you close Import.
-- Closing the progress window returns focus to the review table or Import button.
+- After OK, focus returns to the review table, or to Import when the list is empty.
 
 If no audio files were found (or every format is disabled), you still get a summary — nothing is added.
 

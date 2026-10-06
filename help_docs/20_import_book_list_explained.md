@@ -136,10 +136,10 @@ Any unexpected problem on a single row is caught, logged with the row number and
 While rows are processing, an **Import Progress** window shows the current title/author, a progress bar, and live counters (added, duplicates, errors). Press **Escape** to cancel: books already processed are kept, and remaining rows are reported as skipped.
 
 - **One commit** saves every successful insert to the database (including partial results if you canceled).
-- There is no completion popup, whether the import finishes or is canceled. The Import Progress window shows the final counters and elapsed time. On cancel, its status bar starts with `Import canceled`.
-- The status bar shows something like `32 books added to Audiobooks collection, 2 duplicates skipped, 3 errors`. The duplicates clause is omitted when there were none. Cancel adds `, N skipped`.
+- When the import finishes, the progress window closes and a message says **Import completed** with an **OK** button. On cancel, the progress window stays open and its status bar starts with `Import canceled`; press **Escape** to close it.
+- The status bar shows something like `32 books added to Audiobooks collection, 2 duplicates skipped, 3 errors`. The duplicates clause is omitted when there were none. Cancel adds `, N skipped`. Press **Alt+/** to hear it.
 - When there were errors, the status adds a reminder to use **Export Errors** (Alt+X).
-- The progress window stays open; press **Escape** to close it. Focus then returns to the file path field.
+- After OK, focus returns to the file path field.
 - The **main book list does not refresh yet** — that happens when you close the Import Book List window.
 
 ### If errors occurred

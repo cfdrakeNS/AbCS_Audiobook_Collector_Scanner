@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from uuid import uuid4
 
 import pytest
 from PySide6.QtCore import Qt
@@ -173,9 +174,10 @@ def test_series_sort_is_name_then_number_with_blanks_last(temp_db):
     authors = AuthorQueries(temp_db)
     series = SeriesQueries(temp_db)
     books = BookQueries(temp_db)
-    author_id = authors.insert("Series Sort Author")
-    series_id = series.insert("Prey")
-    other_id = series.insert("Alpha")
+    token = uuid4().hex
+    author_id = authors.insert(f"Series Sort Author {token}")
+    series_id = series.insert(f"Series Sort {token} Prey")
+    other_id = series.insert(f"Series Sort {token} Alpha")
     books.insert(
         Book(title="No Number", author_id=author_id, series_id=series_id, series_number=None)
     )

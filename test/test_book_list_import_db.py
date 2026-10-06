@@ -281,7 +281,13 @@ class TestBookListImportDb:
             window._import_start_time = time.perf_counter()
 
         monkeypatch.setattr(window, "_show_import_progress", no_progress)
-        monkeypatch.setattr(QMessageBox, "exec", lambda _self: QMessageBox.Yes)
+        shown = []
+
+        def fake_exec(box):
+            shown.append(box.text())
+            return QMessageBox.Yes
+
+        monkeypatch.setattr(QMessageBox, "exec", fake_exec)
         statuses = []
         monkeypatch.setattr(
             window,
@@ -293,4 +299,5 @@ class TestBookListImportDb:
 
         message, announce = statuses[-1]
         assert message.startswith("1 books added to")
-        assert announce is True
+        assert announce is False
+        assert shown[-1] == "Import completed"

@@ -37,9 +37,9 @@ This is separate from folder Import (Ctrl+I). See [Import](02_import.md) for sca
 8. Click **Import** (Alt+I).
 9. A **Confirm Import** dialog shows the row count, mode, and mapping summary. Click **Yes** to proceed or **No** to cancel.
 10. An **Import Progress** window shows current title/author and counters while rows are processed. Press **Escape** on that window to cancel and keep books already added; remaining rows are skipped.
-11. When the import finishes or is canceled, there is no popup. The Import Progress window shows the final counts. Press **Escape** to close it.
-12. If there were errors, the status reminds you to click **Export Errors** (Alt+X) to save a CSV listing failed rows.
-13. The window stays open so you can import another file. Press **Escape** when finished (closes the progress window first if it is still open).
+11. When the import finishes, the progress window closes and a message says **Import completed** with an **OK** button. If you canceled, the progress window stays open with the counts; press **Escape** to close it.
+12. If there were errors, the status reminds you to click **Export Errors** (Alt+X) to save a CSV listing failed rows. Press **Alt+/** to hear the status.
+13. The window stays open so you can import another file. Press **Escape** when finished.
 14. The main book list refreshes when you close the window.
 
 ## What happens next

@@ -2105,30 +2105,25 @@ class ImportWindow(AccessibleDialog):
 
             self.update_summary(scanned_total, 0, 0, 0, added=added_count)
             self.set_status(final_status)
-            if self.progress_window:
-                summary_text = (
-                    f"Scanned: {scanned_total} | Added: {added_count} | "
-                    f"Corrected: 0 | Errors: 0 | Warnings: 0 | "
-                    f"Duplicates: 0 | Elapsed: {elapsed_text}"
-                )
-                if scan_was_canceled:
-                    summary_text = f"Scan canceled | {summary_text}"
-                elif not is_single_item:
-                    summary_text = (
-                        f"No audio files found | {summary_text}"
-                    )
-                else:
-                    summary_text = (
-                        f"No audio found | {summary_text}"
-                    )
-                self.progress_window.mark_scan_complete(
-                    canceled=scan_was_canceled,
-                    elapsed_text=elapsed_text,
-                    files_scanned=scanned_total,
-                    books_added=added_count,
-                    read_errors=read_error_count,
-                    summary_text=summary_text,
-                )
+            summary_text = (
+                f"Scanned: {scanned_total} | Added: {added_count} | "
+                f"Corrected: 0 | Errors: 0 | Warnings: 0 | "
+                f"Duplicates: 0 | Elapsed: {elapsed_text}"
+            )
+            if scan_was_canceled:
+                summary_text = f"Scan canceled | {summary_text}"
+            elif not is_single_item:
+                summary_text = f"No audio files found | {summary_text}"
+            else:
+                summary_text = f"No audio found | {summary_text}"
+            self._finish_scan_progress(
+                canceled=scan_was_canceled,
+                elapsed_text=elapsed_text,
+                files_scanned=scanned_total,
+                books_added=added_count,
+                read_errors=read_error_count,
+                summary_text=summary_text,
+            )
             return
 
         self._apply_error_filter()
@@ -2146,18 +2141,17 @@ class ImportWindow(AccessibleDialog):
         else:
             self.set_status(scan_summary)
 
-        if self.progress_window:
-            progress_summary = scan_summary
-            if scan_was_canceled:
-                progress_summary = f"Scan canceled | {progress_summary}"
-            self.progress_window.mark_scan_complete(
-                canceled=scan_was_canceled,
-                elapsed_text=elapsed_text,
-                files_scanned=scanned_total,
-                books_added=added_count,
-                read_errors=read_error_count,
-                summary_text=progress_summary,
-            )
+        progress_summary = scan_summary
+        if scan_was_canceled:
+            progress_summary = f"Scan canceled | {progress_summary}"
+        self._finish_scan_progress(
+            canceled=scan_was_canceled,
+            elapsed_text=elapsed_text,
+            files_scanned=scanned_total,
+            books_added=added_count,
+            read_errors=read_error_count,
+            summary_text=progress_summary,
+        )
 
         self.update_summary(
             scanned=scanned_total,
@@ -2170,6 +2164,58 @@ class ImportWindow(AccessibleDialog):
 
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
+
+    def _close_progress_window(self) -> None:
+        """Close the progress window without the cancel prompt."""
+        progress = self.progress_window
+        if progress is None:
+            return
+        progress._scan_active = False
+        progress.close()
+        self.progress_window = None
+
+    def _show_completed_popup(self, message: str) -> None:
+        """One OK button and the completion sentence. No counters."""
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title=message,
+            text=message,
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok,
+        )
+
+    def _finish_scan_progress(
+        self,
+        *,
+        canceled: bool,
+        elapsed_text: str,
+        files_scanned: int,
+        books_added: int,
+        read_errors: int,
+        summary_text: str,
+    ) -> None:
+        """Cancel leaves the progress window open. A finished import closes it."""
+        if canceled:
+            if self.progress_window:
+                self.progress_window.mark_scan_complete(
+                    canceled=True,
+                    elapsed_text=elapsed_text,
+                    files_scanned=files_scanned,
+                    books_added=books_added,
+                    read_errors=read_errors,
+                    summary_text=summary_text,
+                )
+            return
+        self._close_progress_window()
+        self._show_completed_popup("Import completed")
+        if self.table.rowCount() > 0:
+            if self.table.currentRow() < 0:
+                self.table.setCurrentCell(0, self.COL_TITLE)
+            self.table.setFocus()
+        else:
+            self.scan_button.setFocus()
 
     def on_import_selected(self):
         """Add selected valid items."""

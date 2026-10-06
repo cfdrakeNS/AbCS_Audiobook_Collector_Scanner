@@ -13,6 +13,7 @@ def apply_suppress_import_confirmations(monkeypatch, *, patch_progress_close: bo
     """Patch Import window close/cancel prompts for automated teardown."""
     monkeypatch.setattr(ImportWindow, "_confirm_close_window", lambda self: True)
     monkeypatch.setattr(ImportWindow, "_confirm_cancel_scan", lambda self: True)
+    monkeypatch.setattr(ImportWindow, "_show_completed_popup", lambda self, message="": None)
 
     if not patch_progress_close:
         return

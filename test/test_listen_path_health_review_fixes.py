@@ -7,6 +7,13 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QAccessible, QKeyEvent, QKeySequence, QShortcut
 
 
+@pytest.fixture(autouse=True)
+def _skip_check_completed_popup(monkeypatch):
+    from src.ui.path_health_window import PathHealthWindow
+
+    monkeypatch.setattr(PathHealthWindow, "_show_completed_popup", lambda self, message="": None)
+
+
 class _Signal:
     def connect(self, *_args, **_kwargs):
         return None
@@ -310,6 +317,12 @@ def test_path_health_scan_focuses_progress_before_disabling_scan(
         return real_set_status(self, message, *args, **kwargs)
 
     monkeypatch.setattr(ImportProgressWindow, "set_status", track_status)
+    # The copied library can hold thousands of books. This test only checks
+    # focus order, so do not walk those folders.
+    monkeypatch.setattr(
+        "src.ui.path_health_window.iter_book_path_checks",
+        lambda *_args, **_kwargs: iter(()),
+    )
     window.run_scan(warn_folder=False)
     show_index = events.index(("show", True))
     assert events[show_index + 1] == ("status", False)

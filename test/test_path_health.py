@@ -6,6 +6,14 @@ from types import SimpleNamespace
 
 import pytest
 
+@pytest.fixture(autouse=True)
+def _skip_check_completed_popup(monkeypatch):
+    """Scan tests must not stop on the completion message."""
+    from src.ui.path_health_window import PathHealthWindow
+
+    monkeypatch.setattr(PathHealthWindow, "_show_completed_popup", lambda self, message="": None)
+
+
 from src.core.path_health import (
     FILTER_ALL,
     FILTER_INCORRECT,

@@ -23,7 +23,7 @@ For an explained walkthrough of what happens when you import, see [Import explai
 2. Choose a **Collection** (**Alt+C**). If the main window already shows a specific collection, it may be pre-selected.
 3. Choose a **Folder** (Alt+F, then **Browse** with Alt+B). This is the top-level folder to scan. Subfolders are included. The Folder starts as the Preferences **default import directory**. Changing the collection does not change the Folder. You can browse a different folder.
 4. Click **Import** (Alt+I) to start the scan.
-5. A **progress window** appears while files are read. You can cancel if needed.
+5. A **progress window** appears while files are read. You can cancel if needed. When the scan finishes, the progress window closes and a message says **Import completed** with an **OK** button.
 6. When the scan finishes, books are handled in two ways:
    - **Added automatically** — books with clean metadata and no problems.
    - **Held for review** — books with duplicates, errors, warnings, fallback guesses, or autocorrects.

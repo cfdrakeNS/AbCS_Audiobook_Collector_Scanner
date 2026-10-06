@@ -833,6 +833,9 @@ class PathHealthWindow(AccessibleDialog):
                 self.progress_window.close()
                 self.progress_window = None
 
+        if not canceled:
+            self._show_completed_popup("Check completed")
+
         self._save_corrected_paths(scanned_rows)
         self._scan_rows_all = scanned_rows
         self._rows = sort_path_health_rows(matched_rows)
@@ -842,6 +845,7 @@ class PathHealthWindow(AccessibleDialog):
             matched_count=len(matched_rows),
             counts=counts,
             canceled=canceled,
+            announce=canceled,
         )
         self._sync_action_buttons()
         if self._rows:
@@ -850,6 +854,18 @@ class PathHealthWindow(AccessibleDialog):
         else:
             self.scan_button.setFocus()
         QTimer.singleShot(0, self.update_stretch_columns)
+
+    def _show_completed_popup(self, message: str) -> None:
+        """One OK button and the completion sentence. No counters."""
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title=message,
+            text=message,
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok,
+        )
 
     def _announce_scan_result(
         self,
