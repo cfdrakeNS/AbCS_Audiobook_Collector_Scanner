@@ -20,7 +20,9 @@ from src.core.path_health import (
     iter_book_path_checks,
     row_matches_filter,
     scan_book_paths,
+    sort_path_health_rows,
     summarize_statuses,
+    PathHealthRow,
 )
 
 
@@ -36,6 +38,16 @@ def folder_warnings(monkeypatch):
         lambda _self, problems: shown.append(list(problems)),
     )
     return shown
+
+
+def test_sort_path_health_rows_by_author_then_title():
+    rows = [
+        PathHealthRow(book_id=1, author="Zed", title="Alpha", path="", status=STATUS_MISSING),
+        PathHealthRow(book_id=2, author="Ann", title="Beta", path="", status=STATUS_MISSING),
+        PathHealthRow(book_id=3, author="Ann", title="Alpha", path="", status=STATUS_MISSING),
+    ]
+    ordered = sort_path_health_rows(rows)
+    assert [row.book_id for row in ordered] == [3, 2, 1]
 
 
 def test_check_book_path_empty():
@@ -358,12 +370,13 @@ def test_outside_path_found_in_collection_is_corrected_not_incorrect(tmp_path):
     rows = list(iter_book_path_checks(books, collection_root=str(root)))
     assert rows[0].status == STATUS_RESOLVED
     assert rows[0].resolved_path == str(series_book)
-    assert rows[1].status == STATUS_INCORRECT
+    # The stray folder is outside the collection, but it has audio Listen can play.
+    assert rows[1].status == STATUS_OK
     assert not row_matches_filter(rows[0].status, FILTER_ALL)
     counts = PathHealthCounts()
     for row in rows:
         counts.record(row.status)
-    assert (counts.resolved, counts.incorrect) == (1, 1)
+    assert (counts.resolved, counts.incorrect, counts.valid) == (1, 0, 1)
 
 
 def test_series_tag_file_is_corrected(tmp_path):
@@ -461,7 +474,8 @@ def test_scan_corrects_resolved_paths_and_leaves_them_out(
     assert queries.get_by_id(ids[1]).path == str(die)
     assert (queries.get_by_id(ids[2]).path or "") == ""
     assert [row.title for row in window._rows] == ["Tripwire"]
-    assert window._last_scan_status.startswith("2 book paths corrected.")
+    assert "Corrected 2" in window._last_scan_status
+    assert not window._last_scan_status.startswith("2 book")
     assert window._scan_books[ids[0]].path == str(killing)
 
     window.run_scan(warn_folder=False)
@@ -543,6 +557,97 @@ def test_open_details_pages_listed_books_in_edit_mode(
     assert listed == [row.book_id for row in window._rows]
     assert captured["current_index"] == 1
     assert captured["keep_edit_mode"] is True
+    window.close()
+
+
+def test_refresh_after_details_keeps_table_selection(
+    layout_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.ui import path_health_window as module
+
+    db, _root, collection_id, ids = layout_db
+
+    class FakeDetails:
+        _data_was_changed = True
+        _books_touched_in_session = {ids[0]}
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def on_edit_mode(self):
+            pass
+
+        def load_book_data(self):
+            pass
+
+        def exec(self):
+            return 0
+
+        def deleteLater(self):
+            pass
+
+    monkeypatch.setattr(module, "BookDetailsWindow", FakeDetails)
+    window = module.PathHealthWindow(db, ui_scaler, theme_manager, parent=None)
+    qtbot.addWidget(window)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    window.run_scan(warn_folder=False)
+    assert len(window._rows) >= 2
+    window.table.setCurrentCell(1, window.COL_PATH)
+    focus_id = window._rows[1].book_id
+    window.on_open_details()
+    assert window._rows[window.table.currentRow()].book_id == focus_id
+    assert window.table.currentColumn() == window.COL_PATH
+    window.close()
+
+
+def test_corrected_book_leaves_list_and_focus_moves_to_next(
+    layout_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    """A fixed book drops off the list; focus stays on the book that was next."""
+    from src.database.queries import BookQueries
+    from src.ui import path_health_window as module
+
+    db, root, collection_id, _ids = layout_db
+
+    class FakeDetails:
+        _data_was_changed = True
+
+        def __init__(self, *args, **kwargs):
+            self._books_touched_in_session = set()
+
+        def on_edit_mode(self):
+            pass
+
+        def load_book_data(self):
+            pass
+
+        def exec(self):
+            book_id = window._rows[1].book_id
+            self._books_touched_in_session = {book_id}
+            folder = _audio_folder(root / "Lee Child" / "Fixed")
+            BookQueries(db).update_path(book_id, str(folder))
+            return 0
+
+        def deleteLater(self):
+            pass
+
+    monkeypatch.setattr(module, "BookDetailsWindow", FakeDetails)
+    window = module.PathHealthWindow(db, ui_scaler, theme_manager, parent=None)
+    qtbot.addWidget(window)
+    window.collection_combo.setCurrentIndex(
+        window.collection_combo.findData(collection_id)
+    )
+    window.run_scan(warn_folder=False)
+    assert len(window._rows) == 3
+    next_id = window._rows[2].book_id
+    window.table.setCurrentCell(1, window.COL_TITLE)
+    window.on_open_details()
+    assert len(window._rows) == 2
+    assert window.table.currentRow() == 1
+    assert window._rows[window.table.currentRow()].book_id == next_id
+    assert window.table.currentColumn() == window.COL_TITLE
     window.close()
 
 
@@ -637,8 +742,8 @@ def test_path_health_window_all_collections_and_scan_only_on_button(
     # temp_db may copy a large local library; keep All-collections scan tiny.
     real_get_all = window.book_queries.get_all
 
-    def limited_get_all(filter_criteria=None):
-        books = real_get_all(filter_criteria)
+    def limited_get_all(filter_criteria=None, **kwargs):
+        books = real_get_all(filter_criteria, **kwargs)
         return [b for b in books if b.title in ("Empty A", "Missing B")]
 
     window.book_queries.get_all = limited_get_all  # type: ignore[method-assign]

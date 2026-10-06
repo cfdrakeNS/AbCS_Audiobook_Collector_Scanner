@@ -120,13 +120,13 @@ def _join_ignore_case(root: Path, parts: Iterable[str]) -> Path | None:
             current = exact
             continue
         key = part.casefold()
-        try:
-            match = next(
-                (child for child in current.iterdir() if child.name.casefold() == key),
-                None,
-            )
-        except OSError:
+        children = _list_children(current)
+        if children is None:
             return None
+        match = next(
+            (child for child in children if child.name.casefold() == key),
+            None,
+        )
         if match is None:
             return None
         current = match
@@ -174,16 +174,44 @@ def _name_key(name: str) -> str:
     return " ".join(text.casefold().split())
 
 
+_DIR_LIST_CACHE: dict[tuple, tuple[Path, ...]] = {}
+_DIR_LIST_CACHE_LIMIT = 512
+
+
+def _list_children(parent: Path) -> list[Path] | None:
+    """Names in one folder, kept until that folder's timestamp changes.
+
+    Check Book Locations looks up many books under the same author folder.
+    Listing that folder once per book is what made a long scan get slower.
+    """
+    try:
+        stat = parent.stat()
+    except OSError:
+        return None
+    key = (str(parent), getattr(stat, "st_mtime_ns", stat.st_mtime))
+    cached = _DIR_LIST_CACHE.get(key)
+    if cached is not None:
+        return list(cached)
+    try:
+        children = tuple(parent.iterdir())
+    except OSError:
+        return None
+    _DIR_LIST_CACHE[key] = children
+    if len(_DIR_LIST_CACHE) > _DIR_LIST_CACHE_LIMIT:
+        _DIR_LIST_CACHE.pop(next(iter(_DIR_LIST_CACHE)))
+    return list(children)
+
+
 def _child_dir(parent: Path, name: str) -> Path | None:
     key = _name_key(name)
     if not key:
         return None
-    try:
-        for child in parent.iterdir():
-            if child.is_dir() and _name_key(child.name) == key:
-                return child
-    except OSError:
+    children = _list_children(parent)
+    if children is None:
         return None
+    for child in children:
+        if child.is_dir() and _name_key(child.name) == key:
+            return child
     return None
 
 
@@ -285,13 +313,13 @@ def _pick_title_match(
 
 
 def _child_dirs(parent: Path) -> list[Path]:
-    try:
-        return sorted(
-            (child for child in parent.iterdir() if child.is_dir()),
-            key=lambda item: item.name.casefold(),
-        )
-    except OSError:
+    children = _list_children(parent)
+    if children is None:
         return []
+    return sorted(
+        (child for child in children if child.is_dir()),
+        key=lambda item: item.name.casefold(),
+    )
 
 
 def _title_child_dir(parent: Path, title: str, series_number=None) -> Path | None:
@@ -307,17 +335,17 @@ def _title_child_dir(parent: Path, title: str, series_number=None) -> Path | Non
 
 def _title_file(parent: Path, title: str, series_number=None) -> Path | None:
     extensions = _audio_extensions()
-    try:
-        files = sorted(
-            (
-                child
-                for child in parent.iterdir()
-                if child.is_file() and child.suffix.lower() in extensions
-            ),
-            key=lambda item: item.name.casefold(),
-        )
-    except OSError:
+    children = _list_children(parent)
+    if children is None:
         return None
+    files = sorted(
+        (
+            child
+            for child in children
+            if child.is_file() and child.suffix.lower() in extensions
+        ),
+        key=lambda item: item.name.casefold(),
+    )
     return _pick_title_match(
         files,
         title,

@@ -516,6 +516,9 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         dialog.raise_()
         dialog.activateWindow()
         result = dialog.exec()
+        delete_later = getattr(dialog, "deleteLater", None)
+        if delete_later is not None:
+            delete_later()
         return int(result)
 
     def _show_shortcuts(self) -> None:

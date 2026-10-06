@@ -523,6 +523,10 @@ class PreviewWindow(AccessibleDialog):
             media_player_type, audio_output_type = player_types
             self._audio = audio_output_type()
             self._player = media_player_type()
+            for media_obj in (self._audio, self._player):
+                set_parent = getattr(media_obj, "setParent", None)
+                if set_parent is not None:
+                    set_parent(self)
             self._player.setAudioOutput(self._audio)
             self._video_sink = _attach_discard_video_sink(self._player)
             self._player.playbackStateChanged.connect(self._on_state_changed)
@@ -1259,9 +1263,12 @@ class PreviewWindow(AccessibleDialog):
             self._apply_preview_tab_order()
 
     def _set_slider_value(self, position_ms: int) -> None:
+        value = max(0, int(position_ms)) // 1000
+        if self.position_slider.value() == value:
+            return
         self._updating_slider_from_player = True
         try:
-            self.position_slider.setValue(max(0, int(position_ms)) // 1000)
+            self.position_slider.setValue(value)
         finally:
             self._updating_slider_from_player = False
 
@@ -1299,6 +1306,8 @@ class PreviewWindow(AccessibleDialog):
         text = self._play_position_display(position_ms)
         accessible_position = self._play_position_accessible_name(position_ms)
         changed = accessible_position != self.position_label.accessibleName()
+        if text == self.position_label.text() and not changed:
+            return
         self.position_label.setText(text)
         self.position_label.setAccessibleName(accessible_position)
         self.position_slider.set_listen_position_text(text)
@@ -1615,10 +1624,15 @@ class PreviewWindow(AccessibleDialog):
                 player.setSource(QUrl())
             except Exception:
                 pass
+        from PySide6.QtCore import QCoreApplication, QObject
+
         for obj in (player, audio, sink):
             delete_later = getattr(obj, "deleteLater", None)
-            if delete_later is not None:
-                delete_later()
+            if delete_later is None:
+                continue
+            delete_later()
+            if isinstance(obj, QObject):
+                QCoreApplication.sendPostedEvents(obj, QEvent.Type.DeferredDelete)
 
     def closeEvent(self, event):
         global _open_preview
@@ -1652,6 +1666,15 @@ class PreviewWindow(AccessibleDialog):
         super().keyPressEvent(event)
 
     def eventFilter(self, source, event):
+        speed_combo = getattr(self, "speed_combo", None)
+        if (
+            speed_combo is not None
+            and source is speed_combo
+            and event.type() == QEvent.FocusIn
+        ):
+            line = speed_combo.lineEdit()
+            if line is not None:
+                QTimer.singleShot(0, line.deselect)
         if event.type() == QEvent.KeyPress:
             if source is self.speed_combo and event.key() in (Qt.Key_Up, Qt.Key_Down):
                 if event.modifiers() & Qt.AltModifier:

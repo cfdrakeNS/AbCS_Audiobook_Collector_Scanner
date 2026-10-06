@@ -286,6 +286,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+S | Scan |
 | Alt+L | Jump to list |
 | Enter | Open Book Details |
+| Ctrl+C | Copy focused cell |
+| Right-click | Copy cell |
 | Page Up / Page Down | Previous or next listed book (in Book Details) |
 | Alt+X | Export list to CSV |
 | Escape | Cancel scan or close |

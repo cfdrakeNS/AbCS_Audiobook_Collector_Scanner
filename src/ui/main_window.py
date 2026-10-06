@@ -4,8 +4,10 @@ Primary interface for browsing and managing audiobook collection.
 """
 
 import csv
+import hashlib
 import time
 from datetime import datetime
+from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -153,7 +155,9 @@ class BookTableView(QTableView):
 def title_status_marks(book) -> list[str]:
     """Spoken title marks, in the same order as the symbols before the title."""
     marks = []
-    if book_has_plot(getattr(book, "comments", None)):
+    if getattr(book, "has_plot", False) or book_has_plot(
+        getattr(book, "comments", None)
+    ):
         marks.append("plot")
     if getattr(book, "want_to_read", False):
         marks.append("want to read")
@@ -937,6 +941,9 @@ class MainWindow(QMainWindow):
         self.books = []
         self.current_filter = SearchFilter()
         self._collection_filter_items = [("All Collections", None)]
+        # Menu rebuild checks All before the saved filter is applied. Ignore those
+        # signals so they cannot write All over the stored collection.
+        self._defer_collection_menu_selection = 0
         self._read_filter_options = ["All", "Read", "Unread"]
         self._plot_filter_options = ["All", "With Plot", "Without Plot"]
         self._primary_sort_options = ["Title", "Author", "Genre", "Series", "Read Date"]
@@ -989,11 +996,16 @@ class MainWindow(QMainWindow):
         # Apply initial button styling
         self.on_scale_changed(self.scaler.current_scale)
 
-        # Load initial data
-        self.refresh_collections()
-        self._sync_single_collection_paths()
-        self._load_saved_collection_filter()
-        self.refresh_books()
+        # Load initial data. Hold collection-menu signals until the saved
+        # filter is applied so startup cannot replace it with All Collections.
+        self._begin_collection_menu_defer()
+        try:
+            self.refresh_collections()
+            self._sync_single_collection_paths()
+            self._load_saved_collection_filter()
+            self.refresh_books()
+        finally:
+            self._end_collection_menu_defer()
 
         # Window settings
         version_str = get_app_version()
@@ -2554,7 +2566,14 @@ class MainWindow(QMainWindow):
         if selected_collection_id not in valid_ids:
             self.current_filter.collection_id = None
 
-        self._rebuild_collection_filter_menu()
+        self._begin_collection_menu_defer()
+        try:
+            self._rebuild_collection_filter_menu()
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+        finally:
+            self._end_collection_menu_defer()
 
     def clear_all_filters(self):
         """Clear all filters and search, reset to show all books."""
@@ -3142,11 +3161,25 @@ class MainWindow(QMainWindow):
         self._set_sort_label(order_by=key, direction=direction)
         self._sync_sort_menu_selection(key)
 
+    def _begin_collection_menu_defer(self):
+        """Ignore Collections menu signals while the menu is being rebuilt."""
+        self._defer_collection_menu_selection += 1
+
+    def _end_collection_menu_defer(self):
+        self._defer_collection_menu_selection = max(
+            0, self._defer_collection_menu_selection - 1
+        )
+
+    def _collection_menu_selection_blocked(self) -> bool:
+        return self._defer_collection_menu_selection > 0
+
     def _rebuild_collection_filter_menu(self):
         """Populate View > Collections submenu from current collection list."""
         if not hasattr(self, "view_collections_menu"):
             return
 
+        for action in self.collection_filter_group.actions():
+            action.blockSignals(True)
         self.view_collections_menu.clear()
         self.collection_filter_group = QActionGroup(self)
         self.collection_filter_group.setExclusive(True)
@@ -3156,8 +3189,8 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             action.setData(collection_id)
             action.triggered.connect(
-                lambda _checked=False, cid=collection_id: self.on_collection_menu_selected(
-                    cid
+                lambda checked=False, cid=collection_id: self.on_collection_menu_selected(
+                    cid, checked
                 )
             )
             if collection_id is None:
@@ -3172,35 +3205,75 @@ class MainWindow(QMainWindow):
 
         self._sync_collection_menu_selection()
 
+    def _collection_filter_db_key(self) -> str:
+        """Settings key for this database file.
+
+        The development library and the installed library are different files
+        and do not share collection ids. A single global id made one library
+        open on All Collections after the other library saved its own id.
+        """
+        raw = str(getattr(self.db, "db_path", "") or "")
+        try:
+            identity = str(Path(raw).resolve()).casefold()
+        except (OSError, ValueError):
+            identity = raw.casefold()
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+        return f"{self._SETTINGS_KEY_COLLECTION_FILTER_ID}/{digest}"
+
+    def _settings_int(self, settings: QSettings, key: str):
+        """Return a stored int, or None when the key is missing or unreadable."""
+        if not settings.contains(key):
+            return None
+        raw = settings.value(key)
+        if isinstance(raw, (list, tuple)):
+            raw = raw[0] if raw else None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
     def _save_collection_filter_setting(self):
-        """Persist the current collection filter selection for next app launch."""
+        """Persist the current collection filter for this database."""
+        if self._collection_menu_selection_blocked():
+            return
         settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
         collection_id = self.current_filter.collection_id
         settings.setValue(
-            self._SETTINGS_KEY_COLLECTION_FILTER_ID,
+            self._collection_filter_db_key(),
             int(collection_id) if collection_id is not None else -1,
         )
+        settings.sync()
 
     def _load_saved_collection_filter(self):
-        """Restore the last saved collection filter if it is still available."""
-        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
-        saved_collection_id = settings.value(
-            self._SETTINGS_KEY_COLLECTION_FILTER_ID, -1, type=int
-        )
+        """Restore the last saved collection filter if it is still available.
 
-        if saved_collection_id is None or int(saved_collection_id) < 0:
-            self.current_filter.collection_id = None
-            self._sync_collection_menu_selection()
-            return
+        A saved id that is not in this database is left stored and this window
+        shows All Collections. That happens when the id belongs to another
+        library. It is not written back as All.
+        """
+        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        settings.sync()
+        saved_collection_id = self._settings_int(
+            settings, self._collection_filter_db_key()
+        )
+        if saved_collection_id is None:
+            saved_collection_id = self._settings_int(
+                settings, self._SETTINGS_KEY_COLLECTION_FILTER_ID
+            )
 
         valid_ids = {
             collection_id
             for _label, collection_id in self._collection_filter_items
             if collection_id is not None
         }
-        self.current_filter.collection_id = (
-            int(saved_collection_id) if int(saved_collection_id) in valid_ids else None
-        )
+        if (
+            saved_collection_id is not None
+            and saved_collection_id >= 0
+            and saved_collection_id in valid_ids
+        ):
+            self.current_filter.collection_id = int(saved_collection_id)
+        else:
+            self.current_filter.collection_id = None
         self._sync_collection_menu_selection()
 
     def _sync_collection_menu_selection(self):
@@ -3213,8 +3286,10 @@ class MainWindow(QMainWindow):
             action.setChecked(action.data() == self.current_filter.collection_id)
             action.blockSignals(False)
 
-    def on_collection_menu_selected(self, collection_id):
+    def on_collection_menu_selected(self, collection_id, checked=True):
         """Handle View > Collections menu selection."""
+        if self._collection_menu_selection_blocked() or not checked:
+            return
         valid_ids = {
             collection_id_value
             for _label, collection_id_value in self._collection_filter_items
@@ -3253,7 +3328,9 @@ class MainWindow(QMainWindow):
         try:
             focus_ctx = self._capture_table_focus_context()
             # Get books from database
-            self.books = self.book_queries.get_all(self.current_filter)
+            self.books = self.book_queries.get_all(
+                self.current_filter, include_comments=False
+            )
 
             # Duplicate mode only shows duplicate candidates for selected matching rule
             if self.duplicate_mode_active:
@@ -3303,6 +3380,8 @@ class MainWindow(QMainWindow):
 
     def on_collection_changed(self, collection_id=None):
         """Handle collection filter change."""
+        if self._collection_menu_selection_blocked():
+            return
         valid_ids = {
             item_collection_id
             for _label, item_collection_id in self._collection_filter_items
@@ -4850,6 +4929,7 @@ class MainWindow(QMainWindow):
         else:
             export_list = list(self.books)
             scope = "shown"
+        export_list = self._books_with_stored_comments(export_list)
 
         if not export_list:
             self.set_status("No books to export.", announce=True)
@@ -5012,7 +5092,7 @@ class MainWindow(QMainWindow):
             self.set_status("No book available for web info fetch", announce=True)
             return
 
-        book = self.books[row]
+        book = self._books_with_stored_comments([self.books[row]])[0]
         focus_ctx = self._capture_table_focus_context(row, self.table.currentColumn())
 
         from src.ui.web_metadata import WebMetadataWindow
@@ -5040,6 +5120,7 @@ class MainWindow(QMainWindow):
                 web_data=web_data,
             )
             dialog.exec()
+            dialog.deleteLater()
             self._restore_table_focus_context(focus_ctx)
             return
 
@@ -5088,11 +5169,35 @@ class MainWindow(QMainWindow):
                 books.append(self.books[row])
         return books
 
+    def _books_with_stored_comments(self, books: list) -> list:
+        """Load plot text for list rows that left it in the database."""
+        needs = [
+            book
+            for book in books
+            if not getattr(book, "comments_loaded", True) and book.book_id
+        ]
+        if not needs:
+            return list(books)
+        if len(needs) > 40:
+            full = {
+                book.book_id: book
+                for book in self.book_queries.get_all(
+                    self.current_filter, include_comments=True
+                )
+            }
+            return [full.get(book.book_id, book) for book in books]
+        loaded = {}
+        for book in needs:
+            full = self.book_queries.get_by_id(book.book_id)
+            if full is not None:
+                loaded[book.book_id] = full
+        return [loaded.get(book.book_id, book) for book in books]
+
     def on_batch_web_fetch_clicked(self):
         """Queue web fetch for two or more selected books."""
         if self.duplicate_mode_active:
             return
-        books = self._selected_books_in_table_order()
+        books = self._books_with_stored_comments(self._selected_books_in_table_order())
         if len(books) < 2:
             self.set_status(
                 "Select two or more books for batch web fetch.",
@@ -5568,6 +5673,7 @@ class MainWindow(QMainWindow):
             self.current_filter.collection_id = previous_collection_id
         else:
             self.current_filter.collection_id = None
+        self._sync_collection_menu_selection()
 
         self.refresh_books()
         self._restore_table_focus_context(focus_ctx)

@@ -430,6 +430,10 @@ class BookDetailsWindow(AccessibleDialog):
         else:
             # Existing book: view mode - hide combos, show labels (fast!)
             self._show_view_labels()
+            if self._keep_edit_mode:
+                # Check Book Locations reuses this window in edit mode. Loading
+                # as view first rebuilt the plot list and scanned the folder.
+                self._in_edit_mode = True
 
         # Load book data (view mode uses labels, edit mode uses combos)
         if not self.is_new:
@@ -1975,8 +1979,9 @@ class BookDetailsWindow(AccessibleDialog):
         Override reject to close dialog directly.
         Escape key handles save changes dialog.
         """
-        # PHASE 2 OPTIMIZATION: Clean up event filters to prevent accumulation
-        self._cleanup_event_filters()
+        # Reused windows (for example from Check Book Locations) keep filters installed.
+        if not self._keep_edit_mode:
+            self._cleanup_event_filters()
 
         announce_dialog_closed(self)
 
@@ -2587,42 +2592,50 @@ class BookDetailsWindow(AccessibleDialog):
 
         # Authors
         self.author_combo.blockSignals(True)
+        self.author_combo.setUpdatesEnabled(False)
         self.author_combo.clear()
         authors = self.author_queries.get_all()
         for idx, author in enumerate(authors):
             self.author_combo.addItem(author.name, author.author_id)
             self._author_index_map[author.author_id] = idx
         self.author_combo.setMaxVisibleItems(20)  # Limit dropdown size
+        self.author_combo.setUpdatesEnabled(True)
         self.author_combo.blockSignals(False)
 
         # Series
         self.series_combo.blockSignals(True)
+        self.series_combo.setUpdatesEnabled(False)
         self.series_combo.clear()
         series_list = self.series_queries.get_all()
         for idx, series in enumerate(series_list):
             self.series_combo.addItem(series.name, series.series_id)
             self._series_index_map[series.series_id] = idx
         self.series_combo.setMaxVisibleItems(20)
+        self.series_combo.setUpdatesEnabled(True)
         self.series_combo.blockSignals(False)
 
         # Genres
         self.genre_combo.blockSignals(True)
+        self.genre_combo.setUpdatesEnabled(False)
         self.genre_combo.clear()
         genres = self.genre_queries.get_all()
         for idx, genre in enumerate(genres):
             self.genre_combo.addItem(genre.name, genre.genre_id)
             self._genre_index_map[genre.genre_id] = idx
         self.genre_combo.setMaxVisibleItems(20)
+        self.genre_combo.setUpdatesEnabled(True)
         self.genre_combo.blockSignals(False)
 
         # Collections
         self.collection_combo.blockSignals(True)
+        self.collection_combo.setUpdatesEnabled(False)
         self.collection_combo.clear()
         collections = self.collection_queries.get_all()
         for idx, coll in enumerate(collections):
             self.collection_combo.addItem(coll.name, coll.collection_id)
             self._collection_index_map[coll.collection_id] = idx
         self.collection_combo.setMaxVisibleItems(20)
+        self.collection_combo.setUpdatesEnabled(True)
         self.collection_combo.blockSignals(False)
         self._combos_loaded = True
 
@@ -2645,9 +2658,30 @@ class BookDetailsWindow(AccessibleDialog):
             return None
         return number
 
+    def _ensure_comments_loaded(self) -> None:
+        """List rows omit the plot. Load it for the book on screen only."""
+        book = self.book
+        if book is None or getattr(book, "comments_loaded", True):
+            return
+        book_id = getattr(book, "book_id", None)
+        if not book_id:
+            return
+        full = self.book_queries.get_by_id(book_id)
+        if full is not None:
+            self.book = full
+
+    def _show_plot_text(self, plot_text: str) -> None:
+        """Fill the editor, and the review list only while that list is showing."""
+        set_navigable_plain_text(self.comments_edit, plot_text)
+        if getattr(self, "_in_edit_mode", False) or self.is_new:
+            return
+        self.plot_review.set_plot_text(plot_text)
+
     def load_book_data(self):
         """Load book data into form, suppressing dirty tracking."""
+        self._ensure_comments_loaded()
         self._loading_fields = True
+        self.setUpdatesEnabled(False)
         try:
             self.title_edit.setText(self.book.title)
             # View mode: set label text instead of loading combos (fast!)
@@ -2696,8 +2730,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.listen_progress_edit.setText(self._format_listen_progress())
             self.want_to_read_checkbox.setChecked(bool(self.book.want_to_read))
             plot_text = canonicalize_plot_comments(self.book.comments or "")
-            set_navigable_plain_text(self.comments_edit, plot_text)
-            self.plot_review.set_plot_text(plot_text)
+            self._show_plot_text(plot_text)
             if self.book.read_date:
                 read_date_value = self.book.read_date
                 if isinstance(read_date_value, str):
@@ -2733,6 +2766,7 @@ class BookDetailsWindow(AccessibleDialog):
             )
         finally:
             self._loading_fields = False
+            self.setUpdatesEnabled(True)
         self._update_header_card()
         self._update_preview_button_state()
 
@@ -3884,6 +3918,7 @@ class BookDetailsWindow(AccessibleDialog):
                     web_data=web_data,
                 )
                 result = web_window.exec()
+                web_window.deleteLater()
                 if result == QDialog.Accepted:
                     self._data_was_changed = True
                     self.set_status(

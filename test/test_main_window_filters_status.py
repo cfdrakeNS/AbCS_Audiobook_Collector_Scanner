@@ -260,6 +260,90 @@ def test_unread_menu_unchecks_read_toolbar_toggle(main_window):
     assert not window.read_filter_action.isChecked()
 
 
+def _settings():
+    from PySide6.QtCore import QSettings
+
+    return QSettings("AbCS", "AudioBookCollector")
+
+
+def test_startup_restores_collection_saved_for_this_database(
+    temp_db, ui_scaler, theme_manager, qtbot, isolated_qsettings
+):
+    """The collection chosen in this library is the one shown on the next open."""
+    del isolated_qsettings
+    collection_id = CollectionQueries(temp_db).get_all(active_only=True)[0].collection_id
+    first = MainWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(first)
+    first.on_collection_menu_selected(collection_id)
+    assert first.current_filter.collection_id == collection_id
+    first.close()
+
+    again = MainWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(again)
+    assert again.current_filter.collection_id == collection_id
+    again.close()
+
+
+def test_legacy_collection_id_restores_when_it_belongs_to_this_database(
+    temp_db, ui_scaler, theme_manager, qtbot, isolated_qsettings
+):
+    """Older saves used one global id. Use it when this library still has that id."""
+    del isolated_qsettings
+    collection_id = CollectionQueries(temp_db).get_all(active_only=True)[0].collection_id
+    settings = _settings()
+    settings.setValue(MainWindow._SETTINGS_KEY_COLLECTION_FILTER_ID, collection_id)
+    settings.sync()
+
+    window = MainWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    assert window.current_filter.collection_id == collection_id
+    window.close()
+
+
+def test_other_library_collection_id_does_not_stick_as_all(
+    temp_db, ui_scaler, theme_manager, qtbot, isolated_qsettings
+):
+    """An id from another library shows All here and is not saved as All."""
+    del isolated_qsettings
+    settings = _settings()
+    settings.setValue(MainWindow._SETTINGS_KEY_COLLECTION_FILTER_ID, 424242)
+    settings.sync()
+
+    window = MainWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    assert window.current_filter.collection_id is None
+    settings.sync()
+    assert int(settings.value(MainWindow._SETTINGS_KEY_COLLECTION_FILTER_ID)) == 424242
+    assert not settings.contains(window._collection_filter_db_key())
+    window.close()
+
+
+def test_rebuilding_collection_menu_keeps_the_saved_collection(temp_db, main_window):
+    """Refreshing the Collections menu does not replace the saved filter with All."""
+    collection_id = CollectionQueries(temp_db).get_all(active_only=True)[0].collection_id
+    window = main_window
+    window.on_collection_menu_selected(collection_id)
+    saved_key = window._collection_filter_db_key()
+
+    window.refresh_collections()
+
+    assert window.current_filter.collection_id == collection_id
+    settings = _settings()
+    settings.sync()
+    assert int(settings.value(saved_key)) == collection_id
+
+
+def test_unchecked_collection_action_does_not_change_filter(temp_db, main_window):
+    """An uncheck signal from the exclusive menu does not select All."""
+    collection_id = CollectionQueries(temp_db).get_all(active_only=True)[0].collection_id
+    window = main_window
+    window.on_collection_menu_selected(collection_id)
+
+    window.on_collection_menu_selected(None, checked=False)
+
+    assert window.current_filter.collection_id == collection_id
+
+
 def test_read_filter_shortcut_from_unread_sets_read(main_window):
     window = main_window
 

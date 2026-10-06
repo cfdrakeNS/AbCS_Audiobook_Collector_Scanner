@@ -731,7 +731,10 @@ class WebMetadataWindow(AccessibleDialog):
             self.author_edit.setText(self.book.author_name or "")
             self.year_edit.setText(str(self.book.year) if self.book.year else "")
             self.genre_edit.setText(self.book.genre_name or "")
-            self.plot_edit.set_plot_text(self.book.comments or "")
+            # Pre-fetched web data replaces this plot immediately. Building the
+            # current plot first, then throwing it away, got slower on long plots.
+            if not self.pre_fetched_web_data:
+                self.plot_edit.set_plot_text(self.book.comments or "")
 
             # Initialize new fields
             self.rating_edit.clear()

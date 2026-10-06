@@ -136,6 +136,10 @@ class Book:
     listen_position_ms: Optional[int] = None
     # SQLite column: listen_file_name (empty unless the book is a folder of tracks)
     listen_file_name: str = ""
+    # List rows omit the plot text. has_plot keeps the title mark; comments_loaded
+    # is False until Book Details (or export) reads the stored plot.
+    has_plot: bool = False
+    comments_loaded: bool = True
 
     @property
     def time_display(self) -> str:

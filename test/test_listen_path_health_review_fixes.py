@@ -256,6 +256,30 @@ def test_path_health_initial_collection_selected_without_announce(
     window.close()
 
 
+def test_path_health_table_copy_cell(
+    temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+):
+    from src.core.path_health import STATUS_MISSING, PathHealthRow
+
+    window = _path_window(temp_db, ui_scaler, theme_manager, qtbot)
+    window._rows = [
+        PathHealthRow(
+            book_id=1,
+            author="Ann Author",
+            title="Book One",
+            path="",
+            status=STATUS_MISSING,
+        )
+    ]
+    window._fill_table()
+    window.table.setCurrentCell(0, window.COL_AUTHOR)
+    assert window._copy_current_table_cell(announce=False) is True
+    from PySide6.QtGui import QGuiApplication
+
+    assert QGuiApplication.clipboard().text() == "Ann Author"
+    window.close()
+
+
 def test_path_health_scan_focuses_progress_before_disabling_scan(
     temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
 ):

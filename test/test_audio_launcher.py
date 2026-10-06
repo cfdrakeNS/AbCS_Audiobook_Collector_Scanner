@@ -87,21 +87,22 @@ def test_parse_tag_number_and_sort_key(tmp_path):
 
     folder = tmp_path / "tracks"
     folder.mkdir()
-    late_name = folder / "10 Chapter.mp3"
-    early_name = folder / "02 Chapter.mp3"
-    late_name.write_bytes(b"x")
-    early_name.write_bytes(b"x")
+    # Names sort a then b. Track tags are the other way, and must win.
+    second = folder / "a.mp3"
+    first = folder / "b.mp3"
+    second.write_bytes(b"x")
+    first.write_bytes(b"x")
     from mutagen.id3 import ID3, TRCK
 
     tags = ID3()
-    tags.add(TRCK(encoding=3, text=["10"]))
-    tags.save(late_name)
-    tags = ID3()
     tags.add(TRCK(encoding=3, text=["2"]))
-    tags.save(early_name)
+    tags.save(second)
+    tags = ID3()
+    tags.add(TRCK(encoding=3, text=["1"]))
+    tags.save(first)
 
     ordered = list_audio_in_folder(folder)
-    assert ordered == [early_name, late_name]
+    assert ordered == [first, second]
 
 
 def test_resolve_preview_source_skips_playlist_metadata_sort(tmp_path, monkeypatch):

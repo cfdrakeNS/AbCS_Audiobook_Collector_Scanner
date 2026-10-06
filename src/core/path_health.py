@@ -92,7 +92,7 @@ def _classify_book_path(
     collection_name: str = "",
     series_number=None,
 ) -> _PathCheck:
-    from src.core.audio_launcher import locate_book_path
+    from src.core.audio_launcher import locate_book_path, path_has_playable_audio
 
     text = (path or "").strip()
     root = (collection_root or "").strip()
@@ -110,6 +110,9 @@ def _classify_book_path(
             ).path
             if found:
                 return _PathCheck(STATUS_RESOLVED, resolved_path=found)
+            # Listen plays this path. Do not list it as Incorrect.
+            if path_has_playable_audio(on_disk):
+                return _PathCheck(STATUS_OK)
             return _PathCheck(STATUS_INCORRECT)
         return _PathCheck(STATUS_OK)
 
@@ -153,20 +156,31 @@ def check_book_path(
     - Missing: stored path gone, and the book cannot be found
     - Resolved: the stored path is blank, gone, or outside the collection
       folder, but the book is found under the collection folder
-    - Incorrect: the stored path exists outside the collection folder, and the
-      book is not found under it
-    - OK: stored path exists (and under root when a root is set), or it maps
-      onto the collection folder (for example a USB drive with a new letter);
-      the stored path is kept
+    - Incorrect: the stored path exists outside the collection folder, Listen
+      cannot play it, and the book is not found under the collection folder
+    - OK: Listen can play the stored path, including when that path is outside
+      the collection folder, or the path maps onto the collection folder (for
+      example a USB drive with a new letter); the stored path is kept
     """
     return _classify_book_path(path, collection_root, import_dir, **lookup).status
+
+
+def sort_path_health_rows(rows: Iterable[PathHealthRow]) -> List[PathHealthRow]:
+    """Stable sort for display: author, then title (case-insensitive)."""
+    return sorted(
+        rows,
+        key=lambda row: (
+            (row.author or "").casefold(),
+            (row.title or "").casefold(),
+        ),
+    )
 
 
 def row_matches_filter(status: str, filter_key: str) -> bool:
     """True when a row status belongs in the chosen filter.
 
     - missing: book cannot be found
-    - incorrect: stored path exists but is off the collection folder
+    - incorrect: stored path exists off the collection folder and Listen cannot play it
     - all: missing and incorrect (not OK, not Resolved)
     """
     key = (filter_key or FILTER_MISSING).strip().casefold()
@@ -288,7 +302,7 @@ def scan_book_paths(
     ):
         if row_matches_filter(row.status, filter_key):
             rows.append(row)
-    return rows
+    return sort_path_health_rows(rows)
 
 
 def summarize_statuses(rows: Iterable[PathHealthRow]) -> dict[str, int]:

@@ -118,6 +118,31 @@ def test_plot_filter(temp_db, plot_filter, expected_titles):
     assert titles == expected_titles
 
 
+def test_list_query_omits_plot_text_but_keeps_the_mark(temp_db):
+    from src.ui.main_window import title_status_marks
+
+    book_queries = BookQueries(temp_db)
+    plot = "p" * PLOT_MIN_LENGTH
+    book_id = _insert_book(temp_db, "List Plot Book", plot)
+    _insert_book(temp_db, "List Short Note", "Reader: Bob")
+
+    rows = {
+        book.title: book
+        for book in book_queries.get_all(include_comments=False)
+        if book.title in {"List Plot Book", "List Short Note"}
+    }
+    listed = rows["List Plot Book"]
+    assert listed.comments == ""
+    assert listed.comments_loaded is False
+    assert listed.has_plot is True
+    assert "plot" in title_status_marks(listed)
+    assert rows["List Short Note"].has_plot is False
+
+    full = book_queries.get_by_id(book_id)
+    assert full.comments == plot
+    assert full.comments_loaded is True
+
+
 def test_date_added_filter_returns_books_on_or_after_cutoff(temp_db):
     book_queries = BookQueries(temp_db)
     test_titles = {"DateAdded Old Book", "DateAdded New Book", "DateAdded Same Day"}

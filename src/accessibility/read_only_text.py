@@ -205,16 +205,27 @@ class PlotLineList(QListWidget):
         super().setAccessibleDescription("")
 
     def set_plot_text(self, text: str) -> None:
-        self.clear()
-        for line in plot_lines_for_review(text):
-            item = QListWidgetItem(line)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            item.setData(Qt.ItemDataRole.AccessibleTextRole, line)
-            self.addItem(item)
-        if self.count():
-            self.setCurrentRow(0)
-            self.scrollToItem(self.item(0))
-        self._resize_to_content()
+        lines = plot_lines_for_review(text)
+        self.setUpdatesEnabled(False)
+        try:
+            # Reuse rows so paging books does not rebuild the screen-reader list.
+            for index, line in enumerate(lines):
+                if index < self.count():
+                    item = self.item(index)
+                    item.setText(line)
+                else:
+                    item = QListWidgetItem(line)
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.addItem(item)
+                item.setData(Qt.ItemDataRole.AccessibleTextRole, line)
+            while self.count() > len(lines):
+                self.takeItem(self.count() - 1)
+            if self.count():
+                self.setCurrentRow(0)
+                self.scrollToItem(self.item(0))
+            self._resize_to_content()
+        finally:
+            self.setUpdatesEnabled(True)
 
     def _resize_to_content(self, *, min_visible_rows: int = 4, max_visible_rows: int = 10) -> None:
         count = self.count()

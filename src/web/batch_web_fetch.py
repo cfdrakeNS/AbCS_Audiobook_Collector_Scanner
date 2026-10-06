@@ -308,7 +308,11 @@ def review_batch_results(
         )
         dialog.raise_()
         dialog.activateWindow()
-        if dialog.exec() == REVIEW_QUEUE_STOP:
+        result = dialog.exec()
+        delete_later = getattr(dialog, "deleteLater", None)
+        if delete_later is not None:
+            delete_later()
+        if result == REVIEW_QUEUE_STOP:
             stopped = True
             left_unreviewed = total - index
             break

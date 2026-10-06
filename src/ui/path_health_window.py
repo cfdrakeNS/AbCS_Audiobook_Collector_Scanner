@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -49,6 +50,7 @@ from src.accessibility.shortcuts import (
 from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
     apply_visual_tooltip_map,
+    build_accessible_combo_box_style,
     build_modern_button_style,
     build_table_polish_style,
     exec_styled_message_box,
@@ -71,6 +73,7 @@ from src.core.path_health import (
     build_path_health_row,
     iter_book_path_checks,
     row_matches_filter,
+    sort_path_health_rows,
 )
 from src.database.connection import DatabaseManager
 from src.database.models import Collection, SearchFilter
@@ -79,6 +82,7 @@ from src.ui.accessible_dialog import AccessibleDialog
 from src.ui.book_details import BookDetailsWindow
 from src.ui.help_router import install_shift_f1_help
 from src.ui.import_progress_window import ImportProgressWindow
+from src.ui.table_clipboard import copy_plain_text
 
 
 class PathHealthWindow(AccessibleDialog):
@@ -97,8 +101,9 @@ class PathHealthWindow(AccessibleDialog):
         "folder, then the series folder when the book has a series. When the "
         "book is found in the collection folder, the path is corrected, the book "
         "is not listed, and it is counted as Corrected. Missing: the book cannot "
-        "be found. Incorrect: the path exists outside the collection folder and "
-        "the book is not in the collection folder. Press Enter on a book to open "
+        "be found. Incorrect: the path is outside the collection folder, Listen "
+        "cannot play it, and the book is not in the collection folder. A path "
+        "Listen can play is valid and is not listed. Press Enter on a book to open "
         "Book Details."
     )
 
@@ -171,7 +176,7 @@ class PathHealthWindow(AccessibleDialog):
         self.filter_combo.setAccessibleName("Check book locations filter")
         self.filter_combo.setAccessibleDescription(
             "Missing: the book cannot be found. "
-            "Incorrect: on disk but not under the collection folder. "
+            "Incorrect: outside the collection folder and Listen cannot play it. "
             "All: missing and incorrect. Alt+F"
         )
         for label, data in (
@@ -254,6 +259,8 @@ class PathHealthWindow(AccessibleDialog):
             self.COL_PATH: 3.5,
         }
         self.table.doubleClicked.connect(self.on_open_details)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._on_table_context_menu)
         layout.addWidget(self.table, 1)
 
         footer_layout = QHBoxLayout()
@@ -300,7 +307,7 @@ class PathHealthWindow(AccessibleDialog):
                 self.collection_combo: "Collection to scan",
                 self.filter_combo: (
                     "Missing = not found; "
-                    "Incorrect = outside the collection folder; "
+                    "Incorrect = outside the collection folder and Listen cannot play it; "
                     "All = every problem"
                 ),
                 self.scan_button: "Scan the selected collection",
@@ -341,9 +348,10 @@ class PathHealthWindow(AccessibleDialog):
             "}"
         )
 
-        for widget in self.findChildren(QComboBox):
-            widget.setStyleSheet("")
-        for widget in self.findChildren(QPushButton):
+        combo_style = build_accessible_combo_box_style(scaled_height)
+        for widget in (self.collection_combo, self.filter_combo):
+            widget.setStyleSheet(combo_style)
+        for widget in (self.scan_button, self.export_button):
             widget.setStyleSheet(button_style)
 
         apply_decorative_action_icon(self.scan_button, "scan", self.scaler)
@@ -455,17 +463,37 @@ class PathHealthWindow(AccessibleDialog):
         if self._loading or self._is_scanning:
             return
         if self._scan_rows_all:
-            self._apply_filter_to_cached_rows(announce=True)
+            self._apply_filter_to_cached_rows(announce=True, reset_focus=True)
         else:
             self.set_status("Press Scan to check paths.", announce=True)
 
-    def _apply_filter_to_cached_rows(self, *, announce: bool) -> None:
+    def _apply_filter_to_cached_rows(
+        self,
+        *,
+        announce: bool,
+        focus_book_id: int | None = None,
+        focus_column: int | None = None,
+        focus_fallback_index: int | None = None,
+        reset_focus: bool = False,
+    ) -> None:
         filter_key = self.filter_combo.currentData() or FILTER_ALL
-        self._rows = [
-            row
-            for row in self._scan_rows_all
-            if row_matches_filter(row.status, filter_key)
-        ]
+        self._rows = sort_path_health_rows(
+            [
+                row
+                for row in self._scan_rows_all
+                if row_matches_filter(row.status, filter_key)
+            ]
+        )
+        preserved_col = (
+            self.COL_TITLE if focus_column is None else focus_column
+        )
+        if focus_book_id is None and not reset_focus:
+            selected = self._selected_row()
+            if selected is not None:
+                focus_book_id = selected.book_id
+                col = self.table.currentColumn()
+                if col >= 0:
+                    preserved_col = col
         self._fill_table()
         self._sync_action_buttons()
         counts = PathHealthCounts()
@@ -479,12 +507,23 @@ class PathHealthWindow(AccessibleDialog):
             announce=announce,
         )
         if self._rows:
-            self.table.setCurrentCell(0, self.COL_TITLE)
+            if focus_book_id is not None:
+                self._restore_table_focus(
+                    focus_book_id,
+                    preserved_col,
+                    fallback_index=focus_fallback_index,
+                )
+            elif reset_focus:
+                self.table.setCurrentCell(0, self.COL_TITLE)
             if announce:
                 self.table.setFocus()
         QTimer.singleShot(0, self.update_stretch_columns)
 
     def eventFilter(self, source, event):
+        if isinstance(source, QComboBox) and event.type() == QEvent.FocusIn:
+            line = source.lineEdit()
+            if line is not None:
+                QTimer.singleShot(0, line.deselect)
         if (
             isinstance(source, QComboBox)
             and event.type() == QEvent.KeyPress
@@ -507,6 +546,10 @@ class PathHealthWindow(AccessibleDialog):
             event.accept()
             return True
         if source is self.table and event.type() == QEvent.KeyPress:
+            if event.matches(QKeySequence.Copy):
+                if self._copy_current_table_cell(announce=True):
+                    event.accept()
+                    return True
             if event.key() == Qt.Key_Tab and not event.modifiers():
                 self.focusNextChild()
                 event.accept()
@@ -649,12 +692,15 @@ class PathHealthWindow(AccessibleDialog):
         import_dir = self._prefs_import_dir()
         scan_all = collection_id is None
         if scan_all:
-            books = self.book_queries.get_all(SearchFilter(order_by="Author"))
+            books = self.book_queries.get_all(
+                SearchFilter(order_by="Author"), include_comments=False
+            )
             root = ""
             collection_roots = self._collection_roots_map()
         else:
             books = self.book_queries.get_all(
-                SearchFilter(collection_id=int(collection_id), order_by="Author")
+                SearchFilter(collection_id=int(collection_id), order_by="Author"),
+                include_comments=False,
             )
             root = self._selected_collection_root()
             collection_roots = None
@@ -777,7 +823,7 @@ class PathHealthWindow(AccessibleDialog):
 
         self._save_corrected_paths(scanned_rows)
         self._scan_rows_all = scanned_rows
-        self._rows = matched_rows
+        self._rows = sort_path_health_rows(matched_rows)
         self._fill_table()
         self._announce_scan_result(
             filter_key=filter_key,
@@ -803,9 +849,6 @@ class PathHealthWindow(AccessibleDialog):
         announce: bool = True,
     ) -> None:
         prefix = "Canceled. " if canceled else ""
-        if counts.resolved:
-            noun = "path" if counts.resolved == 1 else "paths"
-            prefix += f"{counts.resolved} book {noun} corrected. "
         shown = matched_count
         counters = counts.summary()
         kind = {
@@ -822,6 +865,13 @@ class PathHealthWindow(AccessibleDialog):
         self.set_status(msg, announce=announce)
 
     def _fill_table(self):
+        self.table.setUpdatesEnabled(False)
+        try:
+            self._fill_table_rows()
+        finally:
+            self.table.setUpdatesEnabled(True)
+
+    def _fill_table_rows(self):
         self.table.setRowCount(len(self._rows))
         for row_index, row in enumerate(self._rows):
             path_display = row.path or "(empty)"
@@ -876,6 +926,55 @@ class PathHealthWindow(AccessibleDialog):
             return self._rows[row]
         return None
 
+    def _restore_table_focus(
+        self,
+        book_id: int,
+        column: int,
+        fallback_index: int | None = None,
+    ) -> None:
+        column = column if 0 <= column < self.table.columnCount() else self.COL_TITLE
+        for row_index, row in enumerate(self._rows):
+            if row.book_id == book_id:
+                self.table.setCurrentCell(row_index, column)
+                return
+        if not self._rows:
+            return
+        # The edited book left the problem list. The same index is now the next book.
+        if fallback_index is None:
+            target = 0
+        else:
+            target = min(max(int(fallback_index), 0), len(self._rows) - 1)
+        self.table.setCurrentCell(target, column)
+
+    def _copy_current_table_cell(self, *, announce: bool = False) -> bool:
+        row = self.table.currentRow()
+        col = self.table.currentColumn()
+        if row < 0 or col < 0:
+            return False
+        item = self.table.item(row, col)
+        if item is None:
+            return False
+        if not copy_plain_text(item.text()):
+            return False
+        if announce:
+            self.set_status("Copied.", announce=True)
+        return True
+
+    def _on_table_context_menu(self, pos) -> None:
+        """Right-click / Menu key: Copy the cell under the pointer."""
+        item = self.table.itemAt(pos)
+        if item is None:
+            return
+        self.table.setCurrentCell(item.row(), item.column())
+        menu = QMenu(self.table)
+        menu.setAccessibleName("Check book locations list menu")
+        copy_action = menu.addAction("Copy")
+        copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.setEnabled(item.text() != "")
+        chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
+        if chosen == copy_action:
+            self._copy_current_table_cell(announce=True)
+
     def _path_check_context(self):
         """Collection root(s) and import folder for a single-book path re-check."""
         collection_id = self.collection_combo.currentData()
@@ -890,6 +989,12 @@ class PathHealthWindow(AccessibleDialog):
         if not book_ids or not self._scan_rows_all:
             self.table.setFocus()
             return
+        selected = self._selected_row()
+        focus_book_id = selected.book_id if selected is not None else None
+        focus_index = self.table.currentRow()
+        focus_column = self.table.currentColumn()
+        if focus_column < 0:
+            focus_column = self.COL_TITLE
         _scan_all, root, collection_roots, import_dir = self._path_check_context()
         index_by_id = {row.book_id: idx for idx, row in enumerate(self._scan_rows_all)}
         for book_id in book_ids:
@@ -912,7 +1017,13 @@ class PathHealthWindow(AccessibleDialog):
             idx = index_by_id.get(book_id)
             if idx is not None:
                 self._scan_rows_all[idx] = new_row
-        self._apply_filter_to_cached_rows(announce=True)
+        self._apply_filter_to_cached_rows(
+            announce=False,
+            focus_book_id=focus_book_id,
+            focus_column=focus_column,
+            focus_fallback_index=focus_index,
+        )
+        QTimer.singleShot(0, self.table.setFocus)
 
     def on_open_details(self):
         selected = self._selected_row()
@@ -955,6 +1066,9 @@ class PathHealthWindow(AccessibleDialog):
             details.is_new = False
             details._data_was_changed = False
             details._books_touched_in_session.clear()
+            # Stay in edit mode. Dropping to view reloaded the plot list and
+            # scanned the book folder on every open.
+            details._in_edit_mode = True
             details.load_book_data()
             QTimer.singleShot(0, details.on_edit_mode)
         details.exec()
@@ -1044,6 +1158,8 @@ class PathHealthWindow(AccessibleDialog):
             ("Alt+S", "Scan"),
             ("Alt+L", "Jump to list"),
             ("Enter", "Open Book Details"),
+            ("Ctrl+C", "Copy focused cell"),
+            ("Right-click", "Copy cell"),
             ("Page Up/Down in Book Details", "Previous or next listed book"),
             ("Alt+X", "Export list to CSV"),
             ("Escape", "Cancel scan or close window"),

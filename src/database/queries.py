@@ -28,6 +28,7 @@ from .models import (
     SearchFilter,
     Statistics,
     PLOT_MIN_LENGTH,
+    book_has_plot,
 )
 
 
@@ -55,18 +56,38 @@ class BookQueries:
             if chunk:
                 yield chunk
 
-    def get_all(self, filter_criteria: SearchFilter = None) -> List[Book]:
+    def get_all(
+        self, filter_criteria: SearchFilter = None, *, include_comments: bool = True
+    ) -> List[Book]:
         """
         Get all books with optional filtering and searching.
 
         Args:
             filter_criteria: SearchFilter object with optional filters
+            include_comments: When False, leave plot text out of each row and
+                set has_plot instead. The main book list uses this so a library
+                of long plots does not stay in memory.
 
         Returns:
             List of Book objects
         """
-        query = """
-            SELECT b.*,
+        params = []
+        if include_comments:
+            comments_sql = "b.comments"
+        else:
+            comments_sql = (
+                "'' AS comments, "
+                "CASE WHEN LENGTH(TRIM(COALESCE(b.comments, ''))) >= ? "
+                "THEN 1 ELSE 0 END AS has_plot"
+            )
+            params.append(PLOT_MIN_LENGTH)
+        query = f"""
+            SELECT b.book_id, b.title, b.author_id, b.year, b.series_id,
+                   b.series_number, b.genre_id, b.collection_id, b.reader,
+                   b.time_hours, b.time_minutes, b.tracks, b.size_mb, b.bitrate,
+                   b.file_format, b.path, {comments_sql}, b.read_date,
+                   b.date_added, b.source, b.want_to_read, b.listen_position_ms,
+                   b.listen_file_name,
                    a.name AS author_name,
                    s.name AS series_name,
                    g.name AS genre_name,
@@ -79,7 +100,6 @@ class BookQueries:
             WHERE 1=1
                             AND (b.collection_id IS NULL OR c.active = 1)
         """
-        params = []
 
         if filter_criteria is None:
             filter_criteria = SearchFilter()
@@ -534,7 +554,7 @@ class BookQueries:
             bitrate=row_dict.get("bitrate", 0),
             file_format=row_dict.get("file_format", ""),
             path=row_dict.get("path", ""),
-            comments=row_dict.get("comments", ""),
+            comments=row_dict.get("comments") or "",
             read_date=read_date_obj,
             date_added=date_added_obj,
             source=row_dict.get("source", ""),
@@ -545,6 +565,12 @@ class BookQueries:
                 else None
             ),
             listen_file_name=row_dict.get("listen_file_name") or "",
+            has_plot=(
+                bool(int(row_dict["has_plot"]))
+                if "has_plot" in row_dict
+                else book_has_plot(row_dict.get("comments"))
+            ),
+            comments_loaded="has_plot" not in row_dict,
         )
 
     @staticmethod

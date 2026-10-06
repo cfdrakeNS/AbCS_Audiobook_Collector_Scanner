@@ -168,8 +168,137 @@ def parse_tag_number(raw) -> int | None:
     return value if value > 0 else None
 
 
+_SORTED_AUDIO_CACHE: dict[tuple, tuple[Path, ...]] = {}
+_DURATION_CACHE: dict[tuple, float] = {}
+_SORTED_AUDIO_CACHE_LIMIT = 128
+_DURATION_CACHE_LIMIT = 4000
+
+
+def _cache_store(cache: dict, key: tuple, value, limit: int) -> None:
+    cache[key] = value
+    if len(cache) > limit:
+        cache.pop(next(iter(cache)))
+
+
+def _file_cache_key(path: Path) -> tuple | None:
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (str(path), stat.st_mtime_ns, stat.st_size)
+
+
+def _synchsafe(data: bytes) -> int:
+    return (
+        ((data[0] & 0x7F) << 21)
+        | ((data[1] & 0x7F) << 14)
+        | ((data[2] & 0x7F) << 7)
+        | (data[3] & 0x7F)
+    )
+
+
+def _decode_id3_text(payload: bytes) -> str:
+    if not payload:
+        return ""
+    encoding = payload[0]
+    data = payload[1:]
+    if encoding == 0:
+        text = data.decode("latin-1", errors="ignore")
+    elif encoding == 1:
+        text = data.decode("utf-16", errors="ignore")
+    elif encoding == 2:
+        text = data.decode("utf-16-be", errors="ignore")
+    elif encoding == 3:
+        text = data.decode("utf-8", errors="ignore")
+    else:
+        return ""
+    return text.split("\x00", 1)[0].strip()
+
+
+def _mp3_disc_and_track(path: Path) -> tuple[int | None, int | None] | None:
+    """Read TRCK/TPOS without loading the rest of the tag (cover art).
+
+    Returns None when the tag is missing or not a simple v2.3/v2.4 tag, so the
+    caller can fall back to a full parse.
+    """
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(10)
+            if len(header) < 10 or header[:3] != b"ID3":
+                return None
+            version = header[3]
+            flags = header[5]
+            if version < 3 or flags & 0xC0:
+                return None
+            remaining = _synchsafe(header[6:10])
+            disc = None
+            track = None
+            while remaining >= 10 and (disc is None or track is None):
+                frame_header = handle.read(10)
+                if len(frame_header) < 10 or frame_header[:4] == b"\x00\x00\x00\x00":
+                    break
+                if version >= 4:
+                    frame_size = _synchsafe(frame_header[4:8])
+                else:
+                    frame_size = int.from_bytes(frame_header[4:8], "big")
+                if frame_size < 0 or frame_size > remaining - 10:
+                    return None
+                remaining -= 10 + frame_size
+                frame_id = frame_header[:4]
+                if frame_id in (b"TRCK", b"TPOS") and frame_size <= 64:
+                    number = parse_tag_number(_decode_id3_text(handle.read(frame_size)))
+                    if frame_id == b"TRCK":
+                        track = number
+                    else:
+                        disc = number
+                else:
+                    handle.seek(frame_size, 1)
+            return disc, track
+    except OSError:
+        return None
+
+
+def _mp3_duration_seconds(path: Path) -> float:
+    """Duration from the MPEG header, skipping the ID3 tag and its cover art."""
+    try:
+        from mutagen.mp3 import HeaderNotFoundError, MPEGInfo
+
+        with path.open("rb") as handle:
+            header = handle.read(10)
+            offset = 0
+            if len(header) >= 10 and header[:3] == b"ID3":
+                offset = 10 + _synchsafe(header[6:10])
+            try:
+                return float(MPEGInfo(handle, offset).length or 0)
+            except HeaderNotFoundError:
+                return 0.0
+    except Exception:
+        return 0.0
+
+
+def file_duration_seconds(path: Path) -> float:
+    """Cached playback length. MP3 uses the frame header, not the full tag."""
+    key = _file_cache_key(path)
+    if key is not None and key in _DURATION_CACHE:
+        return _DURATION_CACHE[key]
+    length = _mp3_duration_seconds(path) if path.suffix.lower() == ".mp3" else 0.0
+    if length <= 0:
+        length = float(TagReader().read_file(str(path)).duration_seconds or 0)
+    if key is not None:
+        _cache_store(_DURATION_CACHE, key, length, _DURATION_CACHE_LIMIT)
+    return length
+
+
 def read_disc_and_track(path: Path) -> tuple[int | None, int | None]:
     """Return (disc, track) from embedded tags when present."""
+    if path.suffix.lower() == ".mp3":
+        light = _mp3_disc_and_track(path)
+        if light is not None:
+            return light
+    return _mutagen_disc_and_track(path)
+
+
+def _mutagen_disc_and_track(path: Path) -> tuple[int | None, int | None]:
     audio = None
     try:
         from mutagen import File as MutagenFile
@@ -234,6 +363,37 @@ def audio_sort_key(path: Path) -> tuple:
     )
 
 
+def path_has_playable_audio(path: str | Path) -> bool:
+    """True when Listen can play this path (a supported file, or audio in the folder).
+
+    Matches the folders ``list_audio_in_folder`` uses, and stops at the first
+    file so a path check does not sort or open every track.
+    """
+    target = Path(path)
+    extensions = {ext.lower() for ext in TagReader.SUPPORTED_EXTENSIONS}
+    try:
+        if target.is_file():
+            return target.suffix.lower() in extensions
+        if not target.is_dir():
+            return False
+        children = list(target.iterdir())
+    except OSError:
+        return False
+    if any(child.is_file() and child.suffix.lower() in extensions for child in children):
+        return True
+    for child in children:
+        if not child.is_dir():
+            continue
+        try:
+            grandchildren = child.iterdir()
+        except OSError:
+            continue
+        for grandchild in grandchildren:
+            if grandchild.is_file() and grandchild.suffix.lower() in extensions:
+                return True
+    return False
+
+
 def list_audio_in_folder(folder: Path) -> list[Path]:
     """Audio files in a book folder, ordered for Preview playback."""
     extensions = {ext.lower() for ext in TagReader.SUPPORTED_EXTENSIONS}
@@ -253,7 +413,24 @@ def list_audio_in_folder(folder: Path) -> list[Path]:
                 if grandchild.is_file() and grandchild.suffix.lower() in extensions
             )
         files = nested
+    cache_key = None
+    parts = []
+    for path in files:
+        part = _file_cache_key(path)
+        if part is None:
+            parts = None
+            break
+        parts.append(part)
+    if parts is not None:
+        cache_key = (str(folder), tuple(parts))
+        cached = _SORTED_AUDIO_CACHE.get(cache_key)
+        if cached is not None:
+            return list(cached)
     files.sort(key=audio_sort_key)
+    if cache_key is not None:
+        _cache_store(
+            _SORTED_AUDIO_CACHE, cache_key, tuple(files), _SORTED_AUDIO_CACHE_LIMIT
+        )
     return files
 
 
@@ -263,9 +440,8 @@ def playlist_elapsed_ms(
     """Return elapsed playlist time using the current file's local position."""
     index = min(max(int(current_index), 0), len(files))
     elapsed_ms = max(0, int(position_ms))
-    reader = TagReader()
     for path in files[:index]:
-        duration_seconds = reader.read_file(str(path)).duration_seconds
+        duration_seconds = file_duration_seconds(path)
         if duration_seconds > 0:
             elapsed_ms += int(duration_seconds * 1000)
     return elapsed_ms
