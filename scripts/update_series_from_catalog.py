@@ -16,7 +16,8 @@ Apply updates (backs up abcs.db first):
 
 Options:
   --csv PATH       Catalog CSV (default: data/Audio_book_catalog_mp3.csv)
-  --db PATH        Database (default: data/abcs.db)
+  --db PATH        Database file, or the folder that contains abcs.db
+                   (default: data/abcs.db)
   --threshold N    Fuzzy match percent 0-100 (default: 90)
   --report PATH    Write full unmatched/ambiguous log
 
@@ -257,6 +258,16 @@ def get_or_create_series_id(
     return int(cursor.lastrowid)
 
 
+def resolve_db_path(db_path: Path) -> Optional[Path]:
+    """Return the SQLite file. A folder is treated as the AbCS data folder."""
+    path = db_path
+    if path.is_dir():
+        path = path / "abcs.db"
+    if path.is_file():
+        return path
+    return None
+
+
 def backup_database(db_path: Path) -> Path:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = db_path.with_name(f"{db_path.stem}.bak.{stamp}{db_path.suffix}")
@@ -285,15 +296,24 @@ def run_update(
     if not csv_path.exists():
         print(f"ERROR: CSV not found: {csv_path}")
         return 1
-    if not db_path.exists():
+    resolved_db = resolve_db_path(db_path)
+    if resolved_db is None:
         print(f"ERROR: Database not found: {db_path}")
+        if db_path.is_dir():
+            print(f"       No abcs.db in that folder. Pass the database file, for example {db_path / 'abcs.db'}")
         return 1
+    db_path = resolved_db
 
     catalog_index, skipped_csv = load_catalog(csv_path)
     total_csv_indexed = sum(len(v) for v in catalog_index.values())
     print(f"Catalog: indexed {total_csv_indexed} row references, skipped {skipped_csv} rows without series data")
 
-    conn = sqlite3.connect(db_path)
+    try:
+        conn = sqlite3.connect(db_path)
+    except sqlite3.OperationalError as exc:
+        print(f"ERROR: Could not open database: {db_path}")
+        print(f"       {exc}")
+        return 1
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -443,7 +463,7 @@ def main() -> None:
         "--db",
         type=Path,
         default=_REPO_ROOT / "data" / "abcs.db",
-        help="Path to SQLite database",
+        help="SQLite database file, or the folder that contains abcs.db",
     )
     parser.add_argument(
         "--threshold",

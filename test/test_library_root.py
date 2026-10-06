@@ -7,6 +7,7 @@ from pathlib import Path
 from src.core.library_root import (
     IMPORT_DEFAULT_DIRECTORY_KEY,
     apply_collection_root,
+    author_folder_in_collection,
     browse_start_directory,
     folder_exists,
     folder_has_supported_audio,
@@ -98,6 +99,16 @@ def test_collection_root_path_crud(tmp_path):
     assert cleared.root_path == ""
 
     db.close()
+
+
+def test_author_folder_in_collection(tmp_path):
+    root = tmp_path / "library"
+    author = root / "Lee Child"
+    author.mkdir(parents=True)
+    assert author_folder_in_collection(str(root), "Lee Child") == str(author)
+    assert author_folder_in_collection(str(root), "lee child") == str(author)
+    assert author_folder_in_collection(str(root), "Nobody") == ""
+    assert author_folder_in_collection("", "Lee Child") == ""
 
 
 def test_browse_start_directory_order(tmp_path):

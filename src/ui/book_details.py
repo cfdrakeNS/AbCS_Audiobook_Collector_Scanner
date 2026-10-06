@@ -386,6 +386,9 @@ class BookDetailsWindow(AccessibleDialog):
         self._combos_loaded = False
         self._in_edit_mode = False  # Track whether Book Details is currently in edit mode
         self._keep_edit_mode = bool(keep_edit_mode)
+        # Read date and Want to read are not on the Check Book Locations screen.
+        if self._keep_edit_mode:
+            self.ALLOWED_ALT_KEYS = self.ALLOWED_ALT_KEYS - {"R", "K"}
         self._first_dirty_widget = None  # Track first field that changed
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
@@ -1293,6 +1296,26 @@ class BookDetailsWindow(AccessibleDialog):
         bottom_grid.addWidget(path_label, 5, 0, label_align)
         bottom_grid.addLayout(path_fields, 5, 1)
 
+        self.errors_label = None
+        self.errors_edit = None
+        if self._keep_edit_mode:
+            self.errors_label = QLabel("Errors:")
+            self.errors_edit = QTextEdit()
+            self.errors_edit.setReadOnly(True)
+            self.errors_edit.setAccessibleName("Errors")
+            self.errors_edit.setAccessibleDescription(
+                "Why this book's location needs attention"
+            )
+            self.errors_edit.setMinimumHeight(60)
+            self.errors_edit.setStyleSheet(
+                "QTextEdit { background-color: palette(base); color: red; }"
+            )
+            self.errors_label.setBuddy(self.errors_edit)
+            bottom_grid.addWidget(
+                self.errors_label, 6, 0, Qt.AlignRight | Qt.AlignTop
+            )
+            bottom_grid.addWidget(self.errors_edit, 6, 1)
+
         self.listen_progress_edit = QLineEdit()
         self.listen_progress_edit.setReadOnly(True)
         self.listen_progress_edit.setFocusPolicy(Qt.StrongFocus)
@@ -1356,6 +1379,19 @@ class BookDetailsWindow(AccessibleDialog):
         read_fields_host.setLayout(read_fields)
         bottom_grid.addWidget(read_label, 2, 0, Qt.AlignRight | Qt.AlignVCenter)
         bottom_grid.addWidget(read_fields_host, 2, 1)
+        self.read_date_label = read_label
+        self.want_to_read_label = want_label
+        self.listen_progress_label = listen_label
+        if self._keep_edit_mode:
+            for widget in (
+                read_label,
+                read_fields_host,
+                listen_label,
+                self.listen_progress_edit,
+                self.clear_listen_progress_button,
+            ):
+                widget.setVisible(False)
+                widget.setFocusPolicy(Qt.NoFocus)
 
         cover_hold = QWidget()
         cover_row = QHBoxLayout(cover_hold)
@@ -1504,7 +1540,11 @@ class BookDetailsWindow(AccessibleDialog):
         self.setTabOrder(self.source_edit, self.added_edit)
         self.setTabOrder(self.added_edit, self.path_edit)
         self.setTabOrder(self.path_edit, self.browse_path_button)
-        self.setTabOrder(self.browse_path_button, self.new_button)
+        if self.errors_edit is not None:
+            self.setTabOrder(self.browse_path_button, self.errors_edit)
+            self.setTabOrder(self.errors_edit, self.new_button)
+        else:
+            self.setTabOrder(self.browse_path_button, self.new_button)
         self.setTabOrder(self.new_button, self.edit_button)
         self.setTabOrder(self.edit_button, self.save_button)
         self.setTabOrder(self.save_button, self.delete_button)
@@ -1891,7 +1931,12 @@ class BookDetailsWindow(AccessibleDialog):
         from src.accessibility.shortcuts import BOOK_DETAILS_SHORTCUTS
 
         callback_map = {}
+        hidden_on_location_fix = set()
+        if self._keep_edit_mode:
+            hidden_on_location_fix = {"read_date", "want_to_read_checkbox"}
         for key, (desc, attr) in BOOK_DETAILS_SHORTCUTS.items():
+            if attr in hidden_on_location_fix:
+                continue
             if attr == "show_help":
                 callback_map[attr] = self.on_show_shortcuts
             elif hasattr(self, attr):
@@ -2510,7 +2555,12 @@ class BookDetailsWindow(AccessibleDialog):
             if len(key) == 1 and key.isalpha()
         }
         rows = []
+        skip_keys = {"R", "K"} if self._keep_edit_mode else set()
+        for key in skip_keys:
+            alt_rows.pop(key, None)
         for key in self._F1_FIELD_ORDER:
+            if key in skip_keys:
+                continue
             if key in alt_rows:
                 rows.append((f"Alt+{key}", alt_rows.pop(key)))
                 if key == "S":
@@ -2719,6 +2769,7 @@ class BookDetailsWindow(AccessibleDialog):
             else:
                 self.format_combo.setCurrentIndex(-1)
             self.path_edit.setText(self.book.path or "")
+            self._show_location_error()
             self.source_edit.setText(self.book.source or "")
             if self.book.date_added:
                 if isinstance(self.book.date_added, str):
@@ -3492,6 +3543,28 @@ class BookDetailsWindow(AccessibleDialog):
             return
         self._update_preview_button_state()
 
+    def _show_location_error(self) -> None:
+        """Show the Check Book Locations error for the book on this screen."""
+        edit = getattr(self, "errors_edit", None)
+        if edit is None:
+            return
+        text = ""
+        parent = self.owner_widget
+        book_id = getattr(self.book, "book_id", None)
+        for row in getattr(parent, "_scan_rows_all", None) or []:
+            if getattr(row, "book_id", None) != book_id:
+                continue
+            text = (getattr(row, "reason", "") or "").strip()
+            if not text and (
+                getattr(row, "problem", "") == "incorrect"
+                or getattr(row, "status", "") == "Incorrect"
+            ):
+                text = "Incorrect"
+            break
+        edit.setPlainText(text)
+        if text:
+            edit.setAccessibleDescription(text)
+
     def on_browse_path(self):
         """Pick a folder or audio file for books.path (edit/new mode only)."""
         from pathlib import Path
@@ -3514,11 +3587,20 @@ class BookDetailsWindow(AccessibleDialog):
         except TypeError:
             prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
         prefs = (prefs or "").strip()
+        root = self._preview_collection_root()
         start_dir = browse_start_directory(
             current,
-            self._preview_collection_root(),
+            root,
             prefs,
         )
+        if self._keep_edit_mode:
+            from src.core.library_root import author_folder_in_collection
+
+            author_dir = author_folder_in_collection(
+                root, self._preview_author_name()
+            )
+            if author_dir:
+                start_dir = author_dir
 
         current_p = Path(current) if current else None
         if current_p is not None and current_p.is_file():

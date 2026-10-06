@@ -246,6 +246,83 @@ def test_page_navigation_focuses_title(temp_db, ui_scaler, theme_manager, monkey
     window.close()
 
 
+def test_location_fix_screen_shows_error_and_hides_unused_fields(
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch
+):
+    from types import SimpleNamespace
+
+    from PySide6.QtWidgets import QWidget
+
+    books = _ensure_sample_books(temp_db, count=2)
+    host = QWidget()
+    host._scan_rows_all = [
+        SimpleNamespace(
+            book_id=books[0].book_id,
+            reason="Author not found in C:/library",
+            problem="author",
+            status="Missing",
+        ),
+        SimpleNamespace(
+            book_id=books[1].book_id,
+            reason="",
+            problem="incorrect",
+            status="Incorrect",
+        ),
+    ]
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        books_list=books,
+        current_index=0,
+        parent=host,
+        theme_manager=theme_manager,
+        keep_edit_mode=True,
+    )
+    window.show()
+    assert window.errors_edit.toPlainText() == "Author not found in C:/library"
+    assert not window.read_date.isVisible()
+    assert not window.want_to_read_checkbox.isVisible()
+    assert not window.listen_progress_edit.isVisible()
+    assert not window.clear_listen_progress_button.isVisible()
+    shortcut_keys = [item[0] for item in window._shortcut_help_rows()]
+    assert "Alt+R" not in shortcut_keys
+    assert "Alt+K" not in shortcut_keys
+
+    window.on_next()
+    assert window.errors_edit.toPlainText() == "Incorrect"
+
+    author_name = books[0].author_name
+    root = tmp_path / "library"
+    author_dir = root / author_name
+    author_dir.mkdir(parents=True)
+    collections = CollectionQueries(temp_db)
+    collection = collections.get_all(active_only=True)[0]
+    collection.root_path = str(root)
+    collections.update(collection)
+    books[0].collection_id = collection.collection_id
+    BookQueries(temp_db).update(books[0])
+    window.book = BookQueries(temp_db).get_by_id(books[0].book_id)
+    window.books_list[0] = window.book
+    window.current_index = 0
+    window.load_book_data()
+    window.on_edit_mode()
+    window.path_edit.setText(str(tmp_path / "missing-book"))
+    captured = {}
+
+    def fake_directory(_parent, _title, start):
+        captured["start"] = start
+        return ""
+
+    monkeypatch.setattr(
+        "src.ui.book_details.QFileDialog.getExistingDirectory", fake_directory
+    )
+    window.on_browse_path()
+    assert captured["start"] == str(author_dir)
+    window.close()
+    host.deleteLater()
+
+
 def test_keep_edit_mode_stays_in_edit_after_paging(temp_db, ui_scaler, theme_manager):
     books = _ensure_sample_books(temp_db, count=2)
 

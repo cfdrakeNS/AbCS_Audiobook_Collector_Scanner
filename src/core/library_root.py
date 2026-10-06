@@ -534,6 +534,16 @@ def path_is_under_root(path: str, root: str) -> bool:
     return _is_under(Path(path_text), Path(root_text))
 
 
+def author_folder_in_collection(collection_root: str, author_name: str) -> str:
+    """Return the author folder under the collection folder, or empty."""
+    root_text = (collection_root or "").strip()
+    author = (author_name or "").strip()
+    if not root_text or not author or not folder_exists(root_text):
+        return ""
+    found = _child_dir(Path(root_text), author)
+    return str(found) if found is not None else ""
+
+
 def browse_start_directory(
     current_path: str,
     collection_root: str = "",

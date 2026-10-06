@@ -896,12 +896,10 @@ class PathHealthWindow(AccessibleDialog):
                 error_display = "Book not found"
             else:
                 error_display = row.status
-            # Focus lands on Title, so the full summary lives there.
+            # The error is only on the Error column. Title and Author stay quiet.
             accessible = {
-                self.COL_AUTHOR: f"{row.author}, {error_display}",
-                self.COL_TITLE: (
-                    f"{row.title}, by {row.author}, {error_display}, path {path_display}"
-                ),
+                self.COL_AUTHOR: row.author,
+                self.COL_TITLE: f"{row.title}, by {row.author}",
                 self.COL_ERROR: error_display,
                 self.COL_PATH: f"path {path_display}",
             }
