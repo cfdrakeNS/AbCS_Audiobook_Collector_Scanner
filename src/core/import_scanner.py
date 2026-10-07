@@ -182,6 +182,9 @@ class ImportScanner:
             )
             if series_name:
                 book["series"] = series_name
+                self._set_series_number_once(
+                    book, self._shared_leading_file_number(files)
+                )
             elif ambiguous_reason:
                 from src.core.validator import ImportValidator
 
@@ -199,6 +202,9 @@ class ImportScanner:
             )
             if series_name:
                 book["series"] = series_name
+                self._set_series_number_once(
+                    book, self._leading_series_number(title_hint)
+                )
             elif ambiguous_reason:
                 from src.core.validator import ImportValidator
 
@@ -349,6 +355,32 @@ class ImportScanner:
         if not normalized:
             return []
         return [part for part in normalized.split(os.sep) if part]
+
+    @staticmethod
+    def _leading_series_number(name: str):
+        """Series number from a leading index such as ``04 - Title``, or None."""
+        from src.utils.text_utils import _looks_like_year, series_number_for_storage
+
+        match = re.match(r"^(\d+(?:\.\d+)?)(?=$|[\s\-_.)\]])", (name or "").strip())
+        if not match or _looks_like_year(match.group(1)):
+            return None
+        return series_number_for_storage(match.group(1))
+
+    @classmethod
+    def _shared_leading_file_number(cls, files: List[str]):
+        """Leading number shared by every file stem; differing numbers are track indexes."""
+        numbers = {
+            cls._leading_series_number(os.path.splitext(os.path.basename(path))[0])
+            for path in files
+        }
+        if len(numbers) != 1:
+            return None
+        return numbers.pop()
+
+    @staticmethod
+    def _set_series_number_once(book: Dict, number) -> None:
+        if number is not None and book.get("series_number") in (None, ""):
+            book["series_number"] = number
 
     @staticmethod
     def _strip_leading_folder_prefix(folder_name: str) -> str:

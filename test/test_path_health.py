@@ -765,9 +765,23 @@ def test_details_close_refreshes_rows_without_full_rescan(
     window.close()
 
 
+@pytest.fixture
+def fresh_db(tmp_path):
+    """Empty schema database; the local library copy changes and makes scans slow."""
+    from src.database.connection import DatabaseManager
+
+    db = DatabaseManager(str(tmp_path / "path_health_fresh.db"))
+    db.initialize_database()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def test_path_health_window_all_collections_and_scan_only_on_button(
-    temp_db, ui_scaler, theme_manager, qtbot, tmp_path
+    fresh_db, ui_scaler, theme_manager, qtbot, tmp_path
 ):
+    temp_db = fresh_db
     from src.database.models import Book, Collection
     from src.database.queries import BookQueries, CollectionQueries
     from src.ui.import_progress_window import ImportProgressWindow
@@ -799,15 +813,6 @@ def test_path_health_window_all_collections_and_scan_only_on_button(
         window.filter_combo.findData(FILTER_ALL)
     )
 
-    # temp_db may copy a large local library; keep All-collections scan tiny.
-    real_get_all = window.book_queries.get_all
-
-    def limited_get_all(filter_criteria=None, **kwargs):
-        books = real_get_all(filter_criteria, **kwargs)
-        return [b for b in books if b.title in ("Empty A", "Missing B")]
-
-    window.book_queries.get_all = limited_get_all  # type: ignore[method-assign]
-
     progress_shown: list = []
     real_show = ImportProgressWindow.show
 
@@ -822,14 +827,14 @@ def test_path_health_window_all_collections_and_scan_only_on_button(
         window.run_scan()
     finally:
         ImportProgressWindow.show = real_show  # type: ignore[method-assign]
-        window.book_queries.get_all = real_get_all  # type: ignore[method-assign]
 
     assert progress_shown
     assert {row.title for row in window._rows} == {"Empty A", "Missing B"}
     window.close()
 
 
-def test_path_health_window_lists_problems(temp_db, ui_scaler, theme_manager, qtbot, tmp_path):
+def test_path_health_window_lists_problems(fresh_db, ui_scaler, theme_manager, qtbot, tmp_path):
+    temp_db = fresh_db
     from src.database.models import Book
     from src.database.queries import BookQueries, CollectionQueries
     from src.ui.import_progress_window import ImportProgressWindow
@@ -905,8 +910,9 @@ def test_path_health_window_lists_problems(temp_db, ui_scaler, theme_manager, qt
 
 
 def test_path_health_window_cancel_keeps_partial(
-    temp_db, ui_scaler, theme_manager, qtbot, tmp_path
+    fresh_db, ui_scaler, theme_manager, qtbot, tmp_path
 ):
+    temp_db = fresh_db
     from src.database.models import Book
     from src.database.queries import BookQueries, CollectionQueries
     from src.ui.import_progress_window import ImportProgressWindow

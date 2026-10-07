@@ -38,13 +38,14 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 - For libraries where **audio files sit directly in the series folder** — not in per-book subfolders.
 - Path pattern: `Author/Series/Files` (three levels under the scan root).
 - The **series folder name** becomes the series; each file (or album group) in that folder is one book.
+- If the book file name starts with a number (for example `03 My Book.m4b`), that number is stored as the **series number**. When a book has several files, the number is used only if every file starts with the same number; different numbers such as `01`, `02`, `03` are treated as track numbers and ignored.
 - Skips series assignment and adds a **warning** when:
   - The folder path is missing or ambiguous
   - The series folder name matches the author name
   - The parent folder does not match the book's author tag
 - Author fallback prefers the **parent** folder name (the author level).
 
-**Example:** `Tolkien/Lord of the Rings/Fellowship.m4b` → series **Lord of the Rings**, author from tag or parent folder **Tolkien**.
+**Example:** `Tolkien/Lord of the Rings/Fellowship.m4b` → series **Lord of the Rings**, author from tag or parent folder **Tolkien**. With `Tolkien/Lord of the Rings/01 - Fellowship.m4b`, series number **1** is also stored.
 
 **Not for:** `Author/Series/Book/Files` layouts where each book has its own subfolder — use **Series From Directory (Nested Books)** instead. If you use this scenario on nested folders, series assignment is skipped with a warning.
 
@@ -54,12 +55,13 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 - For libraries where each series has its own folder and **each book has a subfolder** under that series (`Author/Series/Book/Files`).
 - Standalone books directly under the author (`Author/Book/Files`) are imported **without** a series.
 - Series is taken from the first folder under the author; title fallback (when the title tag is missing) uses the book subfolder name and strips leading numbers (for example `1- Rules of Prey` → **Rules of Prey**).
+- If the book folder name starts with a number (for example `1- Rules of Prey`), that number is stored as the **series number**. Track file names inside the book folder are not used for the number.
 - Extra subfolders under a book (for example `CD-01`) are ignored for series assignment; the book folder name is still used for title fallback.
 - Skips series assignment and adds a **warning** when the author tag cannot be matched in the folder path or the path is too shallow.
 
-**Example:** `John Sandford/Lucas Deavenport Series/1- Rules of Prey/01 Rules of Prey.mp3` → series **Lucas Deavenport Series**, title **Rules of Prey**, author **John Sandford**.
+**Example:** `John Sandford/Lucas Deavenport Series/1- Rules of Prey/01 Rules of Prey.mp3` → series **Lucas Deavenport Series**, series number **1**, title **Rules of Prey**, author **John Sandford**.
 
-**Nested series example:** `Michael R. Stern/Quantum Touch/1 Storm Portal/01 Storm Portal.m4b` → series **Quantum Touch**, title **Storm Portal**, author **Michael R. Stern**.
+**Nested series example:** `Michael R. Stern/Quantum Touch/1 Storm Portal/01 Storm Portal.m4b` → series **Quantum Touch**, series number **1**, title **Storm Portal**, author **Michael R. Stern**.
 
 **Standalone example:** `John Sandford/Dead Watch/01 Dead Watch.mp3` → no series, title **Dead Watch**, author **John Sandford**.
 

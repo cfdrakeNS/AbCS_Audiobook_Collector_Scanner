@@ -290,6 +290,112 @@ def test_nested_title_from_folder_skipped_when_title_fallback_disabled():
     assert not any(str(err).startswith("F:") for err in updated["errors"])
 
 
+def _flat_book(*file_names: str) -> dict:
+    folder = r"C:\Library\Test Author\Great Series"
+    return {
+        "title": "Book One",
+        "author": "Test Author",
+        "series": "",
+        "folder": folder,
+        "files": [rf"{folder}\{name}" for name in file_names],
+        "errors": [],
+    }
+
+
+@pytest.mark.parametrize(
+    "file_names, expected_number",
+    [
+        (("01 - Book One.mp3",), 1),
+        (("6.5 - Book One.mp3",), 6.5),
+        (("Book One.mp3",), None),
+        (("1984 Book One.mp3",), None),
+        (("03 Part A.mp3", "03 Part B.mp3"), 3),
+        (("01 Book One.mp3", "02 Book One.mp3"), None),
+    ],
+    ids=[
+        "leading_number",
+        "leading_decimal",
+        "no_leading_number",
+        "year_not_number",
+        "files_share_number",
+        "track_numbers",
+    ],
+)
+def test_series_from_directory_leading_file_number(file_names, expected_number):
+    updated = _apply_scenario_2(_flat_book(*file_names))
+
+    assert updated["series"] == "Great Series"
+    assert updated.get("series_number") == expected_number
+
+
+def test_series_from_directory_keeps_existing_series_number():
+    book = _flat_book("01 - Book One.mp3")
+    book["series_number"] = 5
+
+    updated = _apply_scenario_2(book)
+
+    assert updated["series_number"] == 5
+
+
+def test_series_from_directory_skipped_series_sets_no_number():
+    book = _flat_book("01 - Book One.mp3")
+    book["author"] = "Other Author"
+
+    updated = _apply_scenario_2(book)
+
+    assert updated["series"] == ""
+    assert "series_number" not in updated
+
+
+@pytest.mark.parametrize(
+    "folder, file_name, expected_series, expected_number",
+    [
+        (
+            r"F:\Audio Books\John Sandford\Lucas Deavenport Series\1- Rules of Prey",
+            "01 Rules of Prey.mp3",
+            "Lucas Deavenport Series",
+            1,
+        ),
+        (
+            r"F:\Audio Books\John Sandford\Kidd And LuEllen Book"
+            r"\04 - The Hanged Man's Song\CD-01",
+            "07 The Hanged Man's Song.m4b",
+            "Kidd And LuEllen Book",
+            4,
+        ),
+        (
+            r"F:\Audio Books\John Sandford\Lucas Deavenport Series\Rules of Prey",
+            "01 Rules of Prey.mp3",
+            "Lucas Deavenport Series",
+            None,
+        ),
+        (
+            r"F:\Audio Books\John Sandford\Dead Watch",
+            "01 Dead Watch.mp3",
+            "",
+            None,
+        ),
+    ],
+    ids=["book_folder_number", "cd_subfolder", "no_folder_number", "standalone"],
+)
+def test_nested_series_number_from_book_folder(
+    folder, file_name, expected_series, expected_number
+):
+    book = {
+        "title": "Some Title",
+        "author": "John Sandford",
+        "series": "",
+        "folder": folder,
+        "files": [rf"{folder}\{file_name}"],
+        "errors": [],
+    }
+
+    updated = _apply_nested_scenario(book)
+
+    assert updated["series"] == expected_series
+    assert updated.get("series_number") == expected_number
+
+
 def _apply_scenario_3(file_name: str, title: str):
     scanner = ImportScanner()
     scanner.configure(

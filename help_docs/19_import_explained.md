@@ -110,8 +110,8 @@ After all files are read, the app processes each grouped book through your **imp
 | Scenario | What the app does with folder names |
 |----------|-------------------------------------|
 | **Mass standard** | Uses tags only; standard fallbacks and corrections apply |
-| **Series from directory** | Series name from the book's folder; author from the parent folder |
-| **Series from directory (nested)** | Series and title from nested folders after the author segment |
+| **Series from directory** | Series name from the book's folder; author from the parent folder. A leading number on the book file name, such as 03, is stored as the series number |
+| **Series from directory (nested)** | Series and title from nested folders after the author segment. A leading number on the book folder name, such as `1- Title`, is stored as the series number |
 | **Series from filename** | Series from text inside `(…)` in the filename. A trailing number such as 04 or 6.5 is stored as the series number. The title is left without a suffix |
 | **Single item** | One file or folder treated as one book |
 

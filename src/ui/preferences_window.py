@@ -127,11 +127,14 @@ class PreferencesWindow(AccessibleDialog):
         "series_from_directory": (
             "Audio files live directly in the series folder (Author/Series/Files). "
             "Not for book subfolders under the series. "
+            "If the book file name starts with a number, such as 03, Series # is stored. "
             "If the path does not match author, series is skipped with a warning."
         ),
         "series_from_directory_nested": (
             "Each book has its own subfolder under the series "
             "(Author/Series/Book/Files). "
+            "If the book folder name starts with a number, such as 1- Title, "
+            "Series # is stored. "
             "Standalone books at Author/Book/Files get no series. "
             "Use this when series folders contain per-book folders, not loose files."
         ),
