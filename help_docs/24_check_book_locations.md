@@ -31,7 +31,7 @@
 ## Check book locations
 
 1. Open **Manage → Check Book Locations** (**Alt+M**, then **L**).
-2. Choose **Collection** (**Alt+C**): **All Collections** (every book) or one collection. In Collection and Filter. 
+2. Choose **Collection** (**Alt+C**): **All Collections** (every book) or one collection. In Collection and Filter, plain Up and Down arrows do nothing (a beep); press **Alt+Down** to open the list, then Enter to choose.
 3. Choose **Filter** (**Alt+F**):
   - **All** (default) — every problem
   - **Author not found** — the author folder is not in the collection folder. The Error column says **Author not found in** and the collection folder path.
@@ -42,10 +42,10 @@
 5. If a scanned collection has no collection folder set, or the folder is missing or has no audiobook files, a warning explains that books cannot be found without it and how to fix it in Collection Manager. Press Enter to close the warning; the scan continues.
 6. While scanning, a progress window shows **Author not found**, **Book not found**, **Corrected**, **Incorrect**, and **Valid** counts plus how many books are done and elapsed time. Escape cancels (with confirm) and keeps results found so far.
 7. When the scan finishes, the progress window closes and a message says **Check completed** with an **OK** button. Paths found in the collection folder are saved. The status bar starts with how many were corrected, for example "12 book paths corrected." Press **Alt+/** to hear it. Corrected books are not listed. If you canceled, there is no completion message; the status bar reports the partial result.
-8. The table lists Author, Title, Error, and Path. The **Error** column says **Author not found in** the collection folder, **Book not found in author**, **Series not found in author**, that the collection folder is missing, or **Incorrect**. Blank paths show as `(empty)`.. The Error cell reads the location problem. The Path cell reads only the path.
+8. The table lists Author, Title, Error, and Path. The **Error** column says **Author not found in** the collection folder, **Book not found in author**, **Series not found in author**, that the collection folder is missing, or **Incorrect**. Blank paths show as `(empty)`. The Error cell reads the location problem. The Path cell reads only the path.
 9. To fix one book, focus a row (**Alt+L**) and press **Enter** (or double-click). Book Details opens in edit mode. **Errors** shows the same location problem as the list, in red. Use **Browse** (**Alt+B**) or type the path, then Save. When the author folder is in the collection folder, Browse opens in that author folder. **Page Up** and **Page Down** move through the listed books, and Save stays available on each one.
 10. When you close Book Details after a save, Check Book Locations re-checks only the books you edited and refreshes the list; it does not run a full scan. A book that is no longer a problem leaves the list, and focus moves to the next book (or the last book, if you fixed the last row). Export the list with **Export** (**Alt+X**) if needed; the CSV includes the reason for missing books.
-11. Press **Escape** to close and return to the main window.S
+11. Press **Escape** to close and return to the main window.
 
 
 
@@ -68,6 +68,7 @@
 | Alt+M, L            | Open Check Book Locations (Manage menu)        |
 | Alt+C               | Collection                                     |
 | Alt+F               | Filter                                         |
+| Alt+Down            | Open the Collection or Filter list             |
 | Alt+I               | Info instructions at top of window             |
 | Alt+S               | Scan                                           |
 | Alt+L               | Jump to list                                   |

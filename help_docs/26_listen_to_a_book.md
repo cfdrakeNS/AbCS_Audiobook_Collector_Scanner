@@ -22,7 +22,7 @@ Press **Alt+Left** or **Alt+Right** to rewind or move forward 30 seconds.
 
 The time display and the seek slider both move through the current file. On either one, Left and Right arrows move five seconds, Page Up and Page Down move thirty seconds, Home goes to the start of the file, and End goes to the end. Time is read when you seek, not while the book plays.
 
-Press **Alt+P** or **Alt+N** to move to the previous or next file. Playback speed is one setting for every book. On Speed (**Alt+S**).
+Press **Alt+P** or **Alt+N** to move to the previous or next file. Playback speed is one setting for every book. On Speed (**Alt+S**), plain Up and Down arrows do nothing (a beep); press **Alt+Down** or **Space** to open the list, then Enter to choose.
 
 ## Listening position
 
