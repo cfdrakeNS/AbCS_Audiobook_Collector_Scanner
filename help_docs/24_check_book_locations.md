@@ -20,6 +20,8 @@
   1. The author folder: a title folder, then a single audio file named for the title.
   2. When the book has a series: the series folder inside the author folder, the same way.
   3. When the book has no series: one folder down inside the author folder (used only if exactly one matches).
+  4. When the book has a series but is not in the series folder: one folder down inside the author folder, the same way. A book found this way is still listed, under **Book not found**, and its path is not saved. The Error column says what was not found and ends with **found in** and the folder where the book is. Move the book into its series folder, or fix the path or series in Book Details.
+- When the author has several names separated by commas, such as `James Patterson, Maxine Paetro`, a folder with the full name is tried first, then a folder for the first author (`James Patterson`).
 - A stored path from an old drive letter or moved folder that still matches a folder under the collection folder (for example a USB drive that now has a different letter) counts as **Valid**. The stored path is left as it is, so the drive stays portable.
 - A stored path that exists outside the collection folder is also searched for. If the book is in the collection folder, the path is corrected. If not, and Listen can play the stored path, the book is **Valid** and is not listed. It is **Incorrect** only when that outside path exists and Listen cannot play it.
 - Title folders and files may have a number before or after the title, such as `3 - Silver Lantern` or `4 Copper Bridge`, or a series tag at the end, such as `2 Glass Harbor(Tide Runner 02).m4b`. A tag with no number, such as `(Unabridged)`, is ignored. Listen uses the same rules: see **Listen to a Book**.

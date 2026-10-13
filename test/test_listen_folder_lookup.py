@@ -319,12 +319,18 @@ def test_unnamed_series_folder_found_when_book_has_no_series(tmp_path):
     assert playlist.found_path == str(book_dir)
 
 
-def test_unnamed_series_folder_not_searched_when_book_has_series(tmp_path):
-    _audio(tmp_path / "John Sandford" / "Virgil Flowers Series" / "4 Bad Blood")
+def test_unnamed_series_folder_found_but_flagged_when_book_has_series(tmp_path):
+    from src.core.library_root import locate_book_under_collection
 
-    assert find_book_under_collection(
+    book_dir = tmp_path / "John Sandford" / "Virgil Flowers Series" / "4 Bad Blood"
+    _audio(book_dir)
+
+    lookup = locate_book_under_collection(
         str(tmp_path), "John Sandford", "Bad Blood", "Virgil Flowers"
-    ) == ""
+    )
+
+    assert lookup.path == str(book_dir)
+    assert lookup.code == "series_not_found"
 
 
 def test_same_title_in_two_subfolders_is_not_guessed(tmp_path):
@@ -375,6 +381,67 @@ def test_author_missing_names_collection_folder(tmp_path):
     assert playlist.browse_dir == str(tmp_path)
 
 
+MULTI_AUTHOR = "James Patterson, Maxine Paetro"
+
+
+def test_multi_author_finds_first_author_folder(tmp_path):
+    book_dir = tmp_path / "James Patterson" / "1st to Die"
+    track = _audio(book_dir)
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name=MULTI_AUTHOR,
+        book_title="1st to Die",
+    )
+
+    assert playlist.error == ""
+    assert playlist.files == (track,)
+    assert playlist.found_path == str(book_dir)
+
+
+def test_multi_author_full_name_folder_wins(tmp_path):
+    _audio(tmp_path / "James Patterson" / "1st to Die")
+    full_dir = tmp_path / MULTI_AUTHOR / "1st to Die"
+    _audio(full_dir)
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name=MULTI_AUTHOR,
+        book_title="1st to Die",
+    )
+
+    assert playlist.found_path == str(full_dir)
+
+
+def test_multi_author_missing_names_both_attempts(tmp_path):
+    _audio(tmp_path / "Lee Child" / "Killing Floor")
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name=MULTI_AUTHOR,
+        book_title="1st to Die",
+    )
+
+    assert playlist.error == (
+        f'Author folder "{MULTI_AUTHOR}" or "James Patterson" was not found '
+        f"in the collection folder - {tmp_path}."
+    )
+
+
+def test_author_folder_in_collection_uses_first_author(tmp_path):
+    from src.core.library_root import author_folder_in_collection
+
+    author_dir = tmp_path / "James Patterson"
+    author_dir.mkdir()
+
+    assert author_folder_in_collection(str(tmp_path), MULTI_AUTHOR) == str(
+        author_dir
+    )
+
+
 def test_missing_collection_folder_says_how_to_fix(tmp_path):
     missing_root = tmp_path / "Moved Drive"
 
@@ -415,7 +482,7 @@ def test_collection_folder_without_audio_reports_author_folder(tmp_path):
 
 def test_series_missing_names_author_folder(tmp_path):
     author_dir = tmp_path / "Author"
-    _audio(author_dir / "Other Saga" / "Book One")
+    _audio(author_dir / "Other Saga" / "Book Two")
 
     playlist = resolve_preview_playlist(
         "",
@@ -430,6 +497,39 @@ def test_series_missing_names_author_folder(tmp_path):
         f"in the collection folder - {author_dir}."
     )
     assert playlist.browse_dir == str(author_dir)
+
+
+def test_series_book_in_other_author_subfolder_plays_without_saving(tmp_path):
+    book_dir = tmp_path / "Author" / "Other Saga" / "Book One"
+    track = _audio(book_dir)
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name="Author",
+        book_title="Book One",
+        series_name="Saga",
+    )
+
+    assert playlist.error == ""
+    assert playlist.files == (track,)
+    assert playlist.found_path == ""
+
+
+def test_series_book_missing_from_series_folder_found_in_other_subfolder(tmp_path):
+    (tmp_path / "Author" / "Saga").mkdir(parents=True)
+    track = _audio(tmp_path / "Author" / "Other Saga" / "Book One")
+
+    playlist = resolve_preview_playlist(
+        "",
+        collection_root=str(tmp_path),
+        author_name="Author",
+        book_title="Book One",
+        series_name="Saga",
+    )
+
+    assert playlist.files == (track,)
+    assert playlist.found_path == ""
 
 
 def _fake_player(monkeypatch):

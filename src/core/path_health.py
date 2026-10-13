@@ -160,16 +160,16 @@ def _classify_book_path(
     def check_on_disk(on_disk: str) -> _PathCheck:
         if root and not path_is_under_root(on_disk, root):
             # Found under the collection folder: fix the path instead of listing it.
-            found = locate_book_under_collection(
+            lookup = locate_book_under_collection(
                 root,
                 author_name,
                 book_title,
                 series_name,
                 collection_name=collection_name,
                 series_number=series_number,
-            ).path
-            if found:
-                return _PathCheck(STATUS_RESOLVED, resolved_path=found)
+            )
+            if lookup.path and not lookup.code:
+                return _PathCheck(STATUS_RESOLVED, resolved_path=lookup.path)
             # Listen plays this path. Do not list it as Incorrect.
             if path_has_playable_audio(on_disk):
                 return _PathCheck(STATUS_OK)
@@ -189,6 +189,20 @@ def _classify_book_path(
         collection_name=collection_name,
         series_number=series_number,
     )
+    if location.path and location.code:
+        # Series book found in another author subfolder: Listen plays it, but
+        # it is not where it belongs, so list it and do not offer the path.
+        problem, reason = _miss_wording(
+            location.code,
+            author=author_name,
+            browse_dir=location.browse_dir,
+            fallback="",
+        )
+        return _PathCheck(
+            STATUS_EMPTY if not text else STATUS_MISSING,
+            reason=f"{reason}; found in {location.path}",
+            problem=problem,
+        )
     if location.path and not location.found_path:
         # The stored path was remapped onto the current folder (for example a
         # USB drive with a new letter). Keep it as stored so it stays portable.

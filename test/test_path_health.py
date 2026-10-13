@@ -415,6 +415,33 @@ def test_series_tag_file_is_corrected(tmp_path):
     assert rows[0].resolved_path == str(track)
 
 
+def test_series_book_in_other_author_subfolder_is_still_listed(tmp_path):
+    root = tmp_path / "library"
+    author_dir = root / "James Patterson"
+    other = author_dir / "Women's Murder Club Books" / "1st to Die"
+    other.mkdir(parents=True)
+    (other / "01.mp3").write_bytes(b"x")
+    books = [
+        SimpleNamespace(
+            book_id=1,
+            title="1st to Die",
+            author_name="James Patterson",
+            series_name="Women's Murder Club",
+            path="",
+            collection_id=1,
+            collection_name="Lib",
+        )
+    ]
+    rows = list(iter_book_path_checks(books, collection_root=str(root)))
+    assert rows[0].status == STATUS_EMPTY
+    assert rows[0].resolved_path == ""
+    assert rows[0].reason == (
+        f"Series not found in author James Patterson - {author_dir}; "
+        f"found in {other}"
+    )
+    assert row_matches_filter(rows[0].status, FILTER_BOOK, rows[0].problem)
+
+
 def test_missing_row_says_collection_folder_missing(tmp_path, monkeypatch):
     books = [
         SimpleNamespace(

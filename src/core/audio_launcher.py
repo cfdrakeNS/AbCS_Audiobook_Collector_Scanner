@@ -105,6 +105,10 @@ def locate_book_path(
             collection_name=collection_name,
             series_number=series_number,
         )
+        if lookup.path and lookup.code:
+            return _BookLocation(
+                path=lookup.path, browse_dir=lookup.browse_dir, code=lookup.code
+            )
         if lookup.path:
             return _BookLocation(path=lookup.path, found_path=lookup.path)
         if lookup.message:

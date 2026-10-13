@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePath, PureWindowsPath
 from typing import Callable, Iterable
 
@@ -215,6 +215,21 @@ def _child_dir(parent: Path, name: str) -> Path | None:
     return None
 
 
+def _author_dir(root: Path, author: str) -> tuple[Path | None, list[str]]:
+    """Author folder for the full name, else for the first comma-separated author.
+
+    Returns the folder (or None) and the names tried, in order.
+    """
+    tried = [author]
+    found = _child_dir(root, author)
+    if found is None and "," in author:
+        first = author.split(",", 1)[0].strip()
+        if first and _name_key(first) != _name_key(author):
+            tried.append(first)
+            found = _child_dir(root, first)
+    return found, tried
+
+
 def _audio_extensions() -> set[str]:
     return {ext.lower() for ext in TagReader.SUPPORTED_EXTENSIONS}
 
@@ -378,6 +393,10 @@ class CollectionLookup:
     ``path`` is set on a match. On a miss, ``message`` says which folder was
     missing and ``browse_dir`` is the closest existing folder to start a
     Browse from. Both stay empty when no search ran.
+
+    A series book found in another author subfolder has ``path`` and the
+    series miss ``code`` both set: Listen can play it, but Check Book
+    Locations still lists it and the path is not saved.
     """
 
     path: str = ""
@@ -404,8 +423,9 @@ def locate_book_under_collection(
     the collection folder's top level, the author folder, and the series
     folder are listed; the library tree is not scanned.
     Title folders may carry a series index (``03 - Title``, ``Title - 03``).
-    When the book has no series, one level of subfolders under the author is
-    also checked, and only a single match counts.
+    One level of subfolders under the author is also checked when the book has
+    no series, or has one but is not in the series folder; only a single match
+    counts.
     """
     root_text = (collection_root or "").strip()
     author = (author_name or "").strip()
@@ -425,10 +445,11 @@ def locate_book_under_collection(
             ),
             code="collection_missing",
         )
-    author_dir = _child_dir(root, author)
+    author_dir, tried = _author_dir(root, author)
     if author_dir is None:
+        names = " or ".join(f'"{name}"' for name in tried)
         return CollectionLookup(
-            message=f'Author folder "{author}" was not found in {where} - {root}.',
+            message=f"Author folder {names} was not found in {where} - {root}.",
             browse_dir=str(root),
             code="author_not_found",
         )
@@ -472,9 +493,17 @@ def locate_book_under_collection(
         return CollectionLookup(path=str(found))
     if series:
         if series_dir is None:
-            return series_missing()
-        found = title_in(series_dir)
-        return CollectionLookup(path=str(found)) if found else title_missing(series_dir)
+            miss = series_missing()
+        else:
+            found = title_in(series_dir)
+            if found is not None:
+                return CollectionLookup(path=str(found))
+            miss = title_missing(series_dir)
+        if title:
+            found = _title_in_subfolders(author_dir, title, series_number)
+            if found is not None:
+                return replace(miss, path=str(found))
+        return miss
     if title:
         found = _title_in_subfolders(author_dir, title, series_number)
         if found is not None:
@@ -540,7 +569,7 @@ def author_folder_in_collection(collection_root: str, author_name: str) -> str:
     author = (author_name or "").strip()
     if not root_text or not author or not folder_exists(root_text):
         return ""
-    found = _child_dir(Path(root_text), author)
+    found, _tried = _author_dir(Path(root_text), author)
     return str(found) if found is not None else ""
 
 
