@@ -344,6 +344,84 @@ def test_unchecked_collection_action_does_not_change_filter(temp_db, main_window
     assert window.current_filter.collection_id == collection_id
 
 
+def _confirm_delete(monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    monkeypatch.setattr(
+        "src.ui.main_window.exec_styled_message_box",
+        lambda *args, **kwargs: QMessageBox.Yes,
+    )
+
+
+def _delete_shown_books(window: MainWindow) -> None:
+    window.selected_book_ids = {book.book_id for book in window.books}
+    window.on_delete_clicked()
+
+
+def test_delete_keeps_collection_when_it_still_has_books(
+    temp_db, main_window, monkeypatch
+):
+    """Deleting the last visible book keeps the collection if hidden books remain."""
+    from src.database.models import Book
+    from src.database.queries import BookQueries
+
+    _confirm_delete(monkeypatch)
+    collection_id = CollectionQueries(temp_db).insert(
+        Collection(name="Delete Keep Collection", active=True)
+    )
+    books = BookQueries(temp_db)
+    books.insert(Book(title="Delete Keep Unread", collection_id=collection_id))
+    read_id = books.insert(
+        Book(
+            title="Delete Keep Read",
+            collection_id=collection_id,
+            read_date=date(2024, 1, 1),
+        )
+    )
+
+    window = main_window
+    _trigger_collection_filter(window, collection_id)
+    _trigger_read_filter(window, "Unread")
+    assert [book.title for book in window.books] == ["Delete Keep Unread"]
+
+    _delete_shown_books(window)
+
+    assert window.current_filter.collection_id == collection_id
+    assert window.current_filter.read_filter == "All"
+    assert [book.book_id for book in window.books] == [read_id]
+
+
+def test_delete_switches_to_all_collections_when_collection_is_empty(
+    temp_db, main_window, monkeypatch
+):
+    """Deleting the last book in a collection shows All Collections."""
+    from src.database.models import Book
+    from src.database.queries import BookQueries
+
+    _confirm_delete(monkeypatch)
+    collection_queries = CollectionQueries(temp_db)
+    collection_id = collection_queries.insert(
+        Collection(name="Delete Empty Collection", active=True)
+    )
+    other_id = collection_queries.insert(
+        Collection(name="Delete Other Collection", active=True)
+    )
+    books = BookQueries(temp_db)
+    books.insert(Book(title="Delete Empty Only", collection_id=collection_id))
+    other_book_id = books.insert(
+        Book(title="Delete Other Book", collection_id=other_id)
+    )
+
+    window = main_window
+    _trigger_collection_filter(window, collection_id)
+    assert [book.title for book in window.books] == ["Delete Empty Only"]
+
+    _delete_shown_books(window)
+
+    assert window.current_filter.collection_id is None
+    assert other_book_id in {book.book_id for book in window.books}
+
+
 def test_read_filter_shortcut_from_unread_sets_read(main_window):
     window = main_window
 

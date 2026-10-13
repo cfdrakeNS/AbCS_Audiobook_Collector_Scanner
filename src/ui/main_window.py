@@ -815,6 +815,13 @@ class MainWindow(QMainWindow):
         parts: list[str] = []
         if self.current_filter.collection_id is not None:
             parts.append(f"Collection: {self._current_collection_label()}")
+        parts.extend(self._active_non_collection_filter_parts())
+        parts.append(self._sort_summary_part())
+        return ", ".join(parts)
+
+    def _active_non_collection_filter_parts(self) -> list[str]:
+        """Active filters other than collection and sort, as short labels."""
+        parts: list[str] = []
         read_filter = self.current_filter.read_filter or "All"
         if read_filter != "All":
             parts.append(f"Read: {read_filter}")
@@ -835,8 +842,7 @@ class MainWindow(QMainWindow):
                 "Added since: "
                 f"{self.current_filter.date_added_since.strftime('%Y-%m-%d')}"
             )
-        parts.append(self._sort_summary_part())
-        return ", ".join(parts)
+        return parts
 
     def _sort_shows_direction(self, key=None) -> bool:
         """Only Year/Time (and header-only Read Date) show ascending/descending."""
@@ -2575,11 +2581,15 @@ class MainWindow(QMainWindow):
         finally:
             self._end_collection_menu_defer()
 
-    def clear_all_filters(self):
-        """Clear all filters and search, reset to show all books."""
+    def clear_all_filters(self, keep_collection: bool = False):
+        """Clear all filters and search, reset to show all books.
+
+        keep_collection leaves the collection filter in place.
+        """
         self.current_filter.search_text = ""
         self.current_filter.is_keyword_search = False
-        self.current_filter.collection_id = None
+        if not keep_collection:
+            self.current_filter.collection_id = None
         self.current_filter.plot_filter = "All"
         self.current_filter.read_filter = "All"
         self.current_filter.want_to_read_filter = "All"
@@ -4808,12 +4818,49 @@ class MainWindow(QMainWindow):
 
             # Check if filters resulted in 0 books - clear filters to prevent freeze
             if self.table.rowCount() == 0 and self.has_active_filters():
-                self.clear_all_filters()
-                self.refresh_books()
-                self.set_status(
-                    f"{deleted_count} book(s) deleted - filters cleared (no matching records)",
-                    announce=True,
+                collection_id = self.current_filter.collection_id
+                collection_name = self._current_collection_label()
+                cleared = self._active_non_collection_filter_parts()
+                cleared_text = (
+                    f" Filters cleared: {'; '.join(cleared)}." if cleared else ""
                 )
+                if (
+                    collection_id is not None
+                    and self.book_queries.count_in_collection(collection_id) > 0
+                ):
+                    self.clear_all_filters(keep_collection=True)
+                    message = (
+                        f"{deleted_count} book(s) deleted. No books in collection "
+                        f"{collection_name} matched the filters.{cleared_text} "
+                        f"Showing collection {collection_name}."
+                    )
+                elif collection_id is not None:
+                    self.clear_all_filters()
+                    message = (
+                        f"{deleted_count} book(s) deleted. Collection "
+                        f"{collection_name} is now empty.{cleared_text} "
+                        "Showing All Collections."
+                    )
+                else:
+                    self.clear_all_filters()
+                    message = (
+                        f"{deleted_count} book(s) deleted. No books matched the "
+                        f"filters.{cleared_text} Showing All Collections."
+                    )
+                self.refresh_books()
+                exec_styled_message_box(
+                    self,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Information,
+                    title="Delete",
+                    text=message,
+                    buttons=QMessageBox.Ok,
+                    default_button=QMessageBox.Ok,
+                )
+                self.set_status(message, announce=True)
+                if self.table.rowCount() > 0:
+                    self.table.setCurrentCell(0, 1)  # Title column
+                self.table.setFocus()
                 return  # Skip focus logic since table was refreshed
 
             # mw#25: Focus the row before the deleted selection

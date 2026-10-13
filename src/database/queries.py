@@ -434,6 +434,18 @@ class BookQueries:
         self.db.execute("DELETE FROM books WHERE book_id = ?", (book_id,))
         self.db.connect().commit()
 
+    def count_in_collection(self, collection_id: int) -> int:
+        """Count books in an active collection, ignoring all other filters."""
+        row = self.db.fetch_one(
+            """
+            SELECT COUNT(*) FROM books b
+            JOIN collections c ON b.collection_id = c.collection_id
+            WHERE b.collection_id = ? AND c.active = 1
+            """,
+            (collection_id,),
+        )
+        return int(row[0] or 0) if row else 0
+
     def delete_many(self, book_ids: List[int]):
         """Delete multiple books."""
         if not book_ids:

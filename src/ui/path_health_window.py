@@ -1150,10 +1150,12 @@ class PathHealthWindow(AccessibleDialog):
                     [
                         "Author",
                         "Title",
-                        "Path",
+                        "Series",
+                        "Series No",
                         "Status",
-                        "Collection",
                         "Reason",
+                        "Collection",
+                        "Path",
                     ]
                 )
                 for row in self._rows:
@@ -1170,10 +1172,12 @@ class PathHealthWindow(AccessibleDialog):
                         [
                             row.author,
                             row.title,
-                            row.path,
+                            row.series_name,
+                            row.series_number,
                             status_label,
-                            row.collection_name,
                             row.reason,
+                            row.collection_name,
+                            row.path,
                         ]
                     )
             self.set_status(

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Iterator, List, Optional
 
 from src.core.library_root import locate_book_under_collection, path_is_under_root
+from src.utils.text_utils import series_number_key
 
 STATUS_EMPTY = "Empty"
 STATUS_MISSING = "Missing"
@@ -54,6 +55,8 @@ class PathHealthRow:
     reason: str = ""
     # author, book, collection, or incorrect. Empty for OK and Resolved.
     problem: str = ""
+    series_name: str = ""
+    series_number: str = ""
 
 
 @dataclass
@@ -280,15 +283,17 @@ def build_path_health_row(
     author = getattr(book, "author_name", "") or ""
     title = getattr(book, "title", "") or ""
     collection_name = getattr(book, "collection_name", "") or ""
+    series_name = getattr(book, "series_name", "") or ""
+    series_number = getattr(book, "series_number", None)
     check = _classify_book_path(
         path_text,
         collection_root,
         import_dir,
         author_name=author,
         book_title=title,
-        series_name=getattr(book, "series_name", "") or "",
+        series_name=series_name,
         collection_name=collection_name,
-        series_number=getattr(book, "series_number", None),
+        series_number=series_number,
     )
     return PathHealthRow(
         book_id=int(book_id),
@@ -301,6 +306,8 @@ def build_path_health_row(
         resolved_path=check.resolved_path if check.resolved_path != path_text else "",
         reason=check.reason,
         problem=check.problem,
+        series_name=series_name,
+        series_number=series_number_key(series_number),
     )
 
 
