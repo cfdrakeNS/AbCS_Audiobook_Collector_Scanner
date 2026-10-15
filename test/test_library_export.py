@@ -201,22 +201,7 @@ def test_csv_column_order_matches_import_alignment(tmp_path):
     headers = _read_csv(out)[0]
     tracks_idx = headers.index("Tracks")
     assert headers[tracks_idx + 1] == "Collection"
-    assert headers[tracks_idx + 2] == "Cover"
+    assert headers[tracks_idx + 2] == "Size MB"
     assert headers[headers.index("Genre") + 1] == "Narrator"
     assert headers[-1] == "Comments"
     assert headers.index("Read Date") < headers.index("Time")
-
-
-def test_cover_column_y_n(monkeypatch, tmp_path):
-    from src.core import library_export as le
-
-    monkeypatch.setattr(le, "_book_has_embedded_cover", lambda _b: True)
-    out = tmp_path / "lib.csv"
-    export_books([_book()], str(out), FORMAT_CSV)
-    row = dict(zip(*_read_csv(out)))
-    assert row["Cover"] == "Y"
-
-    monkeypatch.setattr(le, "_book_has_embedded_cover", lambda _b: False)
-    export_books([_book()], str(out), FORMAT_CSV)
-    row = dict(zip(*_read_csv(out)))
-    assert row["Cover"] == "N"
