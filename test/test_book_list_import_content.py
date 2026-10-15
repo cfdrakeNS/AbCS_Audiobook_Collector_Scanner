@@ -75,6 +75,40 @@ def test_header_auto_mapping_from_column_names(tmp_path, qtbot, temp_db, ui_scal
     window.close()
 
 
+def test_add_read_date_maps_only_title_author_and_read_date(
+    tmp_path, qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings
+):
+    csv_path = tmp_path / "read_dates.csv"
+    csv_path.write_text(
+        "Title,Author,Year,Series,Series Number,Genre,Narrator,Read Date,Time,Tracks,Comments\n"
+        "One,A,2020,S,1,G,N,2026-01-01,1:00,3,Plot here\n",
+        encoding="utf-8-sig",
+    )
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    window.file_has_header_check.setChecked(True)
+    window.load_file(str(csv_path))
+
+    window.add_read_date_check.setChecked(True)
+    mapping = window.get_field_mapping()
+    assert mapping["title"] == 0
+    assert mapping["author"] == 1
+    assert mapping["read_date"] == 7
+    for field in ("year", "plot", "series", "series_no", "genre", "reader", "time_hours", "tracks"):
+        assert mapping[field] is None
+        assert window.field_mappings[field].isEnabled() is False
+    assert window.field_mappings["title"].isEnabled() is True
+    assert window.field_mappings["read_date"].isEnabled() is True
+
+    window.load_books_check.setChecked(True)
+    restored = window.get_field_mapping()
+    assert restored["year"] == 2
+    assert restored["plot"] == 10
+    assert restored["reader"] == 6
+    assert window.field_mappings["year"].isEnabled() is True
+    window.close()
+
+
 def test_mapping_table_field_order_plot_last(
     qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings
 ):

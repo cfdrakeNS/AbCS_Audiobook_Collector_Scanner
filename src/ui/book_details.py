@@ -52,6 +52,7 @@ from src.accessibility.masked_date_fields import (
 )
 from src.accessibility.read_only_text import (
     PlotLineList,
+    _PLOT_LINE_WIDTH,
     canonicalize_plot_comments,
     set_navigable_plain_text,
 )
@@ -462,6 +463,7 @@ class BookDetailsWindow(AccessibleDialog):
         super().showEvent(event)
         self._sync_form_scroll_to_content()
         self._clamp_window_to_screen()
+        self._fit_plot_line_width()
         if not self._geometry_positioned:
             frame = self.frameGeometry()
             frame.moveCenter(self._available_screen_rect().center())
@@ -1764,13 +1766,33 @@ class BookDetailsWindow(AccessibleDialog):
         self.form_scroll.setMinimumHeight(min(content_h, max_scroll))
         self.form_scroll.setMaximumHeight(max_scroll)
 
+    def _fit_plot_line_width(self) -> None:
+        """Size the plot column to a wrapped line, without a wide empty margin."""
+        if not hasattr(self, "plot_review"):
+            return
+        if self.layout() is not None:
+            self.layout().activate()
+        viewport = self.plot_review.viewport()
+        usable = viewport.width() - 8
+        if usable <= 0:
+            return
+        # Average character width matches plot prose. A run of "n" is wider
+        # than the text and left a large gap on the right.
+        text_px = self.plot_review.fontMetrics().averageCharWidth() * _PLOT_LINE_WIDTH
+        delta = text_px - usable
+        if abs(delta) < 8:
+            return
+        width, height = self._clamp_dialog_size(self.width() + delta, self.height())
+        if width != self.width():
+            self.resize(width, height)
+
     def _apply_initial_window_size(self) -> None:
         """Open at full form height when it fits; otherwise clamp and use scroll."""
         self._apply_screen_geometry_caps()
         self._sync_form_scroll_to_content()
         hint = self.sizeHint()
         width, height = self._clamp_dialog_size(
-            max(850, hint.width()),
+            max(self.scaler.get_scaled_size(850), hint.width()),
             max(650, hint.height()),
         )
         self.resize(width, height)

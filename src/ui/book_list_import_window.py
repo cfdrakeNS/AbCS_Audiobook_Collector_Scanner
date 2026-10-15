@@ -105,6 +105,8 @@ from src.utils.text_utils import (
 
 
 class BookListImportWindow(AccessibleDialog):
+    # Add Read Date updates an existing book. Only these columns are mapped.
+    _READ_DATE_MAPPING_FIELDS = frozenset({"title", "author", "read_date"})
     """Book List Import window with full accessibility support."""
 
     # Alt+Key filtering for accessibility
@@ -938,17 +940,25 @@ class BookListImportWindow(AccessibleDialog):
             self.set_status("Mode changed to: Add Books From List")
 
     def _apply_mode_field_availability(self):
-        """Enable/disable mapping combos based on current import mode."""
+        """Enable mapping combos for this mode and clear columns that do not apply."""
         if not hasattr(self, "field_mappings"):
             return
 
-        if self.import_mode == "read_date":
-            allowed_fields = {"title", "author", "year", "read_date"}
-            for field, combo in self.field_mappings.items():
-                combo.setEnabled(field in allowed_fields)
-        else:
-            for combo in self.field_mappings.values():
-                combo.setEnabled(True)
+        read_date_mode = self.import_mode == "read_date"
+        for field, combo in self.field_mappings.items():
+            allowed = (not read_date_mode) or field in self._READ_DATE_MAPPING_FIELDS
+            combo.setEnabled(allowed)
+            if not allowed and combo.currentIndex() != 0:
+                combo.blockSignals(True)
+                combo.setCurrentIndex(0)
+                combo.blockSignals(False)
+
+        if read_date_mode:
+            self._restore_mappings_on_add_books = True
+        elif getattr(self, "_restore_mappings_on_add_books", False):
+            self._restore_mappings_on_add_books = False
+            if getattr(self, "file_data", None) is not None:
+                self.apply_header_auto_mappings(only_empty=True)
 
     def on_file_has_header_toggled(self, checked: bool):
         """Handle File has header checkbox toggle."""
@@ -1473,6 +1483,7 @@ class BookListImportWindow(AccessibleDialog):
             combo.setMaximumWidth(max_width)
 
         self.apply_header_auto_mappings()
+        self._apply_mode_field_availability()
 
     @staticmethod
     def _normalize_import_header(text) -> str:
@@ -1495,12 +1506,20 @@ class BookListImportWindow(AccessibleDialog):
         "tracks": ("tracks", "files", "file count"),
     }
 
-    def apply_header_auto_mappings(self):
-        """Map columns from header row names when 'My file Has Header' is on."""
-        for combo in self.field_mappings.values():
-            combo.blockSignals(True)
-            combo.setCurrentIndex(0)
-            combo.blockSignals(False)
+    def apply_header_auto_mappings(self, *, only_empty: bool = False):
+        """Map columns from header row names when 'My file Has Header' is on.
+
+        only_empty leaves columns the user already chose and fills the rest.
+        Add Read Date maps Title, Author, and Read Date only.
+        """
+        read_date_mode = getattr(self, "import_mode", "new") == "read_date"
+        allowed = self._READ_DATE_MAPPING_FIELDS if read_date_mode else None
+
+        if not only_empty:
+            for combo in self.field_mappings.values():
+                combo.blockSignals(True)
+                combo.setCurrentIndex(0)
+                combo.blockSignals(False)
 
         if (
             not getattr(self, "file_has_header_check", None)
@@ -1518,9 +1537,18 @@ class BookListImportWindow(AccessibleDialog):
                 header_to_index[key] = index
 
         used_indices: set[int] = set()
+        if only_empty:
+            for combo in self.field_mappings.values():
+                if combo.currentIndex() > 0:
+                    used_indices.add(combo.currentIndex() - 1)
+
         for field, aliases in self._HEADER_FIELD_ALIASES.items():
+            if allowed is not None and field not in allowed:
+                continue
             combo = self.field_mappings.get(field)
             if combo is None:
+                continue
+            if only_empty and combo.currentIndex() > 0:
                 continue
             for alias in aliases:
                 col_index = header_to_index.get(alias)
