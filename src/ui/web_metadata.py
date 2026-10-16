@@ -850,7 +850,13 @@ class WebMetadataWindow(AccessibleDialog):
         # Helper to handle field comparison and visibility
 
         def handle_field_comparison(
-            web_value, current_value, web_edit, checkbox, field_name, row_widget
+            web_value,
+            current_value,
+            web_edit,
+            checkbox,
+            field_name,
+            row_widget,
+            default_checked=False,
         ):
             current_str = (
                 str(current_value).strip() if current_value is not None else ""
@@ -867,7 +873,7 @@ class WebMetadataWindow(AccessibleDialog):
                     checkbox.setVisible(False)
                 else:
                     row_widget._checkbox.setVisible(True)
-                    checkbox.setChecked(True)
+                    checkbox.setChecked(default_checked)
                 self.field_differences[field_name] = web_str
                 return True
 
@@ -915,6 +921,7 @@ class WebMetadataWindow(AccessibleDialog):
             self.genre_checkbox,
             "genre",
             self.genre_row,
+            default_checked=True,
         )
 
         # Plot (store rating in database but only show plot in UI)

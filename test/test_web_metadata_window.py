@@ -87,6 +87,10 @@ def test_update_fields_with_web_data_tracks_differences(window):
     assert window.author_web_edit.text() == "Francis Scott Key Fitzgerald"
     assert window.plot_edit.plot_text().startswith("A portrait of wealth")
     assert window.rating_edit.text().startswith("4.2")
+    assert window.title_checkbox.isChecked() is False
+    assert window.author_checkbox.isChecked() is False
+    assert window.year_checkbox.isChecked() is False
+    assert window.genre_checkbox.isChecked() is True
 
 
 def test_set_status_updates_status_bar(window):

@@ -210,7 +210,8 @@ If differences exist, the review window shows **your value** on the left and **w
 | Your library field      | Behavior                                                              |
 | ----------------------- | --------------------------------------------------------------------- |
 | **Empty**               | Web value will be applied on Save — no checkbox needed                |
-| **Already has a value** | Checkbox shown, **checked by default** — uncheck to keep your version |
+| **Title, Author, Year** (already has a value) | Checkbox shown, **unchecked by default** — check to use the web value |
+| **Genre** (already has a value) | Checkbox shown, **checked by default** — uncheck to keep your version |
 
 
 Plot has no checkbox — if plot differs, it appears in the difference list and is offered on Save.
