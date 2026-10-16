@@ -1279,7 +1279,7 @@ class ImportDetailWindow(AccessibleDialog):
         self.save_return_button = QPushButton("Save")
         self.save_return_button.setAccessibleName("Save")
         self.save_return_button.setAccessibleDescription(
-            "Save edits and continue editing - Ctrl+S"
+            "Save edits and continue editing"
         )
         self.save_return_button.setFocusPolicy(Qt.StrongFocus)
         self.save_return_button.clicked.connect(self.on_save)
@@ -1291,7 +1291,7 @@ class ImportDetailWindow(AccessibleDialog):
         self.keep_button.setAccessibleName("Keep")
         self.keep_button.setAccessibleDescription(
             "Accept fallback or correction warnings, add this book to the "
-            "library like Add Selected, then move to the next item - Alt+K"
+            "library like Add Selected, then move to the next item"
         )
         self.keep_button.setFocusPolicy(Qt.StrongFocus)
         self.keep_button.clicked.connect(self.on_keep)
@@ -1300,7 +1300,7 @@ class ImportDetailWindow(AccessibleDialog):
         self.skip_button = QPushButton("Discard")
         self.skip_button.setAccessibleName("Discard")
         self.skip_button.setAccessibleDescription(
-            "Discard this import item and advance to next available item - Alt+D"
+            "Discard this import item and advance to next available item"
         )
         # self.skip_button.setShortcut(QKeySequence("Alt+D"))  # Managed by ShortcutManager
         self.skip_button.setFocusPolicy(Qt.StrongFocus)
@@ -1371,15 +1371,15 @@ class ImportDetailWindow(AccessibleDialog):
                 ),
                 self.save_return_button: (
                     "Save edits",
-                    "Save edits and continue editing - Ctrl+S",
+                    "Save edits and continue editing",
                 ),
                 self.keep_button: (
                     "Keep and add",
-                    "Accept warnings or fallbacks, add this book, then next item - Alt+K",
+                    "Accept warnings or fallbacks, add this book, then next item",
                 ),
                 self.skip_button: (
                     "Discard item",
-                    "Discard this import item and advance - Alt+D",
+                    "Discard this import item and advance",
                 ),
             }
         )

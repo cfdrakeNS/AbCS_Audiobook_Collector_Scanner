@@ -497,7 +497,9 @@ def test_preview_enabled_and_launches_for_audio_file(
     assert window.preview_button.isEnabled() is True
     assert window.preview_button.text() == "Listen"
     assert window.preview_button.accessibleName() == "Listen to audiobook"
-    assert "Ctrl+L" in window.preview_button.accessibleDescription()
+    assert window.preview_button.accessibleDescription() == (
+        "Listen to this book inside AbCS"
+    )
     assert window.preview_shortcut.key().toString() == "Ctrl+L"
     called = []
 

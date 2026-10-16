@@ -67,7 +67,7 @@ Remove the `"import"` entry in the main toolbar setup ([main_window.py](../../sr
 - The action that opens the player is **Listen**: main window **Edit → Listen** (Alt+E, L), toolbar **Listen**, Book Details **Listen** button, and the **Listen** window title.
 - **Ctrl+L** opens Listen from the main window and Book Details. **Alt+Shift+P is removed** (no alias).
 - Inside the Listen window, Ctrl+L does nothing. Space still plays or pauses; Alt+P / Alt+N previous and next file; the transport button stays **Play / Pause**.
-- Accessible names and descriptions: "Listen to audiobook", "Listen to this book inside AbCS - Ctrl+L", "Listen position".
+- Accessible names and descriptions: "Listen to audiobook", "Listen to this book inside AbCS", "Listen position". Shortcut is Ctrl+L (F1), not spoken in the description.
 - Help topics 01, 04, 07, 08, 16, and 24 updated. Tests updated and added (main window action text and Ctrl+L; Book Details button and Ctrl+L; Listen window has no Ctrl+L binding and ignores it).
 - Test safety fix found while doing this: UI tests copy `data/abcs.db`, which can hold real books. `test/conftest.py` now mutes all audio output in tests and stops a Listen window from waiting to be closed, so a test can never play a real audiobook or hang.
 

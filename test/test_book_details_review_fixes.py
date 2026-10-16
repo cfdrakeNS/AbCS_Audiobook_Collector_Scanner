@@ -284,7 +284,7 @@ def test_alt_b_in_view_mode_announces_edit_hint(
     try:
         window._on_browse_path_shortcut()
         assert statuses == [
-            ("Browse is available in Edit mode. Press Alt+E to edit.", True)
+            ("Browse is available in Edit mode.", True)
         ]
     finally:
         window.close()

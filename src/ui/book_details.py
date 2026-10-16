@@ -955,9 +955,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.author_label_display = QLineEdit()
         self.author_label_display.setReadOnly(True)
         self.author_label_display.setAccessibleName("Author")
-        self.author_label_display.setAccessibleDescription(
-            "Author name - press Alt+A to focus, Alt+E to edit"
-        )
+        self.author_label_display.setAccessibleDescription("Author name")
         self.author_label_display.setFocusPolicy(Qt.StrongFocus)
         self.author_combo = QComboBox()
         self.author_combo.setEditable(True)
@@ -1122,9 +1120,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.series_label_display = QLineEdit()
         self.series_label_display.setReadOnly(True)
         self.series_label_display.setAccessibleName("Book series")
-        self.series_label_display.setAccessibleDescription(
-            "Series name - press Alt+S to focus, Alt+E to edit"
-        )
+        self.series_label_display.setAccessibleDescription("Series name")
         self.series_label_display.setFocusPolicy(Qt.StrongFocus)
         self.series_combo = QComboBox()
         self.series_combo.setEditable(True)
@@ -1142,9 +1138,7 @@ class BookDetailsWindow(AccessibleDialog):
             QRegularExpressionValidator(QRegularExpression(r"[0-9]{0,4}(\.[0-9]{0,4})?"))
         )
         self.series_number_edit.setAccessibleName("Series number")
-        self.series_number_edit.setAccessibleDescription(
-            "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+S then Tab"
-        )
+        self.series_number_edit.setAccessibleDescription("")
         self.series_number_edit.setMaximumWidth(110)
         series_number_label.setBuddy(self.series_number_edit)
         series_row = QHBoxLayout()
@@ -1162,9 +1156,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.genre_label_display = QLineEdit()
         self.genre_label_display.setReadOnly(True)
         self.genre_label_display.setAccessibleName("Genre")
-        self.genre_label_display.setAccessibleDescription(
-            "Genre - press Alt+G to focus, Alt+E to edit"
-        )
+        self.genre_label_display.setAccessibleDescription("Genre")
         self.genre_label_display.setFocusPolicy(Qt.StrongFocus)
         self.genre_combo = QComboBox()
         self.genre_combo.setEditable(True)
@@ -1182,9 +1174,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.collection_label_display = QLineEdit()
         self.collection_label_display.setReadOnly(True)
         self.collection_label_display.setAccessibleName("Collection")
-        self.collection_label_display.setAccessibleDescription(
-            "Collection - press Alt+C to focus, Alt+E to edit"
-        )
+        self.collection_label_display.setAccessibleDescription("Collection")
         self.collection_label_display.setFocusPolicy(Qt.StrongFocus)
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Collection")
@@ -1282,7 +1272,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.browse_path_button = QPushButton("Browse")
         self.browse_path_button.setAccessibleName("Browse book path")
         self.browse_path_button.setAccessibleDescription(
-            "Choose the folder or audio file for this book - Alt+B. "
+            "Choose the folder or audio file for this book. "
             "Does not change the collection folder."
         )
         self.browse_path_button.setAutoDefault(False)
@@ -1348,7 +1338,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.want_to_read_checkbox = QCheckBox()
         self.want_to_read_checkbox.setAccessibleName("Want to read")
         self.want_to_read_checkbox.setAccessibleDescription(
-            "Mark this book as one you want to read. Alt+K. Cleared when a read date is set."
+            "Mark this book as one you want to read. Cleared when a read date is set."
         )
         want_label = QLabel("Want to read:")
         want_label.setBuddy(self.want_to_read_checkbox)
@@ -1437,7 +1427,7 @@ class BookDetailsWindow(AccessibleDialog):
 
         self.new_button = QPushButton("New")
         self.new_button.setAccessibleName("New book")
-        self.new_button.setAccessibleDescription("Clear form for new book entry - Ctrl+N")
+        self.new_button.setAccessibleDescription("Clear form for new book entry")
         self.new_button.setFocusPolicy(Qt.StrongFocus)
         self.new_button.clicked.connect(self.on_new)
         self.new_button.setDefault(False)
@@ -1448,7 +1438,7 @@ class BookDetailsWindow(AccessibleDialog):
 
         self.edit_button = QPushButton("Edit")
         self.edit_button.setAccessibleName("Edit book")
-        self.edit_button.setAccessibleDescription("Enable editing of book details - Alt+E")
+        self.edit_button.setAccessibleDescription("Enable editing of book details")
         self.edit_button.setFocusPolicy(Qt.StrongFocus)
         self.edit_button.clicked.connect(self.on_edit_mode)
         self.edit_button.setDefault(False)
@@ -1457,7 +1447,7 @@ class BookDetailsWindow(AccessibleDialog):
 
         self.save_button = QPushButton("Save")
         self.save_button.setAccessibleName("Save book")
-        self.save_button.setAccessibleDescription("Save changes - Ctrl+S")
+        self.save_button.setAccessibleDescription("Save changes")
         self.save_button.setFocusPolicy(Qt.StrongFocus)
         self.save_button.clicked.connect(self.on_save)
         self.save_button.setDefault(False)
@@ -1495,7 +1485,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.preview_button = QPushButton("Listen")
         self.preview_button.setAccessibleName("Listen to audiobook")
         self.preview_button.setAccessibleDescription(
-            "Listen to this book inside AbCS - Ctrl+L"
+            "Listen to this book inside AbCS"
         )
         self.preview_button.setFocusPolicy(Qt.StrongFocus)
         self.preview_button.clicked.connect(self.on_preview)
@@ -1570,7 +1560,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.author_label_display: (
                     "Author name",
-                    "Author name - press Alt+A to focus, Alt+E to edit",
+                    "Author name",
                 ),
                 self.comments_edit: (
                     "Plot or comments",
@@ -1608,11 +1598,11 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.series_label_display: (
                     "Series name",
-                    "Series name - press Alt+S to focus, Alt+E to edit",
+                    "Series name",
                 ),
                 self.series_number_edit: (
                     "Series number",
-                    "Series number. Type a number such as 3 or 6.5, or leave blank. Alt+S then Tab",
+                    "",
                 ),
                 self.genre_combo: (
                     "Genre",
@@ -1620,7 +1610,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.genre_label_display: (
                     "Genre",
-                    "Genre - press Alt+G to focus, Alt+E to edit",
+                    "Genre",
                 ),
                 self.collection_combo: (
                     "Collection",
@@ -1628,7 +1618,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.collection_label_display: (
                     "Collection",
-                    "Collection - press Alt+C to focus, Alt+E to edit",
+                    "Collection",
                 ),
                 self.files_edit: (
                     "Number of audio files",
@@ -1656,7 +1646,8 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.browse_path_button: (
                     "Browse book path",
-                    "Choose the folder or audio file for this book - Alt+B",
+                    "Choose the folder or audio file for this book. "
+                    "Does not change the collection folder.",
                 ),
                 self.added_edit: (
                     "Date added",
@@ -1672,7 +1663,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.want_to_read_checkbox: (
                     "Want to read",
-                    "Mark this book as one you want to read. Alt+K. Cleared when a read date is set.",
+                    "Mark this book as one you want to read. Cleared when a read date is set.",
                 ),
                 self.new_button: (
                     "Start a new book entry",
@@ -1696,7 +1687,7 @@ class BookDetailsWindow(AccessibleDialog):
                 ),
                 self.preview_button: (
                     "Listen to this book inside AbCS",
-                    "Listen to this book inside AbCS - Ctrl+L",
+                    "Listen to this book inside AbCS",
                 ),
             }
         )
@@ -2033,7 +2024,7 @@ class BookDetailsWindow(AccessibleDialog):
         """Alt+B: browse in Edit or New mode; in view mode say how to get there."""
         if not (getattr(self, "_in_edit_mode", False) or self.is_new):
             self.set_status(
-                "Browse is available in Edit mode. Press Alt+E to edit.",
+                "Browse is available in Edit mode.",
                 announce=True,
             )
             return
@@ -3435,6 +3426,11 @@ class BookDetailsWindow(AccessibleDialog):
         # Year
         self.year_spin.setReadOnly(read_only)
         self.series_number_edit.setReadOnly(read_only)
+        self.series_number_edit.setAccessibleDescription(
+            ""
+            if read_only
+            else "Type a number such as 3 or 6.5, or leave blank."
+        )
         # Time
         self.time_edit.setReadOnly(read_only)
         # Reader
@@ -3755,11 +3751,11 @@ class BookDetailsWindow(AccessibleDialog):
             )
         elif available:
             self.preview_button.setAccessibleDescription(
-                "Listen to this book inside AbCS - Ctrl+L"
+                "Listen to this book inside AbCS"
             )
         elif can_browse:
             self.preview_button.setAccessibleDescription(
-                "Book folder not found. Listen offers to browse for it - Ctrl+L"
+                "Book folder not found. Listen offers to browse for it"
             )
         else:
             reason = (getattr(target, "error", "") or "").strip()
