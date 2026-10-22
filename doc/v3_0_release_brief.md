@@ -1,9 +1,9 @@
 # AbCS Version 3 — Release Brief (pre-release)
 
-**Current build:** 2.28 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
+**Current build:** 2.38 committed, 2.39 import fixes ready (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
-**Testing:** Full pytest suite — 825 passed (October 3, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
+**Testing:** Full pytest suite — 898 passed (October 22, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
 **Audience:** Checklist for what ships when you promote the build to **v3.0**.
 
 User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
@@ -70,8 +70,25 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 - Collection window tab order after batch web fetch; main list clears appropriately after batch fetch.
 - Book Details theme reuse for quicker open.
 
+### Accessibility noise (2.38)
+
+- Book Details and Import Detail no longer speak shortcut coaching in field and button descriptions (for example "press Alt+A to focus"). Shortcuts stay in F1 and help.
+
+### Web metadata (2.37)
+
+- Keep-web checkboxes start unchecked for Title, Author, and Year when the library already has a value; Genre starts checked. Applies to single-book fetch and batch Review each.
+
 ### Import, paths, and data
 
+- Folder import file counts (2.39): files are grouped by Album tag within each book folder, so books that share an Album tag or have same-named disc folders no longer merge into one book with a too-high file count. Disc folders (CD1, Disc 2, Part 1) stay with their book.
+- Import status bar Added count updates during Add Selected; Import review export adds Files, Time, and Size MB (2.39).
+- Export Library drops the slow Cover column (2.36).
+- Book List Import read-date mode maps only Title, Author, and Read Date (2.35).
+- Check Book Locations, Listen, and Path Browse try the full author folder, then the first comma-separated author; a series book outside its series folder is looked for one folder down (2.34).
+- Main-window delete keeps the current collection when it still has books; Check Book Locations export adds Series and Series No (2.33).
+- Series From Directory and Nested Books store a leading file or folder number as the series number (2.32).
+- Import, Book List Import, and Check Book Locations finish with one completed message (2.31).
+- Each library remembers its collection; a playable path counts as valid (2.30).
 - Collection library root remap for Listen and path checks without silently rewriting stored paths.
 - Check Book Locations logic and UI aligned with collection folders; in-window guide no longer references Listen.
 - Import skips iTunes/MusicBrainz/encoder noise in Comments; one-time cleanup script for existing libraries.

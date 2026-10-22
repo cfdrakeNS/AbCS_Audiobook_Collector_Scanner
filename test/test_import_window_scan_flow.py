@@ -333,3 +333,165 @@ def test_import_rows_batches_with_insert_many(
 
     cleanup_window(window)
 
+
+def test_import_rows_updates_added_counter_per_book(
+    qtbot, temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    """Add Selected shows a rising Added count on the status bar before the final refresh."""
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    if window.collection_combo.count() == 0:
+        CollectionQueries(temp_db).insert(Collection(name="Live Coll", active=True))
+        window._load_collection_options()
+    window.collection_combo.setCurrentIndex(0)
+
+    window.scanned_items = [
+        {
+            "book": {"title": f"Live Add {n}", "author": "Live Author", "year": 2020},
+            "status": "OK",
+            "errors": [],
+        }
+        for n in (1, 2, 3)
+    ]
+    window.scan_outcomes = []
+    window.table.setRowCount(3)
+    window._summary_counts = {
+        "scanned": 3,
+        "fixed": 0,
+        "errors": 0,
+        "warnings": 0,
+        "duplicates": 0,
+        "added": 5,
+    }
+    monkeypatch.setattr(window, "progress_window", None)
+    monkeypatch.setattr(window, "_show_info_popup", lambda *args, **kwargs: None)
+
+    seen_added = []
+    original_update = window.update_summary
+
+    def _record(*args, **kwargs):
+        seen_added.append(kwargs.get("added"))
+        return original_update(*args, **kwargs)
+
+    monkeypatch.setattr(window, "update_summary", _record)
+
+    window._import_rows([0, 1, 2])
+
+    assert seen_added[:3] == [6, 7, 8]
+
+    cleanup_window(window)
+
+
+def test_import_rows_quiet_skips_live_counter(
+    qtbot, temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    """Keep in Import Detail adds one row without the per-book counter update."""
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    if window.collection_combo.count() == 0:
+        CollectionQueries(temp_db).insert(Collection(name="Quiet Coll", active=True))
+        window._load_collection_options()
+    window.collection_combo.setCurrentIndex(0)
+
+    window.scanned_items = [
+        {
+            "book": {"title": "Quiet Add", "author": "Quiet Author", "year": 2020},
+            "status": "OK",
+            "errors": [],
+        }
+    ]
+    window.scan_outcomes = []
+    window.table.setRowCount(1)
+    monkeypatch.setattr(window, "progress_window", None)
+
+    calls = []
+    monkeypatch.setattr(
+        window,
+        "_refresh_summary_from_items",
+        lambda: calls.append("refresh"),
+    )
+    monkeypatch.setattr(
+        window, "update_summary", lambda *args, **kwargs: calls.append("live")
+    )
+
+    window._import_rows([0], quiet=True)
+
+    assert calls[0] == "refresh"
+
+    cleanup_window(window)
+
+
+def test_export_csv_includes_files_time_and_size(
+    qtbot, temp_db, ui_scaler, theme_manager, monkeypatch, tmp_path
+):
+    """Import export puts Files, Time, and Size MB after Year and before Error Type."""
+    import csv
+
+    from src.ui import import_window as import_window_module
+
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    window.scanned_items = [
+        {
+            "book": {
+                "title": "Export Book",
+                "author": "Export Author",
+                "year": 2019,
+                "tracks": 12,
+                "time_hours": 9,
+                "time_minutes": 5,
+                "size_mb": 412.345,
+                "files": [],
+            },
+            "status": "Warning",
+            "errors": [],
+            "author": "Export Author",
+            "title": "Export Book",
+            "year": 2019,
+        },
+        {
+            "book": {
+                "title": "No Stats",
+                "author": "Export Author",
+                "files": ["a.mp3", "b.mp3"],
+            },
+            "status": "Warning",
+            "errors": [],
+            "author": "Export Author",
+            "title": "No Stats",
+        },
+    ]
+    window._repopulate_table_from_scanned_items()
+
+    out = tmp_path / "import_export.csv"
+    monkeypatch.setattr(
+        import_window_module.QFileDialog,
+        "getSaveFileName",
+        lambda *args, **kwargs: (str(out), ""),
+    )
+
+    window.on_export_csv()
+
+    with open(out, encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.reader(handle))
+    assert rows[0] == [
+        "Author",
+        "Title",
+        "Year",
+        "Files",
+        "Time",
+        "Size MB",
+        "Error Type",
+        "File/Folder",
+    ]
+    by_title = {row[1]: dict(zip(rows[0], row)) for row in rows[1:]}
+    assert by_title["Export Book"]["Files"] == "12"
+    assert by_title["Export Book"]["Time"] == "09:05"
+    assert by_title["Export Book"]["Size MB"] == "412.3"
+    assert by_title["No Stats"]["Files"] == "2"
+    assert by_title["No Stats"]["Time"] == ""
+    assert by_title["No Stats"]["Size MB"] == "0.0"
+
+    cleanup_window(window)
+

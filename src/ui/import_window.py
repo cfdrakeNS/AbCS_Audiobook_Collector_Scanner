@@ -84,6 +84,17 @@ _DETAIL_BOOK_FIELD_KEYS = (
     "time_minutes",
 )
 
+IMPORT_EXPORT_HEADERS = (
+    "Author",
+    "Title",
+    "Year",
+    "Files",
+    "Time",
+    "Size MB",
+    "Error Type",
+    "File/Folder",
+)
+
 
 class ImportWindow(AccessibleDialog):
     def keyPressEvent(self, event):
@@ -2230,6 +2241,27 @@ class ImportWindow(AccessibleDialog):
 
         self._import_rows(sorted(selected_rows))
 
+    @staticmethod
+    def _export_file_stats(book_data: dict) -> tuple[str, str, str]:
+        """Files, Time (HH:MM), and Size MB text for one scanned book."""
+        try:
+            tracks = int(book_data.get("tracks") or 0)
+        except (TypeError, ValueError):
+            tracks = 0
+        if tracks <= 0:
+            tracks = len(book_data.get("files") or [])
+        try:
+            hours = int(book_data.get("time_hours") or 0)
+            minutes = int(book_data.get("time_minutes") or 0)
+        except (TypeError, ValueError):
+            hours = minutes = 0
+        time_text = f"{hours:02d}:{minutes:02d}" if hours or minutes else ""
+        try:
+            size_text = f"{float(book_data.get('size_mb') or 0):.1f}"
+        except (TypeError, ValueError):
+            size_text = "0.0"
+        return str(tracks), time_text, size_text
+
     def on_export_csv(self):
         """Export visible import rows to CSV for spreadsheet review."""
         if self.table.rowCount() == 0:
@@ -2246,12 +2278,19 @@ class ImportWindow(AccessibleDialog):
             year_item = self.table.item(row, self.COL_YEAR)
             error_item = self.table.item(row, self.COL_ERROR)
             path_item = self.table.item(row, self.COL_PATH)
+            book_data = {}
+            if 0 <= row < len(self.scanned_items):
+                book_data = self.scanned_items[row].get("book", {}) or {}
+            files, time_text, size_text = self._export_file_stats(book_data)
 
             rows_to_export.append(
                 {
                     "author": author_item.text() if author_item else "",
                     "title": title_item.text() if title_item else "",
                     "year": year_item.text() if year_item else "",
+                    "files": files,
+                    "time": time_text,
+                    "size_mb": size_text,
                     "error_type": error_item.text() if error_item else "",
                     "path": path_item.text() if path_item else "",
                 }
@@ -2287,15 +2326,16 @@ class ImportWindow(AccessibleDialog):
         try:
             with open(file_path, "w", newline="", encoding="utf-8-sig") as handle:
                 writer = csv.writer(handle)
-                writer.writerow(
-                    ["Author", "Title", "Year", "Error Type", "File/Folder"]
-                )
+                writer.writerow(IMPORT_EXPORT_HEADERS)
                 for row_data in rows_to_export:
                     writer.writerow(
                         [
                             row_data["author"],
                             row_data["title"],
                             row_data["year"],
+                            row_data["files"],
+                            row_data["time"],
+                            row_data["size_mb"],
                             row_data["error_type"],
                             row_data["path"],
                         ]
@@ -2450,6 +2490,8 @@ class ImportWindow(AccessibleDialog):
             pending_rows = []
             pending_book_data = []
             INSERT_CHUNK = 500
+            base_counts = dict(self._summary_counts)
+            base_added = int(base_counts.get("added", 0) or 0)
 
             def _flush_pending_adds() -> None:
                 nonlocal imported, pending_books, pending_rows, pending_book_data
@@ -2497,6 +2539,15 @@ class ImportWindow(AccessibleDialog):
                     pending_book_data.append(book_data)
                     if len(pending_books) >= INSERT_CHUNK:
                         _flush_pending_adds()
+                    if not quiet:
+                        self.update_summary(
+                            scanned=base_counts.get("scanned", 0),
+                            fixed=base_counts.get("fixed", 0),
+                            errors=base_counts.get("errors", 0),
+                            warnings=base_counts.get("warnings", 0),
+                            duplicates=base_counts.get("duplicates", 0),
+                            added=base_added + imported + len(pending_books),
+                        )
                 except Exception as exc:
                     failed += 1
                     item["status"] = "Failed"

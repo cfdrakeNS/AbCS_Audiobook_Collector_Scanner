@@ -51,8 +51,9 @@ Files with any other extension are skipped. If every format is turned off, nothi
 
 As each audio file is found, the app reads its tags and groups files that belong to the same book:
 
-- **Grouping key** — normally the **album** tag (treated as the book title).
-- If album is empty, files in the same parent folder are grouped using that **folder name** instead.
+- **Grouping key** — the **album** tag within each book folder. Books in different folders stay separate even when they share an album tag.
+- If album is empty, the files in one book folder become one book.
+- Disc or part folders (such as CD1, Disc 2, or Part 1) count with their parent book folder, so a book split across discs stays one book.
 - In **single-item** mode, one file = one book; title falls back to the filename if album is empty.
 
 The **folder path** where the files live is remembered — this is stored as the book's location in AbCS, not as a new folder on disk.

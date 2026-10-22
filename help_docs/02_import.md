@@ -31,7 +31,7 @@ For an explained walkthrough of what happens when you import, see [Import explai
 8. To work on one book, click a row (or select it with the keyboard) and press **Enter**, or double-click the row, to open the **detail window**. There you can edit fields, Keep (add and go to next), Discard, or move previous/next. Unreadable-file problems that cannot be fixed by editing do not open detail.
 
 9. Click rows to select them, then click **Add Selected** (or press **Alt+S**).
-10. Optionally click **Export** (or press **Alt+X**) to save the review list to a spreadsheet for offline review.
+10. Optionally click **Export** (or press **Alt+X**) to save the review list to a spreadsheet for offline review. The columns are Author, Title, Year, Files, Time, Size MB, Error Type, and File/Folder.
 11. Press **Escape** to close Import. If unscanned review items remain, you will be asked to confirm.
 
 Note: **Add Selected**, **Export**, and the **error filter** are grayed out until a scan finds books. The error filter also stays grayed out when every scanned book is clean, since there would be nothing to filter. Before then, Tab skips these controls and their shortcuts do nothing.

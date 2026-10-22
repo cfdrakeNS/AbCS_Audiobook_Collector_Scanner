@@ -557,6 +557,19 @@ class TagReader:
         return ""
 
 
+_DISC_FOLDER_RE = re.compile(r"^(cd|disc|disk|part|pt)[\s._-]*\d+$", re.IGNORECASE)
+
+
+def book_folder_for_file(file_path: str) -> str:
+    """Folder that holds the book: the file's folder, or its parent for CD1 / Disc 2 / Part 1."""
+    folder = os.path.dirname(file_path)
+    if _DISC_FOLDER_RE.match(os.path.basename(folder).strip()):
+        parent = os.path.dirname(folder)
+        if parent and parent != folder:
+            return parent
+    return folder
+
+
 class BookScanner:
     """
     Scans folders for audiobook files and groups them by book.
@@ -591,7 +604,8 @@ class BookScanner:
     ) -> List[Dict[str, Any]]:
         """
         Scan folder recursively for audiobooks.
-        Groups files by album (book title).
+        Groups files by album within each book folder, so books in different
+        folders never merge even when they share an album tag.
 
         Args:
             folder_path: Root folder to scan
@@ -669,8 +683,11 @@ class BookScanner:
 
             info = self.tag_reader.read_file(file_path)
 
-            # Use album as book identifier
-            book_key = info.album or os.path.basename(os.path.dirname(file_path))
+            book_folder = book_folder_for_file(file_path)
+            book_key = (
+                (info.album or "").strip().casefold(),
+                os.path.normcase(os.path.abspath(book_folder)),
+            )
 
             mapped_title = resolve_book_title(info, title_mapping)
             mapped_author = resolve_book_author(info, author_mapping)
@@ -691,7 +708,7 @@ class BookScanner:
                     "total_size": 0,
                     "bitrate": info.bitrate,
                     "format": info.file_format,
-                    "folder": os.path.dirname(file_path),
+                    "folder": book_folder,
                     "errors": [],
                 }
 
