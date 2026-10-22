@@ -185,7 +185,6 @@ class ImportDetailWindow(AccessibleDialog):
         errors: list = None,
         current_index: int = 0,
         total_count: int = 0,
-        is_duplicate: bool = False,
         parent=None,
     ):
         """
@@ -211,7 +210,6 @@ class ImportDetailWindow(AccessibleDialog):
         self.errors = errors or []
         self.current_index = current_index
         self.total_count = total_count
-        self.is_duplicate_item = bool(is_duplicate)
         self._dirty = False
         self._first_dirty_widget = None
         self._pending_dirty_widgets = set()
@@ -1631,7 +1629,6 @@ class ImportDetailWindow(AccessibleDialog):
         next_item = parent.scanned_items[index]
         self.book_data = next_item.get("book", {}).copy()
         self.errors = self._build_errors_for_row(index)
-        self.is_duplicate_item = bool(next_item.get("is_duplicate"))
         self.current_index = index
         self.total_count = len(parent.scanned_items)
         self.setWindowTitle(self._detail_window_title(self.book_data, self.errors))

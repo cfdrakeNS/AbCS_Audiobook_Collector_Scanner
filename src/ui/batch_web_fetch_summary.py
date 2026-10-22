@@ -176,7 +176,6 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
     help_doc_override = "07_web_metadata.md"
 
     APPLY_ALL = 1
-    REVIEW_EACH = 2
     CANCEL = 0
 
     def __init__(self, outcome: BatchFetchOutcome, parent=None):
@@ -318,7 +317,6 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
 
             scaler = UIScaler(QApplication.instance())
         scaled_height = scaler.get_scaled_size(20)
-        self._scaled_height = scaled_height
         button_style = build_modern_button_style(scaled_height)
         from src.accessibility.icon_helper import apply_decorative_action_icon
         buttons = QHBoxLayout()

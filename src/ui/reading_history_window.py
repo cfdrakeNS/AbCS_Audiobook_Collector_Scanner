@@ -374,7 +374,6 @@ class ReadingHistoryWindow(AccessibleDialog):
             self.start_date_edit = start_masked
             self.start_date_edit.setAccessibleName("Start date")
             self.start_date_edit.setDate(start_default)
-            self._dates_are_masked = True
         else:
             self.start_date_edit = QDateEdit()
             self.start_date_edit.setAccessibleName("Start date")
@@ -384,7 +383,6 @@ class ReadingHistoryWindow(AccessibleDialog):
             self.start_date_edit.setCalendarWidget(
                 FullDayNumberCalendar(self.start_date_edit)
             )
-            self._dates_are_masked = False
 
         # End date
         end_date_label = QLabel("To:")
@@ -737,9 +735,6 @@ class ReadingHistoryWindow(AccessibleDialog):
 
         monthly_data = stats.get("monthly_breakdown", [])
         self.populate_month_table(monthly_data)
-
-    def load_general_stats(self):
-        return self.load_summary_data()
 
     def update_general_stats(self, stats):
         """Update general statistics table."""

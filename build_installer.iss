@@ -12,7 +12,7 @@
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audiobook Collector Scanner"
 #ifndef MyAppVersion
-    #define MyAppVersion "2.39"
+    #define MyAppVersion "2.40"
 #endif
 #define MyAppPublisher "Aurora Accessibility"
 #define MyAppURL       "https://abcs.auroraaccessibility.com/"

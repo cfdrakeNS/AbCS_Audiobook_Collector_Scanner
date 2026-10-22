@@ -1,6 +1,6 @@
 # AbCS Version 3 — Release Brief (pre-release)
 
-**Current build:** 2.38 committed, 2.39 import fixes ready (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
+**Current build:** 2.40 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
 **Testing:** Full pytest suite — 898 passed (October 22, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
@@ -80,6 +80,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 
 ### Import, paths, and data
 
+- View → Collections filters the book list on the Qt 6.3 legacy build (2.40).
 - Folder import file counts (2.39): files are grouped by Album tag within each book folder, so books that share an Album tag or have same-named disc folders no longer merge into one book with a too-high file count. Disc folders (CD1, Disc 2, Part 1) stay with their book.
 - Import status bar Added count updates during Add Selected; Import review export adds Files, Time, and Size MB (2.39).
 - Export Library drops the slow Cover column (2.36).

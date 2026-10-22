@@ -2823,11 +2823,6 @@ class BookDetailsWindow(AccessibleDialog):
             self._original_author = self.book.author_name or ""
             self._original_series = self.book.series_name or ""
             self._original_genre = self.book.genre_name or ""
-            from src.utils.text_utils import series_number_for_storage
-
-            self._series_number_at_load = series_number_for_storage(
-                self.book.series_number
-            )
         finally:
             self._loading_fields = False
             self.setUpdatesEnabled(True)
@@ -3111,7 +3106,6 @@ class BookDetailsWindow(AccessibleDialog):
             self._data_was_changed = True
             if self.book.book_id is not None:
                 self._books_touched_in_session.add(int(self.book.book_id))
-            self._series_number_at_load = series_number
 
             # Clear dirty and update original values (don't close window)
             self._clear_dirty(preserve_status=True)
@@ -3513,7 +3507,6 @@ class BookDetailsWindow(AccessibleDialog):
             self.author_combo.clearEditText()
             self.year_spin.setValue(self.year_spin.minimum())
             self.series_number_edit.clear()
-            self._series_number_at_load = None
             self.series_combo.setCurrentIndex(-1)
             self.series_combo.clearEditText()
             self.genre_combo.setCurrentIndex(-1)

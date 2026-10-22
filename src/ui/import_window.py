@@ -2823,7 +2823,6 @@ class ImportWindow(AccessibleDialog):
                 errors=errors,
                 current_index=row,
                 total_count=len(self.scanned_items),
-                is_duplicate=item.get("is_duplicate", False),
                 parent=self,
             )
 

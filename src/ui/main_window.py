@@ -3198,9 +3198,11 @@ class MainWindow(QMainWindow):
             action = QAction(label, self)
             action.setCheckable(True)
             action.setData(collection_id)
+            # triggered(bool) stays false on the Qt 6.3 legacy build, so the
+            # signal value is ignored. The signal fires for the chosen item.
             action.triggered.connect(
-                lambda checked=False, cid=collection_id: self.on_collection_menu_selected(
-                    cid, checked
+                lambda _checked=False, cid=collection_id: self.on_collection_menu_selected(
+                    cid, True
                 )
             )
             if collection_id is None:

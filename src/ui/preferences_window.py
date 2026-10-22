@@ -710,7 +710,6 @@ class PreferencesWindow(AccessibleDialog):
         layout = QVBoxLayout(group)
         layout.setContentsMargins(8, 2, 8, 2)
         layout.setSpacing(0)
-        self._autocorrect_layout = layout
 
         self._autocorrect_compact_widgets = []
         tooltip_map = {}

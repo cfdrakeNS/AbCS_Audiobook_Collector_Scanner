@@ -406,9 +406,6 @@ class MaskedYearEdit(QLineEdit):
     def maximum(self) -> int:
         return self._valid_max
 
-    def valid_year_range(self) -> Tuple[int, int]:
-        return self._valid_min, self._valid_max
-
     def setSpecialValueText(self, _text: str) -> None:
         return
 
@@ -491,10 +488,6 @@ class MaskedDateEdit(QLineEdit):
             return
         self.deselect()
         self.setCursorPosition(0)
-
-    def setAllowBlank(self, allow: bool) -> None:
-        self._allow_blank = bool(allow)
-        self._refresh_accessible_description()
 
     def setDisallowFuture(self, disallow: bool) -> None:
         self._disallow_future = bool(disallow)

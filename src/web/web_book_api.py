@@ -931,7 +931,6 @@ class WebBookAPI:
         self.open_library_work_url = "https://openlibrary.org/works"
         self.open_library_isbn_url = "https://openlibrary.org/isbn"
         self.wikidata_api_url = "https://www.wikidata.org/w/api.php"
-        self.wikidata_url = "https://query.wikidata.org/sparql"  # legacy alias
         self.wikipedia_url = "https://en.wikipedia.org/w/api.php"
         self._cache: dict = {}
         self.CACHE_DURATION = CACHE_DURATION

@@ -499,7 +499,6 @@ class PreviewWindow(AccessibleDialog):
         self.theme_manager = theme_manager
         self._book = book
         self._db = db
-        self._display_title = ""
         self._book_length_text = ""
         self._player = None
         self._audio = None
@@ -588,7 +587,6 @@ class PreviewWindow(AccessibleDialog):
         self.cover_label.hide()
         info_row.addWidget(self.cover_label, 0, Qt.AlignTop)
         layout.addLayout(info_row)
-        self.track_label = self.title_label
 
         layout.addSpacing(2)
 
@@ -1021,7 +1019,6 @@ class PreviewWindow(AccessibleDialog):
         author = (author_name or "").strip()
         series = _format_preview_series(series_name, series_number)
         length = _length_from_book_or_text(self._book, length_text)
-        self._display_title = title
         self._book_length_text = length
         self._set_info_line(self.title_label, f"Title: {title}")
         self._set_info_line(
@@ -1060,31 +1057,6 @@ class PreviewWindow(AccessibleDialog):
             self._resume_ms if self._pending_resume and self._resume_ms else 0
         )
         return True, _playback_status("Playing")
-
-    def play_file(
-        self,
-        file_path: Path,
-        book_title: str = "",
-        author_name: str = "",
-        series_name: str = "",
-        series_number: str = "",
-        length_text: str = "",
-    ) -> tuple[bool, str]:
-        from types import SimpleNamespace
-
-        return self.play_playlist(
-            SimpleNamespace(
-                files=(file_path,),
-                start_index=0,
-                folder_mode=False,
-                error="",
-            ),
-            book_title=book_title,
-            author_name=author_name,
-            series_name=series_name,
-            series_number=series_number,
-            length_text=length_text,
-        )
 
     def on_space(self):
         """Space toggles play, except on Speed where it opens the speed list."""

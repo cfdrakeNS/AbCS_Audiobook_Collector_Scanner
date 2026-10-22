@@ -191,10 +191,6 @@ def load_help_sections() -> tuple[list[str], list[HelpSection]]:
     return order, sections
 
 
-def clear_help_search_cache() -> None:
-    _SECTION_CACHE.clear()
-
-
 def _snippet(text: str, word: str) -> str:
     """Sentence holding the first match, trimmed around it."""
     lower = text.casefold()

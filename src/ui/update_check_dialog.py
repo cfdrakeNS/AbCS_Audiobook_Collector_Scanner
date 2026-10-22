@@ -43,7 +43,6 @@ class UpdateCheckDialog(AccessibleDialog):
         super().__init__(parent)
         self.scaler = scaler
         self.setWindowIcon(get_app_icon())
-        self._result = result
         self._message = result_message(result)
         self.browser_opened = False
         update_available = bool(result.ok and result.update_available)

@@ -73,7 +73,6 @@ REVIEW_QUEUE_STOP = 2
 
 class WebMetadataWindow(AccessibleDialog):
 
-    STOP_QUEUE = REVIEW_QUEUE_STOP
     _pending_open_status = ""
 
     @staticmethod
