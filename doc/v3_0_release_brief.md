@@ -81,7 +81,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 ### Import, paths, and data
 
 - View → Collections filters the book list on the Qt 6.3 legacy build (2.40).
-- Folder import file counts (2.39): files are grouped by Album tag within each book folder, so books that share an Album tag or have same-named disc folders no longer merge into one book with a too-high file count. Disc folders (CD1, Disc 2, Part 1) stay with their book.
+- Folder import grouping: files with the same Album and Album artist tags are one book, whatever their subfolders are named, such as CD1, Disc 2, or World Gone By [Disc 1]. Files with no Album tag group by their own folder, so same-named disc folders from different books stay apart. An unreadable file joins the book whose files share its folder, so the file count includes it.
 - Import status bar Added count updates during Add Selected; Import review export adds Files, Time, and Size MB (2.39).
 - Export Library drops the slow Cover column (2.36).
 - Book List Import read-date mode maps only Title, Author, and Read Date (2.35).

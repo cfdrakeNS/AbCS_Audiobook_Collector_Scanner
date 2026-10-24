@@ -51,10 +51,10 @@ Files with any other extension are skipped. If every format is turned off, nothi
 
 As each audio file is found, the app reads its tags and groups files that belong to the same book:
 
-- **Grouping key** — the **album** tag within each book folder. Books in different folders stay separate even when they share an album tag.
-- If album is empty, the files in one book folder become one book.
-- Disc or part folders (such as CD1, Disc 2, or Part 1) count with their parent book folder, so a book split across discs stays one book. A disc folder can also start with the book folder name, such as `The Moonstone cd1` inside `The Moonstone`.
-- A file that cannot be read, inside a disc folder, joins the book in that folder when the book has one album. Its read error stays on the book.
+- **Grouping key** — the **album** and **album artist** tags. Files with the same album and album artist are one book, whatever subfolders they sit in. Folder names such as CD1 or Disc 2 are not used.
+- A file with no album groups with the other files in its own folder.
+- A file that cannot be read joins the book whose files share its folder. Its read error stays on the book.
+- Two different books with the same album and album artist become one book. Give them different album tags.
 - In **single-item** mode, one file = one book; title falls back to the filename if album is empty.
 
 The **folder path** where the files live is remembered — this is stored as the book's location in AbCS, not as a new folder on disk.
@@ -91,7 +91,7 @@ Different file types use different tag names internally (MP3 ID3, MP4 atoms, FLA
 
 ### What gets accumulated per book
 
-When several files share the same album tag (one multi-part audiobook), they stay one book even if the book title is taken from the track title:
+When several files share the same album and album artist tags (one multi-part audiobook), they stay one book even if the book title is taken from the track title:
 
 - **Total duration** — sum of all part lengths → converted to hours and minutes.
 - **Total size** — sum of all file sizes → converted to megabytes.

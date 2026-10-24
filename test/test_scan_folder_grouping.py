@@ -1,4 +1,4 @@
-"""BookScanner.scan_folder groups files by album within each book folder."""
+"""BookScanner.scan_folder groups files by album and album artist."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 import pytest
 
 from src.core.tag_mapping import AUTHOR_ALBUM_ARTIST_THEN_ARTIST, TITLE_ALBUM
-from src.core.tag_reader import AudioFileInfo, BookScanner, book_folder_for_file
+from src.core.tag_reader import AudioFileInfo, BookScanner
 
 
 @pytest.fixture
@@ -28,12 +28,26 @@ def _write(folder, names):
         (folder / name).write_bytes(b"stub")
 
 
-def _use_album(scanner, monkeypatch, album_for):
+def _use_tags(scanner, monkeypatch, album_for, artist_for=lambda _path: "Author"):
     def _fake_read(file_path: str) -> AudioFileInfo:
         info = AudioFileInfo()
         info.file_path = file_path
         info.album = album_for(file_path)
+        info.album_artist = artist_for(file_path)
+        return info
+
+    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+
+
+def _use_album_with_bad_file(scanner, monkeypatch, album):
+    def _fake_read(file_path: str) -> AudioFileInfo:
+        info = AudioFileInfo()
+        info.file_path = file_path
         info.album_artist = "Author"
+        if file_path.endswith("bad.mp3"):
+            info.read_error = "Error reading file: can't sync to MPEG frame"
+        else:
+            info.album = album
         return info
 
     monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
@@ -43,23 +57,49 @@ def _counts_by_folder(books):
     return {os.path.basename(book["folder"]): book["tracks"] for book in books}
 
 
-def test_shared_album_in_two_folders_stays_two_books(tmp_path, scanner, monkeypatch):
-    _write(tmp_path / "Book One", ["01.mp3", "02.mp3"])
-    _write(tmp_path / "Book Two", ["01.mp3", "02.mp3", "03.mp3"])
-    _use_album(scanner, monkeypatch, lambda _path: "Series Name")
+@pytest.mark.parametrize(
+    "disc_names",
+    [
+        ("World Gone By [Disc 1]", "World Gone By [Disc 2]"),
+        ("The Moonstone cd1", "The Moonstone cd2"),
+        ("cd1", "cd2"),
+    ],
+)
+def test_same_album_and_artist_across_subfolders_is_one_book(
+    tmp_path, scanner, monkeypatch, disc_names
+):
+    _write(tmp_path / "Book" / disc_names[0], ["01.mp3", "02.mp3"])
+    _write(tmp_path / "Book" / disc_names[1], ["03.mp3"])
+    _use_tags(scanner, monkeypatch, lambda _path: "The Book")
 
     books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
 
-    assert len(books) == 2
-    assert _counts_by_folder(books) == {"Book One": 2, "Book Two": 3}
+    assert len(books) == 1
+    assert books[0]["tracks"] == 3
+    assert books[0]["folder"] == str(tmp_path / "Book")
 
 
-def test_no_album_with_same_disc_folder_names_stays_two_books(
+def test_one_folder_book_keeps_its_folder(tmp_path, scanner, monkeypatch):
+    _write(tmp_path / "Book", ["01.mp3", "02.mp3"])
+    _use_tags(scanner, monkeypatch, lambda _path: "The Book")
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 1
+    assert books[0]["folder"] == str(tmp_path / "Book")
+
+
+def test_same_album_different_album_artist_is_two_books(
     tmp_path, scanner, monkeypatch
 ):
-    _write(tmp_path / "Book One" / "CD1", ["01.mp3", "02.mp3"])
-    _write(tmp_path / "Book Two" / "CD1", ["01.mp3"])
-    _use_album(scanner, monkeypatch, lambda _path: "")
+    _write(tmp_path / "Book One", ["01.mp3", "02.mp3"])
+    _write(tmp_path / "Book Two", ["01.mp3"])
+    _use_tags(
+        scanner,
+        monkeypatch,
+        lambda _path: "Collected Stories",
+        lambda path: "Author One" if "Book One" in path else "Author Two",
+    )
 
     books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
 
@@ -67,21 +107,22 @@ def test_no_album_with_same_disc_folder_names_stays_two_books(
     assert _counts_by_folder(books) == {"Book One": 2, "Book Two": 1}
 
 
-def test_disc_folders_of_one_book_stay_one_book(tmp_path, scanner, monkeypatch):
-    _write(tmp_path / "Book" / "CD1", ["01.mp3", "02.mp3"])
-    _write(tmp_path / "Book" / "Disc 2", ["01.mp3", "02.mp3", "03.mp3"])
-    _use_album(scanner, monkeypatch, lambda _path: "The Book")
+def test_no_album_with_same_disc_folder_names_stays_two_books(
+    tmp_path, scanner, monkeypatch
+):
+    _write(tmp_path / "Book One" / "CD1", ["01.mp3", "02.mp3"])
+    _write(tmp_path / "Book Two" / "CD1", ["01.mp3"])
+    _use_tags(scanner, monkeypatch, lambda _path: "")
 
     books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
 
-    assert len(books) == 1
-    assert books[0]["tracks"] == 5
-    assert os.path.basename(books[0]["folder"]) == "Book"
+    assert len(books) == 2
+    assert sorted(book["tracks"] for book in books) == [1, 2]
 
 
 def test_album_key_ignores_case_and_spaces(tmp_path, scanner, monkeypatch):
     _write(tmp_path / "Book", ["01.mp3", "02.mp3"])
-    _use_album(
+    _use_tags(
         scanner,
         monkeypatch,
         lambda path: "The Book" if path.endswith("01.mp3") else " the book ",
@@ -93,94 +134,28 @@ def test_album_key_ignores_case_and_spaces(tmp_path, scanner, monkeypatch):
     assert books[0]["tracks"] == 2
 
 
-@pytest.mark.parametrize(
-    "disc_name", ["CD1", "cd 2", "Disc 3", "Disk_4", "Part 1", "pt.2"]
-)
-def test_book_folder_for_file_rolls_disc_folders_up(tmp_path, disc_name):
-    path = tmp_path / "Book" / disc_name / "01.mp3"
-    assert book_folder_for_file(str(path)) == str(tmp_path / "Book")
-
-
-@pytest.mark.parametrize("folder_name", ["Book", "Chapter 1", "CD Collection"])
-def test_book_folder_for_file_keeps_normal_folders(tmp_path, folder_name):
-    path = tmp_path / folder_name / "01.mp3"
-    assert book_folder_for_file(str(path)) == str(tmp_path / folder_name)
-
-
-@pytest.mark.parametrize(
-    "disc_name", ["The Moonstone cd1", "the moonstone CD 2", "The_Moonstone-Disc3"]
-)
-def test_book_folder_for_file_rolls_titled_disc_folders_up(tmp_path, disc_name):
-    path = tmp_path / "The Moonstone" / disc_name / "01.mp3"
-    assert book_folder_for_file(str(path)) == str(tmp_path / "The Moonstone")
-
-
-def test_titled_disc_folders_of_one_book_stay_one_book(
-    tmp_path, scanner, monkeypatch
-):
-    _write(tmp_path / "The Moonstone" / "The Moonstone cd1", ["01.mp3", "02.mp3"])
-    _write(tmp_path / "The Moonstone" / "The Moonstone cd2", ["03.mp3"])
-    _use_album(scanner, monkeypatch, lambda _path: "The Moonstone")
-
-    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
-
-    assert len(books) == 1
-    assert books[0]["tracks"] == 3
-    assert os.path.basename(books[0]["folder"]) == "The Moonstone"
-
-
-def test_sibling_titled_disc_folders_stay_two_books(tmp_path, scanner, monkeypatch):
-    _write(tmp_path / "Author" / "Book One cd1", ["01.mp3", "02.mp3"])
-    _write(tmp_path / "Author" / "Book Two cd1", ["01.mp3"])
-    _use_album(scanner, monkeypatch, lambda _path: "Series Name")
-
-    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
-
-    assert len(books) == 2
-    assert _counts_by_folder(books) == {"Book One cd1": 2, "Book Two cd1": 1}
-
-
-def test_unreadable_disc_file_joins_its_book(tmp_path, scanner, monkeypatch):
+def test_unreadable_file_joins_book_in_its_folder(tmp_path, scanner, monkeypatch):
     _write(tmp_path / "Book" / "cd1", ["01.mp3", "02.mp3"])
     _write(tmp_path / "Book" / "cd2", ["03.mp3", "bad.mp3"])
-
-    def _fake_read(file_path: str) -> AudioFileInfo:
-        info = AudioFileInfo()
-        info.file_path = file_path
-        info.album_artist = "Author"
-        if file_path.endswith("bad.mp3"):
-            info.read_error = "Error reading file: can't sync to MPEG frame"
-        else:
-            info.album = "The Book"
-        return info
-
-    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+    _use_album_with_bad_file(scanner, monkeypatch, "The Book")
 
     books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
 
     assert len(books) == 1
     assert books[0]["tracks"] == 4
     assert any("bad.mp3" in err for err in books[0]["errors"])
-    assert "_unreadable_disc_only" not in books[0]
+    assert "_unreadable_only" not in books[0]
+    assert "_folder_keys" not in books[0]
 
 
-def test_unreadable_file_in_book_folder_stays_separate(
+def test_unreadable_file_without_album_book_stays_separate(
     tmp_path, scanner, monkeypatch
 ):
-    _write(tmp_path / "Book", ["01.mp3", "bad.mp3"])
-
-    def _fake_read(file_path: str) -> AudioFileInfo:
-        info = AudioFileInfo()
-        info.file_path = file_path
-        info.album_artist = "Author"
-        if file_path.endswith("bad.mp3"):
-            info.read_error = "Error reading file: can't sync to MPEG frame"
-        else:
-            info.album = "The Book"
-        return info
-
-    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+    _write(tmp_path / "Book", ["01.mp3"])
+    _write(tmp_path / "Other", ["bad.mp3"])
+    _use_album_with_bad_file(scanner, monkeypatch, "The Book")
 
     books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
 
     assert len(books) == 2
+    assert _counts_by_folder(books) == {"Book": 1, "Other": 1}
