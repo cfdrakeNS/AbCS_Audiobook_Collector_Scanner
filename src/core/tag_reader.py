@@ -558,15 +558,34 @@ class TagReader:
 
 
 _DISC_FOLDER_RE = re.compile(r"^(cd|disc|disk|part|pt)[\s._-]*\d+$", re.IGNORECASE)
+_TITLED_DISC_FOLDER_RE = re.compile(
+    r"^(.*?)[\s._-]+(cd|disc|disk|part|pt)[\s._-]*\d+$", re.IGNORECASE
+)
+
+
+def _folder_name_key(name: str) -> str:
+    return " ".join(re.split(r"[\s._-]+", name.strip().casefold())).strip()
+
+
+def _is_disc_folder(folder: str, parent: str) -> bool:
+    """True for CD1 / Disc 2 / Part 1, or "<parent name> cd1" inside that parent."""
+    name = os.path.basename(folder).strip()
+    if _DISC_FOLDER_RE.match(name):
+        return True
+    titled = _TITLED_DISC_FOLDER_RE.match(name)
+    if not titled:
+        return False
+    return _folder_name_key(titled.group(1)) == _folder_name_key(
+        os.path.basename(parent)
+    )
 
 
 def book_folder_for_file(file_path: str) -> str:
-    """Folder that holds the book: the file's folder, or its parent for CD1 / Disc 2 / Part 1."""
+    """Folder that holds the book: the file's folder, or its parent for a disc folder."""
     folder = os.path.dirname(file_path)
-    if _DISC_FOLDER_RE.match(os.path.basename(folder).strip()):
-        parent = os.path.dirname(folder)
-        if parent and parent != folder:
-            return parent
+    parent = os.path.dirname(folder)
+    if parent and parent != folder and _is_disc_folder(folder, parent):
+        return parent
     return folder
 
 
@@ -592,6 +611,32 @@ class BookScanner:
             book,
             "C: Duration corrected from embedded ZIP audio",
         )
+
+    @staticmethod
+    def _merge_unreadable_disc_files(books: Dict[Any, Dict[str, Any]]) -> None:
+        """Fold unreadable disc-folder files into the one album book in that folder."""
+        for key in list(books):
+            source = books[key]
+            if key[0] or not source["_unreadable_disc_only"]:
+                continue
+            targets = [
+                other_key
+                for other_key in books
+                if other_key[1] == key[1] and other_key[0]
+            ]
+            if len(targets) != 1:
+                continue
+            target = books[targets[0]]
+            target["files"].extend(source["files"])
+            target["total_duration"] += source["total_duration"]
+            target["total_size"] += source["total_size"]
+            target["errors"].extend(source["errors"])
+            embedded = int(source.get("_embedded_zip_file_count", 0) or 0)
+            if embedded:
+                target["_embedded_zip_file_count"] = (
+                    int(target.get("_embedded_zip_file_count", 0) or 0) + embedded
+                )
+            del books[key]
 
     def scan_folder(
         self,
@@ -710,9 +755,16 @@ class BookScanner:
                     "format": info.file_format,
                     "folder": book_folder,
                     "errors": [],
+                    "_unreadable_disc_only": True,
                 }
 
             book = books[book_key]
+            if not (
+                info.read_error
+                and not book_key[0]
+                and os.path.dirname(file_path) != book_folder
+            ):
+                book["_unreadable_disc_only"] = False
             if not (book.get("title") or "").strip() and mapped_title:
                 book["title"] = mapped_title
             if not (book.get("author") or "").strip() and mapped_author:
@@ -748,9 +800,12 @@ class BookScanner:
                     int(book.get("_embedded_zip_file_count", 0) or 0) + 1
                 )
 
+        self._merge_unreadable_disc_files(books)
+
         # Convert to list and finalize
         result = []
         for book in books.values():
+            del book["_unreadable_disc_only"]
             # Combine comments
             book["comment"] = self.tag_reader.format_accumulated_comments(
                 book["comments"]

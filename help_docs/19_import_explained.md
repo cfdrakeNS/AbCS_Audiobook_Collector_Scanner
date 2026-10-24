@@ -53,7 +53,8 @@ As each audio file is found, the app reads its tags and groups files that belong
 
 - **Grouping key** — the **album** tag within each book folder. Books in different folders stay separate even when they share an album tag.
 - If album is empty, the files in one book folder become one book.
-- Disc or part folders (such as CD1, Disc 2, or Part 1) count with their parent book folder, so a book split across discs stays one book.
+- Disc or part folders (such as CD1, Disc 2, or Part 1) count with their parent book folder, so a book split across discs stays one book. A disc folder can also start with the book folder name, such as `The Moonstone cd1` inside `The Moonstone`.
+- A file that cannot be read, inside a disc folder, joins the book in that folder when the book has one album. Its read error stays on the book.
 - In **single-item** mode, one file = one book; title falls back to the filename if album is empty.
 
 The **folder path** where the files live is remembered — this is stored as the book's location in AbCS, not as a new folder on disk.

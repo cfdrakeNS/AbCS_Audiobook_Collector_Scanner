@@ -105,3 +105,82 @@ def test_book_folder_for_file_rolls_disc_folders_up(tmp_path, disc_name):
 def test_book_folder_for_file_keeps_normal_folders(tmp_path, folder_name):
     path = tmp_path / folder_name / "01.mp3"
     assert book_folder_for_file(str(path)) == str(tmp_path / folder_name)
+
+
+@pytest.mark.parametrize(
+    "disc_name", ["The Moonstone cd1", "the moonstone CD 2", "The_Moonstone-Disc3"]
+)
+def test_book_folder_for_file_rolls_titled_disc_folders_up(tmp_path, disc_name):
+    path = tmp_path / "The Moonstone" / disc_name / "01.mp3"
+    assert book_folder_for_file(str(path)) == str(tmp_path / "The Moonstone")
+
+
+def test_titled_disc_folders_of_one_book_stay_one_book(
+    tmp_path, scanner, monkeypatch
+):
+    _write(tmp_path / "The Moonstone" / "The Moonstone cd1", ["01.mp3", "02.mp3"])
+    _write(tmp_path / "The Moonstone" / "The Moonstone cd2", ["03.mp3"])
+    _use_album(scanner, monkeypatch, lambda _path: "The Moonstone")
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 1
+    assert books[0]["tracks"] == 3
+    assert os.path.basename(books[0]["folder"]) == "The Moonstone"
+
+
+def test_sibling_titled_disc_folders_stay_two_books(tmp_path, scanner, monkeypatch):
+    _write(tmp_path / "Author" / "Book One cd1", ["01.mp3", "02.mp3"])
+    _write(tmp_path / "Author" / "Book Two cd1", ["01.mp3"])
+    _use_album(scanner, monkeypatch, lambda _path: "Series Name")
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 2
+    assert _counts_by_folder(books) == {"Book One cd1": 2, "Book Two cd1": 1}
+
+
+def test_unreadable_disc_file_joins_its_book(tmp_path, scanner, monkeypatch):
+    _write(tmp_path / "Book" / "cd1", ["01.mp3", "02.mp3"])
+    _write(tmp_path / "Book" / "cd2", ["03.mp3", "bad.mp3"])
+
+    def _fake_read(file_path: str) -> AudioFileInfo:
+        info = AudioFileInfo()
+        info.file_path = file_path
+        info.album_artist = "Author"
+        if file_path.endswith("bad.mp3"):
+            info.read_error = "Error reading file: can't sync to MPEG frame"
+        else:
+            info.album = "The Book"
+        return info
+
+    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 1
+    assert books[0]["tracks"] == 4
+    assert any("bad.mp3" in err for err in books[0]["errors"])
+    assert "_unreadable_disc_only" not in books[0]
+
+
+def test_unreadable_file_in_book_folder_stays_separate(
+    tmp_path, scanner, monkeypatch
+):
+    _write(tmp_path / "Book", ["01.mp3", "bad.mp3"])
+
+    def _fake_read(file_path: str) -> AudioFileInfo:
+        info = AudioFileInfo()
+        info.file_path = file_path
+        info.album_artist = "Author"
+        if file_path.endswith("bad.mp3"):
+            info.read_error = "Error reading file: can't sync to MPEG frame"
+        else:
+            info.album = "The Book"
+        return info
+
+    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 2
