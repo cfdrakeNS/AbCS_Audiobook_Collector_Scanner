@@ -57,6 +57,7 @@ from src.accessibility.read_only_text import (
     set_navigable_plain_text,
 )
 import getpass
+import threading
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -397,6 +398,10 @@ class BookDetailsWindow(AccessibleDialog):
         self._preview_source_cache = None
         self._cover_cache_key = None
         self._cover_cache_data = None
+        self._cover_read = None
+        self._cover_poll_timer = QTimer(self)
+        self._cover_poll_timer.setInterval(50)
+        self._cover_poll_timer.timeout.connect(self._poll_cover_read)
 
         # Track original combo values for focusOut change detection
         self._original_author = ""
@@ -2041,6 +2046,7 @@ class BookDetailsWindow(AccessibleDialog):
         if not self._keep_edit_mode:
             self._cleanup_event_filters()
 
+        self._cancel_cover_read()
         announce_dialog_closed(self)
 
         super().reject()
@@ -3850,7 +3856,7 @@ class BookDetailsWindow(AccessibleDialog):
         )
 
     def _show_book_cover(self, target=None) -> None:
-        """Show cached embedded art, or the placeholder in the same box."""
+        """Show cached embedded art, or the placeholder while the file is read."""
         from src.core.audio_launcher import read_embedded_cover
 
         if not hasattr(self, "cover_label"):
@@ -3861,10 +3867,49 @@ class BookDetailsWindow(AccessibleDialog):
         cache_key = (str(target_path) if target_path is not None else "", side)
         if cache_key != self._cover_cache_key:
             self._cover_cache_key = cache_key
-            self._cover_cache_data = (
-                read_embedded_cover(target_path) if target_path is not None else None
-            )
-        data = self._cover_cache_data
+            self._cover_cache_data = None
+            if target_path is not None:
+                self._start_cover_read(cache_key, target_path, read_embedded_cover)
+        self._apply_cover_pixmap(self._cover_cache_data)
+
+    def _start_cover_read(self, cache_key, path, reader) -> None:
+        """Read cover art off the UI thread; slow USB drives can take seconds."""
+        result = {}
+
+        def _read() -> None:
+            try:
+                result["data"] = reader(path)
+            except Exception:
+                result["data"] = None
+
+        thread = threading.Thread(target=_read, name="abcs-cover-read", daemon=True)
+        self._cover_read = (cache_key, thread, result)
+        thread.start()
+        self._cover_poll_timer.start()
+
+    def _poll_cover_read(self) -> None:
+        pending = self._cover_read
+        if pending is None:
+            self._cover_poll_timer.stop()
+            return
+        cache_key, thread, result = pending
+        if thread.is_alive():
+            return
+        self._cover_poll_timer.stop()
+        self._cover_read = None
+        if cache_key != self._cover_cache_key:
+            return
+        self._cover_cache_data = result.get("data")
+        self._apply_cover_pixmap(self._cover_cache_data)
+
+    def _cancel_cover_read(self) -> None:
+        self._cover_poll_timer.stop()
+        if self._cover_read is not None:
+            self._cover_read = None
+            self._cover_cache_key = None
+
+    def _apply_cover_pixmap(self, data) -> None:
+        side = self._cover_side()
         pixmap = QPixmap()
         has_art = False
         if data and pixmap.loadFromData(data):

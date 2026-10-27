@@ -526,7 +526,7 @@ def _jpeg_bytes() -> bytes:
 
 
 def test_book_details_open_resolves_source_and_cover_once(
-    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch, qtbot
 ):
     from src.core.audio_launcher import PreviewTarget
 
@@ -555,8 +555,93 @@ def test_book_details_open_resolves_source_and_cover_once(
         theme_manager=theme_manager,
     )
 
+    qtbot.waitUntil(lambda: window._cover_read is None, timeout=3000)
     assert calls == {"resolve": 1, "cover": 1}
     window.close()
+
+def test_book_details_slow_cover_read_does_not_block_open(
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch, qtbot
+):
+    import threading
+
+    from src.core.audio_launcher import PreviewTarget
+
+    audio = tmp_path / "slow.mp3"
+    audio.write_bytes(b"x")
+    book = _ensure_sample_books(temp_db, count=1)[0]
+    book.path = str(audio)
+    release = threading.Event()
+    art = _jpeg_bytes()
+
+    def blocked_cover(path):
+        release.wait(5)
+        return art
+
+    monkeypatch.setattr(
+        "src.core.audio_launcher.resolve_preview_source",
+        lambda path, collection_root="", import_dir="", **_lookup: PreviewTarget(
+            path=audio
+        ),
+    )
+    monkeypatch.setattr("src.core.audio_launcher.read_embedded_cover", blocked_cover)
+
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=book,
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    assert window.cover_label.accessibleName() == "No cover"
+    assert not window.cover_label.pixmap().isNull()
+
+    release.set()
+    qtbot.waitUntil(
+        lambda: window.cover_label.accessibleName() == "Book cover", timeout=3000
+    )
+    window.close()
+
+
+def test_book_details_close_during_cover_read(
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch, qtbot
+):
+    import threading
+
+    from src.core.audio_launcher import PreviewTarget
+
+    audio = tmp_path / "slow.mp3"
+    audio.write_bytes(b"x")
+    book = _ensure_sample_books(temp_db, count=1)[0]
+    book.path = str(audio)
+    release = threading.Event()
+
+    def blocked_cover(path):
+        release.wait(5)
+        return _jpeg_bytes()
+
+    monkeypatch.setattr(
+        "src.core.audio_launcher.resolve_preview_source",
+        lambda path, collection_root="", import_dir="", **_lookup: PreviewTarget(
+            path=audio
+        ),
+    )
+    monkeypatch.setattr("src.core.audio_launcher.read_embedded_cover", blocked_cover)
+
+    window = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=book,
+        parent=None,
+        theme_manager=theme_manager,
+    )
+    window.reject()
+    assert window._cover_read is None
+    assert not window._cover_poll_timer.isActive()
+    release.set()
+    qtbot.wait(150)
+    assert window.cover_label.accessibleName() == "No cover"
+    window.close()
+
 
 def test_book_details_cover_placeholder_without_art(temp_db, ui_scaler, theme_manager):
     author_id = AuthorQueries(temp_db).insert("Plain Author")
@@ -582,7 +667,7 @@ def test_book_details_cover_placeholder_without_art(temp_db, ui_scaler, theme_ma
 
 
 def test_book_details_cover_shows_embedded_art(
-    temp_db, ui_scaler, theme_manager, tmp_path
+    temp_db, ui_scaler, theme_manager, tmp_path, qtbot
 ):
     from mutagen.id3 import APIC, ID3
 
@@ -612,9 +697,11 @@ def test_book_details_cover_shows_embedded_art(
         theme_manager=theme_manager,
     )
     window.path_edit.setText(str(art))
+    qtbot.waitUntil(
+        lambda: window.cover_label.accessibleName() == "Book cover", timeout=3000
+    )
     assert window.cover_label.isHidden() is False
     assert window.cover_label.pixmap() is not None
-    assert window.cover_label.accessibleName() == "Book cover"
     assert window.cover_label.focusPolicy() == Qt.StrongFocus
     assert "cover" not in (window.status_bar.currentMessage() or "").lower()
     window.path_edit.clear()

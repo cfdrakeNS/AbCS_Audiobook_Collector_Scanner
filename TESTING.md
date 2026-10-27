@@ -190,7 +190,6 @@ related UI behavior.
 | `test/accessibility_test_window.py` | Manual F1 / Alt+/ shortcut harness |
 | `test/view_mode_static_text_spike.py` | Compare view-field control announcements with JAWS/NVDA |
 | `test/web_fetch_background_spike.py` | Exercise progress-dialog speech, focus, and cancellation with a fake worker |
-| `scripts/manual_book_list_import.py` | Manual book-list import window smoke |
 
 ## Related docs
 
