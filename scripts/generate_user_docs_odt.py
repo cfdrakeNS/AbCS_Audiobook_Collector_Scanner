@@ -46,6 +46,10 @@ PAGE_MARGIN_CM = 2.0
 TEXT_WIDTH_CM = PAGE_WIDTH_CM - 2 * PAGE_MARGIN_CM
 CONTENTS_INDENT_CM = 0.75
 
+# Writer hides bookmarks with this prefix (its own table of contents uses them),
+# so JAWS does not read a bookmark name before each heading.
+HEADING_MARK_PREFIX = "__RefHeading___abcs_"
+
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 LIST_RE = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+(.*)$")
 RULE_RE = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")
@@ -274,11 +278,11 @@ def load_topics() -> list[Topic]:
                 continue
             if block.level == 1 and title == stem:
                 title = plain_text(block.text)
-                block.bookmark = f"topic_{stem}"
+                block.bookmark = f"{HEADING_MARK_PREFIX}topic_{stem}"
             else:
                 section += 1
-                block.bookmark = f"{stem}_s{section:03d}"
-        topics.append(Topic(filename, title, f"topic_{stem}", blocks))
+                block.bookmark = f"{HEADING_MARK_PREFIX}{stem}_s{section:03d}"
+        topics.append(Topic(filename, title, f"{HEADING_MARK_PREFIX}topic_{stem}", blocks))
     if not topics:
         print("No help topics found in help_docs/", file=sys.stderr)
         raise SystemExit(1)
@@ -642,13 +646,15 @@ class GuideWriter:
     # -- blocks -------------------------------------------------------------
 
     def _heading(self, level: int, markdown: str, bookmark: str):
-        from odf.text import Bookmark, H
+        from odf.text import BookmarkEnd, BookmarkStart, H
 
         level = max(1, min(level, 6))
         heading = H(outlinelevel=str(level), stylename=f"Heading_20_{level}")
         if bookmark:
-            heading.addElement(Bookmark(name=bookmark))
+            heading.addElement(BookmarkStart(name=bookmark))
         self.add_inline(heading, markdown)
+        if bookmark:
+            heading.addElement(BookmarkEnd(name=bookmark))
         return heading
 
     def _paragraph(self, markdown: str, style: str = "Text_20_body"):
