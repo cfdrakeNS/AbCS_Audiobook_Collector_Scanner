@@ -237,6 +237,21 @@ def _format_preview_series(series_name: str, series_number="") -> str:
     return name or number
 
 
+def _part_display_name(file_path: Path) -> str:
+    """Title tag for this file, or the file name without its extension."""
+    title = ""
+    try:
+        from src.core.tag_reader import TagReader
+
+        info = TagReader().read_file(str(file_path))
+        title = (getattr(info, "track_title", "") or "").strip()
+    except Exception:
+        title = ""
+    if title:
+        return title
+    return Path(file_path).stem
+
+
 def _format_position_ms(ms: int) -> str:
     total_sec = max(0, int(ms) // 1000)
     hours, rem = divmod(total_sec, 3600)
@@ -505,6 +520,7 @@ class PreviewWindow(AccessibleDialog):
         self._video_sink = None
         self._playlist: tuple[Path, ...] = ()
         self._playlist_index = 0
+        self._part_names: dict[str, str] = {}
         self._folder_mode = False
         self._resume_ms: int | None = None
         self._pending_resume = False
@@ -1039,6 +1055,7 @@ class PreviewWindow(AccessibleDialog):
             self.length_label.setAccessibleName("")
             self.length_label.hide()
         self._playlist = tuple(playlist.files)
+        self._part_names = {}
         self._playlist_index = min(
             max(playlist.start_index, 0), len(self._playlist) - 1
         )
@@ -1317,9 +1334,19 @@ class PreviewWindow(AccessibleDialog):
             self.part_label.hide()
             return
         part = self._playlist_index + 1
-        text = f"Part {part} / {total}"
+        file_path = self._playlist[self._playlist_index]
+        text = f"Part {part} / {total} {self._cached_part_name(file_path)}"
         self._set_info_line(self.part_label, text)
         self.part_label.show()
+
+    def _cached_part_name(self, file_path: Path) -> str:
+        key = str(file_path)
+        cached = self._part_names.get(key)
+        if cached is not None:
+            return cached
+        name = _part_display_name(file_path)
+        self._part_names[key] = name
+        return name
 
     def _show_cover(self, file_path: Path) -> None:
         """Show embedded art or the standard missing-cover image."""

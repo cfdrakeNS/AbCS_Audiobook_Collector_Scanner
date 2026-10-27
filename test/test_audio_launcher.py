@@ -667,6 +667,26 @@ def test_save_position_prompt_only_after_five_minutes(
     assert (book.listen_position_ms == 90_000) is expect_saved
 
 
+def test_part_display_name_uses_title_tag_or_file_stem(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from src.ui.preview_window import _part_display_name
+
+    titled = tmp_path / "wonderland_ch_06.mp3"
+    blank = tmp_path / "wonderland_ch_07.m4b"
+    titled.write_bytes(b"x")
+    blank.write_bytes(b"x")
+
+    def fake_read(_self, file_path):
+        name = Path(file_path).name
+        title = "Down the Rabbit-Hole" if name.startswith("wonderland_ch_06") else "  "
+        return SimpleNamespace(track_title=title)
+
+    monkeypatch.setattr("src.core.tag_reader.TagReader.read_file", fake_read)
+    assert _part_display_name(titled) == "Down the Rabbit-Hole"
+    assert _part_display_name(blank) == "wonderland_ch_07"
+
+
 def test_preview_next_returns_focus_to_play_pause(
     tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch
 ):
@@ -775,7 +795,8 @@ def test_preview_next_returns_focus_to_play_pause(
     assert not window.next_button.isEnabled()
     assert window.previous_button.isEnabled()
     assert window.part_label.isVisible()
-    assert window.part_label.text() == "Part 2 / 2"
+    assert window.part_label.text() == "Part 2 / 2 02"
+    assert window.part_label.accessibleName() == "Part 2 / 2 02"
     # Tab order: Previous -> Rewind -> Play -> Forward -> Next.
     assert window.previous_button.nextInFocusChain() is window.rewind_button
     assert window.rewind_button.nextInFocusChain() is window.play_pause_button

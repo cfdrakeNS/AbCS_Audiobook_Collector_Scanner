@@ -13,6 +13,8 @@
 
 The Listen window shows the book's Title and Author. Length appears when it is set, and Series appears when the book has a series. Embedded cover art appear when available.
 
+When the book has more than one file, the part line shows the current file, such as Part 6 / 12, then that file's title tag. When the title tag is empty, the file name is shown without its extension.
+
 
 ## Playback controls
 

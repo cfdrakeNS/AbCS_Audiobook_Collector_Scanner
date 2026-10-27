@@ -1,6 +1,6 @@
 # AbCS Version 3 — Release Brief (pre-release)
 
-**Current build:** 2.40 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
+**Current build:** 2.41 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
 **Testing:** Full pytest suite — 898 passed (October 22, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
@@ -53,6 +53,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 
 ### Listen and audio
 
+- Multi-file Listen shows the file title tag on the part line, or the file name without its extension when the tag is empty (2.41).
 - In-app player no longer loses screen reader focus to an external OS player.
 - Legacy Linux (Qt 6.3 / HP 6000-class): avoid crash by keeping the compatible audio sink.
 - Seek slider: stop screen reader from speaking a second raw second count after the time; restore tab to the slider when the accessible interface was invalid.
