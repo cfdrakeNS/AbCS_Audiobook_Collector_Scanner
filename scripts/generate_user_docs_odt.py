@@ -16,9 +16,19 @@ Every page has its page number in the footer.
 
 Requires odfpy (listed in requirements.txt).
 
+--audio writes the same topics as audio instead, to D:\_Wip\abcs_userguide
+unless another folder is given: for each topic, a speech-ready text file and
+an MP3 made with edge-tts (pip install edge-tts; needs an internet
+connection). Files are numbered in Help order, such as
+"02 Import Process (Folder Scan).mp3". The audio has no contents list,
+and table rows are read as "Shortcut: Action." lines.
+
 Run:
     python scripts/generate_user_docs_odt.py
     python scripts/generate_user_docs_odt.py --toc-levels 1
+    python scripts/generate_user_docs_odt.py --audio
+    python scripts/generate_user_docs_odt.py --audio --text-only
+    python scripts/generate_user_docs_odt.py --audio E:\other_folder
 """
 
 from __future__ import annotations
@@ -48,7 +58,7 @@ CONTENTS_INDENT_CM = 0.75
 
 # Writer hides bookmarks with this prefix (its own table of contents uses them),
 # so JAWS does not read a bookmark name before each heading.
-HEADING_MARK_PREFIX = "__RefHeading___abcs_"
+HEADING_MARK_PREFIX = "__RefHeading___abcs"
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 LIST_RE = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+(.*)$")
@@ -268,21 +278,22 @@ def load_topics() -> list[Topic]:
     from src.accessibility.help_paths import discover_help_topics, resolve_help_doc_path
 
     topics: list[Topic] = []
+    heading_count = 0
     for _label, filename in discover_help_topics():
         stem = Path(filename).stem
         blocks = parse_markdown(resolve_help_doc_path(filename).read_text(encoding="utf-8"))
         title = stem
-        section = 0
+        topic_mark = ""
         for block in blocks:
             if not isinstance(block, Heading):
                 continue
+            heading_count += 1
+            # Word keeps bookmark names of 40 characters at most.
+            block.bookmark = f"{HEADING_MARK_PREFIX}{heading_count:04d}"
             if block.level == 1 and title == stem:
                 title = plain_text(block.text)
-                block.bookmark = f"{HEADING_MARK_PREFIX}topic_{stem}"
-            else:
-                section += 1
-                block.bookmark = f"{HEADING_MARK_PREFIX}{stem}_s{section:03d}"
-        topics.append(Topic(filename, title, f"{HEADING_MARK_PREFIX}topic_{stem}", blocks))
+                topic_mark = block.bookmark
+        topics.append(Topic(filename, title, topic_mark, blocks))
     if not topics:
         print("No help topics found in help_docs/", file=sys.stderr)
         raise SystemExit(1)
@@ -806,6 +817,120 @@ def build_guide(output: Path, toc_levels: int) -> Path:
     return output
 
 
+# ---------------------------------------------------------------------------
+# Audio: speech-ready text and MP3 per topic
+# ---------------------------------------------------------------------------
+
+DEFAULT_VOICE = "en-CA-ClaraNeural"
+DEFAULT_AUDIO_DIR = Path(r"D:\_Wip\abcs_userguide")
+_SPEECH_REPLACEMENTS = (
+    (" → ", ", then "),
+    ("→", " then "),
+    (" — ", ", "),
+    ("—", ", "),
+    (" – ", ", "),
+)
+_UNSAFE_FILENAME_RE = re.compile(r'[<>:"/\\|?*]+')
+
+
+def _spoken(markdown: str) -> str:
+    """One sentence-like line with markup removed and an ending stop."""
+    text = plain_text(markdown.replace("\n", " "))
+    for old, new in _SPEECH_REPLACEMENTS:
+        text = text.replace(old, new)
+    text = " ".join(text.split())
+    if text and text[-1] not in ".?!:":
+        text += "."
+    return text
+
+
+def _spoken_list(block: ListBlock, lines: list[str]) -> None:
+    number = None
+    for item in block.items:
+        if block.ordered:
+            number = item.number if number is None and item.number else (number or 0) + 1
+            lines.append(f"{number}. {_spoken(' '.join(item.lines))}")
+        else:
+            lines.append(_spoken(" ".join(item.lines)))
+        for child in item.children:
+            _spoken_list(child, lines)
+
+
+def _spoken_table(block: TableBlock, lines: list[str]) -> None:
+    headers = [plain_text(cell) for cell in block.header]
+    two_column = len(headers) == 2
+    for row in block.rows:
+        cells = [_spoken(cell).rstrip(".") for cell in row]
+        if two_column:
+            if cells[0] or cells[1]:
+                lines.append(_spoken(f"{cells[0]}: {cells[1]}"))
+            continue
+        parts = [
+            f"{header}: {cell}" for header, cell in zip(headers, cells) if cell
+        ]
+        if parts:
+            lines.append(_spoken("; ".join(parts)))
+
+
+def speech_text(topic: Topic) -> str:
+    """Topic text for text to speech: headings, prose, steps, and table rows."""
+    lines: list[str] = []
+    for block in topic.blocks:
+        if isinstance(block, Heading):
+            if lines:
+                lines.append("")
+            lines.append(_spoken(block.text))
+            lines.append("")
+        elif isinstance(block, Paragraph):
+            lines.append(_spoken(block.text))
+        elif isinstance(block, ListBlock):
+            _spoken_list(block, lines)
+        elif isinstance(block, TableBlock):
+            _spoken_table(block, lines)
+        elif isinstance(block, CodeBlock):
+            lines.extend(_spoken(line) for line in block.lines if line.strip())
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_audio(output_dir: Path, voice: str, make_mp3: bool) -> int:
+    """Write nn Title.txt and nn Title.mp3 per topic; return failed MP3 count."""
+    topics = load_topics()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    jobs: list[tuple[str, Path]] = []
+    for index, topic in enumerate(topics, start=1):
+        safe_title = " ".join(_UNSAFE_FILENAME_RE.sub(" ", topic.title).split())
+        base = output_dir / f"{index:02d} {safe_title}"
+        text = speech_text(topic)
+        base.with_suffix(".txt").write_text(text, encoding="utf-8")
+        jobs.append((text, base.with_suffix(".mp3")))
+    print(f"Wrote {len(jobs)} speech text files to {output_dir}")
+    if not make_mp3:
+        return 0
+
+    try:
+        import edge_tts
+    except ImportError as exc:
+        print("edge-tts is not installed. Run: pip install edge-tts", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    import asyncio
+
+    async def _synthesize() -> int:
+        failed = 0
+        for number, (text, mp3) in enumerate(jobs, start=1):
+            print(f"  [{number}/{len(jobs)}] {mp3.name}", flush=True)
+            try:
+                await edge_tts.Communicate(text, voice).save(str(mp3))
+            except Exception as exc:
+                failed += 1
+                print(f"    failed: {exc}", file=sys.stderr, flush=True)
+        return failed
+
+    failed = asyncio.run(_synthesize())
+    print(f"Wrote {len(jobs) - failed} MP3 files to {output_dir} with voice {voice}")
+    return failed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build abcs_userguide.odt from the help_docs topics"
@@ -823,7 +948,32 @@ def main() -> None:
         default=2,
         help="Heading levels listed in the table of contents (default: 2)",
     )
+    parser.add_argument(
+        "--audio",
+        type=Path,
+        nargs="?",
+        const=DEFAULT_AUDIO_DIR,
+        metavar="FOLDER",
+        help=(
+            "Write one speech text file and one MP3 per topic instead of the ODT "
+            f"(default folder: {DEFAULT_AUDIO_DIR})"
+        ),
+    )
+    parser.add_argument(
+        "--voice",
+        default=DEFAULT_VOICE,
+        help=f"edge-tts voice for --audio (default: {DEFAULT_VOICE})",
+    )
+    parser.add_argument(
+        "--text-only",
+        action="store_true",
+        help="With --audio, write the speech text files without making MP3s",
+    )
     args = parser.parse_args()
+
+    if args.audio:
+        failed = build_audio(args.audio, args.voice, make_mp3=not args.text_only)
+        raise SystemExit(1 if failed else 0)
 
     try:
         import odf  # noqa: F401
