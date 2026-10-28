@@ -143,7 +143,10 @@ def test_unreadable_file_joins_book_in_its_folder(tmp_path, scanner, monkeypatch
 
     assert len(books) == 1
     assert books[0]["tracks"] == 4
-    assert any("bad.mp3" in err for err in books[0]["errors"])
+    assert (
+        "Error reading file: can't sync to MPEG frame. File: bad.mp3"
+        in books[0]["errors"]
+    )
     assert "_unreadable_only" not in books[0]
     assert "_folder_keys" not in books[0]
 

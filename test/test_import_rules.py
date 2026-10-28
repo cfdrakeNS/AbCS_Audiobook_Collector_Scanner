@@ -35,7 +35,11 @@ def test_engine_loads_default_rule_settings(isolated_qsettings, qapp):
 
     assert engine._rule_settings["title_blank"].enabled is True
     assert engine._rule_settings["title_blank"].severity == "error"
-    assert engine._rule_settings["minimum_title_length"].enabled is False
+    # A fresh install uses the same rules as Restore Defaults.
+    assert engine._rule_settings["minimum_title_length"].enabled is True
+    assert engine._rule_settings["file_structure"].enabled is True
+    assert engine._rule_settings["year_out_of_range"].enabled is True
+    assert engine._rule_settings["title_in_author_name"].severity == "warning"
     assert engine.min_title_length == 3
     assert engine.min_year == 1801
     assert engine.max_year == datetime.now().year

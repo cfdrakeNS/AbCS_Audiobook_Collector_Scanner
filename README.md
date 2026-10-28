@@ -1,6 +1,6 @@
 # AbCS - Audiobook Collector Scanner
 
-A cross-platform audiobook collection manager with full accessibility support (JAWS, NVDA, and other screen readers).
+A cross-platform audiobook collection manager with full accessibility support for screen readers.
 
 ## Features
 
@@ -12,11 +12,11 @@ A cross-platform audiobook collection manager with full accessibility support (J
 - **Bulk update and delete** — change or remove many books at once
 - **Duplicate mode** — find and clean up duplicate entries
 - **Backup and restore** — protect your database
-- **Web metadata** — fetch plot, series, and related fields from Open Library, Google Books, and WikiData
+- **Web metadata** — fetch plot, genre, year, and related fields from Open Library, Google Books, and WikiData
 - **Reading history and statistics** — track what you have listened to
 - **Accessibility first**
   - Complete keyboard navigation (Alt+key shortcuts)
-  - Screen reader support (NVDA, JAWS, Narrator, Orca)
+  - Screen reader support on Windows and Linux
   - Scalable UI (50%–200%+)
   - High contrast themes
 

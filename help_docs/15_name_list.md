@@ -1,73 +1,89 @@
-# Name List Process
+# Name List
 
 ## What this is
 
-The Name List window manages **authors**, **genres**, and **series** names in your library database. You can find names in the list, rename entries, and merge duplicates when you save a name that already exists.
+The Name List window manages the **author**, **genre**, and **series** names in your library. You can find names, rename them, and merge two names into one.
 
 ## When to use it
 
-- Open from the main window by double-clicking an **Author**, **Series**, or **Genre** cell, or by focusing a cell and pressing **Enter**.
-- Or open **Manage → Authors**, **Manage → Genre**, or **Manage → Series**.
+- To fix the spelling of an author, series, or genre everywhere it is used.
+- To merge two names for the same author, for example "Dorothy Sayers" and "Dorothy L. Sayers".
+- To see how many books use each name.
 
 ## Before you start
 
-- Changes may affect how books are grouped or filtered in the main list.
-- Click **Save** when the **Save** button is visible and your edits are ready.
+- Open it from the main window by double-clicking an **Author**, **Series**, or **Genre** cell, or by focusing that cell and pressing **Enter**.
+- Or open **Manage → Authors**, **Manage → Genre**, or **Manage → Series**.
+- A rename changes every book that uses that name.
 
-## Manage names
+## Window layout
 
-1. Open the name list from the main book table (double-click a name cell, or focus a cell and press **Enter**), or from the Manage menu.
-2. Use **Sort** (dropdown above the list, **Alt+S**) or click the **Name** or **Books** column header to sort by name or book count. Click the same header again to reverse the order. On the Sort dropdown, press **Alt+Down Arrow** to open the list; plain Up and Down Arrow do nothing so the sort does not change by accident. After sorting, focus moves to the first row in the list and AbCS announces the new sort order.
-3. Click a row in the list, press **Tab** from **Find** onto the list, or press **Alt+L** to move focus to the list.
-4. Click **Edit**, double-click a row, or press **Alt+E** to edit the selected entry.
-5. Type in the edit field (labeled **Author**, **Series**, or **Genre**) and click **Save** (**Ctrl+S** when Save is available).
-6. If the author, series, or genre name already exists, AbCS asks whether to move this name’s books to the existing name. **No** leaves both names unchanged. **Yes** moves the books, removes the edited name, and reports how many books changed.
-7. Press **Escape** while editing. If nothing changed, you return to the locked list. If you changed the name, choose whether to save, keep editing, or discard and return to the list. When the list is locked, **Escape** closes the window. In **Find**, **Escape** clears the text if needed and returns to the list instead of closing.
+- **Top row:** **Find** field, and the name field labeled **Author**, **Series**, or **Genre**. The name field is grayed out until you press Edit.
+- **Sort** dropdown: Name or Book count.
+- **Name list:** columns for the name and **Books** (the number of books that use it).
+- **Footer:** status bar, then the **Edit** button. While editing, **Save** replaces Edit.
+
+Tab order: Find, Sort, the name list, the name field (while editing), then Edit or Save.
+
+## Find and sort names
+
+1. Type in **Find** to narrow the list. **Ctrl+F** clears Find and starts a new search.
+2. Press **Escape** in Find to clear the text and return to the list.
+3. Choose a sort in **Sort** (**Alt+S**). Press **Alt+Down Arrow** to open the list; plain Up and Down Arrow leave the sort as it is.
+4. You can also click the name or **Books** column header to sort. Click it again to reverse the order.
+5. After sorting, focus moves to the first row and AbCS announces the new order.
+
+## Rename or merge a name
+
+1. Select a row: click it, press **Tab** from Find, or press **Alt+L**.
+2. Press **Edit** (**Alt+E**), or double-click the row.
+3. Type the new name in the name field.
+4. Press **Save** (**Ctrl+S**).
+5. If the new name already exists, AbCS asks whether to move this name's books to the existing name. **Yes** moves the books, removes the old name, and reports how many books changed. **No** keeps both names as they were.
+6. Press **Escape** while editing to stop. With no changes, you return to the list. With changes, AbCS asks whether to save, keep editing, or discard.
+7. Press **Escape** in the list to close the window.
 
 ## Clear series or genre on books
 
-This window does **not** remove series or genre from individual books.
-
-To clear **Series** or **Genre** on one or more **books** (so the book has no series or no genre):
+To remove the series or genre from some books, use the Update window:
 
 1. Select those books on the main table.
 2. Open **Edit → Update** (**Alt+U**).
-3. Open the **Series** or **Genre** dropdown and choose **None** (blank means leave that field unchanged on each book).
-4. Click **Save**.
+3. In **Series** or **Genre**, choose **None**.
 
-See [Update](05_update.md) for bulk edits.
+See [Update](05_update.md).
 
 ## Mouse, shortcuts, and accessibility
 
 - Double-click an Author, Series, or Genre cell on the main book table to open the list for that category.
 - Click a row, then **Edit**; change the text and click **Save**.
-- Right-click a row (or press the Menu key) and choose **Copy**, or press **Ctrl+C**, to copy the selected name.
+- Right-click a row or press the Menu key and choose **Copy**, or press **Ctrl+C**, to copy the selected name.
 
 | Shortcut | Action |
 |----------|--------|
-| Shift+F1 | Open this help document |
-| F1 | Show keyboard shortcuts for this window |
-| Alt+L | Focus name list |
-| Ctrl+C | Copy selected name |
 | Alt+E | Edit selected row |
+| Alt+L | Jump to list |
+| Ctrl+C | Copy selected name |
 | Ctrl+F | Clear find and start a new search |
-| Ctrl+S | Save (when editing) |
-| Alt+/ | Re-read the status bar |
-| Alt+S | Sort dropdown |
-| Alt+Down Arrow | Open the Sort dropdown (when Sort has focus) |
+| Ctrl+S | Save (while editing) |
+| Alt+S | Sort |
+| Alt+Down | Open Sort dropdown (when Sort has focus) |
 | Escape | Return to list from Find, cancel edit, or close window |
+| Alt+/ | Re-read status |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Common confusion
 
-**Name list vs Collections — which window?**
-Use this window for author, genre, and series **names**. Use **Manage → Collections** and [Collections](06_collections.md) for virtual libraries (Active, collection folder on disk, and so on).
+**Name List or Collections — which window?**
+Use this window for author, genre, and series **names**. Use **Manage → Collections** for collections. See [Collections](06_collections.md).
 
-**How do I remove series or genre from a book?**
-Use [Update](05_update.md) and set **Series** or **Genre** to **None**. Renaming or deleting a name in this window does not automatically clear that field on every book unless you merge names as described above.
+**How do I remove the series or genre from a book?**
+Use [Update](05_update.md) and choose **None** in Series or Genre. Name List renames or merges names; each book keeps a name.
 
-## Related guides
+## Related help
 
-- [Find and Filters](03_find_filters.md) — main book list search and filters
-- [Collections](06_collections.md) — collection management (separate window)
-- [Update](05_update.md) — bulk changes including **None** to clear series or genre
-- [Book Details](04_book_details.md) — edit one book at a time
+- Main window: [Find and Filters (Main Window)](03_find_filters.md)
+- Collections: [Collections](06_collections.md)
+- Several books at once: [Update](05_update.md)
+- One book: [Book Details](04_book_details.md)

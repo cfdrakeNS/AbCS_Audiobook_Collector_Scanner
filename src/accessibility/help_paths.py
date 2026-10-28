@@ -46,6 +46,7 @@ _HELP_TOPIC_ORDER = (
     "16_shortcuts.md",
     "17_default_preferences.md",
     "18_import_preferences.md",
+    "27_glossary.md",
     "19_import_explained.md",
     "20_import_book_list_explained.md",
     "21_web_metadata_explained.md",

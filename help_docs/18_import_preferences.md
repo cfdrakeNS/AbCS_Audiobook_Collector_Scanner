@@ -2,176 +2,149 @@
 
 ## What this is
 
-This guide explains how **Preferences** shape folder import behavior: import scenarios, fallback rules, auto-correct options, validation, and duplicate matching. It complements [Default preferences](17_default_preferences.md) (factory values) and [Import process](02_import.md) (step-by-step workflow).
+This guide explains how **Preferences** shape folder import: import scenarios, fallback rules, auto-correct options, validation, and duplicate matching. Factory values are in [Default preferences](17_default_preferences.md), and the step-by-step workflow is in [Import (Folder Scan)](02_import.md).
 
-Open **Manage → Preferences** (or **View → Preferences**) from the menu bar. Click the **Import Settings**, **Fallback & Auto Correct**, and **Validation Rules** tabs to change import behavior. See [Preferences](10_preferences.md) for mouse and keyboard navigation in that window.
+Open **Manage → Preferences** from the menu bar. The **Import Settings**, **Fallback & Auto Correct**, and **Validation Rules** tabs control import. See [Preferences](10_preferences.md) for moving around that window.
 
 Press **F1** in Preferences for shortcuts. Press **Alt+/** to re-read the status bar.
 
 ## Import scenarios
 
-Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences and applied when you scan from the Import window. **Mass Standard Import** is the default for new installs and after Restore Defaults.
+Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences and used each time you scan from the Import window. **Mass Standard Import** is the default.
 
-
-| Scenario                                               | Best for                             | Folder layout                                                                                               |
-| ------------------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| **Mass Standard Import** (default)                     | Most libraries                       | Root → author folders → title subfolders or files (series folders may appear under author)                  |
-| **Mass Import - Series From Directory**                | Series with files directly in folder | Root → author → **series folder** → audio files (not book subfolders)                                       |
-| **Mass Import - Series From Directory (Nested Books)** | Series with per-book subfolders      | Root → author → **series folder** → **book folder** → audio files; standalone books at author → book folder |
-| **Mass Import - Series From File Name**                | Series encoded in file names         | Any layout; series parsed from the first `( … )` block in each file name                                    |
-| **Single Author / Book Import**                        | One book at a time                   | One author folder, one book/series folder, or a single audio file                                           |
-
-
-
+| Scenario | Best for | Folder layout |
+|----------|----------|---------------|
+| **Mass Standard Import** (default) | Most libraries | Root, then author folders, then title subfolders or files. Series folders may appear under the author |
+| **Mass Import - Series From Directory** | Series with files directly in the series folder | Root, then author, then series folder, then audio files |
+| **Mass Import - Series From Directory (Nested Books)** | Series with a subfolder for each book | Root, then author, then series folder, then book folder, then audio files. Standalone books sit at author, then book folder |
+| **Mass Import - Series From File Name** | Series written in file names | Any layout. The series comes from the first block in parentheses in each file name |
+| **Single Author / Book Import** | One book at a time | One author folder, one book or series folder, or one audio file |
 
 ### Mass Standard Import (default)
 
-- **Factory default** after Restore Defaults (Alt+R).
-- Expects author names in folder structure when tags are missing (with author fallback enabled).
-- Does **not** aggressively derive series from folder paths.
-- Use when each author has their own top-level folder and books live in title subfolders or as files under the author.
-
-
+- Takes the author from the folder structure when the tag is missing and author fallback is checked.
+- Takes the series from tags, and is careful about guessing series from folder names.
+- Use it when each author has a top-level folder, and books are title subfolders or files under the author.
 
 ### Mass Import - Series From Directory
 
-- For libraries where **audio files sit directly in the series folder** — not in per-book subfolders.
-- Path pattern: `Author/Series/Files` (three levels under the scan root).
-- The **series folder name** becomes the series; each file (or album group) in that folder is one book.
-- If the book file name starts with a number (for example `03 My Book.m4b`), that number is stored as the **series number**. When a book has several files, the number is used only if every file starts with the same number; different numbers such as `01`, `02`, `03` are treated as track numbers and ignored.
-- Skips series assignment and adds a **warning** when:
-  - The folder path is missing or ambiguous
-  - The series folder name matches the author name
-  - The parent folder does not match the book's author tag
-- Author fallback prefers the **parent** folder name (the author level).
+- For libraries where **audio files sit directly in the series folder**, with no per-book subfolders.
+- Path pattern: `Author/Series/Files`, three levels under the scan root.
+- The **series folder name** becomes the series. Each file, or album group, in that folder is one book.
+- When the book file name starts with a number, for example `03 The Hound of the Baskervilles.m4b`, that number is stored as the **series number**. When a book has several files, the number is used only if every file starts with the same number. Different numbers such as 01, 02, 03 are treated as track numbers.
+- AbCS skips the series and adds a **warning** when the folder path is missing or unclear, the series folder name matches the author name, or the parent folder does not match the book's author tag.
+- Author fallback uses the **parent** folder name, at the author level.
 
-**Example:** `Tolkien/Lord of the Rings/Fellowship.m4b` → series **Lord of the Rings**, author from tag or parent folder **Tolkien**. With `Tolkien/Lord of the Rings/01 - Fellowship.m4b`, series number **1** is also stored.
+**Example:** `Sir Arthur Conan Doyle/Sherlock Holmes/The Hound of the Baskervilles.m4b` gives the series **Sherlock Holmes**, with the author from the tag or the parent folder **Sir Arthur Conan Doyle**. With `Sir Arthur Conan Doyle/Sherlock Holmes/03 - The Hound of the Baskervilles.m4b`, the series number **3** is stored too.
 
-**Not for:** `Author/Series/Book/Files` layouts where each book has its own subfolder — use **Series From Directory (Nested Books)** instead. If you use this scenario on nested folders, series assignment is skipped with a warning.
+When each book has its own subfolder (`Author/Series/Book/Files`), use **Series From Directory (Nested Books)**. On that layout, this scenario skips the series with a warning.
 
 ### Mass Import - Series From Directory (Nested Books)
 
-- Best for author folders where series contain per-book subfolders.
-- For libraries where each series has its own folder and **each book has a subfolder** under that series (`Author/Series/Book/Files`).
-- Standalone books directly under the author (`Author/Book/Files`) are imported **without** a series.
-- Series is taken from the first folder under the author; title fallback (when the title tag is missing) uses the book subfolder name and strips leading numbers (for example `1- Rules of Prey` → **Rules of Prey**).
-- If the book folder name starts with a number (for example `1- Rules of Prey`), that number is stored as the **series number**. Track file names inside the book folder are not used for the number.
-- Extra subfolders under a book (for example `CD-01`) are ignored for series assignment; the book folder name is still used for title fallback.
-- Skips series assignment and adds a **warning** when the author tag cannot be matched in the folder path or the path is too shallow.
+- For author folders where each series folder has a subfolder for each book (`Author/Series/Book/Files`).
+- Standalone books directly under the author (`Author/Book/Files`) are imported with no series.
+- The series is the first folder under the author.
+- When the title tag is missing, title fallback uses the book subfolder name without its leading number, for example `1- Whose Body` gives **Whose Body**.
+- When the book folder name starts with a number, for example `1- Whose Body`, that number is stored as the **series number**. Track file names inside the book folder are not used for the number.
+- Extra subfolders under a book, for example `CD-01`, are ignored for the series. The book folder name is still used for title fallback.
+- AbCS skips the series and adds a **warning** when the author tag cannot be matched in the folder path, or the path is too short.
 
-**Example:** `John Sandford/Lucas Deavenport Series/1- Rules of Prey/01 Rules of Prey.mp3` → series **Lucas Deavenport Series**, series number **1**, title **Rules of Prey**, author **John Sandford**.
+**Example:** `Dorothy Sayers/Lord Peter Wimsey/1- Whose Body/01 Whose Body.mp3` gives the series **Lord Peter Wimsey**, series number **1**, title **Whose Body**, and author **Dorothy Sayers**.
 
-**Nested series example:** `Michael R. Stern/Quantum Touch/1 Storm Portal/01 Storm Portal.m4b` → series **Quantum Touch**, series number **1**, title **Storm Portal**, author **Michael R. Stern**.
+**Second example:** `G. K. Chesterton/Father Brown/1 The Innocence of Father Brown/01 The Innocence of Father Brown.m4b` gives the series **Father Brown**, series number **1**, title **The Innocence of Father Brown**, and author **G. K. Chesterton**.
 
-**Standalone example:** `John Sandford/Dead Watch/01 Dead Watch.mp3` → no series, title **Dead Watch**, author **John Sandford**.
+**Standalone example:** `Wilkie Collins/The Moonstone/01 The Moonstone.mp3` gives no series, the title **The Moonstone**, and the author **Wilkie Collins**.
 
 ### Mass Import - Series From File Name
 
-- Reads the **first parenthesized block** in the file name (without extension).
+- Reads the **first block in parentheses** in the file name, without the extension.
 - Uses that block as the series name.
-- If the block ends with a number (for example `(Mistborn 1)`), the number becomes a **title suffix** ( `- 1`).
+- When the block ends with a number, for example `(Father Brown 1)`, the number is stored as the **series number**. The title is left without a suffix.
 
-**Example:** `01 - The Final Empire (Mistborn 1).m4b` → series **Mistborn**, title may gain suffix ** - 1**.
+**Example:** `01 - The Innocence of Father Brown (Father Brown 1).m4b` gives the series **Father Brown** and series number **1**.
 
 ### Single Author / Book Import
 
 - For importing one author folder, one book folder, or one audio file.
-- When picking a single file, only enabled audio formats from Preferences are offered.
-- Other fallback, auto-correct, and validation rules still apply.
-
-
+- When you pick a single file, only the audio formats checked in Preferences are offered.
+- Fallback, auto-correct, and validation rules still apply.
 
 ## Fallback and auto correct
 
-The **Fallback & Auto Correct** tab has two groups: fallback parsing and text auto-correct.
+The **Fallback & Auto Correct** tab has two groups: fallback and text auto-correct.
 
-### Fallback and parsing
+### Fallback
 
+| Setting | When it is used | Effect |
+|---------|-----------------|--------|
+| **Author fallback to folder** | Author tag missing or a placeholder | Uses folder names for the author, depending on the scenario |
+| **Title fallback to file** | Title tag missing or a placeholder | Uses the file name without leading track numbers. The nested-books scenario uses the book folder name first |
+| **Reader keywords** | Always (a comma-separated list) | Finds the narrator in comment or tag text, for example "narrator" or "read by" |
 
-| Setting                       | When enabled                      | Effect                                                                                                  |
-| ----------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Author fallback to folder** | Author tag missing or placeholder | Uses folder names to infer author (scenario-aware)                                                      |
-| **Title fallback to file**    | Title tag missing or placeholder  | Uses file name (strips leading track numbers); nested-books scenario prefers the book folder name first |
-| **Reader keywords**           | Always (comma-separated list)     | Detects narrator in comment/tag text (for example `narrator`, `read by`)                                |
+Placeholder values treated as missing include an empty tag, "unknown", "untitled", and "n/a".
 
+When a fallback checkbox is **unchecked**, a missing author or title stays missing, and validation reports an error such as **Author blank** or **Title blank**.
 
-Placeholder values treated as missing include: empty, `unknown`, `untitled`, `n/a`, and similar.
+When a fallback is used, the review list marks the book with **F:** (fallback). A fallback always holds the book for review.
 
-When a fallback checkbox is **unchecked**, AbCS does not guess from folder or file names. Missing author or title stays missing and validation reports an error (for example **Author blank** or **Title blank**).
-
-When a fallback is used, the review list flags the book with **F:** (fallback). Fallback always holds the book for review.
-
-Each Import scan reloads the latest saved fallback and auto-correct settings from Preferences.
+Each Import scan reads the latest saved fallback and auto-correct settings.
 
 ### Auto correct
 
-The **Auto Correct** group lists four options. Each option has:
+The **Auto Correct** group lists four options. Each option has a **main checkbox** that turns the correction on, and an indented **Skip review** checkbox below it, available when the main option is checked.
 
-1. A **main checkbox** with the full option name — turn this on to run that correction during folder scan.
-2. An indented **Skip review** checkbox below it — only enabled when the main option is checked.
+| Main option | What it does |
+|-------------|--------------|
+| **Apply proper case to title and author** | Capitalizes words, for example `the moonstone` becomes `The Moonstone` |
+| **Trim extra and leading/trailing whitespace** | Collapses repeated spaces and removes spaces at the start or end |
+| **Remove leading punctuation from title and author** | Removes characters other than letters from the start, for example `...The Moonstone` becomes `The Moonstone` |
+| **Remove non-printable control characters** | Removes invisible control characters. Accented letters such as é, ñ, and ü are kept |
 
+When the main option is on and **Skip review** is off, a corrected title or author gets a **C:** flag and the book is held for review.
 
-| Main option                                          | What it does                                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **Apply proper case to title and author**            | Capitalizes words in title and author (for example `the hobbit` → `The Hobbit`)              |
-| **Trim extra and leading/trailing whitespace**       | Collapses multiple spaces and removes leading or trailing spaces                             |
-| **Remove leading punctuation from title and author** | Strips non-letter characters from the start of title or author                               |
-| **Remove non-printable control characters**          | Removes invisible control characters only; accented letters such as é, ñ, and ü are **kept** |
+When **Skip review** is on, that correction alone lets the book be added automatically. When the book has another issue, such as a duplicate, a validation warning, a fallback, or a correction without Skip review, it is still held.
 
+When the main option is off, that correction does not run, and its Skip review checkbox is grayed out.
 
-**Skip review** means: if this correction is the only reason a book would go to review, still auto-add it.
-
-When the main option is on and **Skip review** is off, corrected title or author fields get a **C:** flag and the book is held for review.
-
-When the main option is off, that correction does not run and **Skip review** is greyed out and unchecked.
-
-When **Skip review** is on for a correction, that correction alone will not block auto-add. If another issue is present (duplicate, validation warning, fallback, or a different correction without Skip review), the book still goes to review.
-
-**F:** fallback flags always hold for review regardless of Skip review settings.
+**F:** fallback flags always hold the book, whatever the Skip review settings.
 
 ## Validation rules
 
-Each rule can be **None** (off), **Warning**, or **Error**. Warnings and errors send books to the **review list** instead of auto-add.
+Each rule can be **None** (off), **Warning**, or **Error**. Warnings and errors hold the book in the **review list**.
 
+| Rule | What it checks |
+|------|----------------|
+| Author in Title | The author name appears inside the title |
+| Title in Author | The title text appears in the author field, for example the author **Anna Sewell Black Beauty** for the book Black Beauty |
+| Unknown / Various author | The author is a placeholder such as "Unknown" or "Various" |
+| Minimum title length | The title is shorter than the set minimum |
+| Minimum / maximum book length | The listening time is too short or too long |
+| File structure | The path does not match the expected pattern (default **Author/Title**) |
+| Year consistency | The year is before 1800 or in the future |
 
-| Rule                          | What it checks                                                      |
-| ----------------------------- | ------------------------------------------------------------------- |
-| Author in Title               | Author name appears inside the title field                          |
-| Title in Author               | Title text appears in the author field                              |
-| Unknown / Various author      | Author is a generic placeholder                                     |
-| Minimum title length          | Title shorter than the configured minimum                           |
-| Minimum / maximum book length | Listening duration too short or too long                            |
-| File structure                | Path does not match the expected pattern (default **Author/Title**) |
-| Year consistency              | Year before 1800 or in the future                                   |
-
-
-Severity **Error** is stricter than **Warning** for blocking auto-import.
+A book with a warning can be added with **Add Selected**. A book with an error must be fixed first.
 
 ## Duplicate matching during import
 
-Separate from **Duplicate Mode** on the main window (which finds duplicates already in your library).
+This is separate from **Duplicate Mode** on the main window, which finds duplicates already in your library.
 
+| Setting | Meaning |
+|---------|---------|
+| **Duplicate match** | Which fields must match. The default is Title + Author |
+| **Fuzzy duplicate** (slider) | How similar the title **and** author text must be (0% turns fuzzy matching off) |
 
-| Setting               | Meaning                                                        |
-| --------------------- | -------------------------------------------------------------- |
-| **Duplicate match**   | Which fields must match (for example Title + Author + Year)    |
-| **Fuzzy duplicate** (slider) | How similar title **and** author text must be (0% = fuzzy off) |
+Both the title and the author must meet the fuzzy threshold. At **90%**, the default, only minor typos match. At **0%**, near-exact text is required.
 
-
-Both title and author must meet the fuzzy threshold. At **90%** (default after Restore Defaults), only minor typos match. At **0%**, near-exact text is required.
-
-Books that match an existing entry are held in review with a **Duplicate** flag — they are not auto-added.
+A book that matches one already in your library is held in review with a **Duplicate** flag.
 
 ## When settings take effect
 
-- Preferences are saved to disk when you click **Save** (Ctrl+S) in Preferences.
-- Default values after **Restore Defaults** (Alt+R) are listed in [Default preferences](17_default_preferences.md).
+- Preferences are saved when you press **Save** (**Ctrl+S**) in Preferences, or when you confirm **Restore Defaults** (**Alt+R**).
+- The values Restore Defaults sets are listed in [Default preferences](17_default_preferences.md).
 
+## Related help
 
-
-## Related documentation
-
-- [Default preferences](17_default_preferences.md) — factory default values
-- [Import process](02_import.md) — folder scan workflow
-- [Keyboard shortcuts by window](16_shortcuts.md) — Import and Preferences shortcuts
-
+- Factory values: [Default preferences](17_default_preferences.md)
+- Folder scan: [Import (Folder Scan)](02_import.md)
+- All shortcuts: [Keyboard shortcuts by window](16_shortcuts.md)
+- Import words: [Glossary](27_glossary.md)

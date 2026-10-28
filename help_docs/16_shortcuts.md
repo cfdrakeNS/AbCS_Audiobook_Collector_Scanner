@@ -1,47 +1,49 @@
-# AbCS Keyboard Shortcuts by Window
+# Keyboard Shortcuts by Window
 
-Reference list of keyboard shortcuts for each AbCS window. Most actions are also on menus and toolbar buttons — use the mouse if you prefer. Press **F1** in any window for that window's Shortcut list. Press **Alt+/** to re-read the status bar.
+Reference list of keyboard shortcuts for each AbCS window. Most actions are also on menus and toolbar buttons. Press **F1** in any window for that window's shortcut list. Press **Shift+F1** for that window's help. Press **Alt+/** to re-read the status bar.
 
 ## Main window
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+1 | Jump to Author column |
-| Alt+2 | Jump to Title column |
-| Alt+3 | Jump to Year column |
-| Alt+4 | Jump to Series column |
-| Alt+5 | Jump to Genre column |
-| Alt+6 | Jump to Time column |
-| Alt+7 | Jump to Read Date column |
 | Alt+L | Jump to list |
-| Alt+U | Update selected |
-| Alt+D | Delete selected (focused book in duplicate mode) |
-| Delete | Delete selected (focused book in duplicate mode) |
-| Alt+X | Export duplicates (duplicate mode only) |
+| Alt+1 | Jump to Author |
+| Alt+2 | Jump to Title |
+| Alt+3 | Jump to Year |
+| Alt+4 | Jump to Series |
+| Alt+5 | Jump to Genre |
+| Alt+6 | Jump to Time |
+| Alt+7 | Jump to Read Date |
+| Enter | Open focused item (Title: Book Details; Author, Series, Genre: name list; Read: set date) |
+| Ctrl+F | Find |
+| Ctrl+C | Copy focused cell |
+| Alt+V, A | View, Recently Added filter |
+| Alt+F, X | File, Export Library |
+| Alt+M, L | Manage, Check Book Locations |
+| Alt+M, T | Manage, Statistics |
 | Alt+P | Toggle plot filter |
 | Alt+R | Toggle read filter |
 | Alt+T | Toggle want to read filter |
 | Alt+W | Fetch web info (batch when two or more selected) |
-| Ctrl+L | Listen to focused book inside AbCS (disabled while books are selected) |
-| Alt+F, X | File → Export Library |
-| Alt+M, L | Manage → Check Book Locations |
-| Alt+M, T | Manage → Statistics |
-| Alt+V, A | View → Recently Added filter |
-| Ctrl+F | Find |
-| Ctrl+C | Copy focused cell |
+| Ctrl+L | Listen to focused book inside AbCS |
 | Ctrl+I | Import |
 | Ctrl+Shift+I | Import book list |
 | Ctrl+N | New book |
+| Shift+Down/Up | Start selection or extend selection |
+| Alt+U | Update selected |
+| Alt+D | Delete selected (focused book in duplicate mode) |
+| Delete | Delete selected (focused book in duplicate mode) |
+| Alt+X | Export duplicates (in duplicate mode) |
+| Escape | Clear selection, then Find, plot, read, in progress, want to read, and recently added filters one at a time; exit duplicate mode |
 | Ctrl+Plus | Zoom in |
 | Ctrl+Minus | Zoom out |
 | Ctrl+0 | Reset zoom |
-| Enter / Return | Open focused item (Title=details; Author/Series/Genre=manager; Read Date=set date) |
-| Shift+Down/Up | Start or extend selection |
-| Escape | Clear selection, then Find, plot, read, in progress, want to read, and recently added filters one at a time; exit duplicate mode |
 | Ctrl+Q | Quit |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
+
+While books are selected, F1 lists only the shortcuts that still work.
 
 ## Book Details
 
@@ -49,30 +51,30 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 |----------|--------|
 | Alt+T | Title |
 | Alt+A | Author |
+| Alt+S | Series |
+| Alt+S, then Tab | Series number |
+| Alt+G | Genre |
 | Alt+P | Plot |
 | Alt+Y | Year |
 | Alt+M | Time |
 | Alt+N | Narrator |
-| Alt+R | Read date |
-| Alt+S | Series |
-| Alt+S, then Tab | Series number |
-| Alt+G | Genre |
 | Alt+C | Collection |
+| Alt+R | Read date |
 | Alt+K | Want to read |
 | Alt+H | Path |
-| Alt+B | Browse path (Edit or New mode; in view mode it says to press Alt+E) |
-| Alt+W | Get web info |
-| Alt+E | Edit |
-| Ctrl+L | Listen to audiobook |
+| Alt+B | Browse path (edit mode; in view mode it says to press Alt+E) |
 | Ctrl+N | New book |
-| Ctrl+S | Save |
+| Alt+E | Edit book |
+| Ctrl+S | Save book |
 | Alt+D | Delete book |
+| Alt+W | Get web info |
+| Ctrl+L | Listen to audiobook |
 | Page Up | Previous book (confirms a changed read date first) |
 | Page Down | Next book (confirms a changed read date first) |
-| Escape | Close window |
+| Escape | Close |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Listen window
 
@@ -86,13 +88,13 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+S | Playback speed |
 | Alt+Down or Space on Speed | Open the speed list |
 | Left/Right on transport buttons | Move between transport buttons |
-| Left/Right on time or seek slider | Seek five seconds in the current file |
-| Page Up/Down on time or seek slider | Seek thirty seconds in the current file |
-| Home/End on time or seek slider | Start or end of the current file |
+| Left/Right on time or slider | Seek five seconds |
+| Page Up/Down on time or slider | Seek thirty seconds |
+| Home/End on time or slider | Start or end of the current file |
 | Escape | Close |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Import window
 
@@ -104,13 +106,16 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+I | Import (scan) |
 | Alt+E | Error filter |
 | Alt+L | Jump to table |
+| Alt+1 | Jump to Author |
+| Alt+2 | Jump to Title |
+| Alt+3-5 | Jump to Year, Error Type, or File/Folder |
+| Enter | Open import detail |
 | Alt+S | Add selected |
 | Alt+X | Export list to CSV |
-| Enter / Return | Open import detail (when table focused) |
-| Escape | Cancel/Close window |
+| Escape | Cancel or close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Import detail window
 
@@ -134,8 +139,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Page Down | Next item |
 | Escape | Close detail |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Import progress window
 
@@ -143,22 +148,22 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 |----------|--------|
 | Escape | Cancel import or close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Update window
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+S | Series (choose **None** in the list to clear on selected books) |
-| Alt+G | Genre (choose **None** in the list to clear on selected books) |
-| Alt+C | Collection |
-| Alt+L | Book list |
+| Alt+S | Series (choose **None** to clear it on the selected books) |
+| Alt+G | Genre (choose **None** to clear it on the selected books) |
+| Alt+C | Collection (shown with two or more collections) |
 | Alt+Down | Open combo dropdown |
+| Alt+L | Book list |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Preferences window
 
@@ -172,9 +177,11 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+R | Restore Defaults |
 | Ctrl+S | Save |
 | Ctrl+Tab / Ctrl+Shift+Tab | Move between tabs |
+| Tab/Shift+Tab | Move between controls in the current section |
+| Escape | Close (asks about unsaved changes) |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Web metadata window
 
@@ -188,12 +195,13 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+R | Rating |
 | Alt+F | Re-fetch web data |
 | Ctrl+S | Save |
-| Alt+K | Skip this book (batch Review each) |
-| Alt+Down | Open the Other plots list (plain Up/Down beep) |
+| Alt+K | Skip this book (review queue) |
 | Escape | Close (asks whether to save). In Review each: Save, Skip this book, Stop review, or Cancel |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
+
+On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 
 ## Batch web fetch summary
 
@@ -201,11 +209,11 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 |----------|--------|
 | Alt+L | Books list |
 | Alt+A | Apply all (says "No books with new information." when none) |
-| Alt+R | Review each (Review when one book has changes; says "No books with new information." when none) |
-| Escape | Close and discard results |
+| Alt+R | Review each (Review when one book has changes) |
+| Escape | Close |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Batch web fetch progress
 
@@ -213,27 +221,27 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 |----------|--------|
 | Escape | Cancel the remaining queue |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Collection window
 
 | Shortcut | Action |
 |----------|--------|
 | Alt+L | Jump to list |
-| Enter | Edit selected row |
 | Ctrl+N | New |
 | Alt+E | Edit selected row |
+| Enter | Edit selected row |
 | Alt+M | Name field (while editing) |
 | Alt+A | Active checkbox (while editing) |
 | Alt+F | Collection folder field (while editing) |
 | Alt+B | Browse collection folder (while editing) |
 | Ctrl+S | Save |
 | Alt+D | Delete |
-| Escape | Cancel edit/new or close window |
+| Escape | Cancel edit or new, or close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Backup / Restore window
 
@@ -248,8 +256,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+F | Full reset |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Name list window (Authors, Series, Genre)
 
@@ -259,21 +267,22 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+L | Jump to list |
 | Ctrl+C | Copy selected name |
 | Ctrl+F | Clear find and start a new search |
-| Ctrl+S | Save (when Save button is visible) |
-| Alt+S | Sort dropdown |
+| Ctrl+S | Save (while editing) |
+| Alt+S | Sort |
 | Alt+Down | Open Sort dropdown (when Sort has focus) |
 | Escape | Return to list from Find, cancel edit, or close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Statistics dialog
 
 | Shortcut | Action |
 |----------|--------|
 | Tab | Navigate table cells |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| Escape | Close window |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Check Book Locations window
 
@@ -288,12 +297,12 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Enter | Open Book Details |
 | Ctrl+C | Copy focused cell |
 | Right-click | Copy cell |
-| Page Up / Page Down | Previous or next listed book (in Book Details) |
+| Page Up/Down in Book Details | Previous or next listed book |
 | Alt+X | Export list to CSV |
-| Escape | Cancel scan or close |
+| Escape | Cancel scan or close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Reading History window
 
@@ -308,8 +317,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+S | Search |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Book List Import window
 
@@ -319,31 +328,31 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Alt+B | Browse for file |
 | Alt+H | Instructions |
 | Alt+O | Options section |
-| Alt+T | Title field mapping |
-| Alt+A | Author field mapping |
-| Alt+Y | Year field mapping |
-| Alt+P | Plot field mapping |
-| Alt+S | Series field mapping |
-| Alt+N | Series number field mapping |
-| Alt+G | Genre field mapping |
-| Alt+R | Narrator field mapping |
-| Alt+E | Read Date field mapping |
-| Alt+M | Time field mapping |
-| Alt+F | Files field mapping |
+| Alt+T | Title |
+| Alt+A | Author |
+| Alt+Y | Year |
+| Alt+P | Plot |
+| Alt+S | Series |
+| Alt+N | Series number |
+| Alt+G | Genre |
+| Alt+R | Narrator |
+| Alt+E | Read Date |
+| Alt+M | Time |
+| Alt+F | Files |
 | Alt+I | Import books |
 | Alt+X | Export errors to CSV |
 | Escape | Close window |
 | Alt+/ | Read status bar |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
-## Duplicate Check dialog (from main window)
+## Duplicate Check dialog
 
 | Shortcut | Action |
 |----------|--------|
+| Alt+M | Match type combo |
 | Alt+R | Start duplicate check |
-| Alt+M | Focus match type combo |
-| Escape | Close without checking |
+| Escape | Close the dialog |
 
 ## Help window
 
@@ -354,17 +363,18 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | All help / Current topic | Search scope radio buttons after the search box |
 | Enter in search box | Search; focus moves to the first result |
 | Escape in search box | Clear search results |
-| F3 / Shift+F3 | Next or previous search match in the open topic |
-| Alt+L | Jump to the left list (topics, sections, or search results) |
+| F3 / Shift+F3 | Next or previous match in the open topic |
+| Alt+L | Jump to the left list (topics, sections, or results) |
 | Tab | Switch between list and content |
-| Enter | Open topic, jump to section, or open search result |
-| Ctrl+Plus | Zoom Help in |
-| Ctrl+Minus | Zoom Help out |
+| Click or Enter | Open topic or jump to section |
+| Arrow keys | Read line by line |
+| +/−, preset, or zoom slider | Help window zoom (saved automatically) |
+| Ctrl+Plus / Ctrl+Minus | Zoom Help in or out |
 | Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
-| Alt+/ | Re-read status |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Open the help overview |
 | Escape | Close help |
+| Alt+/ | Re-read status |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Open the help overview |
 
 ## Check for updates dialog
 
@@ -373,14 +383,14 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | Enter | Activate the focused button |
 | Escape | Close |
 | Alt+/ | Read the result |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Show Context Help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Cross-window shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| F1 | Show shortcuts for the active window |
+| F1 | Keyboard shortcuts for the active window |
+| Shift+F1 | Help for the active window |
 | Alt+/ | Read status bar (most windows) |
-| Escape | Cancel or close (most dialogs) |
-| Shift+F1 | Show Context Help for the current window |
+| Escape | Cancel or close (most windows) |

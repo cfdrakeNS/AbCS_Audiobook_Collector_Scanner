@@ -1,110 +1,117 @@
-# Preferences Process
+# Preferences
 
 ## What this is
 
-Preferences controls how AbCS looks and how **import** behaves: theme, zoom, default import folder, audio formats, import scenario, fallback rules, and validation. Changes apply to future sessions after you save.
+Preferences controls how AbCS looks and how **import** behaves: theme, zoom, default import folder, audio formats, import scenario, fallback rules, and validation rules.
 
 ## When to use it
 
-- Before your first large import — set scenario, formats, and validation rules.
-- Adjust theme or zoom for readability.
-- Reset all settings to factory defaults.
+- Before your first large import: set the scenario, formats, and validation rules.
+- To adjust the theme or zoom for readability.
+- To reset all settings to factory defaults.
 
 ## Before you start
 
-- Theme and zoom **preview immediately** while the dialog is open.
-- Other import settings apply on the **next** Import scan. 
+- Theme and zoom change on screen as soon as you choose them.
+- Import settings are used from the **next** Import scan.
 - Factory defaults are listed in [Default preferences](17_default_preferences.md). Import scenario detail is in [Import preferences](18_import_preferences.md).
+
+## Window layout
+
+- **Tabs:** Display Settings, Import Settings, Fallback & Auto Correct, and Validation Rules.
+- Each tab starts with a short instruction line, then its settings. At high zoom, the tab area scrolls.
+- **Footer:** status bar, then the **Restore Defaults** and **Save** buttons.
+
+Tab order on each tab: the instruction line, then each setting from top to bottom, then Restore Defaults and Save.
 
 ## Change preferences
 
 1. Open **Manage → Preferences** (**Alt+M**, then **P**).
-2. Click a tab label (**Display Settings**, **Import Settings**, and so on) or use the Alt-key shortcuts to move between the four tabs: 
-  Ctrl+Tab and Shift+Ctrl+Tab will also cycle through these tabs
+2. Move to a tab with its Alt key, or with **Ctrl+Tab** and **Ctrl+Shift+Tab**. You can also click a tab label.
+3. Change the settings you want.
+4. Press **Save** (**Ctrl+S**).
+5. Press **Escape** to close. If you have unsaved changes, AbCS asks whether to save, keep editing, or discard.
 
-### Display Settings (Alt+D)
+## Display Settings (Alt+D)
 
 - **Theme** — system default or high-contrast themes.
-- **Zoom** — preset or drag the **Zoom** slider (default **150%** after Restore Defaults). At high zoom, scroll the preferences area vertically if needed.
-- **Help window zoom** — separate from main app zoom; adjusted at the top of the Help window when you open **Help → Help...** or press **Shift+F1**. See [Help overview](01_overview.md).
-- **Automatically check for updates** — off by default. When checked, AbCS runs the same GitHub version check as **Help → Check for updates** after the main window opens. 
-- A dialog opens only when a newer version is available. 
-- Help → Check for updates still always shows the result.
+- **Zoom** — a preset, or drag the **Zoom** slider. The default is **150%**.
+- **Web Metadata** — an optional Google Books API key for Fetch Web Info.
+- **Automatically check for updates** — off by default. When checked, AbCS runs the same check as **Help → Check for updates** after the main window opens. A message appears only when a newer version is available.
 
-### Import Settings (Alt+P)
+Help has its own zoom, set at the top of the Help window. See [Help overview](01_overview.md).
 
-- **Default import directory** — the folder Import starts with (Alt+B to browse). Choosing a collection in Import does not replace it. 
-- If you have only one collection and that collection has no collection folder, saving this folder also stores it as the collection folder. 
-- If the collection already has a folder and this default is empty, AbCS fills this default from the collection.
-- **Audio formats** — which extensions to scan.
-- **Import scenario** — how folders map to author, title, and series (default: **Mass Standard Import**). See [Import preferences](18_import_preferences.md).
-- **Tag mapping** — which audio tags fill the book title and author. Defaults match the previous scan: **Album** for the title, and **Album artist then artist** for the author. 
-- Other choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album and album artist tags, so a multi-part book stays one book.
+## Import Settings (Alt+P)
 
-### Fallback & Auto Correct (Alt+F)
+- **Default import directory** — the folder Import starts with. Press **Alt+B** to browse. Choosing a collection in Import keeps this folder.
+- With only one collection that has no collection folder, saving this folder also stores it as the collection folder. When the collection already has a folder and this field is empty, AbCS fills this field from the collection.
+- **Audio formats** — which file types to scan.
+- **Import scenario** — how folders map to author, title, and series. The default is **Mass Standard Import**. See [Import preferences](18_import_preferences.md).
+- **Tag mapping** — which audio tags fill the book title and author. The defaults are **Album** for the title, and **Album artist then artist** for the author.
+- Other tag choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album and album artist tags, so a multi-part book stays one book.
 
-- **Author fallback to folder** / **Title fallback to file**  Fill missing tags from paths when checked. When unchecked, missing author or title stays missing. and import reports an error.
-- **Reader keywords** — detect narrator in comments.
-- **Auto Correct** — four text cleanup options. Each option is a main checkbox with a **Skip review** checkbox indented below it:
-  - Apply proper case to title and author
-  - Trim extra and leading/trailing whitespace
-  - Remove leading punctuation from title and author
-  - Remove non-printable control characters (accents such as é and ñ are kept)
+## Fallback & Auto Correct (Alt+F)
 
-   **Skip review** is only available when the main option is checked; it allows auto-add when that correction is the only issue.
+- **Author fallback to folder** and **Title fallback to file** — when checked, a missing tag is filled from the folder or file name. When unchecked, a missing author or title holds the book with an error.
+- **Reader keywords** — words that find the narrator in comments.
+- **Auto Correct** — four text cleanup options. Each has a main checkbox, with a **Skip review** checkbox indented below it.
+- The options are: apply proper case to title and author; trim extra and leading or trailing spaces; remove leading punctuation from title and author; remove non-printable control characters. Accented letters such as é and ñ are kept.
+- **Skip review** is available when its main option is checked. It lets a book be added automatically when that correction is its only issue.
 
-##  # Validation Rules (Alt+V)
+## Validation Rules (Alt+V)
 
-- Duplicate matching and fuzzy percent.
-- Title/author consistency, length limits, folder structure, year checks.
-- Each rule: off, warning, or error.
+- Duplicate matching and the fuzzy duplicate percent.
+- Title and author checks, length limits, folder structure, and year checks.
+- Each rule is set to None, Warning, or Error.
 
-## Save and restet preferences 
+## Restore defaults
 
-3. Click **Save** (Ctrl+S) to keep changes.
-4. To reset everything: **Restore Defaults** (Alt+R), confirm **Yes**, then **Save**.
-5. Press **Alt+/** to re-read the status bar.
-6. Press **Escape** to close. If you have unsaved changes, AbCS asks whether to save, keep editing, or discard.
+1. Press **Restore Defaults** (**Alt+R**).
+2. Confirm with **Yes**. Every setting goes back to its factory value and is saved right away.
+3. The status bar says "All preferences restored to default values".
 
 ## What happens next
 
-- Saved preferences persist across restarts 
-- Import, web metadata duplicate options, and display settings use the new values on the next relevant action.
+- Saved preferences are kept across restarts.
+- Import and display use the new values from the next action.
 
 ## Mouse, shortcuts, and accessibility
 
-- Click tab labels at the top of the dialog to switch sections.
-- Use dropdowns, checkboxes, and the **Browse** button directly with the mouse.
-- Click **Save** to keep changes or **Restore Defaults** to reset fields (then **Save** again to write defaults to disk).
+- Click a tab label to switch sections.
+- Use the dropdowns, checkboxes, and **Browse** button directly with the mouse.
+- Click **Save** to keep changes, or **Restore Defaults** to reset everything.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+M, P | Open Preferences (Manage menu) |
+| Alt+M, P | Open Preferences (main window) |
 | Alt+D | Display Settings tab |
 | Alt+P | Import Settings tab |
+| Alt+B | Browse for default import directory |
 | Alt+F | Fallback & Auto Correct tab |
 | Alt+V | Validation Rules tab |
-| Alt+B | Browse default import directory |
 | Alt+R | Restore Defaults |
 | Ctrl+S | Save |
 | Ctrl+Tab / Ctrl+Shift+Tab | Move between tabs |
+| Tab/Shift+Tab | Move between controls in the current section |
+| Escape | Close (asks about unsaved changes) |
 | Alt+/ | Re-read status |
-| F1 | Help for this window |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Common confusion
 
 **I changed preferences but Import behaved the same.**
-Save Preferences, then run Import again. Each scan reloads the latest saved settings; 
+Save Preferences, then run Import again. Each scan reads the latest saved settings.
 
-**Restore Defaults vs Save**
-Restore Defaults resets fields in the dialog only until you click **Save**. Press **Save** to write defaults to disk.
+**Do I need to Save after Restore Defaults?**
+No. Restore Defaults saves the factory values as soon as you confirm.
 
-**Where are zoom and theme on the main window?**
-You can also use **View → Zoom In/Out/Reset** (Ctrl+/Ctrl-/Ctrl+0) without opening Preferences.
+**Can I change zoom without opening Preferences?**
+Yes. On the main window, use **View → Zoom In**, **Zoom Out**, or **Reset**, or press **Ctrl+Plus**, **Ctrl+Minus**, or **Ctrl+0**.
 
-## Related documentation
+## Related help
 
-- [Default preferences](17_default_preferences.md) — factory values
-- [Import preferences](18_import_preferences.md) — scenario and validation detail
-- [Import process](02_import.md) — folder scan workflow
-- [Keyboard shortcuts by window](16_shortcuts.md)
+- Factory values: [Default preferences](17_default_preferences.md)
+- Scenario and validation detail: [Import preferences](18_import_preferences.md)
+- Folder scan: [Import (Folder Scan)](02_import.md)
+- All shortcuts: [Keyboard shortcuts by window](16_shortcuts.md)

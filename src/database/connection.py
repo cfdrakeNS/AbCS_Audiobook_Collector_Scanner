@@ -433,6 +433,12 @@ class DatabaseManager:
                 self._rebuild_database_from_schema("missing_critical_columns")
                 return
 
+        # Earlier versions stored Book List imports with the source "Bookh_list".
+        conn.execute(
+            "UPDATE books SET source = ? WHERE source = ?", ("Book List", "Bookh_list")
+        )
+        conn.commit()
+
         if created_tables or added_columns:
             self.schema_repair_performed = True
             backup_note = ""

@@ -76,4 +76,7 @@ ltr_demo/**
 # Generated ODT user documentation (built from doc/*.md)
 doc/user_docs/
 
+# Generated help audio (scripts/generate_user_docs_odt.py --audio)
+help_docs_mp3/
+
 data/web_source_cooldowns.json

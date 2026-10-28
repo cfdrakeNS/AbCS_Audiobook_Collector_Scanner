@@ -1,62 +1,61 @@
-# Statistics Process
+# Statistics
 
 ## What this is
 
-Statistics shows a snapshot of your **entire library**: how many books, authors, series, genres, and collections you have, plus read/unread counts, 
-Want to Read and in-progress counts, and total listening time. It is a read-only summary dialog.
+Statistics shows a snapshot of your **whole library**: how many books, authors, series, genres, and collections you have, read and unread counts, Want to read and in-progress counts, and total listening time. It is a read-only summary.
 
 ## When to use it
 
-- Quick overview of collection size.
-- Check how many books are read vs unread.
-- See how many books are Want to Read or in progress (listening progress saved).
-- See book counts per collection.
+- For a quick overview of your library size.
+- To see how many books are read and unread.
+- To see how many books are Want to read or in progress.
+- To see the book count for each collection.
 
 ## Before you start
 
-- Statistics reflect the **current database** 
-- No data is changed from this dialog.
+- Statistics reflects the current database each time you open it.
+
+## Window layout
+
+- One table with two columns, Statistic and Value.
+- The rows are: total books, authors, series, and genres; books read and unread; books Want to Read and books In Progress; books with plot and without plot; total hours read and total listening time; then the number of collections and the book count for each collection.
+- The dialog has no buttons. Press **Escape** to close it.
 
 ## View statistics
 
-1. Open **Manage → Statistics** (**Alt+M**, then **T**), or click **Statistics** on the main window toolbar.
-2. A table lists each statistic and its value, for example:
-   - Total books, authors, series, genres
-   - Books read and unread
-   - Books Want to Read and Books In Progress
-   - Books With Plot and Books Without Plot (plot synopsis in Comments, same rule as the Plot filter)
-   - Total hours read and total listening time (all books)
-   - Collection count and per-collection book counts
-3. Click a row to read it, or use **Tab** to move through table cells. Each row is announced as `statistic: value` to screen readers.
-4. Press **Escape** to dismiss the dialog.
+1. Open **Manage → Statistics** (**Alt+M**, then **T**), or press the **Statistics** button on the main window toolbar.
+2. Move through the table with the arrow keys or **Tab**. A screen reader reads each row as "statistic: value".
+3. Press **Escape** to close.
+
+Books with plot and without plot use the same rule as the Plot filter on the main window.
 
 ## What happens next
 
 - Closing returns you to the main window.
-- Reopen Statistics anytime for updated numbers after imports or edits.
+- Open Statistics again after imports or edits to see updated numbers.
 
 ## Mouse, shortcuts, and accessibility
 
-- Open **Manage → Statistics** or click **Statistics** on the main toolbar.
-- Press **Escape** to close.
+- Open **Manage → Statistics**, or click **Statistics** on the main toolbar.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+M, T | Open Statistics (Manage menu) |
-| Tab | Navigate table |
-| F1 | Show shortcuts help |
-| Escape | Close |
+| Alt+M, T | Open Statistics (main window) |
+| Tab | Navigate table cells |
+| Escape | Close window |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Common confusion
 
 **How is this different from Reading History?**
-Statistics covers the **whole library** (read and unread). Reading History focuses on **finished** books and breaks them down by time period. See [Reading History process](13_reading_history.md).
+Statistics covers the **whole library**, read and unread. Reading History covers the books you **finished**, by time period. See [Reading History](13_reading_history.md).
 
-**Why do collection counts not match my filter?**
-The statistics dialog summarizes the database broadly. Use the main window collection filter when browsing a subset.
+**Why do the collection counts differ from my main list?**
+Statistics counts the whole database. The main window list shows only the books that match its filters.
 
-## Related documentation
+## Related help
 
-- [Reading History process](13_reading_history.md)
-- [Collections process](06_collections.md)
-- [Keyboard shortcuts by window](16_shortcuts.md)
+- Finished books by period: [Reading History](13_reading_history.md)
+- Collections: [Collections](06_collections.md)
+- All shortcuts: [Keyboard shortcuts by window](16_shortcuts.md)

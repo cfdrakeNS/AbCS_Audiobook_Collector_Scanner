@@ -4,60 +4,81 @@
 
 **Listen** plays an audiobook inside AbCS. It can resume from a saved listening position.
 
+## Quick steps
+
+1. On the main window, move to the book.
+2. Press **Ctrl+L**.
+3. Press **Space** to play or pause.
+4. Press **Escape** to close, and answer **Yes** to save your place.
+
 ## Open Listen
 
-1. From the main window, focus a book and choose **Edit → Listen**, click the **Listen** toolbar button, or press **Ctrl+L**. Listen is unavailable while one or more books are selected for bulk actions.
-2. In Book Details, click **Listen**. The button is hidden while Book Details is in edit mode; save or press Escape first.
+1. From the main window, focus a book and choose **Edit → Listen**, press the **Listen** toolbar button, or press **Ctrl+L**. Clear any selection of several books first.
+2. In Book Details, press **Listen**. In edit mode the button is hidden; save or press **Escape** first.
 
-## Player information
+## Window layout
 
-The Listen window shows the book's Title and Author. Length appears when it is set, and Series appears when the book has a series. Embedded cover art appear when available.
-
-When the book has more than one file, the part line shows the current file, such as Part 6 / 12, then that file's title tag. When the title tag is empty, the file name is shown without its extension.
-
+- **Book information** at the top: Title and Author, then Series when the book has one, and Length when it is set.
+- **Part line**, for a book with more than one file: the current file, such as Part 6 / 12, then that file's title tag. When the title tag is empty, the file name is shown without its extension.
+- **Cover picture**, when the audio file has one.
+- **Time display** and **Play position** slider for the current file.
+- **Transport buttons**, left to right: Previous file, Rewind 30 seconds, Play or pause, Forward 30 seconds, and Next file.
+- **Playback speed** list.
+- Status bar at the bottom.
 
 ## Playback controls
 
-Press **Space** to play or pause. After Next, Previous, or Play/Pause, focus returns to Play/Pause. After Rewind or Forward, focus stays on that button so you can press it again.
-
-Press **Alt+Left** or **Alt+Right** to rewind or move forward 30 seconds.
-
-The time display and the seek slider both move through the current file. On either one, Left and Right arrows move five seconds, Page Up and Page Down move thirty seconds, Home goes to the start of the file, and End goes to the end. Time is read when you seek, not while the book plays.
-
-Press **Alt+P** or **Alt+N** to move to the previous or next file. Playback speed is one setting for every book. On Speed (**Alt+S**), plain Up and Down arrows do nothing (a beep); press **Alt+Down** or **Space** to open the list, then Enter to choose.
+1. Press **Space** to play or pause. After Next, Previous, or Play or pause, focus returns to Play or pause.
+2. Press **Alt+Left** or **Alt+Right** to rewind or move forward 30 seconds. After Rewind or Forward, focus stays on that button so you can press it again.
+3. Press **Alt+P** or **Alt+N** for the previous or next file.
+4. On the time display or the seek slider, Left and Right arrows move five seconds, and Page Up and Page Down move thirty seconds. Home goes to the start of the file, and End to the end. The time is read when you seek.
+5. On **Speed** (**Alt+S**), plain Up and Down arrows beep and keep the speed. Press **Alt+Down** or **Space** to open the list, then **Enter** to choose. One speed setting is used for every book.
 
 ## Listening position
 
-Press **Escape** to close Listen. If you listened for five minutes or more, AbCS asks whether to save the place (**Yes** is the default). If you listened for less than five minutes, AbCS does not ask and the saved place is not changed. Time spent paused does not count. The place is never saved without asking. Reaching the end of the last file clears the saved position. Opening Listen again resumes from the saved place.
+1. Press **Escape** to close Listen.
+2. If you listened for five minutes or more, AbCS asks whether to save your place. **Yes** is the default.
+3. If you listened for less than five minutes, Listen closes and keeps the place that was already saved. Time spent paused is not counted.
+4. Opening Listen again resumes from the saved place.
+5. Reaching the end of the last file clears the saved place.
 
-Book Details **Listen progress** shows the percent of the book completed. To clear a saved place before finishing the book, use **Clear** beside **Listen progress**, or choose **Edit → Clear listening position** on the main window for the selection. Setting a read date also clears listening position and Want to read.
+Book Details **Listen progress** shows the percent of the book completed. To clear a saved place, press **Clear** beside **Listen progress**, or choose **Edit → Clear listening position** on the main window for the selection. Setting a read date also clears the listening position and Want to read.
+
+## When Listen looks for a book
+
+Listen tries the book's stored path first. When the path is blank or gone, it looks in the collection's **collection folder**: first in the author folder, then in the series folder inside it when the book has a series. When the book is found there, its folder is saved as the book's path.
+
+If the stored path is from an old drive letter or a moved folder, and the same folders exist under the collection folder, Listen plays the book and keeps the stored path. For example, a USB drive with a new letter stays portable.
+
+Matching rules for folder and file names:
+
+- A book folder or file may have a number before or after the title, such as `3 - The Moonstone`, `2 Whose Body`, or `The Moonstone - 03`.
+- A series tag at the end of the name also works, such as `1 Whose Body(Lord Peter Wimsey 01).m4b` for the book Whose Body?.
+- A tag with no number, such as `(Unabridged)`, is ignored in both the book title and the folder or file name.
+- When the book has a series number, only the folder with that number is used. When it has none, a folder is used only if it is the only one with that title.
+- If the book has no series, Listen also looks one folder down inside the author folder, for example in a series folder.
+- If the book has a series but is not in its series folder, Listen also looks one folder down and plays the book. That folder is not saved as the book's path.
+- When the author has several names separated by commas, such as `Charles Dickens, Wilkie Collins`, Listen tries a folder with the full name, then a folder for the first author.
 
 ## When Listen cannot find a book
 
-Listen tries the book's stored path first. If the path is blank or gone, it looks in the collection's **collection folder**: first in the author folder, then in the series folder inside it when the book has a series. The Preferences **Import scenario** is not used. When the book is found there, its folder is saved as the book's path.
-
-If the stored path is from an old drive letter or moved folder and the same folders exist under the collection folder (for example a USB drive with a new letter), Listen plays the book and leaves the stored path unchanged, so the drive stays portable.
-
-Book folders may have a number before or after the title, such as `3 - Silver Lantern`, `4 Copper Bridge`, or `Silver Lantern - 03`. The same goes for book files. A series tag at the end of the name also works, such as `2 Glass Harbor(Tide Runner 02).m4b` for the book Glass Harbor. A tag with no number, such as `(Unabridged)`, is ignored in both the book title and the folder or file name. When the book has a series number, only the folder with that number is used. When it has none, the folder is used only if it is the only one with that title. If the book has no series, Listen also looks one folder down inside the author folder for a title folder or file, for example in a series folder. If the book has a series but is not in that series folder, Listen also looks one folder down and plays the book, but does not save that folder as the book's path. When the author has several names separated by commas, such as `James Patterson, Maxine Paetro`, Listen tries a folder with the full name, then a folder for the first author.
-
-If the book is still not found, a message says what was missing and where Listen looked. For example, the author folder or the book title folder was not found. Most messages offer **Browse**. The folder you choose is saved on the book only if it has playable audio. Press **Escape** to close without changing the book.
-
-If the message says the collection folder is missing or is not set, open **Manage → Collections**. Edit the collection and set the **Collection folder**.
+1. A message says what was missing and where Listen looked, for example that the author folder or the book title folder was not found.
+2. Most messages offer **Browse**. The folder you choose is saved on the book when it has playable audio.
+3. Press **Escape** to close the message and keep the book as it was.
+4. If the message says the collection folder is missing or not set, open **Manage → Collections**, edit the collection, and set the **Collection folder**.
 
 A stored path that no longer exists, with nothing found in the collection folder, reports **Book not found in -** and the missing path.
 
-For the full list of folders checked and messages, see [Import Book List explained](20_import_book_list_explained.md). 
+For the full list of folders checked and messages, see [Import Book List explained](20_import_book_list_explained.md).
 
-## Related help
+## Mouse, shortcuts, and accessibility
 
-- To edit book information or browse to a missing audio path, see [Book Details](04_book_details.md).
-- To find and filter the focused book before listening, see [Find and Filters](03_find_filters.md).
-
-## Shortcuts
+- Click the transport buttons to play, pause, rewind, or move forward.
+- Drag the seek slider to move within the current file.
 
 | Shortcut | Action |
 |----------|--------|
-| Ctrl+L | Open Listen from the main window |
+| Ctrl+L | Open Listen (main window) |
 | Space | Play or pause |
 | Alt+Left | Rewind 30 seconds |
 | Alt+Right | Forward 30 seconds |
@@ -66,10 +87,16 @@ For the full list of folders checked and messages, see [Import Book List explain
 | Alt+S | Playback speed |
 | Alt+Down or Space on Speed | Open the speed list |
 | Left/Right on transport buttons | Move between transport buttons |
-| Left/Right on time or seek slider | Seek five seconds in the current file |
-| Page Up/Down on time or seek slider | Seek thirty seconds in the current file |
-| Home/End on time or seek slider | Start or end of the current file |
-| Escape | Close Listen |
+| Left/Right on time or slider | Seek five seconds |
+| Page Up/Down on time or slider | Seek thirty seconds |
+| Home/End on time or slider | Start or end of the current file |
+| Escape | Close |
 | Alt+/ | Re-read status |
-| F1 | Show keyboard shortcuts |
-| Shift+F1 | Open Listen help |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
+
+## Related help
+
+- Editing book information or browsing to a missing path: [Book Details](04_book_details.md)
+- Finding the book first: [Find and Filters (Main Window)](03_find_filters.md)
+- Fixing many paths: [Check Book Locations](24_check_book_locations.md)

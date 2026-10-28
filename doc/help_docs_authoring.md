@@ -44,7 +44,9 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `16`–`18` | Reference (shortcuts, defaults, import preferences) |
 | `19`–`21` | Explained guides (everyday-language walkthroughs) |
 | `24`–`25` | Additional process guides (check book locations, export library) |
-| `26+` | Additional process guides; next free number is 27 |
+| `26` | Listen to a book (process guide) |
+| `27` | Glossary (reference) |
+| `28+` | Next free number is 28 |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
 
@@ -113,10 +115,13 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 19 | `19_import_explained.md` | Explained | — |
 | 20 | `20_import_book_list_explained.md` | Explained | — |
 | 21 | `21_web_metadata_explained.md` | Explained | — |
-| 24 | `24_check_book_locations.md` | Process | — |
+| 24 | `24_check_book_locations.md` | Process | Check Book Locations |
 | 25 | `25_export_library.md` | Process | — |
+| 27 | `27_glossary.md` | Reference | — |
 
-Web Metadata (`07_web_metadata.md`) is intentionally listed immediately after Find and Filters, regardless of its filename prefix. Other topics follow numeric filename order. Reference and explained guides (`16`–`21`) appear in **All Help Topics** only unless linked from another topic or the overview tables in `01_overview.md`.
+**All Help Topics** uses the curated order in `_HELP_TOPIC_ORDER` (`src/accessibility/help_paths.py`), not the filename order. For example, Listen follows Book Details and Web Metadata follows Listen. Topics missing from that order follow by filename. Reference and explained guides (`16`–`21`, `27`) appear in **All Help Topics** and in the overview tables in `01_overview.md`.
+
+In the topic list, the number is hidden and underscores become spaces: `11_import_book_list.md` appears as **import book list**.
 
 ### Cross-links between topics
 
@@ -143,21 +148,39 @@ Windows and Linux builds bundle `help_docs/` into the installer. Add or edit mar
 2. **`##` sections** for major parts (What this is, action titles such as *Find (search)*, Common confusion, and so on). Do not start section headings with the word **Steps**.
 3. **`###` subsections** when a section needs smaller jumps (optional).
 
-### Recommended sections (process guides)
+### Standard section order (process guides)
 
-Process guides (`02`–`15`) usually include:
+Every process guide (one window or workflow) uses these `##` sections, in this order. Skip a section only when it has nothing to say.
 
-- **What this is** / **When to use it**
-- **Before you start**
-- **Action section** (short `##` title plus numbered list)
-- **What happens next**
-- **Settings that affect this** (if any)
-- **Mouse, shortcuts, and accessibility** — shortcut table plus mouse tips
-- **Common confusion** — FAQ-style Q&A
+1. **What this is**
+2. **Quick steps** (optional) — three to five numbered steps for the common case, with no exceptions. Use it for long topics only.
+3. **When to use it**
+4. **Before you start**
+5. **Window layout** — see below.
+6. **Action sections** — one short `##` title per task, each with a numbered list.
+7. **What happens next**
+8. **Settings that affect this** (optional)
+9. **Mouse, shortcuts, and accessibility** — mouse tips, then the shortcut table.
+10. **Common confusion** — FAQ-style questions and answers.
+11. **Related help** — links to other topics. Use this one name; do not use "Related documentation" or "Related guides".
 
-Explained guides (`19`–`21`) use narrative sections instead of full shortcut tables; link to the matching process guide for Alt+key detail.
+The `#` title is the plain window or task name, without the word "Process" (for example, **Book Details**, not Book Details Process).
 
-Reference guides (`16`–`18`) may be table-heavy; keep prose short.
+### Window layout section
+
+Describe the window from top to bottom, the way it appears on screen:
+
+- Menus or toolbar buttons, in order.
+- Header controls (fields, combos, checkboxes) with their labels.
+- Lists and tables, with their column names.
+- The button row, in on-screen order.
+- The status bar.
+
+Say which controls appear only sometimes (for example, "Save appears only while editing"). End with the Tab order. Name only controls that exist; check the window code before naming a button.
+
+Explained guides (`19`–`21`) use narrative sections instead of full shortcut tables; link to the matching process guide for Alt+key detail. Keep them in everyday language: no database table names, error codes, or file paths of internal files.
+
+Reference guides (`16`–`18`, `27`) may be table-heavy; keep prose short.
 
 ---
 
@@ -236,6 +259,15 @@ The help viewer splits **body paragraphs** and multi-sentence numbered steps int
 6. **Link labels** should make sense alone: `[Import preferences](18_import_preferences.md)` not `[click here](18_import_preferences.md)`.
 7. Keep each sentence concise. Treat sentences around 175 characters as a review flag for possible screen-reader repetition, not a fixed line-width rule. Do not hard-wrap every line: the help pane wraps to the available width, which changes with window size and zoom.
 
+## Wording rules
+
+1. **Say what happens.** Describe what the user will see and hear. Do not list things that will not happen ("nothing is updated", "this does not change…") unless the sentence protects the user's data, for example "Your audio files are not changed."
+2. **Screen reader, not product names.** Write "screen reader" or "with a screen reader running". Do not name screen reader products in user help, the README, or messages the app shows.
+3. **F1 and Shift+F1.** In every shortcut table, **F1** reads "Keyboard shortcuts for this window" and **Shift+F1** reads "Help for this window".
+4. **Standard keys in every table.** Each window's shortcut table includes **F1**, **Shift+F1**, **Alt+/**, and **Escape**.
+5. **Public domain examples only.** Use titles and authors from the public domain test library, for example Sir Arthur Conan Doyle (The Hound of the Baskervilles, Sherlock Holmes), G. K. Chesterton (The Innocence of Father Brown), Dorothy Sayers (Whose Body?), A. A. Milne, Lewis Carroll, Wilkie Collins (The Moonstone), and Gaston Leroux. When an example shows an import issue, use the test book that has that issue (the issue is in the comment tag of its first file).
+6. **Name only what exists.** Check the window code before naming a button, menu item, or shortcut.
+
 ---
 
 ## Checklist — adding a new topic
@@ -245,7 +277,7 @@ The help viewer splits **body paragraphs** and multi-sentence numbered steps int
 3. Cross-link related topics using `[label](filename.md)`.
 4. If a **new window** needs Shift+F1, add `ClassName → nn_topic.md` to `WINDOW_HELP_MAP` in `src/ui/help_router.py` (see **Window and file number reference** above).
 5. Optionally add a row to [01_overview.md](../help_docs/01_overview.md) process or explained tables.
-6. Run tests: `python -m pytest test/test_help_router.py -v`
+6. Run tests: `python -m pytest test/test_help_router.py test/test_help_docs_lint.py test/test_help_shortcut_parity.py -v`
 7. Open **Help → Help... → All Help Topics** and confirm the new name and sections.
 8. Rebuild installers if shipping to testers.
 
@@ -257,7 +289,7 @@ The help viewer splits **body paragraphs** and multi-sentence numbered steps int
 2. Keep the `#` title accurate — it is the window title.
 3. If you rename a file, update **all** cross-links in other `help_docs/` files.
 4. If you rename a file used by Shift+F1, update `WINDOW_HELP_MAP` and the **Window and file number reference** table in this guide if the number assignment changes.
-5. Run `test/test_help_router.py` after structural changes (tables, FAQ blocks, new links).
+5. Run `test/test_help_router.py`, `test/test_help_docs_lint.py`, and `test/test_help_shortcut_parity.py` after structural changes (tables, FAQ blocks, new links, shortcut changes).
 
 ---
 
@@ -266,6 +298,9 @@ The help viewer splits **body paragraphs** and multi-sentence numbered steps int
 | File | Role |
 |------|------|
 | `test/test_help_router.py` | Discovery, display names, markdown conversion |
+| `test/test_help_docs_lint.py` | Fails on screen reader product names, unsupported markdown, "Steps" headings, and links to missing topics |
+| `test/test_help_shortcut_parity.py` | Compares each window's F1 shortcut keys with its help shortcut tables |
+| `test/test_help_search.py` | Help search matching, ranking, and the Help window search box |
 | `src/accessibility/help_paths.py` | Filename rules, `discover_help_topics()` |
 | `src/ui/help_window.py` | `markdown_to_html()`, Help UI |
 | `src/ui/help_router.py` | Shift+F1 routing |

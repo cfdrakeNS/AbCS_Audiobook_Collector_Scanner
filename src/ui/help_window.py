@@ -1009,7 +1009,9 @@ class HelpWindow(AccessibleDialog):
         if self._search_current_topic():
             topic_order, sections = load_help_sections()
             sections = [s for s in sections if s.filename == self._current_filename]
-            result = search_help(query, sections=sections, topic_order=topic_order)
+            result = search_help(
+                query, sections=sections, topic_order=topic_order, group_by_topic=False
+            )
             message = search_summary(result, topic_title=self._current_title)
         else:
             result = search_help(query)

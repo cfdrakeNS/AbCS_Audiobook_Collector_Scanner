@@ -2310,7 +2310,7 @@ class MainWindow(QMainWindow):
         preferred_mode = self._normalize_duplicate_mode(
             settings.value(
                 "import/rules/duplicate/match_mode",
-                "title_author_year_collection",
+                "title_author_only",
                 type=str,
             )
         )

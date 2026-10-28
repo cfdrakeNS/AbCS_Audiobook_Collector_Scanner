@@ -1,76 +1,86 @@
-# Reading History Process
+# Reading History
 
 ## What this is
 
-Reading History shows how many books you have finished listening to, total hours listened, and breakdowns by year, month, or custom date range. It uses each book's **read date** (when you marked the book as read).
+Reading History shows how many books you have finished, the total hours listened, and breakdowns by year, month, or a date range you choose. It uses each book's **read date**: the day you marked the book as read.
+
+Reading History is a view only; it shows your data as it is.
 
 ## When to use it
 
-- Review how much you listened in a given year or month.
-- Check totals after marking books as read on the main window.
-- Search for books finished between two dates.
+- To see how much you listened in a given year or month.
+- To check totals after marking books as read.
+- To list the books you finished between two dates.
 
 ## Before you start
 
-- Books must have a **read date** to appear in history. Mark books as read from the main window (**View → Read** menu or read filter).
-- Reading History is a **view** only — it does not change your data.
+- A book appears in history once it has a **read date**.
+- To set a read date on the main window, move to the book's **Read** column and press **Enter**, or double-click the cell. You can also set it in [Book Details](04_book_details.md), or with [Import Book List](11_import_book_list.md) in read-date mode.
 
-## Search reading history
+## Window layout
+
+- **Tabs:** General, Year, Month, and Date Range.
+- **General** tab: a **Reading Statistics** table with columns Statistic and Value: Total Books Read, Total Hours Read, and Average Hours per Book.
+- **Year** tab: a table with columns Year, Books Read, and Total Hours.
+- **Month** tab: a table with columns Year, Month, Books Read, and Total Hours.
+- **Date Range** tab: **From** and **To** date fields, a **Search** button, and a table with columns Date, Title, Author, and Hours.
+- Status bar at the bottom. It also gives the period you are looking at.
+
+Tab order on the Date Range tab: From, To, Search, then the table.
+
+## View reading history
 
 1. Open **View → Reading History** (**Alt+V**, then **H**).
-2. The window opens on the **General** tab with overall totals:
-   - Total books read
-   - Total hours read
-   - Average hours per book
-3. Click a tab (**General**, **Year**, **Month**, or **Date Range**) or use Alt-key shortcuts to switch breakdowns:
-   - **General** (Alt+G) — overall summary table
-   - **Year** (Alt+Y) — books and hours per calendar year
-   - **Month** (Alt+M) — books and hours per month
-   - **Date Range** (Alt+R) — custom from/to search
-4. On **Date Range**:
-   - Set the **From** and **To** dates, or press **Alt+F** to focus **From**.
-   - With a screen reader, type each date as year-month-day (for example `2024-03-15`). Invalid dates show a warning. Without a screen reader, you can use the calendar popup.
-   - Click **Search** (or press **Alt+S**).
-   - Results appear in the date-range table.
-5. Press **Alt+L** to focus the current tab's table.
-6. Press **Alt+/** to hear the status bar (includes period context on some tabs).
-7. Press **Escape** to close Reading History.
+2. The window opens on the **General** tab with your overall totals.
+3. Switch tabs with **Alt+G** General, **Alt+Y** Year, **Alt+M** Month, or **Alt+R** Date Range, or click a tab.
+4. Press **Alt+L** to move to the current tab's table.
+5. Press **Alt+/** to hear the status bar.
+6. Press **Escape** to close Reading History.
+
+## Search a date range
+
+1. Press **Alt+R** for the **Date Range** tab.
+2. Press **Alt+F** to move to **From**, and set the start date. Press **Tab** for **To**, and set the end date.
+3. With a screen reader running, type each date as year-month-day, for example 2024-03-15. An invalid date shows a warning. Without a screen reader, you can use the calendar popup.
+4. Press **Search** (**Alt+S**).
+5. The books you finished in that period appear in the table.
 
 ## What happens next
 
 - Closing the window returns focus to the main window.
-- Totals update the next time you open Reading History after marking more books as read.
+- Totals include new read dates the next time you open Reading History.
 
 ## Mouse, shortcuts, and accessibility
 
 - Open **View → Reading History** from the menu bar.
-- Click tab labels to switch between General, Year, Month, and Date Range views.
-- On the Date Range tab, click date fields and **Search** to run a custom range.
+- Click a tab label to switch between General, Year, Month, and Date Range.
+- On the Date Range tab, click the date fields, then **Search**.
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+V, H | Open Reading History (View menu) |
+| Alt+V, H | Open Reading History (main window) |
 | Alt+G | General tab |
 | Alt+Y | Year tab |
 | Alt+M | Month tab |
 | Alt+R | Date Range tab |
 | Alt+L | Focus current table |
-| Alt+F | From date field (Date Range tab) |
-| Alt+S | Search (Date Range tab) |
+| Alt+F | From date field |
+| Alt+S | Search |
 | Escape | Close window |
 | Alt+/ | Re-read status |
-| F1 | Help for this window |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
 
 ## Common confusion
 
 **Why is my total zero?**
-No books have a read date yet. Mark books as read on the main window first.
+No books have a read date yet. Set a read date from the **Read** column on the main window first.
 
 **Is this the same as Statistics?**
-No. **Statistics** (Manage menu) shows library-wide counts (total books, authors, collections). **Reading History** focuses on books you have **finished** and when.
+No. **Statistics** (Manage menu) counts your whole library: books, authors, collections, read and unread. **Reading History** covers the books you **finished**, and when.
 
-## Related documentation
+## Related help
 
-- [Find and Filters](03_find_filters.md) — read filter on the main window
-- [Keyboard shortcuts by window](16_shortcuts.md)
-- [Statistics process](14_statistics.md)
+- Main window: [Find and Filters (Main Window)](03_find_filters.md)
+- Library totals: [Statistics](14_statistics.md)
+- All shortcuts: [Keyboard shortcuts by window](16_shortcuts.md)

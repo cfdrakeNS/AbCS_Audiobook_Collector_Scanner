@@ -33,6 +33,28 @@ def empty_temp_db(tmp_path):
         db.close()
 
 
+def test_opening_database_renames_misspelled_book_list_source(tmp_path):
+    from src.database.connection import DatabaseManager
+
+    path = str(tmp_path / "old_source.db")
+    db = DatabaseManager(path)
+    db.initialize_database()
+    db.execute(
+        "INSERT INTO books (title, source) VALUES (?, ?)", ("The Moonstone", "Bookh_list")
+    )
+    db.execute("INSERT INTO books (title, source) VALUES (?, ?)", ("Whose Body?", "Import"))
+    db.connect().commit()
+    db.close()
+
+    reopened = DatabaseManager(path)
+    reopened.initialize_database()
+    try:
+        rows = dict(reopened.fetch_all("SELECT title, source FROM books"))
+    finally:
+        reopened.close()
+    assert rows == {"The Moonstone": "Book List", "Whose Body?": "Import"}
+
+
 class TestBookBatchWrites:
     def test_insert_many_inserts_all_rows(self, empty_temp_db):
         authors = AuthorQueries(empty_temp_db)

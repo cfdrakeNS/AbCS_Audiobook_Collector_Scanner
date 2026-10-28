@@ -67,14 +67,38 @@ def test_table_rows_are_searchable_without_pipes():
 
 
 def test_every_word_must_match_in_one_section_case_insensitive():
-    assert _search("RESTORE backup").total == 2
+    assert _search("RESTORE backup", group_by_topic=False).total == 2
     assert _search("restore drive").total == 0
 
 
 def test_title_then_heading_then_body_ranking():
-    hits = _search("backup").hits
+    hits = _search("backup", group_by_topic=False).hits
     assert [h.rank for h in hits] == [RANK_TITLE, RANK_HEADING, RANK_BODY]
     assert hits[0].topic_title == "Backup and Restore"
+
+
+def test_all_help_keeps_one_row_per_topic_at_its_best_section():
+    hits = _search("collection").hits
+    assert [h.filename for h in hits] == ["06_collections.md", "09_backup.md"]
+    assert hits[0].rank == RANK_TITLE
+
+
+def test_small_words_are_skipped():
+    assert _search("how to restore a backup").total == _search("restore backup").total
+    # Only small words: they are searched as whole words.
+    assert _search("a", group_by_topic=False).total == 2
+
+
+def test_whole_words_and_word_starts_only():
+    assert _search("backups").hits
+    assert _search("backup").total == 1
+    assert _search("ackup").total == 0
+    assert _search("ve").total == 0
+
+
+def test_word_start_matches_longer_words():
+    hits = _search("restor", group_by_topic=False).hits
+    assert {h.heading for h in hits} == {"Backup and Restore", "Restore a backup"}
 
 
 def test_better_topic_first_then_curated_order():
@@ -95,19 +119,18 @@ def test_result_label_skips_repeated_topic_heading():
     assert hit.label == "Backup and Restore - Backup saves a copy of your database."
 
 
-def test_result_label_puts_section_before_guide():
+def test_result_label_puts_guide_before_section():
     hit = _search("collection folder").hits[0]
-    assert hit.label.startswith(f"Collection folder - {hit.topic_title} - ")
+    assert hit.label.startswith(f"{hit.topic_title} - Collection folder - ")
     assert hit.label_for(include_guide=False) == f"Collection folder - {hit.snippet}"
 
 
 def test_summary_messages():
     assert search_summary(_search("")) == "Type words to search help, then press Enter."
     assert search_summary(_search("zzzz")) == "No matches for zzzz."
-    assert search_summary(_search("backup")) == (
-        "3 matches in 1 topic for backup."
-    )
-    limited = _search("backup", limit=1)
+    assert search_summary(_search("backup")) == "1 topic matches backup."
+    assert search_summary(_search("collection")) == "2 topics match collection."
+    limited = _search("collection", limit=1)
     assert limited.truncated
     assert "Showing first 1." in search_summary(limited)
 
@@ -116,6 +139,26 @@ def test_real_help_docs_find_listen_topic():
     result = search_help("listen")
     assert result.hits
     assert result.hits[0].filename == "26_listen_to_a_book.md"
+
+
+def test_real_help_docs_listen_to_a_book_is_short_with_topic_first():
+    result = search_help("listen to a book")
+    assert result.hits[0].filename == "26_listen_to_a_book.md"
+    filenames = [hit.filename for hit in result.hits]
+    assert len(filenames) == len(set(filenames))
+    assert len(filenames) <= 8
+
+
+def test_phrase_keeps_only_phrase_heading_and_title_matches():
+    hits = _search("keep backups", group_by_topic=False).hits
+    assert [h.heading for h in hits] == ["Tips"]
+
+
+def test_related_help_sections_are_skipped():
+    sections = split_help_sections(
+        "10_x.md", "# Topic\n\n## Steps here\n\nBody.\n\n## Related help\n\n- Zebra\n"
+    )
+    assert not search_help("zebra", sections=sections, topic_order=["10_x.md"]).hits
 
 
 def _window(qtbot, monkeypatch):
@@ -151,7 +194,9 @@ def test_enter_fills_results_list_and_announces(qtbot, monkeypatch):
     assert window.nav_list.item(0).text() == "Back to topics"
     assert window.nav_list.currentRow() == 1
     assert window.focusWidget() is window.nav_list
-    assert " for listen." in announced[-1]
+    assert announced[-1].endswith(" match listen.") or announced[-1].endswith(
+        " matches listen."
+    )
     window.close()
 
 
@@ -274,7 +319,7 @@ def test_current_topic_search_only_lists_open_topic(qtbot, monkeypatch):
     assert filenames == {"01_overview.md"}
     for row in range(1, window.nav_list.count()):
         assert f" - {window._current_title} - " not in window.nav_list.item(row).text()
-    assert f" in {window._current_title} for help." in announced[-1]
+    assert f" in {window._current_title} match help." in announced[-1]
     window.close()
 
 
@@ -282,6 +327,6 @@ def test_current_topic_summary_wording():
     assert search_summary(_search("zzzz"), topic_title="Backup") == (
         "No matches for zzzz in Backup."
     )
-    assert search_summary(_search("backup"), topic_title="Backup") == (
-        "3 matches in Backup for backup."
-    )
+    assert search_summary(
+        _search("backup", group_by_topic=False), topic_title="Backup"
+    ) == "3 sections in Backup match backup."

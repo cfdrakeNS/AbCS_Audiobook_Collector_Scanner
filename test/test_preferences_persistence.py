@@ -107,3 +107,57 @@ def test_preferences_tag_mapping_round_trip_and_restore(
     assert reopened.title_tag_combo.currentData() == TITLE_ALBUM
     assert stored.value(TITLE_TAG_SETTING, type=str) == TITLE_ALBUM
     reopened.close()
+
+
+def test_fresh_install_shows_restore_defaults_values(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot
+):
+    from unittest.mock import patch
+
+    from PySide6.QtWidgets import QMessageBox
+
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    fresh = window._capture_state()
+
+    with patch(
+        "src.ui.preferences_window.exec_styled_message_box",
+        return_value=QMessageBox.Yes,
+    ):
+        window.on_restore_defaults()
+    restored = window._capture_state()
+    window.close()
+
+    # Theme and zoom follow the running app, not stored import defaults.
+    for key in ("theme", "scale"):
+        fresh.pop(key)
+        restored.pop(key)
+    assert fresh == restored
+
+
+def test_aac_and_opus_formats_listed_and_checked_by_default(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot
+):
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    assert window.format_checks["aac"].isChecked()
+    assert window.format_checks["opus"].isChecked()
+    assert window.format_checks["aac"].accessibleName() == "AAC format"
+    window.format_checks["opus"].setChecked(False)
+    window.on_save()
+    stored = QSettings("AbCS", "AudioBookCollector")
+    assert stored.value("import/formats/opus", True, type=bool) is False
+    window.close()
+
+
+def test_fresh_install_import_checks_use_restore_defaults_values(isolated_qsettings, qapp):
+    from src.core.validator import ImportValidator
+
+    validator = ImportValidator()
+    assert validator.duplicate_match_mode == "title_author_only"
+    assert validator.duplicate_fuzzy_threshold == 90
+    rules = validator.rules_engine._rule_settings
+    assert rules["title_in_author_name"].severity == "warning"
+    assert rules["minimum_title_length"].enabled is True
+    assert rules["file_structure"].enabled is True
+    assert rules["year_out_of_range"].enabled is True

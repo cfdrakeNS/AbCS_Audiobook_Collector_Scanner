@@ -1,9 +1,9 @@
 # AbCS Version 3 — Release Brief (pre-release)
 
-**Current build:** 2.41 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
+**Current build:** 2.42 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
-**Testing:** Full pytest suite — 898 passed (October 22, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
+**Testing:** Full pytest suite — 1073 passed (October 28, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
 **Audience:** Checklist for what ships when you promote the build to **v3.0**.
 
 User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
@@ -46,6 +46,8 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 - Help system refresh (Phase 16): topics aligned to shipped windows; Listen help topic **26_listen_to_a_book.md**; Check Book Locations **24_check_book_locations.md**.
 - Listen: **Alt+/** includes play position; seek controls announce **Play position** as time (not raw seconds); tab order includes time display and seek slider when a file is loaded.
 - Clearer progress and status during long scans and batch operations.
+- Help review from tester feedback (2.42): every window topic has a Window layout section; steps and buttons that do not exist are removed; screen reader product names and copyrighted examples are replaced; new Glossary topic; help search matches whole words, skips small words, and lists one row per topic.
+- Preferences lists AAC and OPUS formats; a fresh install uses the same values as Restore Defaults (2.42).
 
 ---
 
@@ -54,6 +56,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 ### Listen and audio
 
 - Multi-file Listen shows the file title tag on the part line, or the file name without its extension when the tag is empty (2.41).
+- Import read errors put the reason first and the file name last; Import Book List stores the source "Book List" (old "Bookh_list" rows renamed); the single-file Import picker offers only the checked formats; Preferences window 15% wider (2.42).
 - In-app player no longer loses screen reader focus to an external OS player.
 - Legacy Linux (Qt 6.3 / HP 6000-class): avoid crash by keeping the compatible audio sink.
 - Seek slider: stop screen reader from speaking a second raw second count after the time; restore tab to the slider when the accessible interface was invalid.

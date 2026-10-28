@@ -184,7 +184,7 @@ class PreferencesWindow(AccessibleDialog):
         self.setAccessibleDescription(
             "Application preferences for display and import settings"
         )
-        self.resize(994, 680)
+        self.resize(1143, 680)
         QTimer.singleShot(0, self.update_scenario_description_height)
 
         self.set_status("Ready")
@@ -535,6 +535,8 @@ class PreferencesWindow(AccessibleDialog):
             ("OGG", "ogg"),
             ("WAV", "wav"),
             ("WMA", "wma"),
+            ("AAC", "aac"),
+            ("OPUS", "opus"),
         ]
         for label, key in format_items:
             checkbox = QCheckBox(label)
@@ -1594,7 +1596,7 @@ class PreferencesWindow(AccessibleDialog):
         )
         self.ac_trim_whitespace_skip.setChecked(
             self.settings.value(
-                "import/scan/trim_whitespace_skip_review", False, type=bool
+                "import/scan/trim_whitespace_skip_review", True, type=bool
             )
         )
         self.ac_strip_punctuation_apply.setChecked(
@@ -1602,15 +1604,15 @@ class PreferencesWindow(AccessibleDialog):
         )
         self.ac_strip_punctuation_skip.setChecked(
             self.settings.value(
-                "import/scan/strip_punctuation_skip_review", False, type=bool
+                "import/scan/strip_punctuation_skip_review", True, type=bool
             )
         )
         self.ac_remove_nonprintable_apply.setChecked(
-            self.settings.value("import/scan/remove_nonprintable", False, type=bool)
+            self.settings.value("import/scan/remove_nonprintable", True, type=bool)
         )
         self.ac_remove_nonprintable_skip.setChecked(
             self.settings.value(
-                "import/scan/remove_nonprintable_skip_review", False, type=bool
+                "import/scan/remove_nonprintable_skip_review", True, type=bool
             )
         )
         self._sync_autocorrect_skip_states()
@@ -1650,7 +1652,7 @@ class PreferencesWindow(AccessibleDialog):
         self.duplicate_match_combo.addItem("Title + Author", "title_author_only")
         duplicate_mode = self.settings.value(
             "import/rules/duplicate/match_mode",
-            "title_author_year_collection",
+            "title_author_only",
             type=str,
         )
         if duplicate_mode == "with_collection":
@@ -1669,7 +1671,7 @@ class PreferencesWindow(AccessibleDialog):
         self._set_fuzzy_slider_value(
             self.settings.value(
                 "import/rules/duplicate/fuzzy_threshold",
-                0,
+                90,
                 type=int,
             ),
         )
@@ -1788,7 +1790,7 @@ class PreferencesWindow(AccessibleDialog):
 
         file_structure_enabled = self.settings.value(
             "import/rules/file_structure/enabled",
-            False,
+            True,
             type=bool,
         )
         file_structure_severity = self.settings.value(
@@ -1819,7 +1821,7 @@ class PreferencesWindow(AccessibleDialog):
 
         year_quality_enabled = self.settings.value(
             "import/rules/year_out_of_range/enabled",
-            False,
+            True,
             type=bool,
         )
         year_quality_severity = self.settings.value(
@@ -2412,12 +2414,12 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue("import/rules/author_name_in_title/enabled", True)
         self.settings.setValue("import/rules/author_name_in_title/severity", "warning")
 
-        # Title in Author: error
+        # Title in Author: warning
         self.rule_title_in_author_severity.setCurrentIndex(
-            self.rule_title_in_author_severity.findData("error")
+            self.rule_title_in_author_severity.findData("warning")
         )
         self.settings.setValue("import/rules/title_in_author_name/enabled", True)
-        self.settings.setValue("import/rules/title_in_author_name/severity", "error")
+        self.settings.setValue("import/rules/title_in_author_name/severity", "warning")
 
         self.rule_unknown_author_severity.setCurrentIndex(
             self.rule_unknown_author_severity.findData("warning")
@@ -2472,11 +2474,11 @@ class PreferencesWindow(AccessibleDialog):
         self.settings.setValue("import/rules/year_out_of_range/enabled", True)
         self.settings.setValue("import/rules/year_out_of_range/severity", "warning")
 
-        # Duplicate checking: title + author + year, 90%
+        # Duplicate checking: title + author, 90%
         self.duplicate_match_combo.setCurrentIndex(
-            self.duplicate_match_combo.findData("title_author_year")
+            self.duplicate_match_combo.findData("title_author_only")
         )
-        self.settings.setValue("import/rules/duplicate/match_mode", "title_author_year")
+        self.settings.setValue("import/rules/duplicate/match_mode", "title_author_only")
 
         self._set_fuzzy_slider_value(90)
         self.settings.setValue("import/rules/duplicate/fuzzy_threshold", 90)

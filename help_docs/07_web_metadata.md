@@ -1,85 +1,156 @@
-# Web Metadata Fetch Process
+# Web Metadata Fetch
 
 ## What this is
 
-Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You can then choose which fields to update — such as plot, genre, year, title, or author. Series is not fetched from the web; edit series in Book Details or the Update window.
+Fetch Web Info looks up a book online and compares what it finds with what is stored in AbCS. You then choose which fields to update, such as plot, genre, year, title, or author. Series is edited in Book Details or the Update window.
 
-For an explained walkthrough (including how titles are compared during fetch and review), see [Web metadata explained](21_web_metadata_explained.md).
+For a walkthrough of how the search and comparison work, see [Web metadata explained](21_web_metadata_explained.md).
+
+## Quick steps
+
+1. On the main window, move to the book.
+2. Press **Alt+W**.
+3. Wait while AbCS searches online.
+4. In the review window, check the fields you want, or keep the ones already filled in.
+5. Press **Save** (**Ctrl+S**).
 
 ## When to use it
 
-- A book is in your library but is missing a plot or other details.
-- You want to compare your local record with online sources before saving changes.
+- A book in your library is missing a plot or other details.
+- You want to compare your record with online sources before saving changes.
 
 ## Before you start
 
 - You need an **internet connection**.
-- For one book, use the focused row in the main window (or Book Details).
-- For several books, select **two or more** rows and use **Web fetch**, **Alt+W**, or toolbar **Search Web**.
-- Fetch Web Info is **not available** while duplicate mode is active.
+- For one book, focus its row in the main window, or open it in Book Details.
+- For several books, select **two or more** rows.
+- Fetch Web Info is turned off while duplicate mode is active.
 
-## Fetch web info
+## Window layout
+
+**Please wait** progress dialog: a status line that names each online source as it is tried.
+
+**Web Metadata** review window:
+
+- One row each for **Title**, **Author**, **Year**, and **Genre**. Each row shows your value and the web value. A checkbox appears when both have a value and they differ.
+- **Plot**, with an **Other plots** list when more than one plot was found.
+- **Rating**, shown for reference.
+- Buttons: **Re-fetch**, **Save**, and **Skip**. Skip appears only during a batch review.
+- Status bar at the bottom.
+
+**Batch progress** dialog: shows book N of M while a batch runs.
+
+**Batch summary** window:
+
+- A summary line at the top.
+- A books table with columns Title and Issue.
+- Buttons: **Apply all** and **Review each**. The second button is named **Review** when only one book has changes.
+- Status bar at the bottom.
+
+## Fetch web info for one book
 
 1. In the main window, move to the book you want to look up.
-2. For one book: open **Edit → Fetch Web Info**, click **Search Web** on the toolbar, or press **Alt+W**. You can also press **Alt+W** in **Book Details**.
-   - For two or more selected books: **Alt+W**, toolbar **Search Web**, or footer **Web fetch** all start the same batch fetch. Search Web and Web fetch stay available while books are selected. 
-   Add Book, Import, Find, Listen, Statistics, Preferences, and plot/read/recent-added filters are disabled. Escape cancels the selection. F1 during selection lists only the shortcuts that still work. A progress dialog shows book N of M. Escape cancels the remaining queue. Then a summary opens with focus on the first book in the list. The Issue column says **Plot found** and/or **Metadata found** when a book has changes, matching the stand-alone fetch wording. It offers **Apply all** and **Review** (or **Review each** when more than one book has changes). With a screen reader, the status bar lists **Alt+A Apply all**, **Alt+R Review**, and Escape. **Up to date** means plot and metadata already match the web result. The Issue column says **Plot and metadata up to date.** **No match found** means nothing usable was saved. **Match found. No plot was found.** means a match exists but neither the library nor the web result has a usable plot (short comments such as an author name or “Unabridged” do not count). When Google Books is paused, those rows still say **No match found**. The summary at the top then says **Google Books limit hit. Try in N minutes.** Escape closes the summary. After the summary closes, the main list selection is cleared, the same as after Update. **Alt+L** jumps to the books table. After Review and Save, the summary stays open so you can continue. **F1** lists shortcuts. **Alt+/** re-reads the status bar.
-3. A **progress dialog** appears. Watch the status text, or listen for announcements as AbCS searches online sources in order: Open Library, then Google Books, then WikiData.
-4. When the search finishes, one of two things happens:
-   - **Differences found** — a review window opens showing your current values side by side with web values.
-   - **Nothing useful found** — a "No Web Data Found" message appears. This can mean no match was found, the book is already up to date, or there was a network problem.
-5. In the review window, fields that differ have **checkboxes**. Click each box for the fields you want to apply from the web.
-   - Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
-   - Fields that are empty in your local record may be filled in automatically without a checkbox.
-6. To search again using alternate sources, click **Re-fetch** or press **Alt+F**.
-7. Click **Save** (or press **Ctrl+S**) to apply checked fields, or press **Escape** to close. Escape asks *Save web data?* — Yes saves, No discards. During **Review each**, Escape instead offers **Save**, **Skip this book**, **Stop review**, and **Cancel**. Stop review closes the review and returns to the batch summary; the status says how many books were left unreviewed. Cancel stays on the current book.
-   - When more than one plot was found, **Other plots** lets you pick another one. Plain Up and Down beep; press **Alt+Down** to open the list, then Enter to choose.
-8. Plot text is saved to the book's **comments** field. If the web source includes a rating and you save plot, the rating line (for example `Rating: 4.5 (1,234 ratings)`) may appear at the **top of that plot text**. It is not stored in a separate rating field.
+2. Open **Edit → Fetch Web Info**, press the **Search Web** toolbar button, or press **Alt+W**. You can also press **Alt+W** in Book Details.
+3. The **Please wait** dialog announces each source as AbCS tries it: Open Library, then Google Books, then WikiData.
+4. When differences are found, the **Web Metadata** review window opens with your values beside the web values.
+5. When nothing new is found, a **No Web Data Found** message appears. The message says whether the book is already up to date, no match was found, or a source could not be reached.
+6. In the review window, check the box for each field you want to take from the web. Fields that are empty in your record are filled in on Save without a checkbox.
+7. Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
+8. When more than one plot was found, choose another one in **Other plots**. Press **Alt+Down** to open the list, then **Enter** to choose.
+9. To search again with the other sources, press **Re-fetch** (**Alt+F**).
+10. Press **Save** (**Ctrl+S**) to apply the checked fields. Or press **Escape**; AbCS asks "Save web data?". **Yes** saves and **No** closes without saving.
+
+Plot text is saved in the book's **comments** field. When the web source has a rating and you save the plot, a rating line such as "Rating: 4.5 (1,234 ratings)" is placed at the top of the plot text.
+
+## Fetch several books
+
+1. Select two or more books on the main window.
+2. Press **Alt+W**, the **Search Web** toolbar button, or the **Web fetch** footer button.
+3. The batch progress dialog shows book N of M. Press **Escape** to cancel the remaining books.
+4. The batch summary opens with focus on the first book in the list. The **Issue** column says what was found for each book:
+   - **Plot found** or **Metadata found**: the book has changes to apply.
+   - **Plot and metadata up to date.**: the library already matches the web.
+   - **No match found**: nothing usable was found.
+   - **Match found. No plot was found.**: a match exists, but there is no usable plot in the library or on the web.
+5. Press **Apply all** (**Alt+A**) to save every change, or **Review each** (**Alt+R**) to check each book in the review window.
+6. During Review each, **Save** or **Skip** (**Alt+K**) moves to the next book. Press **Escape** for the choices **Save**, **Skip this book**, **Stop review**, and **Cancel**. **Stop review** returns to the summary, and the status bar says how many books were left. **Cancel** stays on the current book.
+7. Press **Escape** to close the summary. The main list selection clears.
+
+Apply all writes only the fields that differ from what you already store. A short comment such as an author name or "Unabridged" is not counted as a plot.
+
+When Google Books pauses a large batch, the summary line says "Google Books limit hit. Try in N minutes." The rest of the batch uses Open Library and WikiData.
 
 ## What happens next
 
 - Saved fields update the book in your database immediately.
-- The main book list and Book Details reflect the changes.
-- In Book Details, a saved rating prefix may show as the first line of the plot when you review the book.
-- Focus returns to a sensible place after the window closes.
+- The main book list and Book Details show the changes.
+- Focus returns to the book you started from.
 
 ## Settings that affect this
 
-Optional: Preferences → Display → Web Metadata → Google Books API key (or environment variable `ABCS_GOOGLE_BOOKS_API_KEY`). Without a key, Google Books uses anonymous per-IP limits. Fetch still uses the book's stored title and author when searching online.
+Optional: a Google Books API key under **Manage → Preferences**, **Display Settings** tab, **Web Metadata** group. Without a key, Google Books allows fewer searches.
 
 ## Mouse, shortcuts, and accessibility
 
 - Click **Search Web** on the main toolbar, or use **Edit → Fetch Web Info**.
-- In the progress dialog, press **Escape** to cancel the fetch.
-- In the review window, click checkboxes beside fields you want to update, then click **Save** or **Re-fetch**, or press **Escape** to close.
+- In the review window, click the checkboxes beside the fields you want, then click **Save** or **Re-fetch**.
+
+Web Metadata review window:
 
 | Shortcut | Action |
 |----------|--------|
-| Alt+W | Fetch Web Info for the focused book, or batch fetch when two or more books are selected |
-| Alt+L | Books list (batch summary) |
-| Alt+K | Skip this book (Review each queue) |
-| Alt+T | Title (review window) |
-| Alt+A | Author (review window) |
-| Alt+P | Plot (review window) |
-| Alt+Y | Year (review window) |
-| Alt+G | Genre (review window) |
-| Alt+R | Rating (review window) |
-| Alt+F | Re-fetch (in review window) |
-| Ctrl+S | Save selected fields |
-| Escape | Close (asks whether to save). In Review each: Save, Skip this book, Stop review, or Cancel |
-| Alt+Down | Open the Other plots list (review window) |
-| F1 | Help for this window |
+| Alt+W | Fetch Web Info (main window) |
+| Alt+T | Title |
+| Alt+A | Author |
+| Alt+P | Plot |
+| Alt+Y | Year |
+| Alt+G | Genre |
+| Alt+R | Rating |
+| Alt+F | Re-fetch web data |
+| Ctrl+S | Save |
+| Alt+K | Skip this book (review queue) |
+| Escape | Close window (asks whether to save) |
 | Alt+/ | Re-read status |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
+
+Batch summary window:
+
+| Shortcut | Action |
+|----------|--------|
+| Alt+L | Books list |
+| Alt+A | Apply all |
+| Alt+R | Review each |
+| Escape | Close |
+| Alt+/ | Re-read status |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
+
+Batch progress dialog:
+
+| Shortcut | Action |
+|----------|--------|
+| Escape | Cancel the remaining queue |
+| Alt+/ | Re-read status |
+| F1 | Keyboard shortcuts for this window |
+| Shift+F1 | Help for this window |
+
 ## Common confusion
 
-**Why does it search multiple sources?**
-AbCS tries Open Library first, then Google Books, then WikiData, to find the best match for your title and author.
+**Why does it search several sources?**
+Different catalogs know different books. AbCS tries Open Library first, then Google Books, then WikiData, and uses the first good match for your title and author.
 
 **Is the rating saved?**
-Not in its own field. The review window shows **Rating** for reference (Alt+R). AbCS does not keep a separate rating column in the database today. If you save **Plot** and the web result includes a rating, that rating line is written at the **top of the plot/comments text** (for example `Rating: 4.5 (1,234 ratings)` followed by the plot). You can edit or remove that line later in Book Details like any other plot text.
+The rating is shown for reference (**Alt+R**). When you save the plot and the web result has a rating, the rating line is placed at the top of the plot text. You can edit or remove that line in Book Details.
 
-**Can I fetch for multiple books at once?**
-Yes. Select two or more books and use **Web fetch**, toolbar **Search Web**, or **Alt+W**. With no multi-select, Alt+W still fetches only the focused book. While you are selecting books, Find, Import, Add Book, and filters stay off until Escape. Search Web and the footer Web fetch button stay on. Batch Apply all writes only fields that differ from what you already store. Review each opens the same review window, one book at a time; Save or Skip (Alt+K) returns you to the summary (or the next book in that Review pass). To end the whole pass early, press Escape and choose **Stop review**. On the summary, Alt+A and Alt+R say **No books with new information.** when nothing is left to apply or review. Escape on the summary closes it. A larger batch can hit the Google Books limit. Later books in that batch are not sent to Google. The summary at the top says **Google Books limit hit. Try in N minutes.** Open Library and WikiData are still tried.
+**What do Alt+A and Alt+R say when nothing is left?**
+They say "No books with new information." when no book has changes to apply or review.
 
-**Why does the message say "rate limited" or show a countdown?**
-Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown (often about 15 minutes for Google Books) before contacting that source again. The web details window only opens when data is found — there is no Re-fetch button on that error popup. Wait for the cooldown, then press Alt+W again. Other sources continue in their normal order when one source is limited.
+**Why does a message say "rate limited" or show a countdown?**
+Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown, often about 15 minutes for Google Books, before using that source again. Wait for the countdown, then press **Alt+W** again. The other sources keep working in the meantime.
+
+## Related help
+
+- How the search works: [Web metadata explained](21_web_metadata_explained.md)
+- Editing a book by hand: [Book Details](04_book_details.md)
+- Setting series on several books: [Update](05_update.md)

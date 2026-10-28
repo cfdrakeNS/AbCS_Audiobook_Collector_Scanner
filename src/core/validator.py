@@ -50,7 +50,7 @@ class ImportValidator:
         self.rules_engine.reload_settings()
         duplicate_mode = self.settings.value(
             "import/rules/duplicate/match_mode",
-            "title_author_year_collection",
+            "title_author_only",
             type=str,
         )
         if duplicate_mode == "with_collection":
@@ -64,7 +64,7 @@ class ImportValidator:
         self.duplicate_match_mode = duplicate_mode
         threshold = self.settings.value(
             "import/rules/duplicate/fuzzy_threshold",
-            0,
+            90,
             type=int,
         )
         self.duplicate_fuzzy_threshold = max(0, min(100, threshold))

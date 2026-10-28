@@ -2,7 +2,7 @@ r"""
 Build the AbCS user guide as one OpenDocument text file for screen readers.
 
 Source: help_docs/nn_topic_name.md, in the same order as Help → All Help Topics.
-Output: abcs_userguide.odt in the project root.
+Output: help_docs_mp3/abcs_userguide.odt in the project root.
 
 The guide uses real Heading 1 to 3 styles, a linked table of contents, real
 bullet and numbered lists, and tables with a marked header row. JAWS and NVDA
@@ -16,8 +16,8 @@ Every page has its page number in the footer.
 
 Requires odfpy (listed in requirements.txt).
 
---audio writes the same topics as audio instead, to D:\_Wip\abcs_userguide
-unless another folder is given: for each topic, a speech-ready text file and
+--audio writes the same topics as audio instead, to help_docs_mp3 in the
+project root unless another folder is given: for each topic, a speech-ready text file and
 an MP3 made with edge-tts (pip install edge-tts; needs an internet
 connection). Files are numbered in Help order, such as
 "02 Import Process (Folder Scan).mp3". The audio has no contents list,
@@ -44,7 +44,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_OUTPUT = PROJECT_ROOT / "abcs_userguide.odt"
+DEFAULT_OUTPUT = PROJECT_ROOT / "help_docs_mp3" / "abcs_userguide.odt"
 GUIDE_TITLE = "AbCS User Guide"
 
 BODY_FONT = "Arial"
@@ -822,13 +822,14 @@ def build_guide(output: Path, toc_levels: int) -> Path:
 # ---------------------------------------------------------------------------
 
 DEFAULT_VOICE = "en-CA-ClaraNeural"
-DEFAULT_AUDIO_DIR = Path(r"D:\_Wip\abcs_userguide")
+DEFAULT_AUDIO_DIR = PROJECT_ROOT / "help_docs_mp3"
 _SPEECH_REPLACEMENTS = (
     (" → ", ", then "),
     ("→", " then "),
     (" — ", ", "),
     ("—", ", "),
     (" – ", ", "),
+    ("–", "-"),
 )
 _UNSAFE_FILENAME_RE = re.compile(r'[<>:"/\\|?*]+')
 
@@ -898,7 +899,8 @@ def build_audio(output_dir: Path, voice: str, make_mp3: bool) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     jobs: list[tuple[str, Path]] = []
     for index, topic in enumerate(topics, start=1):
-        safe_title = " ".join(_UNSAFE_FILENAME_RE.sub(" ", topic.title).split())
+        safe_title = topic.title.replace("—", "-").replace("–", "-")
+        safe_title = " ".join(_UNSAFE_FILENAME_RE.sub(" ", safe_title).split())
         base = output_dir / f"{index:02d} {safe_title}"
         text = speech_text(topic)
         base.with_suffix(".txt").write_text(text, encoding="utf-8")
@@ -939,7 +941,7 @@ def main() -> None:
         "--output",
         type=Path,
         default=DEFAULT_OUTPUT,
-        help=f"Output file (default: {DEFAULT_OUTPUT.name} in the project root)",
+        help=f"Output file (default: help_docs_mp3/{DEFAULT_OUTPUT.name})",
     )
     parser.add_argument(
         "--toc-levels",

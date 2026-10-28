@@ -3,8 +3,11 @@
 Each topic in ``help_docs/`` is split into sections at its h2/h3 headings.
 Section anchors (``h0``, ``h1``, ...) match ``help_window.extract_headings`` so a
 result can jump to its section. Text before the first h2 belongs to the topic
-itself (blank anchor). Matching is case-insensitive and every word must appear
-in the same section. No Qt here, so it can be tested on its own.
+itself (blank anchor). Matching is case-insensitive and works on whole words:
+a typed word matches a word that starts with it, and short typed words must
+match exactly. Small words such as "a" and "to" are skipped. Every remaining
+word must appear in the same section. All-help results keep one row per topic.
+No Qt here, so it can be tested on its own.
 """
 
 from __future__ import annotations
@@ -27,6 +30,21 @@ _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _LIST_MARKER_RE = re.compile(r"^(?:[-*]\s+|\d+\.\s+)")
 _TABLE_DIVIDER_RE = re.compile(r"^[\s|:-]+$")
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_WORD_RE = re.compile(r"\w+(?:[+'’]\w+)*")
+
+# Typed words of this length or shorter must match a whole word exactly.
+EXACT_WORD_MAX_LEN = 2
+
+STOP_WORDS = frozenset(
+    {
+        "a", "an", "and", "are", "as", "at", "be", "by", "can", "do", "does",
+        "for", "from", "how", "i", "in", "is", "it", "my", "of", "on", "or",
+        "the", "to", "what", "when", "where", "why", "with",
+    }
+)
+
+# Link-only sections that repeat other topics' names.
+SKIPPED_HEADINGS = frozenset({"related help"})
 
 # Lower is better.
 RANK_TITLE = 0
@@ -60,10 +78,13 @@ class HelpSearchHit:
         return self.label_for(include_guide=True)
 
     def label_for(self, *, include_guide: bool) -> str:
+        """Guide (all-help scope), then section when different, then snippet."""
         heading = self.heading or self.topic_title
-        parts = [heading]
-        if include_guide and heading.casefold() != self.topic_title.casefold():
+        parts = []
+        if include_guide:
             parts.append(self.topic_title)
+        if not include_guide or heading.casefold() != self.topic_title.casefold():
+            parts.append(heading)
         if self.snippet:
             parts.append(self.snippet)
         return " - ".join(parts)
@@ -84,11 +105,26 @@ class HelpSearchResult:
 def query_words(query: str) -> list[str]:
     """Distinct search words in typed order, case-folded."""
     words: list[str] = []
-    for word in (query or "").split():
-        key = word.strip().casefold()
-        if key and key not in words:
+    for key in _WORD_RE.findall((query or "").casefold()):
+        if key not in words:
             words.append(key)
     return words
+
+
+def meaningful_words(words: list[str]) -> list[str]:
+    """Words without small words; all words when every one is small."""
+    kept = [word for word in words if word not in STOP_WORDS]
+    return kept or list(words)
+
+
+def _text_words(text: str) -> set[str]:
+    return set(_WORD_RE.findall(text.casefold()))
+
+
+def _word_matches(word: str, text_words: set[str]) -> bool:
+    if len(word) <= EXACT_WORD_MAX_LEN:
+        return word in text_words
+    return any(candidate.startswith(word) for candidate in text_words)
 
 
 def _plain_line(line: str) -> str:
@@ -191,10 +227,15 @@ def load_help_sections() -> tuple[list[str], list[HelpSection]]:
     return order, sections
 
 
+def _word_start_index(text: str, word: str) -> int:
+    """Index of ``word`` where it starts a word in ``text``, or -1."""
+    match = re.search(r"(?<!\w)" + re.escape(word), text.casefold())
+    return match.start() if match else -1
+
+
 def _snippet(text: str, word: str) -> str:
     """Sentence holding the first match, trimmed around it."""
-    lower = text.casefold()
-    index = lower.find(word)
+    index = _word_start_index(text, word)
     if index < 0:
         return ""
     sentence_start = 0
@@ -215,15 +256,17 @@ def _snippet(text: str, word: str) -> str:
     return f"{prefix}{piece}{suffix}"
 
 
+def _all_match(words: list[str], text: str) -> bool:
+    text_words = _text_words(text)
+    return all(_word_matches(word, text_words) for word in words)
+
+
 def _rank(section: HelpSection, words: list[str]) -> int | None:
-    title = section.topic_title.casefold()
-    heading = section.heading.casefold()
-    combined = f"{heading} {section.text.casefold()}"
-    if not all(word in combined for word in words):
-        return None
-    if section.order == 0 and all(word in title for word in words):
+    if section.order == 0 and _all_match(words, section.topic_title):
         return RANK_TITLE
-    if all(word in heading for word in words):
+    if not _all_match(words, f"{section.heading} {section.text}"):
+        return None
+    if _all_match(words, section.heading):
         return RANK_HEADING
     return RANK_BODY
 
@@ -234,26 +277,43 @@ def search_help(
     sections: list[HelpSection] | None = None,
     topic_order: list[str] | None = None,
     limit: int = MAX_RESULTS,
+    group_by_topic: bool = True,
 ) -> HelpSearchResult:
-    """Find sections holding every query word; best topics first, then topic order."""
-    words = query_words(query)
-    if not words:
+    """Find sections holding every meaningful query word; best topics first.
+
+    With ``group_by_topic`` each topic keeps only its best section, so the
+    result list has one row per topic.
+    """
+    typed = query_words(query)
+    if not typed:
         return HelpSearchResult(query=(query or "").strip(), hits=(), total=0)
+    words = meaningful_words(typed)
     if sections is None:
         topic_order, sections = load_help_sections()
     order_index = {name: index for index, name in enumerate(topic_order or [])}
 
-    phrase = " ".join(words)
+    phrase = " ".join(typed)
 
     def has_phrase(section: HelpSection) -> bool:
-        return phrase in f"{section.heading} {section.text}".casefold()
+        return _word_start_index(f"{section.heading} {section.text}", phrase) >= 0
 
     matched: list[tuple[HelpSection, int, int]] = []
     for section in sections:
+        if section.heading.casefold() in SKIPPED_HEADINGS:
+            continue
         rank = _rank(section, words)
         if rank is not None:
-            score = rank * 2 + (0 if len(words) == 1 or has_phrase(section) else 1)
+            score = rank * 2 + (0 if len(typed) == 1 or has_phrase(section) else 1)
             matched.append((section, rank, score))
+
+    # A typed phrase found as written outranks scattered words: keep only
+    # phrase, heading, and title matches.
+    if len(typed) > 1 and any(score == rank * 2 for _s, rank, score in matched):
+        matched = [
+            entry
+            for entry in matched
+            if entry[2] == entry[1] * 2 or entry[1] < RANK_BODY
+        ]
 
     topic_score: dict[str, int] = {}
     for section, _rank_value, score in matched:
@@ -261,17 +321,34 @@ def search_help(
             score, topic_score.get(section.filename, score)
         )
 
-    matched.sort(
-        key=lambda entry: (
-            topic_score[entry[0].filename],
-            order_index.get(entry[0].filename, len(order_index)),
-            entry[0].order,
+    if group_by_topic:
+        matched.sort(
+            key=lambda entry: (
+                topic_score[entry[0].filename],
+                order_index.get(entry[0].filename, len(order_index)),
+                entry[2],
+                entry[0].order,
+            )
         )
-    )
+        seen: set[str] = set()
+        best: list[tuple[HelpSection, int, int]] = []
+        for entry in matched:
+            if entry[0].filename not in seen:
+                seen.add(entry[0].filename)
+                best.append(entry)
+        matched = best
+    else:
+        matched.sort(
+            key=lambda entry: (
+                topic_score[entry[0].filename],
+                order_index.get(entry[0].filename, len(order_index)),
+                entry[0].order,
+            )
+        )
 
     hits: list[HelpSearchHit] = []
     for section, rank, _score in matched[: max(0, limit)]:
-        match_text = phrase if has_phrase(section) else words[0]
+        match_text = phrase if len(typed) > 1 and has_phrase(section) else words[0]
         snippet = _snippet(section.text, match_text) or _snippet(
             section.text, words[0]
         )
@@ -302,13 +379,14 @@ def search_summary(result: HelpSearchResult, topic_title: str = "") -> str:
         if topic_title:
             return f"No matches for {result.query} in {topic_title}."
         return f"No matches for {result.query}."
-    matches = "match" if result.total == 1 else "matches"
     if topic_title:
-        where = topic_title
+        sections = "section" if result.total == 1 else "sections"
+        verb = "matches" if result.total == 1 else "match"
+        text = f"{result.total} {sections} in {topic_title} {verb} {result.query}."
     else:
         topics = "topic" if result.topic_count == 1 else "topics"
-        where = f"{result.topic_count} {topics}"
-    text = f"{result.total} {matches} in {where} for {result.query}."
+        verb = "matches" if result.topic_count == 1 else "match"
+        text = f"{result.topic_count} {topics} {verb} {result.query}."
     if result.truncated:
         text += f" Showing first {len(result.hits)}."
     return text

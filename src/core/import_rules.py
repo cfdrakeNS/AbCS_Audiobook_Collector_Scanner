@@ -76,14 +76,14 @@ class ImportRulesEngine:
                 "minimum_title_length",
                 self._rule_minimum_title_length,
                 settings_key="minimum_title_length",
-                default_enabled=False,
+                default_enabled=True,
                 default_severity="warning",
             ),
             ValidationRule(
                 "file_structure",
                 self._rule_file_structure,
                 settings_key="file_structure",
-                default_enabled=False,
+                default_enabled=True,
                 default_severity="warning",
             ),
             ValidationRule(
@@ -111,7 +111,7 @@ class ImportRulesEngine:
                 "year_out_of_range",
                 self._rule_year_out_of_range,
                 settings_key="year_out_of_range",
-                default_enabled=False,
+                default_enabled=True,
                 default_severity="warning",
             ),
         ]

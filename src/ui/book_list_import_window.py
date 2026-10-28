@@ -2184,7 +2184,7 @@ class BookListImportWindow(AccessibleDialog):
                             pass
 
                 # Set source field for Book List import
-                book.source = "Bookh_list"
+                book.source = "Book List"
                 pending_books.append(book)
                 if len(pending_books) >= INSERT_CHUNK:
                     _flush_pending()

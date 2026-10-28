@@ -1,306 +1,165 @@
-# Web Metadata Explained — Under the Hood
+# Web Metadata Explained
 
-What AbCS does internally after you activate **Fetch Web Info** (Alt+W). This is not a how-to guide — for steps and shortcuts see [Web Metadata](07_web_metadata.md).
+## What this is
 
-**Important:** **Alt+W** fetches one focused book, or a batch when two or more books are selected. Toolbar **Search Web** and the footer **Web fetch** button do the same thing. Neither path downloads audiobook files. They only look up text information online and, if you approve, update fields inside AbCS. Your audio files on disk are never touched.
+This guide describes what AbCS does after you start **Fetch Web Info** (**Alt+W**). For the steps and shortcuts, see [Web Metadata Fetch](07_web_metadata.md).
 
----
+Fetch Web Info looks up text information about a book online and, when you approve, updates fields inside AbCS. Your audio files stay exactly as they were.
 
-## 1. Once Fetch Web Info is activated
+## Which books are looked up
 
-### Which book is used
+- **Main window, one book:** the book on the focused row.
+- **Main window, two or more selected books:** every selected book, one after another, as a batch. **Alt+W**, the **Search Web** toolbar button, and the **Web fetch** footer button all start the batch.
+- **Book Details:** the book open in that window.
 
-- **Main window:** the book on the **focused table row** (keyboard focus). Multi-select is ignored — only one row counts.
-- **Book Details window:** the book currently open in that window.
+Fetch Web Info is turned off while duplicate mode is active. When no book is focused, the status bar says "No book available for web info fetch".
 
-### Blocked before anything starts
+## What is sent to the web
 
+The search uses the book's **title and author** as stored in your library.
 
-| Condition                                   | Result                                         |
-| ------------------------------------------- | ---------------------------------------------- |
-| Duplicate Mode is active on the main window | Fetch does not run                             |
-| No valid book focused                       | Status: *No book available for web info fetch* |
+Before searching, AbCS tidies them up:
 
+- It removes a trailing series number from the title, so `The Hound of the Baskervilles - 3` searches as `The Hound of the Baskervilles`.
+- It moves a trailing article to the front, so `Moonstone, The` searches as `The Moonstone`.
+- It removes extra punctuation and spacing.
+- It removes titles such as Sir or Dr. from the author, so `Sir Arthur Conan Doyle` searches as `Arthur Conan Doyle`.
+- It leaves out the year, because stored years are often wrong and would hurt matching.
 
-### What is sent to the web
+A **Please wait** dialog opens and announces each source as it is tried.
 
-The search uses the book's **stored title and author** from your library — not the audio filename or folder path on disk.
+## Searching the web
 
-Before searching, the app prepares those strings:
+AbCS tries online catalogs **in order**, and stops at the first result that passes its matching rules.
 
-- Strips a trailing series number from the title (e.g. `Title - 3` → `Title`)
-- Moves trailing articles to the front (`Title, The` → `The Title`)
-- Cleans extra punctuation and spacing
-- Strips honorifics from author (Sir, Dr., etc.)
-- **Year from your library is not sent** — stored years are often wrong and would hurt matching
+On the first fetch: Open Library, then Google Books, then WikiData.
 
-A **Please wait** progress dialog opens immediately and announces status as each source is tried.
+On **Re-fetch** (**Alt+F** in the review window): Google Books, then WikiData.
 
----
+For each source, AbCS:
 
-## 2. Searching the web — source by source
+1. Announces which source it is trying.
+2. Searches with the tidied title and author, and tries a few variations, such as the title alone.
+3. Scores the results and picks the best title match.
+4. Stops when that result passes the matching rules, or moves on to the next source.
 
-The app tries online catalogs **in order**, stopping at the first result that passes its matching rules.
+### Saved results
 
-### First fetch (Alt+W)
+AbCS remembers a successful lookup for about a day, and a failed one for about an hour. A repeat fetch for the same book may use the remembered result. **Re-fetch** always searches again.
 
+### Search limits
 
-| Order | Source       |
-| ----- | ------------ |
-| 1     | Open Library |
-| 2     | Google Books |
-| 3     | WikiData     |
+Google Books, WikiData, and Wikipedia sometimes limit how many searches AbCS can send. When that happens, AbCS pauses that source, for about 15 minutes for Google Books or 5 minutes for WikiData and Wikipedia. The pause is remembered when you restart AbCS.
 
+The message tells you how long to wait, for example "Try again in about 15 minutes". The other sources keep working in the meantime. In a batch, a book that was missed only because of the pause says **No match found**, and the summary line says "Google Books limit hit. Try in N minutes."
 
-### Re-fetch (Alt+F in the review window)
+### Google Books API key
 
-Skips Open Library and tries:
+Without a key, Google Books allows a limited number of searches. You can add a key under **Manage → Preferences**, **Display Settings** tab, **Web Metadata** group.
 
+## Deciding whether a result matches
 
-| Order | Source       |
-| ----- | ------------ |
-| 1     | Google Books |
-| 2     | WikiData     |
+A result must pass **title and author checks** before AbCS treats it as your book.
 
+Title:
 
-### Per source
+- At least half of the meaningful words in your title must appear in the web title.
+- Common words such as "the", "a", and "of" are ignored.
+- A web title much longer than yours scores lower.
 
-1. Progress dialog announces which source is being tried.
-2. The app sends a search query built from the cleaned title and author.
-3. Multiple query variations may be tried (title + author, title only, stripped author, etc.).
-4. Up to several hits are scored; the best title match is picked.
-5. If the hit passes validation (see section 3), the search stops.
-6. If the source fails (network error, no match), the error is recorded and the **next source** is tried.
+Author:
 
-### Cache
+- Your author's **last name** must appear in the web author.
+- When both names have several parts, a first name or initial must match too.
 
-Successful lookups are cached in memory and on disk for about 24 hours. Misses are cached for about one hour so a failed book is not re-queried immediately.
+When no source passes, AbCS tries broader searches:
 
-- Development: `data/web_cache.json` under the project folder
-- Installed app: `%LOCALAPPDATA%\AbCS\web_cache.json` (Windows) or the platform user-data folder
+1. The title without the author in the search, still checking the author in the results.
+2. The title alone, only when your author field is empty, looks like a narrator name, or the book appears to come from Librivox.
 
-A repeat fetch for the same book may return cached results without hitting the network. Re-fetch (Alt+F) bypasses the cache.
+When everything fails, a **No Web Data Found** message appears.
 
-### Rate limits
+## Gathering the plot
 
-Google Books, WikiData, and Wikipedia may answer with "too many requests" (HTTP 429) or "temporarily unavailable" (HTTP 503).
+Once a match is found, AbCS looks for a plot, in this order:
 
-- On **429** (and Google Books **403** quota errors), AbCS does **not** retry. It records a cooldown of at least about **15 minutes** for Google Books (5 minutes for WikiData/Wikipedia), or longer if the server asks. Short `Retry-After` values are ignored when they would undercut that floor.
-- On **503**, AbCS waits briefly and retries **once**.
-- Cooldowns are saved next to the web cache so restarting AbCS does not immediately resume banned traffic.
+1. The Open Library description.
+2. The Wikipedia summary.
+3. The Google Books description.
 
-Any status or error message may include a countdown such as *Try again in about 15 minutes*. The web details window only opens when data is found — wait for the cooldown, then press Alt+W again.
+A plot must be at least **80 characters**. When Open Library and Wikipedia have nothing usable, AbCS keeps any plot that came with the match.
 
-While Google Books is paused, AbCS does not call it. Open Library and WikiData are still tried. In a batch, the Issue column still says **No match found** for a book that only missed because of that pause. The summary at the top says **Google Books limit hit. Try in N minutes.**
+A problem while gathering the plot keeps the match, and you still get the review window with the fields that were found.
 
-Other sources continue in their normal order while one source is cooling down.
+Series names and series numbers come from your library only. Edit the series in Book Details or the Update window.
 
-### Google Books API key (optional)
+## Comparing with your book
 
-Anonymous Google Books access is throttled per IP. You can set an API key in Preferences (Display → Web Metadata) or via the environment variable `ABCS_GOOGLE_BOOKS_API_KEY`. The environment variable wins when both are set.
+AbCS compares the web values with what is stored for your book:
 
----
+| Field | How a difference is decided |
+|-------|-----------------------------|
+| Title | Differences in capital letters, punctuation, accents, "&" and "and", article position, series suffix, and filler words are ignored. A leading A, An, or The that is only on the web side is still offered |
+| Author | Differences in punctuation, name order, initials, and accents are ignored |
+| Year | Compared as numbers |
+| Genre | Compared as text |
+| Plot | Compared with your comments field, where the plot is kept |
 
-## 3. Deciding if a web result is a match
+The **rating** is shown for reference. When you save a plot and the web has a rating, the rating line is added at the top of the plot text. The publisher and the source name are shown only.
 
-A candidate result must pass **title and author checks** before AbCS treats it as the right book.
+### What you see
 
-### Title match
+| Result | What you see |
+|--------|--------------|
+| Web data with differences | The **Web Metadata** review window |
+| Web data that already matches | An "Already up to date" message. In a batch: **Plot and metadata up to date.** |
+| A match with no plot on the web or in the library | In a batch: **Match found. No plot was found.** |
+| Sources that could not be reached | A message listing the sources that failed |
+| No match | A "No information found" message. In a batch: **No match found** |
 
-- At least **50%** of meaningful words from your library title must appear in the web title.
-- Common words (the, a, of, etc.) are ignored.
-- If the web title is much longer than yours, the score is penalized.
+## The review window
 
-### Author match
+The review window shows **your value** and the **web value** for each field that differs.
 
-- Your author's **last name** must appear in the web author string.
-- If both names have multiple parts, a first-name or initial must also match.
+| Your field | What happens |
+|------------|--------------|
+| **Empty** | The web value is applied on Save, without a checkbox |
+| **Title, Author, Year** with a value | A checkbox, **unchecked** at first. Check it to use the web value |
+| **Genre** with a value | A checkbox, **checked** at first. Uncheck it to keep yours |
 
-### If no source passes
+When the plot differs, it is shown and applied on Save.
 
-The app may try **broader searches**:
+**Re-fetch** (**Alt+F**) searches Google Books, then WikiData, and refreshes the web values in the same window.
 
-1. Same title without author in the query — but still requires author to match your record.
-2. Title-only search — only when your author field is empty, looks like a narrator name, or the book appears to be from Librivox (based on path, source, or comments).
+**Save** (**Ctrl+S**) applies the checked fields and the filled-in empty fields. **Escape** asks "Save web data?": **Yes** saves, and **No** closes and keeps your book as it was.
 
-If everything fails, you get a **No Web Data Found** message. No review window opens.
+## Saving
 
----
+For each field you approved, or that was empty:
 
-## 4. Enriching the match — plot
+- **Title** and **Year** are updated on the book. A year that is not a number is skipped.
+- **Author** and **Genre** are found, or added as new names, and linked to the book.
+- **Plot** is written to the book's comments, with the rating line when there is one.
 
-Once a match is accepted, the app gathers more detail before showing you anything.
+The series stays as it is. After saving:
 
-### Plot
+- The main book list or Book Details refreshes.
+- The status bar says which fields changed, for example "Updated: Plot, Year".
+- Focus returns to the book you started from.
 
-Collected from several places, in order of preference:
+If saving fails, a message explains it and the review window stays open.
 
-1. Open Library work description
-2. Wikipedia summary
-3. Google Books description
+## Batch fetch
 
-Plot text must be at least **80 characters**. If a good plot is found, the progress dialog may announce it.
-
-If Open Library and Wikipedia both return nothing usable, AbCS **stops plot enrichment** there (it does not spend another network call on Google Books by ISBN). An adequate plot already returned with the primary match is still kept. Timeouts for matching are unchanged.
-
-If plot enrichment hits a temporary problem, the match itself is **not** discarded — you still get the review window with whatever fields were found.
-
-Series name and series number are **not** fetched from the web. Edit series in Book Details or the Update window.
-
-### Final cleanup
-
-Before comparison with your book, web data is cleaned:
-
-- Title, author, genre, plot text normalized
-- Any leftover series keys from an old cache entry are dropped
-- Series number from your library title may be re-appended to the display title so applying a web title does not drop your `- 01` suffix
-
----
-
-## 5. Comparing web data with your book
-
-The app compares cleaned web values against what is already stored for your book.
-
-### Fields compared
-
-
-| Field         | How difference is decided                                     |
-| ------------- | ------------------------------------------------------------- |
-| Title         | Same-work match ignores case, punctuation, accents, `&`/`and`, trailing article position, optional leading A/An/The, series suffix, filler tails. Leading A/An/The that is only on the web side is still offered to save. |
-| Author        | Cosmetic differences ignored (punctuation, name order, initials, accents) |
-| Year          | Compared as numbers                                           |
-| Genre         | Compared as text                                              |
-| Plot          | Compared against your comments field (plot lives in comments) |
-
-
-### What is not saved from the web
-
-
-| Field           | Treatment                                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------------------------- |
-| Rating          | Shown for reference only — folded into plot/comments text if you save plot, but not stored as its own field |
-| Publisher       | Not offered for save                                                                                        |
-| Web source name | Display only                                                                                                |
-
-
-### Gate before the review window
-
-The review window opens **only if** at least one savable difference exists.
-
-
-| Outcome                                       | What you see                         |
-| --------------------------------------------- | ------------------------------------ |
-| Web data found with differences               | **Web Metadata** review window       |
-| Web data found but everything already matches | *Already up to date* message         |
-| Match found but no plot on web or in the library | Batch Issue column: **Match found. No plot was found.** |
-| Network errors but no match                   | Message listing which sources failed |
-| No match at all                               | *No information found…* for one book. Batch Issue column: **No match found** |
-| Google Books limit during a batch             | Issue column stays **No match found**. Top summary: **Google Books limit hit. Try in N minutes.** |
-
-
----
-
-## 6. The review window — what you decide
-
-If differences exist, the review window shows **your value** on the left and **web value** on the right for each changed field.
-
-### Auto-fill vs checkbox
-
-
-| Your library field      | Behavior                                                              |
-| ----------------------- | --------------------------------------------------------------------- |
-| **Empty**               | Web value will be applied on Save — no checkbox needed                |
-| **Title, Author, Year** (already has a value) | Checkbox shown, **unchecked by default** — check to use the web value |
-| **Genre** (already has a value) | Checkbox shown, **checked by default** — uncheck to keep your version |
-
-
-Plot has no checkbox — if plot differs, it appears in the difference list and is offered on Save.
-
-### Re-fetch (Alt+F)
-
-Runs the search again using the Google Books → WikiData order. Refreshes the right-hand column without closing the window.
-
-### Save or close
-
-
-| Action             | Result                                                |
-| ------------------ | ----------------------------------------------------- |
-| **Save** (Ctrl+S)   | Applies checked fields and auto-fills to the database |
-| **Escape**         | Asks *Save web data?* — Yes saves, No discards        |
-
-
----
-
-## 7. Writing to the library (Save path)
-
-For each field you approved (or that was auto-filled because your field was empty):
-
-
-| Field  | What happens in the database                                              |
-| ------ | ------------------------------------------------------------------------- |
-| Title  | Updated on the book record                                                |
-| Author | Looked up or created in authors table → book's author link updated        |
-| Year   | Parsed to a number; invalid values ignored                                |
-| Genre  | Looked up or created in genres table → book's genre link updated          |
-| Plot   | Written to the book's **comments** field (may include rating prefix text) |
-
-
-Before writing, the app verifies that author, series, genre, and collection links still exist. Broken links are cleared rather than saved. Series is never changed by Fetch Web Info.
-
-**One update** writes all approved fields to the `books` row and commits.
-
-After Save:
-
-- Main book list or Book Details refreshes
-- Status announces which fields changed (e.g. *Updated: Plot, Year*)
-- Focus returns to a sensible place on the main window
-
-If Save fails, an error is announced and the review window **stays open**.
-
----
-
-## 8. Once the fetch is complete
-
-### If you saved
-
-Your book record reflects the approved web values. Audio files and folder paths are unchanged.
-
-### If you cancelled or no data was found
-
-Your book record is exactly as it was before Alt+W.
-
-### If you want another book
-
-Repeat Alt+W on the next focused row, or select several books and use **Web fetch** or **Alt+W**.
-
----
-
-## What Fetch Web Info does not do
-
-
-| Assumption                            | Reality                                        |
-| ------------------------------------- | ---------------------------------------------- |
-| Downloads the audiobook               | No — metadata text only                        |
-| Updates the whole library at once     | No — one book per fetch                        |
-| Always overwrites your data           | No — you choose fields; Cancel changes nothing |
-| Saves star ratings as their own field | No — rating is reference only                  |
-| Works offline                         | No — internet required                         |
-| Uses your file path for the search    | No — title and author from the library record  |
-| Has its own Preferences page          | No — behavior is fixed for all users           |
-
-
----
+With two or more books selected, AbCS fetches each book in turn and shows the **batch summary** at the end. **Apply all** saves the changes for every book. **Review each** opens the review window for each book with changes. See [Web Metadata Fetch](07_web_metadata.md) for the batch steps.
 
 ## Why several websites are tried
 
-Different catalogs know different books. Open Library is tried first for mainstream titles. Google Books often has descriptions and ISBN links. WikiData helps with less common works. The first source that passes matching rules drives what you see in the review window.
+Different catalogs know different books. Open Library is tried first for well-known titles. Google Books often has descriptions. WikiData helps with less common works. The first source that passes the matching rules provides what you see in the review window.
 
----
+## Related help
 
-## Related guides
-
-- Step-by-step with shortcuts: [Web Metadata](07_web_metadata.md)
-- Edit a book by hand: [Book Details](04_book_details.md)
-- Bulk add from audio folders: [Import explained](19_import_explained.md)
-- Bulk add from a spreadsheet: [Import Book List explained](20_import_book_list_explained.md)
-
+- Steps and shortcuts: [Web Metadata Fetch](07_web_metadata.md)
+- Editing a book by hand: [Book Details](04_book_details.md)
+- Adding books from audio folders: [Import explained](19_import_explained.md)
+- Adding books from a spreadsheet: [Import Book List explained](20_import_book_list_explained.md)

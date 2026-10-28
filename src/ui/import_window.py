@@ -747,7 +747,7 @@ class ImportWindow(AccessibleDialog):
                 "import/scan/strip_punctuation", True, type=bool
             ),
             remove_non_alphanumeric=self.settings.value(
-                "import/scan/remove_nonprintable", False, type=bool
+                "import/scan/remove_nonprintable", True, type=bool
             ),
             proper_case_fields=self.settings.value(
                 "import/scan/proper_case", True, type=bool
@@ -756,13 +756,13 @@ class ImportWindow(AccessibleDialog):
                 "import/scan/proper_case_skip_review", True, type=bool
             ),
             trim_whitespace_skip_review=self.settings.value(
-                "import/scan/trim_whitespace_skip_review", False, type=bool
+                "import/scan/trim_whitespace_skip_review", True, type=bool
             ),
             strip_leading_punctuation_skip_review=self.settings.value(
-                "import/scan/strip_punctuation_skip_review", False, type=bool
+                "import/scan/strip_punctuation_skip_review", True, type=bool
             ),
             remove_non_alphanumeric_skip_review=self.settings.value(
-                "import/scan/remove_nonprintable_skip_review", False, type=bool
+                "import/scan/remove_nonprintable_skip_review", True, type=bool
             ),
         )
         self.validator.reload_settings()
@@ -1649,8 +1649,9 @@ class ImportWindow(AccessibleDialog):
 
         # For single-item scenario, allow selecting a single audio file
         if self.import_scenario_mode == "single_item":
-            # Build file dialog filter for audio files
-            audio_filters = "Audio Files (*.mp3 *.m4a *.m4b *.flac *.ogg *.oga *.wma *.wav *.aac *.opus);;All Files (*.*)"
+            # Offer only the formats checked in Preferences
+            patterns = " ".join(f"*{ext}" for ext in sorted(self.allowed_extensions or ()))
+            audio_filters = f"Audio Files ({patterns});;All Files (*.*)"
             selected = QFileDialog.getOpenFileName(
                 self, "Select Audio File", current_path, audio_filters
             )[0]

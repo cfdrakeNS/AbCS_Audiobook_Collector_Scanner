@@ -775,7 +775,7 @@ class BookScanner:
             # Collect errors
             if info.read_error:
                 book["errors"].append(
-                    f"{os.path.basename(file_path)}: {info.read_error}"
+                    f"{info.read_error}. File: {os.path.basename(file_path)}"
                 )
 
             if info.embedded_zip_detected:
@@ -881,7 +881,7 @@ class BookScanner:
 
         # Add error if present
         if info.read_error:
-            book["errors"].append(f"{file_name}: {info.read_error}")
+            book["errors"].append(f"{info.read_error}. File: {file_name}")
 
         if info.embedded_zip_detected:
             book["_embedded_zip_file_count"] = 1
