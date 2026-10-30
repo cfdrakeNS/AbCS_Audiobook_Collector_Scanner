@@ -147,7 +147,7 @@ The rating is shown for reference (**Alt+R**). When you save the plot and the we
 They say "No books with new information." when no book has changes to apply or review.
 
 **Why does a message say "rate limited" or show a countdown?**
-Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown, often about 15 minutes for Google Books, before using that source again. Wait for the countdown, then press **Alt+W** again. The other sources keep working in the meantime.
+Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown, often about 15 minutes for Google Books, before using that source again. The other sources keep working in the meantime. When they do not know the book and Google Books was only paused, the message is "No information found" instead of a countdown. The countdown appears when another source also could not be reached, and on the batch summary. Wait for the countdown, then press **Alt+W** again.
 
 ## Related help
 

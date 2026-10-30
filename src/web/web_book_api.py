@@ -217,7 +217,15 @@ class WebBookAPI:
             return False
         return any(
             token in low
-            for token in ("429", "403", "paused", "too many", "rate limit")
+            for token in (
+                "429",
+                "403",
+                "paused",
+                "too many",
+                "rate limit",
+                "timeout",
+                "timed out",
+            )
         )
 
     @staticmethod
@@ -262,6 +270,8 @@ class WebBookAPI:
             return explicit
         if not payload.get("_no_result"):
             return "positive"
+        if cls._negative_cache_is_transient_google_only(payload):
+            return "negative"
         errors = payload.get("_fetch_errors") or []
         if any(cls._fetch_error_is_transient(error) for error in errors):
             return "transient"
@@ -1209,10 +1219,7 @@ class WebBookAPI:
         except urllib.error.HTTPError as exc:
             if isinstance(exc, SourceCooldownError):
                 return None
-            if (
-                exc.code in _FATAL_HTTP_CODES
-                or _is_rate_limit_http_code("google_books", exc.code)
-            ):
+            if _is_rate_limit_http_code("google_books", exc.code):
                 _note_rate_limited("google_books", headers=getattr(exc, "headers", None))
             return None
         except Exception:
@@ -1612,8 +1619,9 @@ class WebBookAPI:
                     "_fetch_errors": _dedupe_fetch_errors(_errors),
                     "_no_result": True,
                 }
-                self._store_cache_entry(cache_key, dict(miss))
-                return miss
+                if not self._negative_cache_is_transient_google_only(miss):
+                    self._store_cache_entry(cache_key, dict(miss))
+                    return miss
             miss = {"_no_result": True, "_fetch_errors": []}
             self._store_cache_entry(cache_key, dict(miss))
             return None
@@ -1841,13 +1849,12 @@ class WebBookAPI:
                     if propagate_fatal_errors:
                         raise
                     break
-                if (
-                    exc.code in _FATAL_HTTP_CODES
-                    or _is_rate_limit_http_code("google_books", exc.code)
-                ):
-                    _note_rate_limited(
-                        "google_books", headers=getattr(exc, "headers", None)
-                    )
+                is_rate_limit = _is_rate_limit_http_code("google_books", exc.code)
+                if is_rate_limit or exc.code in _FATAL_HTTP_CODES:
+                    if is_rate_limit:
+                        _note_rate_limited(
+                            "google_books", headers=getattr(exc, "headers", None)
+                        )
                     if propagate_fatal_errors:
                         raise
                     break

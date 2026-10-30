@@ -51,7 +51,9 @@ AbCS remembers a successful lookup for about a day, and a failed one for about a
 
 Google Books, WikiData, and Wikipedia sometimes limit how many searches AbCS can send. When that happens, AbCS pauses that source, for about 15 minutes for Google Books or 5 minutes for WikiData and Wikipedia. The pause is remembered when you restart AbCS.
 
-The message tells you how long to wait, for example "Try again in about 15 minutes". The other sources keep working in the meantime. In a batch, a book that was missed only because of the pause says **No match found**, and the summary line says "Google Books limit hit. Try in N minutes."
+The other sources keep working in the meantime. When they find nothing and the only problem was the Google Books pause, a single fetch says "No information found", and that result is remembered for about an hour. When another source also failed, the message tells you how long to wait. In a batch, a book that was missed only because of the pause says **No match found**, and the summary line says "Google Books limit hit. Try in N minutes."
+
+A Google Books server error, such as "Service Unavailable", does not start the pause.
 
 ### Google Books API key
 

@@ -155,22 +155,27 @@ def test_negative_cache_transient_google_only(api):
         "_fetch_errors": ["google_books: HTTP Error 429: Too Many Requests"],
     }
     assert api._negative_cache_is_transient_google_only(payload)
-    assert api._should_bypass_negative_cache(payload)
+    assert api._cache_entry_kind(payload) == "negative"
+    assert not api._should_bypass_negative_cache(payload)
+    paused = {"_no_result": True, "_fetch_errors": ["google_books: paused"]}
+    assert api._negative_cache_is_transient_google_only(paused)
+    assert api._cache_entry_kind(paused) == "negative"
     assert not api._negative_cache_is_transient_google_only(
         {
             "_no_result": True,
             "_fetch_errors": ["google_books: miss"],
         }
     )
-    assert not api._negative_cache_is_transient_google_only(
-        {
-            "_no_result": True,
-            "_fetch_errors": [
-                "open_library: timeout",
-                "google_books: HTTP Error 429: Too Many Requests",
-            ],
-        }
-    )
+    mixed = {
+        "_no_result": True,
+        "_fetch_errors": [
+            "open_library: timeout",
+            "google_books: HTTP Error 429: Too Many Requests",
+        ],
+    }
+    assert not api._negative_cache_is_transient_google_only(mixed)
+    assert api._cache_entry_kind(mixed) == "transient"
+    assert api._should_bypass_negative_cache(mixed)
 
 
 def test_should_use_title_only_for_librivox_and_narrator(api):

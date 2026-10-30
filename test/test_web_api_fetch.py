@@ -752,7 +752,7 @@ def test_enrich_metadata_plot_keeps_primary_google_plot_without_isbn_lookup(api)
 
 
     def test_cache_classifies_transient_and_confirmed_misses(api):
-        transient = {"_no_result": True, "_fetch_errors": ["google_books: 429"]}
+        transient = {"_no_result": True, "_fetch_errors": ["open_library: timed out"]}
         confirmed = {"_no_result": True, "_fetch_errors": []}
 
         assert api._cache_entry_kind(transient) == "transient"
@@ -1391,6 +1391,61 @@ def test_negative_cache_short_circuits_repeat_miss(api, monkeypatch):
     second = api.get_book_metadata("No Such Book XYZ", "Nobody Author")
     assert second and second.get("_no_result")
     assert calls["n"] == 0
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(WebBookAPI, "_fetch_from_open_library", return_value=None)
+def test_google_paused_miss_is_confirmed_and_saved(_ol_mock, _wd_mock, api):
+    _note_rate_limited("google_books", seconds=600)
+    with patch.object(WebBookAPI, "_fetch_from_google_books") as gb_mock:
+        result = api.get_book_metadata(
+            "A Book That Does Not Exist", "John Smith", refresh=0
+        )
+    gb_mock.assert_not_called()
+    assert result is None
+
+    saved = json.loads(open(wba.WEB_CACHE_FILE, encoding="utf-8").read())
+    entries = [
+        payload
+        for key, (_stamp, payload) in saved.items()
+        if key.startswith("A Book That Does Not Exist|John Smith|")
+    ]
+    assert len(entries) == 1
+    assert entries[0]["_no_result"] is True
+    assert entries[0]["_fetch_errors"] == []
+    assert entries[0]["_cache_kind"] == "negative"
+    assert _seconds_until_cooldown_clears("google_books") > 0
+    _clear_source_cooldown()
+
+
+@patch.object(WebBookAPI, "_fetch_from_wikidata", return_value=None)
+@patch.object(
+    WebBookAPI,
+    "_fetch_from_open_library",
+    side_effect=TimeoutError("timed out"),
+)
+def test_google_paused_with_other_source_error_stays_transient(
+    _ol_mock, _wd_mock, api
+):
+    _note_rate_limited("google_books", seconds=600)
+    result = api.get_book_metadata("Another Missing Book", "Jane Doe", refresh=0)
+    assert result and result.get("_no_result") is True
+    errors = result.get("_fetch_errors", [])
+    assert "google_books: paused" in errors
+    assert any(err.startswith("open_library:") for err in errors)
+    assert api._cache_entry_kind(result) == "transient"
+    _clear_source_cooldown()
+
+
+@patch("src.web.web_http.time.sleep")
+@patch("src.web.web_http.urllib.request.urlopen")
+def test_google_books_503_does_not_start_quota_pause(urlopen_mock, _sleep, api):
+    urlopen_mock.side_effect = _http_error_503()
+    with pytest.raises(Exception):
+        api._fetch_from_google_books(
+            "Unknown Book", "Unknown Author", propagate_fatal_errors=True
+        )
+    assert _seconds_until_cooldown_clears("google_books") == 0
 
 
 @patch("src.web.web_http.urllib.request.urlopen")

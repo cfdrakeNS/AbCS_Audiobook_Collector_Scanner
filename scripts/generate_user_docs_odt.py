@@ -20,13 +20,25 @@ Requires odfpy (listed in requirements.txt).
 project root unless another folder is given: for each topic, a speech-ready text file and
 an MP3 made with edge-tts (pip install edge-tts; needs an internet
 connection). Files are numbered in Help order, such as
-"02 Import Process (Folder Scan).mp3". The audio has no contents list,
+"02 Import (Folder Scan).mp3". The audio has no contents list,
 and table rows are read as "Shortcut: Action." lines.
+
+Audio runs are faster in two ways. Several topics go to edge-tts at once
+(--jobs, default 4, at most 8); a topic that fails is tried up to three more
+times, after waits of 5, 15, and 30 seconds. And
+.audio_manifest.json in the output folder records a hash of each MP3's speech
+text and voice: a topic whose text and voice are unchanged keeps its MP3, and
+one whose number changed only has its MP3 renamed. --force remakes every MP3.
+Each MP3 is written under a temporary name and renamed when complete, so a
+failed topic leaves no MP3 and is made on the next run. Numbered mp3 and txt
+files that no longer belong to a topic are deleted; other files are kept.
 
 Run:
     python scripts/generate_user_docs_odt.py
     python scripts/generate_user_docs_odt.py --toc-levels 1
     python scripts/generate_user_docs_odt.py --audio
+    python scripts/generate_user_docs_odt.py --audio --jobs 6
+    python scripts/generate_user_docs_odt.py --audio --force
     python scripts/generate_user_docs_odt.py --audio --text-only
     python scripts/generate_user_docs_odt.py --audio E:\other_folder
 """
@@ -34,8 +46,12 @@ Run:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import os
 import re
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -823,6 +839,15 @@ def build_guide(output: Path, toc_levels: int) -> Path:
 
 DEFAULT_VOICE = "en-CA-ClaraNeural"
 DEFAULT_AUDIO_DIR = PROJECT_ROOT / "help_docs_mp3"
+DEFAULT_JOBS = 4
+# More requests at once than this can make the edge-tts service refuse them.
+MAX_JOBS = 8
+# Waits before each retry. The service answers "No audio was received" when it
+# is busy, and a longer wait usually gets through.
+RETRY_DELAYS_SECONDS = (5.0, 15.0, 30.0)
+MANIFEST_NAME = ".audio_manifest.json"
+PART_SUFFIX = ".part"
+_NUMBERED_FILE_RE = re.compile(r"^\d{2} .+\.(mp3|txt)$", re.IGNORECASE)
 _SPEECH_REPLACEMENTS = (
     (" → ", ", then "),
     ("→", " then "),
@@ -893,19 +918,70 @@ def speech_text(topic: Topic) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def build_audio(output_dir: Path, voice: str, make_mp3: bool) -> int:
-    """Write nn Title.txt and nn Title.mp3 per topic; return failed MP3 count."""
+def _audio_hash(text: str, voice: str) -> str:
+    """Hash of the speech text and voice; a change in either remakes the MP3."""
+    return hashlib.sha256(f"{voice}\n{text}".encode("utf-8")).hexdigest()
+
+
+def _load_manifest(output_dir: Path) -> dict[str, str]:
+    """MP3 file name to audio hash from the last run; empty when missing or unreadable."""
+    try:
+        data = json.loads((output_dir / MANIFEST_NAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(name): str(value) for name, value in data.items()}
+
+
+def _save_manifest(output_dir: Path, manifest: dict[str, str]) -> None:
+    (output_dir / MANIFEST_NAME).write_text(
+        json.dumps(dict(sorted(manifest.items())), indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def _has_audio(path: Path) -> bool:
+    return path.is_file() and path.stat().st_size > 0
+
+
+def _remove_leftovers(output_dir: Path, keep: set[str]) -> int:
+    """Delete numbered mp3/txt files no topic uses, and unfinished MP3 parts."""
+    removed = 0
+    for path in output_dir.iterdir():
+        if not path.is_file():
+            continue
+        leftover = _NUMBERED_FILE_RE.match(path.name) and path.name not in keep
+        if leftover or path.name.endswith(PART_SUFFIX):
+            path.unlink()
+            removed += 1
+    return removed
+
+
+def build_audio(
+    output_dir: Path,
+    voice: str,
+    make_mp3: bool,
+    jobs: int = DEFAULT_JOBS,
+    force: bool = False,
+) -> int:
+    """Write nn Title.txt and nn Title.mp3 per topic; return failed MP3 count.
+
+    Up to ``jobs`` topics are sent to edge-tts at once. An MP3 whose speech
+    text and voice match the last run is kept, or renamed when only its topic
+    number changed. ``force`` remakes every MP3.
+    """
+    started = time.perf_counter()
     topics = load_topics()
     output_dir.mkdir(parents=True, exist_ok=True)
-    jobs: list[tuple[str, Path]] = []
+    targets: list[tuple[str, Path]] = []
     for index, topic in enumerate(topics, start=1):
         safe_title = topic.title.replace("—", "-").replace("–", "-")
         safe_title = " ".join(_UNSAFE_FILENAME_RE.sub(" ", safe_title).split())
         base = output_dir / f"{index:02d} {safe_title}"
         text = speech_text(topic)
         base.with_suffix(".txt").write_text(text, encoding="utf-8")
-        jobs.append((text, base.with_suffix(".mp3")))
-    print(f"Wrote {len(jobs)} speech text files to {output_dir}")
+        targets.append((text, base.with_suffix(".mp3")))
+    print(f"Wrote {len(targets)} speech text files to {output_dir}")
     if not make_mp3:
         return 0
 
@@ -917,20 +993,108 @@ def build_audio(output_dir: Path, voice: str, make_mp3: bool) -> int:
 
     import asyncio
 
-    async def _synthesize() -> int:
-        failed = 0
-        for number, (text, mp3) in enumerate(jobs, start=1):
-            print(f"  [{number}/{len(jobs)}] {mp3.name}", flush=True)
-            try:
-                await edge_tts.Communicate(text, voice).save(str(mp3))
-            except Exception as exc:
-                failed += 1
-                print(f"    failed: {exc}", file=sys.stderr, flush=True)
-        return failed
+    old_manifest = {} if force else _load_manifest(output_dir)
+    manifest: dict[str, str] = {}
+    wanted = [(text, mp3, _audio_hash(text, voice)) for text, mp3 in targets]
 
-    failed = asyncio.run(_synthesize())
-    print(f"Wrote {len(jobs) - failed} MP3 files to {output_dir} with voice {voice}")
+    # Reuse first, so a kept MP3 is never renamed away for another topic.
+    pending: list[tuple[str, Path, str]] = []
+    reused = 0
+    for text, mp3, digest in wanted:
+        if old_manifest.get(mp3.name) == digest and _has_audio(mp3):
+            manifest[mp3.name] = digest
+            reused += 1
+        else:
+            pending.append((text, mp3, digest))
+
+    by_hash = {
+        digest: output_dir / name
+        for name, digest in old_manifest.items()
+        if name not in manifest and _has_audio(output_dir / name)
+    }
+    renames: list[tuple[Path, Path, str]] = []
+    to_make: list[tuple[str, Path, str]] = []
+    for text, mp3, digest in pending:
+        source = by_hash.pop(digest, None)
+        if source is not None:
+            renames.append((source, mp3, digest))
+        else:
+            to_make.append((text, mp3, digest))
+
+    # Move every source aside first, so one rename cannot overwrite another's source.
+    staged = []
+    for source, mp3, digest in renames:
+        holding = source.with_name(source.name + ".renaming")
+        os.replace(source, holding)
+        staged.append((holding, mp3, digest))
+    for holding, mp3, digest in staged:
+        os.replace(holding, mp3)
+        manifest[mp3.name] = digest
+
+    async def _make_one(text: str, mp3: Path) -> bool:
+        part = mp3.with_name(mp3.name + PART_SUFFIX)
+        delays = list(RETRY_DELAYS_SECONDS)
+        while True:
+            try:
+                await edge_tts.Communicate(text, voice).save(str(part))
+                os.replace(part, mp3)
+                return True
+            except Exception as exc:
+                part.unlink(missing_ok=True)
+                if not delays:
+                    print(f"    gave up on {mp3.name}: {exc}", file=sys.stderr, flush=True)
+                    break
+                delay = delays.pop(0)
+                print(
+                    f"    retrying {mp3.name} in {delay:.0f} seconds: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                await asyncio.sleep(delay)
+        mp3.unlink(missing_ok=True)
+        return False
+
+    async def _synthesize() -> int:
+        limit = asyncio.Semaphore(max(1, jobs))
+        done = 0
+
+        async def _run(text: str, mp3: Path, digest: str) -> bool:
+            nonlocal done
+            async with limit:
+                ok = await _make_one(text, mp3)
+            done += 1
+            outcome = "" if ok else " FAILED"
+            print(f"  [{done}/{len(to_make)}] {mp3.name}{outcome}", flush=True)
+            if ok:
+                manifest[mp3.name] = digest
+            return ok
+
+        results = await asyncio.gather(*(_run(*job) for job in to_make))
+        return results.count(False)
+
+    failed = asyncio.run(_synthesize()) if to_make else 0
+    _save_manifest(output_dir, manifest)
+    keep = {mp3.name for _text, mp3 in targets}
+    keep |= {mp3.with_suffix(".txt").name for _text, mp3 in targets}
+    removed = _remove_leftovers(output_dir, keep)
+    elapsed = time.perf_counter() - started
+    print(
+        f"MP3 files in {output_dir} with voice {voice}: "
+        f"{len(to_make) - failed} made, {reused} reused, {len(renames)} renamed, "
+        f"{failed} failed, {removed} leftover files removed, "
+        f"{elapsed:.0f} seconds."
+    )
     return failed
+
+
+def _jobs_count(value: str) -> int:
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{value} is not a number") from exc
+    if not 1 <= count <= MAX_JOBS:
+        raise argparse.ArgumentTypeError(f"use a number from 1 to {MAX_JOBS}")
+    return count
 
 
 def main() -> None:
@@ -971,10 +1135,30 @@ def main() -> None:
         action="store_true",
         help="With --audio, write the speech text files without making MP3s",
     )
+    parser.add_argument(
+        "--jobs",
+        type=_jobs_count,
+        default=DEFAULT_JOBS,
+        help=(
+            f"With --audio, topics sent to edge-tts at once, 1 to {MAX_JOBS} "
+            f"(default: {DEFAULT_JOBS})"
+        ),
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="With --audio, remake every MP3 even when its text has not changed",
+    )
     args = parser.parse_args()
 
     if args.audio:
-        failed = build_audio(args.audio, args.voice, make_mp3=not args.text_only)
+        failed = build_audio(
+            args.audio,
+            args.voice,
+            make_mp3=not args.text_only,
+            jobs=args.jobs,
+            force=args.force,
+        )
         raise SystemExit(1 if failed else 0)
 
     try:
