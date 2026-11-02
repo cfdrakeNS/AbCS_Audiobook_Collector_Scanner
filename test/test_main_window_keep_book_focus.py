@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.database.models import Book
-from src.database.queries import AuthorQueries, BookQueries
+from PySide6.QtWidgets import QMessageBox
+
+from src.database.models import Book, Collection
+from src.database.queries import AuthorQueries, BookQueries, CollectionQueries
 
 
 def _current_book_id(window):
@@ -143,3 +145,63 @@ def test_update_returns_focus_to_first_selected_book(
     assert _current_book_id(window) == first_id
     assert window.selected_book_ids == set()
     assert window.table.hasFocus()
+
+
+def _confirm_delete(monkeypatch):
+    monkeypatch.setattr(
+        "src.ui.main_window.exec_styled_message_box",
+        lambda *args, **kwargs: QMessageBox.Yes,
+    )
+
+
+def _show_collection(window, collection_id: int) -> None:
+    window.refresh_collections()
+    for action in window.collection_filter_group.actions():
+        if action.data() == collection_id:
+            action.trigger()
+            return
+    raise AssertionError("collection filter action missing")
+
+
+def test_delete_moves_focus_to_next_or_previous_book(
+    main_window, qapp, qtbot, monkeypatch
+):
+    """Deleting books leaves focus on the next book, or the previous one at the end."""
+    _confirm_delete(monkeypatch)
+    window = main_window
+
+    def run_case(name: str, delete_titles: list[str], expected: str) -> None:
+        titles = [
+            f"{name} A",
+            f"{name} B",
+            f"{name} C",
+            f"{name} D",
+        ]
+        collection_id = CollectionQueries(window.db).insert(
+            Collection(name=name, active=True)
+        )
+        books = BookQueries(window.db)
+        ids = {
+            title: books.insert(Book(title=title, collection_id=collection_id))
+            for title in titles
+        }
+        _show_collection(window, collection_id)
+        window.on_order_changed("Title")
+        assert [book.title for book in window.books] == titles
+
+        window.focus_book_by_id(ids[f"{name} {delete_titles[0]}"], 1)
+        window.selected_book_ids = {ids[f"{name} {title}"] for title in delete_titles}
+        window.on_delete_clicked()
+        qapp.processEvents()
+        qtbot.wait(20)
+
+        current = window.books[window.table.currentRow()]
+        assert current.title == f"{name} {expected}"
+        assert window.table.hasFocus()
+        assert window.selected_book_ids == set()
+
+    run_case("Delete Next", ["B"], "C")
+    run_case("Delete End", ["D"], "C")
+    run_case("Delete Block", ["B", "C"], "D")
+    run_case("Delete Tail", ["C", "D"], "B")
+    run_case("Delete First", ["A"], "B")

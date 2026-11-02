@@ -4773,16 +4773,8 @@ class MainWindow(QMainWindow):
             return
 
         count = len(ids_to_delete)
-
-        # mw#25: Track the first selected row to return focus after delete
-        first_selected_row = None
-        for row in range(self.table.rowCount()):
-            if (
-                row < len(self.books)
-                and self.books[row].book_id in ids_to_delete
-            ):
-                first_selected_row = row
-                break
+        # Next remaining book, or the previous one when the deleted rows go to the end.
+        focus_book_id = self._book_id_to_focus_after_delete(ids_to_delete)
 
         from src.accessibility.icon_helper import get_app_icon
 
@@ -4816,6 +4808,7 @@ class MainWindow(QMainWindow):
 
             if self.duplicate_mode_active:
                 self._refresh_duplicate_mode_after_data_change()
+                self._focus_book_after_delete(focus_book_id)
                 return
 
             # Check if filters resulted in 0 books - clear filters to prevent freeze
@@ -4859,21 +4852,75 @@ class MainWindow(QMainWindow):
                     buttons=QMessageBox.Ok,
                     default_button=QMessageBox.Ok,
                 )
+                self._focus_book_after_delete(focus_book_id)
                 self.set_status(message, announce=True)
-                if self.table.rowCount() > 0:
-                    self.table.setCurrentCell(0, 1)  # Title column
-                self.table.setFocus()
-                return  # Skip focus logic since table was refreshed
+                return
 
-            # mw#25: Focus the row before the deleted selection
-            if first_selected_row is not None:
-                target_row = max(0, first_selected_row - 1)
-                if target_row < self.table.rowCount():
-                    self.table.setCurrentCell(target_row, 1)  # Title column
-                    self.table.setFocus()
-
-            # Show deletion message
+            self._focus_book_after_delete(focus_book_id)
             self.set_status(f"{deleted_count} book(s) deleted", timeout_ms=2000)
+
+    def _book_id_to_focus_after_delete(self, ids_to_delete: set) -> int | None:
+        """Book that should receive focus after those ids leave the table.
+
+        Prefer the first kept book below the first deleted row. If the deleted
+        rows run through the end of the list, use the closest kept book above.
+        """
+        first_row = None
+        for row, book in enumerate(self.books):
+            if book.book_id in ids_to_delete:
+                first_row = row
+                break
+        if first_row is None:
+            return None
+
+        for row in range(first_row + 1, len(self.books)):
+            book_id = self.books[row].book_id
+            if book_id not in ids_to_delete:
+                return book_id
+        for row in range(first_row - 1, -1, -1):
+            book_id = self.books[row].book_id
+            if book_id not in ids_to_delete:
+                return book_id
+        return None
+
+    def _focus_book_after_delete(self, book_id: int | None) -> None:
+        """Move table focus to the book beside the deleted rows.
+
+        Cancels the refresh that would otherwise land on the first row once
+        the deleted book is gone.
+        """
+        self._focus_restore_token += 1
+
+        target_row = -1
+        if book_id is not None:
+            for row, book in enumerate(self.books):
+                if book.book_id == book_id:
+                    target_row = row
+                    break
+        if target_row < 0 and self.table.rowCount() > 0:
+            target_row = 0
+
+        if target_row < 0:
+            self.table.setFocus(Qt.TabFocusReason)
+            return
+
+        title_col = 1
+        index = self.table.model().index(target_row, title_col)
+        selection = self.table.selectionModel()
+        if self.selected_book_ids:
+            selection.setCurrentIndex(index, QItemSelectionModel.NoUpdate)
+        else:
+            self._updating_selection_ui = True
+            try:
+                self.table.clearSelection()
+                self.table.setCurrentCell(target_row, title_col)
+            finally:
+                self._updating_selection_ui = False
+        self.table.scrollTo(index, QAbstractItemView.PositionAtCenter)
+        if 0 <= target_row < len(self.books):
+            self._last_table_book_id = self.books[target_row].book_id
+            self._last_table_column = title_col
+        self.table.setFocus(Qt.TabFocusReason)
 
     def on_export_duplicates(self):
         """Export duplicate books to CSV file with author, title, year, collection, and date added."""
