@@ -65,8 +65,8 @@ AbCS opens each audio file and reads its tags. Your file stays exactly as it was
 
 | Book field | Where it comes from |
 |------------|---------------------|
-| **Title** | The Album tag by default. Tag mapping in Preferences can use Track title, or Album then track title |
-| **Author** | Album artist, then Artist, by default. Tag mapping can use Album artist only, or Artist only |
+| **Title** | The Album tag |
+| **Author** | The Album artist tag, then the Artist tag |
 | **Year** | The year or date tag (the first four digits) |
 | **Genre** | The genre tag |
 | **Narrator** | The composer tag first. When it is empty, the comment text after words such as "read by" or "narrated by" |

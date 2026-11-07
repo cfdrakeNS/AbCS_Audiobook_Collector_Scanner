@@ -401,6 +401,7 @@ def show_preview(
     book=None,
     db=None,
     collection_name: str = "",
+    narrator_name: str = "",
 ) -> tuple[bool, str]:
     """Resolve a book path and play it in the in-app Preview window."""
     listen_file = ""
@@ -479,6 +480,7 @@ def show_preview(
         series_number=series_number,
         length_text=length_text,
         resume_ms=listen_ms,
+        narrator_name=narrator_name,
     )
     if not ok:
         window.close()
@@ -579,6 +581,10 @@ class PreviewWindow(AccessibleDialog):
         self.author_label = QLabel("Author:")
         self.author_label.setFocusPolicy(Qt.NoFocus)
         self.author_label.setWordWrap(True)
+        self.narrator_label = QLabel("Narrator:")
+        self.narrator_label.setFocusPolicy(Qt.NoFocus)
+        self.narrator_label.setWordWrap(True)
+        self.narrator_label.hide()
         self.series_label = QLabel("Series:")
         self.series_label.setFocusPolicy(Qt.NoFocus)
         self.series_label.setWordWrap(True)
@@ -591,6 +597,7 @@ class PreviewWindow(AccessibleDialog):
         self.part_label.hide()
         details.addWidget(self.title_label)
         details.addWidget(self.author_label)
+        details.addWidget(self.narrator_label)
         details.addWidget(self.series_label)
         details.addWidget(self.length_label)
         details.addWidget(self.part_label)
@@ -1024,6 +1031,7 @@ class PreviewWindow(AccessibleDialog):
         series_number: str = "",
         length_text: str = "",
         resume_ms: int | None = None,
+        narrator_name: str = "",
     ) -> tuple[bool, str]:
         if self._player is None:
             return False, "Playing books needs Qt Multimedia."
@@ -1033,6 +1041,9 @@ class PreviewWindow(AccessibleDialog):
             )
         title = (book_title or "").strip() or playlist.files[0].name
         author = (author_name or "").strip()
+        narrator = (narrator_name or "").strip()
+        if not narrator and self._book is not None:
+            narrator = (getattr(self._book, "reader", "") or "").strip()
         series = _format_preview_series(series_name, series_number)
         length = _length_from_book_or_text(self._book, length_text)
         self._book_length_text = length
@@ -1040,6 +1051,13 @@ class PreviewWindow(AccessibleDialog):
         self._set_info_line(
             self.author_label, f"Author: {author}" if author else "Author:"
         )
+        if narrator:
+            self._set_info_line(self.narrator_label, f"Narrator: {narrator}")
+            self.narrator_label.show()
+        else:
+            self.narrator_label.clear()
+            self.narrator_label.setAccessibleName("")
+            self.narrator_label.hide()
         if series:
             self._set_info_line(self.series_label, f"Series: {series}")
             self.series_label.show()

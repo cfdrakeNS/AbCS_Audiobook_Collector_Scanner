@@ -326,6 +326,8 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
 
     assert preview.title_label.text() == "Title: A Maiden's Grave"
     assert preview.author_label.text() == "Author: Jeffrey Deaver"
+    assert preview.narrator_label.isHidden()
+    assert preview.narrator_label.accessibleName() == ""
     assert preview.series_label.text() == "Series: Lincoln Rhyme - 01"
     assert preview.series_label.isVisible()
     assert preview.length_label.text() == "Length: 10:35"
@@ -343,6 +345,36 @@ def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbo
     assert "cover" not in preview.status_bar.currentMessage().lower()
     if preview_mod._open_preview is not None:
         preview_mod._open_preview.close()
+
+    from types import SimpleNamespace
+
+    narrator_cases = [
+        ({"narrator_name": "  Holter Graham  "}, "Narrator: Holter Graham"),
+        ({"narrator_name": "   "}, None),
+        ({"book": SimpleNamespace(reader="Scott Brick")}, "Narrator: Scott Brick"),
+        ({"book": SimpleNamespace(reader="")}, None),
+    ]
+    for extra, expected in narrator_cases:
+        ok, _message = show_preview(
+            None,
+            str(audio),
+            ui_scaler,
+            theme_manager,
+            book_title="A Maiden's Grave",
+            author_name="Jeffrey Deaver",
+            **extra,
+        )
+        assert ok is True
+        preview = preview_mod._open_preview
+        if expected is None:
+            assert preview.narrator_label.isHidden()
+            assert preview.narrator_label.accessibleName() == ""
+        else:
+            assert preview.narrator_label.isVisible()
+            assert preview.narrator_label.text() == expected
+            assert preview.narrator_label.accessibleName() == expected
+        preview.close()
+
     ok, message = show_preview(None, "", ui_scaler, theme_manager)
     assert ok is False
     assert "collection folder is not set" in message

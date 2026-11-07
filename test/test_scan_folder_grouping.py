@@ -6,19 +6,11 @@ import os
 
 import pytest
 
-from src.core.tag_mapping import AUTHOR_ALBUM_ARTIST_THEN_ARTIST, TITLE_ALBUM
 from src.core.tag_reader import AudioFileInfo, BookScanner
 
 
 @pytest.fixture
-def scanner(monkeypatch):
-    monkeypatch.setattr(
-        "src.core.tag_mapping.read_title_mapping", lambda settings=None: TITLE_ALBUM
-    )
-    monkeypatch.setattr(
-        "src.core.tag_mapping.read_author_mapping",
-        lambda settings=None: AUTHOR_ALBUM_ARTIST_THEN_ARTIST,
-    )
+def scanner():
     return BookScanner()
 
 
@@ -162,3 +154,102 @@ def test_unreadable_file_without_album_book_stays_separate(
 
     assert len(books) == 2
     assert _counts_by_folder(books) == {"Book": 1, "Other": 1}
+
+
+def _use_full_tags(scanner, monkeypatch, **tags):
+    def _fake_read(file_path: str) -> AudioFileInfo:
+        info = AudioFileInfo()
+        info.file_path = file_path
+        for name, value in tags.items():
+            setattr(info, name, value)
+        return info
+
+    monkeypatch.setattr(scanner.tag_reader, "read_file", _fake_read)
+
+
+def test_title_is_album_and_author_is_album_artist(tmp_path, scanner, monkeypatch):
+    _write(tmp_path / "Book", ["01.mp3", "02.mp3"])
+    _use_full_tags(
+        scanner,
+        monkeypatch,
+        album="Shared Album",
+        track_title="Chapter One",
+        album_artist="Album Author",
+        artist="Track Author",
+    )
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 1
+    assert books[0]["title"] == "Shared Album"
+    assert books[0]["author"] == "Album Author"
+
+
+def test_empty_album_does_not_use_track_title(tmp_path, scanner, monkeypatch):
+    _write(tmp_path / "Book", ["01.mp3"])
+    _use_full_tags(
+        scanner,
+        monkeypatch,
+        album="",
+        track_title="Chapter One",
+        album_artist="Album Author",
+    )
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert books[0]["title"] == ""
+
+
+def test_author_uses_artist_when_album_artist_is_empty(
+    tmp_path, scanner, monkeypatch
+):
+    _write(tmp_path / "Book", ["01.mp3"])
+    _use_full_tags(
+        scanner,
+        monkeypatch,
+        album="Shared Album",
+        album_artist="",
+        artist="Track Author",
+    )
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert books[0]["author"] == "Track Author"
+
+
+def test_scan_file_uses_album_and_falls_back_to_file_name(
+    tmp_path, scanner, monkeypatch
+):
+    audio = tmp_path / "01 Real Name.mp3"
+    audio.write_bytes(b"stub")
+    _use_full_tags(
+        scanner,
+        monkeypatch,
+        album="",
+        track_title="Chapter One",
+        album_artist="",
+        artist="Track Author",
+    )
+
+    books = scanner.scan_file(str(audio))
+
+    assert books[0]["title"] == "01 Real Name"
+    assert books[0]["author"] == "Track Author"
+
+
+def test_placeholder_title_still_uses_file_fallback(tmp_path):
+    from src.core.import_scanner import ImportScanner
+
+    audio = tmp_path / "01 Real Name.mp3"
+    audio.write_bytes(b"stub")
+    book = {
+        "title": "unknown album",
+        "author": "Jane Author",
+        "folder": str(tmp_path),
+        "files": [str(audio)],
+        "comment": "",
+        "narrator": "",
+        "errors": [],
+    }
+    ImportScanner().apply_preferences(book)
+    assert book["title"] == "Real Name"

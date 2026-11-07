@@ -16,7 +16,6 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 
 - Background web metadata fetch with shared HTTP, cache, and budget; batch fetch for a selection with review summary.
 - Leading-article title matching (A, An, The) for imports and comparisons.
-- Import tag mapping: choose which audio tags supply title and author.
 - Import Book List from spreadsheets; Import Detail layout with Keep/Discard.
 - Plot fetch quality and performance improvements (2.22+).
 - Optional startup check for a newer AbCS release.
@@ -31,6 +30,7 @@ User-facing overview: [What's New in Version 3](whats_new_in_v3.md). Step-by-ste
 - Embedded cover art in Book Details and Listen; Listen can fill missing length/track count for book-list imports when files are found.
 - Listen resolves paths via collection folder remap; book-list imports can be found under the collection folder with clear messages when missing.
 - Listen progress as percent of whole book when length is known.
+- Listen shows the Narrator line when the book has a narrator.
 - Statistics: Want to Read and In Progress counts.
 
 ### Maintain and export

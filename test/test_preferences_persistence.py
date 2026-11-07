@@ -63,50 +63,20 @@ def test_preferences_author_fallback_persists_on_save(
     reopened.close()
 
 
-def test_preferences_tag_mapping_round_trip_and_restore(
+def test_import_settings_have_no_tag_mapping(
     ui_scaler, theme_manager, isolated_qsettings, qtbot
 ):
-    from unittest.mock import patch
-
-    from PySide6.QtWidgets import QMessageBox
-
-    from src.core.tag_mapping import (
-        AUTHOR_ARTIST_ONLY,
-        AUTHOR_TAG_SETTING,
-        TITLE_ALBUM,
-        TITLE_TAG_SETTING,
-        TITLE_TRACK,
-    )
+    from PySide6.QtWidgets import QComboBox, QGroupBox
 
     window = PreferencesWindow(ui_scaler, theme_manager)
     qtbot.addWidget(window)
-    assert window.title_tag_combo.currentData() == TITLE_ALBUM
-    assert window.title_tag_combo.accessibleName() == "Book title tag"
-    assert window.author_tag_combo.accessibleName() == "Author tag"
-
-    window.title_tag_combo.setCurrentIndex(window.title_tag_combo.findData(TITLE_TRACK))
-    window.author_tag_combo.setCurrentIndex(
-        window.author_tag_combo.findData(AUTHOR_ARTIST_ONLY)
-    )
-    window.on_save()
-
-    stored = QSettings("AbCS", "AudioBookCollector")
-    assert stored.value(TITLE_TAG_SETTING, type=str) == TITLE_TRACK
-    assert stored.value(AUTHOR_TAG_SETTING, type=str) == AUTHOR_ARTIST_ONLY
-
-    reopened = PreferencesWindow(ui_scaler, theme_manager)
-    qtbot.addWidget(reopened)
-    assert reopened.title_tag_combo.currentData() == TITLE_TRACK
-    assert reopened.author_tag_combo.currentData() == AUTHOR_ARTIST_ONLY
-
-    with patch(
-        "src.ui.preferences_window.exec_styled_message_box",
-        return_value=QMessageBox.Yes,
-    ):
-        reopened.on_restore_defaults()
-    assert reopened.title_tag_combo.currentData() == TITLE_ALBUM
-    assert stored.value(TITLE_TAG_SETTING, type=str) == TITLE_ALBUM
-    reopened.close()
+    group_titles = {group.title() for group in window.findChildren(QGroupBox)}
+    combo_names = {combo.accessibleName() for combo in window.findChildren(QComboBox)}
+    assert "Tag mapping" not in group_titles
+    assert "Book title tag" not in combo_names
+    assert "Author tag" not in combo_names
+    assert "title_tag" not in window._capture_state()
+    window.close()
 
 
 def test_fresh_install_shows_restore_defaults_values(

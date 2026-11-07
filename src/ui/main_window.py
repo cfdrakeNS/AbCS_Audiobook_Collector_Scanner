@@ -5144,6 +5144,7 @@ class MainWindow(QMainWindow):
             book=book,
             db=self.db,
             collection_name=book.collection_name or "",
+            narrator_name=book.reader or "",
         )
         if ok:
             if getattr(self.current_filter, "in_progress_filter", "All") == "In Progress":

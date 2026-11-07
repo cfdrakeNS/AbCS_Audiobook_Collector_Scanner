@@ -561,6 +561,16 @@ def _folder_key(folder: str) -> str:
     return os.path.normcase(os.path.abspath(folder))
 
 
+def _book_title_from_tags(info: AudioFileInfo) -> str:
+    """Book title is the Album tag; the track title is never used."""
+    return (info.album or "").strip()
+
+
+def _book_author_from_tags(info: AudioFileInfo) -> str:
+    """Book author is the Album artist tag, then the Artist tag."""
+    return (info.album_artist or "").strip() or (info.artist or "").strip()
+
+
 def _common_folder(files: List[str]) -> str:
     """Deepest folder that holds every file in the book."""
     folders = [os.path.dirname(path) for path in files]
@@ -685,17 +695,6 @@ class BookScanner:
                     if is_allowed(entry.path):
                         add_audio_file(entry.path)
 
-        from src.core.tag_mapping import (
-            read_author_mapping,
-            read_title_mapping,
-            resolve_book_author,
-            resolve_book_title,
-        )
-
-        title_mapping = read_title_mapping()
-        author_mapping = read_author_mapping()
-
-        # Group by album even when the book title comes from the track title.
         books = {}
 
         total_files = len(audio_files)
@@ -720,8 +719,8 @@ class BookScanner:
             else:
                 book_key = ("folder", file_folder_key)
 
-            mapped_title = resolve_book_title(info, title_mapping)
-            mapped_author = resolve_book_author(info, author_mapping)
+            mapped_title = _book_title_from_tags(info)
+            mapped_author = _book_author_from_tags(info)
 
             if book_key not in books:
                 books[book_key] = {
@@ -852,13 +851,11 @@ class BookScanner:
 
         info = self.tag_reader.read_file(file_path)
 
-        from src.core.tag_mapping import resolve_book_author, resolve_book_title
-
         # Use filename without extension as book key
         file_name = os.path.basename(file_path)
         book_key = os.path.splitext(file_name)[0]
-        mapped_title = resolve_book_title(info)
-        mapped_author = resolve_book_author(info)
+        mapped_title = _book_title_from_tags(info)
+        mapped_author = _book_author_from_tags(info)
 
         # Build book dictionary
         book = {

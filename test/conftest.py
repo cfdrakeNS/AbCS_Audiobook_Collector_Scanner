@@ -160,11 +160,71 @@ def temp_db(tmp_path):
         db.close()
 
 
-@pytest.fixture
-def isolated_qsettings(tmp_path, monkeypatch):
-    """Point QSettings at a throwaway location so tests do not touch user prefs."""
+def _patch_qsettings_to_ini(monkeypatch) -> None:
+    """Send QSettings(org, app) to the INI path instead of the registry.
+
+    That constructor always uses NativeFormat, so setDefaultFormat alone
+    leaves the user's real AbCS preferences exposed to tests.
+    """
+    import sys
+
+    from PySide6 import QtCore
+
+    original = QtCore.QSettings
+    if getattr(original, "_abcs_ini_only", False):
+        return
+
+    class IniQSettings(original):
+        _abcs_ini_only = True
+
+        def __init__(self, *args, **kwargs):
+            if (
+                not kwargs
+                and len(args) in (2, 3)
+                and isinstance(args[0], str)
+                and isinstance(args[1], str)
+            ):
+                super().__init__(
+                    original.Format.IniFormat,
+                    original.Scope.UserScope,
+                    *args,
+                )
+            else:
+                super().__init__(*args, **kwargs)
+
+    for module in list(sys.modules.values()):
+        namespace = getattr(module, "__dict__", None)
+        if namespace is not None and namespace.get("QSettings") is original:
+            monkeypatch.setattr(module, "QSettings", IniQSettings)
+
+
+def _set_ini_settings_dir(path) -> None:
     from PySide6.QtCore import QSettings
 
+    QSettings.setDefaultFormat(QSettings.Format.IniFormat)
+    QSettings.setPath(
+        QSettings.Format.IniFormat,
+        QSettings.Scope.UserScope,
+        str(path),
+    )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _no_registry_settings(tmp_path_factory):
+    """Keep every test, and the session scaler and theme, off the real preferences."""
+    session_dir = tmp_path_factory.mktemp("qsettings")
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        _patch_qsettings_to_ini(monkeypatch)
+        _set_ini_settings_dir(session_dir)
+        yield session_dir
+
+
+@pytest.fixture
+def isolated_qsettings(tmp_path, monkeypatch, _no_registry_settings):
+    """Give one test its own empty settings files."""
+    from PySide6.QtCore import QSettings
+
+    _patch_qsettings_to_ini(monkeypatch)
     monkeypatch.setenv("ABCS_TEST_SETTINGS_DIR", str(tmp_path))
     previous_format = QSettings.defaultFormat()
     QSettings.setDefaultFormat(QSettings.Format.IniFormat)
@@ -193,6 +253,7 @@ def isolated_qsettings(tmp_path, monkeypatch):
         settings.clear()
         app_settings.clear()
         QSettings.setDefaultFormat(previous_format)
+        _set_ini_settings_dir(_no_registry_settings)
 
 
 @pytest.fixture

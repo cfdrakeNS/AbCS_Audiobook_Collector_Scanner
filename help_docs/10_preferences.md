@@ -47,9 +47,6 @@ Help has its own zoom, set at the top of the Help window. See [Help overview](01
 - With only one collection that has no collection folder, saving this folder also stores it as the collection folder. When the collection already has a folder and this field is empty, AbCS fills this field from the collection.
 - **Audio formats** — which file types to scan.
 - **Import scenario** — how folders map to author, title, and series. The default is **Mass Standard Import**. See [Import preferences](18_import_preferences.md).
-- **Tag mapping** — which audio tags fill the book title and author. The defaults are **Album** for the title, and **Album artist then artist** for the author.
-- Other tag choices are **Track title**, **Album then track title**, **Album artist only**, and **Artist only**. Files are still grouped by the album and album artist tags, so a multi-part book stays one book.
-
 ## Fallback & Auto Correct (Alt+F)
 
 - **Author fallback to folder** and **Title fallback to file** — when checked, a missing tag is filled from the folder or file name. When unchecked, a missing author or title holds the book with an error.

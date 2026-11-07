@@ -305,18 +305,6 @@ ROWS = [
         "Anytime; deferred from June visual appeal",
     ),
     (
-        "F17",
-        "Follow-on",
-        "Import tag mapping",
-        "In Preferences Import Settings, choose which audio tags fill book title and author "
-        "(album vs track title, album artist vs artist). Files still group by album so a "
-        "multi-part book stays one book. Series from the file name stays an import scenario.",
-        "2-3 days",
-        "Medium",
-        "Wrong default would change existing imports; grouping must stay on album, not track title.",
-        "Anytime / import",
-    ),
-    (
         "B01",
         "Backlog",
         "Import from other apps",

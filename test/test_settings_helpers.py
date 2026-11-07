@@ -17,6 +17,22 @@ def _fresh_settings(app: str) -> QSettings:
     return settings
 
 
+def test_isolated_settings_never_use_the_registry(isolated_qsettings, tmp_path):
+    from pathlib import Path
+
+    from src.ui import preferences_window
+    from src.utils import settings_helpers
+
+    for settings in (
+        QSettings("AbCS", "AudioBookCollector"),
+        settings_helpers._current_settings(),
+        settings_helpers._legacy_settings(),
+        preferences_window.QSettings("AbCS", "AudioBookCollector"),
+    ):
+        assert settings.format() == QSettings.Format.IniFormat
+        assert Path(settings.fileName()).is_relative_to(tmp_path)
+
+
 def test_read_setting_uses_audiobook_collector_first(isolated_qsettings):
     current = _fresh_settings("AudioBookCollector")
     legacy = _fresh_settings("AbCS")

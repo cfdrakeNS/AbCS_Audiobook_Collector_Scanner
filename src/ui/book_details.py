@@ -4001,6 +4001,7 @@ class BookDetailsWindow(AccessibleDialog):
             book=self.book if not self.is_new else None,
             db=self.db,
             collection_name=self._preview_collection_name(),
+            narrator_name=self.reader_edit.text(),
         )
         self._show_found_book_path()
         self._show_filled_file_stats()

@@ -18,7 +18,7 @@
 
 ## Window layout
 
-- **Book information** at the top: Title and Author, then Series when the book has one, and Length when it is set.
+- **Book information** at the top: Title and Author, then Narrator and Series when the book has them, and Length when it is set.
 - **Part line**, for a book with more than one file: the current file, such as Part 6 / 12, then that file's title tag. When the title tag is empty, the file name is shown without its extension.
 - **Cover picture**, when the audio file has one.
 - **Time display** and **Play position** slider for the current file.
