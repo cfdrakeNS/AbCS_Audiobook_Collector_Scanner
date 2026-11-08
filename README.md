@@ -51,6 +51,8 @@ AbCS includes in-app help for sighted, low vision, and blind users. Guides live 
 
 The help window has a **Help Navigation** list on the left and the document on the right. Choose **All Help Topics** to browse every guide, or pick a section heading to jump within the current guide. Use **Tab** to move between the list and content.
 
+Choosing a section or search result moves that line near the top of the document. The text cursor is a wide bar in the theme highlight color. Guide names under **Related help** at the end of each guide open that guide: click the name, or press **Enter** on its line.
+
 Start here: [User guide overview](help_docs/01_overview.md)
 
 Reference guides:
@@ -58,6 +60,7 @@ Reference guides:
 - [Keyboard shortcuts by window](help_docs/16_shortcuts.md)
 - [Default preferences](help_docs/17_default_preferences.md)
 - [Import preferences (scenarios and rules)](help_docs/18_import_preferences.md)
+- [Using Help (layout, search, zoom, and shortcuts)](help_docs/29_using_help.md)
 
 ### Adding or changing help topics (dynamic topics)
 
@@ -77,7 +80,7 @@ To add a guide:
 1. Create `help_docs/19_my_new_topic.md` (use the next free number).
 2. Start the file with an `#` heading (used as the window title).
 3. Use `##` and `###` headings for sections (they appear in the section list after the topic is opened).
-4. Link to other guides with `[label](02_import.md)` — use the filename only.
+4. Link to other guides with `[label](02_import.md)` — use the filename only. Links under `## Related help` open the guide; links elsewhere show as plain text.
 
 No code change is required for the topic to appear in **All Help Topics**.
 

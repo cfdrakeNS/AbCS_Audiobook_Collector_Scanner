@@ -32,6 +32,8 @@ Version 3 adds new ways to find, organize, listen to, and maintain your audioboo
 - Use consistent keyboard shortcuts for editing, saving, finding, and listening.
 - Follow clearer progress, status, and completion messages during longer operations.
 - Navigate updated dialogs and help topics with the keyboard and screen readers.
+- In Help, open a related guide from the end of each topic by clicking its name or pressing Enter on its line.
+- In Help, the chosen section moves near the top of the text, and the text cursor is a wide bar in your theme's highlight color.
 
 ## Where to read more
 

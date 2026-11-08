@@ -60,7 +60,7 @@ Remove the `"import"` entry in the main toolbar setup ([main_window.py](../../sr
 - **Narrator** wherever Reader appears as a book field: Import Detail (`IMPORT_DETAIL_WINDOW_SHORTCUTS`). Book List Import is a column-mapping form where Alt+N is Series number, so the **Narrator** field mapping keeps **Alt+R** (not Alt+N).
 - **Reading History**: Alt+R Refresh and Alt+S Search point at the same button — drop one.
 - Leave main window Alt+U (Update window), Alt+D, Alt+W, Ctrl+F, Ctrl+N as they are.
-- UI label "Reader" becomes **Narrator** in Book Details, Import Detail, and the Book List Import mapping form. Main book list has no Reader column. Database column `reader` and CSV export/import headers stay **Reader** for compatibility.
+- UI label "Reader" becomes **Narrator** in Book Details, Import Detail, and the Book List Import mapping form. Main book list has no Reader column. Database column `reader` stays for compatibility. Export Library writes the column as **Narrator**, and Book List Import accepts a column headed Reader or Narrator.
 
 ### 7. Listen (Ctrl+L) — implemented September 27, 2026
 

@@ -3,7 +3,7 @@
 **Current build:** 2.47 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
-**Testing:** Full pytest suite — 1085 passed (November 8, 2026). Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
+**Testing:** Full pytest suite — 1102 passed (November 8, 2026, build 2.47). Help changes in 2.47 passed tester JAWS and NVDA checks. Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
 **Audience:** Checklist for what ships when you promote the build to **v3.0**.
 
 User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats_new.md) (also [whats_new_in_v3.md](whats_new_in_v3.md)). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
@@ -37,7 +37,7 @@ User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats
 
 - Book Details **Browse** beside path; path open in file manager.
 - **Manage → Check Book Locations** (formerly Check Books Path): scan for blank, missing, or off-root paths using the **same path lookup as Listen** (`locate_book_path`); auto-correct paths found under the collection folder; filters; CSV export; open Book Details from a row; Import-style progress for large scans.
-- **File → Export Library** to CSV (UTF-8 BOM) or JSON for the visible list or selection.
+- **File → Export Library** to CSV (UTF-8 BOM) or JSON for the visible list or selection. The plot is the **Plot** column in CSV and `plot` in JSON; Book List Import still accepts a Comments column (2.47).
 - Name-list merge when renaming duplicates (author, series, genre).
 - Standard shortcuts: **Ctrl+L** Listen, **Ctrl+S** save where applicable, **Edit** menu mnemonic, Narrator label on book list import, and related toolbar/menu cleanup.
 
@@ -48,6 +48,8 @@ User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats
 - Clearer progress and status during long scans and batch operations.
 - Help review from tester feedback (2.42): every window topic has a Window layout section; steps and buttons that do not exist are removed; screen reader product names and copyrighted examples are replaced; new Glossary topic; help search matches whole words, skips small words, and lists one row per topic.
 - Preferences lists AAC and OPUS formats; a fresh install uses the same values as Restore Defaults (2.42).
+- Help first pass (2.47): new **Using Help** topic 29; shorter overview; Related help names open their guide by click or Enter, with a hand pointer on hover; choosing a section, search result, or F3 moves that line near the top; the text cursor is a wide bar in the theme highlight color.
+- Preferences labels the narrator list **Narrator Keywords**, separate from the fallback settings; help uses Narrator and Plot for those book fields (2.47).
 
 ---
 
@@ -96,7 +98,7 @@ User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats
 - Each library remembers its collection; a playable path counts as valid (2.30).
 - Collection library root remap for Listen and path checks without silently rewriting stored paths.
 - Check Book Locations logic and UI aligned with collection folders; in-window guide no longer references Listen.
-- Import skips iTunes/MusicBrainz/encoder noise in Comments; one-time cleanup script for existing libraries.
+- Import skips iTunes/MusicBrainz/encoder noise in the comment tag, so it does not reach the plot; one-time cleanup script for existing libraries.
 - Google Books rate limit shown in minutes on batch summary; skip Google for the rest of the cooldown.
 
 ### Build and maintenance
