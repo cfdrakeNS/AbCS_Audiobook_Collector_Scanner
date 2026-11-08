@@ -53,7 +53,7 @@ mapfile -t GRAPHICS_ARGS < <(abcs_pyinstaller_graphics_args)
 mapfile -t HELP_DOCS_ARGS < <(abcs_pyinstaller_help_docs_args)
 
 echo "Building Linux debug executable (dist/AbCS)..."
-python -m PyInstaller \
+abcs_pyinstaller \
   --name="AbCS" \
   --onefile \
   --console \
@@ -80,6 +80,9 @@ python -m PyInstaller \
   --exclude-module="PySide6.QtQml" \
   --exclude-module="PySide6.QtQuick" \
   --exclude-module="PySide6.QtQuickShapes" \
+  --exclude-module="PySide6.QtPdf" \
+  --exclude-module="PySide6.QtPdfWidgets" \
+  --exclude-module="PySide6.QtVirtualKeyboard" \
   src/main.py
 
 chmod +x dist/AbCS

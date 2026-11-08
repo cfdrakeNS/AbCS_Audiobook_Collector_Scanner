@@ -190,14 +190,15 @@ Bundled tester builds expire 30 days after the build date. When expired, AbCS bl
 
 Copyright (c) 2025-2026 C.F. Drake & Contributors.
 
-AbCS is provided under a custom non-commercial license:
+AbCS is free, source-available software under the
+[AbCS Free Use and Non-Sale License, Version 1.0](AbCS_License.txt).
 
-- You may use, copy, and share this software for personal, educational, testing, and other non-commercial use.
-- You may modify this software for your own use.
-- If you redistribute copies or modified versions, this copyright and license notice must remain intact.
-- Commercial use is prohibited without prior written permission from the copyright holder.
-- You may not sell this software, bundle it into paid products, or distribute it for a fee without explicit written authorization.
-- The software is provided "as is", without warranty of any kind.
+- Free use is permitted for individuals and organizations, including internal business use.
+- Modification and free redistribution are permitted with attribution, the complete license, and clear identification of modified versions.
+- Sale, paid distribution, and bundling into paid offerings require prior written permission.
+- Voluntary donations to the official project are accepted through its website only; payment is never required to download or use AbCS.
+- Third-party components retain their own licenses. Their notices and license texts are in [AbCS_Third_Party_Notices.txt](AbCS_Third_Party_Notices.txt), which the installer places in the AbCS install folder. Regenerate it with `python scripts/generate_third_party_notices.py` (the installer build does this automatically).
+- The software is provided "as is", without warranty. See the complete license for terms.
 
 ## Support
 

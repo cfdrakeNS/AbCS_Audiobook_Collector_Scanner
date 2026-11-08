@@ -12,7 +12,7 @@
 #define MyAppName      "AbCS"
 #define MyAppFullName  "AbCS - Audiobook Collector Scanner"
 #ifndef MyAppVersion
-    #define MyAppVersion "2.42"
+    #define MyAppVersion "2.46"
 #endif
 #define MyAppPublisher "Aurora Accessibility"
 #define MyAppURL       "https://abcs.auroraaccessibility.com/"
@@ -130,7 +130,10 @@ Source: "graphics\abcs_icon_256x256.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "installer_graphics\abcs_wizard_164x314.png"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "installer_graphics\abcs_small_55x55.png";    DestDir: "{tmp}"; Flags: dontcopy
 
-Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "AbCS_License.txt"; DestDir: "{app}"; Flags: ignoreversion
+; Third-party copyright notices and license texts (Python, Qt/PySide6, Mutagen, and others).
+; Regenerate with: python scripts\generate_third_party_notices.py (build_installer.bat does this).
+Source: "AbCS_Third_Party_Notices.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 ; User help documentation
 Source: "help_docs\*"; DestDir: "{app}\help_docs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist

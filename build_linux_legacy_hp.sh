@@ -126,6 +126,9 @@ python -m PyInstaller.utils.cliutils.makespec \
   --exclude-module="PySide6.QtQml" \
   --exclude-module="PySide6.QtQuick" \
   --exclude-module="PySide6.QtQuickShapes" \
+  --exclude-module="PySide6.QtPdf" \
+  --exclude-module="PySide6.QtPdfWidgets" \
+  --exclude-module="PySide6.QtVirtualKeyboard" \
   src/main.py
 
 python - "${SPEC_FILE}" <<'PY'
@@ -162,6 +165,13 @@ if _dropped:
     for _name in _dropped:
         print(f"  {_name}")
 a.binaries = TOC(_kept)
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(SPECPATH) / "scripts"))
+from pyinstaller_unused_qt import drop_unused_qt
+a.binaries = drop_unused_qt(a.binaries)
+a.datas = drop_unused_qt(a.datas)
 
 """
 lines.insert(indexes[0], insert)

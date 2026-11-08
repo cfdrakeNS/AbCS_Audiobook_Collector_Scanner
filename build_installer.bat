@@ -56,6 +56,15 @@ if errorlevel 1 (
 )
 echo PyInstaller ready.
 
+echo Updating third-party notices...
+"%PYTHON_EXE%" scripts\generate_third_party_notices.py >>"%BUILD_LOG%" 2>&1
+if errorlevel 1 (
+    echo ERROR: Could not write AbCS_Third_Party_Notices.txt.
+    echo See %BUILD_LOG% for details.
+    pause
+    exit /b 1
+)
+
 rem goto step2
 
 REM ------------------------------------------------------------

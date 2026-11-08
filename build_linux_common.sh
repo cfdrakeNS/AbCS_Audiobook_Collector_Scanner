@@ -96,6 +96,16 @@ EOF
   cp -f "${install_src}" "${dist_dir}/install_abcs.sh"
   chmod +x "${dist_dir}/install_abcs.sh"
 
+  local license_file
+  for license_file in AbCS_License.txt AbCS_Third_Party_Notices.txt; do
+    if [[ ! -f "${license_file}" ]]; then
+      echo "ERROR: ${license_file} is missing. From the repository root, run:" >&2
+      echo "  python scripts/generate_third_party_notices.py" >&2
+      return 1
+    fi
+    cp -f "${license_file}" "${dist_dir}/${license_file}"
+  done
+
   cat >"${dist_dir}/README.txt" <<EOF
 AbCS (Audiobook Collector Scanner) — Linux test build
 Version: ${version}
@@ -105,6 +115,9 @@ WHAT IS IN THIS FOLDER
   abcs_icon_256x256.png Application icon — keep in this folder with AbCS
   install_abcs.sh       Recommended setup script (menu icon and permissions)
   AbCS.desktop          Desktop launcher (updated automatically by install_abcs.sh)
+  AbCS_License.txt      AbCS license
+  AbCS_Third_Party_Notices.txt
+                        Notices for Python, Qt, Mutagen, and the other bundled software
   README.txt            This file
 
 IN-APP HELP
@@ -139,10 +152,77 @@ SUPPORT NOTES
   - Help → About shows version and splash graphic when graphics are bundled.
 EOF
 
+  echo "Wrote ${dist_dir}/AbCS_License.txt"
+  echo "Wrote ${dist_dir}/AbCS_Third_Party_Notices.txt"
   echo "Wrote ${dist_dir}/AbCS.desktop"
   echo "Wrote ${dist_dir}/install_abcs.sh"
   echo "Wrote ${dist_dir}/README.txt"
   if [[ -f "${dist_dir}/${icon_name}" ]]; then
     echo "Copied ${dist_dir}/${icon_name} for launchers and file managers"
   fi
+}
+
+# PyInstaller command line, then drop unused Qt libraries (see scripts/pyinstaller_unused_qt.py).
+# The spec is written under build/ so it does not replace the Windows AbCS.spec.
+# --add-data sources are made absolute because PyInstaller resolves them from the spec folder.
+abcs_pyinstaller() {
+  local spec_dir="build/linux-spec"
+  local spec_name="AbCS"
+  local scripts_dir="${PWD}/scripts"
+  local -a makespec_args=()
+  local -a build_args=(--noconfirm --clean)
+  local arg payload src dest
+
+  for arg in "$@"; do
+    case "${arg}" in
+      --clean|--noconfirm) ;;
+      --log-level=*)
+        makespec_args+=("${arg}")
+        build_args+=("${arg}")
+        ;;
+      --distpath=*|--workpath=*)
+        build_args+=("${arg}")
+        ;;
+      --name=*)
+        spec_name="${arg#--name=}"
+        makespec_args+=("${arg}")
+        ;;
+      --add-data=*)
+        payload="${arg#--add-data=}"
+        src="${payload%%:*}"
+        dest="${payload#*:}"
+        if [[ "${src}" != /* ]]; then
+          src="${PWD}/${src}"
+        fi
+        makespec_args+=("--add-data=${src}:${dest}")
+        ;;
+      *)
+        makespec_args+=("${arg}")
+        ;;
+    esac
+  done
+
+  rm -rf "${spec_dir}"
+  mkdir -p "${spec_dir}"
+  python -m PyInstaller.utils.cliutils.makespec "${makespec_args[@]}" --specpath="${spec_dir}"
+  python - "${spec_dir}/${spec_name}.spec" "${scripts_dir}" <<'PY'
+import sys
+from pathlib import Path
+
+spec_path = Path(sys.argv[1])
+scripts_dir = Path(sys.argv[2])
+text = spec_path.read_text(encoding="utf-8")
+needle = "pyz = PYZ"
+if needle not in text:
+    raise SystemExit("ERROR: generated spec has no PYZ line.")
+insert = (
+    "import sys\n"
+    f"sys.path.insert(0, {str(scripts_dir)!r})\n"
+    "from pyinstaller_unused_qt import drop_unused_qt\n"
+    "a.binaries = drop_unused_qt(a.binaries)\n"
+    "a.datas = drop_unused_qt(a.datas)\n\n"
+)
+spec_path.write_text(text.replace(needle, insert + needle, 1), encoding="utf-8")
+PY
+  python -m PyInstaller "${build_args[@]}" "${spec_dir}/${spec_name}.spec"
 }

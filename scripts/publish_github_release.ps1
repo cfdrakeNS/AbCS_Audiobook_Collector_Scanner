@@ -179,7 +179,7 @@ AbCS $Version
 - **Windows:** ``$WinZip`` - extract and run ``AbCS-Setup.exe`` (SmartScreen may warn; see README).
 - **Linux:** ``$LinuxZip`` - extract and run the install script inside the archive.
 
-**License:** Free and source-available (custom non-commercial license). See ``AbCS_License.txt``.
+**License:** Free and source-available (AbCS Free Use and Non-Sale License). See ``AbCS_License.txt``. Third-party components keep their own licenses; see ``AbCS_Third_Party_Notices.txt``.
 "@
 
 $gh = Get-GhExe

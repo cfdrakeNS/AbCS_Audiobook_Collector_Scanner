@@ -1,29 +1,104 @@
 AbCS - Audiobook Collector Scanner
-Custom Non-Commercial License
-
-License Terms
+AbCS Free Use and Non-Sale License, Version 1.0
 
 Copyright (c) 2025-2026 C.F. Drake & Contributors
-
 Published by Aurora Accessibility (https://auroraaccessibility.com/)
 
-Permission is granted, free of charge, to use, copy, and share this
-software for personal, educational, testing, and non-commercial use.
+1. Scope
 
-You may modify this software for your own use.
-If you redistribute copies or modified versions, this notice and
-copyright attribution must remain intact.
+This license applies to the original AbCS code and accompanying materials
+for which the copyright holders have authority to grant these permissions
+(the "Software"). Third-party components are addressed in section 7.
+AbCS is free, source-available software under this custom license.
 
-Commercial use is prohibited without prior written permission from
-the copyright holder.
-You may not sell this software, bundle it into paid products, or
-distribute it for a fee without explicit written authorization.
+2. Free use and modification
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+Permission is granted, free of charge, to download, install, run, study,
+copy, and modify the Software. Individuals, educational institutions,
+libraries, charities, public bodies, and businesses may use the Software,
+including for their internal business activities, without a license fee.
+
+You may make and use modified versions. You may share original or modified
+versions in source or executable form, subject to sections 3 and 4.
+
+3. Free redistribution
+
+When distributing the Software or a modified version, you must:
+
+(a) Provide it without a purchase price, distribution fee, subscription,
+    required donation, or other payment required to obtain or use it.
+(b) Include this complete license and retain existing copyright notices
+    and attribution. You may add accurate notices for your contributions.
+(c) Clearly identify modified versions as modified, describe the changes,
+    and identify who made them. Do not present them as official releases.
+(d) Preserve recipients' permissions under this license for the Software
+    and its modifications; do not impose additional restrictions on them.
+
+Free hosting and mirroring by software download directories are permitted,
+including on websites supported by advertising, provided access to the
+Software remains free and the other conditions of this license are met.
+
+4. Sale and paid bundling
+
+Without prior written permission from the applicable copyright holders,
+you may not sell, rent, sublicense for a fee, or otherwise charge for
+access to, distribution of, or use of the Software or modified versions.
+You may not bundle them into a paid product, paid software package, or
+paid service in which access to or use of the Software is part of what
+the customer purchases.
+
+These restrictions do not prohibit a business from using AbCS internally,
+or restrict the sale or use of independent work, catalogues, or other
+outputs created using AbCS. Independently supplied support or training
+may be charged for, provided the Software itself remains separately
+available free of charge and no payment is required to obtain or use it.
+
+5. Optional donations
+
+The official project may accept voluntary donations through its website.
+Donations are optional and are not a condition of downloading, installing,
+using, or receiving updates to AbCS. A donation does not purchase a
+software license, additional rights, or a promise of support or features.
+Redistributors must not collect donations on behalf of Aurora
+Accessibility without written authorization or imply that their own
+payments or donations are required by the official project.
+
+6. Attribution and endorsement
+
+This license does not grant rights to use the names, logos, or branding
+of AbCS, Aurora Accessibility, or its contributors to imply endorsement,
+sponsorship, or official status. Accurate identification and attribution
+of the Software are permitted.
+
+7. Third-party components and user content
+
+Third-party libraries, bundled components, and other materials supplied
+under separate licenses remain governed by those licenses. This license
+does not replace or restrict rights granted under those separate licenses.
+Retain and comply with their applicable notices and license requirements.
+
+This license does not claim ownership of your audiobook files, metadata,
+databases, or other content. Rights in that content remain with their
+respective owners.
+
+8. No warranty
+
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+9. Limitation of liability
+
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE AUTHORS
+OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+10. Other permissions
+
+Rights not expressly granted by this license are reserved, subject to
+applicable law. For permission to sell, distribute for a fee, or include
+AbCS in a paid offering, contact Aurora Accessibility through
+https://auroraaccessibility.com/.
