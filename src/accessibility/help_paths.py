@@ -26,6 +26,7 @@ OVERVIEW_DOC = "01_overview.md"
 HELP_DOC_FILENAME_RE = re.compile(r"^\d{2}_[\w-]+\.md$", re.IGNORECASE)
 _HELP_TOPIC_ORDER = (
     "01_overview.md",
+    "28_whats_new.md",
     "02_import.md",
     "03_find_filters.md",
     "04_book_details.md",

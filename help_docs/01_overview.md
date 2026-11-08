@@ -179,3 +179,4 @@ A default collection named **Audiobooks** is created when the database is first 
 | [Default preferences](17_default_preferences.md) | Factory defaults for display, import, fallback, and validation rules |
 | [Import preferences](18_import_preferences.md) | How each import scenario and validation rule behaves |
 | [Glossary](27_glossary.md) | The words AbCS uses, such as collection, collection folder, and held for review |
+| [What's New in Version 3](28_whats_new.md) | What version 3 adds for finding, organizing, listening, and maintaining the library |

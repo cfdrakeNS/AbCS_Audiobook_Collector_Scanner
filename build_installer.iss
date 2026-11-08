@@ -200,16 +200,23 @@ var
 begin
   { Construct the Features and Accessibility text }
   FeaturesText :=
-    'FEATURES -' + #13#10 +
+    'FEATURES' + #13#10 +
     '• Audiobook management with full metadata.' + #13#10 +
-    '• ID3 Tag Import from Most Audio Format Files.' + #13#10 +
-    '• Web import & Updated Metadata.' + #13#10 +
-    '• Advanced Search and Filtering.' + #13#10 +
-    '• Complete Keyboard Navigation.' + #13#10 +
-    '• Screen Reader Support.' + #13#10 +
+    '• ID3 Tag Import from most audio format files.' + #13#10 +
+    '• Import book lists from CSV, Excel, and ODS spreadsheets.' + #13#10 +
+    '• Search the web and fetch metadata for one or many books.' + #13#10 +
+    '• Advanced search and filtering.' + #13#10 +
+    '• Collections, reading history, and library statistics.' + #13#10 +
+    '• Want to Read and In Progress tracking with playback resume.' + #13#10 +
+    '• Listen to audiobooks inside AbCS with playback controls.' + #13#10 +
+    '• Check book paths and browse to repair a book''s location.' + #13#10 +
+    '• Export library metadata to CSV or JSON.' + #13#10 +
+    '• Embedded audiobook cover art in Listen and Book Details.' + #13#10 +
+    '• Complete keyboard navigation.' + #13#10 +
+    '• Screen reader support.' + #13#10 +
     '• Scalable UI (50%-200%+).' + #13#10 +
-    '• High Contrast Themes.' + #13#10 + #13#10 +
-    'ACCESSIBILITY.' + #13#10 +
+    '• High contrast themes.' + #13#10 + #13#10 +
+    'ACCESSIBILITY' + #13#10 +
     '• Designed for users with low vision and screen readers.' + #13#10 +
     '• All features include keyboard shortcuts.';
 

@@ -1,12 +1,14 @@
 # What's New in Version 3
 
+The same text ships in the app as Help topic **whats new** (`help_docs/28_whats_new.md`). The Windows installer and the Linux package both include `help_docs/`.
+
 Version 3 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
 
 ## Find and import books
 
 - Search the web for book details, individually or for a selection of books.
 - Match titles that begin with A, An, or The more reliably.
-- Choose which audio tags provide book titles and authors during folder import.
+- Folder import takes the book title from the Album tag and the author from the Album artist tag, then the Artist tag.
 - Keep the current book selected when sorting or filtering the library.
 - Review and merge duplicate author, series, or genre names when renaming.
 

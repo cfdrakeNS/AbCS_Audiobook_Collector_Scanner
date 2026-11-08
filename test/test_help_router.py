@@ -53,6 +53,7 @@ def test_discover_help_topics_uses_the_curated_app_order():
     filenames = [filename for _label, filename in topics]
     assert filenames == [
         "01_overview.md",
+        "28_whats_new.md",
         "02_import.md",
         "03_find_filters.md",
         "04_book_details.md",

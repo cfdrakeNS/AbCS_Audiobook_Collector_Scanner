@@ -46,7 +46,8 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `24`–`25` | Additional process guides (check book locations, export library) |
 | `26` | Listen to a book (process guide) |
 | `27` | Glossary (reference) |
-| `28+` | Next free number is 28 |
+| `28` | What's New in Version 3 (reference) |
+| `29+` | Next free number is 29 |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
 
@@ -118,6 +119,7 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 24 | `24_check_book_locations.md` | Process | Check Book Locations |
 | 25 | `25_export_library.md` | Process | — |
 | 27 | `27_glossary.md` | Reference | — |
+| 28 | `28_whats_new.md` | Reference | — |
 
 **All Help Topics** uses the curated order in `_HELP_TOPIC_ORDER` (`src/accessibility/help_paths.py`), not the filename order. For example, Listen follows Book Details and Web Metadata follows Listen. Topics missing from that order follow by filename. Reference and explained guides (`16`–`21`, `27`) appear in **All Help Topics** and in the overview tables in `01_overview.md`.
 
