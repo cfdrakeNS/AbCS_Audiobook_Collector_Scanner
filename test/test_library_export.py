@@ -71,7 +71,7 @@ def test_csv_headers_and_row(tmp_path):
     assert row["Want to Read"] == "No"
     assert row["Listen Position"] == "1:02:03"
     assert row["Listen File"] == "02.mp3"
-    assert row["Comments"] == "Line one\nLine two, with comma"
+    assert row["Plot"] == "Line one\nLine two, with comma"
 
 
 def test_csv_has_bom_for_excel(tmp_path):
@@ -160,9 +160,9 @@ def test_csv_cuts_cells_over_spreadsheet_limit(tmp_path):
     result = export_books(books, str(out), FORMAT_CSV)
     assert result.truncated_books == 1
     rows = [dict(zip(_read_csv(out)[0], r)) for r in _read_csv(out)[1:]]
-    assert len(rows[0]["Comments"]) == CSV_CELL_LIMIT
-    assert rows[0]["Comments"].endswith(CSV_TRUNCATED_MARKER)
-    assert rows[1]["Comments"] == "short"
+    assert len(rows[0]["Plot"]) == CSV_CELL_LIMIT
+    assert rows[0]["Plot"].endswith(CSV_TRUNCATED_MARKER)
+    assert rows[1]["Plot"] == "short"
 
 
 def test_csv_cell_at_limit_is_not_cut(tmp_path):
@@ -170,7 +170,7 @@ def test_csv_cell_at_limit_is_not_cut(tmp_path):
     text = "x" * CSV_CELL_LIMIT
     result = export_books([_book(comments=text)], str(out), FORMAT_CSV)
     assert result.truncated_books == 0
-    assert dict(zip(*_read_csv(out)))["Comments"] == text
+    assert dict(zip(*_read_csv(out)))["Plot"] == text
 
 
 def test_json_keeps_long_text(tmp_path):
@@ -178,7 +178,7 @@ def test_json_keeps_long_text(tmp_path):
     long_text = "y" * (CSV_CELL_LIMIT + 500)
     result = export_books([_book(comments=long_text)], str(out), FORMAT_JSON)
     assert result.truncated_books == 0
-    assert json.loads(out.read_text(encoding="utf-8"))[0]["comments"] == long_text
+    assert json.loads(out.read_text(encoding="utf-8"))[0]["plot"] == long_text
 
 
 def test_format_for_path():
@@ -203,5 +203,5 @@ def test_csv_column_order_matches_import_alignment(tmp_path):
     assert headers[tracks_idx + 1] == "Collection"
     assert headers[tracks_idx + 2] == "Size MB"
     assert headers[headers.index("Genre") + 1] == "Narrator"
-    assert headers[-1] == "Comments"
+    assert headers[-1] == "Plot"
     assert headers.index("Read Date") < headers.index("Time")

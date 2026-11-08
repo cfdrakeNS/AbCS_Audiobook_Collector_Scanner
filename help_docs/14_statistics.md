@@ -56,6 +56,8 @@ Statistics counts the whole database. The main window list shows only the books 
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - Finished books by period: [Reading History](13_reading_history.md)
 - Collections: [Collections](06_collections.md)
 - All shortcuts: [Keyboard shortcuts by window](16_shortcuts.md)

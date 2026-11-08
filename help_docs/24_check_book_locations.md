@@ -30,7 +30,7 @@ A short guide at the top of the window explains this. Press **Alt+I**, or Tab af
 
 - **Header row:** **Collection** combo, **Filter** combo, and **Scan** button.
 - **Guide:** a short explanation of the scan (**Alt+I**).
-- **Book list:** columns Author, Title, Error, and Path. Blank paths show as `(empty)`.
+- **Book list:** columns Author, Title, Error, and Path. Blank paths show as "(empty)".
 - **Footer:** status bar, then the **Export** button. Export is available after a scan.
 
 Tab order: Collection, Filter, Scan, the guide, the book list, Export.
@@ -81,11 +81,11 @@ The scan tries the stored path first. When the stored path is blank or gone, it 
 
 More matching rules:
 
-- When the author has several names separated by commas, such as `Charles Dickens, Wilkie Collins`, a folder with the full name is tried first, then a folder for the first author, `Charles Dickens`.
+- When the author has several names separated by commas, such as "Charles Dickens, Wilkie Collins", a folder with the full name is tried first, then a folder for the first author, "Charles Dickens".
 - A stored path from an old drive letter or a moved folder that still matches a folder under the collection folder counts as **Valid**, for example a USB drive that now has a different letter. The stored path is kept, so the drive stays portable.
 - A stored path outside the collection folder is checked too. When the book is in the collection folder, the path is corrected. When it is not, and Listen can play the stored path, the book is **Valid**.
-- Title folders and files may have a number before or after the title, such as `3 - The Moonstone` or `2 Whose Body`.
-- A series tag at the end of the name also works, such as `1 Whose Body(Lord Peter Wimsey 01).m4b`. A tag with no number, such as `(Unabridged)`, is ignored.
+- Title folders and files may have a number before or after the title, such as "3 - The Moonstone" or "2 Whose Body".
+- A series tag at the end of the name also works, such as "1 Whose Body(Lord Peter Wimsey 01).m4b". A tag with no number, such as "(Unabridged)", is ignored.
 - Listen uses the same rules. See [Listen to a book](26_listen_to_a_book.md).
 
 ## What happens next
@@ -130,6 +130,8 @@ Yes. Before scanning, a warning appears when a collection folder is not set, is 
 They stay in your library. Check Book Locations corrects the paths it can find and lists the rest. To delete a book, use the main window.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Fixing one book: [Book Details](04_book_details.md)
 - Setting the collection folder: [Collections](06_collections.md)

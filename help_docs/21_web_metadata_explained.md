@@ -20,10 +20,10 @@ The search uses the book's **title and author** as stored in your library.
 
 Before searching, AbCS tidies them up:
 
-- It removes a trailing series number from the title, so `The Hound of the Baskervilles - 3` searches as `The Hound of the Baskervilles`.
-- It moves a trailing article to the front, so `Moonstone, The` searches as `The Moonstone`.
+- It removes a trailing series number from the title, so "The Hound of the Baskervilles - 3" searches as "The Hound of the Baskervilles".
+- It moves a trailing article to the front, so "Moonstone, The" searches as "The Moonstone".
 - It removes extra punctuation and spacing.
-- It removes titles such as Sir or Dr. from the author, so `Sir Arthur Conan Doyle` searches as `Arthur Conan Doyle`.
+- It removes titles such as Sir or Dr. from the author, so "Sir Arthur Conan Doyle" searches as "Arthur Conan Doyle".
 - It leaves out the year, because stored years are often wrong and would hurt matching.
 
 A **Please wait** dialog opens and announces each source as it is tried.
@@ -46,18 +46,6 @@ For each source, AbCS:
 ### Saved results
 
 AbCS remembers a successful lookup for about a day, and a failed one for about an hour. A repeat fetch for the same book may use the remembered result. **Re-fetch** always searches again.
-
-### Search limits
-
-Google Books, WikiData, and Wikipedia sometimes limit how many searches AbCS can send. When that happens, AbCS pauses that source, for about 15 minutes for Google Books or 5 minutes for WikiData and Wikipedia. The pause is remembered when you restart AbCS.
-
-The other sources keep working in the meantime. When they find nothing and the only problem was the Google Books pause, a single fetch says "No information found", and that result is remembered for about an hour. When another source also failed, the message tells you how long to wait. In a batch, a book that was missed only because of the pause says **No match found**, and the summary line says "Google Books limit hit. Try in N minutes."
-
-A Google Books server error, such as "Service Unavailable", does not start the pause.
-
-### Google Books API key
-
-Without a key, Google Books allows a limited number of searches. You can add a key under **Manage → Preferences**, **Display Settings** tab, **Web Metadata** group.
 
 ## Deciding whether a result matches
 
@@ -105,7 +93,7 @@ AbCS compares the web values with what is stored for your book:
 | Author | Differences in punctuation, name order, initials, and accents are ignored |
 | Year | Compared as numbers |
 | Genre | Compared as text |
-| Plot | Compared with your comments field, where the plot is kept |
+| Plot | Compared with the plot already stored on the book |
 
 The **rating** is shown for reference. When you save a plot and the web has a rating, the rating line is added at the top of the plot text. The publisher and the source name are shown only.
 
@@ -141,7 +129,7 @@ For each field you approved, or that was empty:
 
 - **Title** and **Year** are updated on the book. A year that is not a number is skipped.
 - **Author** and **Genre** are found, or added as new names, and linked to the book.
-- **Plot** is written to the book's comments, with the rating line when there is one.
+- **Plot** is saved on the book, with the rating line when there is one.
 
 The series stays as it is. After saving:
 
@@ -150,6 +138,18 @@ The series stays as it is. After saving:
 - Focus returns to the book you started from.
 
 If saving fails, a message explains it and the review window stays open.
+
+## Search limits
+
+Google Books, WikiData, and Wikipedia sometimes limit how many searches AbCS can send. When that happens, AbCS pauses that source, for about 15 minutes for Google Books or 5 minutes for WikiData and Wikipedia. The pause is remembered when you restart AbCS.
+
+The other sources keep working in the meantime. When they find nothing and the only problem was the Google Books pause, a single fetch says "No information found", and that result is remembered for about an hour. When another source also failed, the message tells you how long to wait. In a batch, a book that was missed only because of the pause says **No match found**, and the summary line says "Google Books limit hit. Try in N minutes."
+
+A Google Books server error, such as "Service Unavailable", does not start the pause.
+
+### Google Books API key
+
+Without a key, Google Books allows a limited number of searches. You can add a key under **Manage → Preferences**, **Display Settings** tab, **Web Metadata** group.
 
 ## Batch fetch
 
@@ -160,6 +160,8 @@ With two or more books selected, AbCS fetches each book in turn and shows the **
 Different catalogs know different books. Open Library is tried first for well-known titles. Google Books often has descriptions. WikiData helps with less common works. The first source that passes the matching rules provides what you see in the review window.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Steps and shortcuts: [Web Metadata Fetch](07_web_metadata.md)
 - Editing a book by hand: [Book Details](04_book_details.md)

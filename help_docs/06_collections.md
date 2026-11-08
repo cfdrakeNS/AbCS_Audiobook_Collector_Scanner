@@ -35,24 +35,29 @@ Every book belongs to exactly one collection. A default collection named **Audio
 
 Tab order while browsing: the collection list, then the buttons. While editing: Name, Active, Collection folder, Browse, the list, then Save.
 
-## Manage collections
+## Open the Collection Manager
 
-1. Open **Manage → Collections** (**Alt+M**, then **C**).
-2. To **add** a collection:
-   - Press **New** (**Ctrl+N**).
-   - Type a name in **Name** (**Alt+M**).
-   - Optionally set a **Collection folder** (**Alt+F**). Type a path or press **Browse** (**Alt+B**).
-   - Check or uncheck **Active** (**Alt+A**).
-   - Press **Save** (**Ctrl+S**).
-3. To **edit** a collection:
-   - Select a row in the list (**Alt+L** moves to the list).
-   - Press **Edit** (**Alt+E**), press **Enter** on the row, or double-click the row.
-   - Change the name, collection folder, or active status.
-   - Press **Save** (**Ctrl+S**). If you press **Escape** with unsaved changes, AbCS asks whether to save them: **Yes** saves, **No** discards. With no changes, Escape returns to the list.
-4. To **delete** a collection:
-   - Select a collection that has no books.
-   - Press **Delete** (**Alt+D**) and confirm.
-5. Press **Escape** to close the Collection Manager.
+Open **Manage → Collections** (**Alt+M**, then **C**). Press **Escape** to close the Collection Manager.
+
+## Add a collection
+
+1. Press **New** (**Ctrl+N**).
+2. Type a name in **Name** (**Alt+M**).
+3. Optionally set a **Collection folder** (**Alt+F**). Type a path or press **Browse** (**Alt+B**).
+4. Check or uncheck **Active** (**Alt+A**).
+5. Press **Save** (**Ctrl+S**).
+
+## Edit a collection
+
+1. Select a row in the list (**Alt+L** moves to the list).
+2. Press **Edit** (**Alt+E**), press **Enter** on the row, or double-click the row.
+3. Change the name, collection folder, or active status.
+4. Press **Save** (**Ctrl+S**). If you press **Escape** with unsaved changes, AbCS asks whether to save them: **Yes** saves, **No** discards. With no changes, Escape returns to the list.
+
+## Delete a collection
+
+1. Select a collection that has no books.
+2. Press **Delete** (**Alt+D**) and confirm.
 
 ## Filter by collection (main window)
 
@@ -111,6 +116,8 @@ Save and Browse warn when the folder is missing or has no audiobook files. You c
 No. The collection is the library inside AbCS: its name, active status, and books. The **collection folder** is where that library's files are stored on disk.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Main window filters: [Find and Filters (Main Window)](03_find_filters.md)
 - Fixing book paths: [Check Book Locations](24_check_book_locations.md)

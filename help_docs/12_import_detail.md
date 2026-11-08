@@ -90,5 +90,7 @@ A duplicate matches a book already in the library. You can edit it and press **S
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - Folder import: [Import (Folder Scan)](02_import.md)
 - Scenarios and rules: [Import preferences](18_import_preferences.md)

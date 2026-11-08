@@ -210,7 +210,7 @@ WINDOWS = [
     ("batch_progress", _build_batch_progress, "_show_shortcuts",
      "Batch web fetch progress", None, None),
     ("help", _build_help, "on_show_shortcuts", "Help window",
-     "01_overview.md", "Help window shortcuts"),
+     "29_using_help.md", "Help window shortcuts"),
 ]
 
 

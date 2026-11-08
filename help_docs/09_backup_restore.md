@@ -33,6 +33,8 @@ The window opens with focus on the backup list. Tab order: backup list, Browse, 
 3. AbCS saves a new backup file in its backup folder and adds it to the list.
 4. The status bar confirms the backup.
 
+A backup holds your AbCS database: books, collections, read dates, and listening places. Your audio files are not copied; back them up separately.
+
 ## Restore from a backup
 
 1. Select a backup in the list, or press **Browse** (**Alt+B**) to choose a backup file from another location.
@@ -85,7 +87,10 @@ Press **Escape** to close the Backup and Restore window.
 ## Common confusion
 
 **Where are backup files stored?**
-In the AbCS backup folder. The backup list shows the files there. You can also browse to a backup saved somewhere else.
+In a folder named backups inside the AbCS data folder. On Windows that is AppData, Local, AbCS, backups in your user folder. On Linux it is .local/share/AbCS/backups in your home folder. The backup list shows the files there, and **Browse** opens that folder. You can also browse to a backup saved somewhere else.
+
+**Are my audio files in the backup?**
+No. A backup holds only the AbCS database. Your audio files stay where they are; back them up separately.
 
 **What happens to my backup files when I restore?**
 They stay. Restore replaces only your live database. A backup file is removed only when you delete it.
@@ -94,5 +99,7 @@ They stay. Restore replaces only your live database. A backup file is removed on
 Yes, if you might want to return to your current state. To undo a restore, restore a different backup.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - A readable copy of your book list (not a database backup): [Export Library](25_export_library.md)

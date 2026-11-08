@@ -5071,7 +5071,7 @@ class MainWindow(QMainWindow):
             popup_lines.extend(
                 [
                     "",
-                    f"{result.truncated_books} book(s) had Comments text too long"
+                    f"{result.truncated_books} book(s) had plot text too long"
                     " for a spreadsheet cell and were shortened. Use JSON for full text.",
                 ]
             )

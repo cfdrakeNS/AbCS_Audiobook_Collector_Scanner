@@ -367,6 +367,7 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Alt+L | Jump to the left list (topics, sections, or results) |
 | Tab | Switch between list and content |
 | Click or Enter | Open topic or jump to section |
+| Click or Enter on a Related help name | Open that guide |
 | Arrow keys | Read line by line |
 | +/−, preset, or zoom slider | Help window zoom (saved automatically) |
 | Ctrl+Plus / Ctrl+Minus | Zoom Help in or out |
@@ -374,7 +375,7 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Escape | Close help |
 | Alt+/ | Re-read status |
 | F1 | Keyboard shortcuts for this window |
-| Shift+F1 | Open the help overview |
+| Shift+F1 | Help for this window |
 
 ## Check for updates dialog
 

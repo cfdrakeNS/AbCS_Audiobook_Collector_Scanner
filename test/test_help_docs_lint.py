@@ -75,6 +75,8 @@ def test_no_unsupported_markdown(path):
             problems.append(f"line {number}: horizontal rule")
         if stripped.startswith("```"):
             problems.append(f"line {number}: fenced code block")
+        elif "`" in line:
+            problems.append(f"line {number}: inline code: {stripped}")
         if stripped.startswith(">"):
             problems.append(f"line {number}: block quote")
         if "![" in line:

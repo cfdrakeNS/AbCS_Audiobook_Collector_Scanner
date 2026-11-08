@@ -47,7 +47,8 @@ The regex used at runtime is `^\d{2}_[\w-]+\.md$` (see `help_paths.HELP_DOC_FILE
 | `26` | Listen to a book (process guide) |
 | `27` | Glossary (reference) |
 | `28` | What's New in Version 3 (reference) |
-| `29+` | Next free number is 29 |
+| `29` | Using Help (reference) |
+| `30+` | Next free number is 30 |
 
 Use the **next free** `nn` when adding a file. Do not renumber existing files unless you are deliberately reordering the whole library.
 
@@ -120,8 +121,9 @@ When adding a window: pick the next free process-guide number (`02`–`15`), cre
 | 25 | `25_export_library.md` | Process | — |
 | 27 | `27_glossary.md` | Reference | — |
 | 28 | `28_whats_new.md` | Reference | — |
+| 29 | `29_using_help.md` | Reference | — |
 
-**All Help Topics** uses the curated order in `_HELP_TOPIC_ORDER` (`src/accessibility/help_paths.py`), not the filename order. For example, Listen follows Book Details and Web Metadata follows Listen. Topics missing from that order follow by filename. Reference and explained guides (`16`–`21`, `27`) appear in **All Help Topics** and in the overview tables in `01_overview.md`.
+**All Help Topics** uses the curated order in `_HELP_TOPIC_ORDER` (`src/accessibility/help_paths.py`), not the filename order. For example, Listen follows Book Details and Web Metadata follows Listen. Topics missing from that order follow by filename. Reference and explained guides (`16`–`21`, `27`–`29`) appear in **All Help Topics** and in the overview tables in `01_overview.md`.
 
 In the topic list, the number is hidden and underscores become spaces: `11_import_book_list.md` appears as **import book list**.
 
@@ -134,7 +136,7 @@ See [Import](02_import.md) for folder scan steps.
 See [Import explained](19_import_explained.md) for a plain walkthrough.
 ```
 
-Links to `.md` files are collected for navigation; link text is what screen readers hear when the label is read aloud.
+Under **Related help**, the viewer opens the named guide when the user clicks the name or presses Enter on its line. The label is what a screen reader reads, so name the topic the way it appears in **All Help Topics**. Guide names outside **Related help** stay plain text. Every **Related help** section starts with "Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics." The link target is still checked by `test_help_docs_lint.py`.
 
 ### Packaging
 
@@ -182,7 +184,7 @@ Say which controls appear only sometimes (for example, "Save appears only while 
 
 Explained guides (`19`–`21`) use narrative sections instead of full shortcut tables; link to the matching process guide for Alt+key detail. Keep them in everyday language: no database table names, error codes, or file paths of internal files.
 
-Reference guides (`16`–`18`, `27`) may be table-heavy; keep prose short.
+Reference guides (`16`–`18`, `27`–`29`) may be table-heavy; keep prose short.
 
 ---
 
@@ -203,7 +205,7 @@ AbCS uses a **small custom subset** of markdown tuned for screen readers (JAWS/N
 | **Shortcut table** | See below | Renders as `Shortcut — Action` lines |
 | **Generic table** | Pipe table | Renders as `cell — cell — cell` lines |
 | **FAQ question** | `**Question text?**` on its own line | Next line(s) = answer |
-| **Link** | `[label](02_import.md)` | Target must be `*.md` filename |
+| **Link** | `[label](02_import.md)` | Target must be `*.md` filename; shown as the label only |
 
 **Shortcut table** (preferred for keyboard sections):
 
@@ -238,7 +240,7 @@ Do **not** use these — they will appear as plain text or break layout:
 | Not supported | Instead |
 |---------------|---------|
 | `*italic*` | Use plain text or **bold** sparingly |
-| `` `code` `` or fenced code blocks | Describe keys in prose: **Alt+I** |
+| `` `code` `` or fenced code blocks | Describe keys in prose: **Alt+I**; write paths and examples as plain text |
 | HTML tags (`<b>`, `<br>`, etc.) | Use markdown constructs above |
 | Images `![alt](file.png)` | Describe in text only |
 | `####` and deeper headings | Use `###` at most |
@@ -300,7 +302,7 @@ The help viewer splits **body paragraphs** and multi-sentence numbered steps int
 | File | Role |
 |------|------|
 | `test/test_help_router.py` | Discovery, display names, markdown conversion |
-| `test/test_help_docs_lint.py` | Fails on screen reader product names, unsupported markdown, "Steps" headings, and links to missing topics |
+| `test/test_help_docs_lint.py` | Fails on screen reader product names, unsupported markdown (including inline backticks), "Steps" headings, and links to missing topics |
 | `test/test_help_shortcut_parity.py` | Compares each window's F1 shortcut keys with its help shortcut tables |
 | `test/test_help_search.py` | Help search matching, ranking, and the Help window search box |
 | `src/accessibility/help_paths.py` | Filename rules, `discover_help_topics()` |

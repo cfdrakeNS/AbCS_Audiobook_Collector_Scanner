@@ -2,7 +2,7 @@
 
 ## What this is
 
-This guide explains how **Preferences** shape folder import: import scenarios, fallback rules, auto-correct options, validation, and duplicate matching. Factory values are in [Default preferences](17_default_preferences.md), and the step-by-step workflow is in [Import (Folder Scan)](02_import.md).
+This guide explains how **Preferences** shape folder import: import scenarios, fallback rules, narrator keywords, auto-correct options, validation, and duplicate matching. Factory values are in [Default preferences](17_default_preferences.md), and the step-by-step workflow is in [Import (Folder Scan)](02_import.md).
 
 Open **Manage → Preferences** from the menu bar. The **Import Settings**, **Fallback & Auto Correct**, and **Validation Rules** tabs control import. See [Preferences](10_preferences.md) for moving around that window.
 
@@ -29,39 +29,39 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 ### Mass Import - Series From Directory
 
 - For libraries where **audio files sit directly in the series folder**, with no per-book subfolders.
-- Path pattern: `Author/Series/Files`, three levels under the scan root.
+- Path pattern: "Author/Series/Files", three levels under the scan root.
 - The **series folder name** becomes the series. Each file, or album group, in that folder is one book.
-- When the book file name starts with a number, for example `03 The Hound of the Baskervilles.m4b`, that number is stored as the **series number**. When a book has several files, the number is used only if every file starts with the same number. Different numbers such as 01, 02, 03 are treated as track numbers.
+- When the book file name starts with a number, for example "03 The Hound of the Baskervilles.m4b", that number is stored as the **series number**. When a book has several files, the number is used only if every file starts with the same number. Different numbers such as 01, 02, 03 are treated as track numbers.
 - AbCS skips the series and adds a **warning** when the folder path is missing or unclear, the series folder name matches the author name, or the parent folder does not match the book's author tag.
 - Author fallback uses the **parent** folder name, at the author level.
 
-**Example:** `Sir Arthur Conan Doyle/Sherlock Holmes/The Hound of the Baskervilles.m4b` gives the series **Sherlock Holmes**, with the author from the tag or the parent folder **Sir Arthur Conan Doyle**. With `Sir Arthur Conan Doyle/Sherlock Holmes/03 - The Hound of the Baskervilles.m4b`, the series number **3** is stored too.
+**Example:** "Sir Arthur Conan Doyle/Sherlock Holmes/The Hound of the Baskervilles.m4b" gives the series **Sherlock Holmes**, with the author from the tag or the parent folder **Sir Arthur Conan Doyle**. With "Sir Arthur Conan Doyle/Sherlock Holmes/03 - The Hound of the Baskervilles.m4b", the series number **3** is stored too.
 
-When each book has its own subfolder (`Author/Series/Book/Files`), use **Series From Directory (Nested Books)**. On that layout, this scenario skips the series with a warning.
+When each book has its own subfolder ("Author/Series/Book/Files"), use **Series From Directory (Nested Books)**. On that layout, this scenario skips the series with a warning.
 
 ### Mass Import - Series From Directory (Nested Books)
 
-- For author folders where each series folder has a subfolder for each book (`Author/Series/Book/Files`).
-- Standalone books directly under the author (`Author/Book/Files`) are imported with no series.
+- For author folders where each series folder has a subfolder for each book ("Author/Series/Book/Files").
+- Standalone books directly under the author ("Author/Book/Files") are imported with no series.
 - The series is the first folder under the author.
-- When the title tag is missing, title fallback uses the book subfolder name without its leading number, for example `1- Whose Body` gives **Whose Body**.
-- When the book folder name starts with a number, for example `1- Whose Body`, that number is stored as the **series number**. Track file names inside the book folder are not used for the number.
-- Extra subfolders under a book, for example `CD-01`, are ignored for the series. The book folder name is still used for title fallback.
+- When the title tag is missing, title fallback uses the book subfolder name without its leading number, for example "1- Whose Body" gives **Whose Body**.
+- When the book folder name starts with a number, for example "1- Whose Body", that number is stored as the **series number**. Track file names inside the book folder are not used for the number.
+- Extra subfolders under a book, for example "CD-01", are ignored for the series. The book folder name is still used for title fallback.
 - AbCS skips the series and adds a **warning** when the author tag cannot be matched in the folder path, or the path is too short.
 
-**Example:** `Dorothy Sayers/Lord Peter Wimsey/1- Whose Body/01 Whose Body.mp3` gives the series **Lord Peter Wimsey**, series number **1**, title **Whose Body**, and author **Dorothy Sayers**.
+**Example:** "Dorothy Sayers/Lord Peter Wimsey/1- Whose Body/01 Whose Body.mp3" gives the series **Lord Peter Wimsey**, series number **1**, title **Whose Body**, and author **Dorothy Sayers**.
 
-**Second example:** `G. K. Chesterton/Father Brown/1 The Innocence of Father Brown/01 The Innocence of Father Brown.m4b` gives the series **Father Brown**, series number **1**, title **The Innocence of Father Brown**, and author **G. K. Chesterton**.
+**Second example:** "G. K. Chesterton/Father Brown/1 The Innocence of Father Brown/01 The Innocence of Father Brown.m4b" gives the series **Father Brown**, series number **1**, title **The Innocence of Father Brown**, and author **G. K. Chesterton**.
 
-**Standalone example:** `Wilkie Collins/The Moonstone/01 The Moonstone.mp3` gives no series, the title **The Moonstone**, and the author **Wilkie Collins**.
+**Standalone example:** "Wilkie Collins/The Moonstone/01 The Moonstone.mp3" gives no series, the title **The Moonstone**, and the author **Wilkie Collins**.
 
 ### Mass Import - Series From File Name
 
 - Reads the **first block in parentheses** in the file name, without the extension.
 - Uses that block as the series name.
-- When the block ends with a number, for example `(Father Brown 1)`, the number is stored as the **series number**. The title is left without a suffix.
+- When the block ends with a number, for example "(Father Brown 1)", the number is stored as the **series number**. The title is left without a suffix.
 
-**Example:** `01 - The Innocence of Father Brown (Father Brown 1).m4b` gives the series **Father Brown** and series number **1**.
+**Example:** "01 - The Innocence of Father Brown (Father Brown 1).m4b" gives the series **Father Brown** and series number **1**.
 
 ### Single Author / Book Import
 
@@ -71,7 +71,7 @@ When each book has its own subfolder (`Author/Series/Book/Files`), use **Series 
 
 ## Fallback and auto correct
 
-The **Fallback & Auto Correct** tab has two groups: fallback and text auto-correct.
+The **Fallback & Auto Correct** tab has the fallback checkboxes, the narrator keywords, and the auto-correct options. Narrator keywords are in the same group as the fallback checkboxes. They are not a fallback.
 
 ### Fallback
 
@@ -79,7 +79,6 @@ The **Fallback & Auto Correct** tab has two groups: fallback and text auto-corre
 |---------|-----------------|--------|
 | **Author fallback to folder** | Author tag missing or a placeholder | Uses folder names for the author, depending on the scenario |
 | **Title fallback to file** | Title tag missing or a placeholder | Uses the file name without leading track numbers. The nested-books scenario uses the book folder name first |
-| **Reader keywords** | Always (a comma-separated list) | Finds the narrator in comment or tag text, for example "narrator" or "read by" |
 
 Placeholder values treated as missing include an empty tag, "unknown", "untitled", and "n/a".
 
@@ -89,15 +88,19 @@ When a fallback is used, the review list marks the book with **F:** (fallback). 
 
 Each Import scan reads the latest saved fallback and auto-correct settings.
 
+### Narrator keywords
+
+**Narrator keywords** is a comma-separated list, used on every scan. AbCS uses those words to find the **Narrator** in the file's comment tag, for example "narrator" or "read by". A line that only names the narrator is left out of the plot.
+
 ### Auto correct
 
 The **Auto Correct** group lists four options. Each option has a **main checkbox** that turns the correction on, and an indented **Skip review** checkbox below it, available when the main option is checked.
 
 | Main option | What it does |
 |-------------|--------------|
-| **Apply proper case to title and author** | Capitalizes words, for example `the moonstone` becomes `The Moonstone` |
+| **Apply proper case to title and author** | Capitalizes words, for example "the moonstone" becomes "The Moonstone" |
 | **Trim extra and leading/trailing whitespace** | Collapses repeated spaces and removes spaces at the start or end |
-| **Remove leading punctuation from title and author** | Removes characters other than letters from the start, for example `...The Moonstone` becomes `The Moonstone` |
+| **Remove leading punctuation from title and author** | Removes characters other than letters from the start, for example "...The Moonstone" becomes "The Moonstone" |
 | **Remove non-printable control characters** | Removes invisible control characters. Accented letters such as é, ñ, and ü are kept |
 
 When the main option is on and **Skip review** is off, a corrected title or author gets a **C:** flag and the book is held for review.
@@ -143,6 +146,8 @@ A book that matches one already in your library is held in review with a **Dupli
 - The values Restore Defaults sets are listed in [Default preferences](17_default_preferences.md).
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Factory values: [Default preferences](17_default_preferences.md)
 - Folder scan: [Import (Folder Scan)](02_import.md)

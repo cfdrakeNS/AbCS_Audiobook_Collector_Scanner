@@ -50,7 +50,7 @@ Help has its own zoom, set at the top of the Help window. See [Help overview](01
 ## Fallback & Auto Correct (Alt+F)
 
 - **Author fallback to folder** and **Title fallback to file** — when checked, a missing tag is filled from the folder or file name. When unchecked, a missing author or title holds the book with an error.
-- **Reader keywords** — words that find the narrator in comments.
+- **Narrator keywords** — words that find the Narrator in the file's comment tag. This is separate from the fallback checkboxes. A line that only names the narrator is left out of the plot.
 - **Auto Correct** — four text cleanup options. Each has a main checkbox, with a **Skip review** checkbox indented below it.
 - The options are: apply proper case to title and author; trim extra and leading or trailing spaces; remove leading punctuation from title and author; remove non-printable control characters. Accented letters such as é and ñ are kept.
 - **Skip review** is available when its main option is checked. It lets a book be added automatically when that correction is its only issue.
@@ -107,6 +107,8 @@ No. Restore Defaults saves the factory values as soon as you confirm.
 Yes. On the main window, use **View → Zoom In**, **Zoom Out**, or **Reset**, or press **Ctrl+Plus**, **Ctrl+Minus**, or **Ctrl+0**.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Factory values: [Default preferences](17_default_preferences.md)
 - Scenario and validation detail: [Import preferences](18_import_preferences.md)

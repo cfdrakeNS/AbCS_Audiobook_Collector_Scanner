@@ -29,12 +29,15 @@ from PySide6.QtGui import (
     QAccessibleEvent,
     QKeyEvent,
     QKeySequence,
+    QPainter,
+    QPalette,
     QShortcut,
     QTextCursor,
     QTextDocument,
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QButtonGroup,
     QComboBox,
     QHBoxLayout,
@@ -67,8 +70,8 @@ from src.accessibility.help_search import (
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.read_only_text import (
+    configure_accessible_read_only_text,
     configure_navigable_text_edit,
-    create_accessible_read_only_text,
 )
 from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcuts import (
@@ -199,6 +202,65 @@ def _strip_links_to_labels(text: str) -> str:
     return _LINK_RE.sub(lambda match: match.group(1).strip(), text)
 
 
+def _related_item_html(raw_item: str) -> str | None:
+    """Turn one Related help markdown link into a named anchor. The label stays plain text."""
+    match = _LINK_RE.search(raw_item)
+    if match is None:
+        return None
+    filename = Path(match.group(2).strip()).name
+    if not filename.endswith(".md"):
+        return None
+    label = html.escape(match.group(1).strip())
+    before = _inline_markdown_to_html(_strip_links_to_labels(raw_item[: match.start()]))
+    after = _inline_markdown_to_html(_strip_links_to_labels(raw_item[match.end() :]))
+    return (
+        f'{before}<a name="open:{html.escape(filename)}" '
+        f'href="open:{html.escape(filename)}">{label}</a>{after}'
+    )
+
+
+def _related_filename_from_format(fmt) -> str:
+    """Return the topic filename stored on this character, if it opens a guide."""
+    href = fmt.anchorHref() or ""
+    if href.startswith("open:"):
+        return href[5:]
+    for name in fmt.anchorNames():
+        if name.startswith("open:"):
+            return name[5:]
+    return ""
+
+
+def _related_filename_at_cursor(help_text) -> str:
+    """Return the help filename marked on the current line, if this line opens a topic."""
+    cursor = help_text.textCursor()
+    block = cursor.block()
+    start = block.position()
+    length = len(block.text())
+    if length <= 0:
+        return ""
+    probe = QTextCursor(help_text.document())
+    for offset in range(length):
+        probe.setPosition(start + offset + 1)
+        filename = _related_filename_from_format(probe.charFormat())
+        if filename:
+            return filename
+    return ""
+
+
+def _related_filename_at_point(help_text, point) -> str:
+    """Return the topic filename under a mouse point, if that word opens a guide."""
+    cursor = help_text.cursorForPosition(point)
+    position = cursor.position()
+    document = help_text.document()
+    probe = QTextCursor(document)
+    if position < document.characterCount() - 1:
+        probe.setPosition(position + 1)
+        filename = _related_filename_from_format(probe.charFormat())
+        if filename:
+            return filename
+    return _related_filename_from_format(cursor.charFormat())
+
+
 def _is_shortcut_table_header(cells: list[str]) -> bool:
     return (
         len(cells) >= 2
@@ -253,8 +315,14 @@ def _append_body_paragraphs(body_parts: list[str], text: str) -> None:
         body_parts.append(f'<p class="body">{_inline_markdown_to_html(sentence)}</p>')
 
 
-def markdown_to_html(markdown: str) -> tuple[str, list[tuple[str, str]]]:
-    """Convert markdown help to HTML with visual spacing and no empty lines."""
+def markdown_to_html(
+    markdown: str, *, open_related_links: bool = False
+) -> tuple[str, list[tuple[str, str]]]:
+    """Convert markdown help to HTML with visual spacing and no empty lines.
+
+    open_related_links marks guide names under Related help so Enter can open them.
+    Names elsewhere stay plain text.
+    """
     links = _collect_links(markdown)
     body_parts: list[str] = []
     in_ul = False
@@ -262,6 +330,7 @@ def markdown_to_html(markdown: str) -> tuple[str, list[tuple[str, str]]]:
     step_counter = 0
     after_faq_question = False
     heading_anchor_index = 0
+    in_related_help = False
 
     def reset_step_counter() -> None:
         nonlocal step_counter
@@ -323,6 +392,7 @@ def markdown_to_html(markdown: str) -> tuple[str, list[tuple[str, str]]]:
             raw_level = len(header_match.group(1))
             level = min(raw_level, 3)
             title = header_match.group(2).strip()
+            in_related_help = title.lower() == "related help"
             anchor_open = ""
             anchor_close = ""
             if raw_level >= 2:
@@ -342,6 +412,12 @@ def markdown_to_html(markdown: str) -> tuple[str, list[tuple[str, str]]]:
                 body_parts.append("<ul>")
                 in_ul = True
             item_text = line.lstrip()[2:].strip()
+            raw_item = raw_line.rstrip().lstrip()[2:].strip()
+            if open_related_links and in_related_help:
+                linked = _related_item_html(raw_item)
+                if linked is not None:
+                    body_parts.append(f"<li>{linked}</li>")
+                    continue
             sentences = _split_sentences(item_text)
             if len(sentences) == 1:
                 body_parts.append(f"<li>{_inline_markdown_to_html(sentences[0])}</li>")
@@ -435,11 +511,15 @@ class _HelpNavFocusFilter(QObject):
         nav_list: QListWidget,
         help_text: QTextEdit,
         on_nav_activate,
+        on_open_related,
     ) -> None:
         super().__init__(nav_list)
         self.nav_list = nav_list
         self.help_text = help_text
         self.on_nav_activate = on_nav_activate
+        self.on_open_related = on_open_related
+        self._viewport = help_text.viewport()
+        self._press_pos = None
 
     def eventFilter(self, obj, event) -> bool:
         if event.type() == QEvent.Type.KeyPress:
@@ -458,7 +538,107 @@ class _HelpNavFocusFilter(QObject):
                 if obj is self.help_text:
                     self.nav_list.setFocus(Qt.FocusReason.TabFocusReason)
                     return True
+            if obj is self.help_text and event.key() in (
+                Qt.Key.Key_Return,
+                Qt.Key.Key_Enter,
+            ):
+                filename = _related_filename_at_cursor(self.help_text)
+                if filename:
+                    self.on_open_related(filename)
+                    return True
+        viewport = self._viewport
+        if obj is viewport and event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self._press_pos = event.position().toPoint()
+        elif obj is viewport and event.type() == QEvent.Type.MouseButtonRelease:
+            if event.button() == Qt.MouseButton.LeftButton:
+                point = event.position().toPoint()
+                moved = (
+                    self._press_pos is not None
+                    and (point - self._press_pos).manhattanLength() > 4
+                )
+                self._press_pos = None
+                if not moved:
+                    filename = _related_filename_at_point(self.help_text, point)
+                    if filename:
+                        self.on_open_related(filename)
+                        return True
         return super().eventFilter(obj, event)
+
+
+class _HelpTextEdit(QTextEdit):
+    """Help content pane that draws a wide caret in the theme highlight color."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._caret_width = 3
+        self._caret_on = True
+        self._caret_rect = QRect()
+        self.setCursorWidth(0)
+        self._blink_timer = QTimer(self)
+        self._blink_timer.timeout.connect(self._toggle_caret)
+        self.cursorPositionChanged.connect(self._restart_caret)
+        self.verticalScrollBar().valueChanged.connect(self._restart_caret)
+
+    def set_caret_width(self, width: int) -> None:
+        self._caret_width = max(3, int(width))
+        self._restart_caret()
+
+    def caret_width(self) -> int:
+        return self._caret_width
+
+    def caret_rect(self) -> QRect:
+        """Viewport rectangle of the visible caret bar."""
+        rect = self.cursorRect()
+        return QRect(rect.left(), rect.top(), self._caret_width, rect.height())
+
+    def _restart_caret(self, *_args) -> None:
+        self._caret_on = True
+        flash = QApplication.cursorFlashTime()
+        if self.hasFocus() and flash > 0:
+            self._blink_timer.start(max(1, flash // 2))
+        else:
+            self._blink_timer.stop()
+        self._update_caret_area()
+
+    def _toggle_caret(self) -> None:
+        self._caret_on = not self._caret_on
+        self._update_caret_area()
+
+    def _update_caret_area(self) -> None:
+        viewport = self.viewport()
+        if not self._caret_rect.isNull():
+            viewport.update(self._caret_rect.adjusted(-2, -2, 2, 2))
+        self._caret_rect = self.caret_rect()
+        viewport.update(self._caret_rect.adjusted(-2, -2, 2, 2))
+
+    def focusInEvent(self, event) -> None:
+        super().focusInEvent(event)
+        self._restart_caret()
+
+    def focusOutEvent(self, event) -> None:
+        super().focusOutEvent(event)
+        self._blink_timer.stop()
+        self._update_caret_area()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_caret_area()
+
+    def mouseMoveEvent(self, event) -> None:
+        super().mouseMoveEvent(event)
+        filename = _related_filename_at_point(self, event.position().toPoint())
+        self.viewport().setCursor(
+            Qt.CursorShape.PointingHandCursor if filename else Qt.CursorShape.IBeamCursor
+        )
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        if not (self.hasFocus() and self._caret_on):
+            return
+        painter = QPainter(self.viewport())
+        painter.fillRect(self.caret_rect(), self.palette().color(QPalette.ColorRole.Highlight))
+        painter.end()
 
 
 class HelpWindow(AccessibleDialog):
@@ -586,11 +766,11 @@ class HelpWindow(AccessibleDialog):
         self.nav_list.itemClicked.connect(self._on_nav_item_activated)
         self._splitter.addWidget(self.nav_list)
 
-        self.help_text = create_accessible_read_only_text(
-            self._splitter,
-            "",
-            "Help content",
-            "Help document text. Use arrow keys to read line by line.",
+        self.help_text = configure_accessible_read_only_text(
+            _HelpTextEdit(self._splitter),
+            text="",
+            accessible_name="Help content",
+            accessible_description="Help document text. Use arrow keys to read line by line.",
             transparent_background=False,
         )
         configure_navigable_text_edit(self.help_text)
@@ -600,6 +780,8 @@ class HelpWindow(AccessibleDialog):
         )
         self.help_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.help_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        # Pointer moves over Related help names show the hand cursor.
+        self.help_text.viewport().setMouseTracking(True)
         self.help_text.document().setDefaultStyleSheet(_HELP_DOCUMENT_STYLESHEET)
         self._splitter.addWidget(self.help_text)
         self._splitter.setStretchFactor(0, 0)
@@ -608,10 +790,14 @@ class HelpWindow(AccessibleDialog):
         layout.addWidget(self._splitter, stretch=1)
 
         self._nav_focus_filter = _HelpNavFocusFilter(
-            self.nav_list, self.help_text, self._on_nav_item_activated
+            self.nav_list,
+            self.help_text,
+            self._on_nav_item_activated,
+            self._open_related_doc,
         )
         self.nav_list.installEventFilter(self._nav_focus_filter)
         self.help_text.installEventFilter(self._nav_focus_filter)
+        self.help_text.viewport().installEventFilter(self._nav_focus_filter)
 
         close_row = QHBoxLayout()
         close_row.addStretch()
@@ -638,8 +824,8 @@ class HelpWindow(AccessibleDialog):
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
 
-        self.overview_shortcut = QShortcut(QKeySequence("Shift+F1"), self)
-        self.overview_shortcut.activated.connect(self._open_overview)
+        self.using_help_shortcut = QShortcut(QKeySequence("Shift+F1"), self)
+        self.using_help_shortcut.activated.connect(self._open_using_help)
 
         get_shortcut_manager().register_alt_shortcuts(
             self, ShortcutContext.HELP_WINDOW, {"nav_list": self._focus_nav_list}
@@ -850,6 +1036,7 @@ class HelpWindow(AccessibleDialog):
         help_font.setPointSize(body_pt)
         self.help_text.setFont(help_font)
         self.help_text.document().setDefaultFont(help_font)
+        self.help_text.set_caret_width(self.scaler.get_scaled_size(2))
         close_font = self.close_button.font()
         close_font.setPointSize(body_pt)
         self.close_button.setFont(close_font)
@@ -1082,6 +1269,7 @@ class HelpWindow(AccessibleDialog):
             found = start
         self.help_text.setTextCursor(found)
         self._focus_help_text()
+        self._scroll_cursor_near_top()
 
     def _find_in_topic(self, backward: bool) -> None:
         """F3 / Shift+F3: next or previous match of the last search in this topic."""
@@ -1102,6 +1290,7 @@ class HelpWindow(AccessibleDialog):
             return
         self.help_text.setTextCursor(cursor)
         self._focus_help_text()
+        self._scroll_cursor_near_top()
 
     def _focus_help_text(self, *, at_start: bool = False) -> None:
         if not self.isVisible():
@@ -1124,6 +1313,17 @@ class HelpWindow(AccessibleDialog):
         else:
             self.help_text.scrollToAnchor(anchor_id)
         self._focus_help_text()
+        if cursor is not None:
+            self._scroll_cursor_near_top()
+
+    def _scroll_cursor_near_top(self) -> None:
+        """Scroll so the cursor line sits one line below the top, as far as the document allows."""
+        if not self.isVisible():
+            return
+        bar = self.help_text.verticalScrollBar()
+        line = self.help_text.fontMetrics().lineSpacing()
+        target = bar.value() + self.help_text.cursorRect().top() - line
+        bar.setValue(max(bar.minimum(), min(bar.maximum(), target)))
 
     def _set_nav_description(self) -> None:
         if self._nav_mode == "results":
@@ -1228,7 +1428,7 @@ class HelpWindow(AccessibleDialog):
             return
 
         markdown = path.read_text(encoding="utf-8")
-        html_doc, _links = markdown_to_html(markdown)
+        html_doc, _links = markdown_to_html(markdown, open_related_links=True)
         self._current_filename = path.name
         self._current_title = _title_from_markdown(markdown)
         self._set_help_body(html_doc)
@@ -1251,9 +1451,13 @@ class HelpWindow(AccessibleDialog):
             "Use Tab or Alt+L to move to the help navigation list."
         )
 
-    def _open_overview(self) -> None:
-        """Shift+F1 inside Help: open the overview topic."""
-        self._load_doc("01_overview.md")
+    def _open_related_doc(self, filename: str) -> None:
+        """Enter or a click on a Related help name opens that guide."""
+        self._load_doc(filename)
+
+    def _open_using_help(self) -> None:
+        """Shift+F1 inside Help: open the Using Help topic."""
+        self._load_doc("29_using_help.md")
 
     def _apply_window_title(self) -> None:
         title = f"AbCS Help - {self._current_title}"
@@ -1284,6 +1488,7 @@ class HelpWindow(AccessibleDialog):
                 ("Alt+L", "Jump to the left list (topics, sections, or results)"),
                 ("Tab", "Switch between list and content"),
                 ("Click or Enter", "Open topic or jump to section"),
+                ("Click or Enter on a Related help name", "Open that guide"),
                 ("Arrow keys", "Read line by line"),
                 ("+/−, preset, or zoom slider", "Help window zoom (saved automatically)"),
                 ("Ctrl+Plus / Ctrl+Minus", "Zoom Help in or out"),
@@ -1294,7 +1499,6 @@ class HelpWindow(AccessibleDialog):
             ]
         )
         shortcuts = prepend_help_doc_shortcut(shortcuts)
-        shortcuts[0] = ("Shift+F1", "Open the help overview")
 
         from src.accessibility.shortcut_helpers import apply_f1_shortcuts_table_scaling
 

@@ -44,6 +44,15 @@ Tab follows the order above and stops on the cover picture.
 7. Press **Page Down** for the next book or **Page Up** for the previous book.
 8. Press **Escape** to close. The main list refreshes.
 
+## Set or clear a read date
+
+1. Move to **Read** (**Alt+R**), in view or edit mode.
+2. Type or pick the date, or clear it.
+3. When you leave the field, press Page Up or Page Down, or Save, AbCS asks "Mark this title as read on this date?" or "Clear the read date for this title?".
+4. **Yes** saves the read date right away. **No** puts the old date back.
+
+A read date you confirmed with **Yes** stays saved even if you then press **Escape** and discard your other changes.
+
 ## Listen and listening progress
 
 1. In view mode, press **Listen** (**Ctrl+L**) to play the book inside AbCS. See [Listen to a book](26_listen_to_a_book.md) for player controls.
@@ -100,11 +109,9 @@ Tab follows the order above and stops on the cover picture.
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
 
-Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores the series number only; the title stays as typed. The main book table shows ` - 03` or ` - 6.5` after the title when a series number is set.
+Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores the series number only; the title stays as typed. The main book table shows "- 03" or "- 6.5" after the title when a series number is set.
 
 With a screen reader running, **Year** and **Read** are typed text fields: a four-digit year, and a date as year-month-day. Leave a field blank for no year or no read date. An invalid value shows a warning. Without a screen reader, use the calendar for Read, and press **Clear** beside the date to remove a read date. Up or Down on a blank Year starts at this year, and on a blank Read date starts at today.
-
-Changing the read date always asks first, the same as the main window. The question is "Mark this title as read on this date?" or "Clear the read date for this title?". It is asked when you leave the field, press Page Up or Page Down, or Save, in view or edit mode. **Yes** saves the read date right away. **No** puts the old date back. A read date you confirmed stays saved even if you press Escape and discard other changes.
 
 ## Common confusion
 
@@ -118,6 +125,8 @@ In view mode, press the **Delete** button or **Alt+D**. AbCS asks you to confirm
 Browse works in edit mode. Press **Alt+E** first, then **Alt+B**.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Several books at once: [Update](05_update.md)
 - Online plot lookup: [Web Metadata Fetch](07_web_metadata.md)

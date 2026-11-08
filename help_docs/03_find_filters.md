@@ -4,6 +4,12 @@
 
 The main window lists the books in your library. Find, filters, and sort narrow and order that list without changing your data. You can search for text, limit by collection, filter by read status, plot, want to read, or listening progress, show recently added books, and change the sort order.
 
+## Quick steps
+
+1. Press **Ctrl+F**, type a title or author, and press **Enter** to search.
+2. Press a filter key, for example **Alt+P** for the plot filter, to narrow the list further.
+3. Press **Escape** to remove the last filter layer. Each press removes one more.
+
 ## When to use it
 
 - Looking for a specific author, title, series, or genre.
@@ -54,7 +60,7 @@ The Title column shows a mark before the title. A circle means the book has a pl
 
 1. Open **View → Plot** (**Alt+V**, then **P**), or press **Alt+P** to toggle the plot filter.
 2. Choose **All**, **With Plot**, or **Without Plot**.
-3. Books are filtered by whether they have plot text in comments.
+3. Books are filtered by whether they have a plot.
 
 ## Read filter
 
@@ -93,7 +99,7 @@ This filter uses the **date added**: the day the book was imported or created in
 4. The filter summary shows the current sort, for example "Sort: Title (ascending)".
 5. The book that had focus stays the current book. If a filter hides it, focus moves to the first remaining book.
 
-**Series** sorts by series name, series number, year, then title. Books without a series number come after numbered books in that series. A blank year comes before a filled year. The Title column shows ` - 03` or ` - 6.5` after the title when a series number is set. That text is for display; the stored title stays as typed.
+**Series** sorts by series name, series number, year, then title. Books without a series number come after numbered books in that series. A blank year comes before a filled year. The Title column shows "- 03" or "- 6.5" after the title when a series number is set. That text is for display; the stored title stays as typed.
 
 ## Set a read date
 
@@ -109,7 +115,7 @@ You can also set the read date in [Book Details](04_book_details.md).
 2. Press **Shift+Down Arrow** to select books moving down the list, or **Shift+Up Arrow** to select books moving up.
 3. With the mouse, click the first book, then **Shift+click** the last book. **Ctrl+click** adds or removes one book.
 4. The status bar says how many books are selected and the title of the book you just added.
-5. The footer shows the buttons for selected books. Press **Escape** to clear the selection.
+5. The footer shows the buttons for selected books.
 
 While books are selected, Find, Import, Add Book, Listen, Statistics, Preferences, and the filters are turned off. Press **Escape** to clear the selection and turn them back on.
 
@@ -210,10 +216,7 @@ Find searches text in one field. The collection, plot, read, in progress, want t
 Recently added uses the date the book entered AbCS. A book you read years ago but imported yesterday appears in Recently added. Read date is the day you marked the book as read.
 
 **Why did Escape clear only one filter?**
-Escape removes one layer per press, so you can undo a single change and keep the rest.
-
-**In what order does Escape clear filters?**
-Always the fixed order in Clear filters: selection, Find, Plot, Read, In progress, Want to read, then Recently added. The order you turned them on does not matter.
+Escape removes one layer per press, so you can undo a single change and keep the rest. The order is fixed, as listed in Clear filters, whatever order you turned the filters on.
 
 **Why is my collection filter still on after Escape?**
 Escape leaves the collection and sort alone. Change the collection in **View → Collections** and the sort in the **Sort** menu.
@@ -222,6 +225,8 @@ Escape leaves the collection and sort alone. Change the collection in **View →
 You stay on the book that had focus. If a filter hides that book, focus moves to the first remaining book.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - One book at a time: [Book Details](04_book_details.md)
 - Several books at once: [Update](05_update.md)

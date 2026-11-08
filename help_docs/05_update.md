@@ -81,6 +81,8 @@ Choose **None** in the **Series** or **Genre** list. **None** removes the series
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - One book at a time: [Book Details](04_book_details.md)
 - Selecting books on the main window: [Find and Filters (Main Window)](03_find_filters.md)
 - Renaming a series or genre everywhere: [Name List](15_name_list.md)

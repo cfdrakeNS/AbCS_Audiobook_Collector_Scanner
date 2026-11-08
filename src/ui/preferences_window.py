@@ -85,7 +85,7 @@ class PreferencesWindow(AccessibleDialog):
         ),
         TAB_FALLBACK: (
             "Control how missing metadata is filled in during import, how narrator "
-            "names are detected from file tags and comments, and which text "
+            "names are found in the file's comment tag, and which text "
             "auto-corrections run during folder scan."
         ),
         TAB_VALIDATION: (
@@ -779,13 +779,13 @@ class PreferencesWindow(AccessibleDialog):
         reader_keywords_layout = QHBoxLayout()
         reader_keywords_layout.setContentsMargins(0, 0, 0, 0)
         reader_keywords_layout.setSpacing(8)
-        reader_keywords_label = QLabel("Reader Keywords:")
+        reader_keywords_label = QLabel("Narrator Keywords:")
         reader_keywords_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         reader_keywords_label.setMinimumWidth(import_label_width)
         self.reader_keywords_edit = QLineEdit()
-        self.reader_keywords_edit.setAccessibleName("Reader keywords")
+        self.reader_keywords_edit.setAccessibleName("Narrator keywords")
         self.reader_keywords_edit.setAccessibleDescription(
-            "Comma-separated keywords for narrator parsing"
+            "Comma-separated words used to find the narrator in the file's comment tag"
         )
         reader_keywords_label.setBuddy(self.reader_keywords_edit)
         reader_keywords_layout.addWidget(reader_keywords_label)
@@ -1070,7 +1070,7 @@ class PreferencesWindow(AccessibleDialog):
             self.scenario_description_edit: "Summary of the selected import scenario",
             self.author_fallback_checkbox: "Use folder names when author metadata is missing",
             self.title_fallback_checkbox: "Use file names when title metadata is missing",
-            self.reader_keywords_edit: "Comma-separated words used to detect narrators in comments",
+            self.reader_keywords_edit: "Comma-separated words used to find the narrator in the file's comment tag",
             self.rules_section_text: "Summary of validation rules",
             self.rule_author_in_title_severity: "Set how Author in Title findings are reported",
             self.rule_title_in_author_severity: "Set how Title in Author findings are reported",
@@ -2305,7 +2305,7 @@ class PreferencesWindow(AccessibleDialog):
         self.title_fallback_checkbox.setChecked(True)
         self.settings.setValue("import/fallback/title_to_file", True)
 
-        # Reader keywords
+        # Narrator keywords
         default_keywords = "reader, read by, narrator, narrated by"
         self.reader_keywords_edit.setText(default_keywords)
         self.settings.setValue("import/reader_keywords", default_keywords)

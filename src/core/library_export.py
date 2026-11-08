@@ -178,8 +178,8 @@ EXPORT_FIELDS: tuple[_Field, ...] = (
         lambda b: b.listen_file_name or "",
     ),
     (
-        "comments",
-        "Comments",
+        "plot",
+        "Plot",
         lambda b: b.comments or "",
         lambda b: b.comments or "",
     ),

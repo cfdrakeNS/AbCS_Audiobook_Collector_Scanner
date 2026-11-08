@@ -53,6 +53,7 @@ def test_discover_help_topics_uses_the_curated_app_order():
     filenames = [filename for _label, filename in topics]
     assert filenames == [
         "01_overview.md",
+        "29_using_help.md",
         "28_whats_new.md",
         "02_import.md",
         "03_find_filters.md",
@@ -228,6 +229,135 @@ def test_markdown_to_html_embeds_named_anchors_in_headings():
     html_doc, _links = markdown_to_html(md)
     assert '<a name="h0"><strong>Section One</strong></a>' in html_doc
     assert '<a name="h1"><strong>Sub section</strong></a>' in html_doc
+
+
+def test_related_help_links_are_marked_only_when_enabled():
+    md = (
+        "See [Preferences](10_preferences.md).\n\n"
+        "## Related help\n\n"
+        "Open these from All Help Topics.\n\n"
+        "- Factory values: [Default preferences](17_default_preferences.md)\n"
+    )
+    plain, _links = markdown_to_html(md)
+    assert "open:" not in plain
+    linked, _links = markdown_to_html(md, open_related_links=True)
+    assert 'name="open:17_default_preferences.md"' in linked
+    assert 'href="open:17_default_preferences.md"' in linked
+    assert "Default preferences" in linked
+    assert "open:10_preferences.md" not in linked
+
+
+def test_enter_on_related_help_opens_that_topic(qtbot):
+    window = HelpWindow(None, doc_filename="18_import_preferences.md")
+    qtbot.addWidget(window)
+    document = window.help_text.document()
+    found = False
+    block = document.begin()
+    while block.isValid():
+        text = block.text()
+        if text.startswith("Factory values:") and "Default preferences" in text:
+            cursor = window.help_text.textCursor()
+            cursor.setPosition(block.position() + len(text))
+            window.help_text.setTextCursor(cursor)
+            found = True
+            break
+        block = block.next()
+    assert found
+    qtbot.keyClick(window.help_text, Qt.Key.Key_Return)
+    assert window._current_filename == "17_default_preferences.md"
+
+
+def test_click_on_related_help_name_opens_that_topic(qtbot):
+    window = HelpWindow(None, doc_filename="18_import_preferences.md")
+    qtbot.addWidget(window)
+    window.resize(900, 700)
+    window.show()
+    qtbot.waitExposed(window)
+    document = window.help_text.document()
+    target = None
+    block = document.begin()
+    while block.isValid():
+        text = block.text()
+        label_at = text.find("Default preferences")
+        if text.startswith("Factory values:") and label_at >= 0:
+            cursor = window.help_text.textCursor()
+            cursor.setPosition(block.position() + label_at + 3)
+            window.help_text.setTextCursor(cursor)
+            window.help_text.ensureCursorVisible()
+            target = window.help_text.cursorRect(cursor).center()
+            break
+        block = block.next()
+    assert target is not None
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtWidgets import QApplication
+
+    viewport = window.help_text.viewport()
+    assert viewport.hasMouseTracking()
+    move = QMouseEvent(
+        QEvent.Type.MouseMove,
+        QPointF(target),
+        QPointF(viewport.mapToGlobal(target)),
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    QApplication.sendEvent(viewport, move)
+    assert viewport.cursor().shape() == Qt.CursorShape.PointingHandCursor
+    qtbot.mouseClick(viewport, Qt.MouseButton.LeftButton, pos=target)
+    assert window._current_filename == "17_default_preferences.md"
+
+
+def _show_help(qtbot, filename):
+    window = HelpWindow(None, doc_filename=filename)
+    qtbot.addWidget(window)
+    window.resize(900, 500)
+    window.show()
+    qtbot.waitExposed(window)
+    return window
+
+
+def test_section_jump_scrolls_heading_near_top(qtbot):
+    from src.ui.help_window import extract_headings
+
+    window = _show_help(qtbot, "02_import.md")
+    qtbot.wait(100)
+    markdown = resolve_help_docs_dir().joinpath("02_import.md").read_text(encoding="utf-8")
+    headings = extract_headings(markdown)
+    title, anchor_id, _level = headings[len(headings) // 2]
+    window._jump_to_anchor(anchor_id, title)
+    line = window.help_text.fontMetrics().lineSpacing()
+    assert 0 <= window.help_text.cursorRect().top() <= line * 2
+
+    from PySide6.QtGui import QTextCursor
+
+    cursor = window.help_text.textCursor()
+    cursor.movePosition(QTextCursor.MoveOperation.End)
+    cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+    window.help_text.setTextCursor(cursor)
+    bar = window.help_text.verticalScrollBar()
+    qtbot.wait(100)
+    window._scroll_cursor_near_top()
+    assert bar.value() == bar.maximum()
+    caret = window.help_text.cursorRect()
+    assert window.help_text.viewport().rect().contains(caret.center())
+
+
+def test_help_caret_is_wide_and_uses_highlight(qtbot):
+    from PySide6.QtGui import QPalette
+
+    window = _show_help(qtbot, "02_import.md")
+    window.help_text.setFocus()
+    qtbot.waitUntil(window.help_text.hasFocus)
+    assert window.help_text.cursorWidth() == 0
+    assert window.help_text.caret_width() >= 3
+    window.help_text._caret_on = True
+    image = window.help_text.viewport().grab().toImage()
+    point = window.help_text.caret_rect().center()
+    highlight = window.help_text.palette().color(QPalette.ColorRole.Highlight)
+    assert image.pixelColor(point.x(), point.y()) == highlight
+    window._set_help_zoom(300)
+    assert window.help_text.caret_width() == 6
 
 
 def test_markdown_to_plain_text_strips_formatting():

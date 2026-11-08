@@ -83,6 +83,8 @@ Use [Update](05_update.md) and choose **None** in Series or Genre. Name List ren
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - Main window: [Find and Filters (Main Window)](03_find_filters.md)
 - Collections: [Collections](06_collections.md)
 - Several books at once: [Update](05_update.md)

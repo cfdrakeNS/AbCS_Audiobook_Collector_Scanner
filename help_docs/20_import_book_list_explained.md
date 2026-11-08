@@ -58,11 +58,11 @@ AbCS goes through the rows from top to bottom and reads the columns you mapped:
 | Title | Required |
 | Author | Required |
 | Year | Optional |
-| Plot | Optional; stored in comments |
+| Plot | Optional. Export writes this column as Plot. A column headed Comments or Description is also accepted |
 | Series | Optional |
-| Series # | Optional; stored as the series number. The main table shows ` - 03` or ` - 6.5` after the title |
+| Series # | Optional; stored as the series number. The main table shows "- 03" or "- 6.5" after the title |
 | Genre | Optional |
-| Narrator | Optional (a CSV column may be named Reader) |
+| Narrator | Optional. A column headed Reader is also accepted |
 | Read Date | Optional |
 | Time | Optional; stored as hours and minutes |
 | Files | Optional; the number of files |
@@ -84,7 +84,7 @@ Each row is compared with the books already in your library and with the rows al
 
 When **fuzzy matching** is set, near-matches count when both the title and the author reach the percentage.
 
-Titles are compared without trailing series numbers. The same title with two different series numbers, such as `The Moonstone - 01` and `The Moonstone - 02`, counts as two books. A title with no series number still matches a library title that has one.
+Titles are compared without trailing series numbers. The same title with two different series numbers, such as "The Moonstone - 01" and "The Moonstone - 02", counts as two books. A title with no series number still matches a library title that has one.
 
 A duplicate row is skipped with the error "Duplicate - book already exists", and counted separately.
 
@@ -152,33 +152,11 @@ In read-date mode, only the read date changes on each matched book.
 
 ## Playing book-list books with Listen
 
-Books added from a list start with no file path. When you press **Listen** (**Ctrl+L**), AbCS looks for the book in the collection's **collection folder**. Set that folder in **Manage → Collections**.
+Books added from a list start with no file path. When you press **Listen** (**Ctrl+L**), AbCS looks for the book under the collection's **collection folder**: in the author folder, then in the series folder when the book has a series. The Preferences import scenario is not used. Set the collection folder in **Manage → Collections**.
 
-### Where Listen looks
+When the book is found, it plays, and its folder is saved as the book's path. When it is not found, Listen says what was missing and offers **Browse**.
 
-Listen checks a few folders under the collection folder, in this order. Folder names match without regard to capital letters, or to characters Windows does not allow in names. The Preferences import scenario is not used.
-
-| Step | Folders checked under the collection folder |
-|------|---------------------------------------------|
-| 1 | Author, then Title (a title folder, or a single audio file named for the title) |
-| 2 | When the book has a series: Author, then Series, then Title (folder or file) |
-| 3 | When the book has no series: one folder down inside Author, then Title (used only if exactly one matches) |
-
-When the book is found, it plays, and its folder is saved as the book's path. The next Listen goes straight to it.
-
-### When the book is not found
-
-Listen says what was missing and where it looked, then offers **Browse**. The folder you choose is saved on the book when it has playable audio. Press **Escape** to close and keep the book as it was.
-
-| Message starts with | Meaning |
-|---------------------|---------|
-| The collection folder is missing | The collection folder cannot be reached, for example a drive that is not connected |
-| Author folder "…" was not found | No folder with the author's name is directly in the collection folder. When no author is found at all, the collection folder may point to the wrong place |
-| Author folder found. Book title "…" was not found | The author folder exists, and no folder or file in it matches the title |
-| Author folder found. Series folder "…" was not found | The book has a series, the title is not in the author folder, and no series folder with that name is in the author folder |
-| This book has no file path and the collection folder is not set | The collection has no collection folder |
-
-For the first and last messages, open **Manage → Collections**, edit the collection, and set the **Collection folder**. See [Listen to a book](26_listen_to_a_book.md) for the player controls.
+The folder matching rules and each message are in Listen to a book. To find every book with a missing path at once, use Check Book Locations. Choose either from All Help Topics.
 
 ## How preferences affect this import
 
@@ -190,8 +168,11 @@ For the first and last messages, open **Manage → Collections**, edit the colle
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - Steps and shortcuts: [Import Book List (Spreadsheet)](11_import_book_list.md)
 - Scanning audio files: [Import explained](19_import_explained.md)
 - Duplicate settings: [Import preferences](18_import_preferences.md)
 - Playing imported books: [Listen to a book](26_listen_to_a_book.md)
 - Setting the collection folder: [Collections](06_collections.md)
+- Finding books with a missing path: [Check Book Locations](24_check_book_locations.md)

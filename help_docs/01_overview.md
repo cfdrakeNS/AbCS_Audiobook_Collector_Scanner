@@ -11,95 +11,15 @@ These guides describe the main tasks in AbCS (Audio Book Collector Scanner) in p
 - Each window guide has a **Mouse, shortcuts, and accessibility** section with point-and-click and keyboard options.
 - Press **Shift+F1** in any window to open help for that window. Press **F1** for that window's keyboard shortcuts.
 
-## The help system
+## Using Help
 
-### Opening help
+Open Help with **Help → Help...**, or press **Shift+F1** in any window. The list on the left shows the sections of the open guide. Select **All Help Topics** at the top of that list and press **Enter** to see every guide. Press **Ctrl+F** to search help.
 
-- **Menu:** choose **Help**, then **Help...**
-- **Help for this window:** press **Shift+F1** in any window.
-- **Keyboard shortcuts:** press **F1** in any window for a list of its shortcuts.
+Guide names under Related help open that guide. Click the name, or press **Enter** on its line. Other guide names in the text are not links. Open those from **All Help Topics**.
 
-### Window layout
+For the Help window layout, search, Help zoom, and its shortcuts, choose **using help** from All Help Topics.
 
-From top to bottom:
-
-1. **Help zoom** row: a **Preset** list, a **minus** button, a **Zoom** slider, the zoom percent, and a **plus** button.
-2. **Search help** row: the search box, then the **All help** and **Current topic** buttons.
-3. Two areas side by side: **Help Navigation** on the left, a list of topics, sections, or search results, and **Help content** on the right, the text of the open guide.
-4. A **Close** button, then the status bar. Press **Alt+/** to re-read the status message.
-
-### Help zoom
-
-Help has its own zoom. It changes the text and controls inside Help only; the main AbCS window keeps its own zoom, set under **Manage → Preferences** or **View → Zoom**.
-
-The Help window's size follows your main app zoom, so the frame stays readable at 150% or other main-window scales.
-
-Controls:
-
-- **Preset** list — the same names as Preferences, Tiny through Maximum. Select a preset and press **Enter** to apply it. A mouse click also applies it.
-- **minus** and **plus** buttons — step the zoom by 15%.
-- **Zoom slider** — drag to set an exact percentage.
-
-With a screen reader running, Help opens at **100% (Normal)** the first time, so help text is not scaled twice. Without a screen reader, Help zoom first matches your main app zoom. After you change Help zoom, your choice is saved and used the next time you open Help.
-
-If the Preset list is open, **Escape** closes the list first. Press **Escape** again to close Help.
-
-### Topics and sections
-
-When Help opens, the navigation list shows the **sections** of the current guide, for example What this is, Window layout, and Common confusion.
-
-- Select a section and press **Enter**, or click it, to jump to that heading in the content area.
-- Select **All Help Topics** at the top of the list and press **Enter** to see every guide.
-- Select a guide and press **Enter** to open it. The list then shows that guide's sections.
-
-### Searching help
-
-1. Press **Ctrl+F** to move to the **Search help** box.
-2. Choose where to look with the two buttons after the box: **All help** searches every guide, and **Current topic** searches only the open guide. Press **Tab** from the box to reach them, and use the arrow keys to switch.
-3. **Ctrl+F** also picks one for you: pressed in the left list it chooses **All help**, and pressed in the content area it chooses **Current topic**.
-4. Type one or more words and press **Enter**.
-5. The results replace the Help Navigation list, and focus moves to the first result.
-6. Press **Enter** on a result to open that guide at the matching text. The matching words are selected.
-
-How search works:
-
-- Search matches whole words. A word also matches longer words that start with it, so "listen" finds "listening".
-- Small words such as "a", "the", "to", and "how" are skipped.
-- Capital letters do not matter.
-- With **All help**, each guide appears once, at its best section. Guides whose title matches come first. Each result reads as the guide name, the section name, and the sentence that matched.
-- When you type several words and some sections have them together as a phrase, only those sections are listed, plus sections whose heading or guide title has all the words.
-- **Related help** sections are skipped, because they only list other guides.
-- With **Current topic**, each matching section of the open guide appears once.
-- The status bar says how many guides matched your words, or, for the current topic, how many sections. Press **Alt+/** to hear it again.
-- When nothing matches, focus stays in the search box.
-- **Back to topics** at the top of the results shows every guide again.
-- **F3** goes to the next place in the open guide with your search words. **Shift+F3** goes back.
-- Press **Alt+L** to jump back to the results list from the content area.
-- Press **Escape** in the search box to clear the search and show the open guide's sections again. When the box is empty and no results are shown, **Escape** closes Help.
-
-### Help window shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| Ctrl+F in left list | Search all help (type words, press Enter) |
-| Ctrl+F in help content | Search the current topic |
-| All help / Current topic | Search scope radio buttons after the search box |
-| Enter in search box | Search; focus moves to the first result |
-| Escape in search box | Clear search results |
-| F3 / Shift+F3 | Next or previous match in the open topic |
-| Alt+L | Jump to the left list (topics, sections, or results) |
-| Tab | Switch between list and content |
-| Click or Enter | Open topic or jump to section |
-| Arrow keys | Read line by line |
-| +/−, preset, or zoom slider | Help window zoom (saved automatically) |
-| Ctrl+Plus / Ctrl+Minus | Zoom Help in or out |
-| Ctrl+0 | Reset Help zoom to 150% (Extra Large) |
-| Escape | Close help |
-| Alt+/ | Re-read status |
-| F1 | Keyboard shortcuts for this window |
-| Shift+F1 | Open this overview |
-
-### Check for updates
+## Check for updates
 
 **Help → Check for updates** compares this copy of AbCS with the latest release. When a newer version is listed, **Open website** opens the AbCS website; the check installs nothing. **Manage → Preferences** has **Automatically check for updates**, off by default. When it is on, the same check runs after startup, and a message appears only when a newer version is available.
 
@@ -122,6 +42,7 @@ Low vision users can increase text size under **Manage → Preferences → Displ
 
 - Press **Alt+/** in any major window to re-read the current status message.
 - Press **Escape** to cancel or close most windows. Some ask for confirmation first.
+- In a combo box you can type in, plain **Up** or **Down** may beep. Press **Alt+Down** to open the choices.
 - In the help content area, each sentence is its own paragraph, so a screen reader can read it line by line.
 
 ## Process guides
@@ -175,6 +96,7 @@ A default collection named **Audiobooks** is created when the database is first 
 
 | Document | What it covers |
 |----------|----------------|
+| [Using Help](29_using_help.md) | The Help window: topics, sections, search, Help zoom, and its shortcuts |
 | [Keyboard shortcuts by window](16_shortcuts.md) | Alt+key and other shortcuts for every AbCS window |
 | [Default preferences](17_default_preferences.md) | Factory defaults for display, import, fallback, and validation rules |
 | [Import preferences](18_import_preferences.md) | How each import scenario and validation rule behaves |

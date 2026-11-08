@@ -37,9 +37,11 @@ Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-r
 |---------|---------|
 | Author fallback to folder | Checked |
 | Title fallback to file | Checked |
-| Reader keywords | reader, read by, narrator, narrated by |
+| Narrator keywords | reader, read by, narrator, narrated by |
 
 When the author or title is missing from the file tags, AbCS fills it from the folder or file name when these fallbacks are checked. When a fallback is unchecked, the field stays blank and validation reports an error.
+
+**Narrator keywords** is not a fallback. It is the list of words AbCS uses to find the Narrator in the file's comment tag. The words in the list include "reader" and "read by" because those phrases appear in audio files.
 
 ### Auto correct defaults
 
@@ -95,6 +97,8 @@ A higher percentage means stricter matching and fewer duplicate flags. A lower p
 At the default **90%**, only small typos and near-matches are flagged.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - How each scenario uses these settings: [Import preferences](18_import_preferences.md)
 - The Preferences window: [Preferences](10_preferences.md)

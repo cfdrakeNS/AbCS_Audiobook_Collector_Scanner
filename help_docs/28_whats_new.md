@@ -39,6 +39,8 @@ For step-by-step instructions, open the guide for that window. Press **Shift+F1*
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - [Overview](01_overview.md)
 - [Import](02_import.md)
 - [Listen to a book](26_listen_to_a_book.md)

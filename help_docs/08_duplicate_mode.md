@@ -109,6 +109,8 @@ No. **Export Duplicates** (**Alt+X** in duplicate mode) saves only the duplicate
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - Main window: [Find and Filters (Main Window)](03_find_filters.md)
 - Import duplicate settings: [Import preferences](18_import_preferences.md)
 - Saving the list: [Export Library](25_export_library.md)

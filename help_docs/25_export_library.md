@@ -21,22 +21,22 @@ Export Library is a File menu item that opens the standard save dialog. It has n
 ## How to export
 
 1. Open **File → Export Library** (**Alt+F**, then **X**).
-2. In the save dialog, type a file name. The suggested name is `abcs_library_` plus the date and time, in your Documents folder.
-3. Choose the file type: **CSV Files** or **JSON Files**. A name ending in `.json` is saved as JSON, and a name ending in `.csv` as CSV.
+2. In the save dialog, type a file name. The suggested name is "abcs_library_" plus the date and time, in your Documents folder.
+3. Choose the file type: **CSV Files** or **JSON Files**. A name ending in .json is saved as JSON, and a name ending in .csv as CSV.
 4. Press **Enter** to save, or **Escape** to cancel.
 5. A message lists how many books were exported, the active filters and sort, and the file name.
 6. The status bar says how many books were exported. Focus returns to the book list.
 
 ## What is in the file
 
-Title, Author, Year, Series, Series Number, Genre, Narrator, Read Date, Time, Tracks, Collection, Size MB, Bitrate, Format, Path, Date Added, Want to Read, Listen Position, Listen File, and Comments (plot).
+Title, Author, Year, Series, Series Number, Genre, Narrator, Read Date, Time, Tracks, Collection, Size MB, Bitrate, Format, Path, Date Added, Want to Read, Listen Position, Listen File, and Plot.
 
-- Title is the stored title. The ` - nn` series number shown on the main list is in **Series Number**.
+- Title is the stored title. The "- nn" series number shown on the main list is in **Series Number**.
 - Dates are written as year-month-day, for example 2026-03-04.
 - In CSV, **Want to Read** is Yes or No, and **Listen Position** is hours:minutes:seconds. A blank Listen Position means the book has not been started.
 - CSV is saved as UTF-8 with a marker, so Excel shows accented names correctly.
-- A spreadsheet cell holds up to 32,767 characters. In CSV, longer text, usually Comments, is shortened and ends with **[truncated]**. The status bar says how many books were shortened. JSON keeps the full text.
-- JSON uses lower-case names with underscores, for example `series_number` and `listen_position_ms`, and keeps numbers as numbers.
+- A spreadsheet cell holds up to 32,767 characters. In CSV, longer text, usually the plot, is shortened and ends with **[truncated]**. The status bar says how many books were shortened. JSON keeps the full text.
+- JSON uses lower-case names with underscores, for example "series_number" and "listen_position_ms". The plot is named "plot". JSON keeps numbers as numbers.
 
 ## Mouse, shortcuts, and accessibility
 
@@ -54,8 +54,8 @@ Title, Author, Year, Series, Series Number, Genre, Narrator, Read Date, Time, Tr
 **Why did only some books export?**
 A filter or search was active, or books were selected. Clear the filters, and press **Escape** to clear a selection, to export the whole library.
 
-**Why do some Comments end with [truncated]?**
-That text was longer than a spreadsheet cell allows. Shortening it lets Excel and LibreOffice Calc load the whole file. Export to JSON when you need the full text.
+**Why does some plot text end with [truncated]?**
+That plot was longer than a spreadsheet cell allows. Shortening it lets Excel and LibreOffice Calc load the whole file. Export to JSON when you need the full text.
 
 **Can I import the CSV back into AbCS?**
 Yes. Use **Import Book List** and map Title, Author, and the other columns. The column names match the Import Book List fields.
@@ -67,6 +67,8 @@ No. **Backup & Restore** saves the whole database so AbCS can restore it. Export
 Duplicate mode has its own **Export Duplicates** button (**Alt+X**). Leave duplicate mode to export the library.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Main window filters: [Find and Filters (Main Window)](03_find_filters.md)
 - Importing a list: [Import Book List](11_import_book_list.md)

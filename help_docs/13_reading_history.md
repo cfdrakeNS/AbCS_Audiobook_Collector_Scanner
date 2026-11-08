@@ -81,6 +81,8 @@ No. **Statistics** (Manage menu) counts your whole library: books, authors, coll
 
 ## Related help
 
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
+
 - Main window: [Find and Filters (Main Window)](03_find_filters.md)
 - Library totals: [Statistics](14_statistics.md)
 - All shortcuts: [Keyboard shortcuts by window](16_shortcuts.md)

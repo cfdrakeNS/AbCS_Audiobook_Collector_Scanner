@@ -9,7 +9,7 @@
 1. On the main window, move to the book.
 2. Press **Ctrl+L**.
 3. Press **Space** to play or pause.
-4. Press **Escape** to close, and answer **Yes** to save your place.
+4. Press **Escape** to close. After five minutes or more of listening, AbCS asks whether to save your place; answer **Yes**. After less, the place already saved is kept.
 
 ## Open Listen
 
@@ -52,13 +52,13 @@ If the stored path is from an old drive letter or a moved folder, and the same f
 
 Matching rules for folder and file names:
 
-- A book folder or file may have a number before or after the title, such as `3 - The Moonstone`, `2 Whose Body`, or `The Moonstone - 03`.
-- A series tag at the end of the name also works, such as `1 Whose Body(Lord Peter Wimsey 01).m4b` for the book Whose Body?.
-- A tag with no number, such as `(Unabridged)`, is ignored in both the book title and the folder or file name.
+- A book folder or file may have a number before or after the title, such as "3 - The Moonstone", "2 Whose Body", or "The Moonstone - 03".
+- A series tag at the end of the name also works, such as "1 Whose Body(Lord Peter Wimsey 01).m4b" for the book Whose Body?.
+- A tag with no number, such as "(Unabridged)", is ignored in both the book title and the folder or file name.
 - When the book has a series number, only the folder with that number is used. When it has none, a folder is used only if it is the only one with that title.
 - If the book has no series, Listen also looks one folder down inside the author folder, for example in a series folder.
 - If the book has a series but is not in its series folder, Listen also looks one folder down and plays the book. That folder is not saved as the book's path.
-- When the author has several names separated by commas, such as `Charles Dickens, Wilkie Collins`, Listen tries a folder with the full name, then a folder for the first author.
+- When the author has several names separated by commas, such as "Charles Dickens, Wilkie Collins", Listen tries a folder with the full name, then a folder for the first author.
 
 ## When Listen cannot find a book
 
@@ -69,7 +69,13 @@ Matching rules for folder and file names:
 
 A stored path that no longer exists, with nothing found in the collection folder, reports **Book not found in -** and the missing path.
 
-For the full list of folders checked and messages, see [Import Book List explained](20_import_book_list_explained.md).
+The other messages start with one of these:
+
+- **The collection folder is missing.** The collection folder cannot be reached, for example a drive that is not connected.
+- **Author folder "…" was not found.** No folder with the author's name is directly in the collection folder. When no author is found at all, the collection folder may point to the wrong place.
+- **Author folder found. Book title "…" was not found.** The author folder exists, and no folder or file in it matches the title.
+- **Author folder found. Series folder "…" was not found.** The book has a series, the title is not in the author folder, and no series folder with that name is in the author folder.
+- **This book has no file path and the collection folder is not set.** The collection has no collection folder.
 
 ## Mouse, shortcuts, and accessibility
 
@@ -96,6 +102,8 @@ For the full list of folders checked and messages, see [Import Book List explain
 | Shift+F1 | Help for this window |
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Editing book information or browsing to a missing path: [Book Details](04_book_details.md)
 - Finding the book first: [Find and Filters (Main Window)](03_find_filters.md)

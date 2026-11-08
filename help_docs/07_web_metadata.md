@@ -60,7 +60,7 @@ For a walkthrough of how the search and comparison work, see [Web metadata expla
 9. To search again with the other sources, press **Re-fetch** (**Alt+F**).
 10. Press **Save** (**Ctrl+S**) to apply the checked fields. Or press **Escape**; AbCS asks "Save web data?". **Yes** saves and **No** closes without saving.
 
-Plot text is saved in the book's **comments** field. When the web source has a rating and you save the plot, a rating line such as "Rating: 4.5 (1,234 ratings)" is placed at the top of the plot text.
+The plot is saved on the book. When the web source has a rating and you save the plot, a rating line such as "Rating: 4.5 (1,234 ratings)" is placed at the top of the plot text.
 
 ## Fetch several books
 
@@ -76,7 +76,7 @@ Plot text is saved in the book's **comments** field. When the web source has a r
 6. During Review each, **Save** or **Skip** (**Alt+K**) moves to the next book. Press **Escape** for the choices **Save**, **Skip this book**, **Stop review**, and **Cancel**. **Stop review** returns to the summary, and the status bar says how many books were left. **Cancel** stays on the current book.
 7. Press **Escape** to close the summary. The main list selection clears.
 
-Apply all writes only the fields that differ from what you already store. A short comment such as an author name or "Unabridged" is not counted as a plot.
+Apply all writes only the fields that differ from what you already store. A short note such as an author name or "Unabridged" is not counted as a plot.
 
 When Google Books pauses a large batch, the summary line says "Google Books limit hit. Try in N minutes." The rest of the batch uses Open Library and WikiData.
 
@@ -150,6 +150,8 @@ They say "No books with new information." when no book has changes to apply or r
 Google Books, WikiData, or Wikipedia sometimes limit how many searches AbCS can send. AbCS waits for a cooldown, often about 15 minutes for Google Books, before using that source again. The other sources keep working in the meantime. When they do not know the book and Google Books was only paused, the message is "No information found" instead of a countdown. The countdown appears when another source also could not be reached, and on the batch summary. Wait for the countdown, then press **Alt+W** again.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - How the search works: [Web metadata explained](21_web_metadata_explained.md)
 - Editing a book by hand: [Book Details](04_book_details.md)

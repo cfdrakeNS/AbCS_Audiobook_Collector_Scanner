@@ -30,14 +30,14 @@ A file counts as an audiobook when its type is checked in **Preferences → Impo
 
 | Format | File endings |
 |--------|--------------|
-| MP3 | `.mp3` |
-| M4A / M4B | `.m4a`, `.m4b` |
-| FLAC | `.flac` |
-| OGG | `.ogg`, `.oga` |
-| WAV | `.wav` |
-| WMA | `.wma` |
-| AAC | `.aac` |
-| OPUS | `.opus` |
+| MP3 | .mp3 |
+| M4A / M4B | .m4a, .m4b |
+| FLAC | .flac |
+| OGG | .ogg, .oga |
+| WAV | .wav |
+| WMA | .wma |
+| AAC | .aac |
+| OPUS | .opus |
 
 Files of other types are skipped.
 
@@ -69,8 +69,8 @@ AbCS opens each audio file and reads its tags. Your file stays exactly as it was
 | **Author** | The Album artist tag, then the Artist tag |
 | **Year** | The year or date tag (the first four digits) |
 | **Genre** | The genre tag |
-| **Narrator** | The composer tag first. When it is empty, the comment text after words such as "read by" or "narrated by" |
-| **Plot** | The comment tag, without lines that only name the reader |
+| **Narrator** | The composer tag first. When it is empty, text in the comment tag after the narrator keywords, such as "read by" or "narrated by" |
+| **Plot** | The comment tag, without lines that only name the narrator |
 | **Time** | The length of the audio |
 | **Bitrate** | The quality of the recording |
 | **Format** | The file type, such as MP3, M4B, or FLAC |
@@ -80,51 +80,22 @@ When several files make up one book:
 
 - **Time** and **Size** are added up across the files.
 - **Files** is the number of files in the book.
-- **Plot** combines the comment tags of all the files, without repeats.
+- **Plot** combines the plot text from each file's comment tag, without repeats.
 - When a file cannot be opened, a note such as "Error reading file: can't sync to MPEG frame. File: part03.mp3" is added to the book. The reason comes first and the file name last.
 
 ## Applying your preferences
 
-After all files are read, AbCS applies your **import scenario** and **fallback** settings to each book.
+After all files are read, AbCS applies your Preferences to each book:
 
-### Import scenario
+- The **import scenario** decides whether the series and title also come from folder or file names.
+- When the title or author tag is blank or a placeholder such as "unknown", a **fallback** can fill it from the file or folder name, if that fallback is checked. A fallback is marked **F:** and always holds the book for review.
+- **Auto-corrections** such as proper case and trimming spaces are marked **C:**. A corrected book is held unless **Skip review** is checked for that correction.
+- When the composer tag is empty, AbCS looks in the comment tag for the **Narrator keywords** list, such as "read by" or "narrator", and saves what it finds as the Narrator.
+- When the author and title are the same text and **Author fallback to folder** is checked, the author is replaced with the parent folder name and marked as a fallback.
 
-| Scenario | What AbCS does with folder names |
-|----------|----------------------------------|
-| **Mass Standard Import** | Uses the tags. Standard fallbacks and corrections apply |
-| **Mass Import - Series From Directory** | The series comes from the book's folder, and the author from the folder above it. A leading number on the book file name, such as 03, is stored as the series number |
-| **Mass Import - Series From Directory (Nested Books)** | The series and title come from the nested folders under the author. A leading number on the book folder name, such as 1- Title, is stored as the series number |
-| **Mass Import - Series From File Name** | The series comes from the text in parentheses in the file name. A trailing number such as 04 or 6.5 is stored as the series number |
-| **Single Author / Book Import** | One file or folder is treated as one book |
+Each scenario, fallback, and correction is described in Import preferences. Choose **import preferences** from All Help Topics.
 
-### Fallbacks when tags are missing
-
-A fallback runs only when it is checked in Preferences (**Author fallback to folder** or **Title fallback to file**). When it is unchecked, the field stays blank and validation reports an error.
-
-When a tag is blank or a placeholder such as "unknown", "untitled", or "n/a", and the fallback is checked:
-
-- **Title fallback** uses the file name, without leading track numbers such as `01 `.
-- **Author fallback** looks up the folder path for an author name.
-
-Each fallback is marked with **F:** so you can review it.
-
-### Auto-corrections
-
-Each correction runs only when its main checkbox is checked in Preferences:
-
-- Trim extra spaces.
-- Remove leading punctuation.
-- Remove non-printable characters.
-- Apply proper case.
-
-Each correction is marked with **C:**. When **Skip review** is checked for that correction, the book can still be added automatically.
-
-### Other adjustments
-
-- **Narrator from comment** — when there is no narrator tag, AbCS looks in the comment for your reader keywords. The defaults are "reader", "read by", "narrator", and "narrated by".
-- **Author equals title** — when the author and title are the same text and **Author fallback to folder** is checked, the author is replaced with the parent folder name and marked as a fallback.
-
-## Checking each book
+## Why some books are held
 
 AbCS runs your **validation rules**. Each rule is set to **Error** or **Warning**, or turned off, in Preferences. The values Restore Defaults sets are in [Default preferences](17_default_preferences.md).
 
@@ -158,7 +129,7 @@ The **Duplicate match** setting decides which fields must match:
 | Title + Author + Collection | The title, author, and collection match |
 | Title + Author | The title and author match; the year is ignored |
 
-Before comparing, AbCS removes trailing series numbers from both titles, so `The Moonstone - 01` compares as `The Moonstone`. When both titles have a series number and the numbers differ (01 and 02), the books are treated as different, so a whole series can be imported at once. A title with no series number still matches a library title that has one.
+Before comparing, AbCS removes trailing series numbers from both titles, so "The Moonstone - 01" compares as "The Moonstone". When both titles have a series number and the numbers differ (01 and 02), the books are treated as different, so a whole series can be imported at once. A title with no series number still matches a library title that has one.
 
 When a **fuzzy** percentage is set, near-matches count too. Both the title and the author must reach that percentage. At 0%, only exact matches count.
 
@@ -226,6 +197,8 @@ These controls are grayed out until a scan holds books for review. The error fil
 When you close Import (**Escape**), the main book list refreshes, and every added book appears in the collection you chose.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Steps and shortcuts: [Import (Folder Scan)](02_import.md)
 - Settings detail: [Import preferences](18_import_preferences.md)

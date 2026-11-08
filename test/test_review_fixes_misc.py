@@ -123,12 +123,12 @@ def _help_window(qtbot, monkeypatch):
     return window
 
 
-def test_help_shift_f1_opens_overview(qtbot, monkeypatch):
+def test_help_shift_f1_opens_using_help(qtbot, monkeypatch):
     window = _help_window(qtbot, monkeypatch)
     assert window._current_filename == "02_import.md"
-    assert window.overview_shortcut.key().toString() == "Shift+F1"
-    window.overview_shortcut.activated.emit()
-    assert window._current_filename == "01_overview.md"
+    assert window.using_help_shortcut.key().toString() == "Shift+F1"
+    window.using_help_shortcut.activated.emit()
+    assert window._current_filename == "29_using_help.md"
     window.close()
 
 

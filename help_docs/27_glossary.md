@@ -42,7 +42,7 @@ The percent of a book you have listened to, shown in Book Details. See [Listen t
 The Preferences setting that tells Import how your folders are organized, such as Mass Standard Import. See [Import preferences](18_import_preferences.md).
 
 **Tag**
-Information stored inside an audio file, such as album, artist, or comment. Import reads tags to fill book fields. See [Import explained](19_import_explained.md).
+Information stored inside an audio file, such as album or artist. Import reads tags to fill book fields. The comment tag supplies the plot, and it can also name the narrator. See [Import explained](19_import_explained.md).
 
 **Held for review**
 A book that Import found but did not add yet, because it needs your attention. It waits in the Import review table. See [Import (Folder Scan)](02_import.md).
@@ -86,6 +86,8 @@ A main window mode that shows only duplicate books, so you can delete or export 
 Fetch Web Info for two or more selected books at once. See [Web Metadata Fetch](07_web_metadata.md).
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - [AbCS Help Overview](01_overview.md)
 - [Keyboard shortcuts by window](16_shortcuts.md)

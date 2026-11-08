@@ -17,7 +17,7 @@ To scan audio files in folders instead, use [Import (Folder Scan)](02_import.md)
 ## Before you start
 
 - At least one **active collection** must exist.
-- Have your spreadsheet ready. Supported formats: `.csv`, `.xlsx`, `.xls`, and `.ods`.
+- Have your spreadsheet ready. Supported formats: .csv, .xlsx, .xls, and .ods.
 - Your sheet needs **Title** and **Author** columns.
 - For read-date updates, the books must already be in the selected collection.
 
@@ -105,6 +105,8 @@ Common reasons: a blank title or author, a book already in the collection, or in
 The window stays open so you can import another file. Close it with **Escape**; the main list updates then.
 
 ## Related help
+
+Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - Re-importing an exported list: [Export Library](25_export_library.md)
 - Playing imported books: [Listen to a book](26_listen_to_a_book.md)
