@@ -10,7 +10,7 @@ Press **F1** in Preferences for shortcuts. Press **Alt+/** to re-read the status
 
 ## Import scenarios
 
-Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences and used each time you scan from the Import window. **Mass Standard Import** is the default.
+Choose the scenario that matches how your audiobook folders are organized. The scenario is saved in Preferences, and the Import window starts with it in its **Scenario** combo (**Alt+N**). You can choose a different scenario in Import for one session; that does not change Preferences. **Mass Standard Import** is the default.
 
 | Scenario | Best for | Folder layout |
 |----------|----------|---------------|
@@ -38,6 +38,8 @@ Choose the scenario that matches how your audiobook folders are organized. The s
 **Example:** "Sir Arthur Conan Doyle/Sherlock Holmes/The Hound of the Baskervilles.m4b" gives the series **Sherlock Holmes**, with the author from the tag or the parent folder **Sir Arthur Conan Doyle**. With "Sir Arthur Conan Doyle/Sherlock Holmes/03 - The Hound of the Baskervilles.m4b", the series number **3** is stored too.
 
 When each book has its own subfolder ("Author/Series/Book/Files"), use **Series From Directory (Nested Books)**. On that layout, this scenario skips the series with a warning.
+
+In every scenario, a book whose files sit in two series folders is found once for each folder. This happens even when the files have the same album tags. In the Series From Directory scenarios each copy gets its own series and series number. The later copy is held for review as a duplicate.
 
 ### Mass Import - Series From Directory (Nested Books)
 
@@ -139,6 +141,8 @@ This is separate from **Duplicate Mode** on the main window, which finds duplica
 Both the title and the author must meet the fuzzy threshold. At **90%**, the default, only minor typos match. At **0%**, near-exact text is required.
 
 A book that matches one already in your library is held in review with a **Duplicate** flag.
+
+Two books with the same title and author but different series numbers in the same series are not duplicates. The same book filed in two different series is a duplicate, even when the series numbers differ. Editing the book in Import Detail keeps the **Duplicate** flag. **Add Selected** and **Keep** check again just before adding. A book that now matches one in your library, or one added earlier in the same step, stays in the list as a duplicate. The Add Complete message gives the count held as duplicate.
 
 ## When settings take effect
 

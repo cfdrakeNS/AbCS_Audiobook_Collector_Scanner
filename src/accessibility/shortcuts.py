@@ -156,6 +156,7 @@ WEB_METADATA_SHORTCUTS = {
 # Import Window
 IMPORT_WINDOW_SHORTCUTS = {
     "C": ("Collection field", "collection_combo"),
+    "N": ("Scenario", "scenario_combo"),
     "F": ("Folder field", "folder_field"),
     "B": ("Browse", "browse_button"),
     "E": ("Error filter", "error_filter"),

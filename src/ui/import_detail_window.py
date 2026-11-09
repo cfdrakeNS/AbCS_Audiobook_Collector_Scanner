@@ -1584,6 +1584,14 @@ class ImportDetailWindow(AccessibleDialog):
         row = self.current_index
         parent._import_rows([row], quiet=True)
 
+        if item.get("status") == "Duplicate":
+            self._load_scanned_item_at(row)
+            self.set_status(
+                "Duplicate found. Book not kept. Discard it or leave it in the list.",
+                announce=True,
+            )
+            return
+
         if not parent.scanned_items:
             self.set_status("Book kept. No items remain.", announce=True)
             self._closing_via_handler = True

@@ -2,7 +2,7 @@
 
 ## What this is
 
-The **Update** window changes the **Series**, **Genre**, or **Collection** of the books you selected in the main table. Each choice is applied to every selected book as soon as you make it. Choose **None** in Series or Genre to clear that field on every selected book.
+The **Update** window changes the **Series**, **Genre**, or **Collection** of the books you selected in the main table. Each choice is applied to every selected book as soon as you make it. Choose **None** in Series or Genre to clear that field on every selected book. **None** in Series also clears the series number.
 
 For editing one book with all its fields, use [Book Details](04_book_details.md) instead.
 
@@ -35,7 +35,7 @@ Tab order: Series, Genre, Collection (when shown), then the selected books list.
 4. To set a series, press **Alt+Down** to open the **Series** list (**Alt+S**), choose a name, and press **Enter**. Or type a new series name and press **Enter**. AbCS asks before it adds a new name.
 5. To set a genre, do the same in **Genre** (**Alt+G**).
 6. To move the books to another collection, choose it in **Collection** (**Alt+C**).
-7. To clear the series or genre on all selected books, choose **None** in that list.
+7. To clear the series or genre on all selected books, choose **None** in that list. **None** in Series also clears the series number.
 8. After each choice, the status bar reports the change, the list refreshes, and the combo goes back to blank.
 9. Press **Escape** to close. If you made a change, the main list refreshes, the selection clears, and focus returns to the first selected book.
 
@@ -77,7 +77,7 @@ Update has none. Each choice is saved as soon as you make it, and the status bar
 After a change, Update clears the selection so you can continue browsing. Focus returns to the first book you had selected.
 
 **How do I clear the series or genre on selected books?**
-Choose **None** in the **Series** or **Genre** list. **None** removes the series or genre from each selected book. Collection has no None choice because every book belongs to a collection.
+Choose **None** in the **Series** or **Genre** list. **None** removes the series or genre from each selected book. **None** in Series also clears the series number. Collection has no None choice because every book belongs to a collection.
 
 ## Related help
 

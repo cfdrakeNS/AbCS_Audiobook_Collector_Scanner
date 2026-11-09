@@ -502,7 +502,7 @@ class UpdateWindow(AccessibleDialog):
                 self._mark_series_action(text)
                 self.changes_applied = True
                 self.show_status(
-                    f"Series cleared from {count} book{'s' if count != 1 else ''}"
+                    f"Series and series number cleared from {count} book{'s' if count != 1 else ''}"
                 )
                 self.series_combo.setCurrentIndex(0)
                 self.refresh_books_table()
@@ -867,7 +867,7 @@ class UpdateWindow(AccessibleDialog):
             self.book_queries.bulk_update_series(book_ids, None)
             self.changes_applied = True
             self.show_status(
-                f"Series cleared from {count} book{'s' if count != 1 else ''}"
+                f"Series and series number cleared from {count} book{'s' if count != 1 else ''}"
             )
         elif data is not None:
             # Apply selected series

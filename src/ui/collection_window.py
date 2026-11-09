@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import sqlite3
 
-from PySide6.QtCore import QEvent, QSettings, Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QAccessible
 from src.ui.accessible_dialog import AccessibleDialog
 import sys
@@ -53,6 +53,7 @@ from src.accessibility.shortcuts import (
     get_shortcut_manager,
 )
 from src.database import Collection, CollectionQueries, DatabaseManager
+from src.utils.settings_helpers import app_settings
 
 
 class CollectionWindow(AccessibleDialog):
@@ -966,8 +967,7 @@ class CollectionWindow(AccessibleDialog):
     def _sync_single_collection_paths(self) -> None:
         from src.core.library_root import sync_single_collection_import_path
 
-        settings = QSettings("AbCS", "AudioBookCollector")
-        sync_single_collection_import_path(self.collection_queries, settings)
+        sync_single_collection_import_path(self.collection_queries, app_settings())
 
     def on_read_status(self):
         read_status_bar_message(self.status_bar, fallback="Ready")

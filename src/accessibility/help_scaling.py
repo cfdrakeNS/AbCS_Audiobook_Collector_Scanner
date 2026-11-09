@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional
 from PySide6.QtCore import QSettings
 
 from src.accessibility.screen_reader import is_screen_reader_active
+from src.utils.settings_helpers import app_settings
 
 if TYPE_CHECKING:
     from src.accessibility.scaling import UIScaler
@@ -35,7 +36,7 @@ class HelpUIScaler:
 
 
 def _settings() -> QSettings:
-    return QSettings("AbCS", "AudioBookCollector")
+    return app_settings()
 
 
 def _clamp_scale(percentage: int) -> int:

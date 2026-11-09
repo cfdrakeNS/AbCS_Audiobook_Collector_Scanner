@@ -1,9 +1,9 @@
 # AbCS Version 3 — Release Brief (pre-release)
 
-**Current build:** 2.47 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
+**Current build:** 2.48 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
 **Target public version:** 3.0 when manual testing is complete.  
 **Branch:** `feature/background-fetch-v3`  
-**Testing:** Full pytest suite — 1102 passed (November 8, 2026, build 2.47). Help changes in 2.47 passed tester JAWS and NVDA checks. Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
+**Testing:** Full pytest suite — 1120 passed (November 9, 2026, build 2.48). Help changes in 2.47 passed tester JAWS and NVDA checks. Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
 **Audience:** Checklist for what ships when you promote the build to **v3.0**.
 
 User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats_new.md) (also [whats_new_in_v3.md](whats_new_in_v3.md)). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
@@ -50,6 +50,9 @@ User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats
 - Preferences lists AAC and OPUS formats; a fresh install uses the same values as Restore Defaults (2.42).
 - Help first pass (2.47): new **Using Help** topic 29; shorter overview; Related help names open their guide by click or Enter, with a hand pointer on hover; choosing a section, search result, or F3 moves that line near the top; the text cursor is a wide bar in the theme highlight color.
 - Preferences labels the narrator list **Narrator Keywords**, separate from the fallback settings; help uses Narrator and Plot for those book fields (2.47).
+- Import window **Scenario** combo (**Alt+N**) under Collection: starts at the Preferences scenario and changes it for one Import session only (2.48).
+- Import holds the same book found in two series folders as a duplicate in every scenario; Add Selected and Import Detail Keep re-check duplicates (2.48).
+- Update window: choosing None for Series also clears the series number (2.48).
 
 ---
 

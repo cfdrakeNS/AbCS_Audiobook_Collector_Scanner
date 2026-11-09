@@ -101,6 +101,7 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Shortcut | Action |
 |----------|--------|
 | Alt+C | Collection |
+| Alt+N | Scenario |
 | Alt+F | Folder |
 | Alt+B | Browse |
 | Alt+I | Import (scan) |

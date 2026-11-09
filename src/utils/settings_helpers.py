@@ -13,7 +13,11 @@ from PySide6.QtCore import QSettings
 
 _SETTINGS_ORG = "AbCS"
 _SETTINGS_APP = "AudioBookCollector"
+_SOURCE_COPY_APP = "AudioBookCollector Dev"
 _LEGACY_APP = "AbCS"
+
+_settings_app = _SETTINGS_APP
+_legacy_enabled = True
 
 T = TypeVar("T")
 
@@ -29,8 +33,29 @@ _STALE_SETTINGS_KEYS = (
 )
 
 
+def app_settings() -> QSettings:
+    """Return the preferences store for this copy of AbCS."""
+    return QSettings(_SETTINGS_ORG, _settings_app)
+
+
+def use_source_copy_settings(enabled: bool = True) -> None:
+    """Give the copy run from source its own preferences.
+
+    The source copy uses "AudioBookCollector Dev" and never reads or cleans
+    the legacy "AbCS" store, which the installed copy still shares.
+    """
+    global _settings_app, _legacy_enabled
+    _settings_app = _SOURCE_COPY_APP if enabled else _SETTINGS_APP
+    _legacy_enabled = not enabled
+
+
+def settings_app_name() -> str:
+    """Application name of the active preferences store."""
+    return _settings_app
+
+
 def _current_settings() -> QSettings:
-    return QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+    return app_settings()
 
 
 def _legacy_settings() -> QSettings:
@@ -43,9 +68,10 @@ def read_setting(key: str, default: T, *, type: type | None = None) -> Any:
 
     New preferences are stored under QSettings("AbCS", "AudioBookCollector").
     Older installs may still have values under QSettings("AbCS", "AbCS") only.
+    The source copy skips the legacy fallback.
     """
     settings = _current_settings()
-    if settings.contains(key):
+    if settings.contains(key) or not _legacy_enabled:
         if type is None:
             return settings.value(key, default)
         return settings.value(key, default, type=type)
@@ -67,16 +93,21 @@ def is_proper_case_enabled() -> bool:
 def purge_stale_settings() -> None:
     """Remove obsolete QSettings keys and retired import toggles."""
     current = _current_settings()
-    legacy = _legacy_settings()
     for key in _STALE_SETTINGS_KEYS:
         current.remove(key)
-        legacy.remove(key)
     current.sync()
+    if not _legacy_enabled:
+        return
+    legacy = _legacy_settings()
+    for key in _STALE_SETTINGS_KEYS:
+        legacy.remove(key)
     legacy.sync()
 
 
 def migrate_legacy_import_settings() -> None:
     """Copy legacy proper-case pref into scan key, then drop legacy import tree."""
+    if not _legacy_enabled:
+        return
     current = _current_settings()
     legacy = _legacy_settings()
 

@@ -4,10 +4,13 @@ import pytest
 from PySide6.QtCore import QSettings
 
 from src.utils.settings_helpers import (
+    app_settings,
     is_proper_case_enabled,
     migrate_legacy_import_settings,
     purge_stale_settings,
     read_setting,
+    settings_app_name,
+    use_source_copy_settings,
 )
 
 
@@ -17,17 +20,79 @@ def _fresh_settings(app: str) -> QSettings:
     return settings
 
 
+@pytest.fixture
+def source_copy_mode():
+    use_source_copy_settings()
+    try:
+        yield
+    finally:
+        use_source_copy_settings(False)
+
+
+def test_installed_copy_uses_audiobook_collector(isolated_qsettings):
+    assert settings_app_name() == "AudioBookCollector"
+    assert app_settings().applicationName() == "AudioBookCollector"
+
+
+def test_source_copy_uses_its_own_store(isolated_qsettings, source_copy_mode):
+    installed = _fresh_settings("AudioBookCollector")
+    installed.setValue("import/default_directory", "C:/Installed")
+
+    assert app_settings().applicationName() == "AudioBookCollector Dev"
+    assert app_settings().value("import/default_directory", "", type=str) == ""
+
+    app_settings().setValue("import/scenario/mode", "single_item")
+    assert not installed.contains("import/scenario/mode")
+
+
+def test_source_copy_ignores_legacy_values(isolated_qsettings, source_copy_mode):
+    legacy = _fresh_settings("AbCS")
+    legacy.setValue("import/rules/duplicate/fuzzy_threshold", 88)
+
+    assert read_setting("import/rules/duplicate/fuzzy_threshold", 0, type=int) == 0
+
+
+def test_source_copy_maintenance_leaves_legacy_store_alone(
+    isolated_qsettings, source_copy_mode
+):
+    legacy = _fresh_settings("AbCS")
+    legacy.setValue("import/autocorrect/proper_case", True)
+    legacy.setValue("import/flip_author_name", True)
+    legacy.sync()
+
+    migrate_legacy_import_settings()
+    purge_stale_settings()
+
+    assert legacy.contains("import/autocorrect/proper_case")
+    assert legacy.contains("import/flip_author_name")
+    assert not app_settings().contains("import/scan/proper_case")
+
+
+def test_book_details_and_path_health_read_preferences_import_dir(
+    isolated_qsettings,
+):
+    from src.ui.book_details import BookDetailsWindow
+    from src.ui.path_health_window import PathHealthWindow
+
+    _fresh_settings("AbCS")
+    _fresh_settings("AudioBookCollector").setValue(
+        "import/default_directory", "C:/Books "
+    )
+
+    assert BookDetailsWindow._preview_import_dir(object()) == "C:/Books"
+    assert PathHealthWindow._prefs_import_dir(object()) == "C:/Books"
+
+
 def test_isolated_settings_never_use_the_registry(isolated_qsettings, tmp_path):
     from pathlib import Path
 
-    from src.ui import preferences_window
     from src.utils import settings_helpers
 
     for settings in (
         QSettings("AbCS", "AudioBookCollector"),
         settings_helpers._current_settings(),
         settings_helpers._legacy_settings(),
-        preferences_window.QSettings("AbCS", "AudioBookCollector"),
+        app_settings(),
     ):
         assert settings.format() == QSettings.Format.IniFormat
         assert Path(settings.fileName()).is_relative_to(tmp_path)

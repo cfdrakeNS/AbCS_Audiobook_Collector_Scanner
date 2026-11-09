@@ -460,17 +460,27 @@ class BookQueries:
         self.db.connect().commit()
 
     def bulk_update_series(self, book_ids: List[int], series_id: Optional[int]):
-        """Bulk update series for multiple books."""
+        """Bulk update series for multiple books.
+
+        Clearing the series also clears the series number.
+        """
         if not book_ids:
             return
 
         for chunk in self._book_id_chunks(book_ids):
             placeholders = ",".join("?" * len(chunk))
-            params = [series_id] + chunk
-            self.db.execute(
-                f"UPDATE books SET series_id = ? WHERE book_id IN ({placeholders})",
-                tuple(params),
-            )
+            if series_id is None:
+                self.db.execute(
+                    f"UPDATE books SET series_id = NULL, series_number = NULL "
+                    f"WHERE book_id IN ({placeholders})",
+                    tuple(chunk),
+                )
+            else:
+                params = [series_id] + chunk
+                self.db.execute(
+                    f"UPDATE books SET series_id = ? WHERE book_id IN ({placeholders})",
+                    tuple(params),
+                )
         self.db.connect().commit()
 
     def bulk_update_genre(self, book_ids: List[int], genre_id: Optional[int]):

@@ -6,9 +6,11 @@ Manages application-wide font and UI scaling for accessibility.
 import re
 import sys
 
-from PySide6.QtCore import QObject, Signal, QSettings
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication
 from typing import Optional
+
+from src.utils.settings_helpers import app_settings
 
 from .linux_qt_compat import build_linux_scale_stylesheet
 from .style_helpers import build_accessible_button_style
@@ -54,7 +56,7 @@ class UIScaler(QObject):
         """
         super().__init__()
         self.app = app
-        self.settings = QSettings("AbCS", "AudioBookCollector")
+        self.settings = app_settings()
 
         # Load saved scale or use default
         self._current_scale = self.settings.value(

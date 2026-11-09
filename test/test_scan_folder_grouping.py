@@ -156,6 +156,57 @@ def test_unreadable_file_without_album_book_stays_separate(
     assert _counts_by_folder(books) == {"Book": 1, "Other": 1}
 
 
+def _write_two_series_copies(tmp_path):
+    author = tmp_path / "Michael Connelly"
+    _write(author / "Ballaard And Bocsh" / "3 The Night Fire", ["01.mp3"])
+    _write(author / "Harry Bocsh" / "23 The Night Fire", ["01.mp3", "02.mp3"])
+    return author
+
+
+def test_series_folders_keep_same_album_as_two_books(tmp_path, scanner, monkeypatch):
+    _write_two_series_copies(tmp_path)
+    _use_tags(
+        scanner, monkeypatch, lambda _path: "The Night Fire", lambda _path: "Michael Connelly"
+    )
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 2
+    assert _counts_by_folder(books) == {
+        "3 The Night Fire": 1,
+        "23 The Night Fire": 2,
+    }
+
+
+def test_series_folders_keep_disc_folders_in_one_book(tmp_path, scanner, monkeypatch):
+    book = tmp_path / "Michael Connelly" / "Harry Bocsh" / "23 The Night Fire"
+    _write(book / "CD-01", ["01.mp3", "02.mp3"])
+    _write(book / "CD-02", ["03.mp3"])
+    _use_tags(
+        scanner, monkeypatch, lambda _path: "The Night Fire", lambda _path: "Michael Connelly"
+    )
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 1
+    assert books[0]["tracks"] == 3
+    assert books[0]["folder"] == str(book)
+
+
+def test_series_folders_without_author_folder_groups_as_before(
+    tmp_path, scanner, monkeypatch
+):
+    _write_two_series_copies(tmp_path)
+    _use_tags(
+        scanner, monkeypatch, lambda _path: "The Night Fire", lambda _path: "Other Author"
+    )
+
+    books = scanner.scan_folder(str(tmp_path), include_subfolders=True)
+
+    assert len(books) == 1
+    assert books[0]["tracks"] == 3
+
+
 def _use_full_tags(scanner, monkeypatch, **tags):
     def _fake_read(file_path: str) -> AudioFileInfo:
         info = AudioFileInfo()

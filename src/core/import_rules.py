@@ -3,7 +3,8 @@
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
-from PySide6.QtCore import QSettings
+
+from src.utils.settings_helpers import app_settings
 
 
 RuleFunc = Callable[[Dict[str, Any]], List[str]]
@@ -28,7 +29,7 @@ class ImportRulesEngine:
     """Evaluates import validation rules against scanned book metadata."""
 
     def __init__(self):
-        self.settings = QSettings('AbCS', 'AudioBookCollector')
+        self.settings = app_settings()
         self.rules: List[ValidationRule] = [
             ValidationRule(
                 "title_blank",

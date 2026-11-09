@@ -76,6 +76,7 @@ from src.database import (
     StatisticsQueries,
 )
 from src.database.models import book_has_plot
+from src.utils.settings_helpers import app_settings
 from src.utils.text_utils import title_for_display
 from src.ui.statistics_dialog import StatisticsDialog
 from src.accessibility.scaling import UIScaler
@@ -714,8 +715,6 @@ class MainWindow(QMainWindow):
         ("Title + Author", "title_author_only"),
     ]
 
-    _SETTINGS_ORG = "AbCS"
-    _SETTINGS_APP = "AudioBookCollector"
     _SETTINGS_KEY_COLLECTION_FILTER_ID = "main/collection_filter_id"
 
     _SORT_KEY_TO_COLUMN = {
@@ -2306,7 +2305,7 @@ class MainWindow(QMainWindow):
 
     def on_duplicate_check(self):
         """Start duplicate mode by prompting for duplicate match type."""
-        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        settings = app_settings()
         preferred_mode = self._normalize_duplicate_mode(
             settings.value(
                 "import/rules/duplicate/match_mode",
@@ -3248,7 +3247,7 @@ class MainWindow(QMainWindow):
         """Persist the current collection filter for this database."""
         if self._collection_menu_selection_blocked():
             return
-        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        settings = app_settings()
         collection_id = self.current_filter.collection_id
         settings.setValue(
             self._collection_filter_db_key(),
@@ -3263,7 +3262,7 @@ class MainWindow(QMainWindow):
         shows All Collections. That happens when the id belongs to another
         library. It is not written back as All.
         """
-        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        settings = app_settings()
         settings.sync()
         saved_collection_id = self._settings_int(
             settings, self._collection_filter_db_key()
@@ -3841,8 +3840,7 @@ class MainWindow(QMainWindow):
         # Persist Exact Match setting on change
 
         def update_exact_match_setting():
-            settings = QSettings("AbCS", "AudioBookCollector")
-            settings.setValue("find/exact_match", exact_check.isChecked())
+            app_settings().setValue("find/exact_match", exact_check.isChecked())
 
         exact_check.stateChanged.connect(update_exact_match_setting)
 
@@ -5093,7 +5091,7 @@ class MainWindow(QMainWindow):
     def _sync_single_collection_paths(self) -> None:
         from src.core.library_root import sync_single_collection_import_path
 
-        settings = QSettings(self._SETTINGS_ORG, self._SETTINGS_APP)
+        settings = app_settings()
         sync_single_collection_import_path(self.collection_queries, settings)
 
     def _current_book_for_preview(self):
@@ -5866,11 +5864,9 @@ class MainWindow(QMainWindow):
 
     def maybe_start_startup_update_check(self) -> None:
         """Start Help-style update check when the Preferences option is on."""
-        from PySide6.QtCore import QSettings
-
         from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
 
-        settings = QSettings("AbCS", "AudioBookCollector")
+        settings = app_settings()
         if not settings.value(AUTO_CHECK_UPDATES_SETTING, False, type=bool):
             return
         self._start_update_check(show_dialog_always=False, announce_progress=False)

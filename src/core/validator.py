@@ -5,10 +5,10 @@ Detects errors and issues in imported audiobook metadata.
 
 import time
 from .import_rules import ImportRulesEngine
-from PySide6.QtCore import QSettings
 from typing import List, Dict, Any, Set, Tuple
 import re
 
+from src.utils.settings_helpers import app_settings
 from src.utils.text_utils import (
     compare_normalize_title,
     normalize_author,
@@ -39,7 +39,7 @@ class ImportValidator:
 
     def __init__(self):
         """Initialize validator."""
-        self.settings = QSettings("AbCS", "AudioBookCollector")
+        self.settings = app_settings()
         self.duplicate_match_mode = "with_collection"
         self.duplicate_fuzzy_threshold = 0
         self.rules_engine = ImportRulesEngine()
@@ -81,7 +81,9 @@ class ImportValidator:
         enabling O(1) exact lookups and filtered fuzzy checks. Title keys use
         ``compare_normalize_title`` so trailing series numbers are stripped
         before compare; ``series_numbers_by_key`` keeps the number as a
-        tiebreaker (``01`` vs ``02`` do not collide).
+        tiebreaker (``01`` vs ``02`` do not collide). The tiebreaker does not
+        apply when both books name a series and the names differ, so the same
+        book filed in two series is still a duplicate.
 
         Args:
             existing_books: List of existing book dictionaries
@@ -91,7 +93,7 @@ class ImportValidator:
             Dictionary containing:
             - 'exact_keys': Set of exact match keys
             - 'books_by_key': Dict mapping keys to list of books
-            - 'series_numbers_by_key': Dict mapping exact keys to series-key sets
+            - 'series_numbers_by_key': Dict mapping exact keys to (series name, series-key) sets
             - 'normalized_books': List of pre-normalized book data for fuzzy checks
             - 'build_time': Time taken to build index
         """
@@ -103,7 +105,7 @@ class ImportValidator:
 
         exact_keys: Set[str] = set()
         books_by_key: Dict[str, List[Dict]] = {}
-        series_numbers_by_key: Dict[str, Set[str]] = {}
+        series_numbers_by_key: Dict[str, Set[Tuple[str, str]]] = {}
         normalized_books: List[Dict] = []
 
         for book in existing_books:
@@ -159,13 +161,24 @@ class ImportValidator:
         exact_key = "|".join(key_parts)
         return title, author, series_key, year, collection_id, exact_key
 
+    @staticmethod
+    def _series_name_key(book: Dict[str, Any]) -> str:
+        return " ".join(str(book.get("series") or "").casefold().split())
+
+    @staticmethod
+    def _series_allow_match(name: str, number: str, other_name: str, other_number: str) -> bool:
+        """Different numbers mean different books, unless the two series names differ."""
+        if name and other_name and name != other_name:
+            return True
+        return series_numbers_compatible(number, other_number)
+
     def _index_book(
         self,
         book: Dict[str, Any],
         *,
         exact_keys: Set[str],
         books_by_key: Dict[str, List[Dict]],
-        series_numbers_by_key: Dict[str, Set[str]],
+        series_numbers_by_key: Dict[str, Set[Tuple[str, str]]],
         normalized_books: List[Dict],
         include_year: bool,
         include_collection: bool,
@@ -181,15 +194,17 @@ class ImportValidator:
             )
         )
 
+        series_name = self._series_name_key(book)
         exact_keys.add(exact_key)
         books_by_key.setdefault(exact_key, []).append(book)
-        series_numbers_by_key.setdefault(exact_key, set()).add(series_key)
+        series_numbers_by_key.setdefault(exact_key, set()).add((series_name, series_key))
 
         normalized_books.append({
             "book": book,
             "title": title,
             "author": author,
             "series_key": series_key,
+            "series_name": series_name,
             "year": year,
             "collection_id": collection_id,
             "exact_key": exact_key,
@@ -238,6 +253,7 @@ class ImportValidator:
             )
         )
         year = int(year) if year else None
+        series_name = self._series_name_key(book)
 
         include_year = index["include_year"]
         include_collection = index["include_collection"]
@@ -249,8 +265,10 @@ class ImportValidator:
         if exact_key in index["exact_keys"]:
             existing_series = series_by_key.get(exact_key, set())
             if any(
-                series_numbers_compatible(series_key, existing)
-                for existing in existing_series
+                self._series_allow_match(
+                    series_name, series_key, existing_name, existing_number
+                )
+                for existing_name, existing_number in existing_series
             ):
                 return True
             # Bare-title key hit but series numbers conflict — fall through
@@ -273,8 +291,11 @@ class ImportValidator:
             if abs(existing["author_len"] - author_len) > len_tolerance:
                 continue
 
-            if not series_numbers_compatible(
-                series_key, existing.get("series_key", "")
+            if not self._series_allow_match(
+                series_name,
+                series_key,
+                existing.get("series_name", ""),
+                existing.get("series_key", ""),
             ):
                 continue
 

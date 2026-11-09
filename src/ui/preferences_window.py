@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QTabWidget,
 )
-from PySide6.QtCore import QSettings, Qt, QTimer, QEvent
+from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
 from shiboken6 import isValid
 from datetime import datetime
@@ -59,6 +59,7 @@ from src.accessibility.accessible_events import (
     read_status_bar_message,
 )
 from src.ui.accessible_dialog import AccessibleDialog
+from src.utils.settings_helpers import app_settings
 
 
 class PreferencesWindow(AccessibleDialog):
@@ -157,7 +158,7 @@ class PreferencesWindow(AccessibleDialog):
 
         self.scaler = scaler
         self.theme_manager = theme_manager
-        self.settings = QSettings("AbCS", "AudioBookCollector")
+        self.settings = app_settings()
 
         self._loading = False
         self._initial_theme = self.theme_manager.current_theme_name

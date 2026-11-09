@@ -571,6 +571,18 @@ def _book_author_from_tags(info: AudioFileInfo) -> str:
     return (info.album_artist or "").strip() or (info.artist or "").strip()
 
 
+def _folder_under_author(folder: str, author: str) -> str:
+    """First folder below the folder named like the author, or "" when none matches."""
+    author_key = (author or "").strip().casefold()
+    if not author_key:
+        return ""
+    parts = [part for part in os.path.normpath(folder).split(os.sep) if part]
+    for index, part in enumerate(parts[:-1]):
+        if part.casefold() == author_key:
+            return os.path.normcase(parts[index + 1])
+    return ""
+
+
 def _common_folder(files: List[str]) -> str:
     """Deepest folder that holds every file in the book."""
     folders = [os.path.dirname(path) for path in files]
@@ -640,8 +652,10 @@ class BookScanner:
     ) -> List[Dict[str, Any]]:
         """
         Scan folder recursively for audiobooks.
-        Groups files by album and album artist, whatever subfolders they sit
-        in. Files with no album group by their own folder.
+        Groups files by album, album artist, and the first folder under the
+        author folder, so disc subfolders join one book and one album in two
+        series folders stays two books. Files with no album group by their
+        own folder.
 
         Args:
             folder_path: Root folder to scan
@@ -709,18 +723,19 @@ class BookScanner:
             info = self.tag_reader.read_file(file_path)
 
             file_folder_key = _folder_key(os.path.dirname(file_path))
+            mapped_title = _book_title_from_tags(info)
+            mapped_author = _book_author_from_tags(info)
+
             album_key = " ".join((info.album or "").casefold().split())
             if album_key:
                 book_key = (
                     "album",
                     album_key,
                     " ".join((info.album_artist or "").casefold().split()),
+                    _folder_under_author(os.path.dirname(file_path), mapped_author),
                 )
             else:
                 book_key = ("folder", file_folder_key)
-
-            mapped_title = _book_title_from_tags(info)
-            mapped_author = _book_author_from_tags(info)
 
             if book_key not in books:
                 books[book_key] = {

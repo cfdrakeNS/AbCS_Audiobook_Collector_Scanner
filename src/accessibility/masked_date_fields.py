@@ -16,10 +16,11 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional, Tuple
 
-from PySide6.QtCore import QDate, QSettings, QTimer, Signal
+from PySide6.QtCore import QDate, QTimer, Signal
 from PySide6.QtWidgets import QApplication, QLineEdit, QMessageBox
 
 from src.accessibility.screen_reader import is_screen_reader_active
+from src.utils.settings_helpers import app_settings
 
 DATE_DISPLAY = "yyyy-MM-dd"
 DATE_PLACEHOLDER = "yyyy-MM-dd"
@@ -47,7 +48,7 @@ def today_qdate() -> QDate:
 
 def preferred_year_range() -> Tuple[int, int]:
     """Return (min_year, max_year) matching Preferences year consistency."""
-    settings = QSettings("AbCS", "AudioBookCollector")
+    settings = app_settings()
     current = datetime.now().year
     min_year = settings.value(
         "import/rules/year_out_of_range/min_year", DEFAULT_MIN_YEAR, type=int

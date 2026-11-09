@@ -254,6 +254,88 @@ def test_scan_keeps_author_title_corrected_rows_for_manual_add(qtbot, temp_db, u
     cleanup_window(window)
 
 
+@pytest.mark.parametrize(
+    "scenario_mode, series_one, series_two",
+    [
+        ("series_from_directory_nested", ("Series One", 3), ("Series Two", 23)),
+        ("mass_standard", ("", None), ("", None)),
+    ],
+    ids=["nested", "standard"],
+)
+def test_scan_holds_second_series_copy_as_duplicate(
+    qtbot,
+    temp_db,
+    ui_scaler,
+    theme_manager,
+    isolated_qsettings,
+    monkeypatch,
+    tmp_path,
+    scenario_mode,
+    series_one,
+    series_two,
+):
+    """One book in two series folders imports once; the other copy is a Duplicate."""
+    from src.core.tag_reader import AudioFileInfo
+
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+
+    cq = CollectionQueries(temp_db)
+    if window.collection_combo.count() == 0:
+        collection_id = cq.insert(Collection(name="Default", active=True))
+        window._load_collection_options()
+        target_index = window.collection_combo.findData(collection_id)
+        if target_index >= 0:
+            window.collection_combo.setCurrentIndex(target_index)
+    elif window.collection_combo.currentData() is None:
+        window.collection_combo.setCurrentIndex(1)
+
+    author = Path(tmp_path) / "Nested Dup Author"
+    for folder, names in (
+        (author / "Series One" / "3 Nested Dup Book", ["01.mp3"]),
+        (author / "Series Two" / "23 Nested Dup Book", ["01.mp3", "02.mp3"]),
+    ):
+        folder.mkdir(parents=True)
+        for name in names:
+            (folder / name).write_bytes(b"stub")
+    window.folder_edit.setText(str(tmp_path))
+
+    window.scenario_combo.setCurrentIndex(
+        window.scenario_combo.findData(scenario_mode)
+    )
+
+    def _fake_read(file_path: str) -> AudioFileInfo:
+        info = AudioFileInfo()
+        info.file_path = file_path
+        info.album = "Nested Dup Book"
+        info.album_artist = "Nested Dup Author"
+        return info
+
+    monkeypatch.setattr(window.scanner.tag_reader, "read_file", _fake_read)
+    monkeypatch.setattr(window.validator, "validate_book", lambda _book: [])
+
+    window.on_scan()
+    qtbot.wait(200)
+    QApplication.processEvents()
+
+    by_status = {
+        outcome["status"]: outcome["book"] for outcome in window.scan_outcomes
+    }
+    assert len(window.scan_outcomes) == 2
+    assert by_status["Added"]["series"] == series_one[0]
+    assert by_status["Added"].get("series_number") == series_one[1]
+    assert by_status["Duplicate"]["series"] == series_two[0]
+    assert by_status["Duplicate"].get("series_number") == series_two[1]
+
+    held = [item for item in window.scanned_items if item["status"] == "Duplicate"]
+    assert len(held) == 1
+    window._revalidate_scanned_item(held[0])
+    assert held[0]["status"] == "Duplicate"
+    assert held[0]["error_summary"] == "Duplicate"
+
+    cleanup_window(window)
+
+
 def test_build_book_from_scan_uses_entity_cache(qtbot, temp_db, ui_scaler, theme_manager):
     """Prefetched entity caches should avoid repeated get_or_create SELECTs."""
     from unittest.mock import MagicMock
@@ -330,6 +412,63 @@ def test_import_rows_batches_with_insert_many(
         "SELECT title FROM books WHERE title LIKE 'Batch Add %' ORDER BY title"
     )
     assert [r[0] for r in rows] == ["Batch Add One", "Batch Add Two"]
+
+    cleanup_window(window)
+
+
+def test_import_rows_holds_duplicates_instead_of_adding(
+    qtbot, temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    """Add Selected re-checks duplicates against the library and earlier rows."""
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    if window.collection_combo.count() == 0:
+        CollectionQueries(temp_db).insert(Collection(name="Dup Coll", active=True))
+        window._load_collection_options()
+    window.collection_combo.setCurrentIndex(0)
+    monkeypatch.setattr(window, "progress_window", None)
+    popups = []
+    monkeypatch.setattr(
+        window, "_show_info_popup", lambda title, text: popups.append(text)
+    )
+
+    def _row(title, series, number):
+        return {
+            "book": {
+                "title": title,
+                "author": "Dup Check Author",
+                "year": 2020,
+                "series": series,
+                "series_number": number,
+            },
+            "status": "OK",
+            "errors": [],
+        }
+
+    window.scanned_items = [
+        _row("Dup Check Book", "Series One", 3),
+        _row("Dup Check Book", "Series Two", 23),
+    ]
+    window.scan_outcomes = []
+    window.table.setRowCount(2)
+
+    window._import_rows([0, 1])
+
+    rows = temp_db.fetch_all("SELECT title FROM books WHERE title = 'Dup Check Book'")
+    assert len(rows) == 1
+    assert len(window.scanned_items) == 1
+    held = window.scanned_items[0]
+    assert held["status"] == "Duplicate"
+    assert held["error_summary"] == "Duplicate"
+    assert held["book"]["series"] == "Series Two"
+    assert "Held as duplicate: 1" in popups[-1]
+
+    held["status"] = "OK"
+    held["is_duplicate"] = False
+    window._import_rows([0])
+    rows = temp_db.fetch_all("SELECT title FROM books WHERE title = 'Dup Check Book'")
+    assert len(rows) == 1
+    assert window.scanned_items[0]["status"] == "Duplicate"
 
     cleanup_window(window)
 

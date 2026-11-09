@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QSettings, QSize, QTimer, QUrl, Qt
+from PySide6.QtCore import QEvent, QSize, QTimer, QUrl, Qt
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleEvent,
@@ -38,6 +38,7 @@ from src.accessibility.accessible_events import (
 from src.accessibility.icon_helper import apply_decorative_action_icon, get_app_icon
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.accessibility.scaling import UIScaler
+from src.utils.settings_helpers import app_settings
 from src.accessibility.shortcuts import (
     ShortcutContext,
     allowed_alt_letters,
@@ -266,8 +267,7 @@ def _playback_status(state: str) -> str:
 
 
 def load_preview_speed() -> float:
-    settings = QSettings("AbCS", "AudioBookCollector")
-    raw = settings.value(SPEED_SETTINGS_KEY, 1.0)
+    raw = app_settings().value(SPEED_SETTINGS_KEY, 1.0)
     try:
         rate = float(raw)
     except (TypeError, ValueError):
@@ -278,8 +278,7 @@ def load_preview_speed() -> float:
 
 
 def save_preview_speed(rate: float) -> None:
-    settings = QSettings("AbCS", "AudioBookCollector")
-    settings.setValue(SPEED_SETTINGS_KEY, float(rate))
+    app_settings().setValue(SPEED_SETTINGS_KEY, float(rate))
 
 
 def _can_save_book_path(book, db) -> bool:
@@ -412,7 +411,7 @@ def show_preview(
     if not (import_dir or "").strip():
         from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
 
-        settings = QSettings("AbCS", "AudioBookCollector")
+        settings = app_settings()
         try:
             import_dir = settings.value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
         except TypeError:

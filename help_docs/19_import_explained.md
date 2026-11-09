@@ -45,10 +45,11 @@ Files of other types are skipped.
 
 As each audio file is found, AbCS reads its tags and groups the files that belong to the same book:
 
-- Files with the same **album** and **album artist** tags are one book, whatever subfolders they are in. Folder names such as CD1 or Disc 2 are not used for grouping.
+- Files with the same **album** and **album artist** tags under the same folder below the author folder are one book. Disc subfolders such as CD1 or Disc 2 inside that folder join the same book.
+- The same book in two folders under the author, such as two series folders, stays two books. The later copy is held for review as a duplicate. This applies to every import scenario.
 - A file with no album tag groups with the other files in its own folder.
 - A file that cannot be read joins the book whose files share its folder. Its read error stays on that book.
-- Two different books with the same album and album artist tags become one book. Give them different album tags to keep them apart.
+- Two different books with the same album and album artist tags in the same folder become one book. Give them different album tags to keep them apart.
 - In **single-item** mode, one file is one book. When the album tag is empty, the title comes from the file name.
 
 The folder that holds the files is stored as the book's location.

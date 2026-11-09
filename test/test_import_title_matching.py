@@ -65,6 +65,55 @@ def test_validator_bare_title_matches_series_suffix():
         is True
     )
 
+def test_validator_same_book_in_two_series_is_duplicate():
+    validator = _validator()
+    index = validator.build_duplicate_index(
+        [
+            {
+                "title": "The Night Fire",
+                "author": "Michael Connelly",
+                "series": "Ballard and Bosch",
+                "series_number": 3,
+            }
+        ]
+    )
+    assert (
+        validator.is_duplicate_fast(
+            {
+                "title": "The Night Fire",
+                "author": "Michael Connelly",
+                "series": "Harry Bosch",
+                "series_number": 23,
+            },
+            index,
+        )
+        is True
+    )
+
+
+def test_validator_same_series_different_numbers_not_duplicate():
+    validator = _validator()
+    index = validator.build_duplicate_index(
+        [
+            {
+                "title": "Collected Stories",
+                "author": "Jane Author",
+                "series": "Collected",
+                "series_number": 1,
+            }
+        ]
+    )
+    candidate = {
+        "title": "Collected Stories",
+        "author": "Jane Author",
+        "series": " collected ",
+        "series_number": 2,
+    }
+    assert validator.is_duplicate_fast(candidate, index) is False
+    candidate["series"] = ""
+    assert validator.is_duplicate_fast(candidate, index) is False
+
+
 def test_validator_live_index_sees_same_pass_add():
     """A book added mid-scan must be visible to a later identical check."""
     validator = _validator()

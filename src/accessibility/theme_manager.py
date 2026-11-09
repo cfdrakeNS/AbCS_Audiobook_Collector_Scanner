@@ -6,11 +6,14 @@ Manages color schemes and high contrast themes for accessibility.
 import re
 import sys
 
-from PySide6.QtCore import QObject, Signal, QSettings
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication, QWidget
 from typing import Dict, Optional
 from enum import Enum
+
+from src.utils.settings_helpers import app_settings
+
 from .linux_qt_compat import build_linux_theme_stylesheet
 from .style_helpers import (
     build_accessible_checkbox_style,
@@ -292,7 +295,7 @@ class ThemeManager(QObject):
         """
         super().__init__()
         self.app = app
-        self.settings = QSettings("AbCS", "AudioBookCollector")
+        self.settings = app_settings()
 
         # Store original palette for reset
         self.original_palette = QPalette(app.palette())

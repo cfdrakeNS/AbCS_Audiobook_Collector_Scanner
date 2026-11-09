@@ -35,6 +35,7 @@ from src.accessibility.accessible_events import (
     read_status_bar_message,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.utils.settings_helpers import app_settings
 from src.accessibility.masked_date_fields import (
     MaskedDateEdit,
     MaskedYearEdit,
@@ -87,7 +88,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QFrame,
 )
-from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QSettings, QObject, QRegularExpression, QSize, Signal, QRect
+from PySide6.QtCore import Qt, QDate, QEvent, QTimer, QObject, QRegularExpression, QSize, Signal, QRect
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleEvent,
@@ -3600,9 +3601,9 @@ class BookDetailsWindow(AccessibleDialog):
 
         current = self.path_edit.text().strip()
         try:
-            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
+            prefs = app_settings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
         except TypeError:
-            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
+            prefs = app_settings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
         prefs = (prefs or "").strip()
         root = self._preview_collection_root()
         start_dir = browse_start_directory(
@@ -3931,9 +3932,9 @@ class BookDetailsWindow(AccessibleDialog):
         from src.core.library_root import IMPORT_DEFAULT_DIRECTORY_KEY
 
         try:
-            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
+            prefs = app_settings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
         except TypeError:
-            prefs = QSettings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
+            prefs = app_settings().value(IMPORT_DEFAULT_DIRECTORY_KEY, "")
         return (prefs or "").strip()
 
     def _preview_collection_root(self) -> str:

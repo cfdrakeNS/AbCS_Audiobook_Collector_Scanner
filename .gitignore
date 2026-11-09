@@ -80,3 +80,12 @@ doc/user_docs/
 help_docs_mp3/
 
 data/web_source_cooldowns.json
+
+# Personal agent instructions (local only)
+AGENTS.md
+
+# Personal one-time library scripts
+scripts/update_series_from_catalog.py
+scripts/update_series_number_from_title.py
+scripts/strip_series_suffix_from_titles.py
+scripts/clean_technical_comments.py

@@ -253,6 +253,11 @@ class AbCSApplication:
         self.qt_app.setApplicationName("AbCS")
         self.qt_app.setOrganizationName("AbCS")
         self.qt_app.setOrganizationDomain("abcs.app")
+        if not getattr(sys, "frozen", False):
+            # Must run before the scaler and theme manager read preferences.
+            from src.utils.settings_helpers import use_source_copy_settings
+
+            use_source_copy_settings()
         install_app_icon(self.qt_app)
         if sys.platform.startswith("linux") and getattr(sys, "frozen", False):
             # Helps Cinnamon/GNOME match the running app to AbCS.desktop for panel icons.

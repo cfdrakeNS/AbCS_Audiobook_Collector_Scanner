@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import (
     Qt,
-    QSettings,
     QTimer,
     QEvent,
     QModelIndex,
@@ -65,6 +64,7 @@ from src.accessibility.accessible_events import (
 )
 from src.ui.import_detail_window import ImportDetailWindow
 from src.ui.import_progress_window import ImportProgressWindow
+from src.utils.settings_helpers import app_settings
 
 """Import Window
     Main interface for scanning folders and importing audiobooks.
@@ -141,6 +141,7 @@ class ImportWindow(AccessibleDialog):
         mgr = get_shortcut_manager()
         callback_map = {
             "collection_combo": lambda: self.collection_combo.setFocus(),
+            "scenario_combo": lambda: self.scenario_combo.setFocus(),
             "folder_field": lambda: self.folder_edit.setFocus(),
             "browse_button": self.on_browse,
             "error_filter": lambda: self.error_filter_combo.setFocus(),
@@ -214,6 +215,7 @@ class ImportWindow(AccessibleDialog):
 
     ALLOWED_ALT_LETTERS = {
         "C",
+        "N",
         "F",
         "E",
         "L",
@@ -260,7 +262,7 @@ class ImportWindow(AccessibleDialog):
         self.db = db
         self.scaler = scaler
         self.theme_manager = theme_manager
-        self.settings = QSettings("AbCS", "AudioBookCollector")
+        self.settings = app_settings()
         self.settings.setFallbacksEnabled(False)
 
         self.book_queries = BookQueries(self.db)
@@ -527,6 +529,22 @@ class ImportWindow(AccessibleDialog):
 
         layout.addLayout(header_layout)
 
+        scenario_layout = QHBoxLayout()
+        scenario_layout.setSpacing(10)
+        scenario_label = QLabel("Sce&nario:")
+        self.scenario_combo = QComboBox()
+        self.scenario_combo.setAccessibleName("Import scenario")
+        self.scenario_combo.setAccessibleDescription(
+            "Scenario for this import only. Preferences are not changed - Alt+N"
+        )
+        for mode, label in self.SCENARIO_LABELS.items():
+            self.scenario_combo.addItem(label, mode)
+        scenario_label.setBuddy(self.scenario_combo)
+        scenario_layout.addWidget(scenario_label)
+        scenario_layout.addWidget(self.scenario_combo)
+        scenario_layout.addStretch(1)
+        layout.addLayout(scenario_layout)
+
         # Detail section: import list table
         self.table = QTableWidget()
         self.table.setAccessibleName("Import list")
@@ -617,7 +635,8 @@ class ImportWindow(AccessibleDialog):
 
         layout.addLayout(footer_layout)
 
-        self.setTabOrder(self.collection_combo, self.folder_edit)
+        self.setTabOrder(self.collection_combo, self.scenario_combo)
+        self.setTabOrder(self.scenario_combo, self.folder_edit)
         self.setTabOrder(self.folder_edit, self.browse_button)
         self.setTabOrder(self.browse_button, self.scan_button)
         self.setTabOrder(self.scan_button, self.error_filter_combo)
@@ -630,6 +649,7 @@ class ImportWindow(AccessibleDialog):
     def apply_visual_tooltips(self):
         tooltip_map = {
             self.collection_combo: "Choose the collection to receive imported books",
+            self.scenario_combo: "Choose the import scenario for this import only",
             self.folder_edit: "Folder selected for scanning",
             self.browse_button: "Choose an import folder",
             self.scan_button: "Scan the selected folder for audiobooks",
@@ -709,10 +729,18 @@ class ImportWindow(AccessibleDialog):
         self.update_stretch_columns()
 
     def _reload_scan_settings(self):
-        """Reload import scanner and validation settings from QSettings."""
-        self.import_scenario_mode = self.settings.value(
-            "import/scenario/mode", "mass_standard", type=str
-        )
+        """Reload import scanner and validation settings from QSettings.
+
+        The scenario comes from the window's combo, which may differ from
+        Preferences for this session.
+        """
+        combo_mode = self.scenario_combo.currentData()
+        if combo_mode:
+            self.import_scenario_mode = combo_mode
+        else:
+            self.import_scenario_mode = self.settings.value(
+                "import/scenario/mode", "mass_standard", type=str
+            )
         self.current_mode_text = self.SCENARIO_LABELS.get(
             self.import_scenario_mode, "Mass Standard Import"
         )
@@ -795,10 +823,21 @@ class ImportWindow(AccessibleDialog):
                 selected_extensions.update(extensions)
         self.allowed_extensions = selected_extensions
 
+        self._load_scenario_from_preferences()
         self._reload_scan_settings()
         self._load_collection_options()
 
         self._loading = False
+
+    def _load_scenario_from_preferences(self):
+        """Start the scenario combo at the Preferences scenario."""
+        mode = self.settings.value("import/scenario/mode", "mass_standard", type=str)
+        index = self.scenario_combo.findData(mode)
+        if index < 0:
+            index = self.scenario_combo.findData("mass_standard")
+        self.scenario_combo.blockSignals(True)
+        self.scenario_combo.setCurrentIndex(index)
+        self.scenario_combo.blockSignals(False)
 
     def _load_collection_options(self):
         """Load target collection options for imports."""
@@ -840,6 +879,11 @@ class ImportWindow(AccessibleDialog):
         self._update_scan_enabled_state()
         self.collection_combo.blockSignals(False)
 
+    def _set_review_combos_enabled(self, enabled: bool) -> None:
+        """Collection and scenario stay locked while books are under review."""
+        self.collection_combo.setEnabled(enabled)
+        self.scenario_combo.setEnabled(enabled)
+
     def _update_scan_enabled_state(self):
         """Keep scan enabled for accessibility - use popup validation instead."""
         # Button stays enabled for blind users - popup validation will handle missing fields
@@ -877,6 +921,7 @@ class ImportWindow(AccessibleDialog):
             self.on_error_filter_changed
         )
         self.collection_combo.currentIndexChanged.connect(self.on_collection_changed)
+        self.scenario_combo.currentIndexChanged.connect(self.on_scenario_changed)
         self.import_selected_button.clicked.connect(self.on_import_selected)
 
         self.export_button.clicked.connect(self.on_export_csv)
@@ -928,6 +973,7 @@ class ImportWindow(AccessibleDialog):
 
         shortcuts = [
             ("Alt+C", "Collection"),
+            ("Alt+N", "Scenario"),
             ("Alt+F", "Folder"),
             ("Alt+B", "Browse"),
             ("Alt+I", "Import"),
@@ -1348,6 +1394,16 @@ class ImportWindow(AccessibleDialog):
             announce=self.isVisible(),
         )
 
+    def on_scenario_changed(self):
+        """Use the chosen scenario for this window session; Preferences are not written."""
+        if self._loading:
+            return
+        self._reload_scan_settings()
+        self.set_status(
+            f"Scenario for this import: {self.current_mode_text}",
+            announce=self.isVisible(),
+        )
+
     def _restore_focus_after_scan(self):
         """Return keyboard focus to Import Window after scan/progress window closes."""
         self.raise_()
@@ -1475,6 +1531,7 @@ class ImportWindow(AccessibleDialog):
                 "author": b.author_name,
                 "year": b.year,
                 "collection_id": b.collection_id,
+                "series": b.series_name,
                 "series_number": b.series_number,
             }
             for b in existing_books
@@ -1700,8 +1757,8 @@ class ImportWindow(AccessibleDialog):
             self.folder_edit.setFocus()
             return
 
-        # Lock the collection combo to prevent changes during review
-        self.collection_combo.setEnabled(False)
+        # Lock the collection and scenario combos to prevent changes during review
+        self._set_review_combos_enabled(False)
 
         # Validate path based on scenario
         is_single_item = self.import_scenario_mode == "single_item"
@@ -1734,6 +1791,8 @@ class ImportWindow(AccessibleDialog):
             self._style_message_box(msg)
             msg.exec()
             self.set_status("Selected path does not exist")
+            if not self.scanned_items:
+                self._set_review_combos_enabled(True)
             self.folder_edit.setFocus(Qt.TabFocusReason)
             return
 
@@ -1840,6 +1899,7 @@ class ImportWindow(AccessibleDialog):
                 "author": b.author_name,
                 "year": b.year,
                 "collection_id": b.collection_id,
+                "series": b.series_name,
                 "series_number": b.series_number,
             }
             for b in existing_books
@@ -1981,6 +2041,8 @@ class ImportWindow(AccessibleDialog):
                                 "author": book.get("author", ""),
                                 "year": book.get("year"),
                                 "collection_id": target_collection_id,
+                                "series": book.get("series", ""),
+                                "series_number": book.get("series_number"),
                             },
                             target_collection_id=target_collection_id,
                         )
@@ -2209,6 +2271,8 @@ class ImportWindow(AccessibleDialog):
         summary_text: str,
     ) -> None:
         """Cancel leaves the progress window open. A finished import closes it."""
+        if not self.scanned_items:
+            self._set_review_combos_enabled(True)
         if canceled:
             if self.progress_window:
                 self.progress_window.mark_scan_complete(
@@ -2494,6 +2558,13 @@ class ImportWindow(AccessibleDialog):
             base_counts = dict(self._summary_counts)
             base_added = int(base_counts.get("added", 0) or 0)
 
+            target_collection_id = self._get_target_collection_id()
+            dup_index = self.validator.build_duplicate_index(
+                self._build_existing_book_list(),
+                target_collection_id=target_collection_id,
+            )
+            held_duplicates = 0
+
             def _flush_pending_adds() -> None:
                 nonlocal imported, pending_books, pending_rows, pending_book_data
                 if not pending_books:
@@ -2527,6 +2598,38 @@ class ImportWindow(AccessibleDialog):
                 if not title or not author_text:
                     skipped += 1
                     continue
+
+                candidate = {
+                    "title": book_data.get("title", ""),
+                    "author": book_data.get("author", ""),
+                    "year": book_data.get("year"),
+                    "collection_id": target_collection_id,
+                    "series": book_data.get("series", ""),
+                    "series_number": book_data.get("series_number"),
+                }
+                if self.validator.is_duplicate_fast(
+                    candidate, dup_index, target_collection_id=target_collection_id
+                ):
+                    errors = [
+                        err
+                        for err in item.get("errors", [])
+                        if str(err).strip().lower() != "duplicate"
+                    ]
+                    errors.insert(0, "Duplicate")
+                    item["errors"] = errors
+                    item["status"] = "Duplicate"
+                    item["is_duplicate"] = True
+                    item["error_summary"] = self._format_error_summary(errors)
+                    book_data["errors"] = list(errors)
+                    self._sync_scan_outcome_for_scanned_item(item)
+                    self.table.setItem(
+                        row, self.COL_ERROR, self._cell_item(item["error_summary"])
+                    )
+                    held_duplicates += 1
+                    continue
+                self.validator.add_to_duplicate_index(
+                    dup_index, candidate, target_collection_id=target_collection_id
+                )
 
                 processed_valid += 1
 
@@ -2616,9 +2719,9 @@ class ImportWindow(AccessibleDialog):
 
             remaining = len(self.scanned_items)
 
-            # Re-enable collection combo if no items remain to review
+            # Re-enable collection and scenario combos if no items remain to review
             if remaining == 0:
-                self.collection_combo.setEnabled(True)
+                self._set_review_combos_enabled(True)
 
             # Mark add phase complete in progress window
             if self.progress_window and not quiet:
@@ -2629,10 +2732,10 @@ class ImportWindow(AccessibleDialog):
 
             if not quiet:
                 # Show result popup for Add Selected / batch add only
-                self._show_info_popup(
-                    "Add Complete",
-                    f"Books added: {imported}\nLeft in import list: {remaining}",
-                )
+                message = f"Books added: {imported}\nLeft in import list: {remaining}"
+                if held_duplicates:
+                    message += f"\nHeld as duplicate: {held_duplicates}"
+                self._show_info_popup("Add Complete", message)
         finally:
             if transaction_open:
                 conn.rollback()
@@ -2909,8 +3012,8 @@ class ImportWindow(AccessibleDialog):
 
     def on_cancel(self):
         """Handle cancel request for add-in-progress or close dialog."""
-        # Re-enable collection combo when canceling import/review
-        self.collection_combo.setEnabled(True)
+        # Re-enable collection and scenario combos when canceling import/review
+        self._set_review_combos_enabled(True)
         # Escape should trigger the same confirmation as window close
         self._closing_via_handler = True
         try:
@@ -3327,7 +3430,7 @@ class ImportWindow(AccessibleDialog):
             event.ignore()
             return
 
-        # Re-enable collection combo when closing normally
-        self.collection_combo.setEnabled(True)
+        # Re-enable collection and scenario combos when closing normally
+        self._set_review_combos_enabled(True)
 
         super().closeEvent(event)

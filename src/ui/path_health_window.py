@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QSettings, Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -38,6 +38,7 @@ from src.accessibility.icon_helper import (
     get_app_icon,
 )
 from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.utils.settings_helpers import app_settings
 from src.accessibility.scaling import UIScaler
 from src.accessibility.shortcut_helpers import (
     build_accessible_f1_popup_style,
@@ -615,7 +616,7 @@ class PathHealthWindow(AccessibleDialog):
         self.progress_window = None
 
     def _prefs_import_dir(self) -> str:
-        settings = QSettings("AbCS", "AbCS")
+        settings = app_settings()
         try:
             value = settings.value(IMPORT_DEFAULT_DIRECTORY_KEY, "", type=str)
         except TypeError:

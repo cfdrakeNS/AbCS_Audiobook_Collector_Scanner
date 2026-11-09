@@ -103,6 +103,10 @@ def configure_mass_standard_scan(window, *, trim_whitespace: bool | None = None)
     if trim_whitespace is not None:
         window.import_scanner.trim_whitespace = trim_whitespace
     window.import_scenario_mode = "mass_standard"
+    combo = window.scenario_combo
+    combo.blockSignals(True)
+    combo.setCurrentIndex(combo.findData("mass_standard"))
+    combo.blockSignals(False)
     scanner = window.import_scanner
     window.import_scanner.configure(
         scenario_mode="mass_standard",

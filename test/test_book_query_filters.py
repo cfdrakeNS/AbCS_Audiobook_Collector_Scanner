@@ -226,3 +226,41 @@ def test_series_sort_is_name_then_number_with_blanks_last(temp_db):
         "Book Ten",
         "No Number",
     ]
+
+
+def test_clearing_series_also_clears_series_number(temp_db):
+    authors = AuthorQueries(temp_db)
+    series = SeriesQueries(temp_db)
+    books = BookQueries(temp_db)
+    author_id = authors.insert(f"Clear Series Author {uuid4().hex}")
+    series_id = series.insert(f"Clear Series {uuid4().hex}")
+    cleared_id = books.insert(
+        Book(
+            title="Cleared",
+            author_id=author_id,
+            series_id=series_id,
+            series_number=4,
+        )
+    )
+    kept_id = books.insert(
+        Book(
+            title="Kept",
+            author_id=author_id,
+            series_id=series_id,
+            series_number=5,
+        )
+    )
+
+    books.bulk_update_series([cleared_id], None)
+    cleared = books.get_by_id(cleared_id)
+    kept = books.get_by_id(kept_id)
+
+    assert cleared.series_id is None
+    assert cleared.series_number is None
+    assert kept.series_id == series_id
+    assert float(kept.series_number) == 5.0
+
+    books.bulk_update_series([kept_id], series_id)
+    still = books.get_by_id(kept_id)
+    assert still.series_id == series_id
+    assert float(still.series_number) == 5.0
