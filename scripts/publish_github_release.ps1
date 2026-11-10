@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $Abcs = "C:\projects\AbCS"
 $Owner = "cfdrakeNS"
 $Repo = "AbCS_Audiobook_Collector_Scanner"
-$Version = "2.13"
+$Version = "3.0"
 $Tag = "v$Version"
 $ReleaseName = "AbCS v$Version"
 $WinZip = "AbCS-Setup-v$Version.zip"
@@ -143,12 +143,13 @@ foreach ($p in @($winPath, $linuxPath)) {
 }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$winZip = [System.IO.Compression.ZipFile]::OpenRead($winPath)
+# PowerShell names ignore case: a $winZip here would overwrite $WinZip used in the release notes.
+$winArchive = [System.IO.Compression.ZipFile]::OpenRead($winPath)
 try {
-    $winExeNames = @($winZip.Entries | ForEach-Object { $_.Name } | Where-Object { $_ -like "*.exe" })
+    $winExeNames = @($winArchive.Entries | ForEach-Object { $_.Name } | Where-Object { $_ -like "*.exe" })
 }
 finally {
-    $winZip.Dispose()
+    $winArchive.Dispose()
 }
 if ($winExeNames -notcontains "AbCS-Setup.exe") {
     throw "Windows zip must contain AbCS-Setup.exe (no version in the installer filename). Found: $($winExeNames -join ', ')"
@@ -168,12 +169,17 @@ Invoke-Git @("push", "origin", $Tag)
 $releaseNotes = @"
 AbCS $Version
 
-**What's new**
-- Web metadata: writable cache in the user data folder (installed builds no longer lose the cache).
-- Rate limits: no retry on HTTP 429 or Google Books 403 quota; 15-minute cooldown floor; no Re-fetch hint on a miss (use Alt+W after the wait).
-- WikiData uses indexed entity search instead of a full SPARQL scan.
-- Optional Google Books API key in Preferences (Display) or ``ABCS_GOOGLE_BOOKS_API_KEY``.
-- Fewer requests per fetch and short-lived caching of misses.
+**What's new in version 3**
+- Listen: play a book inside AbCS, move between files, seek, rewind and fast-forward 30 seconds, change speed, and resume from a saved listening position.
+- Collections can have a collection folder, so a library on a removable drive keeps working when the drive letter changes.
+- Want to Read and In Progress marks and filters, with totals in Statistics.
+- Series numbers are stored and sorted, separate from the title.
+- Web metadata fetch runs in the background, for one book or a selection, with a review summary.
+- Manage, then Check Book Locations finds blank, missing, or moved book paths and exports them to CSV.
+- Export the visible list or selected books to CSV or JSON. Import book lists from spreadsheets.
+- Consistent shortcuts: Ctrl+L Listen, Ctrl+S Save, Ctrl+F Find. Updated help with Related help links and a Glossary.
+
+Full list: Help, What's New in Version 3.
 
 **Downloads**
 - **Windows:** ``$WinZip`` - extract and run ``AbCS-Setup.exe`` (SmartScreen may warn; see README).
