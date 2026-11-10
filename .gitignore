@@ -1,8 +1,6 @@
-# Ignore graphics copies under data/ and installer-only art (graphics/ is tracked)
+# Ignore graphics copies under data/ (graphics/ and installer_graphics/ are tracked)
 data/Graphics/
 data/graphics/**
-installer_graphics/
-installer_graphics/**
 
 # Virtual environment
 .venv/
