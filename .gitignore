@@ -1,8 +1,6 @@
-# Ignore graphics assets (all cases)
+# Ignore graphics copies under data/ and installer-only art (graphics/ is tracked)
 data/Graphics/
 data/graphics/**
-graphics/
-graphics/**
 installer_graphics/
 installer_graphics/**
 
