@@ -172,3 +172,9 @@ def test_update_dialog_focuses_open_only_when_update_exists(qapp, ui_scaler):
         assert same.browser_opened is True
     finally:
         same.deleteLater()
+
+
+def test_update_download_url_is_website_download_section():
+    from src.app_urls import ABCS_UPDATE_DOWNLOAD_URL, ABCS_WEBSITE_URL
+
+    assert ABCS_UPDATE_DOWNLOAD_URL == f"{ABCS_WEBSITE_URL}#download"

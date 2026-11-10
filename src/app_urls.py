@@ -1,7 +1,7 @@
 """Public URLs for AbCS and Aurora Accessibility."""
 
 ABCS_WEBSITE_URL = "https://abcs.auroraaccessibility.com/"
-ABCS_UPDATE_DOWNLOAD_URL = "https://abcs.auroraaccessibility.com/downloads/"
+ABCS_UPDATE_DOWNLOAD_URL = "https://abcs.auroraaccessibility.com/#download"
 ABCS_GITHUB_LATEST_RELEASE_API_URL = (
     "https://api.github.com/repos/cfdrakeNS/"
     "AbCS_Audiobook_Collector_Scanner/releases/latest"
