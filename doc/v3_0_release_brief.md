@@ -1,10 +1,10 @@
-# AbCS Version 3 — Release Brief (pre-release)
+# AbCS Version 3 — Release Brief
 
-**Current build:** 2.48 (`APP_VERSION` in `src/build_config.py`) — still in tester sign-off; **not** labeled 3.0 in the app until release.  
-**Target public version:** 3.0 when manual testing is complete.  
-**Branch:** `feature/background-fetch-v3`  
-**Testing:** Full pytest suite — 1120 passed (November 9, 2026, build 2.48). Help changes in 2.47 passed tester JAWS and NVDA checks. Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
-**Audience:** Checklist for what ships when you promote the build to **v3.0**.
+**Current build:** 3.0 (`APP_VERSION` in `src/build_config.py`). Tester build 2.48 was promoted to 3.0 on November 10, 2026.  
+**Public version:** 3.0.  
+**Branch:** merged into `main` from `feature/background-fetch-v3`  
+**Testing:** Full pytest suite — 1120 passed (November 10, 2026, build 2.48, before the merge). Help changes in 2.47 passed tester JAWS and NVDA checks. Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
+**Audience:** Checklist for what ships in **v3.0**.
 
 User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats_new.md) (also [whats_new_in_v3.md](whats_new_in_v3.md)). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
 
@@ -111,7 +111,7 @@ User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats
 
 ---
 
-## When ready for v3.0
+## Releasing v3.0
 
-- Bump `APP_VERSION` and `build_installer.iss` to **3.0**, then tag and ship installers.
+- `APP_VERSION` and `build_installer.iss` are **3.0**. Tag `v3.0`, then build and ship the installers.
 - User summary at launch: Help topic `help_docs/28_whats_new.md`, also kept in [whats_new_in_v3.md](whats_new_in_v3.md). This brief lists enhancements and fixes for the branch.
