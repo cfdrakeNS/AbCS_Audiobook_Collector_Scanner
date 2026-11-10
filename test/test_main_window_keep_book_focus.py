@@ -121,6 +121,7 @@ def test_update_returns_focus_to_first_selected_book(
     main_window, qapp, qtbot, monkeypatch
 ):
     window = main_window
+    _insert_focus_books(window)
     assert len(window.books) >= 2
     first_id = window.books[0].book_id
     second_id = window.books[1].book_id

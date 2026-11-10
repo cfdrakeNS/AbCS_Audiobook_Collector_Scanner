@@ -2,17 +2,33 @@
 
 A cross-platform audiobook collection manager with full accessibility support for screen readers.
 
+## Download
+
+AbCS is free. Current release: **v3.0** for Windows and Linux.
+
+- **Product page:** [abcs.auroraaccessibility.com](https://abcs.auroraaccessibility.com/)
+- **Installers:** [AbCS v3.0 release](https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases/tag/v3.0)
+  - Windows: `AbCS-Setup-v3.0.zip`, then run `AbCS-Setup.exe`
+  - Linux: `abcs_linux_v3.0.zip`, then run `install_abcs.sh`
+
+What changed in version 3: [What's New in Version 3](help_docs/28_whats_new.md).
+
 ## Features
 
 - **Audiobook management** — track your collection with full metadata
 - **ID3 tag import** — scan folders and import from audio file tags
 - **Book list import** — import from CSV, Excel, or ODS spreadsheets
-- **Advanced search** — filter by title, author, genre, series, plot, and read status
-- **Collections** — organize books into multiple collections
+- **Advanced search** — filter by title, author, genre, series, plot, read status, Want to Read, and In Progress
+- **Collections** — organize books into collections, each with an optional collection folder on disk
+- **Series numbers** — stored and sorted separately from the title
+- **Listen** — play a book inside AbCS: move between files, seek, rewind and fast-forward 30 seconds, change speed, and resume from a saved listening position
+- **Want to Read and In Progress** — mark books and filter the list to them
 - **Bulk update and delete** — change or remove many books at once
 - **Duplicate mode** — find and clean up duplicate entries
+- **Check Book Locations** — find blank, missing, or moved book paths and export them to CSV
+- **Export Library** — save the visible list or selected books to CSV or JSON
 - **Backup and restore** — protect your database
-- **Web metadata** — fetch plot, genre, year, and related fields from Open Library, Google Books, and WikiData
+- **Web metadata** — fetch plot, genre, year, and related fields from Open Library, Google Books, and WikiData, for one book or a selection
 - **Reading history and statistics** — track what you have listened to
 - **Accessibility first**
   - Complete keyboard navigation (Alt+key shortcuts)
@@ -23,7 +39,7 @@ A cross-platform audiobook collection manager with full accessibility support fo
 ## Requirements
 
 - Python 3.10 or higher (3.14 recommended for development)
-- Windows, macOS, or Linux
+- Windows or Linux. macOS may run from source but is not tested.
 
 ## Installation and quick start
 
@@ -167,6 +183,10 @@ See [TESTING.md](TESTING.md) for CI-style runs, headless Qt, and useful pytest s
 - **Windows:** `build_installer.bat` (PyInstaller + Inno Setup)
 - **Linux:** [doc/linux_build.md](doc/linux_build.md)
 
+### Tester build expiry
+
+Tester builds expire 30 days after the build date. When expired, AbCS blocks startup and prompts you to download a newer build. Source runs use the same expiry check when `TRIAL_BUILD_DATE` is set in `src/build_config.py`. Public releases leave `TRIAL_BUILD_DATE` empty and do not expire.
+
 ## Migrating from the MS Access version
 
 If you used the original MS Access prototype, export your data to CSV and use **Import Book List**, or re-import from audio folders. There is no automated migration tool. Keyboard shortcuts and workflows are designed to feel familiar; default zoom is **150%** (adjust in **Manage → Preferences**).
@@ -184,10 +204,6 @@ If you used the original MS Access prototype, export your data to CSV and use **
 - Runnable sample app: [pyside6-accessible-ui-reference](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference) — clone the repo, `pip install -r requirements.txt`, then `python main.py`
 
 Legacy accessibility demos, completed bug-fix logs, and internal development plans are in the local `archive/` folder. That folder is not part of the GitHub repo.
-
-## Tester build expiry
-
-Bundled tester builds expire 30 days after the build date. When expired, AbCS blocks startup and prompts you to download a newer build. Source runs use the same expiry check when `TRIAL_BUILD_DATE` is set in `src/build_config.py`.
 
 ## License
 

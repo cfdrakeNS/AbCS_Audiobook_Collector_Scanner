@@ -236,7 +236,9 @@ def test_resolve_preview_missing_on_collection_root_reports_remapped_path(tmp_pa
     assert found.path is None
     assert found.error == f"Book not found in - {remapped}"
 
-def test_show_preview_plays_inside_abcs(tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch):
+def test_show_preview_plays_inside_abcs(
+    tmp_path, ui_scaler, theme_manager, qtbot, monkeypatch, no_cover_placeholder
+):
     from src.ui.preview_window import show_preview
 
     audio = tmp_path / "play.mp3"

@@ -560,7 +560,7 @@ def test_book_details_open_resolves_source_and_cover_once(
     window.close()
 
 def test_book_details_slow_cover_read_does_not_block_open(
-    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch, qtbot
+    temp_db, ui_scaler, theme_manager, tmp_path, monkeypatch, qtbot, no_cover_placeholder
 ):
     import threading
 
@@ -643,7 +643,9 @@ def test_book_details_close_during_cover_read(
     window.close()
 
 
-def test_book_details_cover_placeholder_without_art(temp_db, ui_scaler, theme_manager):
+def test_book_details_cover_placeholder_without_art(
+    temp_db, ui_scaler, theme_manager, no_cover_placeholder
+):
     author_id = AuthorQueries(temp_db).insert("Plain Author")
     book_id = BookQueries(temp_db).insert(
         Book(title="Plain Book", author_id=author_id, path="")

@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from mutagen.id3 import COMM, ID3, TALB
 
 from src.core.comment_cleanup import (
@@ -155,9 +156,17 @@ def test_read_file_cleans_comment_for_any_format(tmp_path, monkeypatch):
     assert info.comment == "Plot"
 
 
+CLEANUP_SCRIPT = (
+    Path(__file__).resolve().parent.parent / "scripts" / "clean_technical_comments.py"
+)
+needs_cleanup_script = pytest.mark.skipif(
+    not CLEANUP_SCRIPT.is_file(),
+    reason="clean_technical_comments.py is a local script and is not in the repo",
+)
+
+
 def _load_cleanup_script():
-    script = Path(__file__).resolve().parent.parent / "scripts" / "clean_technical_comments.py"
-    spec = importlib.util.spec_from_file_location("clean_technical_comments", script)
+    spec = importlib.util.spec_from_file_location("clean_technical_comments", CLEANUP_SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -191,6 +200,7 @@ def _comments(path):
     return rows
 
 
+@needs_cleanup_script
 def test_cleanup_script_dry_run_changes_nothing(tmp_path):
     db = tmp_path / "abcs.db"
     _make_db(db)
@@ -200,6 +210,7 @@ def test_cleanup_script_dry_run_changes_nothing(tmp_path):
     assert not list(tmp_path.glob("abcs.bak.*.db"))
 
 
+@needs_cleanup_script
 def test_cleanup_script_apply_backs_up_and_cleans(tmp_path):
     db = tmp_path / "abcs.db"
     _make_db(db)

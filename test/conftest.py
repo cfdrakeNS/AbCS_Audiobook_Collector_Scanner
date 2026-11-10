@@ -119,6 +119,47 @@ def _silent_audio_output(monkeypatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def _no_setup_splash_wait(monkeypatch):
+    """Close the empty-library welcome without waiting.
+
+    MainWindow opens it modally when the database has no books. A clean clone
+    has no data/abcs.db, so temp_db starts empty and CI would wait forever.
+    """
+    from PySide6.QtWidgets import QDialog
+
+    from src.ui.setup_dialogue import SetupDialog
+
+    def _no_modal_wait(self):
+        self.close()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(SetupDialog, "exec", _no_modal_wait)
+    yield
+
+
+@pytest.fixture
+def no_cover_placeholder(tmp_path, monkeypatch):
+    """Serve a generated missing-cover image; graphics/ is not in the repo."""
+    from PySide6.QtGui import QColor, QImage
+
+    from src.accessibility import graphics_paths
+
+    placeholder = tmp_path / "no_book_cover_512x512.png"
+    image = QImage(16, 16, QImage.Format.Format_RGB32)
+    image.fill(QColor("gray"))
+    image.save(str(placeholder))
+    original = graphics_paths.resolve_graphics_path
+
+    def _resolve(filename: str) -> str:
+        if filename == placeholder.name:
+            return str(placeholder)
+        return original(filename)
+
+    monkeypatch.setattr(graphics_paths, "resolve_graphics_path", _resolve)
+    return placeholder
+
+
 def _find_source_database() -> Path | None:
     """Return a local dev database copy when present."""
     data_dir = PROJECT_ROOT / "data"
