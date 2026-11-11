@@ -266,6 +266,8 @@ class BookDetailsWindow(AccessibleDialog):
             if reply == QMessageBox.Yes:
                 # Save and close
                 self.on_save()
+                if self._dirty:
+                    return
                 announce_dialog_closed(self)
                 self.reject()
             elif reply == QMessageBox.No:
@@ -2151,6 +2153,9 @@ class BookDetailsWindow(AccessibleDialog):
         # Spinbox and date
         if getattr(self, "_year_is_masked", False):
             self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
+            # valueChanged waits for editingFinished, so Escape while still typing
+            # would close without the unsaved-changes prompt.
+            self.year_spin.textEdited.connect(lambda: self._mark_dirty(self.year_spin))
         else:
             self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
         self.series_number_edit.textChanged.connect(
@@ -2212,6 +2217,13 @@ class BookDetailsWindow(AccessibleDialog):
             else None
         )
         if focus is self.year_spin or focus is year_line:
+            return
+        # A message box took focus (Save or Escape already checked the year),
+        # or the window is closing. Warning again would stack a second box.
+        modal = QApplication.activeModalWidget()
+        if modal is not None and modal is not self:
+            return
+        if focus is not None and focus.window() is not self:
             return
         if self._year_matches_saved_value():
             return
