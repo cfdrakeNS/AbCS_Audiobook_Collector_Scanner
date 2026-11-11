@@ -60,6 +60,21 @@ def _insert_focus_books(window):
     return id_middle, id_alpha, id_zulu
 
 
+def test_column_jump_moves_highlight_with_focus(main_window):
+    """Alt+1..7 move the current cell and its highlight, like Left/Right."""
+    window = main_window
+    id_middle, _id_alpha, _id_zulu = _insert_focus_books(window)
+    window.focus_book_by_id(id_middle, 1)
+    row = window.table.currentRow()
+    for column in range(7):
+        assert not window.table.isColumnHidden(column)
+        window.jump_to_column(column)
+        assert window.table.currentRow() == row
+        assert window.table.currentColumn() == column
+        selected = window.table.selectionModel().selectedIndexes()
+        assert [(i.row(), i.column()) for i in selected] == [(row, column)]
+
+
 def test_author_sort_keeps_focused_book(main_window, qapp, qtbot):
     window = main_window
     id_middle, _id_alpha, _id_zulu = _insert_focus_books(window)

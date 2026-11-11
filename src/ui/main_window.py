@@ -1216,9 +1216,6 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
         # Columns: Author, Title, Year, Series, Genre, Time, Read
-        self.table.setColumnHidden(0, True)  # Author
-        self.table.setColumnHidden(3, True)  # Series
-        self.table.setColumnHidden(5, True)  # Time
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         self.table.setItemDelegateForColumn(1, TitlePlotDelegate(self.table))
@@ -2093,7 +2090,12 @@ class MainWindow(QMainWindow):
             column = self.table.columnCount() - 1
 
         index = self.table.model().index(row, column)
-        self.table.selectionModel().setCurrentIndex(index, QItemSelectionModel.NoUpdate)
+        if self.selected_book_ids:
+            # Keep the selected rows; only move the current cell.
+            self.table.selectionModel().setCurrentIndex(index, QItemSelectionModel.NoUpdate)
+        else:
+            # Same as Left/Right, so the highlight moves with focus.
+            self.table.setCurrentCell(row, column)
         self.table.scrollTo(index)
         self.table.setFocus()
 
