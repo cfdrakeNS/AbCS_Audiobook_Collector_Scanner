@@ -957,4 +957,10 @@ def exec_styled_message_box(
         frame = msg.frameGeometry()
         frame.moveCenter(owner.frameGeometry().center())
         msg.move(frame.topLeft())
-    return msg.exec()
+    result = msg.exec()
+    if keep_owner_enabled and owner.isVisible():
+        # Without a Qt parent, Qt does not reactivate the owner when the box
+        # closes; the caller's setFocus() would land in an inactive window.
+        owner.raise_()
+        owner.activateWindow()
+    return result

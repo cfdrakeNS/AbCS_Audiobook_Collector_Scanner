@@ -170,6 +170,31 @@ def test_escape_yes_with_invalid_year_keeps_book_details_open(
         window.close()
 
 
+def test_escape_no_returns_focus_to_last_changed_field(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts, monkeypatch
+):
+    books = _make_books(temp_db, year=1999, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    focused = []
+    monkeypatch.setattr(
+        "src.ui.book_details.QTimer.singleShot",
+        lambda ms, fn: fn() if ms == 0 else None,
+    )
+    monkeypatch.setattr(window, "_focus_after_prompt", lambda w: focused.append(w))
+    monkeypatch.setattr(window, "reject", lambda: None)
+    try:
+        window.show()
+        window.on_edit_mode()
+        window.title_edit.setText("Changed title")
+        window.reader_edit.setText("Changed narrator")
+        prompts.reply = QMessageBox.No
+        window.on_cancel_edit()
+        assert focused == [window.reader_edit]
+        assert window._dirty is True
+    finally:
+        window.close()
+
+
 def test_typing_in_typed_year_marks_book_details_changed(
     temp_db, ui_scaler, theme_manager, monkeypatch
 ):

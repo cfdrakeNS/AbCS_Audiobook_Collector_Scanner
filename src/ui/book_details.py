@@ -272,8 +272,8 @@ class BookDetailsWindow(AccessibleDialog):
                 self.reject()
             elif reply == QMessageBox.No:
                 # Continue editing
-                if combo_to_restore:
-                    QTimer.singleShot(0, combo_to_restore.setFocus)
+                target = combo_to_restore or self._last_dirty_focus_target()
+                QTimer.singleShot(0, lambda w=target: self._focus_after_prompt(w))
                 return
             else:  # Cancel - discard unsaved changes and close
                 self._revert_changes()
@@ -395,6 +395,7 @@ class BookDetailsWindow(AccessibleDialog):
         if self._keep_edit_mode:
             self.ALLOWED_ALT_KEYS = self.ALLOWED_ALT_KEYS - {"R", "K"}
         self._first_dirty_widget = None  # Track first field that changed
+        self._last_dirty_widget = None
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
         self._preview_source_cache_key = None
@@ -2507,6 +2508,7 @@ class BookDetailsWindow(AccessibleDialog):
             ):
                 return
             self._pending_dirty_widgets.add(widget)
+            self._last_dirty_widget = widget
 
         if not self._dirty:
             self._dirty = True
@@ -2537,6 +2539,7 @@ class BookDetailsWindow(AccessibleDialog):
         """bd#6: Clear dirty flag after save or load."""
         self._dirty = False
         self._first_dirty_widget = None
+        self._last_dirty_widget = None
         self._pending_dirty_widgets.clear()
         self._update_save_button_visibility()
         if not preserve_status:
@@ -4110,6 +4113,19 @@ class BookDetailsWindow(AccessibleDialog):
 
             traceback.print_exc()
             self.set_status(f"Error opening web details: {str(e)}")
+
+    def _last_dirty_focus_target(self):
+        """Last changed field that can take focus, else the title."""
+        widget = self._last_dirty_widget
+        if widget is not None and widget.isVisible() and widget.isEnabled():
+            return widget
+        return self.title_edit
+
+    def _focus_after_prompt(self, widget):
+        """Return focus to a field after a prompt, so the screen reader reads it."""
+        if not self.isVisible():
+            return
+        widget.setFocus(Qt.TabFocusReason)
 
     def _focus_first_dirty_field(self):
         """Focus the first dirty field if any, else title_edit."""

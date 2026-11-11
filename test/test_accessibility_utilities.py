@@ -554,8 +554,11 @@ def test_exec_styled_message_box_keeps_accessible_dialog_enabled(qapp):
         captured["modality"] = self.windowModality()
         return int(QMessageBox.Yes)
 
+    activated = []
     with patch.object(QMessageBox, "exec", fake_exec), patch.object(
         AccessibleDialog, "isVisible", lambda self: True
+    ), patch.object(
+        AccessibleDialog, "activateWindow", lambda self: activated.append(self)
     ):
         result = exec_styled_message_box(
             edit,
@@ -569,6 +572,7 @@ def test_exec_styled_message_box_keeps_accessible_dialog_enabled(qapp):
     assert result == int(QMessageBox.Yes)
     assert captured["parent"] is None
     assert captured["modality"] == Qt.WindowModal
+    assert activated == [owner]
     owner.deleteLater()
 
 
