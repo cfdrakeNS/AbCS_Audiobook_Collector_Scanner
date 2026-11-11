@@ -10,9 +10,23 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QMessageBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
-from src.accessibility.dialog_prose import blocks_to_dialog_html
+from src.accessibility.dialog_prose import (
+    blocks_to_dialog_html,
+    create_dialog_html_text,
+    prepare_dialog_prose,
+    split_text_to_width,
+    text_width,
+)
 from src.accessibility.help_scaling import (
     HELP_SR_DEFAULT_SCALE,
     HELP_UI_SCALE_KEY,
@@ -47,6 +61,55 @@ from src.accessibility.style_helpers import (
 
 
 # --- dialog_prose / shortcut_helpers ---
+
+
+def test_dialog_prose_does_not_wrap(qapp):
+    widget = create_dialog_html_text(
+        None,
+        [("body", "One short line.")],
+        "About information",
+        "Read line by line.",
+    )
+    assert widget.lineWrapMode() == QTextEdit.LineWrapMode.NoWrap
+    widget.deleteLater()
+
+
+def test_prepare_dialog_prose_width_scale_is_three_quarters(qapp):
+    blocks = [("body", "Alpha beta gamma delta epsilon zeta eta theta iota kappa. " * 4)]
+    font = QFont()
+    font.setPointSize(14)
+
+    def _build(scale: float) -> QDialog:
+        dialog = QDialog()
+        layout = QVBoxLayout(dialog)
+        widget = create_dialog_html_text(dialog, blocks, "Body", "Read the lines.")
+        widget.setFont(font)
+        layout.addWidget(widget)
+        prepare_dialog_prose(dialog, widget, blocks, height=320, width_scale=scale)
+        dialog._prose = widget
+        return dialog
+
+    full = _build(1.0)
+    narrow = _build(0.75)
+    assert narrow.width() == int(full.width() * 0.75)
+    narrow.show()
+    qapp.processEvents()
+    assert narrow._prose.document().idealWidth() <= narrow._prose.viewport().width() + 8
+    full.deleteLater()
+    narrow.close()
+    narrow.deleteLater()
+
+
+def test_split_text_to_width_breaks_a_long_line():
+    font = QFont()
+    font.setPointSize(12)
+    sentence = "Alpha beta gamma."
+    text = f"{sentence} Delta epsilon zeta. Eta theta iota."
+    budget = text_width(sentence, font) + 1
+    parts = split_text_to_width(text, font, budget)
+    assert len(parts) >= 2
+    for part in parts:
+        assert text_width(part, font) <= budget
 
 
 def test_blocks_to_dialog_html_escapes_and_classes():

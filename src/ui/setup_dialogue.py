@@ -12,7 +12,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
-from src.accessibility.dialog_prose import create_dialog_html_text
+from src.accessibility.dialog_prose import create_dialog_html_text, prepare_dialog_prose
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -121,6 +121,7 @@ class SetupDialog(AccessibleDialog):
 
         self.setup_label = setup_label
         self.ok_btn = ok_btn
+        prepare_dialog_prose(self, setup_label, setup_blocks, height=setup_height)
 
         # Parent the timer to this dialog so a fast OK cannot focus a deleted widget.
         self._focus_timer = QTimer(self)

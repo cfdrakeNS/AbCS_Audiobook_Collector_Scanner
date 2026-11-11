@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from PySide6.QtWidgets import QApplication, QTextEdit
+
 from src.database.models import Statistics
 from src.ui.about_dialogue import AboutDialog
 from src.ui.accessible_dialog import AccessibleDialog
@@ -14,6 +16,40 @@ def _close_after_focus_timer(qtbot, dialog, wait_ms: int = 150) -> None:
     """Let constructor focus timers fire while the widget is still alive."""
     qtbot.wait(wait_ms)
     dialog.close()
+
+
+def _assert_prose_fits(dialog, widget) -> None:
+    """Each paragraph is one line and fits in the dialog without wrapping."""
+    dialog.show()
+    QApplication.processEvents()
+    assert widget.lineWrapMode() == QTextEdit.LineWrapMode.NoWrap
+    assert widget.document().idealWidth() <= widget.viewport().width() + 8
+
+
+def test_about_dialog_stays_narrow_when_shown(ui_scaler, qtbot):
+    dialog = AboutDialog(ui_scaler)
+    qtbot.addWidget(dialog)
+    width = dialog.width()
+    dialog.show()
+    QApplication.processEvents()
+    assert abs(dialog.width() - width) <= 4
+    _assert_prose_fits(dialog, dialog.about_label)
+    _close_after_focus_timer(qtbot, dialog)
+
+
+def test_about_license_and_setup_prose_fit(ui_scaler, qtbot):
+    about = AboutDialog(ui_scaler)
+    license_dialog = LicenseDialog(ui_scaler)
+    setup = SetupDialog(ui_scaler)
+    qtbot.addWidget(about)
+    qtbot.addWidget(license_dialog)
+    qtbot.addWidget(setup)
+    _assert_prose_fits(about, about.about_label)
+    _assert_prose_fits(license_dialog, license_dialog.license_label)
+    _assert_prose_fits(setup, setup.setup_label)
+    _close_after_focus_timer(qtbot, about)
+    _close_after_focus_timer(qtbot, license_dialog)
+    _close_after_focus_timer(qtbot, setup)
 
 
 def test_about_dialog_accessible_name(ui_scaler, qtbot):
