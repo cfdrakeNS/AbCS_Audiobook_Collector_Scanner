@@ -32,11 +32,13 @@ From top to bottom:
 - **Menu bar:** File, Edit, View, Sort, Manage, and Help.
 - **Toolbar:** Add Book, Find, Listen, Plot Filter, Read Filter, In Progress Filter, Want to Read Filter, Recently Added Filter, Search Web, Statistics, Preferences, and Help. A filter button stays highlighted while its filter is on.
 - **Filter summary:** one line that lists the active collection, filters, and sort.
-- **Book table:** columns Author, Title, Year, Series, Genre, Time, and Read.
+- **Book table:** visible columns Title, Year, Genre, and Read. Author, Series, and Time are hidden columns.
 - **Footer buttons:** shown only when they apply. With books selected: **Update**, **Add to want to read**, **Clear want to read**, **Clear listening position**, and **Delete**. With two or more books selected, **Web fetch** also appears. In duplicate mode: **Delete** and **Export Duplicates**.
 - **Status bar** at the bottom.
 
 When AbCS opens, focus is on the first title in the book table. **Tab** leaves the table; use the arrow keys to move between cells.
+
+Author, Series, and Time are hidden columns, so you do not see them in the table. Press **Alt+1** for Author, **Alt+4** for Series, or **Alt+6** for Time to hear that value for the focused book. The selection does not change. **Alt+2**, **Alt+3**, **Alt+5**, and **Alt+7** move to the Title, Year, Genre, and Read columns.
 
 The Title column shows a mark before the title. A circle means the book has a plot. A square means want to read. A triangle means listening is in progress. A screen reader speaks those words after the title, for example "The Moonstone, plot, want to read, in progress".
 
@@ -161,12 +163,12 @@ To save the books currently shown to CSV or JSON, use **File → Export Library*
 | Shortcut | Action |
 |----------|--------|
 | Alt+L | Jump to list |
-| Alt+1 | Jump to Author |
+| Alt+1 | Read Author (hidden column) |
 | Alt+2 | Jump to Title |
 | Alt+3 | Jump to Year |
-| Alt+4 | Jump to Series |
+| Alt+4 | Read Series (hidden column) |
 | Alt+5 | Jump to Genre |
-| Alt+6 | Jump to Time |
+| Alt+6 | Read Time (hidden column) |
 | Alt+7 | Jump to Read Date |
 | Enter | Open focused item (Title: Book Details; Author, Series, Genre: name list; Read: set date) |
 | Ctrl+F | Find |
