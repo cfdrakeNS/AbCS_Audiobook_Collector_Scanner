@@ -39,8 +39,9 @@ Mandatory for any new or changed window, dialog, footer button, combo, or status
 
 External reference (patterns + principles):
 
-- [PySide6 Accessibility Patterns](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
-- [Screen Reader Best Practices](https://github.com/cfdrakeNS/pyside6-accessible-ui-reference/blob/main/doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+- [PySide6 Accessibility Patterns](https://github.com/cfdrakeNS/pyside6-screen-reader-accessibility/blob/main/doc/PySide6_Accessibility_Patterns_and_Implementation_Reference.md)
+- [Screen Reader Best Practices](https://github.com/cfdrakeNS/pyside6-screen-reader-accessibility/blob/main/doc/PySide6_Screen_Reader_Accessibility_Best_Practices.md)
+- [AbCS Standards Crosswalk](https://github.com/cfdrakeNS/pyside6-screen-reader-accessibility/blob/main/doc/AbCS_Standards_Crosswalk.md) (maps each standard here to the reference section and demo code)
 
 ### Buttons, footers, and control formatting
 

@@ -51,7 +51,7 @@ SECTION_RE = re.compile(r"^#{2,3} (.+)$")
 NOT_INCLUDED = [
     ("archive/", "Archived demos, old tests, and retired scripts — not active source"),
     (
-        "External: pyside6-accessible-ui-reference",
+        "External: pyside6-screen-reader-accessibility",
         "Standalone PySide6 accessibility reference (separate GitHub repo)",
     ),
     ("build/, dist/", "PyInstaller build output"),
