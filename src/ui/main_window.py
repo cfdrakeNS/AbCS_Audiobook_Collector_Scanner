@@ -5964,12 +5964,12 @@ class MainWindow(QMainWindow):
         else:
             shortcuts = [
                 ("Alt+L", "Jump to list"),
-                ("Alt+1", "Read Author (hidden column)"),
+                ("Alt+1", "Jump to Author"),
                 ("Alt+2", "Jump to Title"),
                 ("Alt+3", "Jump to Year"),
-                ("Alt+4", "Read Series (hidden column)"),
+                ("Alt+4", "Jump to Series"),
                 ("Alt+5", "Jump to Genre"),
-                ("Alt+6", "Read Time (hidden column)"),
+                ("Alt+6", "Jump to Time"),
                 ("Alt+7", "Jump to Read Date"),
                 (
                     "Enter",
