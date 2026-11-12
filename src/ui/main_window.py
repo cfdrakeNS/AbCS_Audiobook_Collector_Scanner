@@ -1303,8 +1303,29 @@ class MainWindow(QMainWindow):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._on_table_context_menu)
 
+    def _footer_buttons_visible(self) -> bool:
+        """True when a footer action button (selection or duplicate mode) is showing."""
+        buttons = (
+            "update_button",
+            "web_fetch_button",
+            "add_want_to_read_button",
+            "clear_want_to_read_button",
+            "clear_listen_progress_button",
+            "delete_button",
+            "export_button",
+        )
+        return any(
+            getattr(self, name, None) is not None and getattr(self, name).isVisible()
+            for name in buttons
+        )
+
     def accessible_table_key_press(self, event):
         """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
+        if event.key() in (Qt.Key_Tab, Qt.Key_Backtab) and not event.modifiers() & Qt.ControlModifier:
+            if not self._footer_buttons_visible():
+                # Nothing to move to; leaving the table would put focus nowhere.
+                event.accept()
+                return
         if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
             # Move focus to next widget outside the table
             self.focusNextChild()

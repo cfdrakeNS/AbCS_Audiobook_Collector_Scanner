@@ -75,6 +75,34 @@ def test_column_jump_moves_highlight_with_focus(main_window):
         assert [(i.row(), i.column()) for i in selected] == [(row, column)]
 
 
+def test_tab_stays_in_table_when_no_footer_buttons(main_window, monkeypatch):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    window = main_window
+    id_middle, _id_alpha, _id_zulu = _insert_focus_books(window)
+    window.focus_book_by_id(id_middle, 1)
+    moves = []
+    monkeypatch.setattr(window, "focusNextChild", lambda: moves.append("next") or True)
+    monkeypatch.setattr(
+        window, "focusPreviousChild", lambda: moves.append("previous") or True
+    )
+    assert window._footer_buttons_visible() is False
+
+    for key, modifiers in ((Qt.Key_Tab, Qt.NoModifier), (Qt.Key_Backtab, Qt.ShiftModifier)):
+        event = QKeyEvent(QEvent.KeyPress, key, modifiers)
+        window.accessible_table_key_press(event)
+        assert event.isAccepted()
+    assert moves == []
+
+    monkeypatch.setattr(window, "_footer_buttons_visible", lambda: True)
+    window.accessible_table_key_press(QKeyEvent(QEvent.KeyPress, Qt.Key_Tab, Qt.NoModifier))
+    window.accessible_table_key_press(
+        QKeyEvent(QEvent.KeyPress, Qt.Key_Backtab, Qt.ShiftModifier)
+    )
+    assert moves == ["next", "previous"]
+
+
 def test_author_sort_keeps_focused_book(main_window, qapp, qtbot):
     window = main_window
     id_middle, _id_alpha, _id_zulu = _insert_focus_books(window)
