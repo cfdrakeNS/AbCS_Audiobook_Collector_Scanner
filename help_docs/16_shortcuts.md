@@ -113,7 +113,7 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Enter | Open import detail |
 | Alt+S | Add selected |
 | Alt+X | Export list to CSV |
-| Escape | Cancel or close window |
+| Escape | Clear selection, or cancel or close window |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |

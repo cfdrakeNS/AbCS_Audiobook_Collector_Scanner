@@ -100,7 +100,7 @@ Fallbacks, auto-corrections, validation rules, and duplicate matching decide whi
 | Enter | Open import detail |
 | Alt+S | Add selected |
 | Alt+X | Export list to CSV |
-| Escape | Cancel or close window (asks to confirm if held books remain) |
+| Escape | Clear selection first; otherwise cancel or close window (asks to confirm if held books remain) |
 | Alt+/ | Re-read status |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |

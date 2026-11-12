@@ -111,6 +111,10 @@ class ImportWindow(AccessibleDialog):
                 self.progress_window.on_close_requested()
                 event.accept()
                 return
+            if self.selected_rows or self.selection_anchor_row is not None:
+                self.clear_row_selection()
+                event.accept()
+                return
             self.on_cancel()
             event.accept()
             return
@@ -985,7 +989,7 @@ class ImportWindow(AccessibleDialog):
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
             ("Alt+X", "Export list to CSV"),
-            ("Escape", "Cancel/Close window"),
+            ("Escape", "Clear selection, or cancel or close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
@@ -1461,20 +1465,22 @@ class ImportWindow(AccessibleDialog):
         return "Unknown"
 
     def announce_selection(self):
-        """Announce selection with focused title and count, like MainWindow."""
+        """Announce the focused title and selected count, like the main window."""
         if not self.selected_rows:
             return
+        title = self._row_title(self.table.currentRow())
+        self.set_status(f"{title} - {len(self.selected_rows)} selected", announce=True)
 
-        count = len(self.selected_rows)
-        current_row = self.table.currentRow()
-        title = self._row_title(current_row)
-        shortcuts_text = "Escape to cancel selection"
-        # Always include count, even for single selection
-        if count == 1:
-            message = f"{title} - 1 selected. {shortcuts_text}"
-        else:
-            message = f"{title} - {count} selected. {shortcuts_text}"
-        self.set_status(message, announce=True)
+    def clear_row_selection(self):
+        """Escape with rows selected: clear the selection and stay on the current row."""
+        self._updating_selection_ui = True
+        self.table.clearSelection()
+        self.table.selectionModel().clearSelection()
+        self._updating_selection_ui = False
+        self.selected_rows.clear()
+        self.selection_anchor_row = None
+        self.set_status("Selection cleared", announce=True)
+        self.table.setFocus(Qt.OtherFocusReason)
 
     def update_summary(
         self,
