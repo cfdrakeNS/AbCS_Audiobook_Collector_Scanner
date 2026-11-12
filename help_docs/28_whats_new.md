@@ -1,52 +1,26 @@
 # What's New in Version 3
 
-Version 3 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
+Version 3 adds the features below. All of them work with the keyboard and screen readers.
 
-## Recent fixes
+## Main features
 
-- About, License, and Setup read each line once.
-- In Book Details, an invalid year shows one warning. Escape while editing asks before it closes. The prompt shows Yes and No. Escape discards and closes. Choosing No returns to the last field you changed. Preferences, Import Detail, and Name List use the same Yes and No prompt. Escape reverts Preferences, and discards Import Detail and Name List changes.
-- On the main book list, Tab stays on the current cell when no footer button is showing. Alt+1 through Alt+7 move the highlight with the focus.
-- In Import, Alt+1 through Alt+5 jump to Author, Title, Year, Error Type, and File/Folder. Escape clears a row selection before it closes the window. When a folder scan finishes, the progress window stays open and says Scan complete. A book-list import stays open and says Import complete.
-- In the Update window, the book list highlights the current cell.
-- In Preferences, Enter presses the button that has focus. Restore Defaults ends with the message "All preferences restored to default values."
-- A batch web fetch names each book once. After you save web metadata, you hear which fields changed once the window has closed.
-- The read date dialog has OK and Clear with or without a screen reader.
-- In Review each, Escape offers Save, Skip this book, or Stop review. Escape again stays on the book. The batch summary asks before it discards fetched information that has not been saved.
-- In an AbCS message, Escape works like Cancel, or like No when there is no Cancel.
+- **Want to Read and In Progress.** Mark books you want to read and filter the list to them. AbCS remembers where you stopped listening, so you can resume a book later.
+- **Listen inside AbCS.** Play a book without leaving AbCS. Move between files, seek, rewind, fast-forward, and change the playback speed.
+- **Check Book Locations.** Find books whose folder is blank or missing, then browse to the right folder to repair the location.
+- **Export your library.** Save your book list, or only the books you selected, to a CSV or JSON file.
 
-## Find and import books
+## More new features
 
-- Search the web for book details, individually or for a selection of books.
-- Match titles that begin with A, An, or The more reliably.
-- Folder import takes the book title from the Album tag and the author from the Album artist tag, then the Artist tag.
-- Keep the current book selected when sorting or filtering the library.
-- Review and merge duplicate author, series, or genre names when renaming.
+- **Web book details.** Search the web for a book's genre, plot, and other details, for one book or a selection.
+- **Series numbers.** Store each book's place in its series and sort by it.
+- **Collection folders.** Give each collection (virtual library) its own folder.
+- **Cover art.** See a book's embedded cover in the player and in Book Details.
+- **Merge duplicate names.** When you rename an author, series, or genre, review and merge names that are the same.
+- **Import Detail.** A clearer layout for reviewing each item from a book list import.
 
-## Organize and track listening
+## Other improvements
 
-- Store and sort books by series number.
-- Set a collection folder for each virtual library (collection).
-- Mark books as Want to Read and filter the list to those books.
-- Save listening progress and resume playback at the saved position.
-- Use the Listen player to move between files, seek, rewind, fast-forward, and change playback speed.
-- View embedded cover art in the player and Book Details.
-- See Want to Read and In Progress totals in Statistics.
-
-## Maintain and share your library
-
-- Browse to a book's location from Book Details.
-- Use **Manage**, then **Check Book Locations** to find blank, missing, or out-of-root paths, review the results, and export them to CSV.
-- Export the visible library list or selected books to CSV or JSON.
-- Import book lists from spreadsheets and review items in the updated Import Detail layout.
-
-## Accessibility and workflow improvements
-
-- Use consistent keyboard shortcuts for editing, saving, finding, and listening.
-- Follow clearer progress, status, and completion messages during longer operations.
-- Navigate updated dialogs and help topics with the keyboard and screen readers.
-- In Help, open a related guide from the end of each topic by clicking its name or pressing Enter on its line.
-- In Help, the chosen section moves near the top of the text, and the text cursor is a wide bar in your theme's highlight color.
+Most other changes are bug fixes and screen reader improvements. Dialogs read each line once, progress is spoken as soon as a long task starts, and focus returns where you were after a message. Escape now works the same way in every window: it closes, cancels, or asks before you lose unsaved changes. In Help, the chosen section moves near the top, and you can open a related guide from the end of each topic.
 
 ## Where to read more
 
@@ -57,6 +31,8 @@ For step-by-step instructions, open the guide for that window. Press **Shift+F1*
 Click a guide name, or press Enter on its line, to open it. You can also open these from All Help Topics.
 
 - [Overview](01_overview.md)
-- [Import](02_import.md)
+- [Find and Filters](03_find_filters.md)
 - [Listen to a book](26_listen_to_a_book.md)
+- [Check Book Locations](24_check_book_locations.md)
+- [Export Library](25_export_library.md)
 - [Web metadata](07_web_metadata.md)
