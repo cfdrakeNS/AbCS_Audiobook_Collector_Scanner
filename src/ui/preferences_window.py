@@ -2414,7 +2414,17 @@ class PreferencesWindow(AccessibleDialog):
         self._initial_state = self._capture_state()
 
         self.set_status("All preferences restored to default values")
-        announce_status_message(self, "All preferences restored to default values")
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Restore Defaults",
+            text="All preferences restored to default values.",
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok,
+            window_icon=get_app_icon(),
+            scaler=self.scaler,
+        )
 
     def _sync_single_collection_paths(self) -> None:
         owner = getattr(self, "owner_widget", None) or self.parent()

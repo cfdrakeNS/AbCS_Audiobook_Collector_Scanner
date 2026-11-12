@@ -38,6 +38,29 @@ def test_enter_presses_focused_preferences_button(
     window.close()
 
 
+def test_restore_defaults_confirms_with_a_popup(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    boxes = []
+
+    def record_box(*_args, **kwargs):
+        boxes.append(kwargs)
+        return QMessageBox.Yes
+
+    monkeypatch.setattr("src.ui.preferences_window.exec_styled_message_box", record_box)
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    try:
+        window.on_restore_defaults()
+        assert len(boxes) == 2
+        assert boxes[1]["text"] == "All preferences restored to default values."
+        assert boxes[1]["buttons"] == QMessageBox.Ok
+    finally:
+        window.close()
+
+
 def test_auto_check_updates_defaults_off_and_restores(
     ui_scaler, theme_manager, isolated_qsettings, qtbot
 ):
