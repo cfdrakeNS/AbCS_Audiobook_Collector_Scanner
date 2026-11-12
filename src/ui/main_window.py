@@ -105,6 +105,7 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.ui.book_details import BookDetailsWindow
+from src.ui.table_selection import rows_to_selection
 from src.ui.update_window import UpdateWindow
 from src.ui.preferences_window import PreferencesWindow
 from src.ui.import_window import ImportWindow
@@ -2289,15 +2290,13 @@ class MainWindow(QMainWindow):
             model = self.table.selectionModel()
             if model is None:
                 return
-            model.clearSelection()
-
-            col_count = self.table.columnCount()
-            for row, book in enumerate(self.books):
-                if book.book_id not in book_ids:
-                    continue
-                for col in range(col_count):
-                    idx = self.table.model().index(row, col)
-                    model.select(idx, QItemSelectionModel.Select)
+            rows = [
+                row for row, book in enumerate(self.books) if book.book_id in book_ids
+            ]
+            model.select(
+                rows_to_selection(self.table.model(), rows, self.table.columnCount()),
+                QItemSelectionModel.ClearAndSelect,
+            )
         finally:
             self._updating_selection_ui = False
 
@@ -4609,15 +4608,14 @@ class MainWindow(QMainWindow):
         # Use flag to prevent selection change handler from interfering
         self._updating_selection_ui = True
 
-        # Clear current selection first
-        self.table.selectionModel().clearSelection()
-
-        # Select all cells in each row (for SelectItems mode)
-        col_count = self.table.columnCount()
-        for r in range(start_row, end_row + 1):
-            for c in range(col_count):
-                index = self.table.model().index(r, c)
-                self.table.selectionModel().select(index, QItemSelectionModel.Select)
+        self.table.selectionModel().select(
+            rows_to_selection(
+                self.table.model(),
+                range(start_row, end_row + 1),
+                self.table.columnCount(),
+            ),
+            QItemSelectionModel.ClearAndSelect,
+        )
 
         # Sync ids and AccessibleTextRole before moving current cell so JAWS
         # hears title, count, and Escape hint on the new row.
@@ -4627,8 +4625,11 @@ class MainWindow(QMainWindow):
                 self.selected_book_ids.add(self.books[r].book_id)
         self.update_selection_ui()
 
-        self.table.setCurrentCell(target_row, col)
-        self.table.scrollTo(self.table.model().index(target_row, col))
+        # Move only the current cell. setCurrentCell applies Qt's own selection
+        # rule and can replace the block selected above.
+        target = self.table.model().index(target_row, col)
+        self.table.selectionModel().setCurrentIndex(target, QItemSelectionModel.NoUpdate)
+        self.table.scrollTo(target)
 
         self._updating_selection_ui = False
         self.announce_selection()

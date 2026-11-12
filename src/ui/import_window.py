@@ -26,6 +26,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
 from src.ui.accessible_dialog import AccessibleDialog
+from src.ui.table_selection import rows_to_selection
 from pathlib import Path
 import os
 import time
@@ -3311,14 +3312,11 @@ class ImportWindow(AccessibleDialog):
         if model is None:
             return
 
-        model.clearSelection()
-        col_count = self.table.columnCount()
-        for row in sorted(self.selected_rows):
-            if self.table.isRowHidden(row):
-                continue
-            for col in range(col_count):
-                index = self.table.model().index(row, col)
-                model.select(index, QItemSelectionModel.Select)
+        rows = [row for row in self.selected_rows if not self.table.isRowHidden(row)]
+        model.select(
+            rows_to_selection(self.table.model(), rows, self.table.columnCount()),
+            QItemSelectionModel.ClearAndSelect,
+        )
 
     def _select_row_range(self, anchor_row: int, target_row: int, current_col: int = 0):
         """Track selected rows without selecting full table rows in Qt."""

@@ -61,6 +61,42 @@ def _insert_focus_books(window):
     return id_middle, id_alpha, id_zulu
 
 
+def test_rows_to_selection_merges_consecutive_rows(qapp):
+    from PySide6.QtGui import QStandardItemModel
+
+    from src.ui.table_selection import rows_to_selection
+
+    model = QStandardItemModel(10, 3)
+    selection = rows_to_selection(model, [5, 1, 2, 3, 7], 3)
+    ranges = [(r.top(), r.bottom(), r.left(), r.right()) for r in selection]
+    assert ranges == [(1, 3, 0, 2), (5, 5, 0, 2), (7, 7, 0, 2)]
+
+
+def test_shift_down_selects_whole_rows(main_window, monkeypatch):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    window = main_window
+    _insert_focus_books(window)
+    monkeypatch.setattr(window, "announce_selection", lambda: None)
+    window.table.setCurrentCell(0, 1)
+    down = QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.ShiftModifier)
+    window.table_key_press(down)
+    window.table_key_press(down)
+    assert len(window.selected_book_ids) == 2
+    selected = window.table.selectionModel().selectedIndexes()
+    assert {i.row() for i in selected} == {0, 1}
+    assert len(selected) == 2 * window.table.columnCount()
+    assert window.table.currentRow() == 1
+
+    # Rows that are not next to each other: one range per run of rows.
+    ids = {window.books[0].book_id, window.books[2].book_id}
+    window._apply_row_selection_by_book_ids(ids)
+    selected = window.table.selectionModel().selectedIndexes()
+    assert {i.row() for i in selected} == {0, 2}
+    assert len(selected) == 2 * window.table.columnCount()
+
+
 def test_column_jump_moves_highlight_with_focus(main_window):
     """Alt+1..7 move the current cell and its highlight, like Left/Right."""
     window = main_window
