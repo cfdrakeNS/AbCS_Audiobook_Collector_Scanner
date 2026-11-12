@@ -1410,45 +1410,34 @@ class NameListWindow(AccessibleDialog):
             return
 
         # If editing with unsaved changes, confirm save/discard
-        from src.accessibility.style_helpers import (
-            apply_message_box_button_icons,
-            build_accessible_message_box_style,
-            set_message_box_button_accessibility,
-            MESSAGE_BOX_UNSAVED_THREE_ICONS,
-        )
+        from src.accessibility.style_helpers import MESSAGE_BOX_UNSAVED_TWO_ICONS
 
         from src.accessibility.icon_helper import get_app_icon
 
-        msg = QMessageBox(self)
-        msg.setWindowIcon(get_app_icon())
-        msg.setWindowTitle("Unsaved Changes")
-        msg.setStyleSheet(
-            build_accessible_message_box_style(self.scaler.get_scaled_size(20))
-        )
-        msg.setText(
-            "You have unsaved changes.\n\n"
-            "Yes = Save and close\n"
-            "No = Continue editing\n"
-            "Cancel = Discard changes and return to the list"
-        )
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-        msg.button(QMessageBox.Yes).setText("&Yes")
-        msg.button(QMessageBox.No).setText("&No")
-        msg.button(QMessageBox.Cancel).setText("&Cancel")
-        set_message_box_button_accessibility(
-            msg,
-            {
+        reply = exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Question,
+            title="Unsaved Changes",
+            text=(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n\n"
+                "Press Escape to cancel. That discards the changes "
+                "and returns to the list."
+            ),
+            buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            default_button=QMessageBox.No,
+            button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            button_accessibility={
                 QMessageBox.Yes: ("Yes, save and close", "Save changes and close"),
                 QMessageBox.No: ("No, continue editing", "Return to editing"),
-                QMessageBox.Cancel: (
-                    "Cancel, discard changes and return to the list",
-                    "Discard changes and return to the list",
-                ),
             },
+            # Cancel is hidden. Escape answers it and returns to the list.
+            escape_only_button=QMessageBox.Cancel,
+            window_icon=get_app_icon(),
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
-        apply_message_box_button_icons(msg, self.scaler, MESSAGE_BOX_UNSAVED_THREE_ICONS)
-
-        reply = msg.exec()
 
         if reply == QMessageBox.Yes:
             # Save and close

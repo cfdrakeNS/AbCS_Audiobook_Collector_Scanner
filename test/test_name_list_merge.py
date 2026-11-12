@@ -524,3 +524,32 @@ def test_open_with_unmatched_initial_series_focuses_full_table(
     assert window.table.currentRow() >= 0
     assert not window.table.isRowHidden(window.table.currentRow())
     window.close()
+
+
+def test_name_list_unsaved_prompt_hides_cancel(
+    temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    series_id = SeriesQueries(temp_db).insert("Escape Prompt Series")
+    seen = {}
+
+    def fake_box(*args, **kwargs):
+        seen.update(kwargs)
+        return QMessageBox.No
+
+    monkeypatch.setattr("src.ui.name_list_window.exec_styled_message_box", fake_box)
+    window = NameListWindow(temp_db, ui_scaler, theme_manager, "series")
+    try:
+        window.show()
+        _select_row(window, series_id)
+        window.on_edit()
+        window.name_edit.setText("Renamed Series")
+        window.on_cancel_edit()
+        assert "Press Escape to cancel" in seen["text"]
+        assert "returns to the list" in seen["text"]
+        assert QMessageBox.Cancel not in seen["button_texts"]
+        assert seen["escape_only_button"] == QMessageBox.Cancel
+        assert window.isVisible()
+    finally:
+        window.close()

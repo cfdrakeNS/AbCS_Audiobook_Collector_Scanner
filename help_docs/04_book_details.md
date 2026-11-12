@@ -41,7 +41,7 @@ Tab follows the order above and stops on the cover picture.
 4. Press **Edit** (**Alt+E**) to change fields. The button row changes to **Save**.
 5. To fix a missing or moved location, use **Browse** (**Alt+B**) beside **Path**, or type the path. If the stored path is gone, Browse starts under the collection folder or the Preferences import folder. Set the collection folder itself in Collections.
 6. Press **Save** (**Ctrl+S**) to keep your changes.
-7. Press **Escape** when you have changes. AbCS asks what to do. **Yes** saves and closes. **No** keeps Book Details open and returns to the last field you changed. **Cancel** discards the changes and closes. **Escape** on that message also discards and closes.
+7. Press **Escape** when you have changes. AbCS asks what to do. **Yes** saves and closes. **No** keeps Book Details open and returns to the last field you changed. Press **Escape** on that message to discard the changes and close.
 8. Press **Page Down** for the next book or **Page Up** for the previous book.
 9. With no unsaved changes, press **Escape** to close. The main list refreshes.
 

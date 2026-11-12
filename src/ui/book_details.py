@@ -25,7 +25,6 @@ from src.accessibility.style_helpers import (
     FullDayNumberCalendar,
     exec_styled_message_box,
     MESSAGE_BOX_DELETE_CONFIRM_ICONS,
-    MESSAGE_BOX_UNSAVED_THREE_ICONS,
     MESSAGE_BOX_UNSAVED_TWO_ICONS,
 )
 from src.accessibility.accessible_events import (
@@ -240,8 +239,8 @@ class BookDetailsWindow(AccessibleDialog):
             msg_text = (
                 f"You have unsaved changes for '{title_val}' by {author_val}.\n\n"
                 "Yes = Save and close\n"
-                "No = Continue editing\n"
-                "Cancel = Discard unsaved changes and close"
+                "No = Continue editing\n\n"
+                "Press Escape to cancel. That discards the changes and closes."
             )
             saved_id = getattr(self, "_read_date_saved_book_id", None)
             if saved_id is not None and saved_id == getattr(self.book, "book_id", None):
@@ -253,14 +252,16 @@ class BookDetailsWindow(AccessibleDialog):
                 title="Unsaved Changes",
                 text=msg_text,
                 buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                default_button=QMessageBox.Cancel,
+                default_button=QMessageBox.No,
                 button_texts={
                     QMessageBox.Yes: "&Yes",
                     QMessageBox.No: "&No",
-                    QMessageBox.Cancel: "&Cancel",
                 },
+                # Cancel is hidden. Escape answers it and discards. Without it,
+                # Escape would answer No and keep editing.
+                escape_only_button=QMessageBox.Cancel,
                 window_icon=get_app_icon(),
-                button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
+                button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
             )
 
             if reply == QMessageBox.Yes:

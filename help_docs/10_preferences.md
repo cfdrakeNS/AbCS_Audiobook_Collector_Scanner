@@ -30,7 +30,7 @@ Tab order on each tab: the instruction line, then each setting from top to botto
 2. Move to a tab with its Alt key, or with **Ctrl+Tab** and **Ctrl+Shift+Tab**. You can also click a tab label.
 3. Change the settings you want.
 4. Press **Save** (**Ctrl+S**).
-5. Press **Escape** to close. If you have unsaved changes, AbCS asks whether to save, keep editing, or discard.
+5. Press **Escape** to close. If you have unsaved changes, AbCS asks what to do. **Yes** saves and closes. **No** keeps Preferences open. Press **Escape** on that message to revert the changes and close.
 
 ## Display Settings (Alt+D)
 

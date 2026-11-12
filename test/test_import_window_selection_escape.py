@@ -30,6 +30,26 @@ def _window_with_rows(temp_db, ui_scaler, theme_manager, count=3):
     return window
 
 
+def test_alt_number_jumps_to_each_review_column(
+    temp_db, ui_scaler, theme_manager
+):
+    window = _window_with_rows(temp_db, ui_scaler, theme_manager)
+    try:
+        assert len(window.column_shortcuts) == 5
+        for column, name in (
+            (window.COL_AUTHOR, "Author"),
+            (window.COL_TITLE, "Title"),
+            (window.COL_YEAR, "Year"),
+            (window.COL_ERROR, "Error Type"),
+            (window.COL_PATH, "File/Folder"),
+        ):
+            window.jump_to_column(column)
+            assert window.table.currentColumn() == column
+            assert window.table.horizontalHeaderItem(column).text() == name
+    finally:
+        cleanup_window(window)
+
+
 def test_escape_clears_selection_without_closing(
     temp_db, ui_scaler, theme_manager, monkeypatch
 ):

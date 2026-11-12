@@ -156,6 +156,12 @@ class ImportWindow(AccessibleDialog):
             "export_button": lambda: self.export_button.click(),
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.IMPORT_WINDOW, callback_map)
+        # Alt+1 through Alt+5: Author, Title, Year, Error Type, File/Folder
+        self.column_shortcuts = []
+        for column in range(5):
+            shortcut = QShortcut(QKeySequence(f"Alt+{column + 1}"), self)
+            shortcut.activated.connect(lambda col=column: self.jump_to_column(col))
+            self.column_shortcuts.append(shortcut)
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
@@ -984,9 +990,11 @@ class ImportWindow(AccessibleDialog):
             ("Alt+I", "Import"),
             ("Alt+E", "Error filter"),
             ("Alt+L", "Jump to table"),
-            ("Alt+1", "Jump to Author "),
-            ("Alt+2", "Jump to Title "),
-            ("Alt+3-5", "Jump to Year..."),
+            ("Alt+1", "Jump to Author"),
+            ("Alt+2", "Jump to Title"),
+            ("Alt+3", "Jump to Year"),
+            ("Alt+4", "Jump to Error Type"),
+            ("Alt+5", "Jump to File/Folder"),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
             ("Alt+X", "Export list to CSV"),
@@ -1182,9 +1190,13 @@ class ImportWindow(AccessibleDialog):
         if column >= self.table.columnCount():
             column = self.table.columnCount() - 1
 
-        self.table.setCurrentCell(row, column)
         index = self.table.model().index(row, column)
-        self.table.setCurrentIndex(index)
+        if self.selected_rows:
+            self.table.selectionModel().setCurrentIndex(
+                index, QItemSelectionModel.NoUpdate
+            )
+        else:
+            self.table.setCurrentCell(row, column)
         self.table.scrollTo(index)
         self.table.setFocus()
 

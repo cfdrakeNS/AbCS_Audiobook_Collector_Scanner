@@ -5,9 +5,9 @@ Version 3 adds new ways to find, organize, listen to, and maintain your audioboo
 ## Recent fixes
 
 - About, License, and Setup read each line once.
-- In Book Details, an invalid year shows one warning. Escape while editing asks before it closes. Choosing No returns to the last field you changed.
+- In Book Details, an invalid year shows one warning. Escape while editing asks before it closes. The prompt shows Yes and No. Escape discards and closes. Choosing No returns to the last field you changed. Preferences, Import Detail, and Name List use the same Yes and No prompt. Escape reverts Preferences, and discards Import Detail and Name List changes.
 - On the main book list, Tab stays on the current cell when no footer button is showing. Alt+1 through Alt+7 move the highlight with the focus.
-- In Import, Escape clears a row selection before it closes the window. When a folder scan finishes, the progress window stays open and says Scan complete. A book-list import stays open and says Import complete.
+- In Import, Alt+1 through Alt+5 jump to Author, Title, Year, Error Type, and File/Folder. Escape clears a row selection before it closes the window. When a folder scan finishes, the progress window stays open and says Scan complete. A book-list import stays open and says Import complete.
 - In the Update window, the book list highlights the current cell.
 - In Preferences, Enter presses the button that has focus. Restore Defaults ends with the message "All preferences restored to default values."
 - A batch web fetch names each book once. After you save web metadata, you hear which fields changed once the window has closed.

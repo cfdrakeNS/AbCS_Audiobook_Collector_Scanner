@@ -96,7 +96,9 @@ Fallbacks, auto-corrections, validation rules, and duplicate matching decide whi
 | Alt+L | Jump to table |
 | Alt+1 | Jump to Author |
 | Alt+2 | Jump to Title |
-| Alt+3-5 | Jump to Year, Error Type, or File/Folder |
+| Alt+3 | Jump to Year |
+| Alt+4 | Jump to Error Type |
+| Alt+5 | Jump to File/Folder |
 | Enter | Open import detail |
 | Alt+S | Add selected |
 | Alt+X | Export list to CSV |

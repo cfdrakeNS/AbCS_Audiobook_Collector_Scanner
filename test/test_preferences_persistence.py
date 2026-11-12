@@ -173,6 +173,30 @@ def test_aac_and_opus_formats_listed_and_checked_by_default(
     window.close()
 
 
+def test_preferences_unsaved_prompt_hides_cancel(
+    ui_scaler, theme_manager, isolated_qsettings, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    seen = {}
+
+    def fake_box(*args, **kwargs):
+        seen.update(kwargs)
+        return QMessageBox.No
+
+    monkeypatch.setattr("src.ui.preferences_window.exec_styled_message_box", fake_box)
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    try:
+        reply = window._confirm_exit_with_changes()
+        assert reply == QMessageBox.No
+        assert "Press Escape to cancel" in seen["text"]
+        assert "reverts the changes" in seen["text"]
+        assert QMessageBox.Cancel not in seen["button_texts"]
+        assert seen["escape_only_button"] == QMessageBox.Cancel
+    finally:
+        window.close()
+
+
 def test_fresh_install_import_checks_use_restore_defaults_values(isolated_qsettings, qapp):
     from src.core.validator import ImportValidator
 

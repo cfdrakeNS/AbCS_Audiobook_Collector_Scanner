@@ -1411,24 +1411,29 @@ class PreferencesWindow(AccessibleDialog):
 
     def _confirm_exit_with_changes(self) -> int:
         """Ask whether to save changes before exit using standardized message box."""
-        from src.accessibility.style_helpers import exec_styled_message_box
         from src.accessibility.icon_helper import get_app_icon
 
-        from src.accessibility.style_helpers import MESSAGE_BOX_UNSAVED_THREE_ICONS
+        from src.accessibility.style_helpers import MESSAGE_BOX_UNSAVED_TWO_ICONS
 
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Question,
             title="Unsaved Changes",
-            text="You have unsaved changes.\n\n"
-            "Yes = Save and close\n"
-            "No = Continue editing\n"
-            "Cancel = Revert and close",
+            text=(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n\n"
+                "Press Escape to cancel. That reverts the changes and closes."
+            ),
             buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             default_button=QMessageBox.Yes,
+            button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            # Cancel is hidden. Escape answers it and reverts. Without it,
+            # Escape would answer No and keep Preferences open.
+            escape_only_button=QMessageBox.Cancel,
             window_icon=get_app_icon(),
-            button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
         return reply
 

@@ -170,6 +170,26 @@ def test_escape_yes_with_invalid_year_keeps_book_details_open(
         window.close()
 
 
+def test_unsaved_prompt_hides_cancel_and_escape_discards(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts
+):
+    books = _make_books(temp_db, year=1999, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        window.on_edit_mode()
+        window.title_edit.setText("Changed title")
+        prompts.reply = QMessageBox.No
+        window.on_cancel_edit()
+        asked = prompts.calls[-1]
+        assert "Press Escape to cancel" in asked["text"]
+        assert "Cancel =" not in asked["text"]
+        assert QMessageBox.Cancel not in asked["button_texts"]
+        assert asked["escape_only_button"] == QMessageBox.Cancel
+        assert asked["default_button"] == QMessageBox.No
+    finally:
+        window.close()
+
+
 def test_escape_no_returns_focus_to_last_changed_field(
     temp_db, ui_scaler, theme_manager, classic_fields, prompts, monkeypatch
 ):
