@@ -397,8 +397,8 @@ class MainWindow(QMainWindow):
     ) -> None:
         """Persist read date from the dialog.
 
-        Calendar (sighted): OK saves without a second prompt.
-        Screen reader (typed field): always confirm before saving a change.
+        OK saves a date without a second prompt. A blank typed field asks
+        before it clears an existing date.
         """
         from src.accessibility.masked_date_fields import (
             classic_date_is_blank,
@@ -421,39 +421,25 @@ class MainWindow(QMainWindow):
             new_date = date_field.date().toString("yyyy-MM-dd")
 
         if book.read_date == new_date:
-            self.set_status(
-                f"Read date unchanged for {book.title}", announce=True
+            self._focus_read_cell_with_status(
+                book, f"Read date unchanged for {book.title}"
             )
-            self.focus_book_by_id(book.book_id, 6, fallback=False)
             return
 
-        if use_masked:
-            if not new_date:
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Clear Read Date",
-                    text=f"Clear the read date for '{book.title}'?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
-            else:
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Read Date",
-                    text=f"Mark '{book.title}' as read on {new_date}?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
+        if use_masked and not new_date:
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Clear Read Date",
+                text=f"Clear the read date for '{book.title}'?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
             if reply != QMessageBox.Yes:
-                self.set_status(
-                    f"Read date update cancelled for {book.title}",
-                    announce=True,
+                self._focus_read_cell_with_status(
+                    book, f"Read date update cancelled for {book.title}"
                 )
-                self.focus_book_by_id(book.book_id, 6, fallback=False)
                 return
 
         if not new_date:
@@ -461,11 +447,10 @@ class MainWindow(QMainWindow):
             book.read_date = ""
             self.book_queries.update(book)
             self.refresh_books()
-            self.set_status(
+            message = (
                 f"Read date cleared for {book.title}"
                 if had_date
-                else f"Read date unchanged for {book.title}",
-                announce=True,
+                else f"Read date unchanged for {book.title}"
             )
         else:
             book.read_date = new_date
@@ -484,19 +469,20 @@ class MainWindow(QMainWindow):
                 extras.append("Want to read cleared")
             if cleared_listen:
                 extras.append("Listening position cleared")
+            message = f"Read date set for {book.title}"
             if extras:
-                self.set_status(
-                    f"Read date set for {book.title}. "
-                    + ". ".join(extras)
-                    + ".",
-                    announce=True,
-                )
-            else:
-                self.set_status(
-                    f"Read date set for {book.title}", announce=True
-                )
+                message += ". " + ". ".join(extras) + "."
 
+        self._focus_read_cell_with_status(book, message)
+
+    def _focus_read_cell_with_status(self, book, message: str) -> None:
+        """Focus the book's Read cell, then show the message.
+
+        Moving focus resets the status bar to the default text, so the message
+        has to come after it.
+        """
         self.focus_book_by_id(book.book_id, 6, fallback=False)
+        self.set_status(message, announce=True)
 
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
@@ -680,13 +666,8 @@ class MainWindow(QMainWindow):
                 book.read_date = ""
                 self.book_queries.update(book)
                 self.refresh_books()
-                self.set_status(
-                    f"Read date cleared for {book.title}", announce=True
-                )
+                dlg.closing_message = f"Read date cleared for {book.title}"
             dlg.done(QDialog.Rejected)
-            index = self.book_model.index(row, 6)
-            self.table.setCurrentIndex(index)
-            self.table.setFocus()
 
         ok_btn = QPushButton("OK")
         ok_btn.setAccessibleName("OK")
@@ -740,6 +721,8 @@ class MainWindow(QMainWindow):
             self._apply_read_date_from_dialog(
                 book, row, date_field, use_masked=use_masked
             )
+        elif getattr(dlg, "closing_message", ""):
+            self._focus_read_cell_with_status(book, dlg.closing_message)
         else:
             self.focus_book_by_id(book.book_id, 6, fallback=False)
 

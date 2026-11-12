@@ -206,6 +206,35 @@ def test_read_date_dialog_has_ok_and_clear_buttons(main_window, monkeypatch, mas
     assert "OK saves the date. Clear removes it." in description
 
 
+def test_read_date_ok_saves_without_confirm(main_window, monkeypatch, qtbot):
+    """OK in the typed version saves the date with no popup, and says so."""
+    from PySide6.QtCore import QDate
+
+    from src.accessibility.masked_date_fields import MaskedDateEdit
+
+    window = main_window
+    _insert_focus_books(window)
+    prompts = []
+    monkeypatch.setattr(
+        "src.ui.main_window.exec_styled_message_box",
+        lambda *a, **kw: prompts.append(kw.get("title")) or QMessageBox.No,
+    )
+    book = window.books[0]
+    field = MaskedDateEdit(window)
+    field.setDate(QDate(2021, 3, 4))
+    window._apply_read_date_from_dialog(book, 0, field, use_masked=True)
+
+    assert prompts == []
+    saved = BookQueries(window.db).get_by_id(book.book_id)
+    assert str(saved.read_date) == "2021-03-04"
+    # Focus moves to the Read cell first, so the message is not replaced.
+    qtbot.wait(50)
+    assert window.status_bar.currentMessage().startswith(
+        f"Read date set for {book.title}"
+    )
+    assert window.table.currentColumn() == 6
+
+
 def test_author_sort_keeps_focused_book(main_window, qapp, qtbot):
     window = main_window
     id_middle, _id_alpha, _id_zulu = _insert_focus_books(window)
