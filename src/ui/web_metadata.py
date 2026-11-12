@@ -1177,7 +1177,8 @@ class WebMetadataWindow(AccessibleDialog):
             title="Review each",
             text=(
                 f"Book {self.queue_index} of {self.queue_total}. "
-                "Save web data for this book, skip this book, or stop reviewing?"
+                "Save web data for this book, skip this book, or stop reviewing?\n\n"
+                "Press Escape to stay on this book."
             ),
             buttons=(
                 QMessageBox.Yes
@@ -1190,8 +1191,10 @@ class WebMetadataWindow(AccessibleDialog):
                 QMessageBox.Yes: "&Save",
                 QMessageBox.No: "S&kip this book",
                 QMessageBox.Abort: "S&top review",
-                QMessageBox.Cancel: "&Cancel",
             },
+            # Cancel is hidden; Escape answers it and stays on this book. Without
+            # it, Escape would answer Stop review.
+            escape_only_button=QMessageBox.Cancel,
             button_accessibility={
                 QMessageBox.Yes: (
                     "Save",

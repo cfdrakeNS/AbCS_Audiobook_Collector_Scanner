@@ -197,7 +197,7 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Alt+F | Re-fetch web data |
 | Ctrl+S | Save |
 | Alt+K | Skip this book (review queue) |
-| Escape | Close (asks whether to save). In Review each: Save, Skip this book, Stop review, or Cancel |
+| Escape | Close (asks whether to save). In Review each: Save, Skip this book, or Stop review; Escape again stays on the book |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |

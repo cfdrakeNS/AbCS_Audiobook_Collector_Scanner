@@ -626,6 +626,10 @@ def test_web_metadata_escape_stop_review_returns_stop_result(
         assert texts[QMessageBox.Abort] == "S&top review"
         assert texts[QMessageBox.No] == "S&kip this book"
         assert seen["button_accessibility"][QMessageBox.Abort][0] == "Stop review"
+        # No visible Cancel; Escape answers the hidden Cancel and stays.
+        assert QMessageBox.Cancel not in texts
+        assert seen["escape_only_button"] == QMessageBox.Cancel
+        assert "Press Escape to stay on this book" in seen["text"]
     finally:
         dlg.close()
 
