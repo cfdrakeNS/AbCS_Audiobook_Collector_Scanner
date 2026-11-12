@@ -43,6 +43,7 @@ Low vision users can increase text size under **Manage → Preferences → Displ
 - Press **Alt+/** in any major window to re-read the current status message.
 - Press **Escape** to cancel or close most windows. Some ask for confirmation first.
 - In an AbCS message, **Escape** works like **Cancel**, or like **No** when there is no Cancel.
+- Most AbCS messages and small windows are standard dialog boxes. Your screen reader's usual commands for reading a dialog and its title work in them.
 - In a combo box you can type in, plain **Up** or **Down** may beep. Press **Alt+Down** to open the choices.
 - In the help content area, each sentence is its own paragraph, so a screen reader can read it line by line.
 
