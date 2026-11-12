@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
 from PySide6.QtWidgets import QMessageBox
 
 from src.database.models import Book, Collection
@@ -101,6 +102,47 @@ def test_tab_stays_in_table_when_no_footer_buttons(main_window, monkeypatch):
         QKeyEvent(QEvent.KeyPress, Qt.Key_Backtab, Qt.ShiftModifier)
     )
     assert moves == ["next", "previous"]
+
+
+@pytest.mark.parametrize("masked", [True, False])
+def test_read_date_dialog_has_ok_and_clear_buttons(main_window, monkeypatch, masked):
+    """The screen reader (typed) version has the same buttons as the calendar version."""
+    from PySide6.QtWidgets import QDialog
+
+    from src.accessibility.masked_date_fields import MaskedDateEdit
+    from src.ui.accessible_dialog import AccessibleDialog
+
+    window = main_window
+    _insert_focus_books(window)
+    if masked:
+        monkeypatch.setattr(
+            "src.accessibility.masked_date_fields.make_date_field",
+            lambda parent=None, **kw: MaskedDateEdit(parent),
+        )
+    else:
+        monkeypatch.setattr(
+            "src.accessibility.masked_date_fields.make_date_field",
+            lambda parent=None, **kw: None,
+        )
+    captured = {}
+
+    def fake_exec(dialog):
+        captured["dialog"] = dialog
+        return QDialog.Rejected
+
+    monkeypatch.setattr(AccessibleDialog, "exec", fake_exec)
+    window.show_read_date_dialog(0)
+
+    dlg = captured["dialog"]
+    assert dlg.use_masked is masked
+    assert dlg.ok_button.text() == "OK"
+    assert dlg.clear_button.text() == "Clear"
+    # Spoken names match the visible labels.
+    assert dlg.ok_button.accessibleName() == "OK"
+    assert dlg.clear_button.accessibleName() == "Clear"
+    # Static text for the screen reader's read-dialog keys.
+    assert window.books[0].title in dlg.prompt_label.text()
+    assert "OK saves the date" in dlg.prompt_label.text()
 
 
 def test_author_sort_keeps_focused_book(main_window, qapp, qtbot):

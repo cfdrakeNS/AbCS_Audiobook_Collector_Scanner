@@ -523,6 +523,11 @@ class MainWindow(QMainWindow):
 
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    focused = self.focusWidget()
+                    if isinstance(focused, QPushButton):
+                        focused.click()
+                        event.accept()
+                        return
                     if self.date_field is not None:
                         self.date_field.setFocus()
                     QTimer.singleShot(0, self.accept)
@@ -594,76 +599,107 @@ class MainWindow(QMainWindow):
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
 
+        # Static text so the screen reader's read-dialog keys have something to read.
+        if use_masked:
+            prompt_text = (
+                f"Type the date you finished '{book.title}' as year-month-day. "
+                "OK saves the date. Clear removes it."
+            )
+        else:
+            prompt_text = (
+                f"Choose the date you finished '{book.title}'. "
+                "OK saves the date. Clear removes it."
+            )
+        prompt_label = QLabel(prompt_text)
+        prompt_label.setWordWrap(True)
+        prompt_label.setFocusPolicy(Qt.NoFocus)
+        prompt_label.setBuddy(date_field)
+        layout.addWidget(prompt_label)
+        dlg.prompt_label = prompt_label
+
         date_row = QHBoxLayout()
         date_row.addWidget(date_field, 1)
-        if not use_masked:
-            clear_btn = QPushButton("Clear")
-            clear_btn.setAccessibleName("Clear read date")
-            clear_btn.setAccessibleDescription(
-                "Clear the read date for this book"
-            )
-            clear_btn.setAutoDefault(False)
-            clear_btn.setDefault(False)
 
-            def _clear_classic_date():
-                """Clear immediately (with confirm). Do not require Enter."""
-                had_date = bool(book.read_date)
-                if not had_date and classic_date_is_blank(date_field):
+        def _date_is_blank() -> bool:
+            if use_masked:
+                return not date_field.text().strip()
+            return classic_date_is_blank(date_field)
+
+        def _set_date_blank() -> None:
+            if use_masked:
+                date_field.setText("")
+            else:
+                set_classic_date_blank(date_field)
+
+        clear_btn = QPushButton("Clear")
+        clear_btn.setAccessibleName("Clear")
+        clear_btn.setAccessibleDescription(
+            "Clear the read date for this book"
+        )
+        clear_btn.setAutoDefault(False)
+        clear_btn.setDefault(False)
+
+        def _clear_read_date():
+            """Clear immediately (with confirm). Do not require Enter."""
+            had_date = bool(book.read_date)
+            if not had_date and _date_is_blank():
+                self.set_status(
+                    f"Read date is already blank for {book.title}",
+                    announce=True,
+                )
+                return
+            if had_date:
+                reply = exec_styled_message_box(
+                    dlg,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Confirm Clear Read Date",
+                    text=f"Clear the read date for '{book.title}'?",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                )
+                if reply != QMessageBox.Yes:
                     self.set_status(
-                        f"Read date is already blank for {book.title}",
+                        f"Read date update cancelled for {book.title}",
                         announce=True,
                     )
                     return
-                if had_date:
-                    reply = exec_styled_message_box(
-                        dlg,
-                        self.scaler.get_scaled_size(20),
-                        icon=QMessageBox.Question,
-                        title="Confirm Clear Read Date",
-                        text=f"Clear the read date for '{book.title}'?",
-                        buttons=QMessageBox.Yes | QMessageBox.No,
-                        default_button=QMessageBox.No,
-                    )
-                    if reply != QMessageBox.Yes:
-                        self.set_status(
-                            f"Read date update cancelled for {book.title}",
-                            announce=True,
-                        )
-                        return
-                set_classic_date_blank(date_field)
-                if had_date:
-                    book.read_date = ""
-                    self.book_queries.update(book)
-                    self.refresh_books()
-                    self.set_status(
-                        f"Read date cleared for {book.title}", announce=True
-                    )
-                dlg.done(QDialog.Rejected)
-                index = self.book_model.index(row, 6)
-                self.table.setCurrentIndex(index)
-                self.table.setFocus()
+            _set_date_blank()
+            if had_date:
+                book.read_date = ""
+                self.book_queries.update(book)
+                self.refresh_books()
+                self.set_status(
+                    f"Read date cleared for {book.title}", announce=True
+                )
+            dlg.done(QDialog.Rejected)
+            index = self.book_model.index(row, 6)
+            self.table.setCurrentIndex(index)
+            self.table.setFocus()
 
-            ok_btn = QPushButton("OK")
-            ok_btn.setAccessibleName("Save read date")
-            ok_btn.setAccessibleDescription(
-                "Save the date and close. No extra confirmation."
-            )
-            ok_btn.setFocusPolicy(Qt.StrongFocus)
-            ok_btn.setDefault(True)
-            ok_btn.setAutoDefault(True)
-            clear_btn.setFocusPolicy(Qt.StrongFocus)
-            scaled_height = int(20 * (self.scaler.current_scale / 100.0))
-            read_date_btn_style = build_modern_button_style(scaled_height)
-            ok_btn.setObjectName("primaryActionButton")
-            clear_btn.setObjectName("destructiveActionButton")
-            ok_btn.setStyleSheet(read_date_btn_style)
-            clear_btn.setStyleSheet(read_date_btn_style)
-            apply_decorative_action_icon(ok_btn, "save", self.scaler)
-            apply_decorative_action_icon(clear_btn, "delete", self.scaler)
-            ok_btn.clicked.connect(dlg.accept)
-            clear_btn.clicked.connect(_clear_classic_date)
-            date_row.addWidget(ok_btn)
-            date_row.addWidget(clear_btn)
+        ok_btn = QPushButton("OK")
+        ok_btn.setAccessibleName("OK")
+        ok_btn.setAccessibleDescription(
+            "Save the date and close. No extra confirmation."
+        )
+        ok_btn.setFocusPolicy(Qt.StrongFocus)
+        ok_btn.setDefault(True)
+        ok_btn.setAutoDefault(True)
+        clear_btn.setFocusPolicy(Qt.StrongFocus)
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        read_date_btn_style = build_modern_button_style(scaled_height)
+        ok_btn.setObjectName("primaryActionButton")
+        clear_btn.setObjectName("destructiveActionButton")
+        ok_btn.setStyleSheet(read_date_btn_style)
+        clear_btn.setStyleSheet(read_date_btn_style)
+        apply_decorative_action_icon(ok_btn, "save", self.scaler)
+        apply_decorative_action_icon(clear_btn, "delete", self.scaler)
+        ok_btn.clicked.connect(dlg.accept)
+        clear_btn.clicked.connect(_clear_read_date)
+        date_row.addWidget(ok_btn)
+        date_row.addWidget(clear_btn)
+        dlg.ok_button = ok_btn
+        dlg.clear_button = clear_btn
         layout.addLayout(date_row)
 
         date_field.setFocus()

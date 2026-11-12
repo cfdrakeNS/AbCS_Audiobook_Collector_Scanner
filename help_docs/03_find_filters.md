@@ -105,7 +105,7 @@ This filter uses the **date added**: the day the book was imported or created in
 
 1. Move to the **Read** column of the book.
 2. Press **Enter**, or double-click the cell.
-3. Choose the date and confirm. Setting a read date also clears the listening position and Want to read for that book.
+3. Choose the date and press **OK**, or press **Clear** to remove the read date. With a screen reader running, the date is a typed field (year-month-day); without one, it has a calendar. Both have **OK** and **Clear**. Setting a read date also clears the listening position and Want to read for that book.
 
 You can also set the read date in [Book Details](04_book_details.md).
 
