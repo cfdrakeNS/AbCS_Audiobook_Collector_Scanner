@@ -331,6 +331,7 @@ class ImportProgressWindow(QDialog):
         """Prepare progress display for add phase."""
         safe_total = max(0, int(total_books))
         self._scan_active = True
+        self.scan_progress.setAccessibleName("Scan progress")
         self.scan_progress.setValue(0)
         book_list = self._book_list_counters()
         if safe_total > 0:
@@ -536,16 +537,14 @@ class ImportProgressWindow(QDialog):
         summary_text: str | None = None,
     ):
         self._scan_active = False
+        activity_title = self._activity_label.capitalize()
+        outcome = f"{activity_title} {'canceled' if canceled else 'complete'}"
 
-        if canceled:
-            self.scan_progress.setFormat(
-                f"{self._activity_label.capitalize()} canceled ({elapsed_text})"
-            )
-        else:
+        if not canceled:
             self.scan_progress.setValue(100)
-            self.scan_progress.setFormat(
-                f"{self._activity_label.capitalize()} complete ({elapsed_text})"
-            )
+        self.scan_progress.setFormat(f"{outcome} ({elapsed_text})")
+        # Screen readers speak the bar's name and percent, not its visible text.
+        self.scan_progress.setAccessibleName(outcome)
 
         self.setFocusPolicy(Qt.StrongFocus)
         self.raise_()
@@ -554,8 +553,10 @@ class ImportProgressWindow(QDialog):
 
         if summary_text:
             message = summary_text.strip()
-            if canceled:
-                activity_title = self._activity_label.capitalize()
+            if not canceled:
+                # Lead with the outcome so it is not lost among the counts.
+                message = f"{outcome}. {message}"
+            else:
                 lower = message.lower()
                 # Folder import passes "Scan canceled | …"; book list uses
                 # "Import canceled | …". Do not wrap those again.
@@ -571,8 +572,6 @@ class ImportProgressWindow(QDialog):
             self.set_status(message, announce=True)
             return
 
-        activity = self._activity_label
-        activity_title = activity.capitalize()
         if canceled:
             self.set_status(
                 f"{activity_title} canceled! Elapsed: {elapsed_text}. Esc to close.",
@@ -592,6 +591,7 @@ class ImportProgressWindow(QDialog):
         self.scan_progress.setFormat(
             f"Add complete - {books_added} book(s) added{elapsed_segment}"
         )
+        self.scan_progress.setAccessibleName("Add complete")
         self.setFocusPolicy(Qt.StrongFocus)
         self.raise_()
         self.activateWindow()

@@ -44,8 +44,8 @@ Focus starts on **Collection** when the window opens.
 8. New books need Title and Author. Read-date mode needs Title, Author, and Read Date, and the other mapping rows are grayed out.
 9. Press **Import** (**Alt+I**).
 10. A **Confirm Import** message shows the row count, mode, and mapping. Press **Yes** to go ahead or **No** to stop.
-11. An **Import Progress** window shows the current title and author and the counts while rows are processed. Press **Escape** there to cancel; books already added are kept and the remaining rows are skipped.
-12. When the import finishes, the progress window closes and a message says **Import completed** with an **OK** button. If you canceled, the progress window stays open with the counts; press **Escape** to close it.
+11. An **Import Progress** window shows a progress bar and the counts while rows are processed. Press **Escape** there to cancel; books already added are kept and the remaining rows are skipped.
+12. When the import finishes or is canceled, the progress window stays open with the counts, ending with "Esc to close". Press **Escape** to close it.
 13. If some rows failed, the status bar reminds you to press **Export Errors** (**Alt+X**) to save a CSV of the failed rows. Press **Alt+/** to hear the status.
 14. The window stays open so you can import another file. Press **Escape** when finished. The main book list refreshes.
 

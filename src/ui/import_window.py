@@ -2245,27 +2245,6 @@ class ImportWindow(AccessibleDialog):
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
 
-    def _close_progress_window(self) -> None:
-        """Close the progress window without the cancel prompt."""
-        progress = self.progress_window
-        if progress is None:
-            return
-        progress._scan_active = False
-        progress.close()
-        self.progress_window = None
-
-    def _show_completed_popup(self, message: str) -> None:
-        """One OK button and the completion sentence. No counters."""
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title=message,
-            text=message,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok,
-        )
-
     def _finish_scan_progress(
         self,
         *,
@@ -2276,22 +2255,22 @@ class ImportWindow(AccessibleDialog):
         read_errors: int,
         summary_text: str,
     ) -> None:
-        """Cancel leaves the progress window open. A finished import closes it."""
+        """Leave the progress window open with the summary; Escape closes it.
+
+        Closing it returns focus to the review table (``_on_progress_window_closed``).
+        """
         if not self.scanned_items:
             self._set_review_combos_enabled(True)
-        if canceled:
-            if self.progress_window:
-                self.progress_window.mark_scan_complete(
-                    canceled=True,
-                    elapsed_text=elapsed_text,
-                    files_scanned=files_scanned,
-                    books_added=books_added,
-                    read_errors=read_errors,
-                    summary_text=summary_text,
-                )
+        if self.progress_window:
+            self.progress_window.mark_scan_complete(
+                canceled=canceled,
+                elapsed_text=elapsed_text,
+                files_scanned=files_scanned,
+                books_added=books_added,
+                read_errors=read_errors,
+                summary_text=summary_text,
+            )
             return
-        self._close_progress_window()
-        self._show_completed_popup("Import completed")
         if self.table.rowCount() > 0:
             if self.table.currentRow() < 0:
                 self.table.setCurrentCell(0, self.COL_TITLE)

@@ -99,11 +99,11 @@ When a single row has an unexpected problem, it is listed with its row number an
 ## When the import finishes
 
 - Every added book is saved, including the books added before a cancel.
-- When the import finishes, the progress window closes and a message says **Import completed** with an **OK** button.
-- When you cancel, the progress window stays open, and its status bar starts with "Import canceled". Press **Escape** to close it.
+- When the import finishes, the progress window stays open. Its progress bar says **Import complete** and its status bar has the counts, ending with "Esc to close". Press **Escape** to close it.
+- When you cancel, the progress window also stays open, and its status bar starts with "Import canceled".
 - The status bar of the Import Book List window has the summary, for example "32 books added to Audiobooks collection, 2 duplicates skipped, 3 errors". After a cancel, it adds how many rows were skipped. Press **Alt+/** to hear it.
 - When some rows failed, the status bar also reminds you to use **Export Errors** (**Alt+X**).
-- After **OK**, focus returns to the file field.
+- After you close the progress window, focus returns to the file field.
 - The main book list refreshes when you close the Import Book List window.
 
 ### Export Errors
@@ -142,7 +142,7 @@ The date comes from the mapped **Read Date** column. Many formats work, for exam
 - An empty cell gives the error "Read date is empty".
 - A date AbCS cannot read gives the error "Invalid date format".
 
-When the import finishes, the same **Import completed** message appears, and the status bar says how many read dates were added and how many rows failed. **Export Errors** is available for failed rows.
+When the import finishes, the progress window stays open with the counts, and the Import Book List status bar says how many read dates were added and how many rows failed. **Export Errors** is available for failed rows.
 
 ## What is stored
 

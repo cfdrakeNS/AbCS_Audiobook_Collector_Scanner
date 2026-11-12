@@ -57,6 +57,34 @@ def test_escape_clears_selection_without_closing(
         cleanup_window(window)
 
 
+def test_finished_scan_keeps_progress_window_open(temp_db, ui_scaler, theme_manager):
+    from src.ui.import_progress_window import ImportProgressWindow
+
+    window = ImportWindow(temp_db, ui_scaler, theme_manager)
+    window.progress_window = ImportProgressWindow(
+        ui_scaler, theme_manager, parent=window
+    )
+    window.progress_window.show()
+    try:
+        window._finish_scan_progress(
+            canceled=False,
+            elapsed_text="00:01",
+            files_scanned=2,
+            books_added=2,
+            read_errors=0,
+            summary_text="Scanned: 2 | Added: 2",
+        )
+        progress = window.progress_window
+        assert progress is not None and progress.isVisible()
+        assert "Scan complete" in progress.scan_progress.format()
+        assert progress.scan_progress.accessibleName() == "Scan complete"
+        message = progress.status_bar.currentMessage()
+        assert message.startswith("Scan complete. Scanned: 2")
+        assert "Esc to close" in message
+    finally:
+        cleanup_window(window)
+
+
 def test_selection_announcement_is_title_and_count(
     temp_db, ui_scaler, theme_manager, monkeypatch
 ):

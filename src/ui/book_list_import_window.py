@@ -1194,27 +1194,6 @@ class BookListImportWindow(AccessibleDialog):
         self._progress_ui_next = now + 0.15
         QApplication.processEvents()
 
-    def _close_progress_window(self) -> None:
-        """Close the progress window without the cancel prompt."""
-        progress = self.progress_window
-        if progress is None:
-            return
-        progress._scan_active = False
-        progress.close()
-        self.progress_window = None
-
-    def _show_completed_popup(self, message: str) -> None:
-        """One OK button and the completion sentence. No counters."""
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title=message,
-            text=message,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok,
-        )
-
     def _finish_import_progress(
         self,
         *,
@@ -1835,33 +1814,21 @@ class BookListImportWindow(AccessibleDialog):
             if error_count > 0:
                 status_text += ". Use Export Errors (Alt+X) to save error details to CSV"
 
-            # Cancel keeps the progress window (Esc to close).
-            # A finished import closes it and shows Import completed.
-            if canceled:
-                self._finish_import_progress(
-                    canceled=True,
-                    summary_text=progress_summary,
-                )
-            else:
-                self._close_progress_window()
-                self._show_completed_popup("Import completed")
-
-            if canceled:
-                # No extra popup on cancel (folder Import does not show one either).
-                # Counters and Esc-to-close live on the progress status bar.
-                progress_showing = (
-                    self.progress_window is not None
-                    and self.progress_window.isVisible()
-                )
-                self.set_status(progress_summary, announce=not progress_showing)
-                if progress_showing:
-                    self.progress_window.raise_()
-                    self.progress_window.activateWindow()
-                    self.progress_window.scan_progress.setFocus(Qt.TabFocusReason)
-                else:
-                    self.file_edit.setFocus(Qt.TabFocusReason)
-            else:
-                self.set_status(status_text, announce=False)
+            # The progress window stays open with the counters, finished or
+            # canceled, like folder Import (Esc to close). No completed popup.
+            self._finish_import_progress(
+                canceled=canceled,
+                summary_text=progress_summary,
+            )
+            progress_showing = (
+                self.progress_window is not None
+                and self.progress_window.isVisible()
+            )
+            final_status = progress_summary if canceled else status_text
+            self.set_status(final_status, announce=not progress_showing)
+            # mark_complete already focused the progress window and announced the
+            # summary; moving focus again here would cut that speech off.
+            if not progress_showing:
                 self.file_edit.setFocus(Qt.TabFocusReason)
 
         except Exception as e:
