@@ -96,14 +96,14 @@ class PreferencesWindow(AccessibleDialog):
     }
 
     def keyPressEvent(self, event):
-        # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
-        if self.browse_button.hasFocus() and event.key() in (
-            Qt.Key_Return,
-            Qt.Key_Enter,
-        ):
-            self.on_browse()
-            event.accept()
-            return
+        # Preferences is a form with no default button: Enter presses the focused
+        # button (Browse, Restore Defaults, Save).
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused = self.focusWidget()
+            if isinstance(focused, QPushButton) and focused.isEnabled():
+                focused.click()
+                event.accept()
+                return
         super().keyPressEvent(event)
 
     ALLOWED_ALT_LETTERS = {"A", "B", "C", "D", "F", "O", "R", "V"}

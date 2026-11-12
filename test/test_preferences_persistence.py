@@ -8,6 +8,36 @@ from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
 from src.ui.preferences_window import PreferencesWindow
 
 
+def test_enter_presses_focused_preferences_button(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot, monkeypatch
+):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtWidgets import QMessageBox
+
+    monkeypatch.setattr(
+        "src.ui.preferences_window.exec_styled_message_box",
+        lambda *a, **k: QMessageBox.No,
+    )
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    clicked = []
+    window.restore_defaults_button.clicked.connect(lambda: clicked.append("restore"))
+    window.save_button.clicked.connect(lambda: clicked.append("save"))
+
+    for button, key in (
+        (window.restore_defaults_button, Qt.Key_Return),
+        (window.save_button, Qt.Key_Enter),
+    ):
+        monkeypatch.setattr(window, "focusWidget", lambda b=button: b)
+        event = QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier)
+        window.keyPressEvent(event)
+        assert event.isAccepted()
+
+    assert clicked == ["restore", "save"]
+    window.close()
+
+
 def test_auto_check_updates_defaults_off_and_restores(
     ui_scaler, theme_manager, isolated_qsettings, qtbot
 ):
