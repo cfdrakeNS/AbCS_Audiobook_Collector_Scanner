@@ -559,6 +559,8 @@ def test_exec_styled_message_box_keeps_accessible_dialog_enabled(qapp):
         AccessibleDialog, "isVisible", lambda self: True
     ), patch.object(
         AccessibleDialog, "activateWindow", lambda self: activated.append(self)
+    ), patch(
+        "PySide6.QtWidgets.QApplication.activeWindow", return_value=owner
     ):
         result = exec_styled_message_box(
             edit,
@@ -573,6 +575,58 @@ def test_exec_styled_message_box_keeps_accessible_dialog_enabled(qapp):
     assert captured["parent"] is None
     assert captured["modality"] == Qt.WindowModal
     assert activated == [owner]
+    owner.deleteLater()
+
+
+def test_message_box_settles_owner_when_no_window_is_active(qapp):
+    """Right after a dialog closes, the owner is activated before the box opens."""
+    owner = QWidget()
+    order = []
+
+    def fake_exec(self):
+        order.append("exec")
+        return int(QMessageBox.Ok)
+
+    with patch.object(QMessageBox, "exec", fake_exec), patch.object(
+        QWidget, "isVisible", lambda self: True
+    ), patch.object(
+        QWidget, "activateWindow", lambda self: order.append("activate")
+    ), patch(
+        "PySide6.QtWidgets.QApplication.activeWindow", return_value=None
+    ):
+        exec_styled_message_box(
+            owner, scaled_height=20, icon=QMessageBox.Information, title="T", text="Done"
+        )
+    assert order == ["activate", "exec"]
+
+    # Qt can still report the just-closed (hidden) dialog as the active window.
+    closed_dialog = QWidget()
+    order.clear()
+    with patch.object(QMessageBox, "exec", fake_exec), patch.object(
+        QWidget, "isVisible", lambda self: self is not closed_dialog
+    ), patch.object(
+        QWidget, "activateWindow", lambda self: order.append("activate")
+    ), patch(
+        "PySide6.QtWidgets.QApplication.activeWindow", return_value=closed_dialog
+    ):
+        exec_styled_message_box(
+            owner, scaled_height=20, icon=QMessageBox.Information, title="T", text="Done"
+        )
+    assert order == ["activate", "exec"]
+    closed_dialog.deleteLater()
+
+    order.clear()
+    with patch.object(QMessageBox, "exec", fake_exec), patch.object(
+        QWidget, "isVisible", lambda self: True
+    ), patch.object(
+        QWidget, "activateWindow", lambda self: order.append("activate")
+    ), patch(
+        "PySide6.QtWidgets.QApplication.activeWindow", return_value=owner
+    ):
+        exec_styled_message_box(
+            owner, scaled_height=20, icon=QMessageBox.Information, title="T", text="Done"
+        )
+    assert order == ["exec"]
     owner.deleteLater()
 
 

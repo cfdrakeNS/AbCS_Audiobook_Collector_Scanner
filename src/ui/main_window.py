@@ -521,6 +521,19 @@ class MainWindow(QMainWindow):
                 self.use_masked = False
                 self.setWindowIcon(get_app_icon())
 
+            def showEvent(self, event):
+                super().showEvent(event)
+                # First focus after the window is shown, not while building it.
+                QTimer.singleShot(0, self._focus_date_field)
+
+            def _focus_date_field(self):
+                if self.date_field is None or not self.isVisible():
+                    return
+                self.date_field.setFocus(Qt.OtherFocusReason)
+                if self.use_masked:
+                    # Prefill is usually today; select all so typing replaces it.
+                    self.date_field.selectAll()
+
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     focused = self.focusWidget()
@@ -556,7 +569,6 @@ class MainWindow(QMainWindow):
         book = self.books[row]
         dlg = ReadDateDialog(self)
         dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
-        dlg.setModal(True)
         layout = QVBoxLayout(dlg)
 
         # Date field: typed text for screen readers, calendar edit otherwise
@@ -599,26 +611,24 @@ class MainWindow(QMainWindow):
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
 
-        # Static text so the screen reader's read-dialog keys have something to read.
+        # Focus starts in this field, and with focus in a text field JAWS Insert+B
+        # reads only the title and the field, so the instructions go here.
         if use_masked:
             prompt_text = (
-                f"Type the date you finished '{book.title}' as year-month-day. "
-                "OK saves the date. Clear removes it."
+                f"Type the date you finished '{book.title}' as year-month-day."
             )
         else:
             prompt_text = (
                 f"Choose the date you finished '{book.title}'. "
-                "OK saves the date. Clear removes it."
+                "Alt+Down opens the calendar."
             )
-        prompt_label = QLabel(prompt_text)
-        prompt_label.setWordWrap(True)
-        prompt_label.setFocusPolicy(Qt.NoFocus)
-        prompt_label.setBuddy(date_field)
-        layout.addWidget(prompt_label)
-        dlg.prompt_label = prompt_label
+        date_field.setAccessibleDescription(
+            f"{prompt_text} OK saves the date. Clear removes it."
+        )
 
+        layout.addWidget(date_field)
         date_row = QHBoxLayout()
-        date_row.addWidget(date_field, 1)
+        date_row.addStretch(1)
 
         def _date_is_blank() -> bool:
             if use_masked:
@@ -702,11 +712,7 @@ class MainWindow(QMainWindow):
         dlg.clear_button = clear_btn
         layout.addLayout(date_row)
 
-        date_field.setFocus()
         dlg.date_field = date_field
-        if use_masked:
-            # Prefill is usually today; select all so typing replaces it.
-            QTimer.singleShot(0, date_field.selectAll)
 
         # Add Alt+Down shortcut to open calendar (classic date edit only)
         from PySide6.QtGui import QShortcut, QKeySequence
@@ -715,7 +721,6 @@ class MainWindow(QMainWindow):
             alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
             alt_down_shortcut.activated.connect(date_field.calendarPopup)
 
-        dlg.setLayout(layout)
         # Auto-size dialog width so title is always fully visible
         from PySide6.QtGui import QFontMetrics
 
@@ -3619,6 +3624,7 @@ class MainWindow(QMainWindow):
             validate_date_edit,
             warn_masked_field_error,
         )
+        from src.accessibility.screen_reader import is_screen_reader_active
 
         class RecentlyAddedDialog(AccessibleDialog):
             """Enter to apply filter; same pattern as read-date for screen readers."""
@@ -3628,6 +3634,18 @@ class MainWindow(QMainWindow):
                 self.date_field = None
                 self.use_masked = False
                 self.setWindowIcon(get_app_icon())
+
+            def showEvent(self, event):
+                super().showEvent(event)
+                # First focus after the window is shown, not while building it.
+                QTimer.singleShot(0, self._focus_date_field)
+
+            def _focus_date_field(self):
+                if self.date_field is None or not self.isVisible():
+                    return
+                self.date_field.setFocus(Qt.OtherFocusReason)
+                if self.use_masked:
+                    self.date_field.selectAll()
 
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
@@ -3657,7 +3675,6 @@ class MainWindow(QMainWindow):
 
         dlg = RecentlyAddedDialog(self)
         dlg.setWindowTitle("Recently Added")
-        dlg.setModal(True)
         dlg.setAccessibleName("Recently Added")
         dlg.setAccessibleDescription(
             "Show books added on or after the selected date."
@@ -3693,6 +3710,13 @@ class MainWindow(QMainWindow):
             date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
 
         configure_no_future_date_edit(date_field)
+        # Focus starts here, and with focus in a text field JAWS Insert+B reads
+        # only the title and the field, so the instructions go here.
+        date_field.setAccessibleDescription(
+            "Books added on or after this date are shown. "
+            + ("Type the date as year-month-day. " if use_masked else "Alt+Down opens the calendar. ")
+            + "Press Enter to filter."
+        )
         font = date_field.font()
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
@@ -3705,14 +3729,12 @@ class MainWindow(QMainWindow):
         dialog_status.setSizeGripEnabled(False)
         configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
-            "Choose a date and press Enter to filter. Alt+/ read status"
+            "Choose a date and press Enter to filter."
+            + (" Alt+/ read status" if is_screen_reader_active() else "")
         )
         layout.addWidget(dialog_status)
 
         dlg.date_field = date_field
-        date_field.setFocus()
-        if use_masked:
-            QTimer.singleShot(0, date_field.selectAll)
 
         if not use_masked:
             alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
@@ -3871,11 +3893,15 @@ class MainWindow(QMainWindow):
 
         field_combo.currentIndexChanged.connect(update_text_label)
 
+        from src.accessibility.screen_reader import is_screen_reader_active
+
+        read_status_hint = ", Alt+/ read status" if is_screen_reader_active() else ""
         dialog_status = QStatusBar(dialog)
         dialog_status.setSizeGripEnabled(False)
         configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
-            "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
+            "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact"
+            + read_status_hint
         )
         layout.addWidget(dialog_status)
 
@@ -3919,7 +3945,8 @@ class MainWindow(QMainWindow):
             if not query:
                 QApplication.beep()
                 dialog_status.showMessage(
-                    "Enter text to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
+                    "Enter text to find. Alt+I field, Alt+T text, Alt+X exact"
+                    + read_status_hint
                 )
                 return
 

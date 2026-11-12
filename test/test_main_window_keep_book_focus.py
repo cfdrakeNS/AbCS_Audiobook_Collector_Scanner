@@ -140,9 +140,10 @@ def test_read_date_dialog_has_ok_and_clear_buttons(main_window, monkeypatch, mas
     # Spoken names match the visible labels.
     assert dlg.ok_button.accessibleName() == "OK"
     assert dlg.clear_button.accessibleName() == "Clear"
-    # Static text for the screen reader's read-dialog keys.
-    assert window.books[0].title in dlg.prompt_label.text()
-    assert "OK saves the date" in dlg.prompt_label.text()
+    # Focus starts in the date field, so its description carries the instructions.
+    description = dlg.date_field.accessibleDescription()
+    assert window.books[0].title in description
+    assert "OK saves the date. Clear removes it." in description
 
 
 def test_author_sort_keeps_focused_book(main_window, qapp, qtbot):
