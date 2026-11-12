@@ -74,7 +74,7 @@ The plot is saved on the book. When the web source has a rating and you save the
    - **Match found. No plot was found.**: a match exists, but there is no usable plot in the library or on the web.
 5. Press **Apply all** (**Alt+A**) to save every change, or **Review each** (**Alt+R**) to check each book in the review window.
 6. During Review each, **Save** or **Skip** (**Alt+K**) moves to the next book. Press **Escape** for the choices **Save**, **Skip this book**, and **Stop review**. **Stop review** returns to the summary, and the status bar says how many books were left. Press **Escape** again to stay on the current book.
-7. Press **Escape** to close the summary. The main list selection clears.
+7. Press **Escape** to close the summary. If some fetched information has not been saved, AbCS asks first: **Yes** closes and discards it, **No** (or **Escape**) keeps the summary open. The main list selection clears when the summary closes.
 
 Apply all writes only the fields that differ from what you already store. A short note such as an author name or "Unabridged" is not counted as a plot.
 

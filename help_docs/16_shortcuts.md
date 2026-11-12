@@ -211,7 +211,7 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Alt+L | Books list |
 | Alt+A | Apply all (says "No books with new information." when none) |
 | Alt+R | Review each (Review when one book has changes) |
-| Escape | Close |
+| Escape | Close (asks first when fetched information has not been saved) |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |

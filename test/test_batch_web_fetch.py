@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import pytest
+
 from src.ui.web_metadata import WebMetadataWindow
 from src.web.batch_web_fetch import (
     BatchBookResult,
@@ -260,6 +262,39 @@ def test_enter_in_summary_list_does_not_apply_all(qapp):
         assert dlg.saved_any is False
         assert dlg.books_table.item(0, 1).text() == "Metadata found"
     finally:
+        dlg.close()
+
+
+@pytest.mark.real_batch_confirm
+def test_summary_escape_asks_before_discarding(qapp, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    asked = []
+
+    def fake_box(*args, **kwargs):
+        asked.append(kwargs["text"])
+        return fake_box.reply
+
+    monkeypatch.setattr(
+        "src.ui.batch_web_fetch_summary.exec_styled_message_box", fake_box
+    )
+    dlg = BatchWebFetchSummaryDialog(BatchFetchOutcome(results=[_changed_result("A")]))
+    try:
+        dlg.show()
+        qapp.processEvents()
+        fake_box.reply = QMessageBox.No
+        dlg._on_escape()
+        assert dlg.isVisible()
+        assert asked and "will be discarded" in asked[0]
+
+        fake_box.reply = QMessageBox.Yes
+        dlg._on_escape()
+        assert not dlg.isVisible()
+        assert dlg.choice == BatchWebFetchSummaryDialog.CANCEL
+    finally:
+        fake_box.reply = QMessageBox.Yes
         dlg.close()
 
 
