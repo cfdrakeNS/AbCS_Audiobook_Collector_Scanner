@@ -65,7 +65,7 @@ Help has its own zoom, set at the top of the Help window. See [Help overview](01
 
 1. Press **Restore Defaults** (**Alt+R**).
 2. Confirm with **Yes**. Every setting goes back to its factory value and is saved right away.
-3. The status bar says "All preferences restored to default values".
+3. A message says "All preferences restored to default values." Press **OK** to close it. The status bar shows the same words.
 
 ## What happens next
 
@@ -77,6 +77,7 @@ Help has its own zoom, set at the top of the Help window. See [Help overview](01
 - Click a tab label to switch sections.
 - Use the dropdowns, checkboxes, and **Browse** button directly with the mouse.
 - Click **Save** to keep changes, or **Restore Defaults** to reset everything.
+- Press **Enter** to activate the button that has focus, such as **Browse**, **Restore Defaults**, or **Save**.
 
 | Shortcut | Action |
 |----------|--------|

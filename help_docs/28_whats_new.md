@@ -2,6 +2,19 @@
 
 Version 3 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
 
+## Recent fixes
+
+- About, License, and Setup read each line once.
+- In Book Details, an invalid year shows one warning. Escape while editing asks before it closes. Choosing No returns to the last field you changed.
+- On the main book list, Tab stays on the current cell when no footer button is showing. Alt+1 through Alt+7 move the highlight with the focus.
+- In Import, Escape clears a row selection before it closes the window. When a folder scan finishes, the progress window stays open and says Scan complete. A book-list import stays open and says Import complete.
+- In the Update window, the book list highlights the current cell.
+- In Preferences, Enter presses the button that has focus. Restore Defaults ends with the message "All preferences restored to default values."
+- A batch web fetch names each book once. After you save web metadata, you hear which fields changed once the window has closed.
+- The read date dialog has OK and Clear with or without a screen reader.
+- In Review each, Escape offers Save, Skip this book, or Stop review. Escape again stays on the book. The batch summary asks before it discards fetched information that has not been saved.
+- In an AbCS message, Escape works like Cancel, or like No when there is no Cancel.
+
 ## Find and import books
 
 - Search the web for book details, individually or for a selection of books.

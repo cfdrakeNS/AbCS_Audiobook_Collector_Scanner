@@ -45,7 +45,7 @@ Focus starts on **Collection** when the window opens.
 9. Press **Import** (**Alt+I**).
 10. A **Confirm Import** message shows the row count, mode, and mapping. Press **Yes** to go ahead or **No** to stop.
 11. An **Import Progress** window shows a progress bar and the counts while rows are processed. Press **Escape** there to cancel; books already added are kept and the remaining rows are skipped.
-12. When the import finishes or is canceled, the progress window stays open with the counts, ending with "Esc to close". Press **Escape** to close it.
+12. When the import finishes or is canceled, the progress window stays open. Its progress bar says **Import complete**, and the status bar has the counts, ending with "Esc to close". Press **Escape** to close it.
 13. If some rows failed, the status bar reminds you to press **Export Errors** (**Alt+X**) to save a CSV of the failed rows. Press **Alt+/** to hear the status.
 14. The window stays open so you can import another file. Press **Escape** when finished. The main book list refreshes.
 

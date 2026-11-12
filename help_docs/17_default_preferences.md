@@ -10,7 +10,7 @@ Use this guide to check that preferences reset correctly, or to see the starting
 
 1. Open **Manage → Preferences** from the menu bar.
 2. Move through each tab to review the settings.
-3. To return to these values, press **Restore Defaults** (**Alt+R**) and confirm with **Yes**. The values are saved right away.
+3. To return to these values, press **Restore Defaults** (**Alt+R**) and confirm with **Yes**. The values are saved right away. A message says "All preferences restored to default values."
 
 Press **F1** in Preferences for that window's shortcuts. Press **Alt+/** to re-read the status bar.
 

@@ -43,6 +43,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
 
+When footer buttons are showing, Tab moves to those buttons. When none are showing, Tab and Shift+Tab stay on the current cell.
+
 While books are selected, F1 lists only the shortcuts that still work.
 
 ## Book Details
@@ -183,6 +185,8 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
+
+Enter activates the button that has focus, such as Browse, Restore Defaults, or Save.
 
 ## Web metadata window
 
@@ -396,3 +400,5 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Shift+F1 | Help for the active window |
 | Alt+/ | Read status bar (most windows) |
 | Escape | Cancel or close (most windows) |
+
+In an AbCS message, Escape works like Cancel, or like No when there is no Cancel.

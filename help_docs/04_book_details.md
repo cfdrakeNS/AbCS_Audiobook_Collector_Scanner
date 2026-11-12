@@ -40,9 +40,10 @@ Tab follows the order above and stops on the cover picture.
 3. Book Details opens in view mode and shows all fields for that book.
 4. Press **Edit** (**Alt+E**) to change fields. The button row changes to **Save**.
 5. To fix a missing or moved location, use **Browse** (**Alt+B**) beside **Path**, or type the path. If the stored path is gone, Browse starts under the collection folder or the Preferences import folder. Set the collection folder itself in Collections.
-6. Press **Save** (**Ctrl+S**) to keep your changes, or press **Escape** to leave edit mode.
-7. Press **Page Down** for the next book or **Page Up** for the previous book.
-8. Press **Escape** to close. The main list refreshes.
+6. Press **Save** (**Ctrl+S**) to keep your changes.
+7. Press **Escape** when you have changes. AbCS asks what to do. **Yes** saves and closes. **No** keeps Book Details open and returns to the last field you changed. **Cancel** discards the changes and closes. **Escape** on that message also discards and closes.
+8. Press **Page Down** for the next book or **Page Up** for the previous book.
+9. With no unsaved changes, press **Escape** to close. The main list refreshes.
 
 ## Set or clear a read date
 
@@ -111,7 +112,7 @@ A read date you confirmed with **Yes** stays saved even if you then press **Esca
 
 Series number is a text box. Type a number such as 3 or 6.5, or leave it blank. Saving stores the series number only; the title stays as typed. The main book table shows "- 03" or "- 6.5" after the title when a series number is set.
 
-With a screen reader running, **Year** and **Read** are typed text fields: a four-digit year, and a date as year-month-day. Leave a field blank for no year or no read date. An invalid value shows a warning. Without a screen reader, use the calendar for Read, and press **Clear** beside the date to remove a read date. Up or Down on a blank Year starts at this year, and on a blank Read date starts at today.
+With a screen reader running, **Year** and **Read** are typed text fields: a four-digit year, and a date as year-month-day. Leave a field blank for no year or no read date. An invalid year or read date shows a warning, and focus returns to that field. The year warning appears once. Press **Enter** to close it. Saving with an invalid year keeps Book Details open. Without a screen reader, use the calendar for Read, and press **Clear** beside the date to remove a read date. Up or Down on a blank Year starts at this year, and on a blank Read date starts at today.
 
 ## Common confusion
 

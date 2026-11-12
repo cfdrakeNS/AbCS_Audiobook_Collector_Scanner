@@ -10,7 +10,7 @@ For a walkthrough of what happens during a scan, see [Import explained](19_impor
 
 1. Press **Ctrl+I** to open Import.
 2. Check the **Collection**, the **Scenario**, and the **Folder**.
-3. Press **Import** (**Alt+I**) and wait for the progress window to say the import is complete. Press **Escape** to close it.
+3. Press **Import** (**Alt+I**) and wait for the progress window to say **Scan complete**. Press **Escape** to close it.
 4. Review any held books in the review table, then press **Add Selected** (**Alt+S**).
 5. Press **Escape** to close Import.
 
