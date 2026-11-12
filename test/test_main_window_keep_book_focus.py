@@ -140,6 +140,30 @@ def test_tab_stays_in_table_when_no_footer_buttons(main_window, monkeypatch):
     assert moves == ["next", "previous"]
 
 
+def test_tab_from_last_footer_button_returns_to_table(main_window):
+    from PySide6.QtCore import Qt
+
+    window = main_window
+    window.show()
+    _insert_focus_books(window)
+    window.update_button.setVisible(True)
+    window.delete_button.setVisible(True)
+
+    def tab_stops_after(start):
+        stops = []
+        widget = start
+        for _ in range(400):
+            widget = widget.nextInFocusChain()
+            if widget is start:
+                break
+            if widget.focusPolicy() & Qt.TabFocus and widget.isVisible() and widget.isEnabled():
+                stops.append(widget)
+        return stops
+
+    assert window.focusPolicy() == Qt.NoFocus
+    assert tab_stops_after(window.delete_button) == [window.table, window.update_button]
+
+
 @pytest.mark.parametrize("masked", [True, False])
 def test_read_date_dialog_has_ok_and_clear_buttons(main_window, monkeypatch, masked):
     """The screen reader (typed) version has the same buttons as the calendar version."""

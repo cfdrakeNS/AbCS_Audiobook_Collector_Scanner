@@ -1061,7 +1061,8 @@ class MainWindow(QMainWindow):
         self.setAccessibleDescription(
             "Main window for browsing and managing the audiobook collection"
         )
-        self.setFocusPolicy(Qt.StrongFocus)
+        # The frame has no visible focus; as a Tab stop it put focus nowhere.
+        self.setFocusPolicy(Qt.NoFocus)
         # Larger default size for better column visibility
         self.resize(1400, 800)
         # mw#22: Minimum size to prevent columns from being cut off
