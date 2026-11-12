@@ -198,6 +198,7 @@ class WebMetadataWindow(AccessibleDialog):
 
         # Store pre-fetched web data if provided
         self.pre_fetched_web_data = web_data
+        self.saved_message = ""
         self.queue_index = queue_index
         self.queue_total = queue_total
         # Store original query info for the Re-fetch button
@@ -1376,7 +1377,10 @@ class WebMetadataWindow(AccessibleDialog):
                     status_msg = f"Updated: {', '.join(applied_fields)}"
                 else:
                     status_msg = "No changes applied"
-                self.set_status(status_msg, announce=True, timeout_ms=2000)
+                # Announcing here is cut off when the window closes. The caller
+                # announces saved_message after focus is back in its window.
+                self.saved_message = status_msg
+                self.set_status(status_msg)
 
                 announce_dialog_closed(self)
                 super().accept()

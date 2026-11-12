@@ -4073,13 +4073,19 @@ class BookDetailsWindow(AccessibleDialog):
                     web_data=web_data,
                 )
                 result = web_window.exec()
+                saved_message = getattr(web_window, "saved_message", "")
                 web_window.deleteLater()
                 if result == QDialog.Accepted:
                     self._data_was_changed = True
-                    self.set_status(
-                        "Web details applied successfully", announce=True
-                    )
-                    QTimer.singleShot(0, self._focus_plot)
+                    message = saved_message or "Web details applied successfully"
+                    self.set_status(message)
+
+                    def _focus_plot_then_announce():
+                        # Focus first: moving focus after announcing cuts the speech off.
+                        self._focus_plot()
+                        self.set_status(message, announce=True)
+
+                    QTimer.singleShot(0, _focus_plot_then_announce)
             else:
                 if fetch.errors:
                     status_msg = fetch.status_message

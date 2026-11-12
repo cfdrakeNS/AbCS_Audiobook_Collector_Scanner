@@ -5300,9 +5300,12 @@ class MainWindow(QMainWindow):
                 refresh_callback=self.refresh_books,
                 web_data=web_data,
             )
-            dialog.exec()
+            result = dialog.exec()
+            saved_message = getattr(dialog, "saved_message", "")
             dialog.deleteLater()
             self._restore_table_focus_context(focus_ctx)
+            if result == QDialog.Accepted and saved_message:
+                self._announce_after_return(saved_message)
             return
 
         if fetch.errors:
@@ -5722,6 +5725,20 @@ class MainWindow(QMainWindow):
                 book_id, 1, fallback=True, reason=Qt.TabFocusReason
             )
         self.restore_main_focus_after_modal()
+
+    def _announce_after_return(self, message: str) -> None:
+        """Announce once focus is back in the table after a window closes.
+
+        Announcing from the closing window is cut off by the main window's own
+        speech; waiting lets that start first, then the message is read.
+        """
+        from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
+        self.set_status(message)
+        QTimer.singleShot(
+            max(300, get_screen_reader_focus_delay_ms()),
+            lambda: self.set_status(message, announce=True),
+        )
 
     def restore_main_focus_after_modal(self):
         """Ensure Main Window regains focus on a sensible table cell after modal dialogs."""

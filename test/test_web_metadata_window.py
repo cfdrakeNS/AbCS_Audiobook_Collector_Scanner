@@ -47,6 +47,29 @@ def window(ui_scaler, theme_manager, sample_book):
     dlg.close()
 
 
+def test_save_stores_message_for_caller_instead_of_announcing(window, monkeypatch):
+    """Announcing while closing is cut off; the caller announces saved_message."""
+    from unittest.mock import MagicMock
+
+    window.db = object()
+    window.book_queries = MagicMock()
+    for name in ("author_queries", "series_queries", "genre_queries", "collection_queries"):
+        setattr(window, name, None)
+    statuses = []
+    monkeypatch.setattr(
+        window,
+        "set_status",
+        lambda msg, timeout_ms=0, announce=False: statuses.append((msg, announce)),
+    )
+    window.accept()
+    assert window.saved_message in ("No changes applied",) or window.saved_message.startswith(
+        "Updated:"
+    )
+    assert (window.saved_message, False) in statuses
+    assert not any(announce for _msg, announce in statuses)
+    window.book_queries.update.assert_called_once()
+
+
 def test_web_metadata_window_constructs(window):
     assert window.windowTitle() == "Web Metadata"
     assert hasattr(window, "setup_ui")
