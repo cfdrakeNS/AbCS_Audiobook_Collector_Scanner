@@ -286,6 +286,40 @@ class TestBookListImportDb:
         assert match[0].title == "Rules Of Prey"
         assert match[0].series_name == "Lucas Davenport"
 
+    def test_progress_opens_before_import_controls_are_disabled(
+        self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+    ):
+        """Disabling the focused Import button first would move focus within this window."""
+        import time
+
+        from PySide6.QtWidgets import QMessageBox
+
+        window = BookListImportWindow(empty_temp_db, ui_scaler, theme_manager)
+        qtbot.addWidget(window)
+        frame = pd.DataFrame({"Title": ["Order Book"], "Author": ["Order Author"]})
+        _prepare_window(window, frame, {"title": 0, "author": 1})
+        order = []
+
+        def record_progress(_total_rows):
+            order.append("progress")
+            window.progress_window = None
+            window._import_start_time = time.perf_counter()
+
+        real_set_enabled = window._set_import_controls_enabled
+
+        def record_enabled(enabled):
+            order.append(f"controls {'on' if enabled else 'off'}")
+            real_set_enabled(enabled)
+
+        monkeypatch.setattr(window, "_show_import_progress", record_progress)
+        monkeypatch.setattr(window, "_set_import_controls_enabled", record_enabled)
+        monkeypatch.setattr(QMessageBox, "exec", lambda box: QMessageBox.Yes)
+        monkeypatch.setattr(window, "set_status", lambda *a, **k: None)
+
+        window.import_books()
+
+        assert order[:2] == ["progress", "controls off"]
+
     def test_import_result_announced_when_progress_window_hidden(
         self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
     ):

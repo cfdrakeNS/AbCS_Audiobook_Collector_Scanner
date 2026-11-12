@@ -1128,7 +1128,7 @@ class BookListImportWindow(AccessibleDialog):
         # Block interaction with this dialog while progress is open (folder
         # Import disables Scan; WindowModal blocks the parent the same way).
         self.progress_window.setWindowModality(Qt.WindowModal)
-        self.progress_window.set_compact_mode(False)
+        self.progress_window.set_compact_mode(True)
         self.progress_window.set_activity_label("import")
         self.progress_window.help_doc_override = "11_import_book_list.md"
         self.progress_window.finished.connect(self._on_progress_window_closed)
@@ -1768,11 +1768,19 @@ class BookListImportWindow(AccessibleDialog):
         # Perform import
         self._is_importing = True
         self._export_was_enabled = self.export_button.isEnabled()
-        self._set_import_controls_enabled(False)
         try:
             self.set_status("Importing books...")
             total_rows = len(self.file_data) if self.file_data is not None else 0
+            # Let this window finish becoming active again after Confirm Import
+            # closes, so that late activation cannot follow the progress window.
+            self.raise_()
+            self.activateWindow()
+            QApplication.processEvents()
+            # Progress takes focus before the controls are disabled. Disabling the
+            # focused Import button first moves focus within this window, and the
+            # screen reader reads this window instead of the progress window.
             self._show_import_progress(total_rows)
+            self._set_import_controls_enabled(False)
 
             if self.import_mode == "new":
                 (

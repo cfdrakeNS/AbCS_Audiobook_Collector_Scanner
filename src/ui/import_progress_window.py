@@ -303,14 +303,7 @@ class ImportProgressWindow(QDialog):
         if current_author:
             self.author_edit.setText(current_author)
 
-        # Stay above the owner window (Import, Check Book Locations, etc.).
-        self.raise_()
-        active = QApplication.activeWindow()
-        if active is not None and active is not self:
-            self.activateWindow()
-        # Keep focus on the progress bar, but not while Alt+/ is speaking.
-        if time.monotonic() >= self._status_read_until:
-            self.scan_progress.setFocus()
+        self.keep_on_top_and_focused()
 
         if total > 0:
             percent = int((processed / total) * 100)
@@ -319,6 +312,20 @@ class ImportProgressWindow(QDialog):
         else:
             self.scan_progress.setValue(0)
             self.scan_progress.setFormat("Scanning...")
+
+    def keep_on_top_and_focused(self) -> None:
+        """Stay above the owner window and keep focus on the progress bar.
+
+        The owner can become active again late (for example after a message box
+        closes); without this the screen reader reads the owner window.
+        """
+        self.raise_()
+        active = QApplication.activeWindow()
+        if active is not None and active is not self:
+            self.activateWindow()
+        # Not while Alt+/ is speaking.
+        if time.monotonic() >= self._status_read_until:
+            self.scan_progress.setFocus()
 
     def prepare_for_add_phase(self, total_books: int):
         """Prepare progress display for add phase."""
@@ -419,6 +426,8 @@ class ImportProgressWindow(QDialog):
         safe_total = max(0, int(total))
         safe_processed = max(0, int(processed))
         book_list = self._book_list_counters()
+        if book_list:
+            self.keep_on_top_and_focused()
         if safe_total > 0:
             safe_processed = min(safe_processed, safe_total)
             percent = int((safe_processed / safe_total) * 100)
