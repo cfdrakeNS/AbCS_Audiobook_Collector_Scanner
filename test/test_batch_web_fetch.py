@@ -384,9 +384,14 @@ def test_progress_dialog_says_escape_to_cancel(qapp):
     dlg = BatchWebFetchProgressDialog(3)
     try:
         assert "Escape to cancel" in dlg.accessibleDescription()
+        description = dlg.accessibleDescription()
         dlg.update_progress(1, "Dune")
         assert "Escape to cancel" in dlg.status_label.text()
         assert "Book 1 of 3" in dlg.status_label.text()
+        # Book text is shown once and not copied into the dialog description.
+        assert dlg.accessibleDescription() == description
+        assert dlg.status_bar.isHidden()
+        assert dlg.status_bar.currentMessage() == ""
         assert dlg.minimumWidth() >= 580
         assert dlg.bar.height() >= 22
         assert "palette(highlight)" in dlg.bar.styleSheet()

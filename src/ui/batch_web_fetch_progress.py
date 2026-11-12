@@ -78,8 +78,11 @@ class BatchWebFetchProgressDialog(AccessibleDialog):
         )
         layout.addWidget(self.bar)
 
+        # Kept for Alt+/ readback only. Hidden: the line above the bar already
+        # shows the same text, and showing it twice read it twice.
         self.status_bar = QStatusBar()
         configure_status_bar_accessibility(self.status_bar)
+        self.status_bar.setVisible(False)
         layout.addWidget(self.status_bar)
 
         self._escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
@@ -103,7 +106,11 @@ class BatchWebFetchProgressDialog(AccessibleDialog):
     def _read_status(self) -> None:
         from src.accessibility.accessible_events import read_status_bar_message
 
-        read_status_bar_message(self.status_bar)
+        read_status_bar_message(
+            self.status_bar,
+            announce_text=self.status_label.text(),
+            update_visible=False,
+        )
 
     def _show_shortcuts(self) -> None:
         from src.accessibility.shortcut_helpers import exec_f1_shortcuts_dialog
@@ -136,8 +143,8 @@ class BatchWebFetchProgressDialog(AccessibleDialog):
         else:
             text = f"Book {current} of {self.total}: {title}. Escape to cancel."
         self.status_label.set_status_text(text)
-        self.setAccessibleDescription(text)
-        self.status_bar.showMessage(text)
+        # The dialog description stays fixed: focus returns to the dialog after
+        # each announcement, and a description matching the text read it twice.
         self._speak_status(text)
 
     def _speak_status(self, text: str) -> None:
