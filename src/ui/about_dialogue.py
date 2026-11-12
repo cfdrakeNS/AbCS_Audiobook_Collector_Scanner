@@ -12,7 +12,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QTimer
 
 from src.accessibility.graphics_paths import resolve_graphics_path
-from src.accessibility.dialog_prose import create_dialog_html_text
+from src.accessibility.dialog_prose import create_dialog_html_text, prepare_dialog_prose
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -67,7 +67,8 @@ class AboutDialog(AccessibleDialog):
             graphic_label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
             graphic_label.setFocusPolicy(Qt.NoFocus)
             graphic_label.setContentsMargins(0, 0, 0, 0)
-            graphic_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            graphic_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+            graphic_label.setMinimumWidth(0)
             content_layout.addWidget(graphic_label, alignment=Qt.AlignHCenter)
 
         version = _get_app_version()
@@ -155,5 +156,22 @@ class AboutDialog(AccessibleDialog):
 
         self.about_label = about_label
         self.ok_btn = ok_btn
+        prepare_dialog_prose(
+            self,
+            about_label,
+            about_blocks,
+            height=self.scaler.get_scaled_size(520),
+            width_scale=0.75,
+        )
+        if not pixmap.isNull():
+            content_width = (
+                self.width()
+                - layout.contentsMargins().left()
+                - layout.contentsMargins().right()
+            )
+            if pixmap.width() > content_width > 0:
+                graphic_label.setPixmap(
+                    pixmap.scaledToWidth(content_width, Qt.SmoothTransformation)
+                )
 
         QTimer.singleShot(100, lambda: about_label.setFocus(Qt.TabFocusReason))

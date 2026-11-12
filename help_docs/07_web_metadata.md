@@ -58,7 +58,7 @@ For a walkthrough of how the search and comparison work, see [Web metadata expla
 7. Jump to fields with **Alt+T** Title, **Alt+A** Author, **Alt+P** Plot, **Alt+Y** Year, **Alt+G** Genre, or **Alt+R** Rating.
 8. When more than one plot was found, choose another one in **Other plots**. Press **Alt+Down** to open the list, then **Enter** to choose.
 9. To search again with the other sources, press **Re-fetch** (**Alt+F**).
-10. Press **Save** (**Ctrl+S**) to apply the checked fields. Or press **Escape**; AbCS asks "Save web data?". **Yes** saves and **No** closes without saving.
+10. Press **Save** (**Ctrl+S**) to apply the checked fields. Or press **Escape**; AbCS asks "Save web data?". **Yes** saves and **No** closes without saving. After the window closes, you hear which fields changed, for example "Updated: Genre, Plot".
 
 The plot is saved on the book. When the web source has a rating and you save the plot, a rating line such as "Rating: 4.5 (1,234 ratings)" is placed at the top of the plot text.
 
@@ -66,15 +66,15 @@ The plot is saved on the book. When the web source has a rating and you save the
 
 1. Select two or more books on the main window.
 2. Press **Alt+W**, the **Search Web** toolbar button, or the **Web fetch** footer button.
-3. The batch progress dialog shows book N of M. Press **Escape** to cancel the remaining books.
+3. The batch progress dialog names the current book once, as book N of M. Press **Alt+/** to hear that line again. Press **Escape** to cancel the remaining books.
 4. The batch summary opens with focus on the first book in the list. The **Issue** column says what was found for each book:
    - **Plot found** or **Metadata found**: the book has changes to apply.
    - **Plot and metadata up to date.**: the library already matches the web.
    - **No match found**: nothing usable was found.
    - **Match found. No plot was found.**: a match exists, but there is no usable plot in the library or on the web.
 5. Press **Apply all** (**Alt+A**) to save every change, or **Review each** (**Alt+R**) to check each book in the review window.
-6. During Review each, **Save** or **Skip** (**Alt+K**) moves to the next book. Press **Escape** for the choices **Save**, **Skip this book**, **Stop review**, and **Cancel**. **Stop review** returns to the summary, and the status bar says how many books were left. **Cancel** stays on the current book.
-7. Press **Escape** to close the summary. The main list selection clears.
+6. During Review each, **Save** or **Skip** (**Alt+K**) moves to the next book. Press **Escape** for the choices **Save**, **Skip this book**, and **Stop review**. **Stop review** returns to the summary, and the status bar says how many books were left. Press **Escape** again to stay on the current book.
+7. Press **Escape** to close the summary. If some fetched information has not been saved, AbCS asks first: **Yes** closes and discards it, **No** (or **Escape**) keeps the summary open. The main list selection clears when the summary closes.
 
 Apply all writes only the fields that differ from what you already store. A short note such as an author name or "Unabridged" is not counted as a plot.
 
@@ -109,7 +109,7 @@ Web Metadata review window:
 | Alt+F | Re-fetch web data |
 | Ctrl+S | Save |
 | Alt+K | Skip this book (review queue) |
-| Escape | Close window (asks whether to save) |
+| Escape | Close (asks whether to save). In Review each: Save, Skip this book, or Stop review; Escape again stays on the book |
 | Alt+/ | Re-read status |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
@@ -121,7 +121,7 @@ Batch summary window:
 | Alt+L | Books list |
 | Alt+A | Apply all |
 | Alt+R | Review each |
-| Escape | Close |
+| Escape | Close (asks first when fetched information has not been saved) |
 | Alt+/ | Re-read status |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |

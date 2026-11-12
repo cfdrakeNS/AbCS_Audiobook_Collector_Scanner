@@ -82,6 +82,24 @@ def _block_network(request):
 
 
 @pytest.fixture(autouse=True)
+def _batch_summary_closes_without_prompt(request, monkeypatch):
+    """Closing the batch summary asks before discarding; tests close it in teardown.
+
+    Tests marked ``real_batch_confirm`` keep the real prompt.
+    """
+    if "real_batch_confirm" in {m.name for m in request.node.iter_markers()}:
+        yield
+        return
+    try:
+        from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+    except ImportError:
+        yield
+        return
+    monkeypatch.setattr(BatchWebFetchSummaryDialog, "_confirm_discard", lambda self: True)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _silent_audio_output(monkeypatch):
     """Keep every test silent.
 

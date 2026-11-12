@@ -392,5 +392,36 @@ def test_adjacent_editable_row_includes_duplicates(
     assert window._adjacent_editable_row(0, 1) == 1
     assert window._adjacent_editable_row(2, -1) == 1
 
+
+def test_import_detail_edit_prompt_hides_cancel(
+    qtbot, temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    seen = {}
+
+    def fake_box(*args, **kwargs):
+        seen.update(kwargs)
+        return QMessageBox.No
+
+    monkeypatch.setattr(
+        "src.ui.import_detail_window.exec_styled_message_box", fake_box
+    )
+    window = ImportDetailWindow(
+        temp_db,
+        ui_scaler,
+        theme_manager,
+        book_data={"title": "Example", "author": "Author"},
+    )
+    qtbot.addWidget(window)
+    window.title_edit.setText("Changed title")
+    window._dirty = True
+    window.on_cancel_edit()
+    assert "Press Escape to cancel" in seen["text"]
+    assert "discards the changes and closes" in seen["text"]
+    assert QMessageBox.Cancel not in seen["button_texts"]
+    assert seen["escape_only_button"] == QMessageBox.Cancel
+    assert seen["title"] == "Unsaved Changes"
+
     cleanup_window(window)
 

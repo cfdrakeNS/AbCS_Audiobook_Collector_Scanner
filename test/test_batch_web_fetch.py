@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import pytest
+
 from src.ui.web_metadata import WebMetadataWindow
 from src.web.batch_web_fetch import (
     BatchBookResult,
@@ -263,6 +265,39 @@ def test_enter_in_summary_list_does_not_apply_all(qapp):
         dlg.close()
 
 
+@pytest.mark.real_batch_confirm
+def test_summary_escape_asks_before_discarding(qapp, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from src.ui.batch_web_fetch_summary import BatchWebFetchSummaryDialog
+
+    asked = []
+
+    def fake_box(*args, **kwargs):
+        asked.append(kwargs["text"])
+        return fake_box.reply
+
+    monkeypatch.setattr(
+        "src.ui.batch_web_fetch_summary.exec_styled_message_box", fake_box
+    )
+    dlg = BatchWebFetchSummaryDialog(BatchFetchOutcome(results=[_changed_result("A")]))
+    try:
+        dlg.show()
+        qapp.processEvents()
+        fake_box.reply = QMessageBox.No
+        dlg._on_escape()
+        assert dlg.isVisible()
+        assert asked and "will be discarded" in asked[0]
+
+        fake_box.reply = QMessageBox.Yes
+        dlg._on_escape()
+        assert not dlg.isVisible()
+        assert dlg.choice == BatchWebFetchSummaryDialog.CANCEL
+    finally:
+        fake_box.reply = QMessageBox.Yes
+        dlg.close()
+
+
 def test_change_issue_label_plot_or_metadata():
     from src.ui.batch_web_fetch_summary import _change_issue_label
 
@@ -384,9 +419,14 @@ def test_progress_dialog_says_escape_to_cancel(qapp):
     dlg = BatchWebFetchProgressDialog(3)
     try:
         assert "Escape to cancel" in dlg.accessibleDescription()
+        description = dlg.accessibleDescription()
         dlg.update_progress(1, "Dune")
         assert "Escape to cancel" in dlg.status_label.text()
         assert "Book 1 of 3" in dlg.status_label.text()
+        # Book text is shown once and not copied into the dialog description.
+        assert dlg.accessibleDescription() == description
+        assert dlg.status_bar.isHidden()
+        assert dlg.status_bar.currentMessage() == ""
         assert dlg.minimumWidth() >= 580
         assert dlg.bar.height() >= 22
         assert "palette(highlight)" in dlg.bar.styleSheet()
@@ -621,6 +661,10 @@ def test_web_metadata_escape_stop_review_returns_stop_result(
         assert texts[QMessageBox.Abort] == "S&top review"
         assert texts[QMessageBox.No] == "S&kip this book"
         assert seen["button_accessibility"][QMessageBox.Abort][0] == "Stop review"
+        # No visible Cancel; Escape answers the hidden Cancel and stays.
+        assert QMessageBox.Cancel not in texts
+        assert seen["escape_only_button"] == QMessageBox.Cancel
+        assert "Press Escape to stay on this book" in seen["text"]
     finally:
         dlg.close()
 

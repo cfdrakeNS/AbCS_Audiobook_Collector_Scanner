@@ -10,7 +10,7 @@ For a walkthrough of what happens during a scan, see [Import explained](19_impor
 
 1. Press **Ctrl+I** to open Import.
 2. Check the **Collection**, the **Scenario**, and the **Folder**.
-3. Press **Import** (**Alt+I**) and wait for **Import completed**.
+3. Press **Import** (**Alt+I**) and wait for the progress window to say **Scan complete**. Press **Escape** to close it.
 4. Review any held books in the review table, then press **Add Selected** (**Alt+S**).
 5. Press **Escape** to close Import.
 
@@ -47,7 +47,7 @@ The **progress window** opens during a scan. It shows a progress bar and a statu
 3. Check the **Scenario** (**Alt+N**). It starts as the Preferences **import scenario**. Press **Alt+Down** to open the list and choose a different one. The change applies only to this Import window; Preferences are not changed. The next time you open Import, it starts from Preferences again.
 4. Check the **Folder** (**Alt+F**). It starts as the Preferences **default import directory**. Press **Browse** (**Alt+B**) to choose a different folder. With **Single Author / Book Import**, Browse picks one audio file; with the other scenarios it picks a folder. Subfolders are included. Changing the collection keeps the Folder as it is.
 5. Press **Import** (**Alt+I**) to start the scan.
-6. The progress window shows how many files are read. When the scan finishes, the progress window closes and a message says **Import completed** with an **OK** button.
+6. The progress window shows how many files are read. When the scan finishes, the progress window stays open. Its progress bar says **Scan complete** and its status bar has the counts, ending with "Esc to close". Press **Escape** to close it and return to the review table.
 7. Clean books are added automatically. Books with duplicates, errors, warnings, fallback guesses, or autocorrects are **held for review** in the review table.
 
 ## Review books that were not added
@@ -96,11 +96,13 @@ Fallbacks, auto-corrections, validation rules, and duplicate matching decide whi
 | Alt+L | Jump to table |
 | Alt+1 | Jump to Author |
 | Alt+2 | Jump to Title |
-| Alt+3-5 | Jump to Year, Error Type, or File/Folder |
+| Alt+3 | Jump to Year |
+| Alt+4 | Jump to Error Type |
+| Alt+5 | Jump to File/Folder |
 | Enter | Open import detail |
 | Alt+S | Add selected |
 | Alt+X | Export list to CSV |
-| Escape | Cancel or close window (asks to confirm if held books remain) |
+| Escape | Clear selection first; otherwise cancel or close window (asks to confirm if held books remain) |
 | Alt+/ | Re-read status |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |

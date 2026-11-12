@@ -40,7 +40,7 @@ Tab order: Find, Sort, the name list, the name field (while editing), then Edit 
 3. Type the new name in the name field.
 4. Press **Save** (**Ctrl+S**).
 5. If the new name already exists, AbCS asks whether to move this name's books to the existing name. **Yes** moves the books, removes the old name, and reports how many books changed. **No** keeps both names as they were.
-6. Press **Escape** while editing to stop. With no changes, you return to the list. With changes, AbCS asks whether to save, keep editing, or discard.
+6. Press **Escape** while editing to stop. With no changes, you return to the list. With changes, AbCS asks what to do. **Yes** saves and closes. **No** keeps editing. Press **Escape** on that message to discard the changes and return to the list.
 7. Press **Escape** in the list to close the window.
 
 ## Clear series or genre on books

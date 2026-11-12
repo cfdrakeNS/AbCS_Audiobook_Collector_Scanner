@@ -105,6 +105,7 @@ from src.accessibility.theme_manager import ThemeManager
 from src.accessibility.shortcuts import get_shortcut_manager, ShortcutContext
 from src.accessibility.key_filters import is_unmapped_alt_letter
 from src.ui.book_details import BookDetailsWindow
+from src.ui.table_selection import rows_to_selection
 from src.ui.update_window import UpdateWindow
 from src.ui.preferences_window import PreferencesWindow
 from src.ui.import_window import ImportWindow
@@ -396,8 +397,8 @@ class MainWindow(QMainWindow):
     ) -> None:
         """Persist read date from the dialog.
 
-        Calendar (sighted): OK saves without a second prompt.
-        Screen reader (typed field): always confirm before saving a change.
+        OK saves a date without a second prompt. A blank typed field asks
+        before it clears an existing date.
         """
         from src.accessibility.masked_date_fields import (
             classic_date_is_blank,
@@ -420,39 +421,25 @@ class MainWindow(QMainWindow):
             new_date = date_field.date().toString("yyyy-MM-dd")
 
         if book.read_date == new_date:
-            self.set_status(
-                f"Read date unchanged for {book.title}", announce=True
+            self._focus_read_cell_with_status(
+                book, f"Read date unchanged for {book.title}"
             )
-            self.focus_book_by_id(book.book_id, 6, fallback=False)
             return
 
-        if use_masked:
-            if not new_date:
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Clear Read Date",
-                    text=f"Clear the read date for '{book.title}'?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
-            else:
-                reply = exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Read Date",
-                    text=f"Mark '{book.title}' as read on {new_date}?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
-                )
+        if use_masked and not new_date:
+            reply = exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Clear Read Date",
+                text=f"Clear the read date for '{book.title}'?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
             if reply != QMessageBox.Yes:
-                self.set_status(
-                    f"Read date update cancelled for {book.title}",
-                    announce=True,
+                self._focus_read_cell_with_status(
+                    book, f"Read date update cancelled for {book.title}"
                 )
-                self.focus_book_by_id(book.book_id, 6, fallback=False)
                 return
 
         if not new_date:
@@ -460,11 +447,10 @@ class MainWindow(QMainWindow):
             book.read_date = ""
             self.book_queries.update(book)
             self.refresh_books()
-            self.set_status(
+            message = (
                 f"Read date cleared for {book.title}"
                 if had_date
-                else f"Read date unchanged for {book.title}",
-                announce=True,
+                else f"Read date unchanged for {book.title}"
             )
         else:
             book.read_date = new_date
@@ -483,19 +469,20 @@ class MainWindow(QMainWindow):
                 extras.append("Want to read cleared")
             if cleared_listen:
                 extras.append("Listening position cleared")
+            message = f"Read date set for {book.title}"
             if extras:
-                self.set_status(
-                    f"Read date set for {book.title}. "
-                    + ". ".join(extras)
-                    + ".",
-                    announce=True,
-                )
-            else:
-                self.set_status(
-                    f"Read date set for {book.title}", announce=True
-                )
+                message += ". " + ". ".join(extras) + "."
 
+        self._focus_read_cell_with_status(book, message)
+
+    def _focus_read_cell_with_status(self, book, message: str) -> None:
+        """Focus the book's Read cell, then show the message.
+
+        Moving focus resets the status bar to the default text, so the message
+        has to come after it.
+        """
         self.focus_book_by_id(book.book_id, 6, fallback=False)
+        self.set_status(message, announce=True)
 
     def show_read_date_dialog(self, row: int):
         """Show a dialog to set the read date for the selected book (accessible version)."""
@@ -521,8 +508,26 @@ class MainWindow(QMainWindow):
                 self.use_masked = False
                 self.setWindowIcon(get_app_icon())
 
+            def showEvent(self, event):
+                super().showEvent(event)
+                # First focus after the window is shown, not while building it.
+                QTimer.singleShot(0, self._focus_date_field)
+
+            def _focus_date_field(self):
+                if self.date_field is None or not self.isVisible():
+                    return
+                self.date_field.setFocus(Qt.OtherFocusReason)
+                if self.use_masked:
+                    # Prefill is usually today; select all so typing replaces it.
+                    self.date_field.selectAll()
+
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    focused = self.focusWidget()
+                    if isinstance(focused, QPushButton):
+                        focused.click()
+                        event.accept()
+                        return
                     if self.date_field is not None:
                         self.date_field.setFocus()
                     QTimer.singleShot(0, self.accept)
@@ -551,7 +556,6 @@ class MainWindow(QMainWindow):
         book = self.books[row]
         dlg = ReadDateDialog(self)
         dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
-        dlg.setModal(True)
         layout = QVBoxLayout(dlg)
 
         # Date field: typed text for screen readers, calendar edit otherwise
@@ -594,83 +598,103 @@ class MainWindow(QMainWindow):
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
 
-        date_row = QHBoxLayout()
-        date_row.addWidget(date_field, 1)
-        if not use_masked:
-            clear_btn = QPushButton("Clear")
-            clear_btn.setAccessibleName("Clear read date")
-            clear_btn.setAccessibleDescription(
-                "Clear the read date for this book"
+        # Focus starts in this field, and with focus in a text field JAWS Insert+B
+        # reads only the title and the field, so the instructions go here.
+        if use_masked:
+            prompt_text = (
+                f"Type the date you finished '{book.title}' as year-month-day."
             )
-            clear_btn.setAutoDefault(False)
-            clear_btn.setDefault(False)
+        else:
+            prompt_text = (
+                f"Choose the date you finished '{book.title}'. "
+                "Alt+Down opens the calendar."
+            )
+        date_field.setAccessibleDescription(
+            f"{prompt_text} OK saves the date. Clear removes it."
+        )
 
-            def _clear_classic_date():
-                """Clear immediately (with confirm). Do not require Enter."""
-                had_date = bool(book.read_date)
-                if not had_date and classic_date_is_blank(date_field):
+        layout.addWidget(date_field)
+        date_row = QHBoxLayout()
+        date_row.addStretch(1)
+
+        def _date_is_blank() -> bool:
+            if use_masked:
+                return not date_field.text().strip()
+            return classic_date_is_blank(date_field)
+
+        def _set_date_blank() -> None:
+            if use_masked:
+                date_field.setText("")
+            else:
+                set_classic_date_blank(date_field)
+
+        clear_btn = QPushButton("Clear")
+        clear_btn.setAccessibleName("Clear")
+        clear_btn.setAccessibleDescription(
+            "Clear the read date for this book"
+        )
+        clear_btn.setAutoDefault(False)
+        clear_btn.setDefault(False)
+
+        def _clear_read_date():
+            """Clear immediately (with confirm). Do not require Enter."""
+            had_date = bool(book.read_date)
+            if not had_date and _date_is_blank():
+                self.set_status(
+                    f"Read date is already blank for {book.title}",
+                    announce=True,
+                )
+                return
+            if had_date:
+                reply = exec_styled_message_box(
+                    dlg,
+                    self.scaler.get_scaled_size(20),
+                    icon=QMessageBox.Question,
+                    title="Confirm Clear Read Date",
+                    text=f"Clear the read date for '{book.title}'?",
+                    buttons=QMessageBox.Yes | QMessageBox.No,
+                    default_button=QMessageBox.No,
+                )
+                if reply != QMessageBox.Yes:
                     self.set_status(
-                        f"Read date is already blank for {book.title}",
+                        f"Read date update cancelled for {book.title}",
                         announce=True,
                     )
                     return
-                if had_date:
-                    reply = exec_styled_message_box(
-                        dlg,
-                        self.scaler.get_scaled_size(20),
-                        icon=QMessageBox.Question,
-                        title="Confirm Clear Read Date",
-                        text=f"Clear the read date for '{book.title}'?",
-                        buttons=QMessageBox.Yes | QMessageBox.No,
-                        default_button=QMessageBox.No,
-                    )
-                    if reply != QMessageBox.Yes:
-                        self.set_status(
-                            f"Read date update cancelled for {book.title}",
-                            announce=True,
-                        )
-                        return
-                set_classic_date_blank(date_field)
-                if had_date:
-                    book.read_date = ""
-                    self.book_queries.update(book)
-                    self.refresh_books()
-                    self.set_status(
-                        f"Read date cleared for {book.title}", announce=True
-                    )
-                dlg.done(QDialog.Rejected)
-                index = self.book_model.index(row, 6)
-                self.table.setCurrentIndex(index)
-                self.table.setFocus()
+            _set_date_blank()
+            if had_date:
+                book.read_date = ""
+                self.book_queries.update(book)
+                self.refresh_books()
+                dlg.closing_message = f"Read date cleared for {book.title}"
+            dlg.done(QDialog.Rejected)
 
-            ok_btn = QPushButton("OK")
-            ok_btn.setAccessibleName("Save read date")
-            ok_btn.setAccessibleDescription(
-                "Save the date and close. No extra confirmation."
-            )
-            ok_btn.setFocusPolicy(Qt.StrongFocus)
-            ok_btn.setDefault(True)
-            ok_btn.setAutoDefault(True)
-            clear_btn.setFocusPolicy(Qt.StrongFocus)
-            scaled_height = int(20 * (self.scaler.current_scale / 100.0))
-            read_date_btn_style = build_modern_button_style(scaled_height)
-            ok_btn.setObjectName("primaryActionButton")
-            clear_btn.setObjectName("destructiveActionButton")
-            ok_btn.setStyleSheet(read_date_btn_style)
-            clear_btn.setStyleSheet(read_date_btn_style)
-            apply_decorative_action_icon(ok_btn, "save", self.scaler)
-            apply_decorative_action_icon(clear_btn, "delete", self.scaler)
-            ok_btn.clicked.connect(dlg.accept)
-            clear_btn.clicked.connect(_clear_classic_date)
-            date_row.addWidget(ok_btn)
-            date_row.addWidget(clear_btn)
+        ok_btn = QPushButton("OK")
+        ok_btn.setAccessibleName("OK")
+        ok_btn.setAccessibleDescription(
+            "Save the date and close. No extra confirmation."
+        )
+        ok_btn.setFocusPolicy(Qt.StrongFocus)
+        ok_btn.setDefault(True)
+        ok_btn.setAutoDefault(True)
+        clear_btn.setFocusPolicy(Qt.StrongFocus)
+        scaled_height = int(20 * (self.scaler.current_scale / 100.0))
+        read_date_btn_style = build_modern_button_style(scaled_height)
+        ok_btn.setObjectName("primaryActionButton")
+        clear_btn.setObjectName("destructiveActionButton")
+        ok_btn.setStyleSheet(read_date_btn_style)
+        clear_btn.setStyleSheet(read_date_btn_style)
+        apply_decorative_action_icon(ok_btn, "save", self.scaler)
+        apply_decorative_action_icon(clear_btn, "delete", self.scaler)
+        ok_btn.clicked.connect(dlg.accept)
+        clear_btn.clicked.connect(_clear_read_date)
+        date_row.addWidget(ok_btn)
+        date_row.addWidget(clear_btn)
+        dlg.ok_button = ok_btn
+        dlg.clear_button = clear_btn
         layout.addLayout(date_row)
 
-        date_field.setFocus()
         dlg.date_field = date_field
-        if use_masked:
-            # Prefill is usually today; select all so typing replaces it.
-            QTimer.singleShot(0, date_field.selectAll)
 
         # Add Alt+Down shortcut to open calendar (classic date edit only)
         from PySide6.QtGui import QShortcut, QKeySequence
@@ -679,7 +703,6 @@ class MainWindow(QMainWindow):
             alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
             alt_down_shortcut.activated.connect(date_field.calendarPopup)
 
-        dlg.setLayout(layout)
         # Auto-size dialog width so title is always fully visible
         from PySide6.QtGui import QFontMetrics
 
@@ -698,6 +721,8 @@ class MainWindow(QMainWindow):
             self._apply_read_date_from_dialog(
                 book, row, date_field, use_masked=use_masked
             )
+        elif getattr(dlg, "closing_message", ""):
+            self._focus_read_cell_with_status(book, dlg.closing_message)
         else:
             self.focus_book_by_id(book.book_id, 6, fallback=False)
 
@@ -1019,7 +1044,8 @@ class MainWindow(QMainWindow):
         self.setAccessibleDescription(
             "Main window for browsing and managing the audiobook collection"
         )
-        self.setFocusPolicy(Qt.StrongFocus)
+        # The frame has no visible focus; as a Tab stop it put focus nowhere.
+        self.setFocusPolicy(Qt.NoFocus)
         # Larger default size for better column visibility
         self.resize(1400, 800)
         # mw#22: Minimum size to prevent columns from being cut off
@@ -1216,9 +1242,6 @@ class MainWindow(QMainWindow):
         self.table.setAccessibleDescription("List of audiobooks in collection")
 
         # Columns: Author, Title, Year, Series, Genre, Time, Read
-        self.table.setColumnHidden(0, True)  # Author
-        self.table.setColumnHidden(3, True)  # Series
-        self.table.setColumnHidden(5, True)  # Time
         self.book_model = BookTableModel([])
         self.table.setModel(self.book_model)
         self.table.setItemDelegateForColumn(1, TitlePlotDelegate(self.table))
@@ -1306,8 +1329,29 @@ class MainWindow(QMainWindow):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._on_table_context_menu)
 
+    def _footer_buttons_visible(self) -> bool:
+        """True when a footer action button (selection or duplicate mode) is showing."""
+        buttons = (
+            "update_button",
+            "web_fetch_button",
+            "add_want_to_read_button",
+            "clear_want_to_read_button",
+            "clear_listen_progress_button",
+            "delete_button",
+            "export_button",
+        )
+        return any(
+            getattr(self, name, None) is not None and getattr(self, name).isVisible()
+            for name in buttons
+        )
+
     def accessible_table_key_press(self, event):
         """Custom key handler: Tab/Shift+Tab move focus out of table for accessibility."""
+        if event.key() in (Qt.Key_Tab, Qt.Key_Backtab) and not event.modifiers() & Qt.ControlModifier:
+            if not self._footer_buttons_visible():
+                # Nothing to move to; leaving the table would put focus nowhere.
+                event.accept()
+                return
         if event.key() == Qt.Key_Tab and not event.modifiers() & Qt.ControlModifier:
             # Move focus to next widget outside the table
             self.focusNextChild()
@@ -2093,7 +2137,12 @@ class MainWindow(QMainWindow):
             column = self.table.columnCount() - 1
 
         index = self.table.model().index(row, column)
-        self.table.selectionModel().setCurrentIndex(index, QItemSelectionModel.NoUpdate)
+        if self.selected_book_ids:
+            # Keep the selected rows; only move the current cell.
+            self.table.selectionModel().setCurrentIndex(index, QItemSelectionModel.NoUpdate)
+        else:
+            # Same as Left/Right, so the highlight moves with focus.
+            self.table.setCurrentCell(row, column)
         self.table.scrollTo(index)
         self.table.setFocus()
 
@@ -2225,15 +2274,13 @@ class MainWindow(QMainWindow):
             model = self.table.selectionModel()
             if model is None:
                 return
-            model.clearSelection()
-
-            col_count = self.table.columnCount()
-            for row, book in enumerate(self.books):
-                if book.book_id not in book_ids:
-                    continue
-                for col in range(col_count):
-                    idx = self.table.model().index(row, col)
-                    model.select(idx, QItemSelectionModel.Select)
+            rows = [
+                row for row, book in enumerate(self.books) if book.book_id in book_ids
+            ]
+            model.select(
+                rows_to_selection(self.table.model(), rows, self.table.columnCount()),
+                QItemSelectionModel.ClearAndSelect,
+            )
         finally:
             self._updating_selection_ui = False
 
@@ -3560,6 +3607,7 @@ class MainWindow(QMainWindow):
             validate_date_edit,
             warn_masked_field_error,
         )
+        from src.accessibility.screen_reader import is_screen_reader_active
 
         class RecentlyAddedDialog(AccessibleDialog):
             """Enter to apply filter; same pattern as read-date for screen readers."""
@@ -3569,6 +3617,18 @@ class MainWindow(QMainWindow):
                 self.date_field = None
                 self.use_masked = False
                 self.setWindowIcon(get_app_icon())
+
+            def showEvent(self, event):
+                super().showEvent(event)
+                # First focus after the window is shown, not while building it.
+                QTimer.singleShot(0, self._focus_date_field)
+
+            def _focus_date_field(self):
+                if self.date_field is None or not self.isVisible():
+                    return
+                self.date_field.setFocus(Qt.OtherFocusReason)
+                if self.use_masked:
+                    self.date_field.selectAll()
 
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
@@ -3598,7 +3658,6 @@ class MainWindow(QMainWindow):
 
         dlg = RecentlyAddedDialog(self)
         dlg.setWindowTitle("Recently Added")
-        dlg.setModal(True)
         dlg.setAccessibleName("Recently Added")
         dlg.setAccessibleDescription(
             "Show books added on or after the selected date."
@@ -3634,6 +3693,13 @@ class MainWindow(QMainWindow):
             date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
 
         configure_no_future_date_edit(date_field)
+        # Focus starts here, and with focus in a text field JAWS Insert+B reads
+        # only the title and the field, so the instructions go here.
+        date_field.setAccessibleDescription(
+            "Books added on or after this date are shown. "
+            + ("Type the date as year-month-day. " if use_masked else "Alt+Down opens the calendar. ")
+            + "Press Enter to filter."
+        )
         font = date_field.font()
         font.setPointSize(self.scaler.get_scaled_size(14))
         date_field.setFont(font)
@@ -3646,14 +3712,12 @@ class MainWindow(QMainWindow):
         dialog_status.setSizeGripEnabled(False)
         configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
-            "Choose a date and press Enter to filter. Alt+/ read status"
+            "Choose a date and press Enter to filter."
+            + (" Alt+/ read status" if is_screen_reader_active() else "")
         )
         layout.addWidget(dialog_status)
 
         dlg.date_field = date_field
-        date_field.setFocus()
-        if use_masked:
-            QTimer.singleShot(0, date_field.selectAll)
 
         if not use_masked:
             alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
@@ -3812,11 +3876,15 @@ class MainWindow(QMainWindow):
 
         field_combo.currentIndexChanged.connect(update_text_label)
 
+        from src.accessibility.screen_reader import is_screen_reader_active
+
+        read_status_hint = ", Alt+/ read status" if is_screen_reader_active() else ""
         dialog_status = QStatusBar(dialog)
         dialog_status.setSizeGripEnabled(False)
         configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
-            "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
+            "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact"
+            + read_status_hint
         )
         layout.addWidget(dialog_status)
 
@@ -3860,7 +3928,8 @@ class MainWindow(QMainWindow):
             if not query:
                 QApplication.beep()
                 dialog_status.showMessage(
-                    "Enter text to find. Alt+I field, Alt+T text, Alt+X exact, Alt+/ read status"
+                    "Enter text to find. Alt+I field, Alt+T text, Alt+X exact"
+                    + read_status_hint
                 )
                 return
 
@@ -4523,15 +4592,14 @@ class MainWindow(QMainWindow):
         # Use flag to prevent selection change handler from interfering
         self._updating_selection_ui = True
 
-        # Clear current selection first
-        self.table.selectionModel().clearSelection()
-
-        # Select all cells in each row (for SelectItems mode)
-        col_count = self.table.columnCount()
-        for r in range(start_row, end_row + 1):
-            for c in range(col_count):
-                index = self.table.model().index(r, c)
-                self.table.selectionModel().select(index, QItemSelectionModel.Select)
+        self.table.selectionModel().select(
+            rows_to_selection(
+                self.table.model(),
+                range(start_row, end_row + 1),
+                self.table.columnCount(),
+            ),
+            QItemSelectionModel.ClearAndSelect,
+        )
 
         # Sync ids and AccessibleTextRole before moving current cell so JAWS
         # hears title, count, and Escape hint on the new row.
@@ -4541,8 +4609,11 @@ class MainWindow(QMainWindow):
                 self.selected_book_ids.add(self.books[r].book_id)
         self.update_selection_ui()
 
-        self.table.setCurrentCell(target_row, col)
-        self.table.scrollTo(self.table.model().index(target_row, col))
+        # Move only the current cell. setCurrentCell applies Qt's own selection
+        # rule and can replace the block selected above.
+        target = self.table.model().index(target_row, col)
+        self.table.selectionModel().setCurrentIndex(target, QItemSelectionModel.NoUpdate)
+        self.table.scrollTo(target)
 
         self._updating_selection_ui = False
         self.announce_selection()
@@ -5214,9 +5285,12 @@ class MainWindow(QMainWindow):
                 refresh_callback=self.refresh_books,
                 web_data=web_data,
             )
-            dialog.exec()
+            result = dialog.exec()
+            saved_message = getattr(dialog, "saved_message", "")
             dialog.deleteLater()
             self._restore_table_focus_context(focus_ctx)
+            if result == QDialog.Accepted and saved_message:
+                self._announce_after_return(saved_message)
             return
 
         if fetch.errors:
@@ -5636,6 +5710,20 @@ class MainWindow(QMainWindow):
                 book_id, 1, fallback=True, reason=Qt.TabFocusReason
             )
         self.restore_main_focus_after_modal()
+
+    def _announce_after_return(self, message: str) -> None:
+        """Announce once focus is back in the table after a window closes.
+
+        Announcing from the closing window is cut off by the main window's own
+        speech; waiting lets that start first, then the message is read.
+        """
+        from src.accessibility.screen_reader import get_screen_reader_focus_delay_ms
+
+        self.set_status(message)
+        QTimer.singleShot(
+            max(300, get_screen_reader_focus_delay_ms()),
+            lambda: self.set_status(message, announce=True),
+        )
 
     def restore_main_focus_after_modal(self):
         """Ensure Main Window regains focus on a sensible table cell after modal dialogs."""

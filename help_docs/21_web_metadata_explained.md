@@ -134,7 +134,7 @@ For each field you approved, or that was empty:
 The series stays as it is. After saving:
 
 - The main book list or Book Details refreshes.
-- The status bar says which fields changed, for example "Updated: Plot, Year".
+- After the window closes, the status bar says which fields changed, for example "Updated: Plot, Year".
 - Focus returns to the book you started from.
 
 If saving fails, a message explains it and the review window stays open.
@@ -153,7 +153,7 @@ Without a key, Google Books allows a limited number of searches. You can add a k
 
 ## Batch fetch
 
-With two or more books selected, AbCS fetches each book in turn and shows the **batch summary** at the end. **Apply all** saves the changes for every book. **Review each** opens the review window for each book with changes. See [Web Metadata Fetch](07_web_metadata.md) for the batch steps.
+With two or more books selected, AbCS fetches each book in turn. The progress dialog names the current book once. **Alt+/** reads that line. The **batch summary** opens at the end. **Apply all** saves the changes for every book. **Review each** opens the review window for each book with changes. During Review each, **Escape** offers Save, Skip this book, or Stop review, and **Escape** again stays on the book. Closing the summary asks first when fetched information has not been saved. See [Web Metadata Fetch](07_web_metadata.md) for the batch steps.
 
 ## Why several websites are tried
 

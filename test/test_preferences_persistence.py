@@ -8,6 +8,59 @@ from src.core.update_check import AUTO_CHECK_UPDATES_SETTING
 from src.ui.preferences_window import PreferencesWindow
 
 
+def test_enter_presses_focused_preferences_button(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot, monkeypatch
+):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtWidgets import QMessageBox
+
+    monkeypatch.setattr(
+        "src.ui.preferences_window.exec_styled_message_box",
+        lambda *a, **k: QMessageBox.No,
+    )
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    clicked = []
+    window.restore_defaults_button.clicked.connect(lambda: clicked.append("restore"))
+    window.save_button.clicked.connect(lambda: clicked.append("save"))
+
+    for button, key in (
+        (window.restore_defaults_button, Qt.Key_Return),
+        (window.save_button, Qt.Key_Enter),
+    ):
+        monkeypatch.setattr(window, "focusWidget", lambda b=button: b)
+        event = QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier)
+        window.keyPressEvent(event)
+        assert event.isAccepted()
+
+    assert clicked == ["restore", "save"]
+    window.close()
+
+
+def test_restore_defaults_confirms_with_a_popup(
+    ui_scaler, theme_manager, isolated_qsettings, qtbot, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    boxes = []
+
+    def record_box(*_args, **kwargs):
+        boxes.append(kwargs)
+        return QMessageBox.Yes
+
+    monkeypatch.setattr("src.ui.preferences_window.exec_styled_message_box", record_box)
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    try:
+        window.on_restore_defaults()
+        assert len(boxes) == 2
+        assert boxes[1]["text"] == "All preferences restored to default values."
+        assert boxes[1]["buttons"] == QMessageBox.Ok
+    finally:
+        window.close()
+
+
 def test_auto_check_updates_defaults_off_and_restores(
     ui_scaler, theme_manager, isolated_qsettings, qtbot
 ):
@@ -118,6 +171,30 @@ def test_aac_and_opus_formats_listed_and_checked_by_default(
     stored = QSettings("AbCS", "AudioBookCollector")
     assert stored.value("import/formats/opus", True, type=bool) is False
     window.close()
+
+
+def test_preferences_unsaved_prompt_hides_cancel(
+    ui_scaler, theme_manager, isolated_qsettings, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    seen = {}
+
+    def fake_box(*args, **kwargs):
+        seen.update(kwargs)
+        return QMessageBox.No
+
+    monkeypatch.setattr("src.ui.preferences_window.exec_styled_message_box", fake_box)
+    window = PreferencesWindow(ui_scaler, theme_manager)
+    try:
+        reply = window._confirm_exit_with_changes()
+        assert reply == QMessageBox.No
+        assert "Press Escape to cancel" in seen["text"]
+        assert "reverts the changes" in seen["text"]
+        assert QMessageBox.Cancel not in seen["button_texts"]
+        assert seen["escape_only_button"] == QMessageBox.Cancel
+    finally:
+        window.close()
 
 
 def test_fresh_install_import_checks_use_restore_defaults_values(isolated_qsettings, qapp):

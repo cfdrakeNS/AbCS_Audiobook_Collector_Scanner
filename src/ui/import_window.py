@@ -26,6 +26,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QShortcut, QKeySequence, QAccessible
 from datetime import datetime
 from src.ui.accessible_dialog import AccessibleDialog
+from src.ui.table_selection import rows_to_selection
 from pathlib import Path
 import os
 import time
@@ -111,6 +112,10 @@ class ImportWindow(AccessibleDialog):
                 self.progress_window.on_close_requested()
                 event.accept()
                 return
+            if self.selected_rows or self.selection_anchor_row is not None:
+                self.clear_row_selection()
+                event.accept()
+                return
             self.on_cancel()
             event.accept()
             return
@@ -151,6 +156,12 @@ class ImportWindow(AccessibleDialog):
             "export_button": lambda: self.export_button.click(),
         }
         mgr.register_alt_shortcuts(self, ShortcutContext.IMPORT_WINDOW, callback_map)
+        # Alt+1 through Alt+5: Author, Title, Year, Error Type, File/Folder
+        self.column_shortcuts = []
+        for column in range(5):
+            shortcut = QShortcut(QKeySequence(f"Alt+{column + 1}"), self)
+            shortcut.activated.connect(lambda col=column: self.jump_to_column(col))
+            self.column_shortcuts.append(shortcut)
         # F1 help shortcut remains local
         self.help_shortcut = QShortcut(QKeySequence("F1"), self)
         self.help_shortcut.activated.connect(self.on_show_shortcuts)
@@ -979,13 +990,15 @@ class ImportWindow(AccessibleDialog):
             ("Alt+I", "Import"),
             ("Alt+E", "Error filter"),
             ("Alt+L", "Jump to table"),
-            ("Alt+1", "Jump to Author "),
-            ("Alt+2", "Jump to Title "),
-            ("Alt+3-5", "Jump to Year..."),
+            ("Alt+1", "Jump to Author"),
+            ("Alt+2", "Jump to Title"),
+            ("Alt+3", "Jump to Year"),
+            ("Alt+4", "Jump to Error Type"),
+            ("Alt+5", "Jump to File/Folder"),
             ("Enter", "Open import detail"),
             ("Alt+S", "Add selected"),
             ("Alt+X", "Export list to CSV"),
-            ("Escape", "Cancel/Close window"),
+            ("Escape", "Clear selection, or cancel or close window"),
             ("Alt+/", "Read status bar"),
             ("F1", "Show this help"),
         ]
@@ -1177,9 +1190,13 @@ class ImportWindow(AccessibleDialog):
         if column >= self.table.columnCount():
             column = self.table.columnCount() - 1
 
-        self.table.setCurrentCell(row, column)
         index = self.table.model().index(row, column)
-        self.table.setCurrentIndex(index)
+        if self.selected_rows:
+            self.table.selectionModel().setCurrentIndex(
+                index, QItemSelectionModel.NoUpdate
+            )
+        else:
+            self.table.setCurrentCell(row, column)
         self.table.scrollTo(index)
         self.table.setFocus()
 
@@ -1461,20 +1478,22 @@ class ImportWindow(AccessibleDialog):
         return "Unknown"
 
     def announce_selection(self):
-        """Announce selection with focused title and count, like MainWindow."""
+        """Announce the focused title and selected count, like the main window."""
         if not self.selected_rows:
             return
+        title = self._row_title(self.table.currentRow())
+        self.set_status(f"{title} - {len(self.selected_rows)} selected", announce=True)
 
-        count = len(self.selected_rows)
-        current_row = self.table.currentRow()
-        title = self._row_title(current_row)
-        shortcuts_text = "Escape to cancel selection"
-        # Always include count, even for single selection
-        if count == 1:
-            message = f"{title} - 1 selected. {shortcuts_text}"
-        else:
-            message = f"{title} - {count} selected. {shortcuts_text}"
-        self.set_status(message, announce=True)
+    def clear_row_selection(self):
+        """Escape with rows selected: clear the selection and stay on the current row."""
+        self._updating_selection_ui = True
+        self.table.clearSelection()
+        self.table.selectionModel().clearSelection()
+        self._updating_selection_ui = False
+        self.selected_rows.clear()
+        self.selection_anchor_row = None
+        self.set_status("Selection cleared", announce=True)
+        self.table.setFocus(Qt.OtherFocusReason)
 
     def update_summary(
         self,
@@ -2239,27 +2258,6 @@ class ImportWindow(AccessibleDialog):
         # Re-apply proportional widths after data population.
         self.update_stretch_columns()
 
-    def _close_progress_window(self) -> None:
-        """Close the progress window without the cancel prompt."""
-        progress = self.progress_window
-        if progress is None:
-            return
-        progress._scan_active = False
-        progress.close()
-        self.progress_window = None
-
-    def _show_completed_popup(self, message: str) -> None:
-        """One OK button and the completion sentence. No counters."""
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title=message,
-            text=message,
-            buttons=QMessageBox.Ok,
-            default_button=QMessageBox.Ok,
-        )
-
     def _finish_scan_progress(
         self,
         *,
@@ -2270,22 +2268,22 @@ class ImportWindow(AccessibleDialog):
         read_errors: int,
         summary_text: str,
     ) -> None:
-        """Cancel leaves the progress window open. A finished import closes it."""
+        """Leave the progress window open with the summary; Escape closes it.
+
+        Closing it returns focus to the review table (``_on_progress_window_closed``).
+        """
         if not self.scanned_items:
             self._set_review_combos_enabled(True)
-        if canceled:
-            if self.progress_window:
-                self.progress_window.mark_scan_complete(
-                    canceled=True,
-                    elapsed_text=elapsed_text,
-                    files_scanned=files_scanned,
-                    books_added=books_added,
-                    read_errors=read_errors,
-                    summary_text=summary_text,
-                )
+        if self.progress_window:
+            self.progress_window.mark_scan_complete(
+                canceled=canceled,
+                elapsed_text=elapsed_text,
+                files_scanned=files_scanned,
+                books_added=books_added,
+                read_errors=read_errors,
+                summary_text=summary_text,
+            )
             return
-        self._close_progress_window()
-        self._show_completed_popup("Import completed")
         if self.table.rowCount() > 0:
             if self.table.currentRow() < 0:
                 self.table.setCurrentCell(0, self.COL_TITLE)
@@ -3326,14 +3324,11 @@ class ImportWindow(AccessibleDialog):
         if model is None:
             return
 
-        model.clearSelection()
-        col_count = self.table.columnCount()
-        for row in sorted(self.selected_rows):
-            if self.table.isRowHidden(row):
-                continue
-            for col in range(col_count):
-                index = self.table.model().index(row, col)
-                model.select(index, QItemSelectionModel.Select)
+        rows = [row for row in self.selected_rows if not self.table.isRowHidden(row)]
+        model.select(
+            rows_to_selection(self.table.model(), rows, self.table.columnCount()),
+            QItemSelectionModel.ClearAndSelect,
+        )
 
     def _select_row_range(self, anchor_row: int, target_row: int, current_col: int = 0):
         """Track selected rows without selecting full table rows in Qt."""

@@ -96,14 +96,14 @@ class PreferencesWindow(AccessibleDialog):
     }
 
     def keyPressEvent(self, event):
-        # Accessibility: Pressing Enter/Return on Browse button triggers file dialog
-        if self.browse_button.hasFocus() and event.key() in (
-            Qt.Key_Return,
-            Qt.Key_Enter,
-        ):
-            self.on_browse()
-            event.accept()
-            return
+        # Preferences is a form with no default button: Enter presses the focused
+        # button (Browse, Restore Defaults, Save).
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            focused = self.focusWidget()
+            if isinstance(focused, QPushButton) and focused.isEnabled():
+                focused.click()
+                event.accept()
+                return
         super().keyPressEvent(event)
 
     ALLOWED_ALT_LETTERS = {"A", "B", "C", "D", "F", "O", "R", "V"}
@@ -1411,24 +1411,29 @@ class PreferencesWindow(AccessibleDialog):
 
     def _confirm_exit_with_changes(self) -> int:
         """Ask whether to save changes before exit using standardized message box."""
-        from src.accessibility.style_helpers import exec_styled_message_box
         from src.accessibility.icon_helper import get_app_icon
 
-        from src.accessibility.style_helpers import MESSAGE_BOX_UNSAVED_THREE_ICONS
+        from src.accessibility.style_helpers import MESSAGE_BOX_UNSAVED_TWO_ICONS
 
         reply = exec_styled_message_box(
             self,
             self.scaler.get_scaled_size(20),
             icon=QMessageBox.Question,
             title="Unsaved Changes",
-            text="You have unsaved changes.\n\n"
-            "Yes = Save and close\n"
-            "No = Continue editing\n"
-            "Cancel = Revert and close",
+            text=(
+                "You have unsaved changes.\n\n"
+                "Yes = Save and close\n"
+                "No = Continue editing\n\n"
+                "Press Escape to cancel. That reverts the changes and closes."
+            ),
             buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             default_button=QMessageBox.Yes,
+            button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+            # Cancel is hidden. Escape answers it and reverts. Without it,
+            # Escape would answer No and keep Preferences open.
+            escape_only_button=QMessageBox.Cancel,
             window_icon=get_app_icon(),
-            button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
+            button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
         )
         return reply
 
@@ -2414,7 +2419,17 @@ class PreferencesWindow(AccessibleDialog):
         self._initial_state = self._capture_state()
 
         self.set_status("All preferences restored to default values")
-        announce_status_message(self, "All preferences restored to default values")
+        exec_styled_message_box(
+            self,
+            self.scaler.get_scaled_size(20),
+            icon=QMessageBox.Information,
+            title="Restore Defaults",
+            text="All preferences restored to default values.",
+            buttons=QMessageBox.Ok,
+            default_button=QMessageBox.Ok,
+            window_icon=get_app_icon(),
+            scaler=self.scaler,
+        )
 
     def _sync_single_collection_paths(self) -> None:
         owner = getattr(self, "owner_widget", None) or self.parent()

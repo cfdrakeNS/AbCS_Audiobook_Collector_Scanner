@@ -25,7 +25,6 @@ from src.accessibility.style_helpers import (
     FullDayNumberCalendar,
     exec_styled_message_box,
     MESSAGE_BOX_DELETE_CONFIRM_ICONS,
-    MESSAGE_BOX_UNSAVED_THREE_ICONS,
     MESSAGE_BOX_UNSAVED_TWO_ICONS,
 )
 from src.accessibility.accessible_events import (
@@ -240,8 +239,8 @@ class BookDetailsWindow(AccessibleDialog):
             msg_text = (
                 f"You have unsaved changes for '{title_val}' by {author_val}.\n\n"
                 "Yes = Save and close\n"
-                "No = Continue editing\n"
-                "Cancel = Discard unsaved changes and close"
+                "No = Continue editing\n\n"
+                "Press Escape to cancel. That discards the changes and closes."
             )
             saved_id = getattr(self, "_read_date_saved_book_id", None)
             if saved_id is not None and saved_id == getattr(self.book, "book_id", None):
@@ -253,25 +252,29 @@ class BookDetailsWindow(AccessibleDialog):
                 title="Unsaved Changes",
                 text=msg_text,
                 buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                default_button=QMessageBox.Cancel,
+                default_button=QMessageBox.No,
                 button_texts={
                     QMessageBox.Yes: "&Yes",
                     QMessageBox.No: "&No",
-                    QMessageBox.Cancel: "&Cancel",
                 },
+                # Cancel is hidden. Escape answers it and discards. Without it,
+                # Escape would answer No and keep editing.
+                escape_only_button=QMessageBox.Cancel,
                 window_icon=get_app_icon(),
-                button_icon_roles=MESSAGE_BOX_UNSAVED_THREE_ICONS,
+                button_icon_roles=MESSAGE_BOX_UNSAVED_TWO_ICONS,
             )
 
             if reply == QMessageBox.Yes:
                 # Save and close
                 self.on_save()
+                if self._dirty:
+                    return
                 announce_dialog_closed(self)
                 self.reject()
             elif reply == QMessageBox.No:
                 # Continue editing
-                if combo_to_restore:
-                    QTimer.singleShot(0, combo_to_restore.setFocus)
+                target = combo_to_restore or self._last_dirty_focus_target()
+                QTimer.singleShot(0, lambda w=target: self._focus_after_prompt(w))
                 return
             else:  # Cancel - discard unsaved changes and close
                 self._revert_changes()
@@ -393,6 +396,7 @@ class BookDetailsWindow(AccessibleDialog):
         if self._keep_edit_mode:
             self.ALLOWED_ALT_KEYS = self.ALLOWED_ALT_KEYS - {"R", "K"}
         self._first_dirty_widget = None  # Track first field that changed
+        self._last_dirty_widget = None
         self._pending_dirty_widgets = set()
         self._default_status_message = "Ready"
         self._preview_source_cache_key = None
@@ -2151,6 +2155,9 @@ class BookDetailsWindow(AccessibleDialog):
         # Spinbox and date
         if getattr(self, "_year_is_masked", False):
             self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
+            # valueChanged waits for editingFinished, so Escape while still typing
+            # would close without the unsaved-changes prompt.
+            self.year_spin.textEdited.connect(lambda: self._mark_dirty(self.year_spin))
         else:
             self.year_spin.valueChanged.connect(lambda: self._mark_dirty(self.year_spin))
         self.series_number_edit.textChanged.connect(
@@ -2212,6 +2219,13 @@ class BookDetailsWindow(AccessibleDialog):
             else None
         )
         if focus is self.year_spin or focus is year_line:
+            return
+        # A message box took focus (Save or Escape already checked the year),
+        # or the window is closing. Warning again would stack a second box.
+        modal = QApplication.activeModalWidget()
+        if modal is not None and modal is not self:
+            return
+        if focus is not None and focus.window() is not self:
             return
         if self._year_matches_saved_value():
             return
@@ -2495,6 +2509,7 @@ class BookDetailsWindow(AccessibleDialog):
             ):
                 return
             self._pending_dirty_widgets.add(widget)
+            self._last_dirty_widget = widget
 
         if not self._dirty:
             self._dirty = True
@@ -2525,6 +2540,7 @@ class BookDetailsWindow(AccessibleDialog):
         """bd#6: Clear dirty flag after save or load."""
         self._dirty = False
         self._first_dirty_widget = None
+        self._last_dirty_widget = None
         self._pending_dirty_widgets.clear()
         self._update_save_button_visibility()
         if not preserve_status:
@@ -4058,13 +4074,19 @@ class BookDetailsWindow(AccessibleDialog):
                     web_data=web_data,
                 )
                 result = web_window.exec()
+                saved_message = getattr(web_window, "saved_message", "")
                 web_window.deleteLater()
                 if result == QDialog.Accepted:
                     self._data_was_changed = True
-                    self.set_status(
-                        "Web details applied successfully", announce=True
-                    )
-                    QTimer.singleShot(0, self._focus_plot)
+                    message = saved_message or "Web details applied successfully"
+                    self.set_status(message)
+
+                    def _focus_plot_then_announce():
+                        # Focus first: moving focus after announcing cuts the speech off.
+                        self._focus_plot()
+                        self.set_status(message, announce=True)
+
+                    QTimer.singleShot(0, _focus_plot_then_announce)
             else:
                 if fetch.errors:
                     status_msg = fetch.status_message
@@ -4098,6 +4120,19 @@ class BookDetailsWindow(AccessibleDialog):
 
             traceback.print_exc()
             self.set_status(f"Error opening web details: {str(e)}")
+
+    def _last_dirty_focus_target(self):
+        """Last changed field that can take focus, else the title."""
+        widget = self._last_dirty_widget
+        if widget is not None and widget.isVisible() and widget.isEnabled():
+            return widget
+        return self.title_edit
+
+    def _focus_after_prompt(self, widget):
+        """Return focus to a field after a prompt, so the screen reader reads it."""
+        if not self.isVisible():
+            return
+        widget.setFocus(Qt.TabFocusReason)
 
     def _focus_first_dirty_field(self):
         """Focus the first dirty field if any, else title_edit."""

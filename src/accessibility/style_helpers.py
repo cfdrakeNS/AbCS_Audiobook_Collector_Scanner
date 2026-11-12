@@ -877,6 +877,25 @@ def apply_message_box_button_icons(
             apply_decorative_action_icon(button, icon_role, scaler)
 
 
+def _settle_owner_activation(owner) -> None:
+    """Let the owner finish becoming active before a box opens over it.
+
+    Right after a dialog closes, no window is active yet, or Qt still reports
+    the hidden dialog as active. Without this, the owner becomes active after
+    the box appears, and JAWS and NVDA read the owner window instead of the box.
+    """
+    from PySide6.QtWidgets import QApplication
+
+    if owner is None or not owner.isVisible():
+        return
+    active = QApplication.activeWindow()
+    if active is not None and active.isVisible():
+        return
+    owner.raise_()
+    owner.activateWindow()
+    QApplication.processEvents()
+
+
 def exec_styled_message_box(
     parent,
     scaled_height: int,
@@ -950,6 +969,7 @@ def exec_styled_message_box(
             hidden.hide()
 
     msg.setStyleSheet(build_accessible_message_box_style(scaled_height))
+    _settle_owner_activation(owner)
     if keep_owner_enabled:
         msg.setWindowModality(Qt.WindowModal)
         _set_win32_owner(int(msg.winId()), int(owner.winId()))
@@ -957,4 +977,10 @@ def exec_styled_message_box(
         frame = msg.frameGeometry()
         frame.moveCenter(owner.frameGeometry().center())
         msg.move(frame.topLeft())
-    return msg.exec()
+    result = msg.exec()
+    if keep_owner_enabled and owner.isVisible():
+        # Without a Qt parent, Qt does not reactivate the owner when the box
+        # closes; the caller's setFocus() would land in an inactive window.
+        owner.raise_()
+        owner.activateWindow()
+    return result

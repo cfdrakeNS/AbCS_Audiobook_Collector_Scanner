@@ -286,6 +286,40 @@ class TestBookListImportDb:
         assert match[0].title == "Rules Of Prey"
         assert match[0].series_name == "Lucas Davenport"
 
+    def test_progress_opens_before_import_controls_are_disabled(
+        self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+    ):
+        """Disabling the focused Import button first would move focus within this window."""
+        import time
+
+        from PySide6.QtWidgets import QMessageBox
+
+        window = BookListImportWindow(empty_temp_db, ui_scaler, theme_manager)
+        qtbot.addWidget(window)
+        frame = pd.DataFrame({"Title": ["Order Book"], "Author": ["Order Author"]})
+        _prepare_window(window, frame, {"title": 0, "author": 1})
+        order = []
+
+        def record_progress(_total_rows):
+            order.append("progress")
+            window.progress_window = None
+            window._import_start_time = time.perf_counter()
+
+        real_set_enabled = window._set_import_controls_enabled
+
+        def record_enabled(enabled):
+            order.append(f"controls {'on' if enabled else 'off'}")
+            real_set_enabled(enabled)
+
+        monkeypatch.setattr(window, "_show_import_progress", record_progress)
+        monkeypatch.setattr(window, "_set_import_controls_enabled", record_enabled)
+        monkeypatch.setattr(QMessageBox, "exec", lambda box: QMessageBox.Yes)
+        monkeypatch.setattr(window, "set_status", lambda *a, **k: None)
+
+        window.import_books()
+
+        assert order[:2] == ["progress", "controls off"]
+
     def test_import_result_announced_when_progress_window_hidden(
         self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
     ):
@@ -321,5 +355,37 @@ class TestBookListImportDb:
 
         message, announce = statuses[-1]
         assert message.startswith("1 books added to")
-        assert announce is False
-        assert shown[-1] == "Import completed"
+        # No progress window to speak the summary, so this window announces it.
+        assert announce is True
+        assert "Import completed" not in shown
+
+    def test_finished_import_keeps_progress_window_open(
+        self, empty_temp_db, ui_scaler, theme_manager, qtbot, monkeypatch
+    ):
+        from PySide6.QtWidgets import QMessageBox
+
+        window = BookListImportWindow(empty_temp_db, ui_scaler, theme_manager)
+        qtbot.addWidget(window)
+        frame = pd.DataFrame({"Title": ["Open Book"], "Author": ["Open Author"]})
+        _prepare_window(window, frame, {"title": 0, "author": 1})
+        shown = []
+
+        def fake_exec(box):
+            shown.append(box.text())
+            return QMessageBox.Yes
+
+        monkeypatch.setattr(QMessageBox, "exec", fake_exec)
+        try:
+            window.import_books()
+            progress = window.progress_window
+            assert progress is not None and progress.isVisible()
+            assert "Import complete" in progress.scan_progress.format()
+            assert progress.scan_progress.accessibleName() == "Import complete"
+            message = progress.status_bar.currentMessage()
+            assert message.startswith("Import complete. Scanned:")
+            assert "Esc to close" in message
+            assert "Import completed" not in shown
+        finally:
+            if window.progress_window is not None:
+                window.progress_window._scan_active = False
+                window.progress_window.close()

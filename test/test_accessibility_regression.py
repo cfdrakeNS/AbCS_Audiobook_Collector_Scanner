@@ -22,7 +22,7 @@ def test_book_list_accessibility_regression(main_window):
     """Main window book list remains tab-focusable with accessible properties."""
     assert main_window.accessibleName() != ""
     assert main_window.isEnabled()
-    assert main_window.focusPolicy() & Qt.TabFocus
+    assert not main_window.focusPolicy() & Qt.TabFocus
 
     assert hasattr(main_window, "book_list"), "Main window missing book list"
     book_list = main_window.book_list

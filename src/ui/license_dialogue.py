@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QVBoxLayout
 from PySide6.QtCore import Qt, QTimer
 
-from src.accessibility.dialog_prose import create_dialog_html_text
+from src.accessibility.dialog_prose import create_dialog_html_text, prepare_dialog_prose
 from src.ui.accessible_dialog import AccessibleDialog
 
 
@@ -102,4 +102,10 @@ class LicenseDialog(AccessibleDialog):
 
         self.license_label = license_label
         self.ok_btn = ok_btn
+        prepare_dialog_prose(
+            self,
+            license_label,
+            license_blocks,
+            height=self.scaler.get_scaled_size(400),
+        )
         QTimer.singleShot(100, lambda: license_label.setFocus(Qt.TabFocusReason))

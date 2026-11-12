@@ -43,6 +43,8 @@ Reference list of keyboard shortcuts for each AbCS window. Most actions are also
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
 
+When footer buttons are showing, Tab moves to those buttons. When none are showing, Tab and Shift+Tab stay on the current cell.
+
 While books are selected, F1 lists only the shortcuts that still work.
 
 ## Book Details
@@ -109,11 +111,13 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Alt+L | Jump to table |
 | Alt+1 | Jump to Author |
 | Alt+2 | Jump to Title |
-| Alt+3-5 | Jump to Year, Error Type, or File/Folder |
+| Alt+3 | Jump to Year |
+| Alt+4 | Jump to Error Type |
+| Alt+5 | Jump to File/Folder |
 | Enter | Open import detail |
 | Alt+S | Add selected |
 | Alt+X | Export list to CSV |
-| Escape | Cancel or close window |
+| Escape | Clear selection, or cancel or close window |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
@@ -138,7 +142,7 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Alt+D | Discard |
 | Page Up | Previous item |
 | Page Down | Next item |
-| Escape | Close detail |
+| Escape | Close detail (asks when there are changes; Escape on that message discards and closes) |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
@@ -179,10 +183,12 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Ctrl+S | Save |
 | Ctrl+Tab / Ctrl+Shift+Tab | Move between tabs |
 | Tab/Shift+Tab | Move between controls in the current section |
-| Escape | Close (asks about unsaved changes) |
+| Escape | Close (asks about unsaved changes). Escape on that message reverts and closes |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
+
+Enter activates the button that has focus, such as Browse, Restore Defaults, or Save.
 
 ## Web metadata window
 
@@ -197,7 +203,7 @@ While books are selected, F1 lists only the shortcuts that still work.
 | Alt+F | Re-fetch web data |
 | Ctrl+S | Save |
 | Alt+K | Skip this book (review queue) |
-| Escape | Close (asks whether to save). In Review each: Save, Skip this book, Stop review, or Cancel |
+| Escape | Close (asks whether to save). In Review each: Save, Skip this book, or Stop review; Escape again stays on the book |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
@@ -211,7 +217,7 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Alt+L | Books list |
 | Alt+A | Apply all (says "No books with new information." when none) |
 | Alt+R | Review each (Review when one book has changes) |
-| Escape | Close |
+| Escape | Close (asks first when fetched information has not been saved) |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
@@ -271,7 +277,7 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Ctrl+S | Save (while editing) |
 | Alt+S | Sort |
 | Alt+Down | Open Sort dropdown (when Sort has focus) |
-| Escape | Return to list from Find, cancel edit, or close window |
+| Escape | Return to list from Find, cancel edit, or close window. Escape on the unsaved prompt discards and returns to the list |
 | Alt+/ | Read status bar |
 | F1 | Keyboard shortcuts for this window |
 | Shift+F1 | Help for this window |
@@ -396,3 +402,5 @@ On **Other plots**, plain Up and Down beep. Press **Alt+Down** to open the list.
 | Shift+F1 | Help for the active window |
 | Alt+/ | Read status bar (most windows) |
 | Escape | Cancel or close (most windows) |
+
+In an AbCS message, Escape works like Cancel, or like No when there is no Cancel.

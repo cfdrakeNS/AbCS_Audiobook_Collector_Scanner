@@ -20,7 +20,7 @@ For editing one book with all its fields, use [Book Details](04_book_details.md)
 ## Window layout
 
 - **Header row:** **Series** combo, **Genre** combo, and **Collection** combo. Collection appears only when you have two or more collections. Series and Genre are editable, so you can type a new name.
-- **Selected books list:** columns Title, Year, Series, Genre, and Collection. It shows the current values of the selected books and refreshes after each change.
+- **Selected books list:** columns Title, Year, Series, Genre, and Collection. It shows the current values of the selected books and refreshes after each change. The current cell stays highlighted as you move through the list.
 - **Status bar** at the bottom. It reports each change, for example "Series: Sherlock Holmes added to 2 books".
 
 The window has no Save button. Each choice is saved as soon as you make it.

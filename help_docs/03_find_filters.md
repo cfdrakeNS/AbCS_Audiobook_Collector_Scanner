@@ -36,7 +36,7 @@ From top to bottom:
 - **Footer buttons:** shown only when they apply. With books selected: **Update**, **Add to want to read**, **Clear want to read**, **Clear listening position**, and **Delete**. With two or more books selected, **Web fetch** also appears. In duplicate mode: **Delete** and **Export Duplicates**.
 - **Status bar** at the bottom.
 
-When AbCS opens, focus is on the first title in the book table. **Tab** leaves the table; use the arrow keys to move between cells.
+When AbCS opens, focus is on the first title in the book table. Use the arrow keys to move between cells. When footer buttons are showing, **Tab** moves to those buttons. When none are showing, **Tab** and **Shift+Tab** stay on the current cell.
 
 The Title column shows a mark before the title. A circle means the book has a plot. A square means want to read. A triangle means listening is in progress. A screen reader speaks those words after the title, for example "The Moonstone, plot, want to read, in progress".
 
@@ -105,7 +105,7 @@ This filter uses the **date added**: the day the book was imported or created in
 
 1. Move to the **Read** column of the book.
 2. Press **Enter**, or double-click the cell.
-3. Choose the date and confirm. Setting a read date also clears the listening position and Want to read for that book.
+3. Choose the date and press **OK**, or press **Clear** to remove the read date. With a screen reader running, the date is a typed field (year-month-day); without one, it has a calendar. Both have **OK** and **Clear**. Setting a read date also clears the listening position and Want to read for that book.
 
 You can also set the read date in [Book Details](04_book_details.md).
 

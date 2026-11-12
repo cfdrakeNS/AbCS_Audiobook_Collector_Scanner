@@ -178,6 +178,42 @@ def test_book_list_import_export_errors_starts_disabled(temp_db, ui_scaler, them
         _close(window)
 
 
+def test_update_window_highlights_current_cell(qtbot, temp_db, ui_scaler):
+    """Arrowing the Update book list highlights the current cell, like the main table."""
+    from src.database.models import Book
+    from src.database.queries import AuthorQueries, BookQueries, CollectionQueries
+
+    collection_id = CollectionQueries(temp_db).get_all()[0].collection_id
+    author_id = AuthorQueries(temp_db).insert("Highlight Author")
+    ids = {
+        BookQueries(temp_db).insert(
+            Book(title=f"Highlight {n}", author_id=author_id, collection_id=collection_id)
+        )
+        for n in range(2)
+    }
+    window = UpdateWindow(temp_db, ui_scaler, selected_book_ids=ids)
+    qtbot.addWidget(window)
+    try:
+        window.focus_book_list()
+        selected = window.table.selectionModel().selectedIndexes()
+        assert [(i.row(), i.column()) for i in selected] == [(0, 0)]
+        window.table.setCurrentCell(1, 2)
+        selected = window.table.selectionModel().selectedIndexes()
+        assert [(i.row(), i.column()) for i in selected] == [(1, 2)]
+
+        # Tab into the list with nothing highlighted: the current cell lights up.
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QFocusEvent
+
+        window.table.clearSelection()
+        window.eventFilter(window.table, QFocusEvent(QEvent.FocusIn, Qt.TabFocusReason))
+        qtbot.wait(10)
+        selected = window.table.selectionModel().selectedIndexes()
+        assert [(i.row(), i.column()) for i in selected] == [(1, 2)]
+    finally:
+        cleanup_window(window)
+
+
 def test_update_window_series_and_genre_combo_widths_match(qtbot, temp_db, ui_scaler):
     """Series and Genre combos should keep the same minimum width."""
     window = UpdateWindow(temp_db, ui_scaler, selected_book_ids=set())

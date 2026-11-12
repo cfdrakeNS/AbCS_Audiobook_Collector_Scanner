@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QStatusBar,
@@ -32,6 +33,7 @@ from src.accessibility.style_helpers import (
     apply_tooltip_accessibility,
     build_modern_button_style,
     build_table_polish_style,
+    exec_styled_message_box,
 )
 from src.ui.accessible_dialog import AccessibleDialog
 from src.ui.web_metadata import REVIEW_QUEUE_STOP, WebMetadataWindow
@@ -317,6 +319,7 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
 
             scaler = UIScaler(QApplication.instance())
         scaled_height = scaler.get_scaled_size(20)
+        self._scaled_height = scaled_height
         button_style = build_modern_button_style(scaled_height)
         from src.accessibility.icon_helper import apply_decorative_action_icon
         buttons = QHBoxLayout()
@@ -608,8 +611,31 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         super().keyPressEvent(event)
 
     def _on_escape(self) -> None:
-        self._choice = self.CANCEL
         self.reject()
+
+    def reject(self) -> None:
+        """Escape or the close box: confirm before discarding unsaved results."""
+        if self._with_changes > 0 and not self._confirm_discard():
+            self._set_status(self._idle_status_message(), announce=False)
+            return
+        self._choice = self.CANCEL
+        super().reject()
+
+    def _confirm_discard(self) -> bool:
+        reply = exec_styled_message_box(
+            self,
+            getattr(self, "_scaled_height", 20),
+            icon=QMessageBox.Question,
+            title="Close batch web fetch",
+            text=(
+                "Close without saving? The fetched web information that has not "
+                "been saved will be discarded."
+            ),
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            default_button=QMessageBox.No,
+            button_texts={QMessageBox.Yes: "&Yes", QMessageBox.No: "&No"},
+        )
+        return reply == QMessageBox.Yes
 
     @property
     def saved_any(self) -> bool:

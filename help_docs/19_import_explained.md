@@ -166,12 +166,11 @@ AbCS stores the folder path and the number of files, not a list of each file. Al
 
 ## When the scan finishes
 
-- The progress window closes.
-- A message says **Import completed** with an **OK** button.
-- The status bar has the summary, for example "Scanned: 48 | Added: 32 | Corrected: 8 | Errors: 2 | Warnings: 4 | Duplicates: 2 | Elapsed: 01:12". Press **Alt+/** to hear it.
+- The progress window stays open, and its progress bar says **Scan complete**.
+- Its status bar has the summary, for example "Scanned: 48 | Added: 32 | Corrected: 8 | Errors: 2 | Warnings: 4 | Duplicates: 2 | Elapsed: 01:12. Esc to close". Press **Alt+/** to hear it again.
 - The **Import** button is available again.
 - The collection stays locked until the review list is empty or you close Import.
-- After **OK**, focus moves to the review table, or to Import when the list is empty.
+- Press **Escape** to close the progress window. Focus moves to the review table, or to Import when the list is empty.
 
 When no audio files are found, the summary says so.
 

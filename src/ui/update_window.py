@@ -260,7 +260,10 @@ class UpdateWindow(AccessibleDialog):
         self.table.setHorizontalHeaderLabels(columns)
 
         # Table settings
-        self.table.setSelectionMode(QAbstractItemView.NoSelection)
+        # One cell selected at a time, like the main table, so the current cell is
+        # highlighted as you arrow. With NoSelection nothing showed where focus was.
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
@@ -311,6 +314,7 @@ class UpdateWindow(AccessibleDialog):
         self.series_combo.installEventFilter(self)
         self.genre_combo.installEventFilter(self)
         self.collection_combo.installEventFilter(self)
+        self.table.installEventFilter(self)
 
         # Store lineEdit references for comparison in eventFilter
         self._series_line_edit = self.series_combo.lineEdit()
@@ -329,6 +333,14 @@ class UpdateWindow(AccessibleDialog):
         2. Handle Enter on header combos to apply updates and move focus forward
         3. Handle FocusOut to detect and apply typed Series/Genre entries
         """
+        if source is self.table and event.type() == QEvent.FocusIn:
+            # Tab into the list: highlight the current cell (or the first one) at once.
+            if self.table.rowCount() > 0 and not self.table.selectedIndexes():
+                row = max(self.table.currentRow(), 0)
+                col = max(self.table.currentColumn(), 0)
+                QTimer.singleShot(0, lambda r=row, c=col: self.table.setCurrentCell(r, c))
+            return False
+
         if event.type() == QEvent.KeyPress:
             key = event.key()
 

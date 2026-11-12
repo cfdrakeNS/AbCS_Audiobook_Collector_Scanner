@@ -117,6 +117,124 @@ def test_year_focus_out_skips_unchanged_value_in_edit_mode(
         window.close()
 
 
+def test_year_focus_out_skips_while_a_message_box_has_focus(
+    temp_db, ui_scaler, theme_manager, classic_fields, monkeypatch
+):
+    """Save or Escape already warned; the year leaving focus must not add a second box."""
+    books = _make_books(temp_db, year=1750, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    calls = []
+    monkeypatch.setattr(
+        "src.ui.book_details.validate_year_spin", lambda *a, **k: calls.append(a)
+    )
+    box = QMessageBox()
+    try:
+        window.on_edit_mode()
+        window.year_spin.setValue(1600)
+        monkeypatch.setattr(
+            "src.ui.book_details.QApplication.activeModalWidget", lambda: box
+        )
+        window._validate_year_on_focus_out()
+        assert calls == []
+        monkeypatch.setattr(
+            "src.ui.book_details.QApplication.activeModalWidget", lambda: None
+        )
+        monkeypatch.setattr("src.ui.book_details.QApplication.focusWidget", lambda: box)
+        window._validate_year_on_focus_out()
+        assert calls == []
+    finally:
+        box.deleteLater()
+        window.close()
+
+
+def test_escape_yes_with_invalid_year_keeps_book_details_open(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts, monkeypatch
+):
+    books = _make_books(temp_db, year=1750, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    closed = []
+    monkeypatch.setattr(window, "reject", lambda: closed.append(True))
+    monkeypatch.setattr(
+        "src.accessibility.masked_date_fields.warn_masked_field_error",
+        lambda *a, **k: None,
+    )
+    try:
+        window.on_edit_mode()
+        window.year_spin.setValue(1600)
+        window._mark_dirty(window.year_spin)
+        prompts.reply = QMessageBox.Yes
+        window.on_cancel_edit()
+        assert closed == []
+        assert window._dirty is True
+    finally:
+        window.close()
+
+
+def test_unsaved_prompt_hides_cancel_and_escape_discards(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts
+):
+    books = _make_books(temp_db, year=1999, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        window.on_edit_mode()
+        window.title_edit.setText("Changed title")
+        prompts.reply = QMessageBox.No
+        window.on_cancel_edit()
+        asked = prompts.calls[-1]
+        assert "Press Escape to cancel" in asked["text"]
+        assert "Cancel =" not in asked["text"]
+        assert QMessageBox.Cancel not in asked["button_texts"]
+        assert asked["escape_only_button"] == QMessageBox.Cancel
+        assert asked["default_button"] == QMessageBox.No
+    finally:
+        window.close()
+
+
+def test_escape_no_returns_focus_to_last_changed_field(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts, monkeypatch
+):
+    books = _make_books(temp_db, year=1999, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    focused = []
+    monkeypatch.setattr(
+        "src.ui.book_details.QTimer.singleShot",
+        lambda ms, fn: fn() if ms == 0 else None,
+    )
+    monkeypatch.setattr(window, "_focus_after_prompt", lambda w: focused.append(w))
+    monkeypatch.setattr(window, "reject", lambda: None)
+    try:
+        window.show()
+        window.on_edit_mode()
+        window.title_edit.setText("Changed title")
+        window.reader_edit.setText("Changed narrator")
+        prompts.reply = QMessageBox.No
+        window.on_cancel_edit()
+        assert focused == [window.reader_edit]
+        assert window._dirty is True
+    finally:
+        window.close()
+
+
+def test_typing_in_typed_year_marks_book_details_changed(
+    temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    from src.accessibility.masked_date_fields import MaskedYearEdit
+
+    monkeypatch.setattr(
+        "src.ui.book_details.make_year_field", lambda parent=None: MaskedYearEdit(parent)
+    )
+    books = _make_books(temp_db, year=1999, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        assert window._year_is_masked is True
+        window.on_edit_mode()
+        assert window._dirty is False
+        window.year_spin.textEdited.emit("20")
+        assert window._dirty is True
+    finally:
+        window.close()
+
+
 def test_year_restore_never_uses_invalid_stored_value(qapp, monkeypatch):
     from src.accessibility import masked_date_fields as mdf
 

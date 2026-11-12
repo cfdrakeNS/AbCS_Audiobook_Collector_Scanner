@@ -35,7 +35,7 @@ Tab order: the fields from Title to Errors, then Save, Keep, and Discard.
 5. Press **Keep** (**Alt+K**) to accept the fallback or correction warnings and add this book, using the same rules as **Add Selected**. Detail moves to the next held book.
 6. Press **Discard** (**Alt+D**) to drop this book from the review list.
 7. Press **Page Up** or **Page Down** to move to the previous or next held book.
-8. Press **Escape** to close detail and return to Import.
+8. Press **Escape** to close detail. With no changes, you return to Import. With changes, AbCS asks what to do. **Yes** saves and closes. **No** keeps detail open. Press **Escape** on that message to discard the changes and close.
 
 **Duplicates:** Import Detail opens for a duplicate so you can edit it and **Save**. **Keep** and **Add Selected** skip duplicates. A book whose files cannot be read shows a message instead of opening detail.
 
