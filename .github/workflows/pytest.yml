@@ -19,9 +19,12 @@ jobs:
           python-version: "3.14"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt "coverage==7.17.2"
+        run: pip install -r requirements.txt
 
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest test/ -q --tb=line --durations=15 --cov=src/core --cov=src/database --cov-report=term-missing:skip-covered
+        run: |
+          python -c "import sys, pytest; rc = int(pytest.main(['test/', '-q', '--tb=line', '--durations=15', '--cov=src/core', '--cov=src/database', '--cov-report=term-missing:skip-covered'])); print(f'pytest.main returned {rc}', flush=True); sys.exit(rc)"
+          Write-Host "python exit code: $LASTEXITCODE"
+          exit $LASTEXITCODE
