@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $Abcs = "C:\projects\AbCS"
 $Owner = "cfdrakeNS"
 $Repo = "AbCS_Audiobook_Collector_Scanner"
-$Version = "3.0"
+$Version = "3.1"
 $Tag = "v$Version"
 $ReleaseName = "AbCS v$Version"
 $WinZip = "AbCS-Setup-v$Version.zip"
@@ -168,6 +168,8 @@ Invoke-Git @("push", "origin", $Tag)
 
 $releaseNotes = @"
 AbCS $Version
+
+Version 3.1 is the current download. It adds screen reader fixes found in testing after 3.0.
 
 **What's new in version 3**
 - Listen: play a book inside AbCS, move between files, seek, rewind and fast-forward 30 seconds, change speed, and resume from a saved listening position.

@@ -4,12 +4,12 @@ A cross-platform audiobook collection manager with full accessibility support fo
 
 ## Download
 
-AbCS is free. Current release: **v3.0** for Windows and Linux.
+AbCS is free. Current release: **v3.1** for Windows and Linux. Version 3.1 adds screen reader fixes found in testing after 3.0.
 
 - **Product page:** [abcs.auroraaccessibility.com](https://abcs.auroraaccessibility.com/)
-- **Installers:** [AbCS v3.0 release](https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases/tag/v3.0)
-  - Windows: `AbCS-Setup-v3.0.zip`, then run `AbCS-Setup.exe`
-  - Linux: `abcs_linux_v3.0.zip`, then run `install_abcs.sh`
+- **Installers:** [AbCS v3.1 release](https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner/releases/tag/v3.1)
+  - Windows: `AbCS-Setup-v3.1.zip`, then run `AbCS-Setup.exe`
+  - Linux: `abcs_linux_v3.1.zip`, then run `install_abcs.sh`
 
 What changed in version 3: [What's New in Version 3](help_docs/28_whats_new.md).
 
