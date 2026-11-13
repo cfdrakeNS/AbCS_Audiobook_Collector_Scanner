@@ -85,7 +85,7 @@ To mark a book, focus it and choose **Edit → Add to want to read**. With books
 ## Recently added filter
 
 1. Open **View → Recently Added...** (**Alt+V**, then **A**), or press the **Recently Added Filter** toolbar button, the last filter button on the toolbar.
-2. The date field starts at **2 months ago** from today. Change it if needed; the date field has a calendar popup.
+2. The date starts at **2 months ago** from today. It has three boxes: **Year**, **Month**, and **Day**. Press **Tab** to move between them. Up Arrow picks an earlier value and Down Arrow a later one, or type the number to jump to it.
 3. Press **Enter** to apply. The list shows books added on or after that date.
 4. The filter summary shows **Added since:** with the date you chose.
 
@@ -105,7 +105,8 @@ This filter uses the **date added**: the day the book was imported or created in
 
 1. Move to the **Read** column of the book.
 2. Press **Enter**, or double-click the cell.
-3. Choose the date and press **OK**, or press **Clear** to remove the read date. With a screen reader running, the date is a typed field (year-month-day); without one, it has a calendar. Both have **OK** and **Clear**. Setting a read date also clears the listening position and Want to read for that book.
+3. Choose the date in the **Year**, **Month**, and **Day** boxes. Press **Tab** to move between them. Up Arrow picks an earlier value and Down Arrow a later one, or type the number to jump to it. The date starts at the saved read date, or today when the book has none.
+4. Press **Enter** or **OK** to save, or press **Clear** to remove the read date. A date after today is refused. Setting a read date also clears the listening position and Want to read for that book.
 
 You can also set the read date in [Book Details](04_book_details.md).
 
@@ -155,7 +156,7 @@ To save the books currently shown to CSV or JSON, use **File → Export Library*
 
 - Use the **View** menu or the toolbar filter buttons. Click a highlighted toolbar button again to turn that filter off.
 - In the Find dialog, choose the field, type in the search box, and click **OK** or press **Enter**.
-- On the Recently Added filter, click the date field to open the calendar popup.
+- On the Recently Added filter and Set a read date, click the **Year**, **Month**, or **Day** box to open its list, or press **Alt+Down Arrow** in a box.
 - On the book list, right-click a cell or press the Menu key and choose **Copy**, or press **Ctrl+C**, to copy that cell's text.
 
 | Shortcut | Action |

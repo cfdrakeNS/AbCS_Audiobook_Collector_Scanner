@@ -164,54 +164,139 @@ def test_tab_from_last_footer_button_returns_to_table(main_window):
     assert tab_stops_after(window.delete_button) == [window.table, window.update_button]
 
 
-@pytest.mark.parametrize("masked", [True, False])
-def test_read_date_dialog_has_ok_and_clear_buttons(main_window, monkeypatch, masked):
-    """The screen reader (typed) version has the same buttons as the calendar version."""
-    from PySide6.QtWidgets import QDialog
-
-    from src.accessibility.masked_date_fields import MaskedDateEdit
+def _capture_dialog(monkeypatch, result):
     from src.ui.accessible_dialog import AccessibleDialog
 
-    window = main_window
-    _insert_focus_books(window)
-    if masked:
-        monkeypatch.setattr(
-            "src.accessibility.masked_date_fields.make_date_field",
-            lambda parent=None, **kw: MaskedDateEdit(parent),
-        )
-    else:
-        monkeypatch.setattr(
-            "src.accessibility.masked_date_fields.make_date_field",
-            lambda parent=None, **kw: None,
-        )
     captured = {}
 
     def fake_exec(dialog):
         captured["dialog"] = dialog
-        return QDialog.Rejected
+        return result(dialog) if callable(result) else result
 
     monkeypatch.setattr(AccessibleDialog, "exec", fake_exec)
-    window.show_read_date_dialog(0)
+    return captured
+
+
+def test_read_date_dialog_uses_date_combo_boxes(main_window, monkeypatch):
+    """No text field: Year, Month, and Day combo boxes, then OK and Clear."""
+    from PySide6.QtWidgets import QComboBox, QDialog, QLineEdit
+
+    window = main_window
+    _insert_focus_books(window)
+    captured = _capture_dialog(monkeypatch, QDialog.Rejected)
+    alpha_row = next(i for i, b in enumerate(window.books) if b.title == "Alpha Book")
+    window.show_read_date_dialog(alpha_row)
 
     dlg = captured["dialog"]
-    assert dlg.use_masked is masked
-    assert dlg.ok_button.text() == "OK"
-    assert dlg.clear_button.text() == "Clear"
-    # Spoken names match the visible labels.
+    assert dlg.findChildren(QLineEdit) == []
+    combos = dlg.findChildren(QComboBox)
+    assert [c.accessibleName() for c in combos] == ["Year", "Month", "Day"]
+    assert not any(c.isEditable() for c in combos)
+    assert dlg.date_fields.date().toString("yyyy-MM-dd") == "2020-01-01"
     assert dlg.ok_button.accessibleName() == "OK"
     assert dlg.clear_button.accessibleName() == "Clear"
-    # Focus starts in the date field, so its description carries the instructions.
-    description = dlg.date_field.accessibleDescription()
-    assert window.books[0].title in description
-    assert "OK saves the date. Clear removes it." in description
+    assert "Alpha Book" in dlg.accessibleDescription()
+    assert "Alt+Down" not in dlg.accessibleDescription()
+
+
+def test_read_date_dialog_ok_saves_chosen_date(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+    from PySide6.QtWidgets import QDialog
+
+    window = main_window
+    _insert_focus_books(window)
+    monkeypatch.setattr(
+        "src.ui.main_window.exec_styled_message_box",
+        lambda *a, **kw: pytest.fail("OK must not prompt"),
+    )
+
+    def choose(dialog):
+        dialog.date_fields.setDate(QDate(2022, 2, 28))
+        return QDialog.Accepted
+
+    _capture_dialog(monkeypatch, choose)
+    book = window.books[0]
+    window.show_read_date_dialog(0)
+
+    saved = BookQueries(window.db).get_by_id(book.book_id)
+    assert str(saved.read_date) == "2022-02-28"
+
+
+def test_read_date_dialog_refuses_future_date(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+    from PySide6.QtWidgets import QDialog
+
+    window = main_window
+    _insert_focus_books(window)
+    warnings = []
+    monkeypatch.setattr(
+        "src.accessibility.masked_date_fields.warn_masked_field_error",
+        lambda parent, message, **kw: warnings.append(message),
+    )
+
+    def choose_tomorrow(dialog):
+        dialog.date_fields.setDate(QDate.currentDate().addDays(1))
+        dialog.accept()
+        return dialog.result()
+
+    _capture_dialog(monkeypatch, choose_tomorrow)
+    book = window.books[0]
+    before = BookQueries(window.db).get_by_id(book.book_id).read_date
+    window.show_read_date_dialog(0)
+
+    assert len(warnings) == 1
+    assert "in the future" in warnings[0]
+    assert BookQueries(window.db).get_by_id(book.book_id).read_date == before
+
+
+def test_recently_added_dialog_uses_date_combo_boxes(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+    from PySide6.QtWidgets import QComboBox, QDialog, QLineEdit
+
+    window = main_window
+    _insert_focus_books(window)
+
+    def choose(dialog):
+        assert dialog.findChildren(QLineEdit) == []
+        names = [c.accessibleName() for c in dialog.findChildren(QComboBox)]
+        assert names == ["Year", "Month", "Day"]
+        dialog.date_fields.setDate(QDate(2021, 5, 6))
+        return QDialog.Accepted
+
+    _capture_dialog(monkeypatch, choose)
+    window.on_recently_added()
+
+    assert window.current_filter.date_added_since == date(2021, 5, 6)
+
+
+def test_date_combo_fields_step_and_keep_valid_day(qapp):
+    from PySide6.QtCore import QDate, QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    from src.accessibility.date_combo_fields import DateComboFields
+
+    fields = DateComboFields(min_year=2000, max_year=2024)
+    fields.setDate(QDate(2024, 1, 31))
+    fields.month.setCurrentIndex(1)
+    assert fields.date() == QDate(2024, 2, 29)
+    fields.year.setCurrentText("2023")
+    assert fields.date() == QDate(2023, 2, 28)
+
+    # Plain Down moves to the next later value.
+    qapp.sendEvent(fields.day, QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier))
+    assert fields.date() == QDate(2023, 2, 28)
+    qapp.sendEvent(fields.month, QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier))
+    assert fields.date() == QDate(2023, 3, 28)
+    qapp.sendEvent(fields.year, QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier))
+    assert fields.date() == QDate(2022, 3, 28)
+
+    # A stored date outside the list widens it instead of being dropped.
+    fields.setDate(QDate(1995, 7, 4))
+    assert fields.date() == QDate(1995, 7, 4)
 
 
 def test_read_date_ok_saves_without_confirm(main_window, monkeypatch, qtbot):
-    """OK in the typed version saves the date with no popup, and says so."""
-    from PySide6.QtCore import QDate
-
-    from src.accessibility.masked_date_fields import MaskedDateEdit
-
+    """OK saves the date with no popup, and says so."""
     window = main_window
     _insert_focus_books(window)
     prompts = []
@@ -220,9 +305,7 @@ def test_read_date_ok_saves_without_confirm(main_window, monkeypatch, qtbot):
         lambda *a, **kw: prompts.append(kw.get("title")) or QMessageBox.No,
     )
     book = window.books[0]
-    field = MaskedDateEdit(window)
-    field.setDate(QDate(2021, 3, 4))
-    window._apply_read_date_from_dialog(book, 0, field, use_masked=True)
+    window._apply_read_date_from_dialog(book, "2021-03-04")
 
     assert prompts == []
     saved = BookQueries(window.db).get_by_id(book.book_id)

@@ -89,7 +89,6 @@ from src.accessibility.style_helpers import (
     apply_status_bar_tooltip,
     apply_tooltip_accessibility,
     apply_visual_tooltip_map,
-    FullDayNumberCalendar,
     exec_styled_message_box,
     MESSAGE_BOX_DELETE_CONFIRM_ICONS,
     build_accessible_button_style,
@@ -387,60 +386,13 @@ class MainWindow(QMainWindow):
         dlg_geom.moveCenter(screen.availableGeometry().center())
         dlg.move(dlg_geom.topLeft())
 
-    def _apply_read_date_from_dialog(
-        self,
-        book,
-        row: int,
-        date_field,
-        *,
-        use_masked: bool,
-    ) -> None:
-        """Persist read date from the dialog.
-
-        OK saves a date without a second prompt. A blank typed field asks
-        before it clears an existing date.
-        """
-        from src.accessibility.masked_date_fields import (
-            classic_date_is_blank,
-            warn_masked_field_error,
-        )
-
-        if use_masked:
-            try:
-                parsed = date_field.validated_date()
-            except ValueError:
-                warn_masked_field_error(self, date_field.invalid_message())
-                return
-            if parsed is None:
-                new_date = ""
-            else:
-                new_date = parsed.isoformat()
-        elif classic_date_is_blank(date_field):
-            new_date = ""
-        else:
-            new_date = date_field.date().toString("yyyy-MM-dd")
-
-        if book.read_date == new_date:
+    def _apply_read_date_from_dialog(self, book, new_date: str) -> None:
+        """Save the read date chosen in the dialog (yyyy-MM-dd) without a second prompt."""
+        if str(book.read_date or "") == new_date:
             self._focus_read_cell_with_status(
                 book, f"Read date unchanged for {book.title}"
             )
             return
-
-        if use_masked and not new_date:
-            reply = exec_styled_message_box(
-                self,
-                self.scaler.get_scaled_size(20),
-                icon=QMessageBox.Question,
-                title="Confirm Clear Read Date",
-                text=f"Clear the read date for '{book.title}'?",
-                buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No,
-            )
-            if reply != QMessageBox.Yes:
-                self._focus_read_cell_with_status(
-                    book, f"Read date update cancelled for {book.title}"
-                )
-                return
 
         if not new_date:
             had_date = bool(book.read_date)
@@ -485,80 +437,65 @@ class MainWindow(QMainWindow):
         self.set_status(message, announce=True)
 
     def show_read_date_dialog(self, row: int):
-        """Show a dialog to set the read date for the selected book (accessible version)."""
-        from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QDateEdit, QPushButton
+        """Show the Read date popup: Year, Month, and Day combo boxes, OK, and Clear."""
+        from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton
         from PySide6.QtCore import QDate
+        from src.accessibility.date_combo_fields import DateComboFields
         from src.accessibility.icon_helper import get_app_icon
-        from src.accessibility.masked_date_fields import (
-            classic_date_is_blank,
-            configure_clearable_classic_date_edit,
-            configure_no_future_date_edit,
-            make_date_field,
-            set_classic_date_blank,
-            validate_date_edit,
-            warn_masked_field_error,
-        )
+        from src.accessibility.masked_date_fields import warn_masked_field_error
 
         class ReadDateDialog(AccessibleDialog):
-            """Scoped Enter handling for the read-date dialog without global shortcuts."""
+            """No text field, so the read-dialog command keeps reading the whole popup."""
 
             def __init__(self, parent=None):
                 super().__init__(parent)
-                self.date_field = None
-                self.use_masked = False
+                self.date_fields = None
                 self.setWindowIcon(get_app_icon())
 
             def showEvent(self, event):
                 super().showEvent(event)
                 # First focus after the window is shown, not while building it.
-                QTimer.singleShot(0, self._focus_date_field)
+                QTimer.singleShot(0, self._focus_date_fields)
 
-            def _focus_date_field(self):
-                if self.date_field is None or not self.isVisible():
+            def _focus_date_fields(self):
+                if self.date_fields is None or not self.isVisible():
                     return
-                self.date_field.setFocus(Qt.OtherFocusReason)
-                if self.use_masked:
-                    # Prefill is usually today; select all so typing replaces it.
-                    self.date_field.selectAll()
+                self.date_fields.setFocus(Qt.OtherFocusReason)
 
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     focused = self.focusWidget()
                     if isinstance(focused, QPushButton):
                         focused.click()
-                        event.accept()
-                        return
-                    if self.date_field is not None:
-                        self.date_field.setFocus()
-                    QTimer.singleShot(0, self.accept)
+                    else:
+                        self.accept()
                     event.accept()
                     return
                 super().keyPressEvent(event)
 
             def accept(self):
-                """Refuse to close when the date is incomplete, invalid, or future."""
-                if self.date_field is None:
-                    super().accept()
-                    return
-                null_date = None
-                if not self.use_masked:
-                    null_date = self.date_field.minimumDate()
-                if not validate_date_edit(
-                    self.date_field,
-                    self,
-                    allow_blank=True,
-                    null_date=null_date,
-                    disallow_future=True,
-                ):
-                    return
+                """Refuse a future date."""
+                if self.date_fields is not None:
+                    chosen = self.date_fields.date()
+                    if chosen > QDate.currentDate():
+                        warn_masked_field_error(
+                            self,
+                            f"Date {chosen.toString('yyyy-MM-dd')} is in the future. "
+                            "Choose today or an earlier date.",
+                        )
+                        self.date_fields.day.setFocus(Qt.OtherFocusReason)
+                        return
                 super().accept()
 
         book = self.books[row]
         dlg = ReadDateDialog(self)
         dlg.setWindowTitle(f"Set Read Date for '{book.title}'")
+        dlg.setAccessibleName(dlg.windowTitle())
+        dlg.setAccessibleDescription(f"Choose the date you finished '{book.title}'.")
         layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
 
-        # Date field: typed text for screen readers, calendar edit otherwise
         today = QDate.currentDate()
         if book.read_date:
             if isinstance(book.read_date, str):
@@ -571,62 +508,16 @@ class MainWindow(QMainWindow):
         else:
             initial = today
 
-        date_masked = make_date_field(dlg, allow_blank=True, disallow_future=True)
-        if date_masked is not None:
-            date_field = date_masked
-            date_field.setAccessibleName("Date read")
-            date_field.setDate(initial)
-            use_masked = True
-            dlg.use_masked = True
-        else:
-            date_field = QDateEdit()
-            date_field.setCalendarPopup(True)
-            date_field.setDisplayFormat("yyyy-MM-dd")
-            date_field.setAccessibleName("Date read")
-            configure_clearable_classic_date_edit(date_field)
-            date_field.setDate(initial)
-            date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
-            use_masked = False
-
-        configure_no_future_date_edit(date_field)
-        if not use_masked:
-            # Keep blank special text after max-date clamp.
-            date_field.setSpecialValueText(date_field.specialValueText() or " ")
-
-        # Set font size
-        font = date_field.font()
+        combo_height = max(int(20 * (self.scaler.current_scale / 100.0)), 18)
+        date_fields = DateComboFields(dlg, scaled_height=combo_height)
+        date_fields.setDate(initial)
+        font = date_fields.font()
         font.setPointSize(self.scaler.get_scaled_size(14))
-        date_field.setFont(font)
+        date_fields.setFont(font)
+        layout.addWidget(date_fields)
 
-        # Focus starts in this field, and with focus in a text field JAWS Insert+B
-        # reads only the title and the field, so the instructions go here.
-        if use_masked:
-            prompt_text = (
-                f"Type the date you finished '{book.title}' as year-month-day."
-            )
-        else:
-            prompt_text = (
-                f"Choose the date you finished '{book.title}'. "
-                "Alt+Down opens the calendar."
-            )
-        date_field.setAccessibleDescription(
-            f"{prompt_text} OK saves the date. Clear removes it."
-        )
-
-        layout.addWidget(date_field)
         date_row = QHBoxLayout()
         date_row.addStretch(1)
-
-        def _date_is_blank() -> bool:
-            if use_masked:
-                return not date_field.text().strip()
-            return classic_date_is_blank(date_field)
-
-        def _set_date_blank() -> None:
-            if use_masked:
-                date_field.setText("")
-            else:
-                set_classic_date_blank(date_field)
 
         clear_btn = QPushButton("Clear")
         clear_btn.setAccessibleName("Clear")
@@ -638,35 +529,31 @@ class MainWindow(QMainWindow):
 
         def _clear_read_date():
             """Clear immediately (with confirm). Do not require Enter."""
-            had_date = bool(book.read_date)
-            if not had_date and _date_is_blank():
+            if not book.read_date:
                 self.set_status(
                     f"Read date is already blank for {book.title}",
                     announce=True,
                 )
                 return
-            if had_date:
-                reply = exec_styled_message_box(
-                    dlg,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Question,
-                    title="Confirm Clear Read Date",
-                    text=f"Clear the read date for '{book.title}'?",
-                    buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
+            reply = exec_styled_message_box(
+                dlg,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Question,
+                title="Confirm Clear Read Date",
+                text=f"Clear the read date for '{book.title}'?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                default_button=QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                self.set_status(
+                    f"Read date update cancelled for {book.title}",
+                    announce=True,
                 )
-                if reply != QMessageBox.Yes:
-                    self.set_status(
-                        f"Read date update cancelled for {book.title}",
-                        announce=True,
-                    )
-                    return
-            _set_date_blank()
-            if had_date:
-                book.read_date = ""
-                self.book_queries.update(book)
-                self.refresh_books()
-                dlg.closing_message = f"Read date cleared for {book.title}"
+                return
+            book.read_date = ""
+            self.book_queries.update(book)
+            self.refresh_books()
+            dlg.closing_message = f"Read date cleared for {book.title}"
             dlg.done(QDialog.Rejected)
 
         ok_btn = QPushButton("OK")
@@ -694,14 +581,7 @@ class MainWindow(QMainWindow):
         dlg.clear_button = clear_btn
         layout.addLayout(date_row)
 
-        dlg.date_field = date_field
-
-        # Add Alt+Down shortcut to open calendar (classic date edit only)
-        from PySide6.QtGui import QShortcut, QKeySequence
-
-        if not use_masked:
-            alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
-            alt_down_shortcut.activated.connect(date_field.calendarPopup)
+        dlg.date_fields = date_fields
 
         # Auto-size dialog width so title is always fully visible
         from PySide6.QtGui import QFontMetrics
@@ -719,7 +599,7 @@ class MainWindow(QMainWindow):
 
         if dlg.exec() == QDialog.Accepted:
             self._apply_read_date_from_dialog(
-                book, row, date_field, use_masked=use_masked
+                book, date_fields.date().toString("yyyy-MM-dd")
             )
         elif getattr(dlg, "closing_message", ""):
             self._focus_read_cell_with_status(book, dlg.closing_message)
@@ -3597,63 +3477,51 @@ class MainWindow(QMainWindow):
         """Open popup to filter books added on or after a selected date."""
         if self._block_if_selecting():
             return
-        from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QDateEdit
+        from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
         from PySide6.QtCore import QDate
         from PySide6.QtGui import QFontMetrics
+        from src.accessibility.date_combo_fields import DateComboFields
         from src.accessibility.icon_helper import get_app_icon
-        from src.accessibility.masked_date_fields import (
-            configure_no_future_date_edit,
-            make_date_field,
-            validate_date_edit,
-            warn_masked_field_error,
-        )
+        from src.accessibility.masked_date_fields import warn_masked_field_error
         from src.accessibility.screen_reader import is_screen_reader_active
 
         class RecentlyAddedDialog(AccessibleDialog):
-            """Enter to apply filter; same pattern as read-date for screen readers."""
+            """Enter applies the filter; no text field, as in the Read date popup."""
 
             def __init__(self, parent=None):
                 super().__init__(parent)
-                self.date_field = None
-                self.use_masked = False
+                self.date_fields = None
                 self.setWindowIcon(get_app_icon())
 
             def showEvent(self, event):
                 super().showEvent(event)
                 # First focus after the window is shown, not while building it.
-                QTimer.singleShot(0, self._focus_date_field)
+                QTimer.singleShot(0, self._focus_date_fields)
 
-            def _focus_date_field(self):
-                if self.date_field is None or not self.isVisible():
+            def _focus_date_fields(self):
+                if self.date_fields is None or not self.isVisible():
                     return
-                self.date_field.setFocus(Qt.OtherFocusReason)
-                if self.use_masked:
-                    self.date_field.selectAll()
+                self.date_fields.setFocus(Qt.OtherFocusReason)
 
             def keyPressEvent(self, event):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-                    if self.date_field is not None:
-                        self.date_field.setFocus()
-                    QTimer.singleShot(0, self.accept)
+                    self.accept()
                     event.accept()
                     return
                 super().keyPressEvent(event)
 
             def accept(self):
-                if self.date_field is None:
-                    super().accept()
-                    return
-                null_date = None
-                if not self.use_masked:
-                    null_date = self.date_field.minimumDate()
-                if not validate_date_edit(
-                    self.date_field,
-                    self,
-                    allow_blank=False,
-                    null_date=null_date,
-                    disallow_future=True,
-                ):
-                    return
+                """Refuse a future date."""
+                if self.date_fields is not None:
+                    chosen = self.date_fields.date()
+                    if chosen > QDate.currentDate():
+                        warn_masked_field_error(
+                            self,
+                            f"Date {chosen.toString('yyyy-MM-dd')} is in the future. "
+                            "Choose today or an earlier date.",
+                        )
+                        self.date_fields.day.setFocus(Qt.OtherFocusReason)
+                        return
                 super().accept()
 
         dlg = RecentlyAddedDialog(self)
@@ -3675,37 +3543,15 @@ class MainWindow(QMainWindow):
 
         date_row = QHBoxLayout()
         date_label = QLabel("&Added since:")
-        date_masked = make_date_field(dlg, allow_blank=False, disallow_future=True)
-        use_masked = date_masked is not None
-        dlg.use_masked = use_masked
-
-        if use_masked:
-            date_field = date_masked
-            date_field.setAccessibleName("Added since date")
-            date_field.setDate(initial)
-        else:
-            date_field = QDateEdit()
-            date_field.setCalendarPopup(True)
-            date_field.setDisplayFormat("yyyy-MM-dd")
-            date_field.setAccessibleName("Added since date")
-            date_field.setMaximumDate(QDate.currentDate())
-            date_field.setDate(initial)
-            date_field.setCalendarWidget(FullDayNumberCalendar(date_field))
-
-        configure_no_future_date_edit(date_field)
-        # Focus starts here, and with focus in a text field JAWS Insert+B reads
-        # only the title and the field, so the instructions go here.
-        date_field.setAccessibleDescription(
-            "Books added on or after this date are shown. "
-            + ("Type the date as year-month-day. " if use_masked else "Alt+Down opens the calendar. ")
-            + "Press Enter to filter."
-        )
-        font = date_field.font()
+        combo_height = max(int(20 * (self.scaler.current_scale / 100.0)), 18)
+        date_fields = DateComboFields(dlg, scaled_height=combo_height)
+        date_fields.setDate(initial)
+        font = date_fields.font()
         font.setPointSize(self.scaler.get_scaled_size(14))
-        date_field.setFont(font)
-        date_label.setBuddy(date_field)
+        date_fields.setFont(font)
+        date_label.setBuddy(date_fields)
         date_row.addWidget(date_label)
-        date_row.addWidget(date_field, 1)
+        date_row.addWidget(date_fields, 1)
         layout.addLayout(date_row)
 
         dialog_status = QStatusBar(dlg)
@@ -3717,12 +3563,7 @@ class MainWindow(QMainWindow):
         )
         layout.addWidget(dialog_status)
 
-        dlg.date_field = date_field
-
-        if not use_masked:
-            alt_down_shortcut = QShortcut(QKeySequence("Alt+Down"), dlg)
-            alt_down_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-            alt_down_shortcut.activated.connect(date_field.calendarPopup)
+        dlg.date_fields = date_fields
 
         recently_added_status_shortcut = QShortcut(QKeySequence("Alt+/"), dlg)
         recently_added_status_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
@@ -3734,12 +3575,6 @@ class MainWindow(QMainWindow):
 
         recently_added_status_shortcut.activated.connect(read_recently_added_status)
 
-        if not use_masked:
-            for key in (Qt.Key_Return, Qt.Key_Enter):
-                apply_shortcut = QShortcut(QKeySequence(key), dlg)
-                apply_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-                apply_shortcut.activated.connect(dlg.accept)
-
         font_metrics = QFontMetrics(dlg.font())
         title_width = font_metrics.horizontalAdvance(dlg.windowTitle()) + 80
         min_width = 400
@@ -3749,43 +3584,21 @@ class MainWindow(QMainWindow):
         self._position_read_date_dialog(dlg)
 
         if dlg.exec() == QDialog.Accepted:
-            if use_masked:
-                try:
-                    parsed = date_field.validated_date()
-                except ValueError:
-                    warn_masked_field_error(self, date_field.invalid_message())
-                else:
-                    selected_date = parsed
-                    self.current_filter.date_added_since = selected_date
-                    self.refresh_books()
-                    date_str = selected_date.strftime("%Y-%m-%d")
-                    if not self.books:
-                        self.set_status(
-                            f"No books added since {date_str}",
-                            timeout_ms=3000,
-                            announce=True,
-                        )
-                    else:
-                        self.set_status(
-                            f"Showing {len(self.books)} books added since {date_str}",
-                            announce=True,
-                        )
+            selected_date = date_fields.date().toPython()
+            self.current_filter.date_added_since = selected_date
+            self.refresh_books()
+            date_str = selected_date.strftime("%Y-%m-%d")
+            if not self.books:
+                self.set_status(
+                    f"No books added since {date_str}",
+                    timeout_ms=3000,
+                    announce=True,
+                )
             else:
-                selected_date = date_field.date().toPython()
-                self.current_filter.date_added_since = selected_date
-                self.refresh_books()
-                date_str = selected_date.strftime("%Y-%m-%d")
-                if not self.books:
-                    self.set_status(
-                        f"No books added since {date_str}",
-                        timeout_ms=3000,
-                        announce=True,
-                    )
-                else:
-                    self.set_status(
-                        f"Showing {len(self.books)} books added since {date_str}",
-                        announce=True,
-                    )
+                self.set_status(
+                    f"Showing {len(self.books)} books added since {date_str}",
+                    announce=True,
+                )
 
         self._sync_recently_added_toolbar_toggle()
         self.restore_main_focus_after_modal()
