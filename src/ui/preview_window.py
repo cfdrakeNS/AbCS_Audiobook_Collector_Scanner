@@ -650,8 +650,8 @@ class PreviewWindow(AccessibleDialog):
         self.position_slider = ListenPositionSlider(Qt.Horizontal)
         self.position_slider.setAccessibleName("Play position")
         self.position_slider.setAccessibleDescription(
-            "Seek through the current audio file. Use the arrow keys to seek "
-            "five seconds and Page Up or Page Down to seek thirty seconds."
+            "Seek through the current audio file. Arrow keys seek five seconds; "
+            "Page Up and Page Down seek thirty seconds."
         )
         self.position_slider.setRange(0, 0)
         self.position_slider.setSingleStep(SLIDER_STEP_MS // 1000)
@@ -715,27 +715,27 @@ class PreviewWindow(AccessibleDialog):
         self.previous_button = QPushButton()
         self.previous_button.setAccessibleName("Previous file")
         self.previous_button.setAccessibleDescription(
-            "Play the previous audio file. Shortcut Alt+P."
+            "Play the previous audio file - Alt+P"
         )
         self.rewind_button = QPushButton()
         self.rewind_button.setAccessibleName("Rewind 30 seconds")
         self.rewind_button.setAccessibleDescription(
-            "Jump back 30 seconds. Shortcut Alt+Left."
+            "Jump back 30 seconds - Alt+Left"
         )
         self.play_pause_button = QPushButton()
         self.play_pause_button.setAccessibleName("Play or pause")
         self.play_pause_button.setAccessibleDescription(
-            "Play or pause this audiobook. Shortcut Space."
+            "Play or pause this audiobook - Space"
         )
         self.forward_button = QPushButton()
         self.forward_button.setAccessibleName("Forward 30 seconds")
         self.forward_button.setAccessibleDescription(
-            "Jump ahead 30 seconds. Shortcut Alt+Right."
+            "Jump ahead 30 seconds - Alt+Right"
         )
         self.next_button = QPushButton()
         self.next_button.setAccessibleName("Next file")
         self.next_button.setAccessibleDescription(
-            "Play the next audio file. Shortcut Alt+N."
+            "Play the next audio file - Alt+N"
         )
 
         icon_roles = (

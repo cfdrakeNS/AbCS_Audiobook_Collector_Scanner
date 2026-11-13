@@ -3557,7 +3557,7 @@ class MainWindow(QMainWindow):
         dialog_status.setSizeGripEnabled(False)
         configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
-            "Choose a date and press Enter to filter."
+            "Choose the date to filter by."
             + (" Alt+/ read status" if is_screen_reader_active() else "")
         )
         layout.addWidget(dialog_status)
@@ -3693,7 +3693,7 @@ class MainWindow(QMainWindow):
         dialog_status.setSizeGripEnabled(False)
         configure_status_bar_accessibility(dialog_status)
         dialog_status.showMessage(
-            "Enter text and press Enter to find. Alt+I field, Alt+T text, Alt+X exact"
+            "Choose a field and type the text to find"
             + read_status_hint
         )
         layout.addWidget(dialog_status)
@@ -5740,7 +5740,6 @@ class MainWindow(QMainWindow):
         """Show the new accessible license dialog."""
         dlg = LicenseDialog(self.scaler, self)
         dlg.exec()
-        self.set_status("License dialog opened. Press Tab to move to OK button.")
         self.restore_main_focus_after_modal()
 
     def on_open_website(self):

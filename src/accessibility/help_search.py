@@ -374,7 +374,7 @@ def search_help(
 def search_summary(result: HelpSearchResult, topic_title: str = "") -> str:
     """Status text after a search; ``topic_title`` set means current-topic scope."""
     if not result.query:
-        return "Type words to search help, then press Enter."
+        return "Type words to search help."
     if not result.hits:
         if topic_title:
             return f"No matches for {result.query} in {topic_title}."

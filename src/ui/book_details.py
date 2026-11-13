@@ -1579,8 +1579,7 @@ class BookDetailsWindow(AccessibleDialog):
                 self.year_spin: (
                     "Publication year",
                     (
-                        "Type a four digit year, or leave blank. "
-                        "Invalid values show a warning message."
+                        "Four digit year, or blank."
                         if getattr(self, "_year_is_masked", False)
                         else "Publication year of the audiobook"
                     ),
@@ -1596,8 +1595,7 @@ class BookDetailsWindow(AccessibleDialog):
                 self.read_date: (
                     "Date read",
                     (
-                        "Type a date as year dash month dash day, or leave blank. "
-                        "Invalid values show a warning message."
+                        "Date as year dash month dash day, or blank."
                         if getattr(self, "_read_date_is_masked", False)
                         else "Date this book was marked as read"
                     ),

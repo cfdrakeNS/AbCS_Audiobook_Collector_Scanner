@@ -375,8 +375,7 @@ class MaskedYearEdit(QLineEdit):
         self.setClearButtonEnabled(False)
         self.setAccessibleName("Publication year")
         self.setAccessibleDescription(
-            f"Type a four digit year from {self._valid_min} to {self._valid_max}, "
-            "or leave blank. Invalid values show a message when you leave the field or save."
+            f"Four digit year from {self._valid_min} to {self._valid_max}, or blank."
         )
         self.editingFinished.connect(self._emit_value_changed)
 
@@ -397,8 +396,7 @@ class MaskedYearEdit(QLineEdit):
         self._valid_min = int(minimum)
         self._valid_max = int(maximum)
         self.setAccessibleDescription(
-            f"Type a four digit year from {self._valid_min} to {self._valid_max}, "
-            "or leave blank. Invalid values show a message when you leave the field or save."
+            f"Four digit year from {self._valid_min} to {self._valid_max}, or blank."
         )
 
     def minimum(self) -> int:
@@ -469,15 +467,10 @@ class MaskedDateEdit(QLineEdit):
         self.editingFinished.connect(self._emit_date_changed)
 
     def _refresh_accessible_description(self) -> None:
-        blank_note = "or leave blank. " if self._allow_blank else ""
-        future_note = (
-            "Must be today or earlier. "
-            if self._disallow_future
-            else ""
-        )
+        blank_note = ", or blank" if self._allow_blank else ""
+        future_note = " Must be today or earlier." if self._disallow_future else ""
         self.setAccessibleDescription(
-            f"Type a date as year dash month dash day, {blank_note}{future_note}"
-            "Invalid values show a message when you leave the field or confirm."
+            f"Date as year dash month dash day{blank_note}.{future_note}"
         )
 
     def focusInEvent(self, event):

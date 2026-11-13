@@ -126,7 +126,7 @@ def test_result_label_puts_guide_before_section():
 
 
 def test_summary_messages():
-    assert search_summary(_search("")) == "Type words to search help, then press Enter."
+    assert search_summary(_search("")) == "Type words to search help."
     assert search_summary(_search("zzzz")) == "No matches for zzzz."
     assert search_summary(_search("backup")) == "1 topic matches backup."
     assert search_summary(_search("collection")) == "2 topics match collection."
