@@ -557,7 +557,7 @@ class PreviewWindow(AccessibleDialog):
         self.setAccessibleName("Listen")
         self.setAccessibleDescription(
             "Listen to this audiobook inside AbCS. Space plays or pauses. "
-            "Alt+Left rewinds. Alt+Right fast-forwards. Escape closes."
+            "Alt+Left rewinds. Alt+Right fast-forwards."
         )
         self.resize(720, 300)
         self._setup_ui()
@@ -761,8 +761,7 @@ class PreviewWindow(AccessibleDialog):
         self.speed_combo = QComboBox()
         self.speed_combo.setAccessibleName("Playback speed")
         self.speed_combo.setAccessibleDescription(
-            "Speed for every book. Saved for the next time you play. "
-            "Alt+Down or Space opens the list. Shortcut Alt+S."
+            "Speed for every book. Saved for the next time you play - Alt+S"
         )
         for rate in SPEED_OPTIONS:
             self.speed_combo.addItem(f"{rate:g}x", rate)

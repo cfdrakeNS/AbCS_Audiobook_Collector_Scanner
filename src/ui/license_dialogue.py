@@ -70,7 +70,7 @@ class LicenseDialog(AccessibleDialog):
             self,
             license_blocks,
             "License information",
-            "AbCS license terms. Use arrow keys to read line by line. Press Tab to move to OK button.",
+            "AbCS license terms.",
         )
         license_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         font = license_label.font()

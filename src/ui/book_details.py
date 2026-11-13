@@ -1424,7 +1424,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.form_scroll.setFocusPolicy(Qt.NoFocus)
         self.form_scroll.setAccessibleName("Book details fields")
         self.form_scroll.setAccessibleDescription(
-            "Scroll when the window is zoomed in to reach all book fields."
+            "Book fields."
         )
         self.form_scroll.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         layout.addWidget(self.form_scroll)

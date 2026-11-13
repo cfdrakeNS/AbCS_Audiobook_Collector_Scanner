@@ -28,7 +28,7 @@ class StatisticsDialog(AccessibleDialog):
         self.setWindowTitle("Library Statistics")
         self.setAccessibleName("Library Statistics Dialog")
         self.setAccessibleDescription(
-            "Dialog showing library statistics in a table format. Use Tab to navigate the table."
+            "Library statistics in a table."
         )
         self.resize(500, 500)
 

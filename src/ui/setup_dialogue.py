@@ -84,7 +84,7 @@ class SetupDialog(AccessibleDialog):
             self,
             setup_blocks,
             "Welcome information",
-            "Setup instructions. Use arrow keys to read line by line. Press Tab to move to OK button.",
+            "Setup instructions.",
         )
         setup_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 

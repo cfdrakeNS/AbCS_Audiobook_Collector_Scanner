@@ -210,9 +210,7 @@ class CollectionWindow(AccessibleDialog):
         self.table = QTableWidget()
         self.table.setAccessibleName("Collections list")
         self.table.setAccessibleDescription(
-            "List of collections with path and status. "
-            "Use Up and Down arrows to move between entries. "
-            "Double-click or press Enter to edit."
+            "List of collections with path and status."
         )
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Collection", "Path", "Status"])

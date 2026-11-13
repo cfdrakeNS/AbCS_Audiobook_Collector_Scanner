@@ -147,7 +147,7 @@ class PathHealthWindow(AccessibleDialog):
         self.setAccessibleName("Check Book Locations Window")
         self.setAccessibleDescription(
             "Lists books whose stored path is blank, missing on disk, or not "
-            "under the collection folder. Press Enter on a row to open Book Details."
+            "under the collection folder."
         )
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMinimumSize(720, 480)
@@ -230,9 +230,7 @@ class PathHealthWindow(AccessibleDialog):
         self.table = QTableWidget()
         self.table.setAccessibleName("Check book locations list")
         self.table.setAccessibleDescription(
-            "Books with invalid paths for the selected filter. "
-            "Use Up and Down arrows to move between rows. "
-            "Enter opens Book Details - Alt+L"
+            "Books with invalid paths for the selected filter - Alt+L"
         )
         apply_tooltip_accessibility(
             self.table,

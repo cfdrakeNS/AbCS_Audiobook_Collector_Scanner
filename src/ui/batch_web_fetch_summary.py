@@ -255,8 +255,8 @@ class BatchWebFetchSummaryDialog(AccessibleDialog):
         self.books_table = QTableWidget()
         self.books_table.setAccessibleName("Books list")
         self.books_table.setAccessibleDescription(
-            "Fetched books and their results. Use Up and Down arrows to move. "
-            "Alt+L to jump here. Alt+R to review books with changes."
+            "Fetched books and their results - Alt+L. "
+            "Alt+R reviews books with changes."
         )
         self.books_table.setColumnCount(2)
         self.books_table.setHorizontalHeaderLabels(["Title", "Issue"])

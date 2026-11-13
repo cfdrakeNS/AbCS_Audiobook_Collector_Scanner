@@ -339,8 +339,7 @@ class NameListWindow(AccessibleDialog):
         self.table = QTableWidget()
         self.table.setAccessibleName(f"{self.entity_plural} list")
         self.table.setAccessibleDescription(
-            f"List of {self.entity_plural.lower()} and book usage. "
-            "Use Up and Down arrows to move between entries."
+            f"List of {self.entity_plural.lower()} and book usage."
         )
         if self.is_collection_mode:
             self.table.setColumnCount(3)

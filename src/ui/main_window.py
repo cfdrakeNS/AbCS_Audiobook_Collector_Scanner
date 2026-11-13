@@ -1422,7 +1422,7 @@ class MainWindow(QMainWindow):
             (
                 getattr(self, "find_action", None),
                 "Find books by title, author, or other fields",
-                "Find books by field. Enter text and press Enter to find.",
+                "Find books by field.",
             ),
             (
                 getattr(self, "book_details_action", None),
@@ -1474,7 +1474,7 @@ class MainWindow(QMainWindow):
                 "Find",
                 "find",
                 "Find books by title, author, or other fields - Ctrl+F",
-                "Find books by field. Enter text and press Enter to find. - Ctrl+F",
+                "Find books by field - Ctrl+F",
                 self.on_find,
             ),
             (
@@ -2245,8 +2245,7 @@ class MainWindow(QMainWindow):
         dialog.setWindowTitle("Duplicate Check")
         """Start duplicate mode by prompting for duplicate match type."""
         dialog.setAccessibleDescription(
-            "Select duplicate match mode and start duplicate checking. "
-            "Press Escape to close."
+            "Select duplicate match mode and start duplicate checking."
         )
 
         layout = QVBoxLayout(dialog)
@@ -3610,9 +3609,7 @@ class MainWindow(QMainWindow):
         dialog = AccessibleDialog(self)
         dialog.setWindowTitle("Find")
         dialog.setAccessibleName("Find")
-        dialog.setAccessibleDescription(
-            "Find books by field. Enter text and press Enter to find."
-        )
+        dialog.setAccessibleDescription("Find books by field.")
         dialog.resize(500, 180)
 
         layout = QVBoxLayout(dialog)

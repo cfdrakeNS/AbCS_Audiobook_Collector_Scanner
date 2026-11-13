@@ -176,8 +176,7 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.general_table.installEventFilter(self)
         self.general_table.setAccessibleName("General reading statistics table")
         self.general_table.setAccessibleDescription(
-            "Table showing total reading statistics. "
-            "Use Up and Down arrows to move between entries."
+            "Table showing total reading statistics."
         )
         self.general_table.setColumnCount(2)
         self.general_table.setHorizontalHeaderLabels(["Statistic", "Value"])
@@ -273,8 +272,7 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.year_table.setAccessibleName("Yearly reading statistics table")
         self.year_table.installEventFilter(self)
         self.year_table.setAccessibleDescription(
-            "Table showing books read per year. "
-            "Use Up and Down arrows to move between entries."
+            "Table showing books read per year."
         )
 
         # Setup table columns
@@ -316,8 +314,7 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.month_table.setAccessibleName("Monthly reading statistics table")
         self.month_table.installEventFilter(self)
         self.month_table.setAccessibleDescription(
-            "Table showing books read per month. "
-            "Use Up and Down arrows to move between entries."
+            "Table showing books read per month."
         )
 
         # Swap month and year columns: Year, Month, Books Read, Total Hours
@@ -458,8 +455,7 @@ class ReadingHistoryWindow(AccessibleDialog):
         self.range_table.installEventFilter(self)
 
         self.range_table.setAccessibleDescription(
-            "Table showing reading history with date, title, author, and hours. "
-            "Use Up and Down arrows to move between entries."
+            "Table showing reading history with date, title, author, and hours."
         )
 
         # Setup table columns

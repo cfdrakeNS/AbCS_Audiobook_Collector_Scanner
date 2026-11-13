@@ -481,8 +481,7 @@ class WebMetadataWindow(AccessibleDialog):
         self.plot_alternatives = QComboBox()
         self.plot_alternatives.setAccessibleName("Other plots")
         self.plot_alternatives.setAccessibleDescription(
-            "Choose another valid plot description to review. "
-            "Alt+Down opens the list"
+            "Choose another valid plot description to review."
         )
         self.plot_alternatives.setObjectName("plot_alternatives")
         self.plot_alternatives.setVisible(False)
@@ -579,7 +578,7 @@ class WebMetadataWindow(AccessibleDialog):
         self.form_scroll.setFocusPolicy(Qt.NoFocus)
         self.form_scroll.setAccessibleName("Web metadata fields")
         self.form_scroll.setAccessibleDescription(
-            "Scroll when zoom is high to reach all fields"
+            "Web metadata fields."
         )
 
         layout.addWidget(self.form_scroll, 1)

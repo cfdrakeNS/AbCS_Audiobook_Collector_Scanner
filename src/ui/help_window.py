@@ -732,12 +732,12 @@ class HelpWindow(AccessibleDialog):
         self.search_all_radio = QRadioButton("All help")
         self.search_all_radio.setAccessibleName("Search all help")
         self.search_all_radio.setAccessibleDescription(
-            "Search scope. Arrow keys switch between all help and current topic."
+            "Search scope: all help or current topic."
         )
         self.search_topic_radio = QRadioButton("Current topic")
         self.search_topic_radio.setAccessibleName("Search current topic")
         self.search_topic_radio.setAccessibleDescription(
-            "Search scope. Arrow keys switch between all help and current topic."
+            "Search scope: all help or current topic."
         )
         self.search_scope_group = QButtonGroup(self)
         self.search_scope_group.addButton(self.search_all_radio)
@@ -756,10 +756,7 @@ class HelpWindow(AccessibleDialog):
 
         self.nav_list = QListWidget(self._splitter)
         self.nav_list.setAccessibleName("Help Navigation")
-        self.nav_list.setAccessibleDescription(
-            "Help section list. Click or press Enter to jump to a section. "
-            "Use Tab to move to the help content."
-        )
+        self.nav_list.setAccessibleDescription("Help section list - Alt+L")
         self.nav_list.setStyleSheet(_NAV_LIST_STYLE)
         self.nav_list.setUniformItemSizes(True)
         self.nav_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -770,7 +767,7 @@ class HelpWindow(AccessibleDialog):
             _HelpTextEdit(self._splitter),
             text="",
             accessible_name="Help content",
-            accessible_description="Help document text. Use arrow keys to read line by line.",
+            accessible_description="Help document text.",
             transparent_background=False,
         )
         configure_navigable_text_edit(self.help_text)
@@ -1171,7 +1168,7 @@ class HelpWindow(AccessibleDialog):
             self.search_edit.setAccessibleName("Search all help")
             scope = "all help topics"
         self.search_edit.setAccessibleDescription(
-            f"Type words and press Enter to search {scope}. "
+            f"Search {scope}. "
             "Results appear in the help navigation list. Escape clears the search."
         )
 
@@ -1328,22 +1325,15 @@ class HelpWindow(AccessibleDialog):
     def _set_nav_description(self) -> None:
         if self._nav_mode == "results":
             self.nav_list.setAccessibleDescription(
-                "Search results. Press Enter to open a result at the matching text. "
-                "Choose Back to topics to return to the topic list. "
-                "Press Ctrl+F to search again. Press Alt+L to return to this list. "
-                "Use Tab to move to the help content."
+                "Search results. Choose Back to topics to return to the topic list - Alt+L. "
+                "Ctrl+F searches again."
             )
             return
         if self._nav_mode == "topics":
-            self.nav_list.setAccessibleDescription(
-                "Help topic list. Click or press Enter to open a topic. "
-                "Press Alt+L to focus this list. Use Tab to move to the help content."
-            )
+            self.nav_list.setAccessibleDescription("Help topic list - Alt+L")
             return
         self.nav_list.setAccessibleDescription(
-            "Help section list. Click or press Enter to jump to a section. "
-            "Choose All Help Topics to return to the topic list. "
-            "Press Alt+L to focus this list. Use Tab to move to the help content."
+            "Help section list. Choose All Help Topics to return to the topic list - Alt+L"
         )
 
     def _show_topics_list(self) -> None:
@@ -1447,8 +1437,7 @@ class HelpWindow(AccessibleDialog):
         self.help_text.setAccessibleName(self._current_title)
         self.help_text.setAccessibleDescription(
             f"Help topic: {self._current_title}. "
-            "Use arrow keys to move line by line. Each sentence is its own paragraph. "
-            "Use Tab or Alt+L to move to the help navigation list."
+            "Each sentence is its own paragraph. Alt+L moves to the help list."
         )
 
     def _open_related_doc(self, filename: str) -> None:

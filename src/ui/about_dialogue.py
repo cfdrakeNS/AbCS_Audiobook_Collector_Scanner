@@ -122,7 +122,7 @@ class AboutDialog(AccessibleDialog):
             self,
             about_blocks,
             "About information",
-            "About AbCS. Use arrow keys to read line by line. Press Tab to move to Close button.",
+            "About AbCS.",
         )
         about_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         font = about_label.font()

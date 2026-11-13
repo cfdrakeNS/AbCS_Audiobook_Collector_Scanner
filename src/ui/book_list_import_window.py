@@ -1000,7 +1000,7 @@ class BookListImportWindow(AccessibleDialog):
         dlg.setWindowTitle("Keyboard Shortcuts - Book List Import")
         dlg.setAccessibleName("Keyboard Shortcuts")
         dlg.setAccessibleDescription(
-            "Dialog listing keyboard shortcuts for Book List Import. Use arrow keys to read line by line."
+            "Keyboard shortcuts for Book List Import."
         )
         dlg.resize(560, 420)
 
