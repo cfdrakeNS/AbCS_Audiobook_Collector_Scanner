@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,6 +13,28 @@ import pytest
 from src.database.connection import DatabaseManager
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+_EXIT_STATUS = pytest.StashKey[int]()
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session, exitstatus):
+    session.config.stash[_EXIT_STATUS] = int(exitstatus)
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config):
+    """Exit with pytest's status once results and coverage are written.
+
+    On Windows CI, Python aborts (0xC0000409) while tearing down leftover Qt
+    objects after every test has passed. Deleting the widgets first crashes
+    too, so the process skips interpreter shutdown instead.
+    """
+    if _EXIT_STATUS not in config.stash:
+        return
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(config.stash[_EXIT_STATUS])
 
 
 @pytest.fixture(scope="session")

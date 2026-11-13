@@ -24,7 +24,4 @@ jobs:
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: |
-          python -c "import sys, pytest; rc = int(pytest.main(['test/', '-q', '--tb=line', '--durations=15', '--cov=src/core', '--cov=src/database', '--cov-report=term-missing:skip-covered'])); print(f'pytest.main returned {rc}', flush=True); sys.exit(rc)"
-          Write-Host "python exit code: $LASTEXITCODE"
-          exit $LASTEXITCODE
+        run: python -m pytest test/ -q --tb=line --durations=15 --cov=src/core --cov=src/database --cov-report=term-missing:skip-covered
