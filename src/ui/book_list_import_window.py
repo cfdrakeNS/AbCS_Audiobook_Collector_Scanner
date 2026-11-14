@@ -79,6 +79,7 @@ from src.database import (
 )
 from src.database.models import Collection
 from src.accessibility.icon_helper import apply_decorative_action_icon
+from src.accessibility.key_filters import blocks_plain_combo_arrow
 from src.accessibility.scaling import UIScaler
 from src.ui.import_progress_window import ImportProgressWindow
 from src.accessibility.accessible_events import (
@@ -164,11 +165,11 @@ class BookListImportWindow(AccessibleDialog):
         self._default_status_message = "Ready"
 
         # Window setup - match Book Details open size.
+        # Empty accessible name/description like Import: a custom dialog name
+        # made JAWS speak the main window after the Collection combo on open.
         self.setWindowTitle("Book List Import")
-        self.setAccessibleName("Book List Import Window")
-        self.setAccessibleDescription(
-            "Import books from spreadsheet files with field mapping"
-        )
+        self.setAccessibleName("")
+        self.setAccessibleDescription("")
         # Keep the window resizable to narrower widths like ImportWindow.
         self.setMinimumSize(460, 350)
         self.resize(350, 200)
@@ -314,43 +315,58 @@ class BookListImportWindow(AccessibleDialog):
     def focus_instructions_section(self):
         """Focus instructions section."""
         if hasattr(self, "instructions_label"):
-            self.instructions_label.setFocus()
+            self.instructions_label.setFocusPolicy(Qt.StrongFocus)
+            self.instructions_label.setFocus(Qt.TabFocusReason)
             self.set_status("How to use instructions")
 
     def _focus_collection_combo(self):
-        """Focus collection selector when the window opens."""
+        """Focus collection selector (Alt+C and tests)."""
         if hasattr(self, "collection_combo"):
             self.collection_combo.setFocus(Qt.TabFocusReason)
             self.set_status("Collection selection")
 
     def showEvent(self, event):
-        """Set initial focus to collection when window first opens."""
+        """Match Import: AccessibleDialog focus refire; no extra Collection focus."""
         super().showEvent(event)
-        QTimer.singleShot(0, self._focus_collection_combo)
 
     def install_combo_filters(self):
         """Install event filters on combo boxes for anti-noise pattern."""
         for widget in self.findChildren(QComboBox):
             widget.installEventFilter(self)
 
+    def _keep_combo_focus_after_blocked_arrow(self, combo: QComboBox) -> None:
+        """Stop JAWS from speaking the main window after a blocked Up/Down.
+
+        Swallowing the key is not always enough: JAWS can briefly activate the
+        owner window, speak its title, then re-read this dialog. Re-asserting
+        activation before that pulse lands keeps speech on Collection.
+        """
+        if not self.isVisible():
+            return
+        if not self.isActiveWindow():
+            self.raise_()
+            self.activateWindow()
+        if self.focusWidget() is not combo and combo.isVisible():
+            combo.setFocus(Qt.OtherFocusReason)
+
     def eventFilter(self, source, event):
         """Event filter for combo box anti-noise pattern and Alt+letter filtering."""
         from PySide6.QtWidgets import QApplication
         from PySide6.QtCore import QEvent
 
-        # Handle combo box anti-noise pattern
+        # Plain Up/Down beep only while a screen reader runs; Alt+Up/Down opens.
         if isinstance(source, QComboBox) and event.type() == QEvent.KeyPress:
             key = event.key()
-            modifiers = event.modifiers()
-
-            # Block plain Up/Down arrows on combo boxes
-            if key in (Qt.Key_Up, Qt.Key_Down) and modifiers == Qt.NoModifier:
+            if blocks_plain_combo_arrow(event):
                 QApplication.beep()
+                event.accept()
+                QTimer.singleShot(
+                    0, lambda c=source: self._keep_combo_focus_after_blocked_arrow(c)
+                )
                 return True
-
-            # Allow Alt+Up/Down to open dropdown
-            if key in (Qt.Key_Up, Qt.Key_Down) and modifiers & Qt.AltModifier:
+            if key in (Qt.Key_Up, Qt.Key_Down) and event.modifiers() & Qt.AltModifier:
                 source.showPopup()
+                event.accept()
                 return True
 
         # Handle Alt+letter filtering
@@ -440,6 +456,10 @@ class BookListImportWindow(AccessibleDialog):
         header_layout.setSpacing(10)
 
         collection_label = QLabel("&Collection:")
+        # Visible caption only. QLabel falls back to its text when the
+        # accessible name is empty, so use a zero-width space instead.
+        collection_label.setAccessibleName("\u200b")
+        collection_label.setAccessibleDescription("")
         self.collection_combo = QComboBox()
         self.collection_combo.setAccessibleName("Import collection")
         self.collection_combo.setAccessibleDescription(
@@ -450,6 +470,8 @@ class BookListImportWindow(AccessibleDialog):
         header_layout.addWidget(self.collection_combo, 1)
 
         file_label = QLabel("&File:")
+        file_label.setAccessibleName("\u200b")
+        file_label.setAccessibleDescription("")
         self.file_edit = QLineEdit()
         self.file_edit.setReadOnly(True)
         self.file_edit.setAccessibleName("Selected file")
@@ -481,7 +503,6 @@ class BookListImportWindow(AccessibleDialog):
         # Left side - Instructions
         instructions_group = QGroupBox("Instructions")
         self.instructions_group = instructions_group
-        instructions_group.setAccessibleName("Instructions group")
         instructions_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         instructions_layout = QVBoxLayout(instructions_group)
         # Move instructions group down a bit for visual separation
@@ -510,14 +531,17 @@ class BookListImportWindow(AccessibleDialog):
         self.instructions_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
 
         # NO setTextInteractionFlags — keeps Qt using QAccessibleInterface (name-based)
-        # instead of QAccessibleTextInterface (line-by-line) so the screen reader reads the whole text
-        self.instructions_label.setFocusPolicy(Qt.TabFocus)
+        # instead of QAccessibleTextInterface (line-by-line) so the screen reader reads the whole text.
+        # Not in the tab order by default; Alt+H focuses instructions when needed.
+        self.instructions_label.setFocusPolicy(Qt.NoFocus)
 
         # Put the full text here — this is what the screen reader reads on focus
         self.instructions_label.setAccessibleName(instructions_text)
         self.instructions_label.setAccessibleDescription(
             "Step-by-step instructions for using the book list import"
         )
+        instructions_group.setAccessibleName("\u200b")
+        instructions_group.setAccessibleDescription("")
 
         # Set fixed height to fit all text without scrolling
         fixed_height = self.scaler.get_scaled_size(200)
@@ -743,28 +767,11 @@ class BookListImportWindow(AccessibleDialog):
         # Set initial status
         self.set_status("Ready - Select a spreadsheet file to begin")
 
-        # Set up tab order for accessibility: mapping combos in table row order, then import/export buttons
-        if self.field_mappings and hasattr(self, "mapping_table"):
-            prev_widget = None
-            for row in range(self.mapping_table.rowCount()):
-                combo_container = self.mapping_table.cellWidget(row, 1)
-                if combo_container is not None and combo_container.layout() is not None:
-                    # The combo is the first widget in the container's layout
-                    combo = None
-                    for i in range(combo_container.layout().count()):
-                        w = combo_container.layout().itemAt(i).widget()
-                        if isinstance(w, QComboBox):
-                            combo = w
-                            break
-                    if combo:
-                        if prev_widget:
-                            self.setTabOrder(prev_widget, combo)
-                        prev_widget = combo
-            # Last combo to import button
-            if prev_widget:
-                self.setTabOrder(prev_widget, self.import_button)
+        # Mapping combos may be deferred with a screen reader until a file loads.
+        if self.field_mappings:
+            self._set_mapping_combo_tab_order()
         else:
-            self.setTabOrder(self.instructions_label, self.import_button)
+            self.setTabOrder(self.browse_button, self.import_button)
         self.setTabOrder(self.import_button, self.export_button)
 
     def apply_visual_tooltips(self):
@@ -817,26 +824,34 @@ class BookListImportWindow(AccessibleDialog):
 
         self.collection_combo.blockSignals(False)
 
-    def setup_mapping_table(self):
-        """Setup the field mapping table rows with checkboxes in options column."""
-        fields = [
-            ("title", "* Title"),
-            ("author", "* Author"),
-            ("year", "Year"),
-            ("series", "Series"),
-            ("series_no", "Series #"),
-            ("genre", "Genre"),
-            ("reader", "Narrator"),
-            ("read_date", "  Read Date"),
-            ("time_hours", "Time"),
-            ("tracks", "Files"),
-            ("plot", "Plot"),
-        ]
+    _MAPPING_FIELDS = (
+        ("title", "* Title"),
+        ("author", "* Author"),
+        ("year", "Year"),
+        ("series", "Series"),
+        ("series_no", "Series #"),
+        ("genre", "Genre"),
+        ("reader", "Narrator"),
+        ("read_date", "  Read Date"),
+        ("time_hours", "Time"),
+        ("tracks", "Files"),
+        ("plot", "Plot"),
+    )
 
+    def setup_mapping_table(self):
+        """Setup the field mapping table rows.
+
+        With a screen reader the column combos are created only after a file
+        loads. Opening with eleven mapping combos plus Collection made JAWS
+        speak the main window after Collection; Import (three combos) does not.
+        """
+        from src.accessibility.screen_reader import is_screen_reader_active
+
+        fields = self._MAPPING_FIELDS
         self.mapping_table.setRowCount(len(fields))
         self.field_mappings = {}
 
-        for row, (field_name, field_label) in enumerate(fields):
+        for row, (_field_name, field_label) in enumerate(fields):
             # Field label (no tab focus)
             label = QLabel(field_label)
             label.setAccessibleName(field_label)
@@ -848,35 +863,11 @@ class BookListImportWindow(AccessibleDialog):
             label.setFont(lbl_font)
             self.mapping_table.setCellWidget(row, 0, label)
 
-            # Column selection combo
-            combo = QComboBox()
-            combo.setAccessibleName(f"{field_label}")
-            combo.addItem("None")
-            # Keep selector wide enough for labels like AA/AB and long fonts.
-            min_width = self.scaler.get_scaled_size(90)
-            max_width = self.scaler.get_scaled_size(130)
-            combo.setMinimumWidth(min_width)
-            combo.setMaximumWidth(max_width)
-
-            # Connect mapping change signal
-            combo.currentIndexChanged.connect(
-                lambda idx, r=row, f=field_name: self.on_mapping_changed(r, f, idx)
-            )
-
-            # Install event filter for Alt+Down support
-            combo.installEventFilter(self)
-
-            # Wrap combo in a container aligned left+vcenter to prevent vertical floating on scale
-            combo_container = QWidget()
-            combo_container.setFocusPolicy(Qt.NoFocus)
-            combo_layout = QHBoxLayout(combo_container)
-            combo_layout.setContentsMargins(0, 0, 0, 0)
-            combo_layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            combo_layout.addWidget(combo)
-            self.mapping_table.setCellWidget(row, 1, combo_container)
-            self.field_mappings[field_name] = combo
-
-            # Options column - removed (checkboxes moved to right panel)
+            placeholder = QLabel("None")
+            placeholder.setAccessibleName("\u200b")
+            placeholder.setFocusPolicy(Qt.NoFocus)
+            placeholder.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            self.mapping_table.setCellWidget(row, 1, placeholder)
 
         # Set empty header labels to suppress row numbers
         self.mapping_table.setVerticalHeaderLabels([""] * len(fields))
@@ -889,6 +880,68 @@ class BookListImportWindow(AccessibleDialog):
         table_height = row_height * len(fields) + 30  # Add header and minimal padding
         self.mapping_table.setMinimumHeight(table_height)
         self.mapping_table.setMaximumHeight(table_height)
+
+        if not is_screen_reader_active():
+            self._ensure_mapping_combos()
+        else:
+            self.mapping_table.setAccessibleName("\u200b")
+            self.mapping_table.setAccessibleDescription("")
+
+    def _ensure_mapping_combos(self):
+        """Create column-mapping combos if they are not already in the table."""
+        if self.field_mappings:
+            return
+
+        for row, (field_name, field_label) in enumerate(self._MAPPING_FIELDS):
+            combo = QComboBox()
+            combo.setAccessibleName(f"{field_label}")
+            combo.addItem("None")
+            min_width = self.scaler.get_scaled_size(90)
+            max_width = self.scaler.get_scaled_size(130)
+            combo.setMinimumWidth(min_width)
+            combo.setMaximumWidth(max_width)
+            combo.currentIndexChanged.connect(
+                lambda idx, r=row, f=field_name: self.on_mapping_changed(r, f, idx)
+            )
+            combo.installEventFilter(self)
+
+            combo_container = QWidget()
+            combo_container.setFocusPolicy(Qt.NoFocus)
+            combo_layout = QHBoxLayout(combo_container)
+            combo_layout.setContentsMargins(0, 0, 0, 0)
+            combo_layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            combo_layout.addWidget(combo)
+            self.mapping_table.setCellWidget(row, 1, combo_container)
+            self.field_mappings[field_name] = combo
+
+        self.mapping_table.setAccessibleName("Mapping table")
+        self.mapping_table.setAccessibleDescription(
+            "Map spreadsheet columns to book fields"
+        )
+        self._set_mapping_combo_tab_order()
+
+    def _set_mapping_combo_tab_order(self):
+        """Tab through mapping combos, then Import / Export."""
+        if not self.field_mappings or not hasattr(self, "mapping_table"):
+            return
+        prev_widget = None
+        for row in range(self.mapping_table.rowCount()):
+            combo_container = self.mapping_table.cellWidget(row, 1)
+            if combo_container is None or combo_container.layout() is None:
+                continue
+            combo = None
+            for i in range(combo_container.layout().count()):
+                w = combo_container.layout().itemAt(i).widget()
+                if isinstance(w, QComboBox):
+                    combo = w
+                    break
+            if combo is None:
+                continue
+            if prev_widget is not None:
+                self.setTabOrder(prev_widget, combo)
+            prev_widget = combo
+        if prev_widget is not None and hasattr(self, "import_button"):
+            self.setTabOrder(prev_widget, self.import_button)
 
     def _update_mapping_field_column_width(self):
         """Size the Field column based on the widest label widget."""
@@ -1447,6 +1500,7 @@ class BookListImportWindow(AccessibleDialog):
 
     def update_column_combos(self):
         """Update column combos with Excel-style labels for all detected columns."""
+        self._ensure_mapping_combos()
         column_letters = [
             self._excel_column_label(i) for i in range(max(0, self.column_count))
         ]

@@ -33,10 +33,26 @@ class WebFetchResult:
     last_error: Optional[str] = None
     status_message: str = ""
     dialog_text: str = ""
+    # Wait dialog left open so the caller can show the next window first
+    # (avoids JAWS speaking the owner between progress and Web Metadata).
+    progress_dialog: Any = field(default=None, repr=False, compare=False)
 
     @property
     def has_usable_data(self) -> bool:
         return bool(self.cleaned_data) and not self.canceled
+
+    def dismiss_progress(self) -> None:
+        """Close the wait dialog if this fetch left it open for handoff."""
+        popup = self.progress_dialog
+        self.progress_dialog = None
+        if popup is None:
+            return
+        try:
+            if popup.isVisible():
+                popup.accept()
+            popup.close()
+        except RuntimeError:
+            pass
 
 
 class _WebFetchWorker(QObject):
@@ -105,10 +121,16 @@ class _WebFetchWorker(QObject):
 class _WebFetchUiBridge(QObject):
     """Receives worker signals on the GUI thread (plain callables do not)."""
 
-    def __init__(self, popup: WebFetchProgressDialog, holder: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        popup: WebFetchProgressDialog,
+        holder: dict[str, Any],
+        loop: Any,
+    ) -> None:
         super().__init__()
         self._popup = popup
         self._holder = holder
+        self._loop = loop
 
     @Slot(str)
     def on_progress(self, message: str) -> None:
@@ -117,12 +139,16 @@ class _WebFetchUiBridge(QObject):
     @Slot(object)
     def on_finished(self, raw: object) -> None:
         self._holder["raw"] = raw
-        self._popup.accept()
+        # Leave the progress dialog open; the caller dismisses it after the
+        # next window is ready so focus never returns to the owner first.
+        if self._loop is not None and self._loop.isRunning():
+            self._loop.quit()
 
     @Slot(str)
     def on_failed(self, message: str) -> None:
         self._holder["error"] = message
-        self._popup.accept()
+        if self._loop is not None and self._loop.isRunning():
+            self._loop.quit()
 
 
 def _build_result_from_raw(
@@ -216,6 +242,8 @@ def fetch_web_metadata_for_book(
         except Exception as exc:
             return _build_result_from_raw(None, last_error=str(exc))
 
+    from PySide6.QtCore import QEventLoop
+
     popup = WebFetchProgressDialog(parent)
     thread = QThread()
     worker = _WebFetchWorker(
@@ -233,16 +261,22 @@ def fetch_web_metadata_for_book(
     worker.moveToThread(thread)
 
     holder: dict[str, Any] = {"raw": None, "error": None}
-    bridge = _WebFetchUiBridge(popup, holder)
+    loop = QEventLoop()
+    bridge = _WebFetchUiBridge(popup, holder, loop)
 
     worker.progress.connect(bridge.on_progress, Qt.ConnectionType.QueuedConnection)
     worker.finished.connect(bridge.on_finished, Qt.ConnectionType.QueuedConnection)
     worker.failed.connect(bridge.on_failed, Qt.ConnectionType.QueuedConnection)
     thread.started.connect(worker.run)
+    # If the wait dialog is closed early, stop waiting for the worker.
+    popup.finished.connect(loop.quit)
 
+    popup.show()
+    popup.raise_()
+    popup.activateWindow()
     thread.start()
     try:
-        popup.exec()
+        loop.exec()
     finally:
         user_canceled = popup.cancel_requested
         popup.cancel_event.set()
@@ -250,8 +284,11 @@ def fetch_web_metadata_for_book(
         worker.deleteLater()
         bridge.deleteLater()
         thread.deleteLater()
-        popup.close()
 
-    return _build_result_from_raw(
+    result = _build_result_from_raw(
         holder["raw"], last_error=holder["error"], user_canceled=user_canceled
     )
+    # Keep progress visible for the caller to hand off to Web Metadata (or
+    # dismiss when there is nothing further to show).
+    result.progress_dialog = popup
+    return result

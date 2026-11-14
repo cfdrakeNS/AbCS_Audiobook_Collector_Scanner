@@ -129,3 +129,66 @@ def test_accessible_dialog_base_constructible(qtbot):
     dialog.setAccessibleName("Accessible Base")
     assert dialog.accessibleName() == "Accessible Base"
     dialog.close()
+
+
+def test_accessible_dialog_focus_refire_stays_inside_dialog(qtbot, qapp):
+    """Refire must not clearFocus to nothing (JAWS then speaks the owner)."""
+    from PySide6.QtCore import Qt, QTimer
+    from PySide6.QtWidgets import QComboBox, QVBoxLayout
+
+    dialog = AccessibleDialog()
+    qtbot.addWidget(dialog)
+    layout = QVBoxLayout(dialog)
+    combo = QComboBox()
+    combo.addItems(["One", "Two"])
+    layout.addWidget(combo)
+
+    seen = []
+
+    def on_focus(old, new):
+        seen.append(
+            (
+                type(old).__name__ if old is not None else None,
+                type(new).__name__ if new is not None else None,
+                (new.objectName() if new is not None else ""),
+            )
+        )
+
+    qapp.focusChanged.connect(on_focus)
+    try:
+        dialog.show()
+        qtbot.waitExposed(dialog)
+        combo.setFocus(Qt.TabFocusReason)
+        qapp.processEvents()
+        assert dialog.focusWidget() is combo
+        seen.clear()
+        dialog._refire_focus_for_screen_reader()
+        qapp.processEvents()
+    finally:
+        qapp.focusChanged.disconnect(on_focus)
+
+    assert all(new is not None for _old, new, _name in seen)
+    assert any(name == "srFocusHold" for _old, _new, name in seen)
+    assert dialog.focusWidget() is combo
+    dialog.close()
+
+
+def test_book_list_import_defers_mapping_combos_with_screen_reader(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings, monkeypatch
+):
+    from PySide6.QtWidgets import QComboBox
+
+    from src.accessibility import screen_reader
+    from src.ui.book_list_import_window import BookListImportWindow
+
+    monkeypatch.setattr(screen_reader, "is_screen_reader_active", lambda: True)
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    try:
+        assert window.field_mappings == {}
+        assert len(window.findChildren(QComboBox)) == 1
+        assert window.findChildren(QComboBox)[0] is window.collection_combo
+        window._ensure_mapping_combos()
+        assert len(window.field_mappings) == len(BookListImportWindow._MAPPING_FIELDS)
+    finally:
+        window.close()

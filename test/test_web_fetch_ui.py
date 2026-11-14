@@ -101,6 +101,19 @@ def test_fetch_service_cleans_success(qapp, api, monkeypatch):
     result = fetch_web_metadata_for_book(Book(), show_progress=False)
     assert result.has_usable_data
     assert result.cleaned_data["title"] == "Pride and Prejudice"
+    assert result.progress_dialog is None
+
+
+def test_dismiss_progress_closes_and_clears(qapp):
+    from src.web.web_fetch_service import WebFetchResult
+
+    popup = WebFetchProgressDialog()
+    popup.show()
+    result = WebFetchResult(progress_dialog=popup)
+    result.dismiss_progress()
+    assert result.progress_dialog is None
+    assert not popup.isVisible()
+    result.dismiss_progress()  # idempotent
 
 
 def test_fetch_service_runs_on_worker_thread(qapp, api, monkeypatch):

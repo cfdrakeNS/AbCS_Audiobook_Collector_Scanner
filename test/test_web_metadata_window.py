@@ -258,9 +258,42 @@ def test_initial_focus_is_plot(qapp, ui_scaler, theme_manager, sample_book):
         dlg.close()
 
 
-def test_has_form_scroll_area(window):
-    assert hasattr(window, "form_scroll")
-    assert window.form_scroll.widget() is window.form_widget
+def test_form_scroll_only_without_screen_reader(
+    ui_scaler, theme_manager, sample_book, monkeypatch
+):
+    """With a screen reader the form is not in a scroll area, which JAWS reads whole."""
+    from PySide6.QtWidgets import QLabel, QScrollArea
+
+    for running in (True, False):
+        monkeypatch.setattr(
+            "src.ui.web_metadata.is_screen_reader_active", lambda r=running: r
+        )
+        dlg = WebMetadataWindow(
+            db=None,
+            book=sample_book,
+            scaler=ui_scaler,
+            theme_manager=theme_manager,
+            web_data=None,
+        )
+        try:
+            scrolls = [
+                s
+                for s in dlg.findChildren(QScrollArea)
+                if s.widget() is not None and s.widget().isAncestorOf(dlg.title_edit)
+            ]
+            assert hasattr(dlg, "form_scroll") is (not running)
+            assert bool(scrolls) is (not running)
+            if running:
+                captions = [
+                    label
+                    for label in dlg.findChildren(QLabel)
+                    if label.text() in ("Title:", "Author:", "Year:", "Genre:")
+                ]
+                assert captions
+                for label in captions:
+                    assert label.accessibleName() == "\u200b"
+        finally:
+            dlg.close()
 
 
 def test_tab_order_web_fields_before_buttons(window):

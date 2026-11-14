@@ -437,15 +437,57 @@ def test_read_date_boxes_blank_book_and_tab_order(
         window.close()
 
 
+def _screen_reader_running(monkeypatch, running: bool) -> None:
+    monkeypatch.setattr(
+        "src.accessibility.screen_reader.is_screen_reader_active_cached", lambda: running
+    )
+
+
 def test_read_date_boxes_step_with_plain_arrows(
-    temp_db, ui_scaler, theme_manager, date_combos
+    temp_db, ui_scaler, theme_manager, date_combos, monkeypatch
 ):
+    _screen_reader_running(monkeypatch, True)
     books = _make_books(temp_db, count=1)
     window = _window(temp_db, ui_scaler, theme_manager, books)
     try:
         for part in window.read_date.parts():
             assert window.eventFilter(part, _key(Qt.Key_Down)) is False
         assert window.eventFilter(window.collection_combo, _key(Qt.Key_Down)) is True
+    finally:
+        window.close()
+
+
+def test_combo_arrows_blocked_without_alt(
+    temp_db, ui_scaler, theme_manager, classic_fields, monkeypatch
+):
+    beeps = []
+    monkeypatch.setattr("src.ui.book_details.QApplication.beep", lambda: beeps.append(1))
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        window.on_edit_mode()
+        for combo in (
+            window.author_combo,
+            window.series_combo,
+            window.genre_combo,
+            window.collection_combo,
+        ):
+            for key in (Qt.Key_Down, Qt.Key_Up):
+                assert window.eventFilter(combo, _key(key)) is True
+        assert len(beeps) == 8
+        assert window.eventFilter(window.collection_combo, _key(Qt.Key_Down, Qt.AltModifier)) is False
+    finally:
+        window.close()
+
+
+def test_format_combo_ignores_arrows_in_view_mode_without_screen_reader(
+    temp_db, ui_scaler, theme_manager, classic_fields, monkeypatch
+):
+    _screen_reader_running(monkeypatch, False)
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        assert window.eventFilter(window.format_combo, _key(Qt.Key_Down)) is True
     finally:
         window.close()
 

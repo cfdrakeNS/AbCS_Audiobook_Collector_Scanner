@@ -22,3 +22,19 @@ def is_unmapped_alt_letter(event, allowed_letters: Iterable[str]) -> bool:
         # Always block Alt+number
         return True
     return False
+
+
+def blocks_plain_combo_arrow(event) -> bool:
+    """True for Up or Down without Alt on a combo box.
+
+    Closed lists do not step on plain arrows (easy to change by accident).
+    Use Alt+Up/Down or the mouse. Callers that need plain stepping
+    (read-date Year/Month/Day boxes) skip this helper.
+    """
+    if event.type() != QEvent.KeyPress:
+        return False
+    if event.key() not in (Qt.Key_Up, Qt.Key_Down):
+        return False
+    if event.modifiers() & Qt.AltModifier:
+        return False
+    return True

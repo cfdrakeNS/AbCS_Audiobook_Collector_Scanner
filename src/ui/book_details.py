@@ -33,7 +33,7 @@ from src.accessibility.accessible_events import (
     configure_status_bar_accessibility,
     read_status_bar_message,
 )
-from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.key_filters import blocks_plain_combo_arrow, is_unmapped_alt_letter
 from src.utils.settings_helpers import app_settings
 from src.accessibility.masked_date_fields import (
     MaskedDateEdit,
@@ -737,19 +737,14 @@ class BookDetailsWindow(AccessibleDialog):
                     self._last_status_message = new_status
                 self._pending_dirty_widgets.discard(dirty_widget)
 
-        # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
-        # This prevents silent value changes that the screen reader doesn't announce
-        if event.type() == QEvent.KeyPress:
-            # The read date boxes step with plain Up and Down.
-            if isinstance(source, QComboBox) and source not in self._read_date_widgets():
-                key = event.key()
-                modifiers = event.modifiers()
-                if key in (Qt.Key_Up, Qt.Key_Down):
-                    # Only allow with Alt modifier (opens dropdown, screen reader announces)
-                    if not (modifiers & Qt.AltModifier):
-                        # Block plain arrow keys - beep to indicate blocked
-                        QApplication.beep()
-                        return True  # Consume the event
+        # The read date boxes step with plain Up and Down.
+        if (
+            isinstance(source, QComboBox)
+            and source not in self._read_date_widgets()
+            and blocks_plain_combo_arrow(event)
+        ):
+            QApplication.beep()
+            return True
 
         # Return False to let the event continue to the widget
         return super().eventFilter(source, event)
@@ -944,17 +939,26 @@ class BookDetailsWindow(AccessibleDialog):
         right_grid.setColumnStretch(1, 0)
         bottom_grid = _field_grid()
 
+        # Caption QLabels stay visible for sighted users. Empty accessible
+        # names stop JAWS from reading every "Title: Author: Plot: …" label
+        # when the dialog opens; each field keeps its own accessible name.
+        def _field_caption(text: str) -> QLabel:
+            lab = QLabel(text)
+            lab.setAccessibleName("")
+            lab.setAccessibleDescription("")
+            return lab
+
         # Title
-        title_label = QLabel("Title:")
+        title_label = _field_caption("Title:")
         self.title_edit = QLineEdit()
-        self.title_edit.setAccessibleName("")
+        self.title_edit.setAccessibleName("Title")
         self.title_edit.setAccessibleDescription("")
         title_label.setBuddy(self.title_edit)
         left_grid.addWidget(title_label, 0, 0, label_align)
         left_grid.addWidget(self.title_edit, 0, 1)
 
         # Author — view label and combo share the same grid cell
-        author_label = QLabel("Author:")
+        author_label = _field_caption("Author:")
         self.author_label_display = QLineEdit()
         self.author_label_display.setReadOnly(True)
         self.author_label_display.setAccessibleName("Author")
@@ -972,7 +976,7 @@ class BookDetailsWindow(AccessibleDialog):
         left_grid.addWidget(self.author_field_stack, 1, 1)
 
         # Plot — line list for review, text edit for editing
-        self.comments_label = QLabel("Plot:")
+        self.comments_label = _field_caption("Plot:")
         self.plot_review = PlotLineList()
         self.plot_review.setAccessibleName("Plot")
         self.comments_edit = QTextEdit()
@@ -1010,7 +1014,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.year_spin.setAccessibleName("Publication year")
         self.year_spin.setMaximumWidth(110)
 
-        time_label = QLabel("Time:")
+        time_label = _field_caption("Time:")
         time_label.setAlignment(label_align)
         self.time_edit = QLineEdit()
         self.time_edit.setInputMask("99:99;_")
@@ -1019,7 +1023,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.time_edit.setMaximumWidth(100)
         time_label.setBuddy(self.time_edit)
 
-        year_label = QLabel("Year:")
+        year_label = _field_caption("Year:")
         year_label.setBuddy(self.year_spin)
         right_grid.addWidget(year_label, 1, 0, label_align)
         right_grid.addWidget(self.year_spin, 1, 1)
@@ -1027,13 +1031,13 @@ class BookDetailsWindow(AccessibleDialog):
         right_grid.addWidget(self.time_edit, 2, 1)
 
         # Reader + Read date
-        reader_label = QLabel("Narrator:")
+        reader_label = _field_caption("Narrator:")
         reader_label.setAlignment(label_align)
         self.reader_edit = QLineEdit()
         self.reader_edit.setAccessibleName("Narrator")
         reader_label.setBuddy(self.reader_edit)
 
-        read_label = QLabel("Read date:")
+        read_label = _field_caption("Read date:")
         read_label.setAlignment(label_align)
         self._null_read_date = NULL_READ_QDATE
         # The date boxes offer the typed field's methods, so the masked code
@@ -1126,7 +1130,7 @@ class BookDetailsWindow(AccessibleDialog):
         bottom_grid.addWidget(self.reader_edit, 0, 1)
 
         # Series — view label and combo share the same grid cell
-        series_label = QLabel("Series:")
+        series_label = _field_caption("Series:")
         self.series_label_display = QLineEdit()
         self.series_label_display.setReadOnly(True)
         self.series_label_display.setAccessibleName("Book series")
@@ -1140,8 +1144,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.series_label_display, self.series_combo
         )
         series_label.setBuddy(self.series_label_display)
-        series_number_label = QLabel("#")
-        series_number_label.setAccessibleName("Series number")
+        series_number_label = _field_caption("#")
         self.series_number_edit = QLineEdit()
         self.series_number_edit.setMaxLength(9)
         self.series_number_edit.setValidator(
@@ -1162,7 +1165,7 @@ class BookDetailsWindow(AccessibleDialog):
         left_grid.addWidget(series_row_widget, 2, 1)
 
         # Genre — view label and combo share the same grid cell
-        genre_label = QLabel("Genre:")
+        genre_label = _field_caption("Genre:")
         self.genre_label_display = QLineEdit()
         self.genre_label_display.setReadOnly(True)
         self.genre_label_display.setAccessibleName("Genre")
@@ -1180,7 +1183,7 @@ class BookDetailsWindow(AccessibleDialog):
         left_grid.addWidget(self.genre_field_stack, 3, 1)
 
         # Collection — view label and combo share the same grid cell
-        collection_label = QLabel("Collection:")
+        collection_label = _field_caption("Collection:")
         self.collection_label_display = QLineEdit()
         self.collection_label_display.setReadOnly(True)
         self.collection_label_display.setAccessibleName("Collection")
@@ -1197,20 +1200,20 @@ class BookDetailsWindow(AccessibleDialog):
         bottom_grid.addWidget(self.collection_field_stack, 1, 1)
 
         # Files + Bitrate + Size
-        files_label = QLabel("Files:")
+        files_label = _field_caption("Files:")
         self.files_edit = QLineEdit()
         self.files_edit.setReadOnly(False)
         self.files_edit.setAccessibleName("Number of files")
         files_label.setBuddy(self.files_edit)
 
-        bitrate_label = QLabel("Bitrate:")
+        bitrate_label = _field_caption("Bitrate:")
         bitrate_label.setAlignment(label_align)
         self.bitrate_edit = QLineEdit()
         self.bitrate_edit.setReadOnly(False)
         self.bitrate_edit.setAccessibleName("Bitrate in kbps")
         bitrate_label.setBuddy(self.bitrate_edit)
 
-        size_label = QLabel("Size:")
+        size_label = _field_caption("Size:")
         size_label.setAlignment(label_align)
         self.size_edit = QLineEdit()
         self.size_edit.setReadOnly(False)
@@ -1223,7 +1226,7 @@ class BookDetailsWindow(AccessibleDialog):
         right_grid.addWidget(self.bitrate_edit, 6, 1)
 
         # Format + Source
-        format_label = QLabel("Format:")
+        format_label = _field_caption("Format:")
         self.format_combo = QComboBox()
         self.format_combo.setAccessibleName("File format")
         self._configure_field_combo(self.format_combo)
@@ -1241,7 +1244,7 @@ class BookDetailsWindow(AccessibleDialog):
         for label, value in format_items:
             self.format_combo.addItem(label, value)
 
-        source_label = QLabel("Source:")
+        source_label = _field_caption("Source:")
         source_label.setAlignment(label_align)
         self.source_edit = QLineEdit()
         self.source_edit.setReadOnly(False)
@@ -1270,14 +1273,14 @@ class BookDetailsWindow(AccessibleDialog):
         self.path_edit.setReadOnly(False)
         self.path_edit.setAccessibleName("File path")
 
-        added_label = QLabel("Added:")
+        added_label = _field_caption("Added:")
         added_label.setAlignment(label_align)
         self.added_edit = QLineEdit()
         self.added_edit.setReadOnly(True)
         self.added_edit.setAccessibleName("Date added to collection")
         self.added_edit.setMaximumWidth(150)
 
-        path_label = QLabel("Path:")
+        path_label = _field_caption("Path:")
         path_label.setBuddy(self.path_edit)
         self.browse_path_button = QPushButton("Browse")
         self.browse_path_button.setAccessibleName("Browse book path")
@@ -1301,7 +1304,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.errors_label = None
         self.errors_edit = None
         if self._keep_edit_mode:
-            self.errors_label = QLabel("Errors:")
+            self.errors_label = _field_caption("Errors:")
             self.errors_edit = QTextEdit()
             self.errors_edit.setReadOnly(True)
             self.errors_edit.setAccessibleName("Errors")
@@ -1325,7 +1328,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.listen_progress_edit.setAccessibleDescription(
             "Percent of the audiobook completed, when available."
         )
-        listen_label = QLabel("Listen progress:")
+        listen_label = _field_caption("Listen progress:")
         listen_label.setBuddy(self.listen_progress_edit)
         self.clear_listen_progress_button = QPushButton("Clear")
         self.clear_listen_progress_button.setAccessibleName("Clear listen progress")
@@ -1350,9 +1353,8 @@ class BookDetailsWindow(AccessibleDialog):
         self.want_to_read_checkbox.setAccessibleDescription(
             "Mark this book as one you want to read. Cleared when a read date is set."
         )
-        want_label = QLabel("Want to read:")
+        want_label = _field_caption("Want to read:")
         want_label.setBuddy(self.want_to_read_checkbox)
-        want_label.setAccessibleName("")
         right_grid.setColumnMinimumWidth(
             0, QFontMetrics(self.font()).horizontalAdvance("Listen progress:")
         )
@@ -1408,26 +1410,33 @@ class BookDetailsWindow(AccessibleDialog):
         columns.addLayout(left_grid, 1)
         columns.addLayout(right_grid, 0)
 
-        form_widget = QWidget()
-        form_layout = QVBoxLayout(form_widget)
-        form_layout.setContentsMargins(0, 0, 0, 0)
-        form_layout.setSpacing(15)
-        form_layout.addLayout(columns)
-        form_layout.addLayout(bottom_grid)
-
-        self.form_scroll = QScrollArea()
-        self.form_scroll.setWidget(form_widget)
-        self.form_scroll.setWidgetResizable(True)
-        self.form_scroll.setFrameShape(QFrame.NoFrame)
-        self.form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.form_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.form_scroll.setFocusPolicy(Qt.NoFocus)
-        self.form_scroll.setAccessibleName("Book details fields")
-        self.form_scroll.setAccessibleDescription(
-            "Book fields."
-        )
-        self.form_scroll.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        layout.addWidget(self.form_scroll)
+        # JAWS reads every label inside a scroll area as focus enters it, even
+        # with no accessible name, so with a screen reader the form sits
+        # directly in the window (same layout as Import Detail). The scroll
+        # area keeps the window on small screens at high zoom.
+        if is_screen_reader_active():
+            layout.addLayout(columns)
+            layout.addLayout(bottom_grid)
+        else:
+            form_widget = QWidget()
+            form_layout = QVBoxLayout(form_widget)
+            form_layout.setContentsMargins(0, 0, 0, 0)
+            form_layout.setSpacing(15)
+            form_layout.addLayout(columns)
+            form_layout.addLayout(bottom_grid)
+            self.form_scroll = QScrollArea()
+            self.form_scroll.setWidget(form_widget)
+            self.form_scroll.setWidgetResizable(True)
+            self.form_scroll.setFrameShape(QFrame.NoFrame)
+            self.form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            self.form_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.form_scroll.setFocusPolicy(Qt.NoFocus)
+            self.form_scroll.setAccessibleName("Book details fields")
+            self.form_scroll.setAccessibleDescription(
+                "Book fields."
+            )
+            self.form_scroll.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            layout.addWidget(self.form_scroll)
 
         # bd#4: Action buttons - New, Save, Delete (Prev/Next via Page Up/Down)
         button_layout = QHBoxLayout()
@@ -1472,8 +1481,11 @@ class BookDetailsWindow(AccessibleDialog):
         self.delete_button.setAccessibleDescription("Delete this book")
         self.delete_button.setFocusPolicy(Qt.StrongFocus)
         self.delete_button.clicked.connect(self.on_delete)
-        # Hide delete for new books (nothing to delete yet)
-        self.delete_button.setVisible(not self.is_new)
+        # Always start hidden. Showing Delete during setup_ui for an existing
+        # book briefly steals activation (focusWindowChanged None → dialog),
+        # so JAWS/NVDA can speak the main window title. Visibility is set
+        # later by _update_save_button_visibility().
+        self.delete_button.setVisible(False)
         self.delete_button.setDefault(False)
         self.delete_button.setAutoDefault(
             False
@@ -4082,68 +4094,79 @@ class BookDetailsWindow(AccessibleDialog):
             from src.web.web_fetch_service import fetch_web_metadata_for_book
 
             fetch = fetch_web_metadata_for_book(self.book, parent=self, refresh=0)
+            try:
+                if fetch.canceled:
+                    self.set_status(fetch.status_message, announce=True)
+                    QTimer.singleShot(0, self.title_edit.setFocus)
+                    return
 
-            if fetch.canceled:
-                self.set_status(fetch.status_message, announce=True)
-                QTimer.singleShot(0, self.title_edit.setFocus)
-                return
-
-            cleaned_web_data = fetch.cleaned_data
-            web_data = fetch.raw_data
-            if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
-                self.book, cleaned_web_data
-            ):
-                web_window = WebMetadataWindow(
-                    self.db,
-                    self.book,
-                    self.scaler,
-                    self.theme_manager,
-                    self,
-                    refresh_callback=self.load_book_data,
-                    web_data=web_data,
-                )
-                result = web_window.exec()
-                saved_message = getattr(web_window, "saved_message", "")
-                web_window.deleteLater()
-                if result == QDialog.Accepted:
-                    self._data_was_changed = True
-                    message = saved_message or "Web details applied successfully"
-                    self.set_status(message)
-
-                    def _focus_plot_then_announce():
-                        # Focus first: moving focus after announcing cuts the speech off.
-                        self._focus_plot()
-                        self.set_status(message, announce=True)
-
-                    QTimer.singleShot(0, _focus_plot_then_announce)
-            else:
-                if fetch.errors:
-                    status_msg = fetch.status_message
-                    no_web_text = fetch.dialog_text
-                elif cleaned_web_data:
-                    status_msg = "No new web information found for this book."
-                    no_web_text = (
-                        "Web sources were searched but no new information was found "
-                        "for this book. Existing metadata is already up to date."
+                cleaned_web_data = fetch.cleaned_data
+                web_data = fetch.raw_data
+                if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
+                    self.book, cleaned_web_data
+                ):
+                    web_window = WebMetadataWindow(
+                        self.db,
+                        self.book,
+                        self.scaler,
+                        self.theme_manager,
+                        self,
+                        refresh_callback=self.load_book_data,
+                        web_data=web_data,
                     )
+                    # Show Web Metadata before closing progress so JAWS does not
+                    # speak Book Details between the two windows.
+                    web_window.show()
+                    web_window.raise_()
+                    web_window.activateWindow()
+                    fetch.dismiss_progress()
+                    result = web_window.exec()
+                    saved_message = getattr(web_window, "saved_message", "")
+                    web_window.deleteLater()
+                    if result == QDialog.Accepted:
+                        self._data_was_changed = True
+                        message = saved_message or "Web details applied successfully"
+                        self.set_status(message)
+
+                        def _focus_plot_then_announce():
+                            # Focus first: moving focus after announcing cuts the speech off.
+                            self._focus_plot()
+                            self.set_status(message, announce=True)
+
+                        QTimer.singleShot(0, _focus_plot_then_announce)
                 else:
-                    status_msg = fetch.status_message or "No web data found for this book."
-                    no_web_text = fetch.dialog_text or (
-                        "No information found for this book in any web source."
+                    if fetch.errors:
+                        status_msg = fetch.status_message
+                        no_web_text = fetch.dialog_text
+                    elif cleaned_web_data:
+                        status_msg = "No new web information found for this book."
+                        no_web_text = (
+                            "Web sources were searched but no new information was found "
+                            "for this book. Existing metadata is already up to date."
+                        )
+                    else:
+                        status_msg = (
+                            fetch.status_message or "No web data found for this book."
+                        )
+                        no_web_text = fetch.dialog_text or (
+                            "No information found for this book in any web source."
+                        )
+                    fetch.dismiss_progress()
+                    self.set_status(status_msg, announce=True)
+                    exec_styled_message_box(
+                        self,
+                        self.scaler.get_scaled_size(20),
+                        icon=QMessageBox.Information,
+                        title=(
+                            "Web Source Unavailable"
+                            if "rate limited" in (status_msg or "").lower()
+                            else "No Web Data Found"
+                        ),
+                        text=no_web_text,
                     )
-                self.set_status(status_msg, announce=True)
-                exec_styled_message_box(
-                    self,
-                    self.scaler.get_scaled_size(20),
-                    icon=QMessageBox.Information,
-                    title=(
-                        "Web Source Unavailable"
-                        if "rate limited" in (status_msg or "").lower()
-                        else "No Web Data Found"
-                    ),
-                    text=no_web_text,
-                )
-                QTimer.singleShot(0, self.title_edit.setFocus)
+                    QTimer.singleShot(0, self.title_edit.setFocus)
+            finally:
+                fetch.dismiss_progress()
         except Exception as e:
             import traceback
 

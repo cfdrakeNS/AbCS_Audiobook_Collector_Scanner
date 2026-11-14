@@ -122,3 +122,64 @@ def test_mapping_table_field_order_plot_last(
     assert labels[-1] == "Plot"
     assert "Plot" not in labels[:-1]
     window.close()
+
+
+def _key(key, modifiers=None):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    if modifiers is None:
+        modifiers = Qt.NoModifier
+    return QKeyEvent(QEvent.KeyPress, key, modifiers)
+
+
+def test_collection_combo_arrows_blocked_without_alt(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings, monkeypatch
+):
+    from PySide6.QtCore import Qt
+
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    combo = window.collection_combo
+    try:
+        beeps = []
+        monkeypatch.setattr(
+            "src.ui.book_list_import_window.QApplication.beep",
+            lambda: beeps.append(1),
+        )
+        assert window.eventFilter(combo, _key(Qt.Key_Down)) is True
+        assert window.eventFilter(combo, _key(Qt.Key_Up)) is True
+        assert beeps == [1, 1]
+        assert (
+            window.eventFilter(combo, _key(Qt.Key_Down, Qt.AltModifier)) is True
+        )
+    finally:
+        window.close()
+
+
+def test_book_list_import_dialog_matches_import_quiet_naming(
+    qtbot, temp_db, ui_scaler, theme_manager, isolated_qsettings, monkeypatch
+):
+    """Empty dialog name/description like Import; captions not exposed as text."""
+    from PySide6.QtWidgets import QLabel
+
+    from src.accessibility import screen_reader
+
+    monkeypatch.setattr(screen_reader, "is_screen_reader_active", lambda: True)
+    window = BookListImportWindow(temp_db, ui_scaler, theme_manager)
+    qtbot.addWidget(window)
+    try:
+        assert window.accessibleName() == ""
+        assert window.accessibleDescription() == ""
+        assert window.field_mappings == {}
+        captions = [
+            label
+            for label in window.findChildren(QLabel)
+            if label.text().replace("&", "") in ("Collection:", "File:")
+        ]
+        assert captions
+        for label in captions:
+            # Zero-width space: empty name falls back to the visible QLabel text.
+            assert label.accessibleName() == "\u200b", label.text()
+    finally:
+        window.close()

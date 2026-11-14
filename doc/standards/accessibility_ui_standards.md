@@ -33,7 +33,7 @@ Mandatory for any new or changed window, dialog, footer button, combo, or status
 - Opening a progress window from a window: show, raise, activate, and focus the progress window **before** disabling the caller's buttons. Disabling the focused button first moves focus to the next control (for example an instructions label), and the screen reader reads it.
 - Modal completion after background work: `raise_()` + `activateWindow()` + focus on the **default button** before announce (learned from fetch/Calibre issues).
 - Worker threads must not touch widgets. Progress/UI updates go through a **GUI-thread `QObject` bridge** with `QueuedConnection` to `@Slot` methods — plain Python callables are not enough.
-- Block unmapped Alt+letter in text fields (`is_unmapped_alt_letter`). Editable combos: block plain Up/Down; allow with Alt (Preferences / Book Details / Update pattern).
+- Block unmapped Alt+letter in text fields (`is_unmapped_alt_letter`). Combos that hold book or preference values: block plain Up/Down via [`blocks_plain_combo_arrow`](../../src/accessibility/key_filters.py) (or the same rule inline); change with Alt+Up/Down or the mouse. Read-date Year/Month/Day boxes are the exception and keep plain stepping. Sliders (Preferences zoom) keep plain arrows.
 - No global Enter/Return shortcuts that steal default button activation.
 - Help: F1 shortcuts; Shift+F1 process help via [`help_router.py`](../../src/ui/help_router.py); ship or update `help_docs/` with the feature.
 
@@ -53,6 +53,8 @@ These come from the JAWS and NVDA pass on branch `a11y-fixes`, on Windows 11 Pro
 - If Tab would leave a table and the next control is hidden, keep focus on the current cell. The main table does this when no footer button is showing.
 - Selecting many table rows uses [`rows_to_selection`](../../src/ui/table_selection.py): one range per run of consecutive rows, not one selection per cell.
 - Speech of the main window, the book table, and the selected book when a dialog closes is expected. Treat it as a bug only when that speech cuts off a message the user still needs, or when focus goes to the wrong window. Web Metadata stores `saved_message` and the caller announces it after focus is back.
+- Long forms (Book Details, Web Metadata): when a screen reader is active, put the form widget directly in the window layout — do not wrap it in a named `QScrollArea`. JAWS reads every label inside a named scroll area on focus entry. Sighted layouts keep the scroll area. Visible caption `QLabel`s use accessible name U+200B (zero-width space); an empty name still falls back to the label text.
+- Progress → next dialog handoff: [`fetch_web_metadata_for_book`](../../src/web/web_fetch_service.py) leaves the wait dialog open on `WebFetchResult.progress_dialog`. The caller shows, raises, and activates the next window (Web Metadata or a message box), then calls `dismiss_progress()`. Closing progress first lets JAWS speak the owner between the two windows. Callers use `try`/`finally` so a cancel or error still dismisses.
 
 Still not on every window:
 

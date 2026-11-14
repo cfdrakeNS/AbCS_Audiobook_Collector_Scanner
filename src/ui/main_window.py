@@ -5151,63 +5151,72 @@ class MainWindow(QMainWindow):
         from src.web.web_fetch_service import fetch_web_metadata_for_book
 
         fetch = fetch_web_metadata_for_book(book, parent=self, refresh=0)
+        try:
+            if fetch.canceled:
+                self.set_status(fetch.status_message, announce=True, timeout_ms=5000)
+                self._restore_table_focus_context(focus_ctx)
+                return
 
-        if fetch.canceled:
-            self.set_status(fetch.status_message, announce=True, timeout_ms=5000)
+            cleaned_web_data = fetch.cleaned_data
+            web_data = fetch.raw_data
+            if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
+                book, cleaned_web_data
+            ):
+                dialog = WebMetadataWindow(
+                    self.db,
+                    book,
+                    self.scaler,
+                    self.theme_manager,
+                    parent=self,
+                    refresh_callback=self.refresh_books,
+                    web_data=web_data,
+                )
+                # Show Web Metadata before closing progress so JAWS does not
+                # speak the main window between the two dialogs.
+                dialog.show()
+                dialog.raise_()
+                dialog.activateWindow()
+                fetch.dismiss_progress()
+                result = dialog.exec()
+                saved_message = getattr(dialog, "saved_message", "")
+                dialog.deleteLater()
+                self._restore_table_focus_context(focus_ctx)
+                if result == QDialog.Accepted and saved_message:
+                    self._announce_after_return(saved_message)
+                return
+
+            if fetch.errors:
+                no_data_text = fetch.dialog_text
+                status_msg = fetch.status_message
+            elif cleaned_web_data:
+                no_data_text = (
+                    "Web sources were searched but no new information was found "
+                    "for this book. Existing metadata is already up to date."
+                )
+                status_msg = "No new web information found for this book."
+            else:
+                no_data_text = fetch.dialog_text or (
+                    "No information found for this book in any web source."
+                )
+                status_msg = fetch.status_message or "No web data found for this book."
+
+            fetch.dismiss_progress()
+            exec_styled_message_box(
+                self,
+                self.scaler.get_scaled_size(20),
+                icon=QMessageBox.Information,
+                title=(
+                    "Web Source Unavailable"
+                    if "rate limited" in (status_msg or "").lower()
+                    else "No Web Data Found"
+                ),
+                text=no_data_text,
+            )
+
+            self.set_status(status_msg, announce=True, timeout_ms=5000)
             self._restore_table_focus_context(focus_ctx)
-            return
-
-        cleaned_web_data = fetch.cleaned_data
-        web_data = fetch.raw_data
-        if cleaned_web_data and WebMetadataWindow.web_data_offers_changes(
-            book, cleaned_web_data
-        ):
-            dialog = WebMetadataWindow(
-                self.db,
-                book,
-                self.scaler,
-                self.theme_manager,
-                parent=self,
-                refresh_callback=self.refresh_books,
-                web_data=web_data,
-            )
-            result = dialog.exec()
-            saved_message = getattr(dialog, "saved_message", "")
-            dialog.deleteLater()
-            self._restore_table_focus_context(focus_ctx)
-            if result == QDialog.Accepted and saved_message:
-                self._announce_after_return(saved_message)
-            return
-
-        if fetch.errors:
-            no_data_text = fetch.dialog_text
-            status_msg = fetch.status_message
-        elif cleaned_web_data:
-            no_data_text = (
-                "Web sources were searched but no new information was found "
-                "for this book. Existing metadata is already up to date."
-            )
-            status_msg = "No new web information found for this book."
-        else:
-            no_data_text = fetch.dialog_text or (
-                "No information found for this book in any web source."
-            )
-            status_msg = fetch.status_message or "No web data found for this book."
-
-        exec_styled_message_box(
-            self,
-            self.scaler.get_scaled_size(20),
-            icon=QMessageBox.Information,
-            title=(
-                "Web Source Unavailable"
-                if "rate limited" in (status_msg or "").lower()
-                else "No Web Data Found"
-            ),
-            text=no_data_text,
-        )
-
-        self.set_status(status_msg, announce=True, timeout_ms=5000)
-        self._restore_table_focus_context(focus_ctx)
+        finally:
+            fetch.dismiss_progress()
 
     def _clear_book_table_selection(self) -> None:
         """Leave selection mode after a batch action, same as Update."""

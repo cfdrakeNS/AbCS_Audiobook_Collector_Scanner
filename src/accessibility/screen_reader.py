@@ -3,6 +3,8 @@ Screen Reader Detection Utility
 Detects if a screen reader is running on Windows or Linux.
 """
 
+import time
+
 # Make psutil optional for Linux compatibility
 try:
     import psutil
@@ -57,3 +59,21 @@ def is_screen_reader_active():
     Detects Windows screen readers (JAWS/NVDA/Narrator) and Linux Orca.
     """
     return bool(get_active_screen_reader())
+
+
+_CACHE_SECONDS = 5.0
+_cached_active = None
+_cached_at = 0.0
+
+
+def is_screen_reader_active_cached(max_age_s: float = _CACHE_SECONDS) -> bool:
+    """is_screen_reader_active, re-checked at most every ``max_age_s`` seconds.
+
+    For checks on every key press: the full check scans every running process.
+    """
+    global _cached_active, _cached_at
+    now = time.monotonic()
+    if _cached_active is None or now - _cached_at >= max_age_s:
+        _cached_active = is_screen_reader_active()
+        _cached_at = now
+    return _cached_active

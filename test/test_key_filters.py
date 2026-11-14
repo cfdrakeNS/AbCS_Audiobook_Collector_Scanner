@@ -5,7 +5,10 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 
-from src.accessibility.key_filters import is_unmapped_alt_letter
+import pytest
+
+from src.accessibility import screen_reader
+from src.accessibility.key_filters import blocks_plain_combo_arrow, is_unmapped_alt_letter
 
 
 def _key_press(key: int, modifiers: Qt.KeyboardModifier = Qt.NoModifier) -> QKeyEvent:
@@ -45,3 +48,30 @@ def test_alt_plus_non_letter_non_digit_is_not_unmapped(qapp):
 def test_extra_modifiers_with_alt_are_not_treated_as_alt_only(qapp):
     event = _key_press(Qt.Key_A, Qt.AltModifier | Qt.ShiftModifier)
     assert is_unmapped_alt_letter(event, set()) is False
+
+
+def test_plain_combo_arrow_always_blocked_without_alt(qapp):
+    for key in (Qt.Key_Up, Qt.Key_Down):
+        assert blocks_plain_combo_arrow(_key_press(key)) is True
+        assert blocks_plain_combo_arrow(_key_press(key, Qt.AltModifier)) is False
+    assert blocks_plain_combo_arrow(_key_press(Qt.Key_Left)) is False
+    release = QKeyEvent(QEvent.KeyRelease, Qt.Key_Down, Qt.NoModifier)
+    assert blocks_plain_combo_arrow(release) is False
+
+
+def test_screen_reader_cache_rechecks_after_max_age(monkeypatch):
+    checks = []
+    clock = {"now": 100.0}
+    monkeypatch.setattr(screen_reader, "_cached_active", None)
+    monkeypatch.setattr(screen_reader.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(
+        screen_reader, "is_screen_reader_active", lambda: checks.append(1) or len(checks) == 1
+    )
+
+    assert screen_reader.is_screen_reader_active_cached() is True
+    clock["now"] += 4.9
+    assert screen_reader.is_screen_reader_active_cached() is True
+    assert len(checks) == 1
+    clock["now"] += 0.2
+    assert screen_reader.is_screen_reader_active_cached() is False
+    assert len(checks) == 2

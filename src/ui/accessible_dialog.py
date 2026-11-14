@@ -96,12 +96,36 @@ class AccessibleDialog(QDialog):
                 _focus_refire_delay_ms(), self._refire_focus_for_screen_reader
             )
 
+    def _screen_reader_focus_hold(self):
+        """Tiny in-dialog widget used only to pulse focus without leaving the window."""
+        holder = getattr(self, "_sr_focus_hold", None)
+        if holder is not None:
+            return holder
+        from PySide6.QtWidgets import QWidget
+
+        holder = QWidget(self)
+        holder.setObjectName("srFocusHold")
+        holder.setFixedSize(1, 1)
+        holder.move(0, 0)
+        holder.setFocusPolicy(Qt.StrongFocus)
+        holder.setAccessibleName("")
+        holder.setAccessibleDescription("")
+        holder.show()
+        self._sr_focus_hold = holder
+        return holder
+
     def _refire_focus_for_screen_reader(self):
         if not self.isVisible():
             return
         widget = self.focusWidget()
         if widget is not None and widget is not self:
-            widget.clearFocus()
+            # Do not clearFocus() to nothing: with no focused control JAWS can
+            # fall back to the Win32 owner (main window), speak its title and
+            # table, then re-read this dialog. Pulse via an in-dialog holder
+            # so focus stays inside this window for the whole refire.
+            hold = self._screen_reader_focus_hold()
+            hold.show()
+            hold.setFocus(Qt.OtherFocusReason)
             widget.setFocus(Qt.OtherFocusReason)
         else:
             self.setFocus(Qt.OtherFocusReason)

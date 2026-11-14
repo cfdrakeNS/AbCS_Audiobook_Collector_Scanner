@@ -52,8 +52,110 @@ def test_book_details_plot_line_fits_at_extra_large(
         ui_scaler.set_scale(previous)
 
 
-def test_book_details_initial_size_within_screen(temp_db, qapp, ui_scaler, theme_manager):
+def _screen_reader_running(monkeypatch, running: bool) -> None:
+    monkeypatch.setattr(
+        "src.accessibility.screen_reader.is_screen_reader_active", lambda: running
+    )
+
+
+def test_book_details_form_scroll_only_without_screen_reader(
+    temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    """With a screen reader the form is not in a scroll area, which JAWS reads whole."""
+    from PySide6.QtWidgets import QScrollArea
+
+    books = _ensure_sample_books(temp_db, count=1)
+    for running in (True, False):
+        _screen_reader_running(monkeypatch, running)
+        window = BookDetailsWindow(
+            temp_db, ui_scaler, book=books[0], parent=None, theme_manager=theme_manager
+        )
+        try:
+            scrolls = [
+                s for s in window.findChildren(QScrollArea)
+                if s.widget() is not None and s.widget().isAncestorOf(window.title_edit)
+            ]
+            assert hasattr(window, "form_scroll") is (not running)
+            assert bool(scrolls) is (not running)
+        finally:
+            window.close()
+
+
+def test_book_details_delete_visibility_after_init(
+    temp_db, ui_scaler, theme_manager
+):
+    """Delete is shown only after init via _update_save_button_visibility.
+
+    Showing it during setup_ui for an existing book steals activation so a
+    screen reader can speak the main window title when Book Details opens.
+    """
+    books = _ensure_sample_books(temp_db, count=1)
+
+    # isHidden() reflects setVisible; isVisible() is False until the dialog shows.
+    existing = BookDetailsWindow(
+        temp_db, ui_scaler, book=books[0], parent=None, theme_manager=theme_manager
+    )
+    try:
+        assert not existing.delete_button.isHidden()
+        assert not existing._in_edit_mode
+    finally:
+        existing.close()
+
+    kept = BookDetailsWindow(
+        temp_db,
+        ui_scaler,
+        book=books[0],
+        parent=None,
+        theme_manager=theme_manager,
+        keep_edit_mode=True,
+    )
+    try:
+        assert kept.delete_button.isHidden()
+        assert kept._in_edit_mode
+    finally:
+        kept.close()
+
+    new = BookDetailsWindow(
+        temp_db, ui_scaler, parent=None, theme_manager=theme_manager
+    )
+    try:
+        assert new.delete_button.isHidden()
+        assert new.is_new
+    finally:
+        new.close()
+
+
+def test_book_details_field_captions_have_empty_accessible_names(
+    temp_db, ui_scaler, theme_manager, monkeypatch
+):
+    """Caption labels keep visible text but empty accessible names for JAWS."""
+    from PySide6.QtWidgets import QLabel
+
+    _screen_reader_running(monkeypatch, True)
+    books = _ensure_sample_books(temp_db, count=1)
+    window = BookDetailsWindow(
+        temp_db, ui_scaler, book=books[0], parent=None, theme_manager=theme_manager
+    )
+    try:
+        assert not hasattr(window, "form_scroll")
+        captions = [
+            label
+            for label in window.findChildren(QLabel)
+            if label.text().endswith(":") or label.text() == "#"
+        ]
+        assert captions
+        for label in captions:
+            assert label.accessibleName() == "", label.text()
+        assert window.title_edit.accessibleName() == "Title"
+    finally:
+        window.close()
+
+
+def test_book_details_initial_size_within_screen(
+    temp_db, qapp, ui_scaler, theme_manager, monkeypatch
+):
     """High zoom must not size the dialog beyond the available screen (Linux VM)."""
+    _screen_reader_running(monkeypatch, False)
     books = _ensure_sample_books(temp_db, count=1)
     previous = ui_scaler.current_scale
     ui_scaler.set_scale(200)

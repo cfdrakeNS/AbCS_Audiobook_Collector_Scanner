@@ -46,7 +46,8 @@ from src.accessibility.accessible_events import (
     configure_status_bar_accessibility,
     read_status_bar_message,
 )
-from src.accessibility.key_filters import is_unmapped_alt_letter
+from src.accessibility.key_filters import blocks_plain_combo_arrow, is_unmapped_alt_letter
+from src.accessibility.screen_reader import is_screen_reader_active
 from src.accessibility.read_only_text import (
     PlotLineList,
     plot_text_equivalent,
@@ -274,11 +275,15 @@ class WebMetadataWindow(AccessibleDialog):
                 QApplication.beep()
                 return True  # Consume the event
 
-            if source is self.plot_alternatives and key in (Qt.Key_Up, Qt.Key_Down):
-                if modifiers & Qt.AltModifier:
-                    self.plot_alternatives.showPopup()
-                else:
-                    QApplication.beep()
+            if source is self.plot_alternatives and blocks_plain_combo_arrow(event):
+                QApplication.beep()
+                return True
+            if (
+                source is self.plot_alternatives
+                and key in (Qt.Key_Up, Qt.Key_Down)
+                and modifiers & Qt.AltModifier
+            ):
+                self.plot_alternatives.showPopup()
                 return True
 
         if source is self.plot_alternatives and event.type() == QEvent.Wheel:
@@ -334,6 +339,9 @@ class WebMetadataWindow(AccessibleDialog):
 
             # Left column - Current data
             left_label = QLabel(label_text)
+            # Visible caption only; empty name falls back to QLabel text for JAWS.
+            left_label.setAccessibleName("\u200b")
+            left_label.setAccessibleDescription("")
             left_label.setMinimumWidth(80)
             left_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             row_layout.addWidget(left_label)
@@ -343,6 +351,8 @@ class WebMetadataWindow(AccessibleDialog):
 
             # Right column - Web data label (initially hidden)
             web_label = QLabel("Web")
+            web_label.setAccessibleName("\u200b")
+            web_label.setAccessibleDescription("")
             web_label.setMinimumWidth(80)
             web_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             web_label.setVisible(False)
@@ -455,6 +465,8 @@ class WebMetadataWindow(AccessibleDialog):
 
         # Plot field - always visible to maintain layout
         plot_label = QLabel("&Plot:")
+        plot_label.setAccessibleName("\u200b")
+        plot_label.setAccessibleDescription("")
         plot_label.setFocusPolicy(Qt.NoFocus)
         self.plot_edit = PlotLineList(self)
         self.plot_edit.setAccessibleName("Plot")
@@ -477,6 +489,8 @@ class WebMetadataWindow(AccessibleDialog):
         plot_content_layout.setSpacing(4)
         plot_content_layout.addWidget(self.plot_edit)
         self.plot_alternatives_label = QLabel("Other plots:")
+        self.plot_alternatives_label.setAccessibleName("\u200b")
+        self.plot_alternatives_label.setAccessibleDescription("")
         self.plot_alternatives_label.setVisible(False)
         self.plot_alternatives = QComboBox()
         self.plot_alternatives.setAccessibleName("Other plots")
@@ -498,6 +512,8 @@ class WebMetadataWindow(AccessibleDialog):
         # Rating field
         rating_layout = QHBoxLayout()
         rating_label = QLabel("Rating:")
+        rating_label.setAccessibleName("\u200b")
+        rating_label.setAccessibleDescription("")
         rating_label.setFocusPolicy(Qt.NoFocus)
         self.rating_edit = QLineEdit()
         self.rating_edit.setAccessibleName("Rating")
@@ -569,19 +585,23 @@ class WebMetadataWindow(AccessibleDialog):
         self.form_widget.setLayout(self.main_layout)
         self.form_widget.setAutoFillBackground(True)
 
-        self.form_scroll = QScrollArea()
-        self.form_scroll.setWidget(self.form_widget)
-        self.form_scroll.setWidgetResizable(True)
-        self.form_scroll.setFrameShape(QFrame.NoFrame)
-        self.form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.form_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.form_scroll.setFocusPolicy(Qt.NoFocus)
-        self.form_scroll.setAccessibleName("Web metadata fields")
-        self.form_scroll.setAccessibleDescription(
-            "Web metadata fields."
-        )
-
-        layout.addWidget(self.form_scroll, 1)
+        # JAWS reads every label inside a named scroll area on focus entry; with
+        # a screen reader the form sits directly in the window (Book Details).
+        if is_screen_reader_active():
+            layout.addWidget(self.form_widget, 1)
+        else:
+            self.form_scroll = QScrollArea()
+            self.form_scroll.setWidget(self.form_widget)
+            self.form_scroll.setWidgetResizable(True)
+            self.form_scroll.setFrameShape(QFrame.NoFrame)
+            self.form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            self.form_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.form_scroll.setFocusPolicy(Qt.NoFocus)
+            self.form_scroll.setAccessibleName("Web metadata fields")
+            self.form_scroll.setAccessibleDescription(
+                "Web metadata fields."
+            )
+            layout.addWidget(self.form_scroll, 1)
         layout.addLayout(button_layout)
 
         # Set explicit tab order for logical keyboard navigation
@@ -795,6 +815,7 @@ class WebMetadataWindow(AccessibleDialog):
         self.refetch_button.setEnabled(False)
         status_msg = "Re-fetch complete - No plot"
         focus_after = self.title_edit
+        fetch = None
         try:
             fetch = fetch_web_metadata_for_book(
                 self._refetch_book,
@@ -827,6 +848,8 @@ class WebMetadataWindow(AccessibleDialog):
         except Exception as exc:
             status_msg = f"Re-fetch error: {exc}"
         finally:
+            if fetch is not None:
+                fetch.dismiss_progress()
             self.refetch_button.setEnabled(True)
             self._finish_refetch_ui(status_msg, focus_after)
 
