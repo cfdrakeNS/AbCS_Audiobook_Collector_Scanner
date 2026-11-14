@@ -177,12 +177,19 @@ def _capture_dialog(monkeypatch, result):
     return captured
 
 
+def _screen_reader_running(monkeypatch, running: bool) -> None:
+    monkeypatch.setattr(
+        "src.accessibility.screen_reader.is_screen_reader_active", lambda: running
+    )
+
+
 def test_read_date_dialog_uses_date_combo_boxes(main_window, monkeypatch):
-    """No text field: Year, Month, and Day combo boxes, then OK and Clear."""
+    """Screen reader: no text field, Year, Month, and Day combo boxes, then OK and Clear."""
     from PySide6.QtWidgets import QComboBox, QDialog, QLineEdit
 
     window = main_window
     _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, True)
     captured = _capture_dialog(monkeypatch, QDialog.Rejected)
     alpha_row = next(i for i, b in enumerate(window.books) if b.title == "Alpha Book")
     window.show_read_date_dialog(alpha_row)
@@ -199,12 +206,35 @@ def test_read_date_dialog_uses_date_combo_boxes(main_window, monkeypatch):
     assert "Alt+Down" not in dlg.accessibleDescription()
 
 
-def test_read_date_dialog_ok_saves_chosen_date(main_window, monkeypatch):
+def test_read_date_dialog_uses_calendar_without_screen_reader(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+    from PySide6.QtWidgets import QComboBox, QDateEdit, QDialog
+
+    window = main_window
+    _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, False)
+    captured = _capture_dialog(monkeypatch, QDialog.Rejected)
+    alpha_row = next(i for i, b in enumerate(window.books) if b.title == "Alpha Book")
+    window.show_read_date_dialog(alpha_row)
+
+    dlg = captured["dialog"]
+    assert dlg.findChildren(QComboBox) == []
+    assert isinstance(dlg.date_fields, QDateEdit)
+    assert dlg.date_fields.calendarPopup()
+    assert dlg.date_fields.accessibleName() == "Date read"
+    assert dlg.date_fields.date().toString("yyyy-MM-dd") == "2020-01-01"
+    assert dlg.date_fields.maximumDate() == QDate.currentDate()
+    assert dlg.clear_button.accessibleName() == "Clear"
+
+
+@pytest.mark.parametrize("screen_reader", [True, False])
+def test_read_date_dialog_ok_saves_chosen_date(main_window, monkeypatch, screen_reader):
     from PySide6.QtCore import QDate
     from PySide6.QtWidgets import QDialog
 
     window = main_window
     _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, screen_reader)
     monkeypatch.setattr(
         "src.ui.main_window.exec_styled_message_box",
         lambda *a, **kw: pytest.fail("OK must not prompt"),
@@ -228,6 +258,7 @@ def test_read_date_dialog_refuses_future_date(main_window, monkeypatch):
 
     window = main_window
     _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, True)
     warnings = []
     monkeypatch.setattr(
         "src.accessibility.masked_date_fields.warn_masked_field_error",
@@ -249,17 +280,103 @@ def test_read_date_dialog_refuses_future_date(main_window, monkeypatch):
     assert BookQueries(window.db).get_by_id(book.book_id).read_date == before
 
 
-def test_recently_added_dialog_uses_date_combo_boxes(main_window, monkeypatch):
+@pytest.mark.parametrize("reply", [QMessageBox.Yes, QMessageBox.No])
+def test_read_date_ok_confirms_with_screen_reader(main_window, monkeypatch, reply):
     from PySide6.QtCore import QDate
-    from PySide6.QtWidgets import QComboBox, QDialog, QLineEdit
 
     window = main_window
     _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, True)
+    prompts = []
+
+    def answer(*_a, **kw):
+        prompts.append(kw)
+        return reply
+
+    monkeypatch.setattr("src.ui.main_window.exec_styled_message_box", answer)
+
+    def choose(dialog):
+        dialog.date_fields.setDate(QDate(2022, 2, 28))
+        dialog.accept()
+        return dialog.result()
+
+    _capture_dialog(monkeypatch, choose)
+    book = window.books[0]
+    before = BookQueries(window.db).get_by_id(book.book_id).read_date
+    window.show_read_date_dialog(0)
+
+    assert [p["title"] for p in prompts] == ["Confirm Read Date"]
+    assert f"Mark '{book.title}' as read on 2022-02-28?" == prompts[0]["text"]
+    assert prompts[0]["default_button"] == QMessageBox.No
+    saved = BookQueries(window.db).get_by_id(book.book_id).read_date
+    if reply == QMessageBox.Yes:
+        assert str(saved) == "2022-02-28"
+    else:
+        assert saved == before
+
+
+def test_read_date_ok_does_not_confirm_without_screen_reader(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+
+    window = main_window
+    _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, False)
+    monkeypatch.setattr(
+        "src.ui.main_window.exec_styled_message_box",
+        lambda *a, **kw: pytest.fail("OK must not prompt without a screen reader"),
+    )
+
+    def choose(dialog):
+        dialog.date_fields.setDate(QDate(2022, 2, 28))
+        dialog.accept()
+        return dialog.result()
+
+    _capture_dialog(monkeypatch, choose)
+    book = window.books[0]
+    window.show_read_date_dialog(0)
+
+    assert str(BookQueries(window.db).get_by_id(book.book_id).read_date) == "2022-02-28"
+
+
+def test_recently_added_dialog_uses_date_combo_boxes(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+    from PySide6.QtWidgets import QComboBox, QDialog, QLineEdit, QStatusBar
+
+    window = main_window
+    _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, True)
 
     def choose(dialog):
         assert dialog.findChildren(QLineEdit) == []
         names = [c.accessibleName() for c in dialog.findChildren(QComboBox)]
         assert names == ["Year", "Month", "Day"]
+        assert dialog.ok_button.accessibleName() == "OK"
+        assert dialog.ok_button.isDefault()
+        status = dialog.findChild(QStatusBar)
+        assert status.currentMessage() == "Choose the date to filter by."
+        dialog.date_fields.setDate(QDate(2021, 5, 6))
+        dialog.ok_button.click()
+        return dialog.result()
+
+    _capture_dialog(monkeypatch, choose)
+    window.on_recently_added()
+
+    assert window.current_filter.date_added_since == date(2021, 5, 6)
+
+
+def test_recently_added_dialog_uses_calendar_without_screen_reader(main_window, monkeypatch):
+    from PySide6.QtCore import QDate
+    from PySide6.QtWidgets import QComboBox, QDateEdit, QDialog
+
+    window = main_window
+    _insert_focus_books(window)
+    _screen_reader_running(monkeypatch, False)
+
+    def choose(dialog):
+        assert dialog.findChildren(QComboBox) == []
+        assert isinstance(dialog.date_fields, QDateEdit)
+        assert dialog.date_fields.calendarPopup()
+        assert dialog.date_fields.maximumDate() == QDate.currentDate()
         dialog.date_fields.setDate(QDate(2021, 5, 6))
         return QDialog.Accepted
 

@@ -743,6 +743,11 @@ def test_book_details_tab_order_includes_cover(temp_db, ui_scaler, theme_manager
         parent=None,
         theme_manager=theme_manager,
     )
+    read_date_stops = (
+        list(window.read_date.parts())
+        if window._read_date_is_combo
+        else [window.read_date]
+    )
     expected = [
         window.title_edit,
         window.author_label_display,
@@ -760,7 +765,7 @@ def test_book_details_tab_order_includes_cover(temp_db, ui_scaler, theme_manager
         window.bitrate_edit,
         window.reader_edit,
         window.collection_label_display,
-        window.read_date,
+        *read_date_stops,
         window.want_to_read_checkbox,
         window.size_edit,
         window.source_edit,

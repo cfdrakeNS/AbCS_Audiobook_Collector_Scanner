@@ -18,7 +18,19 @@ from src.ui.book_details import BookDetailsWindow
 def classic_fields(monkeypatch):
     """Spin box / date edit fields (no screen reader)."""
     monkeypatch.setattr("src.ui.book_details.make_year_field", lambda *a, **k: None)
-    monkeypatch.setattr("src.ui.book_details.make_date_field", lambda *a, **k: None)
+    monkeypatch.setattr("src.ui.book_details.make_date_combo_fields", lambda *a, **k: None)
+
+
+@pytest.fixture
+def date_combos(monkeypatch):
+    """Read date as Year, Month, and Day boxes (screen reader running)."""
+    from src.accessibility.date_combo_fields import DateComboFields
+
+    monkeypatch.setattr("src.ui.book_details.make_year_field", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "src.ui.book_details.make_date_combo_fields",
+        lambda parent=None, **k: DateComboFields(parent, **k),
+    )
 
 
 @pytest.fixture
@@ -385,6 +397,166 @@ def test_edit_mode_save_confirms_read_date(
         assert _stored_read_date(temp_db, books[0].book_id) == "2024-03-04"
     finally:
         window.close()
+
+
+# B. Read date as Year, Month, and Day boxes with a screen reader
+
+
+def _run_zero_timers(monkeypatch):
+    monkeypatch.setattr(
+        "src.ui.book_details.QTimer.singleShot",
+        lambda ms, fn: fn() if ms == 0 else None,
+    )
+
+
+def test_read_date_boxes_blank_book_and_tab_order(
+    temp_db, ui_scaler, theme_manager, date_combos
+):
+    from PySide6.QtWidgets import QComboBox
+
+    from src.accessibility.date_combo_fields import BLANK_TEXT, DateComboFields
+
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        assert isinstance(window.read_date, DateComboFields)
+        parts = window.read_date.parts()
+        assert [p.accessibleName() for p in parts] == ["Read year", "Read month", "Read day"]
+        assert all(isinstance(p, QComboBox) and not p.isEditable() for p in parts)
+        assert [p.currentText() for p in parts] == [BLANK_TEXT] * 3
+        assert window.read_date.text() == ""
+        assert window.clear_read_date_button is not None
+
+        chain = [*parts, window.clear_read_date_button, window.want_to_read_checkbox]
+        for first, second in zip(chain, chain[1:]):
+            widget = first.nextInFocusChain()
+            while not (widget.focusPolicy() & Qt.TabFocus) or not widget.isVisibleTo(window):
+                widget = widget.nextInFocusChain()
+            assert widget is second
+    finally:
+        window.close()
+
+
+def test_read_date_boxes_step_with_plain_arrows(
+    temp_db, ui_scaler, theme_manager, date_combos
+):
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        for part in window.read_date.parts():
+            assert window.eventFilter(part, _key(Qt.Key_Down)) is False
+        assert window.eventFilter(window.collection_combo, _key(Qt.Key_Down)) is True
+    finally:
+        window.close()
+
+
+def test_read_date_boxes_save_only_after_focus_leaves_all_three(
+    temp_db, ui_scaler, theme_manager, date_combos, prompts, monkeypatch
+):
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    _run_zero_timers(monkeypatch)
+    focus = {"widget": None}
+    monkeypatch.setattr(
+        "src.ui.book_details.QApplication.focusWidget", lambda: focus["widget"]
+    )
+    year, month, day = window.read_date.parts()
+    try:
+        window.read_date.setDate(QDate(2024, 1, 2))
+        focus["widget"] = month
+        window.eventFilter(year, QEvent(QEvent.FocusOut))
+        assert prompts.calls == []
+
+        focus["widget"] = window.title_edit
+        window.eventFilter(day, QEvent(QEvent.FocusOut))
+        assert [c["title"] for c in prompts.calls] == ["Confirm Read Date"]
+        assert _stored_read_date(temp_db, books[0].book_id) == "2024-01-02"
+    finally:
+        window.close()
+
+
+def test_read_date_boxes_refuse_future_date(
+    temp_db, ui_scaler, theme_manager, date_combos, prompts, monkeypatch
+):
+    warnings = []
+    monkeypatch.setattr(
+        "src.accessibility.masked_date_fields.warn_masked_field_error",
+        lambda parent, message, **kw: warnings.append(message),
+    )
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    _run_zero_timers(monkeypatch)
+    monkeypatch.setattr(
+        "src.ui.book_details.QApplication.focusWidget", lambda: window.title_edit
+    )
+    last_day = QDate(QDate.currentDate().year(), 12, 31)
+    if last_day <= QDate.currentDate():
+        pytest.skip("No later day left this year")
+    try:
+        window.read_date.setDate(last_day)
+        window.eventFilter(window.read_date.year, QEvent(QEvent.FocusOut))
+        assert len(warnings) == 1
+        assert "in the future" in warnings[0]
+        assert prompts.calls == []
+        assert _stored_read_date(temp_db, books[0].book_id) == ""
+    finally:
+        window.close()
+
+
+def test_read_date_boxes_clear_and_page_down(
+    temp_db, ui_scaler, theme_manager, date_combos, prompts
+):
+    from datetime import date
+
+    from src.accessibility.date_combo_fields import BLANK_TEXT
+
+    books = _make_books(temp_db, count=2)
+    BookQueries(temp_db).update_many([(books[0].book_id, date(2023, 5, 6))])
+    books = [BookQueries(temp_db).get_by_id(b.book_id) for b in books]
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        assert window.read_date.text() == "2023-05-06"
+        window._on_clear_read_date_clicked()
+        assert [c["title"] for c in prompts.calls] == ["Confirm Clear Read Date"]
+        assert _stored_read_date(temp_db, books[0].book_id) == ""
+        assert window.read_date.year.currentText() == BLANK_TEXT
+
+        prompts.calls.clear()
+        window.read_date.setDate(QDate(2024, 1, 2))
+        window.on_next()
+        assert len(prompts.calls) == 1
+        assert "as read on 2024-01-02" in prompts.calls[0]["text"]
+        assert _stored_read_date(temp_db, books[0].book_id) == "2024-01-02"
+        assert window.title_edit.text() == books[1].title
+        assert window.read_date.year.currentText() == BLANK_TEXT
+    finally:
+        window.close()
+
+
+def test_date_combo_fields_blank_rules(qapp):
+    from src.accessibility.date_combo_fields import BLANK_TEXT, DateComboFields
+
+    fields = DateComboFields(allow_blank=True)
+    fields.setNullDate(QDate(2000, 1, 1))
+    assert fields.is_blank()
+    assert fields.date() == QDate(2000, 1, 1)
+    assert fields.validated_date() is None
+
+    fields.year.setCurrentText("2019")
+    today = QDate.currentDate()
+    assert fields.month.currentIndex() == today.month() - 1
+    assert fields.date().year() == 2019
+    assert fields.text().startswith("2019-")
+
+    fields.month.setCurrentText(BLANK_TEXT)
+    assert [p.currentText() for p in fields.parts()] == [BLANK_TEXT] * 3
+    assert fields.text() == ""
+
+    fields.setDisallowFuture(True)
+    fields.setDate(QDate(today.year(), 12, 31))
+    if QDate(today.year(), 12, 31) > today:
+        with pytest.raises(ValueError, match="future"):
+            fields.validated_date()
 
 
 # 5 / 6. Alt+B in view mode, F1 rows from the central map

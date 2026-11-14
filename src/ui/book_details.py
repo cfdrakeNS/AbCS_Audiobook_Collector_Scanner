@@ -43,13 +43,13 @@ from src.accessibility.masked_date_fields import (
     classic_date_is_blank,
     configure_clearable_classic_date_edit,
     configure_no_future_date_edit,
-    make_date_field,
     make_year_field,
     set_classic_date_blank,
     use_masked_date_fields,
     validate_date_edit,
     validate_year_spin,
 )
+from src.accessibility.date_combo_fields import make_date_combo_fields
 from src.accessibility.read_only_text import (
     PlotLineList,
     _PLOT_LINE_WIDTH,
@@ -560,14 +560,11 @@ class BookDetailsWindow(AccessibleDialog):
             # Format, Year, and Read date treat Page Up/Down as value changes.
             # On this window those keys mean previous or next book.
             year_line = self.year_spin.lineEdit() if hasattr(self, "year_spin") else None
-            date_line = self.read_date.lineEdit() if hasattr(self, "read_date") else None
             if source in (
                 getattr(self, "format_combo", None),
                 getattr(self, "year_spin", None),
                 year_line,
-                getattr(self, "read_date", None),
-                date_line,
-            ):
+            ) or source in self._read_date_widgets():
                 if event.key() == Qt.Key_PageUp:
                     self.on_prev()
                 else:
@@ -644,12 +641,7 @@ class BookDetailsWindow(AccessibleDialog):
         # Check for FocusOut on relevant fields to sanitize input silently
         # Only sanitize if field has been modified (is dirty) - prevents unwanted prompts for save
         if event.type() == QEvent.FocusOut:
-            date_line = None
-            if hasattr(self, "read_date") and not getattr(
-                self, "_read_date_is_masked", False
-            ):
-                date_line = self.read_date.lineEdit()
-            if source is getattr(self, "read_date", None) or source is date_line:
+            if source in self._read_date_widgets():
                 QTimer.singleShot(0, self._commit_read_date_if_focus_left)
             year_line = None
             if hasattr(self, "year_spin") and hasattr(self.year_spin, "lineEdit"):
@@ -748,7 +740,8 @@ class BookDetailsWindow(AccessibleDialog):
         # Block plain Up/Down arrow keys on combo boxes - require Alt+Up/Down
         # This prevents silent value changes that the screen reader doesn't announce
         if event.type() == QEvent.KeyPress:
-            if isinstance(source, QComboBox):
+            # The read date boxes step with plain Up and Down.
+            if isinstance(source, QComboBox) and source not in self._read_date_widgets():
                 key = event.key()
                 modifiers = event.modifiers()
                 if key in (Qt.Key_Up, Qt.Key_Down):
@@ -1043,10 +1036,17 @@ class BookDetailsWindow(AccessibleDialog):
         read_label = QLabel("Read date:")
         read_label.setAlignment(label_align)
         self._null_read_date = NULL_READ_QDATE
-        date_masked = make_date_field(self, allow_blank=True, disallow_future=True)
+        # The date boxes offer the typed field's methods, so the masked code
+        # paths serve them too; _read_date_is_combo marks where they differ.
+        date_combos = make_date_combo_fields(
+            self,
+            allow_blank=True,
+            names=("Read year", "Read month", "Read day"),
+        )
         self.clear_read_date_button = None
-        if date_masked is not None:
-            self.read_date = date_masked
+        self._read_date_is_combo = date_combos is not None
+        if date_combos is not None:
+            self.read_date = date_combos
             self.read_date.setNullDate(self._null_read_date)
             self.read_date.setAccessibleName("Date read")
             self._read_date_is_masked = True
@@ -1103,14 +1103,14 @@ class BookDetailsWindow(AccessibleDialog):
             calendar = CustomCalendar(self, self.read_date, self._null_read_date)
             self.read_date.setCalendarWidget(calendar)
 
-            self.clear_read_date_button = QPushButton("Clear")
-            self.clear_read_date_button.setAccessibleName("Clear read date")
-            self.clear_read_date_button.setAccessibleDescription(
-                "Clear the read date for this book"
-            )
-            self.clear_read_date_button.setAutoDefault(False)
-            self.clear_read_date_button.setDefault(False)
-            self.clear_read_date_button.clicked.connect(self._on_clear_read_date_clicked)
+        self.clear_read_date_button = QPushButton("Clear")
+        self.clear_read_date_button.setAccessibleName("Clear read date")
+        self.clear_read_date_button.setAccessibleDescription(
+            "Clear the read date for this book"
+        )
+        self.clear_read_date_button.setAutoDefault(False)
+        self.clear_read_date_button.setDefault(False)
+        self.clear_read_date_button.clicked.connect(self._on_clear_read_date_clicked)
 
         configure_no_future_date_edit(
             self.read_date, null_date=self._null_read_date
@@ -1531,12 +1531,7 @@ class BookDetailsWindow(AccessibleDialog):
         self.setTabOrder(self.bitrate_edit, self.reader_edit)
         self.setTabOrder(self.reader_edit, self.collection_label_display)
         self.setTabOrder(self.collection_label_display, self.collection_combo)
-        self.setTabOrder(self.collection_combo, self.read_date)
-        if getattr(self, "clear_read_date_button", None) is not None:
-            self.setTabOrder(self.read_date, self.clear_read_date_button)
-            self.setTabOrder(self.clear_read_date_button, self.want_to_read_checkbox)
-        else:
-            self.setTabOrder(self.read_date, self.want_to_read_checkbox)
+        self._set_read_date_tab_order(self.collection_combo)
         self.setTabOrder(self.want_to_read_checkbox, self.size_edit)
         self.setTabOrder(self.size_edit, self.source_edit)
         self.setTabOrder(self.source_edit, self.added_edit)
@@ -1597,6 +1592,7 @@ class BookDetailsWindow(AccessibleDialog):
                     (
                         "Date as year dash month dash day, or blank."
                         if getattr(self, "_read_date_is_masked", False)
+                        and not getattr(self, "_read_date_is_combo", False)
                         else "Date this book was marked as read"
                     ),
                 ),
@@ -2173,13 +2169,19 @@ class BookDetailsWindow(AccessibleDialog):
                 calendar.installEventFilter(self)
 
     def _on_clear_read_date_clicked(self):
-        """Clear read date from the classic Clear button (works in view and edit)."""
-        if getattr(self, "_read_date_is_masked", False):
+        """Clear read date from the Clear button (works in view and edit)."""
+        if getattr(self, "_read_date_is_combo", False):
+            if self.read_date.is_blank():
+                self.set_status("Read date is already blank", announce=True)
+                return
+            self.read_date.setDate(self._null_read_date)
+        elif getattr(self, "_read_date_is_masked", False):
             return
-        if classic_date_is_blank(self.read_date):
-            self.set_status("Read date is already blank", announce=True)
-            return
-        set_classic_date_blank(self.read_date)
+        else:
+            if classic_date_is_blank(self.read_date):
+                self.set_status("Read date is already blank", announce=True)
+                return
+            set_classic_date_blank(self.read_date)
         self._commit_read_date()
         self.read_date.setFocus(Qt.TabFocusReason)
 
@@ -2249,7 +2251,7 @@ class BookDetailsWindow(AccessibleDialog):
             self, "_reverting_read_date", False
         ):
             return
-        if QApplication.focusWidget() is self.read_date:
+        if self._focus_inside_read_date(QApplication.focusWidget()):
             return
         if not validate_date_edit(
             self.read_date,
@@ -2262,12 +2264,32 @@ class BookDetailsWindow(AccessibleDialog):
             return
         self._commit_read_date()
 
+    def _read_date_widgets(self) -> tuple:
+        """Widgets that take keys and focus for the read date."""
+        field = getattr(self, "read_date", None)
+        if field is None:
+            return ()
+        if getattr(self, "_read_date_is_combo", False):
+            return field.parts()
+        line = field.lineEdit()
+        if line is None or line is field:
+            return (field,)
+        return (field, line)
+
     def _focus_inside_read_date(self, focus):
-        """True while focus is still in the date field or its calendar."""
+        """True while focus is still in the date field, its boxes, or its calendar or lists."""
         if focus is None:
             return False
         if focus is self.read_date:
             return True
+        if getattr(self, "_read_date_is_combo", False):
+            # An open box list is a popup window whose parent is the box.
+            widget = focus
+            while widget is not None:
+                if widget is self.read_date:
+                    return True
+                widget = widget.parentWidget()
+            return False
         if getattr(self, "_read_date_is_masked", False):
             return False
         line = self.read_date.lineEdit()
@@ -3408,7 +3430,7 @@ class BookDetailsWindow(AccessibleDialog):
             self.setTabOrder(self.series_number_edit, self.genre_combo)
             self.setTabOrder(self.genre_combo, self.plot_stack)
             self.setTabOrder(self.reader_edit, self.collection_combo)
-            self.setTabOrder(self.collection_combo, self.read_date)
+            self._set_read_date_tab_order(self.collection_combo)
         else:
             self.setTabOrder(self.title_edit, self.author_label_display)
             self.setTabOrder(self.author_label_display, self.series_label_display)
@@ -3416,12 +3438,21 @@ class BookDetailsWindow(AccessibleDialog):
             self.setTabOrder(self.series_number_edit, self.genre_label_display)
             self.setTabOrder(self.genre_label_display, self.plot_stack)
             self.setTabOrder(self.reader_edit, self.collection_label_display)
-            self.setTabOrder(self.collection_label_display, self.read_date)
-        if getattr(self, "clear_read_date_button", None) is not None:
-            self.setTabOrder(self.read_date, self.clear_read_date_button)
-            self.setTabOrder(self.clear_read_date_button, self.want_to_read_checkbox)
+            self._set_read_date_tab_order(self.collection_label_display)
+
+    def _set_read_date_tab_order(self, before):
+        """Tab from ``before`` through the read date, Clear, then Want to read.
+
+        Qt's setTabOrder on the date boxes' container skips Month and Day,
+        so each box is chained by itself.
+        """
+        if getattr(self, "_read_date_is_combo", False):
+            parts = self.read_date.parts()
         else:
-            self.setTabOrder(self.read_date, self.want_to_read_checkbox)
+            parts = (self.read_date,)
+        chain = (before, *parts, self.clear_read_date_button, self.want_to_read_checkbox)
+        for first, second in zip(chain, chain[1:]):
+            self.setTabOrder(first, second)
 
     def _set_fields_read_only(self, read_only: bool):
         """Set all non-combo fields to read-only or editable."""
@@ -3451,9 +3482,9 @@ class BookDetailsWindow(AccessibleDialog):
         # Reader
         self.reader_edit.setReadOnly(read_only)
         # Read date stays editable in view mode (like Want to read). Clear stays on.
-        self.read_date.setReadOnly(False)
-        if getattr(self, "clear_read_date_button", None) is not None:
-            self.clear_read_date_button.setEnabled(True)
+        if not getattr(self, "_read_date_is_combo", False):
+            self.read_date.setReadOnly(False)
+        self.clear_read_date_button.setEnabled(True)
         if getattr(self, "clear_listen_progress_button", None) is not None:
             self.clear_listen_progress_button.setEnabled(not self.is_new)
         # Files
