@@ -2234,11 +2234,19 @@ class BookDetailsWindow(AccessibleDialog):
             return
         # A message box took focus (Save or Escape already checked the year),
         # or the window is closing. Warning again would stack a second box.
+        # Focus left on a hidden window (closed Book Details in tests) must not
+        # suppress validation on the open dialog.
         modal = QApplication.activeModalWidget()
         if modal is not None and modal is not self:
             return
-        if focus is not None and focus.window() is not self:
-            return
+        if focus is not None:
+            other = focus.window()
+            if (
+                other is not None
+                and other is not self
+                and (other.isVisible() or isinstance(other, QMessageBox))
+            ):
+                return
         if self._year_matches_saved_value():
             return
         stored = getattr(self.book, "year", None) or self.year_spin.minimum()

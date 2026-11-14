@@ -120,9 +120,12 @@ def test_year_focus_out_skips_unchanged_value_in_edit_mode(
     )
     try:
         window.on_edit_mode()
+        # Leave the year field (and clear any leftover focus from earlier tests).
+        window.title_edit.setFocus()
         window._validate_year_on_focus_out()
         assert calls == []
         window.year_spin.setValue(1600)
+        window.title_edit.setFocus()
         window._validate_year_on_focus_out()
         assert len(calls) == 1
     finally:
