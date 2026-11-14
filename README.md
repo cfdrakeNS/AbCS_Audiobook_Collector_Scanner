@@ -52,7 +52,10 @@ python src/main.py
 
 On first launch, AbCS creates a SQLite database automatically. No manual schema setup is required.
 
-**Note for Windows Users:** As this is a new, free and source-available project, Windows SmartScreen may display a warning during installation. To bypass this, click **'More info'** on the blue popup window, and then click **'Run anyway.'** This is a standard security check for independent software.
+**Note for Windows users:** The AbCS installer is not digitally signed yet, so Windows may warn you about it or block it.
+
+- **"Windows protected your PC" (SmartScreen):** choose **More info**, then **Run anyway**. If there is no **Run anyway** button, open the Properties of the downloaded zip file before you extract it (select the file and press **Alt+Enter**, or right-click it and choose **Properties**). On the **General** tab, check **Unblock** and choose **OK**. Then extract the zip and run `AbCS-Setup.exe` again.
+- **Smart App Control:** on some Windows 11 PCs, Smart App Control blocks unsigned programs and offers no way to run them. AbCS cannot be installed on those PCs until it is signed. Smart App Control can be turned off in Windows Security, under **App & browser control**, but on many PCs it cannot be turned back on without resetting Windows. Turning it off only to install AbCS is not recommended.
 
 ## User documentation
 
