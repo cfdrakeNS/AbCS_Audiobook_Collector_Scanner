@@ -533,6 +533,10 @@ class PreviewWindow(AccessibleDialog):
         self._closing = False
         self._slider_dragging = False
         self._updating_slider_from_player = False
+        self._want_play = False
+        self._pending_seek_ms: int | None = None
+        self._continuing_playback = False
+        self._audio_devices = None
         self.setWindowModality(Qt.ApplicationModal)
         if player_types is not None:
             _configure_preview_backend()
@@ -552,6 +556,11 @@ class PreviewWindow(AccessibleDialog):
                 self._player.positionChanged.connect(self._on_position_changed)
             if hasattr(self._player, "durationChanged"):
                 self._player.durationChanged.connect(self._on_duration_changed)
+            seekable_changed = getattr(self._player, "seekableChanged", None)
+            connect_seekable = getattr(seekable_changed, "connect", None)
+            if callable(connect_seekable):
+                connect_seekable(self._flush_pending_seek)
+            self._bind_default_audio_device()
 
         self.setWindowTitle("Listen")
         self.setAccessibleName("Listen")
@@ -1106,12 +1115,14 @@ class PreviewWindow(AccessibleDialog):
         from PySide6.QtMultimedia import QMediaPlayer
 
         if self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self._want_play = False
             self._player.pause()
             self._sync_play_button()
             self._focus_play_pause()
             self.set_status(_playback_status("Paused"), announce=True)
         else:
-            self._player.play()
+            self._want_play = True
+            self._continue_playback()
             self._sync_play_button()
             self._focus_play_pause()
             self.set_status(_playback_status("Playing"), announce=True)
@@ -1237,7 +1248,8 @@ class PreviewWindow(AccessibleDialog):
         target = max(0, int(position_ms))
         if duration > 0:
             target = min(target, duration)
-        self._player.setPosition(target)
+        self._pending_seek_ms = target
+        self._flush_pending_seek()
         self._set_slider_value(target)
         self._update_position_label(target)
         if announce:
@@ -1283,6 +1295,7 @@ class PreviewWindow(AccessibleDialog):
         self._set_slider_range(duration)
         if self._player is not None:
             self._set_slider_value(int(self._player.position()))
+        self._flush_pending_seek()
 
     def _on_slider_pressed(self) -> None:
         self._slider_dragging = True
@@ -1334,10 +1347,10 @@ class PreviewWindow(AccessibleDialog):
         self._update_part_label()
         self._show_cover(file_path)
         self._reset_position_slider()
+        self._want_play = bool(autoplay)
+        self._pending_seek_ms = None
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
-        self._set_playback_rate(load_preview_speed(), announce=False, persist=False)
-        if autoplay:
-            self._player.play()
+        self._continue_playback()
         self._sync_play_button()
         self._sync_transport_enabled()
 
@@ -1453,6 +1466,137 @@ class PreviewWindow(AccessibleDialog):
         else:
             self._pause_listen_clock()
         self._sync_play_button()
+        self._flush_pending_seek()
+
+    def _bind_default_audio_device(self) -> None:
+        """Use the desktop's current output. A null device plays silence on Linux."""
+        if not sys.platform.startswith("linux") or self._audio is None:
+            return
+        set_device = getattr(self._audio, "setDevice", None)
+        if not callable(set_device):
+            return
+        try:
+            from PySide6.QtMultimedia import QMediaDevices
+        except Exception:
+            return
+
+        def apply(force: bool = False) -> None:
+            if self._audio is None:
+                return
+            if not force:
+                current = getattr(self._audio, "device", None)
+                if callable(current):
+                    try:
+                        now = current()
+                        is_null = getattr(now, "isNull", None)
+                        if callable(is_null) and not is_null():
+                            return
+                    except Exception:
+                        pass
+            device = QMediaDevices.defaultAudioOutput()
+            is_null = getattr(device, "isNull", None)
+            if callable(is_null) and is_null():
+                return
+            try:
+                set_device(device)
+            except Exception:
+                pass
+
+        apply(force=True)
+        watcher = QMediaDevices(self)
+        watcher.audioOutputsChanged.connect(lambda: apply(force=False))
+        self._audio_devices = watcher
+
+    def _media_status(self):
+        status_fn = getattr(self._player, "mediaStatus", None)
+        if not callable(status_fn):
+            return None
+        try:
+            return status_fn()
+        except Exception:
+            return None
+
+    def _playback_ready(self) -> bool | None:
+        """True once a file is open, False while it is still loading, None if unknown."""
+        status = self._media_status()
+        if status is None:
+            return None
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        return status in (
+            QMediaPlayer.MediaStatus.LoadedMedia,
+            QMediaPlayer.MediaStatus.BufferingMedia,
+            QMediaPlayer.MediaStatus.BufferedMedia,
+            QMediaPlayer.MediaStatus.EndOfMedia,
+        )
+
+    def _player_is_active(self) -> bool:
+        state_fn = getattr(self._player, "playbackState", None)
+        if not callable(state_fn):
+            return False
+        try:
+            from PySide6.QtMultimedia import QMediaPlayer
+
+            return state_fn() in (
+                QMediaPlayer.PlaybackState.PlayingState,
+                QMediaPlayer.PlaybackState.PausedState,
+            )
+        except Exception:
+            return False
+
+    def _continue_playback(self) -> None:
+        """Start play after the file is open. Linux drops play and seek before that."""
+        if self._continuing_playback or self._player is None or self._closing:
+            return
+        ready = self._playback_ready()
+        if ready is False:
+            return
+        self._continuing_playback = True
+        try:
+            if not self._player_is_active():
+                disable_video = getattr(self._player, "setActiveVideoTrack", None)
+                if callable(disable_video):
+                    try:
+                        disable_video(-1)
+                    except Exception:
+                        pass
+                self._set_playback_rate(
+                    load_preview_speed(), announce=False, persist=False
+                )
+                if self._pending_resume and self._resume_ms:
+                    self._pending_seek_ms = int(self._resume_ms)
+                    self._pending_resume = False
+                    self._resume_ms = None
+                if self._want_play:
+                    play = getattr(self._player, "play", None)
+                    if callable(play):
+                        play()
+            self._flush_pending_seek()
+        finally:
+            self._continuing_playback = False
+
+    def _flush_pending_seek(self, *_args) -> None:
+        """Apply a queued seek. The Linux player ignores setPosition until it is playing."""
+        if self._pending_seek_ms is None or self._player is None or self._closing:
+            return
+        ready = self._playback_ready()
+        if ready is False:
+            return
+        target = int(self._pending_seek_ms)
+        duration_fn = getattr(self._player, "duration", None)
+        if callable(duration_fn):
+            try:
+                duration = max(0, int(duration_fn()))
+            except (TypeError, ValueError):
+                duration = 0
+            if duration > 0:
+                target = min(target, duration)
+        set_position = getattr(self._player, "setPosition", None)
+        if not callable(set_position):
+            return
+        set_position(target)
+        if ready is None or self._player_is_active():
+            self._pending_seek_ms = None
 
     def _pause_listen_clock(self) -> None:
         if self._playing_since is not None:
@@ -1474,11 +1618,9 @@ class PreviewWindow(AccessibleDialog):
         if status in (
             QMediaPlayer.MediaStatus.LoadedMedia,
             QMediaPlayer.MediaStatus.BufferedMedia,
+            QMediaPlayer.MediaStatus.BufferingMedia,
         ):
-            if self._pending_resume and self._resume_ms:
-                self._player.setPosition(int(self._resume_ms))
-                self._pending_resume = False
-                self._resume_ms = None
+            self._continue_playback()
         if status == QMediaPlayer.MediaStatus.EndOfMedia:
             if self._playlist_index < len(self._playlist) - 1:
                 self._playlist_index += 1
@@ -1699,12 +1841,21 @@ class PreviewWindow(AccessibleDialog):
                 return True
             if source is self.position_label:
                 key = event.key()
-                if key in (Qt.Key_Left, Qt.Key_Right):
+                modified = bool(
+                    event.modifiers()
+                    & (
+                        Qt.AltModifier
+                        | Qt.ControlModifier
+                        | Qt.ShiftModifier
+                        | Qt.MetaModifier
+                    )
+                )
+                if not modified and key in (Qt.Key_Left, Qt.Key_Right):
                     self._seek_by(
                         -SLIDER_STEP_MS if key == Qt.Key_Left else SLIDER_STEP_MS
                     )
                     return True
-                if key in (Qt.Key_PageUp, Qt.Key_PageDown):
+                if not modified and key in (Qt.Key_PageUp, Qt.Key_PageDown):
                     self._seek_by(
                         SEEK_STEP_MS if key == Qt.Key_PageUp else -SEEK_STEP_MS
                     )
@@ -1732,8 +1883,12 @@ class PreviewWindow(AccessibleDialog):
                 )
                 if self._move_preview_focus(forward=forward):
                     return True
-            if event.key() in (Qt.Key_Left, Qt.Key_Right):
-                # Arrow between transport controls (includes Rewind / Forward).
+            if event.key() in (Qt.Key_Left, Qt.Key_Right) and not (
+                event.modifiers()
+                & (Qt.AltModifier | Qt.ControlModifier | Qt.ShiftModifier | Qt.MetaModifier)
+            ):
+                # Plain arrows move between transport controls. Alt+Left and
+                # Alt+Right stay on the 30-second seek shortcuts.
                 if source in self._transport_focus_widgets():
                     if self._move_transport_focus(event.key() == Qt.Key_Right):
                         return True

@@ -161,6 +161,104 @@ def test_listen_player_ticks_do_not_fire_name_changed(listen_window, monkeypatch
     assert events == [QAccessible.Event.NameChanged]
 
 
+def test_listen_alt_right_seeks_instead_of_moving_focus(listen_window, qtbot):
+    window = listen_window
+    window.play_pause_button.setFocus(Qt.TabFocusReason)
+    qtbot.waitUntil(lambda: window.play_pause_button.hasFocus(), timeout=1000)
+    alt_right = QKeyEvent(QEvent.KeyPress, Qt.Key_Right, Qt.AltModifier)
+    assert window.eventFilter(window.play_pause_button, alt_right) is False
+    assert window.play_pause_button.hasFocus()
+    plain_right = QKeyEvent(QEvent.KeyPress, Qt.Key_Right, Qt.NoModifier)
+    assert window.eventFilter(window.play_pause_button, plain_right) is True
+    assert window.forward_button.hasFocus()
+
+
+def test_listen_plays_and_seeks_after_media_loads(
+    tmp_path, ui_scaler, theme_manager, qtbot
+):
+    from types import SimpleNamespace
+
+    from PySide6.QtMultimedia import QMediaPlayer
+
+    from src.ui.preview_window import PreviewWindow
+
+    track = tmp_path / "01.mp3"
+    track.write_bytes(b"x")
+
+    class _Signal:
+        def connect(self, *_args, **_kwargs):
+            return None
+
+    class _LoadingPlayer:
+        def __init__(self):
+            self.playbackStateChanged = _Signal()
+            self.errorOccurred = _Signal()
+            self.mediaStatusChanged = _Signal()
+            self.positionChanged = _Signal()
+            self.durationChanged = _Signal()
+            self.status = QMediaPlayer.MediaStatus.LoadingMedia
+            self.state = QMediaPlayer.PlaybackState.StoppedState
+            self.plays: list[str] = []
+            self.positions: list[int] = []
+            self.video_tracks: list[int] = []
+
+        def setAudioOutput(self, *_args):
+            return None
+
+        def setSource(self, *_args):
+            return None
+
+        def setPlaybackRate(self, *_args):
+            return None
+
+        def mediaStatus(self):
+            return self.status
+
+        def playbackState(self):
+            return self.state
+
+        def setActiveVideoTrack(self, index):
+            self.video_tracks.append(index)
+
+        def play(self):
+            self.plays.append("play")
+            self.state = QMediaPlayer.PlaybackState.PlayingState
+
+        def setPosition(self, position):
+            self.positions.append(position)
+
+        def position(self):
+            return self.positions[-1] if self.positions else 0
+
+        def duration(self):
+            return 120_000
+
+    window = PreviewWindow(
+        None,
+        ui_scaler,
+        theme_manager,
+        player_types=(_LoadingPlayer, _FakeAudio),
+    )
+    qtbot.addWidget(window)
+    ok, _message = window.play_playlist(
+        SimpleNamespace(files=(track,), start_index=0, folder_mode=False, error="")
+    )
+    assert ok
+    player = window._player
+    assert player.plays == []
+    window.on_forward()
+    assert player.positions == []
+    assert window._pending_seek_ms == 30_000
+    player.status = QMediaPlayer.MediaStatus.LoadedMedia
+    window._on_media_status(player.status)
+    assert player.video_tracks == [-1]
+    assert player.plays == ["play"]
+    assert player.positions == [30_000]
+    assert window._pending_seek_ms is None
+    window._close_requested = True
+    window.close()
+
+
 def _path_window(temp_db, ui_scaler, theme_manager, qtbot):
     from src.ui.path_health_window import PathHealthWindow
 
